@@ -4,118 +4,6 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/bp-fnbs-dispatch-publication": {
-      "seconds": 10.134,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-node-fragment-replacement": {
-      "seconds": 10.684,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-node-fragment-step": {
-      "seconds": 13.339,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-node-progress-premises": {
-      "seconds": 10.689,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-report-guards": {
-      "seconds": 12.087,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-request-plan": {
-      "seconds": 11.485,
-      "run": "certify-20260925T093812Z-3053804",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-workflow-invariants": {
-      "seconds": 10.885,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-k0": {
-      "seconds": 11.288,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-k0-authority-error": {
-      "seconds": 10.786,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-k0-marker": {
-      "seconds": 16.747,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-k0-staging": {
-      "seconds": 11.502,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-k0-step-bridge": {
-      "seconds": 15.096,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-record-provenance-bytes": {
-      "seconds": 13.75,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-record-provenance-owner": {
-      "seconds": 11.838,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-retention-publication": {
-      "seconds": 10.484,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/byte-store-scan": {
-      "seconds": 14.21,
-      "run": "certify-20260925T100705Z-3116225",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/checkpoint-codec": {
       "seconds": 13.443,
       "run": "certify-20260925T100705Z-3116225",
@@ -123,114 +11,37 @@
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/config-owner-advance-invariants": {
-      "seconds": 10.035,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/config-owner-live": {
-      "seconds": 31.122,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/config-owner-read-invariants": {
-      "seconds": 11.888,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/consumer-store-invariants": {
-      "seconds": 11.437,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/consumer-store-projection": {
-      "seconds": 12.761,
-      "run": "certify-20260925T100705Z-3116225",
+      "seconds": 10.541,
+      "run": "certify-20260925T203553Z-3818799",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/native-admin": {
-      "seconds": 11.235,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/native-live-status": {
-      "seconds": 10.036,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/owner-config": {
-      "seconds": 12.14,
-      "run": "certify-20260925T103038Z-3156842",
+      "seconds": 10.786,
+      "run": "certify-20260925T202954Z-3802121",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 17.357,
-      "run": "certify-20260925T103038Z-3156842",
+      "seconds": 16.902,
+      "run": "certify-20260925T202954Z-3802121",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/store-files-invariants": {
-      "seconds": 10.237,
-      "run": "certify-20260925T100705Z-3116225",
+    "books/peer-authored-accept": {
+      "seconds": 11.088,
+      "run": "certify-20260925T202954Z-3802121",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/store-node-invariants": {
-      "seconds": 11.998,
-      "run": "certify-20260925T185444Z-3591801",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/store-node-resolution": {
-      "seconds": 10.097,
-      "run": "certify-20260925T100705Z-3116225",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/store-node-traces": {
-      "seconds": 12.052,
-      "run": "certify-20260925T100705Z-3116225",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/store-node-traces-prepare": {
-      "seconds": 17.569,
-      "run": "certify-20260925T100705Z-3116225",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/store-open-bridge": {
-      "seconds": 10.136,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/topic-history-store-invariants": {
-      "seconds": 12.339,
-      "run": "certify-20260925T103038Z-3156842",
+    "books/store-reclaim": {
+      "seconds": 11.139,
+      "run": "certify-20260925T202954Z-3802121",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"

@@ -38,6 +38,8 @@
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
 (include-book "../books/owner-commit-carried")
+(include-book "../books/owner-bound-commit")
+(include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
 (include-book "../books/owner-advance-carried")
 (include-book "../books/owner-intent-carried")
@@ -63,6 +65,7 @@
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
+(include-book "../books/peer-pull")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -549,7 +552,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pb-existing-action msgid payload groups s)))
+             (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -627,7 +630,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pbb-existing-action msgid fn-octets groups s)))
+             (existing (fn-rclb-existing-action msgid fn-octets groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -1602,6 +1605,31 @@
           received group-octets
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
 
+;; PKT-101: whether a SIGHUP asks for a reopen of `[log] path'
+;; (books/owner-log-reopen.lisp fn-olr-decide, KEYSTONE
+;; fn-olr-reopen-iff-requested), and on :reopen the line the reopened file
+;; starts with, left in `fn-owner-log-line' for host/native/owner.lisp
+;; fnn-owner-maybe-reopen-log.
+(defun fn-owner-log-reopen (configured handled requested state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((decision (fn-olr-decide configured handled requested))
+         (state (f-put-global 'fn-owner-log-line
+                              (if (equal (car decision) :reopen)
+                                  (fn-olr-line requested
+                                               (fn-own-clock (fn-owner-core state)))
+                                nil)
+                              state)))
+    (value decision)))
+
+;; PKT-069: the gate host/native/owner.lisp fnn-owner-complete-bound-submission
+;; asks before it calls a commit callback (books/owner-bound-commit.lisp
+;; fn-obc-commit-gate; KEYSTONE fn-obc-commit-only-after-filing).
+(defun fn-owner-bound-commit-gate (received group-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-obc-commit-gate
+          received group-octets
+          (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+
 (defun fn-owner-peer-carrier-form (received state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-carrier-form received)))
@@ -1791,7 +1819,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pb-existing-action
+      (let ((action (fn-rcl-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
@@ -1800,9 +1828,12 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-pbb-existing-action
-; (books/poster-bytes-buffer.lisp), equal to fn-pb-existing-action on the
-; buffer's logical value (fn-pbb-existing-action-is-pb-existing-action);
+; list for either.  The decision is fn-rclb-existing-action
+; (books/store-reclaim-buffer.lisp), equal to the tombstone-aware
+; fn-rcl-existing-action on the buffer's logical value
+; (fn-rclb-existing-action-is-rcl-existing-action), which is
+; fn-pb-existing-action wherever the held payload is not a tombstone
+; (fn-rcl-existing-action-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
 (defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
@@ -1813,26 +1844,15 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pbb-existing-action
+      (let ((action (fn-rclb-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
 
-; The subject identity of the payload in the octet buffer.  fn-shb-subject-id
-; (books/sha256-buffer.lisp) digests the subject preimage straight from the
-; buffer (the fixed head for the buffer's length as a list, the payload by
-; index), so the served POST hands the digest no octet list
-; (host/native/owner.lisp fnn-owner-attempt through fnn-metadata-buffer,
-; host/native/io.lisp).  fn-shb-subject-id-is-id-subject-of-sha256-preimage:
-; it is fn-id-subject of fn-sha256 over fn-id-subject-preimage, which is
-; fn-id-subject-of-payload (host/store-host.lisp fn-store-subject-id-of-payload,
-; the list entry) under books/crypto-attach.lisp.  The length test is the
-; list entry's.
-(defun fn-owner-subject-id-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (value (if (<= (fn-octets-len fn-octets) *fn-cbor-max-uint*)
-             (fn-shb-subject-id fn-octets)
-           nil)))
+; The subject identity of the payload in the octet buffer is
+; books/sha256-buffer.lisp fn-shb-subject-id-bounded, which host/native/io.lisp
+; fnn-subject-id-buffer calls directly: a guard-verified entry, so no :program
+; wrapper here reaches the digest's local stobj updaters (qual-e747dbcc A4).
 
 ; -----------------------------------------------------------------------------
 ; Connections
@@ -2439,3 +2459,11 @@ existing port only after fn-fc has made this connection ready."
       (fn-owner-feed-install-port-result owner result state)
       (value (if (equal status :refused) :refused
                (len (fn-own-feed-port-records result)))))))
+
+; -----------------------------------------------------------------------------
+; The NEWNEWS pull feed (PRF-100, books/peer-pull.lisp).  The pulled peers of
+; the one live configuration, read by ACL2; host/native/pull-service.lisp
+; drives each round through the pure fn-pull-* functions.
+(defun fn-owner-pull-plans (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pull-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))

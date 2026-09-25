@@ -818,7 +818,7 @@ selectors and a `-of-constructor` theorem.
 | 17 | `(fn-bpn-rec-family-retired token family disposition)` | slice C, §7.3; `disposition` `:materialized` or `(:terminated reason)` |
 | 18 | `(fn-bpn-rec-reassembled token family held fragment-ids)` | slice C, §7.2 |
 | 19 | `(fn-bpn-rec-checkpoint-chunk generation index bytes)` | slice E, §3.6; only in a new generation's staging, never applied by ordinary replay |
-| 20 | `(fn-bpn-rec-checkpoint-manifest generation frontier chunk-digests)` | slice E, §3.6; the last object staged |
+| 21 | `(fn-bpn-rec-checkpoint-manifest generation frontier chunk-digests)` | slice E, §3.6; the last object staged. Renumbered from 20 (2026-09-25, lane bp-n16-prod): kind 20 is bp-budgets-receipts' busy-delivery count; 21 is the next free FNBS kind |
 
 The logical kind-6 dispatch record has a distinct received FNBS encoding:
 frame header `(FNBS, version 2, kind 6)` under the canonical epoch-operation
@@ -895,7 +895,7 @@ after it.
    (config generation, policy) the projection names. Sessions, routes,
    waits and delivery markers are volatile and are not historical authority.
 3. **Stage.** Write the checkpoint into generation `g+1`'s staging as kind-19
-   chunks, each within the record payload bound, then the kind-20 manifest
+   chunks, each within the record payload bound, then the kind-21 manifest
    (generation, frontier `t`, chunk count and digests), each through the
    ordinary publisher (write, file barrier, link, directory barrier).
 4. **Select.** Publish the selection record `(:bpn-generation g+1
@@ -3833,7 +3833,7 @@ The second review's traces (their labels; not requirement IDs):
 | N13 | identical application request retried in a fresh carrier: same receipt fact, new reply submission, no new article or pin | A3 |
 | N14 | two works, receipt for the first only: exactly the first forwarding pin changes; archive pins and the second work remain | A3, slice-A gate |
 | N15 | network peer address matches, announced EID does not: no admission under the announced identity | A3 |
-| N16 | rotation killed at every publication and selection cut, then new work and a stale completion: one recovery authority, no identifier reuse, arrival order kept. **Present** through `fn-bpnp-step` for a single atomically renamed kind-19 checkpoint (not the chunked kinds 19/20 of §3.6): `(:rotate g ck)` and the checkpoint's `:persist-result` are the rotation arms (`fn-bpnp-step-rotate-is-rotate-step`, `fn-bpnp-step-rotation-result-is-rotation-result`, books/bp-node-rotation-step); only the durable answer resets the record count (`fn-bpnp-step-rotation-resets-credit-only-on-durable`); recovery from the selected checkpoint equals recovery over the whole history but the row count (`fn-bpnr-recover-from-checkpoint-equals-full-recover`); at every cut of the publication driver the visible selection is the old or the new one (`fn-bpnr-rotation-crash-recovers-old-or-new`); trace and teeth in tests/acl2/bp-node-counterexamples-tests; natively, `test_rotation_killed_at_each_cut_keeps_held_rows`. **Open**: identifier reuse (finding N16-F1): the checkpoint's operation frontier predates the rotation, so a reopened node's epoch is the rotating epoch and its first operation reuses the rotation's id; the empty new-generation premise is not modelled; old generations are never removed | E |
+| N16 | rotation killed at every publication and selection cut, then new work and a stale completion: one recovery authority, no identifier reuse, arrival order kept. **Present** through `fn-bpnp-step` for a single atomically renamed kind-19 checkpoint (not the chunked kinds 19/21 of §3.6): `(:rotate g ck)` and the checkpoint's `:persist-result` are the rotation arms (`fn-bpnp-step-rotate-is-rotate-step`, `fn-bpnp-step-rotation-result-is-rotation-result`, books/bp-node-rotation-step); only the durable answer resets the record count (`fn-bpnp-step-rotation-resets-credit-only-on-durable`); recovery from the selected checkpoint equals recovery over the whole history but the row count (`fn-bpnr-recover-from-checkpoint-equals-full-recover`); at every cut of the publication driver the visible selection is the old or the new one (`fn-bpnr-rotation-crash-recovers-old-or-new`); trace and teeth in tests/acl2/bp-node-counterexamples-tests; natively, `test_rotation_killed_at_each_cut_keeps_held_rows`. No identifier reuse (N16-F1 repaired, lane bp-n16-prod): the rotation publishes `fn-bpnr-rotation-checkpoint`, whose operation frontier is the rotation's own id `(E . 0)`, so the reopen names epoch E + 1 (`fn-bpnr-recover-from-checkpoint-equals-full-recover`, restated with the event's epoch). Old generations and a killed rotation's staged selection are removed by `fn-bpnr-retire-ops`, run step by step after the durable selection; at every prefix of that program the open's view is unchanged (`fn-bpnr-retirement-cut-keeps-open-view`, books/bp-node-retire; teeth tests/acl2/bp-node-retire-tests). **Open**: the empty new-generation premise is not modelled; the chunked kinds and `:quiesce` of §3.6 | E |
 | N17 | an attached codec passes the vectors while a theorem needs the exact encoding: the evidence and the conformance obligation stay distinct | T1 (the §4.6 mini-closure), cited by D2 |
 | N18 | the owner answers `:uncertain` repeatedly, never `:busy`: the premise is reported violated, not declared satisfied | B |
 
@@ -4009,7 +4009,7 @@ named.
    first for v0; the bounded-recovery premise when the owner's own
    recovery has a proved bound.
 8. **Checkpoint representation** (§3.6). Options: kind-19 chunks through
-   the ordinary record publisher plus a kind-20 manifest; or immutable
+   the ordinary record publisher plus a kind-21 manifest; or immutable
    content-addressed objects referenced by the manifest. Recommend:
    chunks as records, which reuse the publisher, the codec and T6's cut
    facts; objects only if slice E measures the chunk count at `max-held`

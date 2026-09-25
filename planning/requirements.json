@@ -1117,7 +1117,8 @@
         "PRF-075",
         "PRF-077",
         "PRF-081",
-        "PRF-082"
+        "PRF-082",
+        "PRF-114"
       ],
       "verification": [
         "proof",
@@ -1440,7 +1441,8 @@
         "PRF-092",
         "PRF-087",
         "PRF-095",
-        "PRF-106"
+        "PRF-106",
+        "PRF-094"
       ],
       "verification": [
         "proof",
@@ -1472,7 +1474,8 @@
         "PRF-015",
         "PRF-016",
         "PRF-054",
-        "PRF-095"
+        "PRF-095",
+        "PRF-094"
       ],
       "verification": [
         "proof",
@@ -2055,9 +2058,14 @@
         "books/nntp-responses.lisp",
         "books/native-admin.lisp",
         "tests/acl2/store-reclaim-tests.lisp",
-        "planning/evidence/reclaim-d13-2026-09-25.md"
+        "planning/evidence/reclaim-d13-2026-09-25.md",
+        "books/store-reclaim-buffer.lisp",
+        "books/store-reclaim-holders.lisp",
+        "books/nntp-reclaimed.lisp",
+        "books/native-live-status.lisp",
+        "planning/evidence/reclaim-host-2026-09-25.md"
       ],
-      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. Not yet implemented: the host `store reclaim` verb, its byte program and cuts, status counts, the native N=5,000 scenario; holders are an argument, not yet read from the consumer projection, feed state or FNBS rows; the retention ledger keeps the reclaimed article's charge."
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 at every list site and fn-rclb-existing-action at the buffer sites and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
     },
     {
       "id": "NNT-012",
@@ -2240,6 +2248,79 @@
         "tests/test_native_key_statements.py"
       ],
       "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys, grantable beside cancel) with the PoP observations checked in ACL2; the owner executes after every durable kind-4 commit (carried and revoked ones decline); the revoked arm of fn-pa-current-plan on NNTP transit only. The kind-4-then-kind-3 crash cut is a model crash point (fn-ks-cut, fn-ks-recover): the open executes the newest record when it is a statement. A Store refusal of the key change leaves the article accepted and is reported as detail key-change-refused."
+    },
+    {
+      "id": "NNT-017",
+      "title": "An invitation enrols its inviter only when its carrier verifies under the key set its body names, and a node enrols an acceptor only for an acceptance that consumed, exactly once, a pending invitation this node issued",
+      "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-097"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/config.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "planning/evidence/peer-invite-2026-09-25.md"
+      ],
+      "implementation_note": "A stronger fn guarantee over RFC 3977/5537, which say nothing about how peers agree: the spike's JSON invitation state is a configuration slot (delta kinds 13 and 14) with once-only consumption, and every decision is ACL2's. The peer record stays `peer add`; the owner's key-statement executor and succession-era invitations are other lanes' (PRF-098)."
+    },
+    {
+      "id": "NNT-018",
+      "title": "A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-100"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "tests/test_native_peer_pull.py"
+      ],
+      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 7.4 defines NEWNEWS; the ack-bounded cursor and its FNPL journal are fn's. `fn operator CONFIG peer pull NAME SECONDS` sets the interval row; the owner's pull worker (host/native/pull-service.lisp) offers each listed id on a logical transit connection of that peer, so the local answer is the served IHAVE's."
+    },
+    {
+      "id": "REP-008",
+      "title": "An outbound bundle never exceeds the peer's TCPCL Transfer MRU: it goes whole, as RFC 9171 5.8 fragments that reassemble exactly to it, or is refused",
+      "specification": "specs/replication.md#scheduling-and-transport",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-114"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "rfc9174.txt",
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "host/native/bp-service.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler keeps its 65538-octet and 64-fragment caps.",
+      "keystones": [
+        "fn-bpfs-plan-fragments-fit-mru",
+        "fn-bpfs-plan-fragments-reassemble-exactly",
+        "fn-bpfs-plan-fragments-restore-parent"
+      ],
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059."
     }
   ]
 }

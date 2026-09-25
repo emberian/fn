@@ -2379,7 +2379,8 @@
         "planning/evidence/manifests/certify-20260925T102606Z-3884875.json",
         "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
         "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
-        "planning/evidence/manifests/certify-20260925T191657Z-265615.json"
+        "planning/evidence/manifests/certify-20260925T191657Z-265615.json",
+        "planning/evidence/manifests/certify-20260925T192046Z-305043.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
@@ -3382,7 +3383,7 @@
     {
       "id": "PRF-081",
       "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
-      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover: for every authority plan0 that is not damaged and whose ordered received-final rows replay :ready, and the checkpoint ck1 of that replay at any generation for which fn-bpnr-checkpoint-octets produces octets, fn-bpnr-recover-auto-event (the event host/native/bp-service.lisp fnn-bps-open passes to fn-bpnp-step) over (fn-bpnr-selection-plan t octets budget) and any later rows equals the event over plan0 and the concatenated rows with field 5 (the row count) set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows equals the old authority's recovery with its row count 0. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19/20, the :quiesce event, cleanup of old generations and the empty new-generation premise are not modelled; the codec runs on octet lists (no D27 concrete twin); a reopened node's epoch is the rotating epoch (finding N16-F1).",
+      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused).",
       "milestone": "M4",
       "requirements": [
         "REP-005",
@@ -3409,14 +3410,22 @@
         "planning/evidence/n16-rotation-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T044200Z-2512543.json",
         "planning/evidence/manifests/certify-20260925T050242Z-2546955.json",
-        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
+        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json",
+        "books/bp-node-retire.lisp",
+        "tests/acl2/bp-node-retire-tests.lisp",
+        "planning/evidence/bp-n16-prod-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T190512Z-3605421.json",
+        "planning/evidence/manifests/certify-20260925T191828Z-3623771.json"
       ],
-      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2.",
+      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests.",
       "events": [
         "fn-bpnr-recover-from-checkpoint-equals-full-recover",
         "fn-bpnr-rotation-crash-recovers-old-or-new",
         "fn-bpnr-checkpoint-decode-of-octets",
-        "fn-bpnr-family-replay-aux-append"
+        "fn-bpnr-family-replay-aux-append",
+        "fn-bpnp-rotate-step-proposes-only-own-projection",
+        "fn-bpnr-retirement-cut-keeps-open-view",
+        "fn-bpnr-retired-names-never-the-selected-directory"
       ]
     },
     {
@@ -3583,7 +3592,7 @@
     {
       "id": "PRF-089",
       "title": "The running owner's status report is the offline report of the same state, and its pages join to it",
-      "statement": "fn-nls-live-report-is-the-offline-report: for every KIND (status, pins, peers, obligations), profile, configured owner OC and observation, when the carried octet sum CACHE is valid for the records of OC's Store (fn-sbud-octets-cache-validp) and no connection is open (no pin in fn-ocfg-pins), (fn-nls-live-report kind profile oc cache obs) equals (fn-nls-offline-report kind profile (fn-own-store (fn-ocfg-owner oc)) (fn-ocfg-config oc) obs); the owner reaches fn-nls-live-report through fn-native-live-status-host-reply (host/native/control.lisp fnn-control-live-status-answer) and the offline command reaches fn-nls-offline-report through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). fn-nls-client-step-of-owner-reply: for every octet REPORT whose length is a uint32 and every client prefix ACC of it (with, past the first page, the report's total and digest), the client's step on the owner's page from (len ACC) is :done REPORT, or :next with the strictly longer prefix of one more chunk; fnn-control-live-status folds pages through fn-nls-client-step. Supporting: fn-nls-reply-decode-of-encode, fn-nls-request-decode-of-encode, fn-nls-open-of-seal.",
+      "statement": "fn-nls-live-report-is-the-offline-report: for every KIND (status, pins, peers, obligations), profile, configured owner OC and observation, when the carried octet sum CACHE is valid for the records of OC's Store (fn-sbud-octets-cache-validp) and no connection is open (no pin in fn-ocfg-pins), (fn-nls-live-report kind profile oc cache obs) equals (fn-nls-offline-report kind profile (fn-own-store (fn-ocfg-owner oc)) (fn-ocfg-config oc) obs); the owner reaches fn-nls-live-report through fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer), once per request and the offline command reaches fn-nls-offline-report through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). fn-nls-client-step-of-owner-reply: for every octet REPORT whose length is a uint32 and every client prefix ACC of it (with, past the first page, the report's total and digest), the client's step on the owner's page from (len ACC) is :done REPORT, or :next with the strictly longer prefix of one more chunk; fnn-control-live-status folds pages through fn-nls-client-step. fn-nls-page-of-buffer-is-reply: for every REPORT and OFFSET, (fn-nls-page (fn-nls-buffer report) offset) equals (fn-nls-reply report offset), with no hypothesis; fn-nls-buffer is the report as one string with its frame digest and fn-nls-page answers a substring of it (the D27 twin of the page). fn-nls-client-step-of-owner-page: the client-step keystone with the same hypotheses over the page the owner answers, (fn-nls-page (fn-nls-buffer report) (len acc)). fn-nls-cached-buffer-of-put: for a positive offset, the buffer the owner looks up for KIND after storing BUFFER for KIND is BUFFER; fn-native-live-status-host-answer renders anew at offset 0 and otherwise pages from the stored buffer. fn-nls-nat-is-the-decimal-digits: for every natural N, (fn-nls-nat N), which renders every number of the report, is a nonempty run of decimal digits whose value under fn-nntp-decimal-value is N. Supporting: fn-nls-reply-decode-of-encode, fn-nls-request-decode-of-encode, fn-nls-open-of-seal. fn-nls-report-of-query-kind-is-query-report: for every administrative plan, the status-path report of the kind fn-native-admin-result-report-kind names -- the kind host/native/operator.lisp fnn-operator-execute-admin passes to fnn-operator-status-once for an accepted `peer list' or `control list', live (fn-nls-live-report) or offline (fn-nls-offline-report) -- is fn-native-admin-query-report of the plan over the same configuration, so `control list' renders the authority rows (fn-cfg-authorities) and `peer list' the peers; supporting: fn-native-admin-control-report-empty-iff-no-rows (the listing is empty only over no grant row). Covered scope: the rows are rendered, not parsed back (qual-e747dbcc A3).",
       "milestone": "M4",
       "requirements": [
         "HST-006",
@@ -3598,12 +3607,20 @@
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
         "tests/acl2/native-operator-tests.lisp",
-        "planning/evidence/live-status-2026-09-25.md"
+        "planning/evidence/live-status-2026-09-25.md",
+        "planning/evidence/status-join-2026-09-25.md",
+        "books/native-admin.lisp",
+        "planning/evidence/deploy-fixes-2026-09-25.md"
       ],
-      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. Octet lists only (D27 twin open). The open= line names each process's own open, and the offline orphan listing is the reader's own observation.",
+      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
         "fn-nls-live-report-is-the-offline-report",
-        "fn-nls-client-step-of-owner-reply"
+        "fn-nls-client-step-of-owner-reply",
+        "fn-nls-page-of-buffer-is-reply",
+        "fn-nls-client-step-of-owner-page",
+        "fn-nls-cached-buffer-of-put",
+        "fn-nls-nat-is-the-decimal-digits",
+        "fn-nls-report-of-query-kind-is-query-report"
       ]
     },
     {
@@ -3747,7 +3764,7 @@
     {
       "id": "PRF-088",
       "title": "Content reclamation removes only unheld payload bytes and every history decision reads the same afterwards",
-      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) equals: not a tombstone, rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict, and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rcl-reclaim-never-touches-a-held-article: if an obligation names the article or the rule is keep-forever, fn-rcl-reclaim-if-permitted is the identity. fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (host subject fn-rcl-existing-action) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed.",
+      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) equals: not a tombstone, rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict other than :absent (fn-rcl-verdict-heldp), and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rcl-reclaim-never-touches-a-held-article: if an obligation names the article or the rule is keep-forever, fn-rcl-reclaim-if-permitted is the identity. fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (host subject fn-rcl-existing-action) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed. fn-rclb-existing-action-is-rcl-existing-action: under fn-octets-p (the buffer's recognizer), the buffer verdict the native owner calls (host/owner-host.lisp fn-owner-existing-action-buffer, fn-owner-prepare-buffer) equals fn-rcl-existing-action; the list sites call fn-rcl-existing-action directly (host/owner-host.lisp fn-owner-prepare, fn-owner-existing-action; host/store-node-host.lisp prepare and fn-store-sn-existing-action). fn-nntp-over-by-msgid-answers-reclaimed: for a Message-ID token naming a held tombstone, fn-nntp-over-response (called by fn-nntp-archive-command) answers 430 article reclaimed; fn-nntp-over-current-answers-reclaimed: with a selected group and a current article that is a tombstone, 423 article reclaimed. fn-nov-lines-indexed-skip-a-reclaimed-article (subject of fn-nntp-over-range-indexed, the pinned OVER/XOVER range) and fn-nov-lines-skip-a-reclaimed-article (unpinned): the lines over NUMBERS equal the lines over NUMBERS without a tombstoned article's number. fn-nntp-newnews-scan-lists-only-live-articles: every Message-ID fn-nntp-newnews-scan lists is that of an article that is not a tombstone; no other hypothesis. fn-rcl-store-holders-hold-behind-a-lagging-consumer: while a registered consumer's acknowledgement is below the committed frontier, no article numbered (n >= 1) in a served group is reclaimable under fn-rcl-store-holders, for every rule, clock and verdict list. fn-rcl-absent-verdict-contributes-nothing: when fn-stx-verdict-of-octets of a payload under any keyring is :absent, fn-stx-delta of that payload is nil under every keyring, so an :absent verdict holds nothing; with fn-sn-finish-records-the-acceptance-verdict (the recorded verdict is fn-stx-verdict-of-octets of the payload) and fn-rcl-tombstone-contributes-nothing (fn-stx-delta of any payload satisfying fn-rcl-tombstonep is nil under every keyring), reclaiming such an article leaves the statement index every later open derives unchanged. fn-rcl-tombstone-refused-at-carrier-form: every payload satisfying fn-rcl-tombstonep gets (:refused :article) from fn-pa-carrier-form, which the host calls as fn-owner-peer-carrier-form (host/owner-host.lisp) in host/native/owner.lisp fnn-owner-attempt-transit before any Store call, on every served ingress (POST, IHAVE, TAKETHIS, peer and BP transit, bound submissions); no other hypothesis. Its keystone lemma fn-rca-nul-first-octet-is-not-an-article: an octet string whose first octet is 0 does not parse (fn-article-parse), no other hypothesis. Not covered: the developer image's store post (host/native/io.lisp fnn-command-post), which prepares a raw payload file without an article check.",
       "milestone": "M5",
       "requirements": [
         "STO-014"
@@ -3763,9 +3780,19 @@
         "books/store-reclaim.lisp",
         "books/nntp-responses.lisp",
         "tests/acl2/store-reclaim-tests.lisp",
-        "planning/evidence/reclaim-d13-2026-09-25.md"
+        "planning/evidence/reclaim-d13-2026-09-25.md",
+        "books/store-reclaim-buffer.lisp",
+        "books/store-reclaim-holders.lisp",
+        "books/nntp-reclaimed.lisp",
+        "books/nntp-newnews.lisp",
+        "books/native-live-status.lisp",
+        "tests/acl2/store-reclaim-buffer-tests.lisp",
+        "tests/acl2/store-reclaim-holders-tests.lisp",
+        "planning/evidence/reclaim-host-2026-09-25.md",
+        "books/reclaim-admission.lisp",
+        "tests/acl2/reclaim-admission-tests.lisp"
       ],
-      "progress_note": "Open: the reclaimed record's own replay step (replaying M's record with the tombstone reaches the reclaimed state; the direct proof did not return in 60 s); the whole-replay statement over fn-replay-apply-record; the durable byte program of `store reclaim` with its cuts under K0; holders read from their subsystems; the retention charge released with the payload; articles with an authorship verdict are refused (the tombstone does not carry the verdict for replay); OVER by Message-ID and NEWNEWS still list a reclaimed article (OVER answers 503 framing unavailable for it).",
+      "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
         "fn-rcl-reclaim-never-touches-a-held-article",
@@ -3777,7 +3804,18 @@
         "fn-rcl-existing-action-after-reclaim",
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
-        "fn-nntp-number-retrieval-answers-reclaimed"
+        "fn-nntp-number-retrieval-answers-reclaimed",
+        "fn-rclb-existing-action-is-rcl-existing-action",
+        "fn-nntp-over-by-msgid-answers-reclaimed",
+        "fn-nntp-over-current-answers-reclaimed",
+        "fn-nov-lines-indexed-skip-a-reclaimed-article",
+        "fn-nov-lines-skip-a-reclaimed-article",
+        "fn-nntp-newnews-scan-lists-only-live-articles",
+        "fn-rcl-store-holders-hold-behind-a-lagging-consumer",
+        "fn-rcl-absent-verdict-contributes-nothing",
+        "fn-rcl-tombstone-refused-at-carrier-form",
+        "fn-rca-nul-first-octet-is-not-an-article",
+        "fn-rcl-tombstone-contributes-nothing"
       ]
     },
     {
@@ -3845,7 +3883,8 @@
         "fn-olog-control-refusal-line-is-one-line",
         "fn-native-auth-admin-effect-word-restart-unless-no-owner",
         "fn-profile-format-7-store-needs-upgrade",
-        "fn-profile-rollback-sound-iff-records-within"
+        "fn-profile-rollback-sound-iff-records-within",
+        "fn-profile-rollback-keeps-a-required-marker"
       ],
       "evidence": [
         "books/owner-served-bound.lisp",
@@ -3861,9 +3900,10 @@
         "tests/test_native_control_filing.py",
         "planning/evidence/operator-verdicts-2026-09-25.md",
         "books/store-profile-upgrade.lisp",
-        "tests/acl2/store-profile-upgrade-tests.lisp"
+        "tests/acl2/store-profile-upgrade-tests.lisp",
+        "planning/evidence/deploy-fixes-2026-09-25.md"
       ],
-      "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
+      "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile, the store's own config.json profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted, does not drop the store's history-marker requirement (fn-profile-rollback-drops-markerp), and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). fn-profile-rollback-keeps-a-required-marker: when the store's profile requires the committed-history marker and the verdict is :sound, the kept profile requires it too; the kept format-7 config.json over a migrated store is refused as history-marker-required-dropped (qual-e747dbcc U1). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
       "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
     },
     {
@@ -4083,7 +4123,8 @@
         "planning/evidence/rep-wave-c-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T103038Z-3935155.json",
         "planning/evidence/manifests/certify-20260925T103519Z-3987534.json",
-        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
+        "planning/evidence/manifests/certify-20260925T210036Z-3850666.json"
       ],
       "progress_note": "Lane rep-wave-c (D27 wave C, 2026-09-25). Teeth in tests/acl2/sha256-buffer-tests.lisp: the FIPS 180-4 vectors through the buffer reader on a live local buffer with the prefix/buffer split varied, the padding boundaries and a 3,000-octet buffer (past the array's first 1024 cells) against fn-sha256-stobj, non-degeneracy, and the subject identity equal to fn-id-subject-of-payload under the attachment and to the theorem's right-hand side on a 160-octet article, the empty payload and a 3,000-octet payload; both keystones have no hypothesis, so no must-fail case exists; the octets instance's hypotheses are proof support (as sha256-stobj's instance). NOT done here: the owner's chunk read (fn-owner-chunk) and the accumulated body are still octet lists (the owner state's representation, wave C boundary 10); the record encoder, the frame and the article parser over the buffer (boundaries 7 to 9); the obligation identity and the frame trailer still digest short lists."
     },
@@ -4210,6 +4251,156 @@
         "fn-ks-execute-is-idempotent",
         "fn-ks-recover-completes-the-cut",
         "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
+      ]
+    },
+    {
+      "id": "PRF-097",
+      "title": "Invitation binding: accept enrols only a bound invitation; confirm consumes a pending invitation this node issued exactly once and enrols only the acceptance that consumed it",
+      "statement": "fn-pinv-accept-step-enrols-only-a-bound-invitation: a (:enrol EVENT) from fn-pinv-accept-step SEQ TXID GEN RECEIVED OBSERVED-ML ED ML SNAPSHOTS (books/peer-invite.lisp; called by host/native/peer-invite.lisp fnn-pinv-owner-accept) has EVENT = fn-hl-enroll-event at fn-hl-next-generation SNAPSHOTS of the carrier's principal P and key set K, P not already enrolled with K, and fn-pinv-bound-document-p: fn-hsig-authorize-at over the carrier decoded from RECEIVED and the two primitive observations, the body has the invitation kind line and names P, the Ed25519 and the ML-DSA-65 key of K (fn-pinv-body-names-p, a line of the body), and fn-prin-genesis-bindsp P (Ed25519 || ML-DSA-65) TOKEN. fn-pinv-issue-plan-records-the-signed-invitation: an :issue delta is fn-cfg-issue-invitation of the body's nonce, the verified principal and the invitation's authored-source identity, the nonce keying no row. fn-pinv-confirm-consumes-only-a-pending-named-invitation: a (:consume DELTA) from fn-pinv-confirm-plan (called by fnn-pinv-owner-confirm) has a bound acceptance, the row its nonce keys pending, naming the body's Inviter-Principal and Invitation-Source-Id, and DELTA = fn-cfg-consume-invitation of the nonce, the acceptor and the acceptance's source identity. fn-pinv-confirm-step-enrols-only-the-consuming-acceptance: an (:enrol EVENT) from fn-pinv-confirm-step (called by fnn-pinv-owner-enrol-confirmed) has a bound acceptance, the row consumed (state 1) by exactly its principal and source identity, P not enrolled with K, and EVENT the kind-3 enrolment of P and K. fn-pinv-consumed-stays-consumed-across-replay: a consumed invitation stays consumed through fn-config-replay-loop; fn-pinv-consumed-refuses-consumption: fn-cfg-delta-reason refuses every :consume-invitation of it; fn-pinv-consumption-consumes. fn-pinv-confirm-after-its-consumption-enrols: after the consuming delta is applied (the crash point before the kind-3 record) the same acceptance's plan is :enrol; fn-pinv-confirm-step-never-enrols-twice. Covered scope: the owner's three steps and the configuration admission and replay; the peer record is still `peer add`; the crypto primitives are A-CRYPTO.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-017"
+      ],
+      "depends_on": [
+        "PRF-084"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/config.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "books/native-operator.lisp",
+        "planning/evidence/peer-invite-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T105118Z-4150165.json",
+        "planning/evidence/manifests/certify-20260925T183424Z-3570225.json",
+        "tests/test_native_peer_invite.py"
+      ],
+      "events": [
+        "fn-pinv-accept-step-enrols-only-a-bound-invitation",
+        "fn-pinv-issue-plan-records-the-signed-invitation",
+        "fn-pinv-confirm-consumes-only-a-pending-named-invitation",
+        "fn-pinv-confirm-step-enrols-only-the-consuming-acceptance",
+        "fn-pinv-consumed-stays-consumed-across-replay",
+        "fn-pinv-consumed-refuses-consumption",
+        "fn-pinv-consumption-consumes",
+        "fn-pinv-confirm-after-its-consumption-enrols",
+        "fn-pinv-confirm-step-never-enrols-twice",
+        "fn-pinv-field-is-a-body-line"
+      ]
+    },
+    {
+      "id": "PRF-100",
+      "title": "The NEWNEWS pull feed advances its cursor past a round only when every listed Message-ID drew 235, 435 or 437 from the local node, and a crash mid-round recovers the cursor that round asked with",
+      "statement": "Over the functions host/native/pull-service.lisp calls (fn-pull-begin, fn-pull-step through fn-pull-step-pair, fn-pull-close, fn-pull-replay over fn-pull-journal-scan): closing a round moves the cursor only if the round ran to its end and every Message-ID its NEWNEWS listed has a 235, 435 or 437 answer, the new instant being the peer's DATE less one second (fn-pull-close-advances-only-past-a-fully-answered-round; per id fn-pull-unanswered-id-holds-the-cursor); an answer is recorded only by a local reply and is that reply's own code for the article in hand (fn-pull-step-answers-only-from-the-local-node); no step changes the round's cursor or journals anything (fn-pull-step-keeps-the-cursor-and-journals-nothing) and every NEWNEWS it sends names the round's cursor instant (fn-pull-step-newnews-names-the-cursor); if the FNPL journal replays to the owner's cursor, it replays after the begin, after any events and after the close to that cut's cursor (fn-pull-journal-is-the-cursor-at-every-cut), so the round begun after a crash asks the dead round's instant (fn-pull-recovery-asks-the-dead-rounds-newnews). The schedule starts only a due, idle peer and spaces rounds by the operator's interval (fn-sched-pull-due-is-due-and-idle, fn-sched-pull-started-is-not-due, fn-sched-pull-finished-waits-its-interval). That the peer lists again what it listed for the same instant is RFC 3977 7.4's NEWNEWS semantics, not proved.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-018"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-pull.lisp",
+        "books/scheduler-peers.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "host/native/pull-service.lisp",
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T193953Z-487714.json",
+        "planning/evidence/manifests/certify-20260925T194417Z-527674.json",
+        "planning/evidence/manifests/certify-20260925T194645Z-3666244.json",
+        "tests/test_native_peer_pull.py"
+      ],
+      "progress_note": "Native (hbox, SCN-058): a second fn node, INN 2.7.4 nnrpd and a SIGKILL mid-round then the same NEWNEWS all pass. Open: the pull client has no TLS arm (a TLS transport is not pulled); a remote 430 for a listed id holds the cursor until the peer stops listing it; the cursor lives in <store>/pull/*.fnpl (FNFD envelope and phase machine), not a Store transaction record.",
+      "events": [
+        "fn-pull-close-advances-only-past-a-fully-answered-round",
+        "fn-pull-unanswered-id-holds-the-cursor",
+        "fn-pull-step-answers-only-from-the-local-node",
+        "fn-pull-step-keeps-the-cursor-and-journals-nothing",
+        "fn-pull-step-newnews-names-the-cursor",
+        "fn-pull-journal-is-the-cursor-at-every-cut",
+        "fn-pull-recovery-asks-the-dead-rounds-newnews",
+        "fn-pull-decode-of-encode",
+        "fn-sched-pull-due-is-due-and-idle",
+        "fn-sched-pull-started-is-not-due",
+        "fn-sched-pull-finished-waits-its-interval"
+      ]
+    },
+    {
+      "id": "PRF-094",
+      "title": "The operator's configuration is ACL2's: [alerts]/[ops] rows, the rendered configuration, missions and their store profiles, the SIGHUP log reopen, and file-first on the bound commit route",
+      "milestone": "M5",
+      "status": "in-progress",
+      "requirements": [
+        "HST-001",
+        "HST-002"
+      ],
+      "depends_on": [
+        "PRF-095"
+      ],
+      "assumptions": [],
+      "events": [
+        "fn-native-config-show-round-trip",
+        "fn-native-config-load-renderable",
+        "fn-native-config-loaded-show-round-trip",
+        "fn-native-mission-profiles-valid",
+        "fn-native-mission-store-opens-with-its-profile",
+        "fn-native-operator-run-init-under-a-mission",
+        "fn-olr-reopen-iff-requested",
+        "fn-obc-commit-only-after-filing",
+        "fn-obc-control-commits-only-in-its-filing-group"
+      ],
+      "evidence": [
+        "books/native-config.lisp",
+        "books/native-config-show.lisp",
+        "tests/acl2/native-config-show-tests.lisp",
+        "books/native-operator.lisp",
+        "books/native-mission.lisp",
+        "tests/acl2/native-mission-tests.lisp",
+        "books/owner-log-reopen.lisp",
+        "tests/acl2/owner-log-reopen-tests.lisp",
+        "books/owner-bound-commit.lisp",
+        "tests/acl2/owner-bound-commit-tests.lisp",
+        "planning/evidence/operator-config-2026-09-25.md"
+      ],
+      "statement": "fn-native-config-show-round-trip: for every configuration C that fn-native-config-show-wfp admits, fn-native-config-load -- the loader fn-native-operator-run (host/native-operator-host.lisp:19) reads fn.toml through -- of fn-native-config-show-octets C, the text `operator CONFIG show' prints and a mission writes, is (:accepted C); the [alerts] and [ops] rows are part of C. fn-native-config-load-renderable: every configuration fn-native-config-load accepts satisfies fn-native-config-show-wfp (the parser's values are parsed-shaped and each field's normalization keeps its bound), so fn-native-config-show carries no run-time check; with the round trip, fn-native-config-loaded-show-round-trip: the rendering of every loaded configuration loads back as itself. fn-native-mission-profiles-valid and fn-native-mission-store-opens-with-its-profile: for each of small-community, relay and archive, the mission's profile request resolves to an admitted profile, and the frame `init' writes for it (fn-bs-config-frame-for-profile, host/store-host.lisp fn-store-metadata-config-frame) decodes at every later open to exactly that profile (under A-CRYPTO through fn-bs-config-decode-of-encode). fn-native-operator-run-init-under-a-mission: under a configuration naming a mission, an accepted init plan's profile is the mission's request. fn-olr-reopen-iff-requested: fn-olr-decide, which host/owner-host.lisp fn-owner-log-reopen answers host/native/owner.lisp fnn-owner-maybe-reopen-log with, reopens exactly when a log path is configured and a SIGHUP arrived since the last one handled, and every counted request is then handled. fn-obc-commit-only-after-filing: fn-obc-commit-gate, which fnn-owner-complete-bound-submission asks (through fn-owner-bound-commit-gate) before any commit callback, answers :commit only when fn-pa-filing-plan files the article in exactly the committed groups; with C1's keystone a control article then commits only in its filing group (fn-obc-control-commits-only-in-its-filing-group). Covered scope: that the host calls the callback only on :commit, and swaps the log descriptor under the log mutex, is host code measured natively, not proved.",
+      "progress_note": "Lane operator-config, 2026-09-25: PKT-096, PKT-097, PKT-101, PKT-069."
+    },
+    {
+      "id": "PRF-114",
+      "title": "BP outbound fragmentation: every fragment the send plan answers fits the peer's Transfer MRU, reassembles exactly to the parent's payload with no data cap, and restores the parent",
+      "statement": "The subject is fn-bpfs-plan WIRE MRU (books/bp-fragment-send.lisp, logic mode, guard-verified), which host/native/bp-service.lisp fnn-bps-send-effect calls after SESS_INIT with the session's negotiated Transfer MTU (fn-tcl-negotiated-transfer-mtu). fn-bpfs-plan-fragments-fit-mru: when the plan answers (:fragments W1 ... Wn), every Wi is at most MRU octets (the chunk is MRU minus 8 minus the encoded length of the empty fragment at the largest offset; fn-bpfs-fragment-length-bound over fn-bpfs-fragment-primary-length-shift and the payload block's exact length). fn-bpfs-plan-fragments-reassemble-exactly: the decoded views of the Wi draw the decoded parent's payload exactly on the reassembly canvas fn-bpf-canvas at the parent's ADU offset (0 for a whole parent, its own offset for a fragment parent) and all carry the parent's total, for every payload length and fragment count (no data cap). fn-bpfs-plan-fragments-restore-parent: every Wi decodes to a bundle with the parent's extension blocks and ADU key and the fragment flag, and a whole parent's fragment primary unfragments to the parent's primary. fn-bpfs-plan-fragments-reassemble-within-caps: for a whole parent of at most *fn-bpf-max-length* (65538) octets cut into at most *fn-bpf-max-fragments* (64) pieces, the receiver's executable reassembler fn-bpf-reassemble answers (:ok payload). Covered scope: the sender's base-job send path (bp-service run and the bp-node send of queued jobs through fnn-bps-send-effect); held-transit forwarding (the :session arm's MRU wait) does not fragment; the receiver's reassembler and held-row recognizers keep the 65538 x 64 caps; one job attempt covers all fragments (no per-fragment custody records); the plan runs on octet lists (no D27 concrete twin).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "host/native/bp-service.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ],
+      "progress_note": "Lane bp-n16-prod-2 (2026-09-25), PKT-061. Productionizes spike/bp's :program fn-bpfs-plan. Teeth in tests/acl2/bp-fragment-send-tests: witnesses at MRU 300 and 400 over a real 1000-octet bundle, a fragment parent at ADU offset 500 of 3000, a 70000-octet ADU (above the receiver cap) and a 100-fragment cut (above the fragment cap); must-fails for dropping the 8-octet head reserve, for each keystone without :fragments, and for each cap hypothesis of the within-caps corollary.",
+      "events": [
+        "fn-bpfs-plan-fragments-fit-mru",
+        "fn-bpfs-plan-fragments-reassemble-exactly",
+        "fn-bpfs-plan-fragments-restore-parent",
+        "fn-bpfs-plan-fragments-reassemble-within-caps",
+        "fn-bpfs-fragment-length-bound",
+        "fn-bpfs-fragment-primary-length-shift",
+        "fn-bpfs-canvas-of-extents",
+        "fn-bpfs-views-of-cut"
       ]
     }
   ]

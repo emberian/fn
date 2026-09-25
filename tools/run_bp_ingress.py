@@ -79,12 +79,13 @@ def bounded_ascii_text(value: str, label: str) -> bytes:
 
 class Acl2BpIngress(run_store.Acl2Store):
     """The ordinary Store bridge plus the certified BP ingress composition."""
+    # The ingress books and host file are part of the saved boot:
+    # `tools/bridge_image.BP_INGRESS_FORMS` lists them after the store's.
+    BRIDGE_KIND = "bp-ingress"
+
     def __init__(self):
         super().__init__()
         try:
-            self.call('(include-book "books/bp-ingress")')
-            self.call('(include-book "books/codec-attach")')
-            self.call('(ld "host/bp-ingress-host.lisp" :ld-error-action :return :ld-error-triples t)')
             run_store.acl2_symbol(self.call("(fn-bpi-host-reset state)"))
         except BaseException:
             self.close()

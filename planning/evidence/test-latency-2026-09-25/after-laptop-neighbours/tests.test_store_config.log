@@ -1,0 +1,14 @@
+test_capacity_is_a_configuration_record_with_three_outcomes (tests.test_store_config.StoreConfigTests.test_capacity_is_a_configuration_record_with_three_outcomes)
+R6.  `capacity <n>` raises, refuses below the reservation total, and ... ok
+test_create_retire_and_revive_resume_numbering_across_recovery (tests.test_store_config.StoreConfigTests.test_create_retire_and_revive_resume_numbering_across_recovery) ... ok
+test_duplicate_create_unknown_retire_and_overflow_are_refused (tests.test_store_config.StoreConfigTests.test_duplicate_create_unknown_retire_and_overflow_are_refused) ... ok
+test_init_writes_generation_one_from_its_arguments (tests.test_store_config.StoreConfigTests.test_init_writes_generation_one_from_its_arguments) ... ok
+test_peer_add_with_no_size_options_is_accepted (tests.test_store_config.StoreConfigTests.test_peer_add_with_no_size_options_is_accepted)
+The default `--inbound-max-octets` is inside the model's ceiling. ... ok
+test_reader_pins_the_generation_it_opened_at (tests.test_store_config.StoreConfigTests.test_reader_pins_the_generation_it_opened_at) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 14.095s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_store_config", "tests": 6, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_store_config.StoreConfigTests.test_capacity_is_a_configuration_record_with_three_outcomes", 2.739], ["tests.test_store_config.StoreConfigTests.test_create_retire_and_revive_resume_numbering_across_recovery", 4.595], ["tests.test_store_config.StoreConfigTests.test_duplicate_create_unknown_retire_and_overflow_are_refused", 2.463], ["tests.test_store_config.StoreConfigTests.test_init_writes_generation_one_from_its_arguments", 1.067], ["tests.test_store_config.StoreConfigTests.test_peer_add_with_no_size_options_is_accepted", 1.419], ["tests.test_store_config.StoreConfigTests.test_reader_pins_the_generation_it_opened_at", 1.813]]}

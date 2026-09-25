@@ -1,0 +1,30 @@
+test_acl2_transaction_names_continue_after_nonempty_recovery (tests.test_store.StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery)
+The second final name comes from ACL2 after replaying real history. ... ok
+test_allocator_barrier_failure_recovers_observed_frontier_on_same_object (tests.test_store.StoreTests.test_allocator_barrier_failure_recovers_observed_frontier_on_same_object) ... ok
+test_allocator_replace_error_and_frontier_replay_boundaries (tests.test_store.StoreTests.test_allocator_replace_error_and_frontier_replay_boundaries) ... ok
+test_checksum_unknown_schema_and_final_symlink_fault (tests.test_store.StoreTests.test_checksum_unknown_schema_and_final_symlink_fault) ... ok
+test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery (tests.test_store.StoreTests.test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery) ... ok
+test_duplicate_is_detected_before_full_transaction_limit (tests.test_store.StoreTests.test_duplicate_is_detected_before_full_transaction_limit) ... ok
+test_duplicate_retry_and_conflicting_id_do_not_overwrite (tests.test_store.StoreTests.test_duplicate_retry_and_conflicting_id_do_not_overwrite) ... ok
+test_empty_payload_is_present_and_orphan_staging_is_ignored (tests.test_store.StoreTests.test_empty_payload_is_present_and_orphan_staging_is_ignored) ... ok
+test_failed_config_file_barrier_is_reestablished_during_recovery (tests.test_store.StoreTests.test_failed_config_file_barrier_is_reestablished_during_recovery) ... ok
+test_finish_rejects_stale_and_prepublication_states (tests.test_store.StoreTests.test_finish_rejects_stale_and_prepublication_states) ... ok
+test_initialize_refuses_missing_frontier_when_history_exists (tests.test_store.StoreTests.test_initialize_refuses_missing_frontier_when_history_exists) ... ok
+test_known_abort_before_publication_and_indeterminate_after_publication (tests.test_store.StoreTests.test_known_abort_before_publication_and_indeterminate_after_publication) ... ok
+test_legacy_json_metadata_is_never_rewritten_on_open (tests.test_store.StoreTests.test_legacy_json_metadata_is_never_rewritten_on_open)
+Format-5-looking metadata is retained for explicit offline migration. ... ok
+test_link_eio_without_visible_final_fences_host_and_core (tests.test_store.StoreTests.test_link_eio_without_visible_final_fences_host_and_core) ... ok
+test_metadata_frames_round_trip_and_reject_truncation (tests.test_store.StoreTests.test_metadata_frames_round_trip_and_reject_truncation)
+P4: config and allocator are ACL2 FNSM frames, not JSON records. ... ok
+test_post_reopen_replays_and_preserves_literal_lisp_bytes (tests.test_store.StoreTests.test_post_reopen_replays_and_preserves_literal_lisp_bytes) ... ok
+test_published_post_with_failed_core_reply_stays_fenced_and_recovers (tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers) ... ok
+test_recovery_limits_and_barrier_failure_fence_until_success (tests.test_store.StoreTests.test_recovery_limits_and_barrier_failure_fence_until_success) ... ok
+test_recovery_scan_io_failure_keeps_gate_closed_until_success (tests.test_store.StoreTests.test_recovery_scan_io_failure_keeps_gate_closed_until_success) ... ok
+test_two_group_post_replays_both_allocations_and_one_pin (tests.test_store.StoreTests.test_two_group_post_replays_both_allocations_and_one_pin) ... ok
+test_writer_lock_refuses_concurrent_mutator (tests.test_store.StoreTests.test_writer_lock_refuses_concurrent_mutator) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 26.286s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_store", "tests": 21, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_store.StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery", 1.729], ["tests.test_store.StoreTests.test_allocator_barrier_failure_recovers_observed_frontier_on_same_object", 0.847], ["tests.test_store.StoreTests.test_allocator_replace_error_and_frontier_replay_boundaries", 1.768], ["tests.test_store.StoreTests.test_checksum_unknown_schema_and_final_symlink_fault", 1.707], ["tests.test_store.StoreTests.test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery", 1.448], ["tests.test_store.StoreTests.test_duplicate_is_detected_before_full_transaction_limit", 0.956], ["tests.test_store.StoreTests.test_duplicate_retry_and_conflicting_id_do_not_overwrite", 1.958], ["tests.test_store.StoreTests.test_empty_payload_is_present_and_orphan_staging_is_ignored", 1.4], ["tests.test_store.StoreTests.test_failed_config_file_barrier_is_reestablished_during_recovery", 0.741], ["tests.test_store.StoreTests.test_finish_rejects_stale_and_prepublication_states", 0.685], ["tests.test_store.StoreTests.test_initialize_refuses_missing_frontier_when_history_exists", 0.975], ["tests.test_store.StoreTests.test_known_abort_before_publication_and_indeterminate_after_publication", 2.417], ["tests.test_store.StoreTests.test_legacy_json_metadata_is_never_rewritten_on_open", 0.556], ["tests.test_store.StoreTests.test_link_eio_without_visible_final_fences_host_and_core", 0.644], ["tests.test_store.StoreTests.test_metadata_frames_round_trip_and_reject_truncation", 0.759], ["tests.test_store.StoreTests.test_post_reopen_replays_and_preserves_literal_lisp_bytes", 1.207], ["tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers", 2.609], ["tests.test_store.StoreTests.test_recovery_limits_and_barrier_failure_fence_until_success", 1.053], ["tests.test_store.StoreTests.test_recovery_scan_io_failure_keeps_gate_closed_until_success", 0.881], ["tests.test_store.StoreTests.test_two_group_post_replays_both_allocations_and_one_pin", 1.135], ["tests.test_store.StoreTests.test_writer_lock_refuses_concurrent_mutator", 0.81]]}

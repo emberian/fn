@@ -195,6 +195,238 @@ second half) not started; the node is still on c3420013 with a format-7
 store. What waits on ember: nothing new beyond the three decisions
 recorded as D29 to D31 (all taken).
 
+## Night report, 2026-09-25 (the night deputy; written ~20:30 UTC for ember and a gpt-6 review)
+
+Covers dev `24591e11` to `ed7866d2`: 117 first-parent commits, 37 lane merges.
+Every merge message states what was proved, the numbers and what stays open;
+each lane's record is under [`evidence/`](evidence/). The backlog is
+[backlog-2026-09-25.md](backlog-2026-09-25.md) (PKT-001 to PKT-163).
+
+### 1. State
+
+- **dev `ed7866d2`, pushed, `make check` green.** Six merge certifications of
+  merged bytes ran. Runs 1, 2, 5 and 6 were fully green:
+  - run 5: persvati `certify-20260925T191657Z-265615`, 564 books, 0 failed;
+  - run 6: `certify-20260925T195406Z-616568`, 316 books.
+
+  Runs 3 and 4 were red on two join defects, since fixed (§3).
+- **Cut `e747dbcc`.** The combined closure passed on hbox:
+  `certify-20260925T194254Z-3661260`, 602 certified over 828 roots, 0 failed.
+  Gate: `/tank/fn/gates/qual-e747dbcc-20260925`. All four images built.
+  **qual-e747dbcc is running.** It follows qual-c3420013's shape plus an
+  upgrade rehearsal on a copy of the live store: format 7 to 8, then the
+  marker-required two-step with its snapshot rollback.
+- **Live node unchanged:** `c3420013`, format-7 store. No deploy yet.
+  - The deploy follows the in-place shape when the verdict is "deployable".
+  - After a marker-required migration, c3420013 cannot open the store; the
+    pre-migration snapshot is the only rollback.
+  - The deputy's default: format 8 unmarked tonight, migrate after a day,
+    unless ember says otherwise.
+- **Not in `e747dbcc` (merged after the cut):** status-join, peer-invite,
+  reclaim-host part one, peer-pull. A second cut follows.
+
+**Update ~21:00 UTC:** qual-e747dbcc's verdict is **not deployable as cut**
+([record](evidence/qual-e747dbcc-2026-09-25.md)). A POST reaching the
+transaction budget stops the owner; that was fixed on dev after the cut, at
+8a381541. The rest of the run was green:
+- matrix 0 disagreed; cuts 60/60, marker cuts 20/20;
+- ACL2 differential 7/7 and served crash model 3/3, which closes c3420013's
+  F1 to F3;
+- kill run clean;
+- the upgrade path rehearsed on copies of the live store.
+
+Three runtime defects remain, and the deploy-fixes lane is fixing them:
+- `control list` prints no grants;
+- an ACL2 invariant-risk warning appears on the owner's stdout;
+- rollback-check says "sound" when the rollback would drop a required marker.
+
+operator-config merged. Next: a second cut after deploy-fixes, qualification,
+then deploy format 8 unmarked (the qualification recommends the same).
+
+### 2. Landed, by goal item
+
+- **Bounds (D27):**
+  - bounds-blob: the frame blob width per schema; `operator post` carries
+    articles above 131,072 octets, natively up to the profile's A.
+  - bounds-profile: config generations and credentials come from the profile.
+    It also fixed a writer that could write generation 8193 and then fail
+    every open.
+  - bounds-p6: u64 widths, record schema 2, the translation keystone; the
+    record ceiling stays at the runtime's widths, so the saved presets open.
+- **Representation B and C:**
+  - rep-octets-stobj: the `fn-octets` abstract stobj.
+  - pbb-d32: the buffer twin follows D32's v3 source, compared in place.
+  - rep-wave-c: the subject digest read from the buffer. Per 2 KiB POST,
+    list conversions went from 30 to 24 calls and SHA-256 calls from 9 to 6;
+    32 KiB POST wall time went from 18.9 to 17.0 ms.
+  - carry-kind: event fields read once; the signed POST no longer runs the
+    whole-store step.
+- **Owner opens from the checkpoint and publishes its own:**
+  owner-checkpoint-open, then checkpoint-cost. At N=4096, owner start went
+  from 30.0 to 9.3 s, and the first greeting during a publication from 10.0
+  to 2.9 s.
+- **Reclamation (D13):**
+  - reclaim-d13: the rule, the decision, and the tombstone with its
+    preservation theorems; 423/430 served.
+  - reclaim-host part one: every duplicate test is reclaim-aware; OVER and
+    NEWNEWS skip reclaimed articles; status counts; tombstone-shaped payloads
+    proved refused at ingress. It fixed a defect: nothing was ever
+    reclaimable on a live store.
+- **Marker (D31):** marker-required (an absent marker is damage, plus the
+  retry-resolution protection); native 12/12.
+- **K0:** k0-cuts, k0-steps (the K4 node correspondence), k0-rest, and
+  k0-recovery (the recovery window, the recovery program, the re-recovery at
+  admin.lisp:107, and the pre-init relation).
+- **BP:**
+  - bp-budgets-receipts.
+  - bp-routing-2: routed queued jobs, route-gated sessions, and **once per
+    contact as a theorem**; native 26/26.
+- **Control:** control-c2c3, control-c3, control-c3b, control-c3d:
+  - C2 authority rows;
+  - signed control articles filed;
+  - the served withdrawal, with K1 restated;
+  - each cancel decided under its own txid's configuration, live and at
+    recovery;
+  - Supersedes;
+  - the two-node native cases green.
+- **Peering with strangers:**
+  - peer-invite: once-only consumption across a crash; native 3/3.
+  - peer-keys: succession, revocation and the `:revoked` verdict, with the
+    executor's crash cut modelled; native 2/2.
+  - peer-carriage: the budget and the refusal classes.
+  - peer-pull: the ack-bounded cursor, recovered at every cut; native 3/3
+    against fn and INN.
+- **Operator and reader, from the spike:**
+  - live-status.
+  - status-join: large numbers had printed as 0.
+  - operator-verdicts: the unnamed 441 is gone; needs-upgrade and
+    rollback-check.
+  - path-and-login: D32, and tin posts, replies and cancels.
+  - reader-surface: XPAT, ACL2-rendered refusal text.
+- **Also:**
+  - python-store-f8: green three times, the last at merged dev.
+  - native-drift and dtn-build. The new `included` build-list rule has
+    caught two more DTN omissions since.
+  - ten-second-3: six books under 10 s by hint repairs alone.
+- **Spike:** operator, reader, peering, control, bp and representation are
+  merged into spike/mega. Every deferral list became dev lanes.
+
+### 3. Red, and why
+
+- **Two D32 join defects** blocked every image for about three hours:
+  `poster-bytes-buffer` (fixed by pbb-d32) and `store-reclaim` (arity; fixed
+  by reclaim-d32fix). Lesson: an interface change to a shared definition gets
+  a merge certification before the next dependent merge.
+- **Eight ID collisions** (PRF, NNT, SCN, STO numbers), each renumbered on the
+  lane before its merge. Briefs should assign requirement and scenario
+  numbers as well as the PRF.
+- **The weekly API limit** stopped the deputy and about 13 lanes at about
+  11:30 UTC. All were resumed from their transcripts, and nothing was lost.
+- **hbox load (up to 19)** doubled wall times while CPU time matched
+  persvati's. The cost baseline was widened with each run and load named,
+  and ten-second-3's quiet re-measure shrank it again. Merge certifications
+  moved to persvati.
+- Lane dumps were committed at the root three times; a shared scratch
+  message file was overwritten between agents. Both are fixed in the brief.
+- **Test iteration time (ember):** the Python store modules take 1857 to
+  2283 s each, about 90 s per ACL2 boot, apparently one per test.
+  `test_bp_node_native` takes 909 to 1134 s. The test-latency lane is finding
+  the cause by examining the harness and bridges, then fixing it. Target:
+  each module under 3 minutes, one test under 20 s cold, and a per-module
+  budget check.
+
+### 4. Held, and why
+
+- **bounds-p5 (chained packs):** proved and certified. Its native module
+  timed out building its fixture: the commit path was O(N²) (fixed; 1800 s
+  down to 22 s). The N=20,000 chain module is running.
+- **bp-n16-prod (N16-F1, generation retirement):** certified, native 25/26.
+  The control-article case needs a default developer image. A continuation
+  reruns it whole, removes a block doubled in `host/native/bp-node.lisp`, then
+  starts fragmentation.
+- **operator-config:** three packets certified. `books/native-mission` times
+  out at `fn-native-mission-run-init`; a continuation is running.
+- **Running:** control-c3e (the 423/430/`HDR :fn-control` reader answers into
+  the NNTP step, plus a Message-ID-to-txid index), qual-e747dbcc,
+  test-latency.
+
+### 5. Decisions for ember (none blocks the deploy)
+
+1. **PKT-011 / PRF-072** ([bounds-blob](evidence/bounds-blob-2026-09-25.md)).
+   Deriving the pre-check figures (65,538; 196,608) from A and G makes
+   `fn-profile-upgrade-keeps-verdict` false: raising A or R without H makes
+   the history check stricter. Options:
+   - (a) a hypothesis on the theorem;
+   - (b) `fn-profile-upgradep` refuses raising A or R without raising H,
+     which changes the deploy procedure;
+   - (c) keep the fixed figures as a documented pre-check ceiling.
+2. **PKT-100, restore of a news-only store**
+   ([operator-verdicts](evidence/operator-verdicts-2026-09-25.md)). An old
+   backup would reuse article numbers readers have seen. Options:
+   - (a) advance every group's counter past a gap;
+   - (b) a new numbering epoch;
+   - (c) same-identity restore from a latest-known backup only.
+3. **Profile field 13, policy members**
+   ([bounds-profile](evidence/bounds-profile-2026-09-25.md)). The count sits
+   inside a signed statement's codec; a per-node limit lets two nodes
+   disagree on one statement's validity. Options: keep it a protocol work
+   bound, or version the codec.
+4. **Refused signed articles**
+   ([peer-carriage](evidence/peer-carriage-2026-09-25.md)). Hold them with a
+   durable `:unverified` verdict naming the class (a new kind-4 composite),
+   or keep today's refuse-and-log?
+5. **The pull cursor as files, `<store>/pull/*.fnpl`**
+   ([peer-pull](evidence/peer-pull-2026-09-25.md)). A Store record family
+   would touch about 25 books; the configuration history would use up
+   `max-config-generations`.
+6. **A keystone gained a hypothesis**
+   ([bounds-p6](evidence/bounds-p6-2026-09-25.md)).
+   `fn-bs-profile-admits-every-article-record` now requires that the record
+   fits u32 widths. That runtime records fit is stated, not proved; a wider
+   one is refused at the publish gate. Accept, or make it a theorem?
+7. **peer-keys' reopen** ([peer-keys](evidence/peer-keys-2026-09-25.md)). A
+   declined key statement that is still the newest record is decided again
+   at the next open, so a `keys` grant added across a restart lets it act.
+   Intended, or should a decline be durable?
+8. **Plaintext pull.** The pull client has no TLS. Acceptable for v0?
+
+### 6. What near-completeness still lacks
+
+- **Bounds:** chained packs merged; segmented articles (wave D boundary 10;
+  a 1 GiB article costs 16 GiB per list copy); txids beyond u32 (frontier-3);
+  charge above u32; the remaining data caps: consumers (field 9), BP rows
+  (field 10), BP ADU bounds, the receipt and app journals, the held BP bundle
+  image.
+- **Representation:** the owner state as the buffer; boundaries 7 to 10; the
+  status report and the BP, TCPCL and feed codecs as bytes.
+- **Reclamation:** the `store reclaim` verb with its K0 cuts (through the
+  compaction pack, after chained packs); charge release; feed and FNBS; the
+  native campaign.
+- **BP:** fragmentation without the 65,538 × 64 caps; N16 §3.6 (chunks,
+  manifest kind 21, `:quiesce`); production DTN labs; ION (a dtn7-to-ION UDP
+  hop); PKT-064.
+- **Control:** the reader answers into the NNTP step (running); C4 deferred
+  by D29.
+- **Peering:** decisions 4 and 8; `peer add` still separate after confirm.
+- **Marker:** the cheaper publication program (PKT-143).
+- **K0 still open:**
+  - the initializer after the frontier link;
+  - a directory fsync error with an authority entry pending;
+  - `(:recover)` from `:replaying` with an entry pending;
+  - the admin publication byte program (the relation at admin.lisp:107 is a
+    hypothesis).
+- **Operator:** node-health (queued); operator-config (held); the spike's
+  `packaging/fn` wrapper.
+- **Cost:**
+  - owner-invariants 10.6 to 12.8 s;
+  - two quadratic checks at open (`fn-articles-freshp`,
+    `fn-node-articles-have-archive-bindingsp`; reopen about N^1.6);
+  - the greeting costs 1.4 s at N=4096 under the owner mutex;
+  - test iteration time.
+
+The deputy's working state, with agent ids and queued briefs, is local in
+`build/coordinator/NIGHT-STATE.md` and `build/coordinator/queue/`.
+
 ## Where to read next
 
 - [Current view](current.md): per capability, the four evidence

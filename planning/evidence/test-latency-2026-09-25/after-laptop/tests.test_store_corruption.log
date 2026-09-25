@@ -1,0 +1,13 @@
+test_config_and_history_inconsistency_matrix (tests.test_store_corruption.StoreCorruptionTests.test_config_and_history_inconsistency_matrix) ... ok
+test_filename_record_sequence_mismatch_refuses_prefix (tests.test_store_corruption.StoreCorruptionTests.test_filename_record_sequence_mismatch_refuses_prefix) ... ok
+test_final_name_collision_never_overwrites_and_faults_image (tests.test_store_corruption.StoreCorruptionTests.test_final_name_collision_never_overwrites_and_faults_image) ... ok
+test_frontier_malformed_namespace_matrix (tests.test_store_corruption.StoreCorruptionTests.test_frontier_malformed_namespace_matrix) ... ok
+test_malformed_frame_matrix (tests.test_store_corruption.StoreCorruptionTests.test_malformed_frame_matrix) ... ok
+test_metadata_checked_then_frontier_changes_is_a_fenced_fault (tests.test_store_corruption.StoreCorruptionTests.test_metadata_checked_then_frontier_changes_is_a_fenced_fault) ... ok
+test_multiple_prior_crossposts_and_uncertain_tail_replay_atomically (tests.test_store_corruption.StoreCorruptionTests.test_multiple_prior_crossposts_and_uncertain_tail_replay_atomically) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 31.430s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_store_corruption", "tests": 7, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_store_corruption.StoreCorruptionTests.test_config_and_history_inconsistency_matrix", 6.116], ["tests.test_store_corruption.StoreCorruptionTests.test_filename_record_sequence_mismatch_refuses_prefix", 1.562], ["tests.test_store_corruption.StoreCorruptionTests.test_final_name_collision_never_overwrites_and_faults_image", 1.801], ["tests.test_store_corruption.StoreCorruptionTests.test_frontier_malformed_namespace_matrix", 14.11], ["tests.test_store_corruption.StoreCorruptionTests.test_malformed_frame_matrix", 4.731], ["tests.test_store_corruption.StoreCorruptionTests.test_metadata_checked_then_frontier_changes_is_a_fenced_fault", 1.557], ["tests.test_store_corruption.StoreCorruptionTests.test_multiple_prior_crossposts_and_uncertain_tail_replay_atomically", 1.552]]}

@@ -114,6 +114,14 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         self.assertEqual(len(lines), 1, status.stdout.decode())
         return lines[0]
 
+    def checkpoint_file_line(self):
+        status = self.op("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        lines = [l for l in status.stdout.decode("ascii").splitlines()
+                 if l.startswith("checkpoint-file")]
+        self.assertEqual(len(lines), 1, status.stdout.decode())
+        return lines[0]
+
     def observation(self):
         """What an open reconstructs, through four verbs that each reopen."""
         words = []
@@ -135,9 +143,14 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         self.ids = ["<scp-{}@example.invalid>".format(n) for n in range(5)]
         self.post(self.ids[:3])
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
+        self.assertEqual(self.checkpoint_file_line(), "checkpoint-file=absent")
         made = self.checkpoint(entry)
         self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         self.assertIn(b"checkpoint sequence=3", made.stdout)
+        self.assertRegex(self.checkpoint_file_line(),
+                         r"^checkpoint-file octets=[1-9][0-9]* modified=[1-9][0-9]*$")
+        self.assertEqual(int(self.checkpoint_file_line().split()[1].split("=")[1]),
+                         self.path().stat().st_size)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
         self.post(self.ids[3:])
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")

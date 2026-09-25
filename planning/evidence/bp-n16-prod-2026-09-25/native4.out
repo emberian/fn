@@ -1,0 +1,25 @@
+tree rev: a4d95797
+dtn roots: 136
+dtn certify rc=0 Installed from the cache: 333 books ACL2 certification passed: books/bp-node-progress, books/bp-fnbs-dispatch-publication, books/bp-fnbs-forward-publication, books/bp-fragment-send, books/bp-node-progress-premises, books/bp-node-progress-bridge, books/bp-node-receipt-send, books/bp-node-contact-driv
+profile=dtn image=build/fn-host-dtn roots=136 result=loaded
+default roots: 150
+default certify rc=0 Installed from the cache: 351 books ACL2 certification passed: nothing left to certify Certification evidence: build/acl2/certify-20260925T204500Z-3833190 
+profile=default image=build/fn-host roots=150 result=loaded
+built build/fn-host-dtn-developer profile=developer (130M core)
+dtn undefined lines: 0
+built build/fn-host-developer profile=developer (131M core)
+default undefined lines: 0
+6f4596754ca30df8d12525eb1233eea90363bc5dcf78ca687c27dc98da4c8acc  build/fn-host-developer
+49c01bd1037cce9a7746a8121cb10fb2b6f7875f94f8933004c289544d85eda1  build/fn-host-developer.core
+f73167aeffc7aff3791a0fbd74aefe58d4f26dfe6846408280fa3a5ba5df3317  /tank/fn/scratch/bp-n16-prod/logs4/native-build-developer.log
+b8d89941c3cf970a4b4016d993b28320fe7777ee68a01922b5263465d543069b  build/fn-host-dtn-developer
+06f027514325e39def890b9c82dc20565e4a8137493d860f865ee81c02c56fd3  build/fn-host-dtn-developer.core
+a15a081e59476d3530b3bcf6e294f271b9fab5c0049a1a643aa29865a9825582  /tank/fn/scratch/bp-n16-prod/logs4/native-build-dtn-developer.log
+1bd7b9fcb81702d836a996bc45b667cf182120e8c7f5f8ca2c24878476fd114a  tests/test_bp_node_native.py
+47289c2f0ffd6bd51c5ac606ff596f422732b86c2ee88a01def61e0131786554  host/native/bp-node.lisp
+fragment case rc=0 OK
+a6e410c5f1e2b89cd72c553f9912424359b5c94046793960aef50172df886d22  /tank/fn/scratch/bp-n16-prod/logs4/fragment-case.log
+start 2026-09-25T20:46:32Z
+test_bp_node_native rc=0 wall=870s end 2026-09-25T21:01:02Z OK ok=27
+0444620971b5a506fade9cc208a88d4427a9dc400daba14904e9109cb98f9b95  /tank/fn/scratch/bp-n16-prod/logs4/test_bp_node_native.log
+ALLDONE
