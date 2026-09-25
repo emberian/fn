@@ -47,8 +47,14 @@
 (make-event `(defconst *bpfr-dispatch* ',(fn-bpnp-step *bpfr-s1* *bpfr-progress*)))
 (defconst *bpfr-s2* (fn-bpnf-answer-state (bpfr-durable *bpfr-dispatch*)))
 (defconst *bpfr-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-dest/ to the boundary "relay".
+(defconst *bpfr-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpfr-session-event*
-  (list :session *bpfr-dest* *bpfr-session* t 32768 *bpfr-obs*))
+  (list :session *bpfr-dest* *bpfr-session* t 32768 *bpfr-obs* *bpfr-via*))
 (make-event `(defconst *bpfr-open* ',(fn-bpnp-step *bpfr-s2* *bpfr-session-event*)))
 (defconst *bpfr-attempt-effect* (car (fn-bpnf-answer-effects *bpfr-open*)))
 (defconst *bpfr-s3-answer* (bpfr-durable *bpfr-open*))
@@ -63,7 +69,7 @@
                           (list :ready (fn-bpnf-held-list st) nil) 3))))
 (defun bpfr-session-event (st)
   (declare (xargs :guard t :verify-guards nil))
-  (list :session *bpfr-dest* (cons (fn-bpnf-epoch st) 1) t 32768 *bpfr-obs*))
+  (list :session *bpfr-dest* (cons (fn-bpnf-epoch st) 1) t 32768 *bpfr-obs* *bpfr-via*))
 (defun bpfr-reopen (st)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnp-step st (bpfr-session-event st)))
@@ -139,7 +145,7 @@
 ;; event on the attempted state, before any death, offers nothing.
 (assert-event
  (null (fn-bpnf-answer-effects
-        (fn-bpnp-step *bpfr-s3* (list :session *bpfr-dest* (cons 1 2) t 32768 *bpfr-obs*)))))
+        (fn-bpnp-step *bpfr-s3* (list :session *bpfr-dest* (cons 1 2) t 32768 *bpfr-obs* *bpfr-via*)))))
 
 ;; ---------------------------------------------------------------------
 ;; Teeth of fn-bpnp-forward-scan-offers-the-only-candidate.  Witness: the

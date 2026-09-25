@@ -96,11 +96,12 @@
 ;; scan chose, with its primary identity, and the pending image is the scan's
 ;; forwarding image of that row.
 (defthm fn-bpnp-start-one-offer-is-the-scan-choice
-  (let* ((answer (fn-bpnp-start-one st peer session mru observation budget))
+  (let* ((answer (fn-bpnp-start-one st peer session mru observation budget
+                                    ordered))
          (effect (car (fn-bpnf-answer-effects answer)))
          (record (fn-bpn-nth 3 effect))
          (scan (fn-bpnp-forward-scan
-                (reverse (fn-bpnf-held-list st)) peer mru
+                ordered peer mru
                 (fn-bpn-config-node-id
                  (fn-bpn-machine-state-config (fn-bpnf-base st)))
                 observation (fn-bpnp-waits st)
@@ -144,16 +145,20 @@
         (equal (fn-bpnf-epoch (fn-bpnp-with-runtime st s p)) (fn-bpnf-epoch st)))
    :hints (("Goal" :in-theory (enable fn-bpn-nth)))))
 
-;; Then the step the host calls: its :session open arm is start-one on the
-;; state with the session installed, and the selection inputs are the
-;; state's own.
+;; Then the step the host calls: its routed :session open arm (the event
+;; `bp-node serve' sends, host/native/bp-node.lisp fnn-bpnode-forward-session)
+;; is start-one on the state with the session installed, over the held rows
+;; the route table sends to the session's hop, oldest first; the selection
+;; inputs are the state's own.  A :session without VIA offers nothing.
 (defthm fn-bpnp-step-session-offer-is-the-scan-choice
-  (let* ((answer (fn-bpnp-step st (list :session peer session t mru observation)))
+  (let* ((answer (fn-bpnp-step st (list :session peer session t mru observation
+                                        via)))
          (budget *fn-bpnp-max-forward-retries*)
          (effect (car (fn-bpnf-answer-effects answer)))
          (record (fn-bpn-nth 3 effect))
          (scan (fn-bpnp-forward-scan
-                (reverse (fn-bpnf-held-list st)) peer mru
+                (fn-bpnp-routed-rows (reverse (fn-bpnf-held-list st)) via)
+                peer mru
                 (fn-bpn-config-node-id
                  (fn-bpn-machine-state-config (fn-bpnf-base st)))
                 observation (fn-bpnp-waits st)
@@ -171,12 +176,15 @@
   :hints (("Goal"
            :use ((:instance fn-bpnp-start-one-offer-is-the-scan-choice
                             (budget *fn-bpnp-max-forward-retries*)
+                            (ordered (fn-bpnp-routed-rows
+                                      (reverse (fn-bpnf-held-list st)) via))
                             (st (fn-bpnp-with-runtime
                                  st (fn-bpnp-open-session
                                      (fn-bpnp-sessions st) peer session mru)
                                  (fn-bpnp-pending-image st)))))
            :in-theory (union-theories
                        '(fn-bpnp-step fn-bpnp-with-runtime-keeps-selection-inputs
+                         fn-bpnp-routed-start
                          fn-bpnp-session-via fn-bpnp-session-base-length
                          fn-bpnp-event-budgets fn-bpnp-budgetsp len true-listp
                          (:e fn-bpnp-default-budgets) (:e fn-bpnp-budget-retries)
