@@ -1704,7 +1704,13 @@
         "books/owner-retention-preparation.lisp",
         "tests/acl2/owner-retention-preparation-tests.lisp",
         "planning/evidence/k0-owner-retention-preparation-2026-09-24.md",
-        "planning/evidence/manifests/certify-20260924T062249Z-1003562.json"
+        "planning/evidence/manifests/certify-20260924T062249Z-1003562.json",
+        "books/byte-store-k0-step-root-fence.lisp",
+        "books/byte-store-k0-step-bridge-prefix.lisp",
+        "books/byte-store-k0-step-bridge-frontier.lisp",
+        "tests/acl2/byte-store-k0-cuts-tests.lisp",
+        "planning/evidence/k0-cuts-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T090708Z-3027220.json"
       ],
       "events": [
         "fn-bs-store-crash-image-scans",
@@ -1785,7 +1791,16 @@
         "fn-bs-k0-record-attempted-cut-relation-by-step",
         "fn-bs-k0-record-durable-cut-relation-by-step",
         "fn-bs-k0-record-completing-cut-relation-by-step",
-        "fn-bs-k0-record-cleanup-cut-relation-by-step"
+        "fn-bs-k0-record-cleanup-cut-relation-by-step",
+        "fn-bs-k0s-root-fence-preserves-relation",
+        "fn-bs-k0p-stage-pairs-by-step",
+        "fn-bs-k0p-record-link-inputs",
+        "fn-bs-k0-frontier-created-and-written-cut-relation-by-step",
+        "fn-bs-k0-frontier-staged-durable-cut-relation-by-step",
+        "fn-bs-k0-frontier-durable-cut-relation-by-step",
+        "fn-bs-k0-record-created-and-written-cut-relation-by-step",
+        "fn-bs-k0-record-staged-durable-cut-relation-by-step",
+        "fn-bs-k0-record-linked-cut-relation-by-step"
       ],
       "progress_note": "2026-09-22 lane t5/sweep: byte-store-keystones had been red since 4857c648 added fn-sn-observed-identity-okp to the kernel reopen theorems; K4 and fn-bs-crash-image-reopens carry the identity condition over the scanned records; E2 additionally requires the maintained fn-csi-full-relationp, whose strict consumer replay consequence over K2's scanned image is proved by fn-bs-crash-image-consumer-replay-ok. The byte-level identity tooth is not written; the kernel's is store-observed's. K-sweep added for finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md; certification and scope in planning/evidence/sweep-allocation-orphans-2026-09-22.md. 2026-09-23 K0 bounded continuation: fn-bs-k0-record-attempted-cut-establishes-relation proves the full byte/kernel relation at the actual successful P-RECORD pair-10 cut from a related staged input, typed ACL2 frame/name, and fresh staging. Authority list, old inode entries and fences, staged durable record equality, pending link/candidate and the kernel image are derived separately. This does not establish the input relation at every served call or cover other cuts, errors, recovery or physical barriers. Article call arguments now have a finite ACL2 bridge: fn-bs-k0-article-host-arguments-are-typed-record-input proves the exact native protected-prefix/trailer frame and ACL2 transaction name decode to the staged candidate; the composed pair-10 theorem remains conditional on a related physical byte state and fresh stage. Retention/identity event codec bridges and call-entry relation establishment remain open. ACL2 fn-sf-prepare-record and the host-reached fn-sn-prepare now preserve the byte relation from any related state, including successful article staging. fn-bs-k0-served-article-prepare-to-attempted-relation composes a reserved article prepare, ACL2 frame/name and the actual P-RECORD pair10, but still assumes a related physical state at reserved entry, a valid fresh stage, and a successful prepare. Whole served trace, other event kinds/cuts/outcomes and hardware barriers remain open. 2026-09-24 K4 topic repair: the Store v6 observed reopen correctly requires topic-prefix replay. The byte keystone and acknowledged/sweep dependents carry that exact observed premise; the physical FNST counterexample in byte-store-scan-tests satisfies the old consumer/byte/crash/identity premises yet fails topic replay and actual fn-sn-open-observed. A maintained actual Store topic/crash bridge remains open; this conditional certificate is not universal recovery. 2026-09-24 K0 retention continuation: the ACL2-authored retention event now round-trips through the shared canonical Store decoder and supplies the exact native protected-frame, trailer and transaction-name arguments to the actual P-RECORD pair-10 relation theorem. The stopped pair-11 transaction-directory EIO run has both physical outcomes: :apply has the appended durable candidate and retains the attempted byte/kernel relation before the error callback; :drop retains the old durable prefix; both drain the transaction-directory choice and the callback fences. Exact applied-conclusion teeth separately drop the related-input, typed-frame and fresh-stage premises. The dropped-prefix theorem is a conditional composition result, not an independently toothed keystone: its relation and typed-frame premises may be redundant for that conclusion. The owner preparation bridge is separate; call-entry byte relation, native syscall correspondence, all P-RECORD cuts and whole recovery remain open."
     },
