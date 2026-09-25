@@ -160,6 +160,79 @@
   "A byte array as an ACL2 string of the same character codes: the concrete
 input the core's string entries read in place, with no list in between."
   (map '(simple-array character (*)) #'code-char octets))
+;;; ---------------------------------------------------------------------------
+;;; The octet buffer (books/octets-stobj, D27 boundary 6 on the megaspike).
+;;; `fn-octets' is an abstract stobj whose logical value is an octet list and
+;;; whose executable is a resizable byte array with a fill count; the live
+;;; object is the state's user-stobj-alist entry, a two-slot vector (the
+;;; array, the count).  `fnn-octets-fill' is the host boundary of that book:
+;;; one `replace' of a byte vector into the array, then the count, so the
+;;; core reads the bytes in place and no list is built.  It stands at the
+;;; same trust as `fnn-octet-list' handing a list to the core: the host
+;;; asserts the buffer's logical value is the list of the bytes it wrote.
+
+(defvar *fnn-octets* nil)
+
+(defun fnn-live-octets ()
+  (or *fnn-octets*
+      (setq *fnn-octets*
+            (or (cdr (assoc 'fn-octets (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the octet buffer stobj is not in this image")))))
+
+(defun fnn-octets-fill (vector)
+  "Make VECTOR's bytes the buffer's contents; the live stobj."
+  (let* ((st (fnn-live-octets)) (n (length vector)))
+    (fn-octets$c-reserve n st)
+    (replace (the fnn-octets (svref st 0)) vector)
+    (setf (svref st 1) n)
+    st))
+
+(defun fnn-octets-vector ()
+  "The buffer's contents as a fresh byte vector."
+  (let* ((st (fnn-live-octets)) (n (svref st 1)) (out (fnn-make-octets n)))
+    (replace out (the fnn-octets (svref st 0)) :end2 n)
+    out))
+
+(defun fnn-core-buffer (name &rest args)
+  "A wrapper over the buffer stobj: its first value."
+  (first (apply #'fnn-call name (append args (list (fnn-live-octets))))))
+
+(defun fnn-core-buffer-state (name &rest args)
+  "A wrapper over the buffer and state, (mv value fn-octets state): its value."
+  (first (apply #'fnn-call name (append args (list (fnn-live-octets) *the-live-state*)))))
+
+;;; The store event a transaction file carries, decoded once in the buffer
+;;; (host/store-host.lisp fn-store-frame-value-in-buffer) and remembered on
+;;; the record's byte vector, so the frontier check at read, the store
+;;; bridge's replay and the owner's recovery share one decode instead of
+;;; each converting the record to a list and decoding it again.
+
+(defvar *fnn-record-values* (make-hash-table :test 'eq))
+
+(defun fnn-unframe-value (raw)
+  "Check the frame RAW in the buffer, decode the store event it carries, and
+return the record's byte vector with the value remembered on it."
+  (fnn-octets-fill raw)
+  (multiple-value-bind (kind value) (values-list (fnn-call 'fn-store-frame-value-in-buffer (fnn-live-octets)))
+    (case kind
+      (:record
+       (let ((record (subseq raw (fnn-constant :header)
+                             (- (length raw) (fnn-constant :trailer)))))
+         (setf (gethash record *fnn-record-values*) value)
+         record))
+      (:bad (fnn-fault "ACL2 refused a committed store event"))
+      (t (fnn-fault "frame refused: ~(~a~)" value)))))
+
+(defun fnn-record-value (record)
+  "The store event RECORD (a byte vector) decodes to, decoded in the buffer
+on first use."
+  (or (gethash record *fnn-record-values*)
+      (progn
+        (fnn-octets-fill record)
+        (let ((value (fnn-core-buffer 'fn-store-event-value-in-buffer)))
+          (when (eq value :bad)
+            (fnn-fault "ACL2 refused a committed store event"))
+          (setf (gethash record *fnn-record-values*) value)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; POSIX.  Every syscall failure becomes fnn-os-error with its errno; the
@@ -642,11 +715,13 @@ reads every field through an ACL2 accessor."
 ;;; ---------------------------------------------------------------------------
 ;;; The store bridge: fixed calls into host/store-node-host.lisp.
 
-(defun fnn-bridge-reset () (fnn-action (fnn-core-state 'fn-store-sn-reset)))
+(defun fnn-bridge-reset ()
+  (clrhash *fnn-record-values*)
+  (fnn-action (fnn-core-state 'fn-store-sn-reset)))
 (defun fnn-bridge-record-sequence (record)
-  (fnn-nat (fnn-core 'fn-store-record-sequence (fnn-octet-list record))))
+  (fnn-nat (fnn-core 'fn-store-event-value-sequence (fnn-record-value record))))
 (defun fnn-bridge-record-txid (record)
-  (fnn-nat (fnn-core 'fn-store-record-txid (fnn-octet-list record))))
+  (fnn-nat (fnn-core 'fn-store-event-value-txid (fnn-record-value record))))
 (defun fnn-bridge-recover (records frontier config-records)
   "Replay the configuration history and then the article history.
 
@@ -655,8 +730,8 @@ The core (host/store-node-host.lisp `fn-store-sn-recover') replays
 allocation domain and the capacity from the configured node, and opens the
 observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
 here.  The host supplies octets and decides nothing about them."
-  (fnn-action (fnn-core-state 'fn-store-sn-recover
-                              (mapcar #'fnn-octet-list records) frontier
+  (fnn-action (fnn-core-state 'fn-store-sn-recover-values
+                              (mapcar #'fnn-record-value records) frontier
                               (mapcar #'fnn-octet-list config-records))))
 (defun fnn-bridge-config-observation-limit ()
   "The config reader consumes an ACL2-owned bound before readdir retains names."
@@ -1461,7 +1536,7 @@ acknowledged without its marker."
         (fnn-transaction-files store selected-lower)
       (loop for (sequence . path) in files do
         (fnn-check-regular path)
-        (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
+        (let ((record (fnn-unframe-value (fnn-read-regular-bounded path bound))))
           (incf aggregate (length record))
           ;; ACL2's bound (fn-profile-replay-within-boundp, monotone under a
           ;; profile upgrade: fn-profile-upgrade-keeps-replay-bound).
@@ -1645,18 +1720,21 @@ the record is durable either way and the caller's outcome does not change."
                 failure condition)))))
 
 (defun fnn-publish (store sequence record)
+  (fnn-publish-data store sequence (length record) (fnn-frame record)))
+
+(defun fnn-publish-data (store sequence record-length data)
+  "Publish DATA, a sealed frame carrying RECORD-LENGTH record octets."
   (fnn-require-writer store)
   (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
   ; This is a final assertion after preparation.  Normal resource refusal was
   ; already decided from the ACL2 kind ceiling before allocator reservation.
   (unless (eq (fnn-core 'fn-store-publication-admissibility
-                        (fnn-store-config store) sequence (length record))
+                        (fnn-store-config store) sequence record-length)
               :admissible)
     (fnn-refuse "prepared Store transaction exceeds persisted profile"))
   (let* ((final (fnn-join (fnn-transactions store) (fnn-transaction-name sequence)))
          (stage (fnn-join (fnn-staging store)
                           (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
-         (data (fnn-frame record))
          (attempted nil))
     (handler-case
         (progn

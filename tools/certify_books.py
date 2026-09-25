@@ -95,6 +95,8 @@ PCERT_WAVES = {"create": ":create", "convert": ":convert", "complete": ":complet
 PCERT_ORDER = ("create", "convert", "complete")
 WAVE_PREFIX = "FN_PCERT_WAVE "
 FORBIDDEN_FACILITIES = {"skip-proofs", "defaxiom", "defttag", "set-raw-mode", "include-raw"}
+# D28: `:skip-proofs-okp t' only on the spike (FN_SPIKE), with the source mark audited above.
+SPIKE_OKP = " :skip-proofs-okp t" if os.environ.get("FN_SPIKE") else ""
 
 
 def default_books() -> list[str]:
@@ -175,11 +177,34 @@ def source_symbols(source: str) -> list[str]:
     return tokens
 
 
+SPIKE_MARK = ";; SPIKE"
+
+
+def spike_waivable(text: str) -> bool:
+    """D28 (planning/decisions.md): on the megaspike a `skip-proofs' is allowed
+    when it is marked `;; SPIKE' with one line saying what proof it defers.
+    The waiver holds only with FN_SPIKE set in the environment and only when
+    EVERY skip-proofs in the book has the mark within the twelve lines above it;
+    the other facilities stay forbidden."""
+    if not os.environ.get("FN_SPIKE"):
+        return False
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if "(skip-proofs" in line.lower():
+            window = "\n".join(lines[max(0, index - 12):index + 1])
+            if SPIKE_MARK not in window:
+                return False
+    return True
+
+
 def audit_sources(sources: dict[str, str]) -> dict[str, list[str]]:
     findings: dict[str, list[str]] = {}
     for relative in sources:
-        symbols = source_symbols((ROOT / relative).read_text(encoding="utf-8"))
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        symbols = source_symbols(text)
         found = sorted({symbol.rsplit(":", 1)[-1] for symbol in symbols} & FORBIDDEN_FACILITIES)
+        if found == ["skip-proofs"] and spike_waivable(text):
+            continue
         if found:
             findings[relative] = found
     return findings
@@ -558,7 +583,7 @@ def make_driver(book: str, nonce: str, wave: str | None = None) -> str:
     disk.  See `PCERT_WAVES` for what each wave is.
     """
     if wave is None:
-        return f'''(ld '((certify-book "{book}" 0 t)
+        return f'''(ld '((certify-book "{book}" 0 t{SPIKE_OKP})
       (value-triple (cw "~%{success_token(book, nonce)}~%")))
     :ld-error-action :return
     :ld-error-triples t)
@@ -566,7 +591,7 @@ def make_driver(book: str, nonce: str, wave: str | None = None) -> str:
 '''
     marker = (success_token(book, nonce) if wave == "complete"
               else wave_token(book, nonce, wave))
-    return f'''(ld '((certify-book "{book}" 0 t :pcert {PCERT_WAVES[wave]})
+    return f'''(ld '((certify-book "{book}" 0 t :pcert {PCERT_WAVES[wave]}{SPIKE_OKP})
       (value-triple (cw "~%{marker}~%")))
     :ld-error-action :return
     :ld-error-triples t)
