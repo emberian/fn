@@ -448,6 +448,19 @@ its outcome, which is the refusal to the offering ingress."
 ;;; enrolled EID.  A held job keeps its durable row and its obligation.
 (defvar *fnn-bps-route-source* nil)
 
+;;; Bound to T around a serving node's own base contact (receipts from
+;;; `bp-node serve'/dispatch): a transfer that ends without XFER_ACK or
+;;; XFER_REFUSE costs that connection only.  ACL2's lower machine already
+;;; requeues the job on :uncertain (fn-bpn-forward-result-step); the host
+;;; then does not make it the whole process's outcome.  One-shot senders
+;;; (`bp-service run/resume', `bp-contact tick', `bp-obligation request')
+;;; still report it as their exit code.
+;;; SPIKE: defers the connection-local rule for base transfers as an ACL2
+;;; decision with its theorem (spec 4.3.1 states it for forwarding only).
+(defvar *fnn-bps-connection-local-uncertain* nil)
+(defvar *fnn-bps-local-uncertain-seen* nil
+  "Set when a connection-local uncertain transfer ended this contact.")
+
 (defun fnn-bps-route-table-now ()
   (and *fnn-bps-route-source* (funcall *fnn-bps-route-source*)))
 
@@ -595,7 +608,12 @@ table routes it nowhere (the contact-time gate then holds it)."
         ;; transfer certainly did not happen (:failed, requeued by ACL2).
         ;; Any failure after the connection exists stays :uncertain.
         (setq outcome (if socket :uncertain :failed))))
-    (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))
+    (when (eq outcome :uncertain)
+      (if *fnn-bps-connection-local-uncertain*
+          (progn
+            (setq *fnn-bps-local-uncertain-seen* t)
+            (fnn-out "BP queued job transfer uncertain (connection-local; requeued for a later contact)"))
+        (setf (fnn-bps-outcome service) :uncertain)))
     (when (eq outcome :refused)
       (unless (eq (fnn-bps-outcome service) :uncertain)
         (setf (fnn-bps-outcome service) :refused)))
