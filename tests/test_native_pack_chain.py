@@ -7,7 +7,10 @@ both entries (`operator CONFIG store compact` and `checkpoint pack STORE
 select`), reopens to the whole history and resumes to a complete chain.
 
 FN_P5_N (default 20000) sets the size of the scale store and FN_P5_CUT_N
-(default 9000) the size of the cut campaign's store.  Articles are 2 KiB: the
+(default 4500: two links, so both occurrences of every cut are reached) the
+size of the cut and EIO campaigns' store.  FN_P5_TIMEOUT (default 1800 s)
+bounds each native call; a 20,000-record open costs minutes
+(planning/evidence/bounds-p5-2026-09-25.md).  Articles are 2 KiB: the
 profile's max-article-octets, which the in-process `probe' commits.
 """
 import os
@@ -20,12 +23,26 @@ from tests.test_native_checkpoint import IMAGE, NativeCheckpointTests
 from tools import run_store
 
 N = int(os.environ.get("FN_P5_N", "20000"))
-CUT_N = int(os.environ.get("FN_P5_CUT_N", "9000"))
+CUT_N = int(os.environ.get("FN_P5_CUT_N", "4500"))
 PROFILE_FLAGS = ("--profile", "scale", "--max-transactions", "1048576",
                  "--max-article-octets", "2048")
 CUTS = ("candidate-file", "candidate-link", "candidate-directory",
         "selection-file", "selection-replace", "selection-directory",
         "pack-chain-link")
+# EIO before each syscall of one link's publication: the candidate's
+# immutable publication (host/native/immutable-publish.lisp) and the
+# selection marker's replacement (host/native/checkpoint.lisp).  A failure
+# before the name is visible refuses; a failed directory barrier after it is
+# uncertain.
+EIO_CUTS = (
+    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "stage", run_store.EXIT_REFUSED),
+    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "file-barrier", run_store.EXIT_REFUSED),
+    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "link", run_store.EXIT_REFUSED),
+    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "namespace", run_store.EXIT_UNCERTAIN),
+    ("FN_CHECKPOINT_TEST_FAIL", "selection-file", run_store.EXIT_REFUSED),
+    ("FN_CHECKPOINT_TEST_FAIL", "selection-replace", run_store.EXIT_REFUSED),
+    ("FN_CHECKPOINT_TEST_FAIL", "selection-directory", run_store.EXIT_UNCERTAIN),
+)
 
 
 def links_for(n):
@@ -36,7 +53,9 @@ def links_for(n):
 class NativePackChainTests(unittest.TestCase):
     image = IMAGE
     # A scale store's probe and its compaction take minutes, not seconds.
-    native_timeout = 1800
+    native_timeout = int(os.environ.get("FN_P5_TIMEOUT", "1800"))
+    # A stop hook is reached after the open and the capture of the store.
+    stop_deadline = native_timeout
     setUp = NativeCheckpointTests.setUp
     tearDown = NativeCheckpointTests.tearDown
     native = NativeCheckpointTests.native
@@ -116,6 +135,39 @@ class NativePackChainTests(unittest.TestCase):
                         self.assertEqual(self.chain(store), (whole, CUT_N))
                         self.recovered(store, CUT_N)
                         shutil.rmtree(store)
+
+
+    def test_eio_at_each_link_publication_cut_from_both_entries(self):
+        base, config0, _ = self.scale_store("eio-base", CUT_N)
+        self.native("operator", config0, "store", "compact")
+        whole = links_for(CUT_N)
+        self.assertEqual(self.chain(base), (whole, CUT_N))
+        # One more record: the next compaction publishes one link on the head.
+        self.native("store", base, "post", "<eio-next@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        entries = {
+            "compact": lambda store, config: ("operator", config, "store", "compact"),
+            "pack": lambda store, config: ("checkpoint", "pack", store, "select"),
+        }
+        for entry, argv in entries.items():
+            for variable, point, expected in EIO_CUTS:
+                with self.subTest(entry=entry, point=point):
+                    name = "eio-{}-{}".format(entry, point)
+                    store = self.base / name
+                    shutil.copytree(base, store, symlinks=True)
+                    config, _ = self.owner_config(store, name)
+                    env = dict(self.env)
+                    env[variable] = point
+                    self.native(*argv(store, config), expected=expected, env=env)
+                    # The old chain, or the old chain and the one new link.
+                    links, boundary = self.chain(store)
+                    self.assertIn(links, (whole, whole + 1), point)
+                    self.assertEqual(boundary, CUT_N if links == whole else CUT_N + 1)
+                    self.recovered(store, CUT_N + 1)
+                    self.native(*argv(store, config))
+                    self.assertEqual(self.chain(store), (whole + 1, CUT_N + 1))
+                    self.recovered(store, CUT_N + 1)
+                    shutil.rmtree(store)
 
 
 if __name__ == "__main__":

@@ -542,7 +542,7 @@ class NativeCheckpointTests(unittest.TestCase):
             [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
-            deadline = time.monotonic() + 10
+            deadline = time.monotonic() + getattr(self, "stop_deadline", 10)
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     stdout, stderr = process.communicate()
