@@ -4,10 +4,24 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/bp-node-progress-guards": {
+      "seconds": 10.093,
+      "run": "certify-20260925T013002Z-2343258",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/native-admin": {
-      "seconds": 10.231,
-      "run": "certify-20260925T004450Z-2510809",
-      "host": "persvati",
+      "seconds": 11.444,
+      "run": "certify-20260925T013506Z-2347111",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-node-traces": {
+      "seconds": 10.286,
+      "run": "certify-20260925T013002Z-2343258",
+      "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     }
