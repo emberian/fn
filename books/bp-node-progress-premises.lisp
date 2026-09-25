@@ -664,7 +664,7 @@
   (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal))
 
 (fn-bpnpp-defkeep fn-bpnpp-start-one
-  (fn-bpnp-start-one st peer session mru observation budget)
+  (fn-bpnp-start-one st peer session mru observation budget ordered)
   (fn-bpnp-start-one))
 
 ; The routed :session arm (spec 4.6): start-one's answer, or the state

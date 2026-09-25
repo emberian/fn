@@ -1023,6 +1023,55 @@ class NativeBpNodeTests(unittest.TestCase):
             bridge.close()
             store.close()
 
+    def receiver_group_next(self, *groups):
+        """The next article number ACL2's replayed Store holds per group."""
+        store, bridge, _records = run_bp_ingress.open_live_bp_store(
+            self.receiver_store, False)
+        try:
+            codes = run_store.group_codes(list(groups), store, bridge)
+            return [bridge.group_next(code) for code in codes]
+        finally:
+            bridge.close()
+            store.close()
+
+    def test_control_article_through_bp_transit_is_filed_not_executed(self):
+        """PKT-070 (control-c1 finding 5).  A control article carried in a BP
+        request reaches the receiver's Store through the same
+        fnn-owner-attempt-transit step as NNTP transit, whose first call is
+        ACL2's fn-pa-filing-plan: it is filed in control.cancel, never in
+        the fn.test its Newsgroups names, and the article it names to cancel
+        is not touched (nothing is executed)."""
+        config = self.tmp / "receiver-fn.toml"
+        config.write_text(f'[store]\npath = "{self.receiver_store}"\n',
+                          encoding="ascii")
+        created = self.invoke("operator", config, "group", "create",
+                              "control.cancel")
+        self.assertEqual(created.returncode, 0, created.stderr)
+        before = self.receiver_group_next("control.cancel", "fn.test")
+        self.msgid = b"<bp-node-control@example.invalid>"
+        self.article = (
+            b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
+            b"From: sender@example.invalid\r\n"
+            b"Newsgroups: fn.test\r\n"
+            b"Subject: cancel through BP\r\n"
+            b"Control: cancel <bp-node-a3@example.invalid>\r\n"
+            b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
+            b"Message-ID: " + self.msgid + b"\r\n"
+            b"\r\ncontrol body\r\n"
+        )
+        self.author_request()
+        receiver, port = self.start_node(True)
+        sent = self.send_request(port, "control-transit")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(receiver.returncode, 0, err)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertIn(b"BP node delivery request-accepted", out)
+        after = self.receiver_group_next("control.cancel", "fn.test")
+        # Filed once in control.cancel; fn.test (its Newsgroups) unchanged.
+        self.assertEqual(after[0], before[0] + 1, (before, after))
+        self.assertEqual(after[1], before[1], (before, after))
+        self.assertEqual(self.receiver_counts()[1], 1)
+
     def test_request_retry_queues_distinct_receipt_carriers_and_releases_pin(self):
         before = self.sender_status()
         self.assertEqual(before.returncode, 0, before.stderr)
