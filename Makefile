@@ -262,6 +262,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
+	books/reclaim-tombstone \
+	books/reclaim-rule \
+	books/store-reclaim \
 	tests/acl2/store-history-marker-tests \
 	books/byte-store-marker-program \
 	books/byte-store-k0-marker \
