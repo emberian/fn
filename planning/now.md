@@ -252,10 +252,9 @@ format 8 with the marker unmarked
 ([node record](evidence/node-hbox-bbf52159-2026-09-25.md)). The qualification
 said deployable and confirmed the five e747dbcc findings fixed; the deploy
 used the in-place shape; `config.json.format-7` and a pre-upgrade snapshot are
-kept. An unauthenticated probe from the laptop passed (201, 480 before login,
-STARTTLS to TLS 1.3). **Owed:** the authenticated probe as ember (the deputy
-does not hold the password); `--history-marker required` after a day of
-service.
+kept. The authenticated probe from the laptop as ember held every assertion
+(login 281 after STARTTLS, post 240, reread 220 on a fresh connection).
+**Owed:** `--history-marker required` after a day of service.
 
 ### 2. Landed, by goal item
 
