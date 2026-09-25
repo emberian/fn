@@ -419,6 +419,9 @@ def main(argv=None):
     ap.add_argument("--work", required=True, type=Path)
     ap.add_argument("--relays", type=int, default=1, choices=(0, 1, 2))
     ap.add_argument("--settle", type=float, default=40.0)
+    ap.add_argument("--routes", choices=("present", "removed"), default="present",
+                    help="spec 4.6: enrol the topology as bp-route rows, or add "
+                         "them and remove A's before any send")
     ap.add_argument("--native", action="store_true",
                     help="A authors the request with `bp-obligation request'")
     ap.add_argument("--b-trusts", choices=("carried", "neighbour", "source"),
@@ -565,6 +568,11 @@ def main(argv=None):
             far_dest = RECEIVER if side == "a" else SENDER
             setup.append(lab.fn("setup-{}-route".format(side), "operator", config,
                                 "bp-route", "add", far_dest + "*", name).returncode)
+            if args.routes == "removed" and side == "a":
+                setup.append(lab.fn("setup-a-route-removed", "operator", config,
+                                    "bp-route", "remove", far_dest + "*",
+                                    name).returncode)
+            report.setdefault("routes", dict(mode=args.routes))
             if carried:
                 setup.append(lab.fn("setup-{}-author".format(side), "operator", config,
                                     "bp-boundary", "add", far[0], far[1], far[2],
