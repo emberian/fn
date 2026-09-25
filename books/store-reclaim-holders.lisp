@@ -123,8 +123,10 @@
 ; for an article is `fn-stx-verdict-of-octets' of its payload under the
 ; keyring of its acceptance (`fn-sn-finish-records-the-acceptance-verdict',
 ; books/store-node-invariants).  When that verdict is :absent the payload
-; contributes nothing to the index under EVERY keyring, so reclaiming it
-; cannot change the index any later open derives from the payload.
+; contributes nothing to the index under EVERY keyring, and neither does the
+; tombstone that replaces it (`fn-rcl-tombstone-contributes-nothing',
+; books/reclaim-admission), so reclaiming it cannot change the index any
+; later open derives from the payloads.
 (defthm fn-rcl-absent-verdict-contributes-nothing
   (implies (equal (fn-stx-verdict-token (fn-stx-verdict-of-octets payload k1 g))
                   :absent)
