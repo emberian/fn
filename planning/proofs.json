@@ -3509,6 +3509,56 @@
         "fn-nls-live-report-is-the-offline-report",
         "fn-nls-client-step-of-owner-reply"
       ]
+    },
+    {
+      "id": "PRF-092",
+      "title": "A recognized Store event's kind and fields are read by shape on the commit the host calls",
+      "statement": "On every Store event (fn-store-event-p), fn-evc-field-by-shape at 0, 1 and 2 equals fn-store-event-sequence, -txid and -generation, and fn-evc-class-by-shape names exactly the recognizer that holds (fn-record-p, fn-store-retention-event-p, fn-stxe-p, fn-stxk-p, fn-stxa-p, fn-cpe-eventp, fn-th-topic-eventp); each reading is O(1) and looks at the head and at most ten conses (books/store-events-carried.lisp, ten keystones, :rule-classes nil). The carried accessors fn-evc-* are the references in the logic and these readings in execution, guard fn-store-event-p, which a history record carries under fn-sn-statep (fn-ccar-seek-finds-a-store-event). The commit the host calls reads the completion record through them: fn-ccar-own-finish-is-own-finish (host/owner-host.lisp fn-owner-finish-submission) and fn-ccar-ocfg-complete-is-ocfg-step-complete, fn-ccar-ocfg-complete equal to fn-ocfg-step of (:complete) for every configured owner with no hypothesis (host/owner-host.lisp fn-owner-finish, the completion of identity, retention, consumer and topic events: the signed POST). The feed intent's Path is parsed once at take and carried: fn-icar-submission-targets equals fn-own-submission-targets under fn-icar-carryp (host fn-owner-submission-intent and fn-owner-submission-resolution).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-001",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-014"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-events-carried.lisp",
+        "books/owner-commit-carried.lisp",
+        "books/owner-intent-carried.lisp",
+        "tests/acl2/store-events-carried-tests.lisp",
+        "tests/acl2/owner-commit-carried-tests.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "planning/evidence/carry-kind-2026-09-25.md"
+      ],
+      "progress_note": "Open: the identity prepare (host fn-owner-prepare-identity) still goes through the unverified fn-ocfg-step and fn-sn-prepare-identity, whose fn-sf-prepare-record replays the whole appended history (fn-sf-history-recoverablep); the article path's correspondence (fn-spc-related-candidate-is-recoverable) has no identity analog yet. fn-replay-apply-record and fn-replay-identity-step still recognize the composite and decode its record on the gate and again on the finish.",
+      "events": [
+        "fn-evc-field-by-shape-is-store-event-sequence",
+        "fn-evc-field-by-shape-is-store-event-txid",
+        "fn-evc-field-by-shape-is-store-event-generation",
+        "fn-evc-class-by-shape-is-fn-record-p",
+        "fn-evc-class-by-shape-is-fn-store-retention-event-p",
+        "fn-evc-class-by-shape-is-fn-stxe-p",
+        "fn-evc-class-by-shape-is-fn-stxk-p",
+        "fn-evc-class-by-shape-is-fn-stxa-p",
+        "fn-evc-class-by-shape-is-fn-cpe-eventp",
+        "fn-evc-class-by-shape-is-fn-th-topic-eventp",
+        "fn-ccar-ocfg-complete-is-ocfg-step-complete",
+        "fn-ccar-own-finish-is-own-finish",
+        "fn-ccar-sn-finish-is-sn-finish",
+        "fn-ccar-completion-core-enabledp-is-reference",
+        "fn-ccar-completion-enabledp-is-reference",
+        "fn-ccar-cpe-projection-step-is-cpe-projection-step",
+        "fn-ccar-th-prefix-step-is-th-prefix-step",
+        "fn-ccar-sn-record-bindsp-is-sn-record-bindsp",
+        "fn-ccar-seek-finds-a-store-event",
+        "fn-icar-path-is-path-of",
+        "fn-icar-submission-targets-is-submission-targets"
+      ]
     }
   ]
 }

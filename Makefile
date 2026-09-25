@@ -595,6 +595,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-carried \
 	books/owner-served-carried \
 	books/owner-offer-indexed \
+	books/store-events-carried \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \
 	books/records-concrete \
@@ -638,6 +639,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \
 	tests/acl2/owner-intent-carried-tests \
+	tests/acl2/store-events-carried-tests \
 	tests/acl2/owner-recover-ocl-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \

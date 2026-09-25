@@ -44,7 +44,13 @@
       (eq (symbol-class 'fn-ccar-completion-enabledp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ccar-completion-core-enabledp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ccar-completion-names-submission-p (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-ccar-seek (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-ccar-seek (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ccar-sn-finish-enabled (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ccar-own-complete-enabled (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ccar-cpe-projection-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ccar-th-prefix-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ccar-sn-record-bindsp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ccar-ocfg-complete (w state)) :common-lisp-compliant)))
 
 ; The premise.  The same owner with the first record of its history dropped
 ; (test-only surgery; a store whose records do not start at sequence 0, as
@@ -72,7 +78,8 @@
 (assert-event (not (fn-own-relation *ccar-t-bad-o*)))
 (assert-event (equal (fn-sn-completion-record *ccar-t-bad-store*)
                      (fn-sn-completion-record (fn-own-store *ccar-t-o*))))
-(assert-event (null (fn-ccar-completion-record *ccar-t-bad-store*)))
+(assert-event (with-guard-checking :none
+               (null (fn-ccar-completion-record *ccar-t-bad-store*))))
 
 ; fn-ccar-seek-is-find-record without fn-sf-record-listp.
 (must-fail
