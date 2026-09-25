@@ -3693,7 +3693,20 @@
         "tests/acl2/store-reclaim-tests.lisp",
         "planning/evidence/reclaim-d13-2026-09-25.md"
       ],
-      "progress_note": "Open: the reclaimed record's own replay step (replaying M's record with the tombstone reaches the reclaimed state; the direct proof did not return in 60 s); the whole-replay statement over fn-replay-apply-record; the durable byte program of `store reclaim` with its cuts under K0; holders read from their subsystems; the retention charge released with the payload; articles with an authorship verdict are refused (the tombstone does not carry the verdict for replay); OVER by Message-ID and NEWNEWS still list a reclaimed article (OVER answers 503 framing unavailable for it)."
+      "progress_note": "Open: the reclaimed record's own replay step (replaying M's record with the tombstone reaches the reclaimed state; the direct proof did not return in 60 s); the whole-replay statement over fn-replay-apply-record; the durable byte program of `store reclaim` with its cuts under K0; holders read from their subsystems; the retention charge released with the payload; articles with an authorship verdict are refused (the tombstone does not carry the verdict for replay); OVER by Message-ID and NEWNEWS still list a reclaimed article (OVER answers 503 framing unavailable for it).",
+      "events": [
+        "fn-rcl-reclaimable-is-no-obligation-names-it",
+        "fn-rcl-reclaim-never-touches-a-held-article",
+        "fn-rcl-reclaim-keeps-the-duplicate-history",
+        "fn-rcl-reclaim-keeps-every-binding",
+        "fn-rcl-reclaim-keeps-the-numbering",
+        "fn-rcl-reclaim-preserves-statep",
+        "fn-rcl-prepare-commutes-with-reclaim",
+        "fn-rcl-existing-action-after-reclaim",
+        "fn-rcl-config-rule-after-retention-set",
+        "fn-nntp-msgid-retrieval-answers-reclaimed",
+        "fn-nntp-number-retrieval-answers-reclaimed"
+      ]
     }
   ]
 }
