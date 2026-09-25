@@ -96,12 +96,12 @@ EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
 INSTALLED_SET = re.compile(
     r"artifact-set (\S+) origin (\S+) source (\S+) toolchain (\S+); "
     r"installed (\d+), kept (\d+), missing (\d+), removed (\d+)"
-    r"(?:; origins (\S+))?")
+    r"(?:; origins ([^\s;]+))?")
 # What `certs.py install-partial` prints: the closure size, then the counts.
 INSTALLED_PARTIAL = re.compile(
     r"install-partial: (\d+) books.*\n\s*toolchain (\S+); installed (\d+), "
     r"kept (\d+), missing (\d+), removed (\d+); roots installed (\d+) of (\d+)"
-    r"(?:; origins (\S+))?")
+    r"(?:; origins ([^\s;]+))?")
 
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
