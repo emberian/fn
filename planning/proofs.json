@@ -3122,7 +3122,7 @@
       ]
     },
     {
-      "id": "PRF-079",
+      "id": "PRF-081",
       "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
       "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover: for every authority plan0 that is not damaged and whose ordered received-final rows replay :ready, and the checkpoint ck1 of that replay at any generation for which fn-bpnr-checkpoint-octets produces octets, fn-bpnr-recover-auto-event (the event host/native/bp-service.lisp fnn-bps-open passes to fn-bpnp-step) over (fn-bpnr-selection-plan t octets budget) and any later rows equals the event over plan0 and the concatenated rows with field 5 (the row count) set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows equals the old authority's recovery with its row count 0. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19/20, the :quiesce event, cleanup of old generations and the empty new-generation premise are not modelled; the codec runs on octet lists (no D27 concrete twin); a reopened node's epoch is the rotating epoch (finding N16-F1).",
       "milestone": "M4",
