@@ -299,12 +299,16 @@ three parts have three different owners of the *reply*, all of them ACL2.
    distinct `441` line (`fn-post-outcome-store-refusal-kinds-are-distinct`):
    `:duplicate` "this article is already stored here", `:conflict` "a
    different article with this Message-ID is stored here" (the two answers of
-   `fn-pb-existing-action`, which since D25 compares the poster's bytes: the
-   submission's and the held article's octets without the fields the node
-   injects -- Path, Xref, Injection-Date, Injection-Info, and a Date the node
-   generated because the poster sent none -- so a resend of the same poster
-   octets at any later clock second is the duplicate; the stored record keeps
-   the injected fields; `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
+   `fn-pb-existing-action`, which since D25 compares the poster's *source*:
+   each article's source is recovered by the injection inverse
+   `fn-inj-source-of`, under the agent the submission's own Path line names,
+   and two sources are compared octet for octet; an article that inverse does
+   not read -- another agent's, a relayed one, an ambiguous recipe-v1 record --
+   is compared as octets, never widened. So a resend of the same source at any
+   later clock reading, with its Date present or absent, is the duplicate, and
+   any changed source octet, an authored Date changed or removed included, is
+   the conflict; the stored record keeps its injected fields;
+   `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
    `:unaffordable` (the persisted profile or the transaction capacity),
    `:storage-failed` (a write that failed before publication, whose
    reservation `fn-owner-known-abort` consumed, so nothing was stored), and
@@ -378,23 +382,57 @@ clock and the configured agent — two different bodies under one reading do
 share a generated Message-ID. That is why the reading must move, and it is
 witnessed both ways in `tests/acl2/nntp-post-tests.lisp`.
 
-The injecting agent generates `Path`, `Injection-Date`, `Injection-Info`, and
-`Message-ID` and `Date` when the proto-article omits them (RFC 5537 §3.4.1
-permits exactly those three omissions). `From`, `Subject` and `Newsgroups`
-must be supplied. The generated lines are *prepended*: the supplied source is
-a verbatim suffix of the injected article, which is proved
+The injecting agent generates `Path`, `Injection-Info`, and `Message-ID` and
+`Date` when the proto-article omits them (RFC 5537 §3.4.1 permits exactly
+those three omissions), and `Injection-Date` as RFC 5537 §3.5 item 11
+directs. `From`, `Subject` and `Newsgroups` must be supplied. The generated
+lines are *prepended*: the supplied source is a verbatim suffix of the
+injected article, which is proved
 (`fn-inj-injected-article-retains-the-source-octets`), and is what makes the
 "MUST NOT alter the body" clause of §3.5 item 6 hold structurally rather than
 by inspection.
 
-Two choices here are local policy, not RFC requirements, and are recorded as
-such:
+**Injection-Date (RFC 5537 §3.5 item 11), one theorem per case in
+`books/injection-invariants.lisp`.** The RFC requirement: a supplied
+Injection-Date MUST NOT be modified or replaced; when the proto-article
+supplies both Message-ID and Date, an Injection-Date MUST NOT be added;
+otherwise one MUST be added with the current time. fn implements the last two
+as stated (`fn-inj-no-injection-date-when-date-and-message-id-are-supplied`:
+the injected article is then the Path line, the Injection-Info line and the
+source, at every clock reading; `fn-inj-injection-date-is-the-clock-otherwise`).
+For the first, fn's accepted-input policy refuses a proto-article carrying an
+Injection-Date (`:injection-date-present`,
+`fn-inj-a-supplied-injection-date-is-never-replaced`) -- a local choice, not an
+RFC requirement, and consistent with it, since nothing is modified when
+nothing is injected. fn refuses rather than keeps it because §3.5 item 3 would
+have it judge that date's distance from now with no date-time parser, and
+because fn's generated Date is recognised by its equality with the
+Injection-Date fn wrote.
 
-- A proto-article that already carries `Path` or `Injection-Date` is refused
-  rather than rewritten. §3.2.1 would have an injecting agent prepend its
-  identity to an existing `Path`; rewriting a supplied field would break the
-  verbatim-suffix property, so fn refuses. fn is the origin injecting agent
-  for a POST.
+**The injected block and its inverse (recipe v2, 2026-09-24).** The block is
+Path; then, when anything is generated, Injection-Date, the generated
+Message-ID, the generated Date, in that order; then Injection-Info, which
+closes it. Every octet after the Injection-Info line is the poster's, so the
+block names which fields were generated and `fn-inj-source-of` recovers the
+source exactly (`fn-inj-source-of-inverts-the-injection`, for every clock
+reading and all four generated-field cases). That is the provenance D25
+needs, carried in the stored octets themselves, with no field added to the
+Store record. Recipe v1 (before 2026-09-24: Path, Injection-Date,
+Injection-Info, generated lines, source; an Injection-Date always) is
+recognised by its Injection-Info directly after the Injection-Date, which v2
+never writes; its source is read only where v1 is unambiguous
+(`fn-inj-source-of-a-v1-record`), and a v1 record whose source position opens
+with a Date line of the injection's date or with its own Message-ID line gives
+back nothing (`fn-inj-source-of-an-ambiguous-v1-record`), so it is compared
+octet for octet.
+
+Two further choices here are local policy, not RFC requirements, and are
+recorded as such:
+
+- A proto-article that already carries `Path` is refused rather than
+  rewritten. §3.2.1 would have an injecting agent prepend its identity to an
+  existing `Path`; rewriting a supplied field would break the verbatim-suffix
+  property, so fn refuses. fn is the origin injecting agent for a POST.
 - The wall clock must be present and inside the 400-year Gregorian cycle from
   2000-01-01. Outside it there is no Injection-Date this model renders, and
   the outcome is a refusal, not a guess.
@@ -407,7 +445,14 @@ posting agent that supplies one has an exact retry identity. A **generated**
 Message-ID is derived from the clock, so a retry that omits Message-ID is a
 new article and fn will not deduplicate it. Both halves are theorems in
 `books/injection-invariants.lisp`; the second is stated so that no client
-assumes otherwise.
+assumes otherwise. A client therefore creates and persists its Message-ID
+before the uncertain network operation (`docs/agents.md`): a resend under that
+Message-ID of the same source is answered "already stored here" at any later
+clock reading (`fn-pb-a-resend-at-any-clock-is-answered-already-stored`), a
+changed source under it is the conflict line
+(`fn-pb-a-changed-source-is-answered-conflict`), and neither writes anything
+(`fn-pb-an-existing-action-writes-nothing`); a deliberate second post of the
+same text under a new Message-ID is a new article.
 
 ### Not yet true of POST
 
