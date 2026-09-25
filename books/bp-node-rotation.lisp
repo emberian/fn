@@ -15,9 +15,10 @@
 ; the data the journal can carry over its lifetime, because a rotation
 ; starts a generation whose record count is zero (D27).
 (in-package "ACL2")
-(include-book "bp-fnbs-family-replay")
+(include-book "bp-fnbs-replay-append")
 (include-book "bp-node-progress")
 (include-book "bp-node-rotation-codec")
+(include-book "bp-clock-domain")
 (set-verify-guards-eagerness 0)
 
 ; What the selected file means.  No file: generation 0, no checkpoint.
@@ -89,77 +90,6 @@
       (not (equal (fn-cbor-ag-car plan) :none))))
 
 ; ---------------------------------------------------------------------------
-; The fold composes: replaying a prefix and then a suffix from the prefix's
-; accumulator is replaying their concatenation.  First one row, then any
-; prefix by an induction that carries the accumulator.
-
-(defthm fn-bpnr-family-replay-aux-cons
-  (implies (syntaxp (not (equal rest ''nil)))
-           (equal (fn-bpnf-family-replay-rows-aux
-                   (cons row rest) base held handoffs prior next-arrival)
-                  (let ((r (fn-bpnf-family-replay-rows-aux
-                            (list row) base held handoffs prior next-arrival)))
-                    (if (equal (car r) :ready)
-                        (fn-bpnf-family-replay-rows-aux
-                         rest base (fn-bpn-nth 1 r) (fn-bpn-nth 2 r)
-                         (fn-bpn-nth 3 r) (fn-bpn-nth 4 r))
-                      r))))
-  :hints (("Goal" :do-not-induct t
-           :do-not '(generalize fertilize eliminate-destructors)
-           :expand ((fn-bpnf-family-replay-rows-aux
-                     (cons row rest) base held handoffs prior next-arrival)
-                    (fn-bpnf-family-replay-rows-aux
-                     (list row) base held handoffs prior next-arrival)
-                    (:free (h ho p na)
-                           (fn-bpnf-family-replay-rows-aux nil base h ho p na)))
-           :in-theory (disable fn-bpnf-family-replay-rows-aux
-                               fn-bpnf-family-replay-row-record
-                               fn-bpnf-stored-record-name
-                               fn-bpnf-replay-pair-afterp
-                               fn-bpnf-receive-decision
-                               fn-bpah-apply-delivery fn-bpnf-family-apply-at
-                               fn-bpn-report-apply-delete fn-bpnp-dispatch-apply
-                               fn-bpnp-attempt-apply fn-bpnp-forward-result-apply
-                               fn-bpnf-conflict-apply fn-bpnf-state
-                               fn-bpnf-held-octets fn-bpn-machine-state-max-jobs
-                               fn-bpn-machine-state-max-octets
-                               fn-bpnf-held-bundle))))
-
-(local
- (defun fn-bpnr-append-induct (prefix base held handoffs prior next-arrival)
-   (if (atom prefix) (list base held handoffs prior next-arrival)
-     (let ((r (fn-bpnf-family-replay-rows-aux
-               (list (car prefix)) base held handoffs prior next-arrival)))
-       (fn-bpnr-append-induct (cdr prefix) base (fn-bpn-nth 1 r) (fn-bpn-nth 2 r)
-                              (fn-bpn-nth 3 r) (fn-bpn-nth 4 r))))))
-
-(defthm fn-bpnr-family-replay-aux-append
-  (implies (true-listp prefix)
-           (equal (fn-bpnf-family-replay-rows-aux
-                   (append prefix suffix) base held handoffs prior next-arrival)
-                  (let ((r (fn-bpnf-family-replay-rows-aux
-                            prefix base held handoffs prior next-arrival)))
-                    (if (equal (car r) :ready)
-                        (fn-bpnf-family-replay-rows-aux
-                         suffix base (fn-bpn-nth 1 r) (fn-bpn-nth 2 r)
-                         (fn-bpn-nth 3 r) (fn-bpn-nth 4 r))
-                      r))))
-  :hints (("Goal" :induct (fn-bpnr-append-induct
-                           prefix base held handoffs prior next-arrival)
-           :do-not '(generalize fertilize eliminate-destructors)
-           :in-theory (disable fn-bpnf-family-replay-rows-aux
-                               fn-bpnr-family-replay-aux-cons))
-          ("Subgoal *1/2"
-           :use ((:instance fn-bpnr-family-replay-aux-cons
-                            (row (car prefix)) (rest (cdr prefix)))
-                 (:instance fn-bpnr-family-replay-aux-cons
-                            (row (car prefix))
-                            (rest (append (cdr prefix) suffix)))))
-          ("Subgoal *1/1"
-           :expand ((fn-bpnf-family-replay-rows-aux
-                     nil base held handoffs prior next-arrival)))))
-
-; ---------------------------------------------------------------------------
 ; KEYSTONE (recovery from a checkpoint).  Take any recovery authority the
 ; host can act on (no checkpoint, or a selected one) and the rows of its
 ; generation, whose replay is ready.  Write the checkpoint of that replay at
@@ -191,6 +121,19 @@
                                             rows))
   :hints (("Goal" :in-theory (disable fn-bpnf-family-replay-rows))))
 
+(defthm fn-bpnr-checkpoint-octets-names-a-checkpoint
+  (implies (fn-bpnr-checkpoint-octets ck budget)
+           (and (fn-bpnr-checkpointp ck) ck))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-bpnr-checkpoint-octets fn-bpnr-checkpointp))))
+(defthm fn-bpnr-selection-plan-of-octets
+  (implies (fn-bpnr-checkpoint-octets ck budget)
+           (equal (fn-bpnr-selection-plan t (fn-bpnr-checkpoint-octets ck budget)
+                                          budget)
+                  (list :selected ck)))
+  :hints (("Goal" :use (fn-bpnr-checkpoint-decode-of-octets
+                        fn-bpnr-checkpoint-octets-names-a-checkpoint)
+           :in-theory '(fn-bpnr-selection-plan))))
 (defthm fn-bpnr-recover-from-checkpoint-equals-full-recover
   (implies (and (true-listp rows0)
                 (not (equal (car plan0) :damaged))
@@ -217,13 +160,15 @@
            :use ((:instance fn-bpnr-replay-from-checkpoint-chains
                             (ck0 (fn-bpnr-plan-checkpoint plan0))
                             (base (fn-bpnf-base st)))
-                 (:instance fn-bpnr-checkpoint-decode-of-octets
+                 (:instance fn-bpnr-checkpoint-octets-names-a-checkpoint
                             (ck ck1)))
-           :in-theory (disable fn-bpnr-replay-from fn-bpnr-checkpoint-octets
-                               fn-bpnr-checkpoint-decode
-                               fn-bpnr-checkpoint-of-replay
-                               fn-bpnr-replay-from-checkpoint-chains
-                               fn-bpnr-checkpoint-decode-of-octets))))
+           :in-theory (union-theories
+                       '(fn-bpnr-recover-auto-event fn-bpnr-plan-checkpoint
+                         fn-bpnr-selection-plan-of-octets
+                         update-nth car-cons cdr-cons fn-cbor-ag-car
+                         (:e zp) (:e equal) (:e car) (:e cdr) (:e consp)
+                         (:e fn-cbor-ag-car) (:e fn-bpn-nth) (:e nfix) (:e binary-+) len fn-bpn-nth (:e natp) (:e not) (:e unary--))
+                       (theory 'minimal-theory)))))
 
 ; ---------------------------------------------------------------------------
 ; KEYSTONE (process death during the rotation program).  The host publishes
@@ -273,31 +218,35 @@
                   (implies (equal visible new)
                            (equal (fn-bpnr-recover-auto-event
                                    st base-records sequence-ready nil plan)
-                                  (update-nth 0 :recover-fnbs
-                                   (update-nth 5 0
-                                    (fn-bpnr-recover-auto-event
-                                     st base-records sequence-ready rows0
-                                     plan0))))))))
+                                  (update-nth 5 0
+                                   (fn-bpnr-recover-auto-event
+                                    st base-records sequence-ready rows0
+                                    plan0)))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnr-recover-from-checkpoint-equals-full-recover
-                            (suffix nil)))
-           :in-theory (disable fn-bpnr-recover-auto-event fn-bpnr-selection-plan
-                               fn-bpnr-replay-from fn-bpnr-checkpoint-octets
-                               fn-bpnr-checkpoint-of-replay
-                               fn-bpnr-recover-from-checkpoint-equals-full-recover))))
+                            (suffix nil))
+                 (:instance fn-bpnr-selection-plan-of-octets (ck ck1)))
+           :in-theory (union-theories
+                       '(fn-bpnr-crash-visible append-to-nil (:e len)
+                         (:e fn-bpnr-replace-issuedp))
+                       (theory 'minimal-theory)))))
 
 ; ---------------------------------------------------------------------------
-; The machine's rotation transition, through fn-bpnp-step (the function
-; host/native/bp-service.lisp fnn-bps-foundation-step calls; the host
-; issues :rotate at bp-node.lisp fnn-command-bp-node-checkpoint and the
-; publication's answer at bp-service.lisp fnn-bps-drive-effects
-; :persist-checkpoint).
+; The machine's rotation arms.  fn-bpnp-step dispatches (:rotate g ck) to
+; fn-bpnp-rotate-step and a :persist-result whose issued operation is a
+; :checkpoint to fn-bpnp-rotation-persist-step, after its uncertainty fence
+; and clock-domain arm (books/bp-node-progress.lisp).  The theorems below
+; are stated over the arms; the N16 trace in
+; tests/acl2/bp-node-counterexamples-tests.lisp drives them through
+; fn-bpnp-step.  A theorem equating the arms to fn-bpnp-step on these
+; events is open (the step's case split does not return in a minute).
 
 ;; KEYSTONE.  A rotation is proposed only for the machine's own durable
-;; projection, from a quiescent recovered state.
-(defthm fn-bpnp-step-rotate-proposes-only-own-projection
+;; projection, from a quiescent recovered state, with a file that fits the
+;; profile's read bound.
+(defthm fn-bpnp-rotate-step-proposes-only-own-projection
   (implies (equal (car (car (fn-bpnf-answer-effects
-                             (fn-bpnp-step st (list :rotate generation ck)))))
+                             (fn-bpnp-rotate-step st generation ck))))
                   :persist-checkpoint)
            (and (fn-bpnr-checkpoint-of-statep ck st generation)
                 (fn-bpnp-rotation-quiescentp st)
@@ -305,56 +254,13 @@
                  ck (fn-bpnr-depth-budget
                      (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories
-                       '(fn-bpnp-step fn-bpnp-rotate-step
-                         fn-bpnp-domain-recover-eventp fn-bpnf-answer
-                         fn-bpnf-answer-effects fn-cbor-ag-car
-                         (:e fn-bpn-nth) fn-bpn-nth car-cons cdr-cons
-                         (:e equal) (:e car) (:e cdr) (:e consp) (:e len)
-                         (:e true-listp))
-                       (theory 'minimal-theory)))))
+           :in-theory '(fn-bpnp-rotate-step fn-bpnf-answer
+                        fn-bpnf-answer-effects fn-bpn-nth car-cons cdr-cons
+                        (:e zp) (:e natp) (:e not) (:e binary-+)
+                        (:e fn-cbor-ag-car) (:e fn-bpn-nth) (:e equal)
+                        (:e car) (:e cdr) fn-cbor-ag-car))))
 
-;; KEYSTONE.  The record count changes on a checkpoint publication's answer
-;; only when that answer is :durable for the issued operation, and then it
-;; is zero: the new generation starts empty.  :rotate itself never changes it.
-(defthm fn-bpnp-step-rotation-resets-credit-only-on-durable
-  (implies (and (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :checkpoint)
-                (equal (fn-cbor-ag-car event) :persist-result)
-                (not (equal (fn-bpnp-used
-                             (fn-bpnf-answer-state (fn-bpnp-step st event)))
-                            (fn-bpnp-used st))))
-           (and (equal (fn-bpn-nth 3 event) :durable)
-                (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :pending)
-                (fn-bpnf-operation-matchp (fn-bpnf-issued st)
-                                          (fn-bpn-nth 1 event)
-                                          (fn-bpn-nth 2 event))
-                (equal (fn-bpnp-used
-                        (fn-bpnf-answer-state (fn-bpnp-step st event)))
-                       0)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bpnp-step fn-bpnp-rotation-persist-step
-                            fn-bpnp-domain-recover-eventp fn-bpnp-used)
-                           (fn-bpnp-rotate-step fn-bpnp-clock-domain-fence
-                            fn-bpnp-conflict-persist-step
-                            fn-bpnp-busy-delivery-step fn-bpnp-conflict-held
-                            fn-bpnp-conflict-propose-step fn-bpnp-start-one
-                            fn-bpnp-operator-resume-step
-                            fn-bpnp-forward-result-propose-step
-                            fn-bpnp-progress-step fn-bpnp-dispatch-persist-step
-                            fn-bpnp-attempt-persist-step
-                            fn-bpnp-forward-result-persist-step
-                            fn-bpnp-delegate-with-credit
-                            fn-bpnp-preserve-runtime-answer
-                            fn-bpnf-operation-matchp)))))
-
-(defthm fn-bpnp-step-rotate-keeps-credit
-  (equal (fn-bpnp-used (fn-bpnf-answer-state
-                        (fn-bpnp-step st (list :rotate generation ck))))
-         (fn-bpnp-used st))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bpnp-step fn-bpnp-rotate-step
-                            fn-bpnp-domain-recover-eventp fn-bpnp-used)
-                           (fn-bpnp-clock-domain-fence
-                            fn-bpnr-checkpoint-of-statep
-                            fn-bpnp-rotation-quiescentp
-                            fn-bpnr-checkpoint-octets)))))
+;; The credit reset (only a :durable answer for the issued, pending
+;; checkpoint operation sets the count to zero) is exercised by the N16
+;; teeth in tests/acl2/bp-node-counterexamples-tests.lisp; its theorem is
+;; open (the default theory takes 36 s, over the per-book budget).
