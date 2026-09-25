@@ -1973,10 +1973,13 @@
         "tests/acl2/bp-node-progress-premises-tests.lisp",
         "books/bp-node-forward-retry.lisp",
         "tests/acl2/bp-node-forward-retry-tests.lisp",
-        "planning/evidence/manifests/certify-20260924T230640Z-2140288.json"
+        "planning/evidence/manifests/certify-20260924T230640Z-2140288.json",
+        "books/bp-node-rotation-step.lisp",
+        "planning/evidence/n16-rotation-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
       ],
       "pending_subject": "The native host calls fn-bpnp-step (host/native/bp-service.lisp:170, fnn-bps-foundation-step), wrapping each lower machine event as (:base E) at :176-177. fn-bpnp-step-base-event-refines-fn-bpn-step equates that arm with fn-bpn-step (state and effects), so the lower lifecycle and send-authorization keystones hold of the called step's base on (:base E) only; the served step's own receive, delivery, family, forwarding and recovery arms have no lifecycle or kind-8 send-authorization keystone. fn-bpnp-step-emits-no-release-and-no-receipt-prepare holds over every served event. A durable kind 8 without a kind 9 at a process death is re-offered on the next session to its next hop with the same held bundle, up to three retries, then held and reported as stranded (spec 4.3.1, default adopted by the coordinator 2026-09-24, pending ember); the keystones cover the lone-candidate selection, the offer binding and the retry bound, not multi-candidate fairness or the replay fact that recovered attempt epochs precede the new epoch. Physical publication observations and reachable crash cuts remain open.",
-      "progress_note": "Over the called fn-bpnp-step: guard premises preserved by every host event; :progress leaves held rows unchanged and issued unchanged or a fresh pending dispatch; no :release or :receipt-prepare effect on any event; on (:base E) the answer is exactly fn-bpn-step's state and effects or nothing. The lower fn-bpn-step keystones (lifecycle invariant, send authorized by a durable attempt record) are cited through that bridge. The spec 11.1 witnesses N05 (attempt half), N06 (machine half), N08 (as the stranded negative), N11 (refusal half), BP-R02, R06, R07, R15 and R16 run through fn-bpnp-step in bp-node-counterexamples-tests. The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain. Lane defaults-precise (2026-09-24): a ready recovery through fn-bpnp-step installs exactly the held rows fn-bpnf-family-replay-rows computes from the durable FNBS rows, over the event the host builds (fn-bpnp-host-recovery-installs-the-durable-replay), so the kind-8 retry count after a restart is the one the durable kind-8 history gives; witness: four restarts from the fresh initial state over the framed rows (retries 0 to 3, then stranded), must-fail: a fenced clock-domain decision installs nothing. The sender reads a TCPCL XFER_REFUSE by its reason: fn-bpnp-tcpcl-outcome (called by host/native/bp-node.lisp fnn-bpnode-forward-contact) returns (:refused r) for a peer reason r, the kind-9 record fn-bpnp-step proposes carries the event's outcome unchanged, reason 1 (Completed) settles exactly as :sent through fn-bpnp-forward-result-apply, and every other reason stays non-terminal. A settled non-terminal kind 9 clears the slot, so the budget bounds uncertain re-offers only. hbox run-20260924T230614Z-3685.",
+      "progress_note": "Over the called fn-bpnp-step: guard premises preserved by every host event; :progress leaves held rows unchanged and issued unchanged or a fresh pending dispatch; no :release or :receipt-prepare effect on any event; on (:base E) the answer is exactly fn-bpn-step's state and effects or nothing. The lower fn-bpn-step keystones (lifecycle invariant, send authorized by a durable attempt record) are cited through that bridge. The spec 11.1 witnesses N05 (attempt half), N06 (machine half), N08 (as the stranded negative), N11 (refusal half), BP-R02, R06, R07, R15 and R16 run through fn-bpnp-step in bp-node-counterexamples-tests. The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain. Lane defaults-precise (2026-09-24): a ready recovery through fn-bpnp-step installs exactly the held rows fn-bpnf-family-replay-rows computes from the durable FNBS rows, over the event the host builds (fn-bpnp-host-recovery-installs-the-durable-replay), so the kind-8 retry count after a restart is the one the durable kind-8 history gives; witness: four restarts from the fresh initial state over the framed rows (retries 0 to 3, then stranded), must-fail: a fenced clock-domain decision installs nothing. The sender reads a TCPCL XFER_REFUSE by its reason: fn-bpnp-tcpcl-outcome (called by host/native/bp-node.lisp fnn-bpnode-forward-contact) returns (:refused r) for a peer reason r, the kind-9 record fn-bpnp-step proposes carries the event's outcome unchanged, reason 1 (Completed) settles exactly as :sent through fn-bpnp-forward-result-apply, and every other reason stays non-terminal. A settled non-terminal kind 9 clears the slot, so the budget bounds uncertain re-offers only. hbox run-20260924T230614Z-3685. N16 (lane n16-rotation, 2026-09-25): fn-bpnp-step on (:rotate g ck) is fn-bpnp-rotate-step behind the uncertainty fence (fn-bpnp-step-rotate-is-rotate-step) and on a :persist-result while a checkpoint is issued is fn-bpnp-rotation-persist-step (fn-bpnp-step-rotation-result-is-rotation-result); the record count after a checkpoint's answer is 0 exactly on the matching durable answer and unchanged otherwise (fn-bpnp-step-rotation-resets-credit-only-on-durable); the four rotation effects are inside the no-release/no-receipt-prepare confinement. Teeth in tests/acl2/bp-node-counterexamples-tests (N16 section). hbox run-20260925T051528Z-15c2. Open: finding N16-F1, a reopened node's first operation reuses the rotation's id.",
       "application_join_scope": "Native application/Store join and receipt-decision recovery have scoped runtime witnesses. The A3 effective-handoff projection has a certified exact-job/peer/payload/FNRJ-premise theorem plus byte replay, restart and distinct-trigger tests; its native caller and combined-image test passed, with broader trace assurance still open. General joined trace preservation, observed-channel admission, expired-held delivery eligibility and physical publication cuts remain open. Transport completion or expiry does not establish application acceptance or release authority. A versioned kind-5 receive anchor and ACL2 pre-Store clocked selector are source-present. The selector's live-priority theorem and a two-durable-receive positive trace certify at the selected roots; matched application result and durable kind-7 completion leave the older clock-uncertain row held. All-uncertain selection reports uncertainty, and an ambiguous publication still fences the foundation transition. For the host-called fn-bpnp-step, fn-bpnp-step-progress-preserves-held proves one :progress event leaves held obligations unchanged, and fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch proves it leaves the issued operation unchanged or, only from none, installs a pending dispatch at the current epoch and next operation id. A certified two-kind-5 reachable trace gives an older route-less transit row a per-key route wait, then delivers a younger local request and settles durable kind 7; changed generation rechecks the old row. A failed cold recovery retains the wait and state, while successful replay clears the wait. This is the route-wait part of N03. A source-matched native image, four-class N03 fairness, N04 session/MRU forwarding and N05 journal debt remain open.",
       "events": [
         "fn-bpnp-step-base-event-refines-fn-bpn-step",
@@ -2002,7 +2005,10 @@
         "fn-bpnp-resumed-result-clears-only-the-slot",
         "fn-bpnp-resumed-row-is-a-forward-candidate",
         "fn-bpnp-uncertain-result-keeps-the-count",
-        "fn-bprq-recovery-plan-unfences-and-reopens-as-live"
+        "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
+        "fn-bpnp-step-rotate-is-rotate-step",
+        "fn-bpnp-step-rotation-result-is-rotation-result",
+        "fn-bpnp-step-rotation-resets-credit-only-on-durable"
       ]
     },
     {
@@ -3113,6 +3119,46 @@
         "fn-ctl-control-article-is-filed-only-in-control",
         "fn-ctl-classify-reads-only-the-control-field",
         "fn-ctl-cmsg-subject-is-ordinary"
+      ]
+    },
+    {
+      "id": "PRF-079",
+      "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
+      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover: for every authority plan0 that is not damaged and whose ordered received-final rows replay :ready, and the checkpoint ck1 of that replay at any generation for which fn-bpnr-checkpoint-octets produces octets, fn-bpnr-recover-auto-event (the event host/native/bp-service.lisp fnn-bps-open passes to fn-bpnp-step) over (fn-bpnr-selection-plan t octets budget) and any later rows equals the event over plan0 and the concatenated rows with field 5 (the row count) set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows equals the old authority's recovery with its row count 0. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19/20, the :quiesce event, cleanup of old generations and the empty new-generation premise are not modelled; the codec runs on octet lists (no D27 concrete twin); a reopened node's epoch is the rotating epoch (finding N16-F1).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006",
+        "RET-001"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-rotation-codec.lisp",
+        "books/bp-fnbs-replay-append.lisp",
+        "books/bp-node-rotation.lisp",
+        "books/bp-node-rotation-step.lisp",
+        "tests/acl2/bp-node-counterexamples-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/n16-rotation-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T044200Z-2512543.json",
+        "planning/evidence/manifests/certify-20260925T050242Z-2546955.json",
+        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
+      ],
+      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2.",
+      "events": [
+        "fn-bpnr-recover-from-checkpoint-equals-full-recover",
+        "fn-bpnr-rotation-crash-recovers-old-or-new",
+        "fn-bpnr-checkpoint-decode-of-octets",
+        "fn-bpnr-family-replay-aux-append"
       ]
     }
   ]
