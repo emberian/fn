@@ -208,3 +208,154 @@
 (defun fn-spk-open-okp (opened)
   (declare (xargs :mode :program))
   (and (fn-sn-open-shapep opened) (equal (fn-sn-open-kind opened) :ok)))
+
+; -----------------------------------------------------------------------------
+; C1. The reclaimed-content stub and the D25 decision over it.
+;
+; A reclaimed article's payload becomes a stub: its header block verbatim,
+; then one line `FN-Reclaimed: v1 octets=N sha256=H source=S' and an empty
+; body.  H is fn-frame-digest (SHA-256) of the whole original payload; S is
+; the digest of the poster's source (books/poster-bytes fn-pb-subject under
+; the article's own Path agent), or `-' when that recipe gives none.
+;
+;; SPIKE: defers (a) the stub codec as a book with its round trip
+;; (fn-spk-stub-info of fn-spk-stub gives back octets, H and S); (b) the D25
+;; keystone fn-spk-same-articlep-equals-original: for every submission,
+;; fn-spk-same-articlep against the stub equals fn-pb-same-articlep against
+;; the original, under a named collision assumption A-DIGEST-COLLISION-FREE
+;; (constrained, books/assumptions.lisp) and the fact that the injection
+;; inverse gives a source only under the article's own agent; (c) refusal of
+;; a submission that itself carries an FN-Reclaimed header (the stub marker
+;; must be the node's alone; fn-spk-submission-claims-stubp below is checked
+;; at the owner's prepare).
+
+(defun fn-spk-octets-of (str)
+  (declare (xargs :mode :program))
+  (fn-record-string-octets str))
+
+(defun fn-spk-crlf2-index (x i)
+  (declare (xargs :mode :program))
+  (cond ((atom x) nil)
+        ((and (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10)
+              (consp (cddr x)) (equal (caddr x) 13)
+              (consp (cdddr x)) (equal (cadddr x) 10))
+         i)
+        (t (fn-spk-crlf2-index (cdr x) (+ 1 i)))))
+
+(defun fn-spk-header-block (payload)
+  ; The octets before the blank line (without its first CRLF's partner).
+  (declare (xargs :mode :program))
+  (let ((i (fn-spk-crlf2-index payload 0)))
+    (if i (take i payload) payload)))
+
+(defun fn-spk-hex-digit (n)
+  (declare (xargs :mode :program))
+  (if (< n 10) (+ 48 n) (+ 87 n)))
+
+(defun fn-spk-hex (octets)
+  (declare (xargs :mode :program))
+  (if (atom octets) nil
+    (list* (fn-spk-hex-digit (floor (car octets) 16))
+           (fn-spk-hex-digit (mod (car octets) 16))
+           (fn-spk-hex (cdr octets)))))
+
+(defun fn-spk-nat-digits (n)
+  (declare (xargs :mode :program))
+  (if (< n 10) (list (+ 48 n))
+    (append (fn-spk-nat-digits (floor n 10)) (list (+ 48 (mod n 10))))))
+
+(defun fn-spk-marker () (declare (xargs :mode :program))
+  (fn-spk-octets-of "FN-Reclaimed: v1 "))
+
+(defun fn-spk-source-digest (payload msgid)
+  ; msgid is the Store's string key.
+  (declare (xargs :mode :program))
+  (let* ((agent (fn-pb-path-agent payload))
+         (subject (fn-pb-subject payload agent (fn-record-string-octets msgid))))
+    (if (and agent (equal (car subject) :source))
+        (fn-frame-digest (cdr subject))
+      nil)))
+
+(defun fn-spk-stub (payload msgid)
+  (declare (xargs :mode :program))
+  (let ((source (fn-spk-source-digest payload msgid)))
+    (append (fn-spk-header-block payload)
+            '(13 10)
+            (fn-spk-marker)
+            (fn-spk-octets-of "octets=") (fn-spk-nat-digits (len payload))
+            (fn-spk-octets-of " sha256=") (fn-spk-hex (fn-frame-digest payload))
+            (fn-spk-octets-of " source=")
+            (if source (fn-spk-hex source) (fn-spk-octets-of "-"))
+            '(13 10 13 10))))
+
+(defun fn-spk-prefixp (p x)
+  (declare (xargs :mode :program))
+  (cond ((atom p) t)
+        ((atom x) nil)
+        (t (and (equal (car p) (car x)) (fn-spk-prefixp (cdr p) (cdr x))))))
+
+(defun fn-spk-find-line (needle x)
+  ; The tail of x after the first CRLF + needle, or nil.
+  (declare (xargs :mode :program))
+  (cond ((atom x) nil)
+        ((and (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10)
+              (fn-spk-prefixp needle (cddr x)))
+         (nthcdr (len needle) (cddr x)))
+        (t (fn-spk-find-line needle (cdr x)))))
+
+(defun fn-spk-take-token (x)
+  ; Octets up to a space or CR.
+  (declare (xargs :mode :program))
+  (if (or (atom x) (equal (car x) 32) (equal (car x) 13)) nil
+    (cons (car x) (fn-spk-take-token (cdr x)))))
+
+(defun fn-spk-field (name x)
+  ; The token after `NAME=' in x (one line), or nil.
+  (declare (xargs :mode :program))
+  (let ((key (append (fn-spk-octets-of name) '(61))))
+    (cond ((atom x) nil)
+          ((equal (car x) 13) nil)
+          ((fn-spk-prefixp key x) (fn-spk-take-token (nthcdr (len key) x)))
+          (t (fn-spk-field name (cdr x))))))
+
+; (SHA256-HEX SOURCE-HEX-or-"-" OCTETS-DIGITS) when PAYLOAD is a stub, else nil.
+; Only the header block is searched, and the marker must be the last header.
+(defun fn-spk-stub-info (payload)
+  (declare (xargs :mode :program))
+  (let* ((tail (fn-spk-find-line (fn-spk-marker) payload)))
+    (and tail
+         (let ((sha (fn-spk-field "sha256" tail))
+               (src (fn-spk-field "source" tail))
+               (n (fn-spk-field "octets" tail)))
+           (and sha src n (list sha src n))))))
+
+(defun fn-spk-submission-claims-stubp (payload)
+  (declare (xargs :mode :program))
+  (if (fn-spk-find-line (fn-spk-marker) (fn-spk-header-block payload)) t nil))
+
+(defun fn-spk-same-articlep (msgid payload held)
+  ; msgid: the Store's string key.
+  (declare (xargs :mode :program))
+  (let ((info (fn-spk-stub-info held)))
+    (if (not info)
+        (fn-pb-same-articlep (fn-record-string-octets msgid) payload held)
+      (let* ((agent (fn-pb-path-agent payload))
+             (a (fn-pb-subject payload agent (fn-record-string-octets msgid)))
+             (held-agent (fn-pb-path-agent held))
+             (source-hex (second info)))
+        (if (and (equal (car a) :source) agent (equal agent held-agent)
+                 (not (equal source-hex (fn-spk-octets-of "-"))))
+            (equal (fn-spk-hex (fn-frame-digest (cdr a))) source-hex)
+          (equal (fn-spk-hex (fn-frame-digest payload)) (first info)))))))
+
+; fn-pb-existing-action over the stub-aware comparison.
+(defun fn-spk-existing-action (msgid payload groups s)
+  (declare (xargs :mode :program))
+  (let ((article (fn-find-article
+                  msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+    (if article
+        (if (and (fn-spk-same-articlep msgid payload (fn-article-payload article))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))

@@ -670,7 +670,7 @@ reopen predicate, writer-lock observation and observed final namespace."
       (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pb-existing-action msgid payload groups s)))
+             (existing (fn-spk-existing-action msgid payload groups s))) ; SPIKE: stub-aware D25
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -799,7 +799,7 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pb-existing-action
+      (let ((action (fn-spk-existing-action ; SPIKE: stub-aware D25
                      (fn-store-octets->string msgid-octets) payload groups
                      (f-get-global 'fn-store-sn state))))
         (value (if action action :absent))))))
