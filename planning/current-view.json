@@ -22,16 +22,27 @@
         "host/native/bp-service.lisp": "46bcb7ade951947aae71669d11a8487fdd24d1e0e993407ded5e02889a15d003",
         "host/owner-host.lisp": "cb7298a30e57e3b378e6803737a599d5ee6de0bd872836ec321f81318d4ea5f1"
       }
+    },
+    "c3420013": {
+      "source": "c34200132b2b0c725a93672fc4ba93a528817e18",
+      "qualification": "planning/evidence/qual-c3420013-2026-09-25.md",
+      "closure_manifest": "certify-20260925T001652Z-2229194",
+      "host_sha256": {
+        "host/bp-native-app-host.lisp": "776e96c8580fb69091b01318bc058e3c75dcbd3334f2c49c0fff69e63cb4e2a3",
+        "host/checkpoint-host.lisp": "524723314d4cb080ece3eea2d454052f0dbe49cde507ee9d149f4611cfdb8e5c",
+        "host/native/bp-service.lisp": "fafade31dec50cfebdcb796f9a0cab0627f12353e1647cc56efc5db0e93af514",
+        "host/owner-host.lisp": "cb7298a30e57e3b378e6803737a599d5ee6de0bd872836ec321f81318d4ea5f1"
+      }
     }
   },
   "deployment": {
     "where": "hbox `/tank/fn/node`",
-    "image": "4eca4148",
-    "record": "planning/evidence/node-hbox-4eca4148-2026-09-24.md",
+    "image": "c3420013",
+    "record": "planning/evidence/node-hbox-c3420013-2026-09-25.md",
     "profiles": [
       "default"
     ],
-    "profile_text": "production default image, store profile scale (4096 transactions), LAN-only, no peers configured, DTN profile not deployed; `fn-18c91321`, `fn-47bdb9a4` and `fn-da5fd8cb` kept for rollback"
+    "profile_text": "production default image, store profile scale (4096 transactions) with the committed-history marker, LAN-only, no peers configured, DTN profile not deployed; four earlier releases kept for rollback"
   },
   "superseded": [
     "planning/evidence/node-hbox-47bdb9a4-2026-09-24.md",
@@ -60,7 +71,7 @@
       "bridge": "fn-scar-auth-step-pinned-is-auth-step-pinned",
       "keystone": "fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native-operator matrix and native modules, production and developer"
       },
       "profile": "default",
@@ -79,7 +90,7 @@
       "bridge": "fn-ccar-own-finish-is-own-finish",
       "keystone": "fn-own-240-follows-consumed-completion",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "developer twin for the cuts, production for the kill run"
       },
       "profile": "default",
@@ -98,7 +109,7 @@
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
       "keystone": "fn-own-pinned-view-survives-other-post",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native-operator matrix and native modules"
       },
       "profile": "default",
@@ -136,7 +147,7 @@
       },
       "keystone": "fn-ocfg-fault-keeps-every-other-connection",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native modules, image's own tests"
       },
       "profile": "default",
@@ -154,7 +165,7 @@
       },
       "keystone": "fn-ocl-no-reader-observes-a-half-change",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native-operator matrix and native modules"
       },
       "profile": "default",
@@ -173,7 +184,7 @@
       "bridge": "fn-own-submission-targets-are-feed-targets",
       "keystone": "fn-own-submission-never-targets-a-loop",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "two-node native-operator matrix with INN"
       },
       "profile": "default",
@@ -192,7 +203,7 @@
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
       "keystone": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native modules, developer and production"
       },
       "profile": "default",
@@ -211,7 +222,7 @@
       "bridge": "fn-pcar-sbud-prepare-is-sbud-prepare",
       "keystone": "fn-sbud-prepare-refuses-at-budget",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native-operator matrix, operator verbs, kill run"
       },
       "profile": "default",
@@ -230,12 +241,12 @@
       "bridge": "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
       "keystone": "fn-bs-recover-program-keeps-relation-at-every-cut",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "developer twin for the cuts, production refuses selectors"
       },
       "profile": "default",
       "latest": "all 25 cuts pass through both entries; production refuses 30/30 selector starts with exit 5; checkpoint 23/23, recovery 13/13 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
-      "obstruction": "no general per-step K0; in-process recovery (admin re-running `fnn-recover`) has no entry theorem; 6 checkpoint cuts and about 12 BP/TCPCL/owner kill points lack an `fn-bs-*` coordinate; process death on ZFS only.",
+      "obstruction": "the byte crash model's finish program has no committed-history marker, so the differential fails at finish-consumed and finish-durable on c3420013 although every native cut passes; a lane is adding the transition",
       "next": "`fn-bs-program-step-preserves-relation`, the general per-step K0, certified."
     },
     {
@@ -248,7 +259,7 @@
       },
       "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "DTN developer image, bp_node and bp_app modules"
       },
       "profile": "dtn",
@@ -325,7 +336,7 @@
       "bridge": "fn-ocfg-read-tls-prefix-is-full-read",
       "keystone": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
       "tested": {
-        "image": "4eca4148",
+        "image": "c3420013",
         "profile": "native reader and peering modules"
       },
       "profile": "default",
