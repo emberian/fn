@@ -138,7 +138,7 @@ charge with an "octets" budget; dev states the budget in charge pages.
 | --- | --- | --- | --- |
 | `run-20260925T102736Z-e097` at `4a612f9f` | persvati, w25, 2 jobs, 300 s | `--affected-by` peer-carriage-rows, peer-carriage, native-admin-peer: 13 certified, 158 installed | passed; manifest `planning/evidence/manifests/certify-20260925T102823Z-3910071.json`; slowest books/native-admin 9.4 s, books/peer-carriage 3.4 s, tests 2.3 s |
 | `run-20260925T103417Z-576c` at `8c38c762` | hbox, w28, 2 jobs | same roots: 20 certified | passed; `certify-20260925T103454Z-3166493.json` |
-| `run-20260925T103728Z-cc22` at `8c38c762` | hbox, w28, 2 jobs | the 140 default image roots (not `--closure`): 49 certified, 286 installed | passed; manifest archived under planning/evidence/manifests |
+| `run-20260925T103728Z-cc22` at `8c38c762` | hbox, w28, 2 jobs | the 140 default image roots (not `--closure`): 49 certified, 286 installed | passed; `certify-20260925T103759Z-3173050.json` |
 
 Native, hbox, tree `git archive 8c38c762` in
 `/tank/fn/scratch/peer-carriage/tree`, production image built with
