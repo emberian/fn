@@ -8,6 +8,7 @@
 (include-book "bp-node-debt")
 (include-book "bp-fnbs-conflict-codec")
 (include-book "bp-route")
+(include-book "bp-node-rotation-codec")
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnp-max-routes* 64)
@@ -1238,6 +1239,90 @@
                  (list :delivery-stranded key n)
                (list :delivery-deferred key n (fn-bpn-nth 4 wait))))))))
 
+;; ---------------------------------------------------------------------------
+;; Rotation (spec 3.6, slice E, N16).  The operator's `bp-node checkpoint'
+;; opens the journal (recovery), then issues (:rotate g ck): g is
+;; fn-bpnr-next-generation's answer and ck the checkpoint of the replay the
+;; recovery event carried.  The machine admits it only while nothing has
+;; happened since recovery (no operation allocated in this epoch, nothing
+;; issued, no legacy outbound record) and only when ck is exactly its own
+;; durable projection: the held rows, handoffs, arrival frontier and credit
+;; it holds, and an operation frontier from an earlier epoch.  It proposes
+;; one publication; the record count of the new generation is reset only on
+;; that publication's :durable answer.  :refused changes nothing; any other
+;; answer is uncertain and fences until recovery, like every publication.
+(defun fn-bpnr-checkpoint-of-statep (ck st generation)
+  (declare (xargs :guard t))
+  (and (fn-bpnr-checkpointp ck)
+       (equal (fn-bpnr-checkpoint-generation ck) generation)
+       (equal (fn-bpnr-checkpoint-held ck) (fn-bpnf-held-list st))
+       (equal (fn-bpnr-checkpoint-handoffs ck) (fn-bpnf-handoffs st))
+       (equal (fn-bpnr-checkpoint-next-arrival ck) (fn-bpnf-next-arrival st))
+       (equal (fn-bpnr-checkpoint-covered ck) (fn-bpnp-used st))
+       (let ((prior (fn-bpnr-checkpoint-prior ck)))
+         (or (null prior)
+             (and (consp prior) (natp (car prior)) (natp (fn-bpnf-epoch st))
+                  (< (car prior) (fn-bpnf-epoch st)))))))
+
+(defun fn-bpnp-rotation-quiescentp (st)
+  (declare (xargs :guard t))
+  (and (true-listp st)
+       (<= 16 (len st))
+       (null (fn-bpnf-issued st))
+       (equal (fn-bpnf-next-op st) 0)
+       (fn-frame-natp (fn-bpnf-epoch st))
+       (null (fn-bpnp-pending-image st))
+       (let ((base (fn-bpnf-base st)))
+         (and (fn-bpn-machine-statep base)
+              (null (fn-bpn-machine-state-jobs base))
+              (equal (fn-bpn-machine-state-next-token base) 0)))))
+
+(defun fn-bpnp-rotate-step (st generation ck)
+  (declare (xargs :guard t))
+  (if (not (and (fn-bpnp-rotation-quiescentp st)
+                (fn-frame-natp generation) (< 0 generation)
+                (fn-bpnr-checkpoint-of-statep ck st generation)
+                (let ((octets (fn-bpnr-checkpoint-octets
+                               ck (fn-bpnr-depth-budget
+                                   (fn-bpn-machine-state-max-jobs
+                                    (fn-bpnf-base st))))))
+                  (and octets
+                       (<= (len octets)
+                           (fn-bpnr-read-bound
+                            (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))
+                            (fn-bpn-machine-state-max-octets
+                             (fn-bpnf-base st))))))))
+      (fn-bpnf-answer st (list (list :rotation-refused generation)))
+    (fn-bpnf-answer
+     (update-nth 9 1
+                 (update-nth 6 (fn-bpnf-operation (fn-bpnf-epoch st) 0
+                                                  :checkpoint generation
+                                                  :pending)
+                             st))
+     (list (list :persist-checkpoint (fn-bpnf-epoch st) 0 generation)))))
+
+(defun fn-bpnp-rotation-persist-step (st epoch op result)
+  (declare (xargs :guard t))
+  (let ((issued (fn-bpnf-issued st)))
+    (if (not (and (true-listp st)
+                  (equal (fn-bpn-nth 3 issued) :checkpoint)
+                  (equal (fn-bpn-nth 5 issued) :pending)
+                  (fn-bpnf-operation-matchp issued epoch op)))
+        (fn-bpnf-answer st nil)
+      (let ((generation (fn-bpn-nth 4 issued)))
+        (cond ((equal result :durable)
+               (fn-bpnf-answer (update-nth 12 0 (update-nth 6 nil st))
+                               (list (list :generation-selected generation))))
+              ((equal result :refused)
+               (fn-bpnf-answer (update-nth 6 nil st)
+                               (list (list :rotation-refused generation))))
+              (t
+               (fn-bpnf-answer
+                (update-nth 6 (fn-bpnf-operation epoch op :checkpoint
+                                                 generation :uncertain)
+                            st)
+                (list (list :rotation-uncertain generation)))))))))
+
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
   (case (fn-cbor-ag-car event)
@@ -1277,6 +1362,9 @@
          (fn-bpnp-busy-eventp event)))
     (:operator-resume
      (and (true-listp event) (equal (len event) 2)
+          (fn-frame-natp (fn-bpn-nth 1 event))))
+    (:rotate
+     (and (true-listp event) (equal (len event) 3)
           (fn-frame-natp (fn-bpn-nth 1 event))))
     (:recover-fnbs
      (or (fn-bpnf-host-eventp event)
@@ -1415,6 +1503,12 @@
    ((and (fn-bpnp-domain-recover-eventp event)
          (not (fn-bpnp-clock-domain-admitsp event)))
     (fn-bpnp-clock-domain-fence st (fn-bpn-nth 6 event)))
+   ((equal (fn-cbor-ag-car event) :rotate)
+    (fn-bpnp-rotate-step st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)))
+   ((and (equal (fn-cbor-ag-car event) :persist-result)
+         (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :checkpoint))
+    (fn-bpnp-rotation-persist-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)))
    ((and (equal (fn-cbor-ag-car event) :persist-result)
          (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :conflict))
     (fn-bpnp-conflict-persist-step

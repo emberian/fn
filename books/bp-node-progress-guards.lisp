@@ -160,6 +160,10 @@
 (verify-guards fn-bpnp-busy-eventp)
 (verify-guards fn-bpnp-busy-wait)
 (verify-guards fn-bpnp-busy-delivery-step)
+(verify-guards fn-bpnr-checkpoint-of-statep)
+(verify-guards fn-bpnp-rotation-quiescentp)
+(verify-guards fn-bpnp-rotate-step)
+(verify-guards fn-bpnp-rotation-persist-step)
 (verify-guards fn-bpnp-host-eventp)
 (verify-guards fn-bpnp-preserve-runtime-answer)
 ;; The proposal state keeps the base it was given whenever it carries an

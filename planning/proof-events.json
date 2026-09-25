@@ -2209,6 +2209,18 @@
           "kind": "theorem",
           "name": "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
           "note": "Subject fn-bprq-recovery-plan, called by `bp-obligation recover` (host/native/bp-obligation.lisp:205 through host/workflow-host.lisp:167 fn-workflow-recovery-plan) on the image the journal's open installed (fn-bpiw-replay-journal): when the open succeeded and the plan answers :recover, fn-bpiw-apply (fn-workflow-apply-record) accepts its record, the live image has no pending and no fence, the journal with the record appended replays, and the next open installs the live image after its one restart with ION state unchanged. Teeth: tests/acl2/bp-request-recovery-tests (the 5b cut's journal, committed and absent, every refusal reason, the next request accepted live and after reopen; must-fail per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-rotate-is-rotate-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-rotation-result-is-rotation-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-rotation-resets-credit-only-on-durable"
         }
       ]
     },
@@ -3158,6 +3170,27 @@
         {
           "kind": "theorem",
           "name": "fn-native-control-refusal-status-is-a-refusal"
+        }
+      ]
+    },
+    {
+      "id": "PRF-081",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-recover-from-checkpoint-equals-full-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-rotation-crash-recovers-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-checkpoint-decode-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-family-replay-aux-append"
         }
       ]
     }

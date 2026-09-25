@@ -86,6 +86,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpnpb-` | `bp-node-progress-bridge` | The effects bridge from the served `fn-bpnp-step` to `fn-bpn-step` and the release/receipt-prepare confinement predicate over every served event; no executable behaviour |
 | `fn-bprt-` | `bp-route` | The BP route table (configuration rows written by `bp-route add`), its parser, and the routing decision `fn-bprt-next-hop` / the session gate `fn-bprt-offer-decision` the :session event consults (spec bp-node-machine 4.6) |
 | `fn-bprts-` | `bp-route-step` | Proof-only names for the routed :session arm's scan and destination in the routing theorems over `fn-bpnp-step`; no executable behaviour |
+| `fn-bpnr-` | `bp-node-rotation-codec`, `bp-node-rotation`, `bp-fnbs-replay-append` | BP journal rotation (N16): the kind-19 held-row checkpoint codec, generation naming and selection plan, recovery from a checkpoint and the publication phase driver |
+| `fn-bpnrs-` | `bp-node-rotation-step` | Local proof helpers for the two equations between the served `fn-bpnp-step` and the rotation arms; no executable behaviour |
 | `fn-bpnd-` | `bp-node-debt` | Exact received-FNBS physical record credit and held/attempt/handoff/fragment debt projections; served transitions carry the cached debt and update it from one row |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
 | `fn-bprq-` | `bp-request-plan` | The generic native request plan: the ACL2 attempt, its durable outcome, the FNBS key, the request ADU and destination that `bp-obligation request` executes; ION reuses its attempt constructor |
