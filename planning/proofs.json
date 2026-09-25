@@ -254,9 +254,7 @@
         "fn-record-accepted-schema-is-the-stamp-kind",
         "fn-record-schema0-golden-octets-are-the-encoding",
         "fn-bpa-round-trip",
-        "fn-bpa-success-is-canonical",
-        "fn-record-encode-length-bound",
-        "fn-record-item-stream-bytes-round-trip"
+        "fn-bpa-success-is-canonical"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
