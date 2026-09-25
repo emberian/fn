@@ -160,6 +160,7 @@
     "tests/acl2/store-node-tests",
     "tests/acl2/consumer-store-node-tests",
     "tests/acl2/store-node-existing-tests",
+    "books/store-node-traces-prepare",
     "books/store-node-traces",
     "tests/acl2/store-node-traces-tests",
     "books/store-prepare-correspondence",
@@ -785,10 +786,10 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 796,
-    "books_in_root_closure": 793,
-    "roots": 781,
-    "theorems": 10709,
+    "books": 797,
+    "books_in_root_closure": 794,
+    "roots": 782,
+    "theorems": 10718,
     "functions": 7519,
     "assert_events": 11593,
     "must_fails": 1064,
@@ -800,10 +801,10 @@
       "default-unguarded": 1095
     },
     "suspect_theorems": 94,
-    "export_hygiene_warnings": 134,
+    "export_hygiene_warnings": 135,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 86,
-    "include_hygiene_warnings": 795,
+    "include_hygiene_warnings": 798,
     "host_names_warnings": 873,
     "hand_written_record_warnings": 18
   },
@@ -8103,7 +8104,7 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 19,
       "functions": 24,
       "guards": {
         "verified": 0,
@@ -11598,16 +11599,16 @@
       "read_error": null
     },
     {
-      "book": "books/store-node-traces.lisp",
+      "book": "books/store-node-traces-prepare.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 91,
-      "functions": 8,
+      "theorems": 43,
+      "functions": 6,
       "guards": {
         "verified": 5,
         "declared-off": 0,
         "default-guarded": 1,
-        "default-unguarded": 2
+        "default-unguarded": 0
       },
       "verify_guards_events": 5,
       "assert_events": 0,
@@ -11619,6 +11620,39 @@
         "records-seam",
         "store-files-traces",
         "store-node-invariants",
+        "topic-history-identity-disjoint"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-snt-apply-record-of-a-retention-event"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-node-traces.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 56,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-seam",
+        "store-files-traces",
+        "store-node-invariants",
+        "store-node-traces-prepare",
         "topic-history-identity-disjoint"
       ],
       "system_includes": [
@@ -22869,8 +22903,8 @@
     },
     {
       "theorem": "fn-snt-apply-record-of-a-retention-event",
-      "book": "books/store-node-traces.lisp",
-      "line": 746,
+      "book": "books/store-node-traces-prepare.lisp",
+      "line": 749,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
@@ -23323,7 +23357,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 551,
+        "line": 571,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -23558,6 +23592,12 @@
         "theorem": "fn-sn-finish-enabled-advances-identity-next",
         "book": "books/store-identity-sequence-invariants.lisp",
         "line": 380,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-snt-typed-frontier-phase",
+        "book": "books/store-node-traces-prepare.lisp",
+        "line": 461,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -26860,15 +26900,36 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-node-traces-prepare.lisp",
+        "line": 7,
+        "include": "topic-history-identity-disjoint",
+        "included": "books/topic-history-identity-disjoint.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-traces-prepare.lisp",
+        "line": 9,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-node-traces.lisp",
-        "line": 4,
+        "line": 3,
+        "include": "store-node-traces-prepare",
+        "included": "books/store-node-traces-prepare.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-traces.lisp",
+        "line": 5,
         "include": "topic-history-identity-disjoint",
         "included": "books/topic-history-identity-disjoint.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/store-node-traces.lisp",
-        "line": 6,
+        "line": 7,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
