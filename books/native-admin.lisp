@@ -205,7 +205,7 @@
             ((member-equal kind '(:set-bp-boundary :set-bp-route))
              (list (fn-cfg-set-peer name
                                     (fn-native-admin-result-value plan))))
-            ((equal kind :remove-peer)
+            ((member-equal kind '(:remove-peer :remove-bp-route))
              (list (fn-cfg-remove-peer-delta name)))
             ((equal kind :create-group)
              (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
