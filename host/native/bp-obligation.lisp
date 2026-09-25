@@ -147,6 +147,9 @@
      lifetime crc-type hop-limit transfer-mru wall wall-error)
   (destructuring-bind (key adu destination)
       (fnn-bpo-request-publish store journal work-id attempt-id)
+    ;; Routing (books/bp-route-jobs): the carrier's hop is ACL2's choice over
+    ;; this Store's bp-route table, at queue time and again at contact time.
+    (fnn-bps-use-store-routes store)
     ;; The carrier: one FNBS job keyed by ACL2's (work attempt generation),
     ;; offered once now; `bp-service resume' re-offers a durable job.
     (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit
@@ -165,12 +168,14 @@
                             t)
                         (fnn-core 'fn-bpn-host-existing-sequence-value existing)
                       (fnn-bp-reserve-sequence (fnn-bps-tally service))))
-                  (route (list :route
-                               (fnn-octet-list (fnn-string-octets contact-host))
-                               contact-port
-                               (fnn-octet-list (fnn-string-octets node-id))
-                               +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
-                               transfer-mru))
+                  (route (fnn-bps-queue-route
+                          destination
+                          (list :route
+                                (fnn-octet-list (fnn-string-octets contact-host))
+                                contact-port
+                                (fnn-octet-list (fnn-string-octets node-id))
+                                +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+                                transfer-mru)))
                   (event (list :enqueue work-octets attempt-octets generation
                                sequence route (fnn-bp-eid destination) adu
                                (fnn-bp-observation wall wall-error))))

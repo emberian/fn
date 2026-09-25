@@ -246,6 +246,14 @@ that could release them (T2's confinement pair).
   :car-fn fn-cbor-ag-car :cdr-fn fn-cbor-ag-cdr)
 ```
 
+**Implemented (2026-09-25).** The owner backoff and the retry budget are
+the node's configuration rows `owner-backoff N` and `retry-budget N` in
+`JOURNAL/bp-node-budgets`. ACL2 supplies the defaults (5000 ms, 3) and
+validates them (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
+naturals, budget at least 1); each deciding host event carries them as its
+optional last field (`fn-bpnp-budgeted-lengthp`). They are not a
+`fn-bpn-policy` field yet.
+
 The five budgets are distinct and each is checked by name:
 
 | Budget | Measure | Consumed by | Released by |
@@ -804,6 +812,7 @@ selectors and a `-of-constructor` theorem.
 | 12 | `(fn-bpn-rec-history-retired token key)` | remove the outcome for submission `key`, and for a `:receipt` key its handoff; §2.4's retirement rule is part of applicability |
 | 13 | `(fn-bpn-rec-rerouted token id next-hop)` | replace next hop; `nil` returns the entry to `:dispatch-pending` with `dispatch` nil |
 | 14 | `(fn-bpn-rec-conflict token id ingress content-id)` | append a conflict entry to history (§4.1). Implemented (2026-09-24) as `(fn-bpnf-conflict-record epoch op arrival identity peer session transfer content-id)`, FNBS version 1 kind 14: the held row is named by arrival and primary identity, the ingress by peer EID, session pair and transfer ID, the content id is `fn-digest` of the conflicting carrier's exact wire (not of its immutable projection, which has no canonical encoding yet). Replay checks the named held row and changes nothing; the history is the journal row itself (no in-memory projection), bounded by journal credit: one received final, zero debt |
+| 20 | `(fn-bpnp-deferral-record epoch op arrival identity count)` | The durable busy-delivery count (2026-09-25, lane bp-budgets-receipts), FNBS version 1 kind 20 (`books/bp-fnbs-forward-codec.lisp`). It names a local `:dispatch-pending` row by arrival and primary identity and sets its attempt slot to `(:busy count)`; `count` is one more than the slot's (a busy answer) or 0 (the operator's resume, which clears the slot). Applied by `fn-bpnp-deferral-apply`, live and at ordered replay. One received final, zero debt. Kind 19 is reserved for the rotation checkpoint (§3.6) |
 | 15 | `(fn-bpn-rec-family-planned token family plan)` | slice C, §7.3 |
 | 16 | `(fn-bpn-rec-family-child token family index held)` | slice C, §7.3 |
 | 17 | `(fn-bpn-rec-family-retired token family disposition)` | slice C, §7.3; `disposition` `:materialized` or `(:terminated reason)` |
@@ -1006,6 +1015,24 @@ is the pure START-time capacity query (§9.2); it is advisory and step 6 is
 the decision.
 
 ### 4.2 The progress boundary: `fn-bpn-progress-step st obs` (`:clock`)
+
+**Busy delivery, durable (2026-09-25, lane bp-budgets-receipts).** The
+application's `:busy` answer proposes a kind 20 counting it
+(`fn-bpnp-step-busy-delivery-proposes-its-count`); the count moves only when
+that record is durable, through `fn-bpnp-deferral-apply`, the function
+ordered replay calls on the same record
+(`fn-bpnp-step-deferral-durable-applies-the-replay-function`). So the count
+after recovery is the count the live node held
+(`fn-bpnp-busy-count-after-recovery-is-the-live-count`, with
+`fn-bpnp-host-recovery-installs-the-durable-replay`): a restart gives a
+stranded row no fresh tries. Only the backoff reading is volatile
+(`(:bpnp-wait key :busy m budget)`); a restart drops it. At the configured
+retry budget the row is stranded, never selected
+(`fn-bpnp-busy-stranded-row-is-not-offered`), and every progress event that
+selects nothing else reports it (`fn-bpnp-progress-reports-a-stranded-row`;
+`fnn-bpnode-dispatch-one` prints it on every tick). `bp-node resume` of a
+busy-stranded row writes kind 20 with count 0. The backoff and the retry
+budget are the operator's (§2.1).
 
 **Current A3 native subset and first progress slice.** The shared `bp-node`
 service calls `fn-bpnp-step` on the same FNBS state. Its `:progress` event
@@ -1289,6 +1316,17 @@ survives restarts:
 A slot whose epoch is not earlier than the current epoch after recovery would
 not be classified; ordered replay makes every replayed attempt epoch earlier
 than the new epoch, and that replay fact is not yet a theorem.
+
+**Configured budget (2026-09-25, lane bp-budgets-receipts).** The retry
+budget is `fn-bpnp-budget-retries` of the budgets the deciding event carries
+(default 3, `*fn-bpnp-max-forward-retries*`). It is the live proposal's
+check (`fn-bpnp-forward-candidatep`, `fn-bpnp-resume-refusal`,
+`fn-bpnp-forward-scan-offers-a-candidate`). Applying a kind 8 or a
+`:resumed` kind 9, live or at replay, needs only an uncertain slot naming
+the attempt, so a budget the operator changes later never makes the
+journal's history unreplayable. Each durable kind 8 counts exactly one more
+(`fn-bpnp-attempted-held-counts-one-more`); the bound theorems are restated
+with the row under the budget as a hypothesis.
 
 ### 4.4 Authoring: `fn-bpn-transmit-step`, `fn-bpn-report-step`
 
@@ -3203,6 +3241,21 @@ repair.
   durable.
 
 ### 9.4 The receipt outbox: FNRJ to FNBS (F-C, §12 D-12)
+
+**The node sends its own receipts (2026-09-25, lane bp-budgets-receipts).**
+After queueing the outbox, `bp-node serve` and `dispatch` ask
+`fn-bpnp-receipt-contact-event` whether to open a base contact for the
+configured peer (non-nil exactly when a job is queued for it and nothing is
+issued, fenced, pending or delivery-uncertain:
+`fn-bpnp-receipt-contact-event-needs-a-queued-job`) and drive it as `bp-contact
+tick` does. Over `fn-bpnp-step`, the event's one proposal is the
+`:attempting` record of the first queued job for that peer, with the
+`:cl-send` of that job's route, peer, key and wire
+(`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
+produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
+any failure after the connection exists stays `:uncertain`. Not claimed as
+a theorem: once per contact (the host stops the contact at the first
+non-accepted outcome; a durable `:attempting` makes the job not `:queued`).
 
 The first native A3 caller is `host/native/bp-node.lisp` in the full image.
 It opens the clock-gated single FNBS owner, then the Store owner. `serve`

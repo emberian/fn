@@ -2002,6 +2002,8 @@
         "planning/evidence/bp-a3-live-selection-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T034256Z-3866445.json",
         "planning/evidence/manifests/certify-20260924T034935Z-3925833.json",
+        "books/bp-node-receipt-send.lisp",
+        "planning/evidence/bp-budgets-receipts-2026-09-25.md",
         "books/bp-node-progress.lisp",
         "books/bp-node-progress-invariants.lisp",
         "books/bp-node-progress-guards.lisp",
@@ -2027,7 +2029,10 @@
         "planning/evidence/manifests/certify-20260924T230640Z-2140288.json",
         "books/bp-node-rotation-step.lisp",
         "planning/evidence/n16-rotation-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
+        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json",
+        "books/bp-node-busy-delivery.lisp",
+        "planning/evidence/manifests/certify-20260925T070406Z-2708294.json",
+        "planning/evidence/manifests/certify-20260925T071636Z-2729359.json"
       ],
       "pending_subject": "The native host calls fn-bpnp-step (host/native/bp-service.lisp:170, fnn-bps-foundation-step), wrapping each lower machine event as (:base E) at :176-177. fn-bpnp-step-base-event-refines-fn-bpn-step equates that arm with fn-bpn-step (state and effects), so the lower lifecycle and send-authorization keystones hold of the called step's base on (:base E) only; the served step's own receive, delivery, family, forwarding and recovery arms have no lifecycle or kind-8 send-authorization keystone. fn-bpnp-step-emits-no-release-and-no-receipt-prepare holds over every served event. A durable kind 8 without a kind 9 at a process death is re-offered on the next session to its next hop with the same held bundle, up to three retries, then held and reported as stranded (spec 4.3.1, default adopted by the coordinator 2026-09-24, pending ember); the keystones cover the lone-candidate selection, the offer binding and the retry bound, not multi-candidate fairness or the replay fact that recovered attempt epochs precede the new epoch. Physical publication observations and reachable crash cuts remain open.",
       "progress_note": "Over the called fn-bpnp-step: guard premises preserved by every host event; :progress leaves held rows unchanged and issued unchanged or a fresh pending dispatch; no :release or :receipt-prepare effect on any event; on (:base E) the answer is exactly fn-bpn-step's state and effects or nothing. The lower fn-bpn-step keystones (lifecycle invariant, send authorized by a durable attempt record) are cited through that bridge. The spec 11.1 witnesses N05 (attempt half), N06 (machine half), N08 (as the stranded negative), N11 (refusal half), BP-R02, R06, R07, R15 and R16 run through fn-bpnp-step in bp-node-counterexamples-tests. The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain. Lane defaults-precise (2026-09-24): a ready recovery through fn-bpnp-step installs exactly the held rows fn-bpnf-family-replay-rows computes from the durable FNBS rows, over the event the host builds (fn-bpnp-host-recovery-installs-the-durable-replay), so the kind-8 retry count after a restart is the one the durable kind-8 history gives; witness: four restarts from the fresh initial state over the framed rows (retries 0 to 3, then stranded), must-fail: a fenced clock-domain decision installs nothing. The sender reads a TCPCL XFER_REFUSE by its reason: fn-bpnp-tcpcl-outcome (called by host/native/bp-node.lisp fnn-bpnode-forward-contact) returns (:refused r) for a peer reason r, the kind-9 record fn-bpnp-step proposes carries the event's outcome unchanged, reason 1 (Completed) settles exactly as :sent through fn-bpnp-forward-result-apply, and every other reason stays non-terminal. A settled non-terminal kind 9 clears the slot, so the budget bounds uncertain re-offers only. hbox run-20260924T230614Z-3685. N16 (lane n16-rotation, 2026-09-25): fn-bpnp-step on (:rotate g ck) is fn-bpnp-rotate-step behind the uncertainty fence (fn-bpnp-step-rotate-is-rotate-step) and on a :persist-result while a checkpoint is issued is fn-bpnp-rotation-persist-step (fn-bpnp-step-rotation-result-is-rotation-result); the record count after a checkpoint's answer is 0 exactly on the matching durable answer and unchanged otherwise (fn-bpnp-step-rotation-resets-credit-only-on-durable); the four rotation effects are inside the no-release/no-receipt-prepare confinement. Teeth in tests/acl2/bp-node-counterexamples-tests (N16 section). hbox run-20260925T051528Z-15c2. Open: finding N16-F1, a reopened node's first operation reuses the rotation's id.",
@@ -2057,6 +2062,16 @@
         "fn-bpnp-resumed-row-is-a-forward-candidate",
         "fn-bpnp-uncertain-result-keeps-the-count",
         "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
+        "fn-bpnp-step-busy-delivery-proposes-its-count",
+        "fn-bpnp-step-deferral-durable-applies-the-replay-function",
+        "fn-bpnp-busy-count-after-recovery-is-the-live-count",
+        "fn-bpnp-progress-reports-a-stranded-row",
+        "fn-bpnp-busy-stranded-row-is-not-offered",
+        "fn-bpnp-busy-deferral-ends-at-its-reading",
+        "fn-bpnp-forward-scan-offers-a-candidate",
+        "fn-bpnp-attempted-held-counts-one-more",
+        "fn-bpnp-receipt-contact-event-needs-a-queued-job",
+        "fn-bpnp-receipt-contact-offers-the-queued-job",
         "fn-bpnp-step-rotate-is-rotate-step",
         "fn-bpnp-step-rotation-result-is-rotation-result",
         "fn-bpnp-step-rotation-resets-credit-only-on-durable"
@@ -3302,6 +3317,33 @@
         "fn-bpnr-rotation-crash-recovers-old-or-new",
         "fn-bpnr-checkpoint-decode-of-octets",
         "fn-bpnr-family-replay-aux-append"
+      ]
+    },
+    {
+      "id": "PRF-082",
+      "title": "Owed receipts leave from bp-node serve: the contact offers exactly the queued receipt job on its route",
+      "statement": "fn-bpnp-receipt-contact-offers-the-queued-job: over the called fn-bpnp-step on (:base E), where E is fn-bpnp-receipt-contact-event of the node state and the peer (the event host/native/bp-node.lisp fnn-bpnode-send-receipts asks for after each fnn-bpnode-queue-outboxes in bp-node serve), for a well-formed base, a non-nil event and a journal token below *fn-bpn-machine-max-records*, the one effect persists the :attempting record of the first :queued job for that peer and the pending success effect is that job's :cl-send with its route, peer, key and wire. fn-bpnp-receipt-contact-event-needs-a-queued-job: the event is non-nil exactly when the peer is an EID, nothing is issued, no delivery is uncertain, the base is neither fenced nor pending and a :queued job for the peer exists. Covered scope: the decision and the offer; the transfer is the lower machine's and a connect that produces no socket reads :failed and requeues. Open: 'offered once per contact' is not an ACL2 statement over the host loop (fnn-bpc-drive-contact stops at the first outcome that is not :accepted and the durable :attempting record takes the job out of :queued; the latter is witnessed in the test book, not proved over a driver).",
+      "milestone": "M4",
+      "requirements": [
+        "RET-003",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-receipt-send.lisp",
+        "tests/acl2/bp-node-receipt-send-tests.lisp",
+        "host/native/bp-node.lisp",
+        "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
+        "planning/evidence/bp-budgets-receipts-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T070406Z-2708294.json",
+        "planning/evidence/manifests/certify-20260925T071636Z-2729359.json"
       ]
     }
   ]
