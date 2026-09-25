@@ -269,10 +269,21 @@ class MigrationTests(Fixture):
         refused_init = self.operator("init", "--history-marker", "required", "fn.other",
                                      image=DEVELOPER, env=self.env)
         self.assertNotEqual(refused_init.returncode, EXIT_OK)
+        # The unmarked config.json kept before the migration is a sound
+        # rollback now (qual-e747dbcc U1's kept file).
+        kept = self.store.parent / "config.json.unmarked"
+        kept.write_bytes((self.store / "config.json").read_bytes())
+        sound = self.op("store", "rollback-check", str(kept))
+        self.assertIn("rollback sound", sound.stdout.decode())
         upgraded = self.op("store", "upgrade-profile", "--history-marker", "required")
         self.assertIn("history-marker=required", upgraded.stdout.decode())
         self.assertEqual(self.profile(), "required")
         self.assertEqual(self.marker(), covering)
+        # After it, reinstating the kept file would drop the requirement:
+        # refused by name (fn-profile-rollback-keeps-a-required-marker).
+        dropped = self.op("store", "rollback-check", str(kept), expected=EXIT_REFUSED)
+        self.assertIn("rollback refused history-marker-required-dropped",
+                      dropped.stdout.decode())
         # A downgrade is refused by name and writes nothing.
         config = (self.store / "config.json").read_bytes()
         down = self.op("store", "upgrade-profile", "--history-marker", "unmarked",

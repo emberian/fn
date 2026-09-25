@@ -1,0 +1,6 @@
+test_migrate_then_absence_and_loss_are_damage (tests.test_native_history_required.MigrationTests.test_migrate_then_absence_and_loss_are_damage) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.261s
+
+OK

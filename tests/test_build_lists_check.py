@@ -24,8 +24,8 @@ CHECKPOINT_LD = '(ld "host/checkpoint-host.lisp" :ld-error-action :error)\n'
 
 BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    '(include-book "books/poster-bytes-buffer")\n'
-                   ';; fn-owner-subject-id-buffer (host/owner-host.lisp) calls '
-                   'fn-shb-subject-id, as in build.lisp.\n'
+                   ';; host/native/io.lisp fnn-subject-id-buffer calls '
+                   'fn-shb-subject-id-bounded, as in build.lisp.\n'
                    '(include-book "books/sha256-buffer")\n'
                    ';; D13 (STO-014): the duplicate-versus-conflict verdict over a '
                    'store that may\n'
@@ -46,10 +46,10 @@ BUFFER_FINDINGS = [
     "included when it loads host/owner-host.lisp",
     "included: host/owner-host.lisp uses fn-rclb-existing-action, defined in "
     "books/store-reclaim-buffer.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/owner-host.lisp",
-    "included: host/owner-host.lisp uses fn-shb-subject-id, defined in "
-    "books/sha256-buffer.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]
+# host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
+# the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
+# (qual-e747dbcc A4), outside the `ld` closure this check reads.
 
 
 class BuildListsCheckTests(unittest.TestCase):

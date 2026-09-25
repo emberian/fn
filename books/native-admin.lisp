@@ -472,6 +472,23 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
               (fn-native-admin-control-report (cdr rows)))
     nil))
 
+;; `control list' lists exactly when the configuration holds a grant row:
+;; the report is empty only over no authority row (qual-e747dbcc A3 printed
+;; nothing over a durable grant).
+(defthm fn-native-admin-control-report-empty-iff-no-rows
+  (iff (consp (fn-native-admin-control-report rows))
+       (consp rows))
+  :hints (("Goal" :expand ((fn-native-admin-control-report rows)))))
+
+;; The status-path report kind an accepted query plan names: the live owner's
+;; FNLS request and the offline report (books/native-live-status.lisp
+;; fn-nls-report) take it, so the host names no kind of its own.
+(defun fn-native-admin-result-report-kind (plan)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-admin-result-kind plan) :list-control)
+      :control
+    :peers))
+
 ;; The report a query plan asks for, over a replayed configuration value.
 (defun fn-native-admin-query-report (plan value)
   (declare (xargs :guard t))

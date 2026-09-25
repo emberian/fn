@@ -3527,6 +3527,11 @@
           "kind": "theorem",
           "name": "fn-nls-nat-is-the-decimal-digits",
           "note": "KEYSTONE (PKT-156). Every natural renders as its decimal digits: nonempty, digits only, and fn-nntp-decimal-value reads back the natural. The old renderer (fn-nntp-decimal-field) answered 0 past ten digits, so status printed 0 for H >= 2^34. Teeth: 2^40 and 2^64-1 render in full; must-fail at -5 (not a natural renders 0)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-report-of-query-kind-is-query-report",
+          "note": "KEYSTONE (qual-e747dbcc A3). Host: host/native/operator.lisp fnn-operator-execute-admin passes fn-native-admin-host-report-kind to fnn-operator-status-once. Teeth: tests/acl2/native-live-status-tests (a replayed configuration with one grant lists the grant line under the plan's kind, while :peers prints nothing; must-fail of the equality at :peers; no hypothesis to drop)."
         }
       ]
     },
@@ -4007,6 +4012,11 @@
         {
           "kind": "theorem",
           "name": "fn-profile-rollback-sound-iff-records-within"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-rollback-keeps-a-required-marker",
+          "note": "KEYSTONE (qual-e747dbcc U1). Host: host/native/io.lisp fnn-command-rollback-check passes the store's own profile as CURRENT. Teeth: tests/acl2/store-profile-upgrade-tests (the kept format-7 scale tuple over the scale preset marked required refuses by name; a required kept profile is sound; must-fail without the current requirement and without the :sound verdict)."
         }
       ]
     },
