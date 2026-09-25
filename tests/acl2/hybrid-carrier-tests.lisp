@@ -167,14 +167,14 @@
           source)))
 
 ;; ---------------------------------------------------------------- carrier v2
-;; Item 1 says the version; everything else keeps the v1 shape and widths.
+;; Item 1 (octet 0) says the version; the rest keeps the v1 shape and widths.
 (assert-event
  (let ((v1 (fn-hc-encode-at 1 *hc-principal* *hc-keys* *hc-sigs*))
        (v2 (fn-hc-encode-at 2 *hc-principal* *hc-keys* *hc-sigs*)))
    (and (equal v1 (fn-hc-encode *hc-principal* *hc-keys* *hc-sigs*))
         (equal (len v2) 5405)
-        (equal (nth 1 v2) 2)
-        (equal (update-nth 1 1 v2) v1)
+        (equal (nth 0 v2) 2)
+        (equal (update-nth 0 1 v2) v1)
         (null (fn-hc-encode-at 3 *hc-principal* *hc-keys* *hc-sigs*)))))
 
 ;; Round trip at v2, and the version item binds in both directions.

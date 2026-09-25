@@ -157,16 +157,19 @@
                                               *hsigi-keys-ml-only*
                                               *hsigi-big-a*)))))
 
-; Disjointness on a reachable pair: the same principal, keys and source
-; octets framed as v1 and as v2 differ (and first at octet 29, the tag).
+; Disjointness on the same principal, keys and source octets framed as v1
+; and as v2 (the logical v2 framing, outside its guard): they differ, and
+; first at octet 29, the tag.
 (assert-event
- (let ((v1 (fn-hsig-signed-preimage *hsigi-principal-a* *hsigi-keys-a*
+ (with-guard-checking
+  :none
+  (let ((v1 (fn-hsig-signed-preimage *hsigi-principal-a* *hsigi-keys-a*
                                     *hsigi-source-a*))
        (v2 (fn-hsig-signed-preimage-v2 *hsigi-principal-a* *hsigi-keys-a*
                                        *hsigi-source-a*)))
    (and (not (equal v1 v2))
         (equal (take 29 v1) (take 29 v2))
-        (not (equal (nth 29 v1) (nth 29 v2))))))
+        (not (equal (nth 29 v1) (nth 29 v2)))))))
 
 ; Teeth: v2 injectivity needs each subject premise and the byte equality.
 (must-fail
