@@ -1411,7 +1411,8 @@
         "240 for guest; with the policy open, 240 for both of ember's articles (the guest-signed one verified for guest's principal)."
       ],
       "evidence": [
-        "tests/acl2/login-binding-tests.lisp"
+        "tests/acl2/login-binding-tests.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
       ]
     }
   ]
