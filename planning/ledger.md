@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 878 |
-| Certification roots in the Makefile | 862 |
-| Books inside the root closure | 874 |
-| `defthm` and `defthmd` events | 12068 |
-| `defun` events | 8528 |
+| Books read | 886 |
+| Certification roots in the Makefile | 870 |
+| Books inside the root closure | 882 |
+| `defthm` and `defthmd` events | 12213 |
+| `defun` events | 8603 |
 | Functions with verified guards | 2174 |
 | Functions declared `:verify-guards nil` and never verified | 643 |
-| Functions left at the default with an explicit guard | 4482 |
-| Functions left at the default with no guard | 1229 |
-| `assert-event` checks | 12798 |
-| `must-fail` checks | 1360 |
-| `encapsulate` events | 56 |
+| Functions left at the default with an explicit guard | 4548 |
+| Functions left at the default with no guard | 1238 |
+| `assert-event` checks | 12883 |
+| `must-fail` checks | 1376 |
+| `encapsulate` events | 61 |
 | Theorems flagged SUSPECT by shape | 103 |
 | Export-hygiene warnings | 147 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 103 |
-| Include-hygiene warnings | 883 |
-| Host-names warnings | 1005 |
+| Include-hygiene warnings | 887 |
+| Host-names warnings | 1013 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -386,11 +386,13 @@ that `make certify` requests.
 | `books/native-auth-admin.lisp` | root | 7 | 52 | 0/0/52/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 7 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 6 | 17 | 3/0/14/0 | 0 | 0 | 0 |
-| `books/native-config.lisp` | root | 2 | 65 | 0/0/65/0 | 0 | 0 | 0 |
+| `books/native-config-show.lisp` | root | 126 | 40 | 0/0/36/4 | 0 | 0 | 0 |
+| `books/native-config.lisp` | root | 2 | 80 | 0/0/80/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 14 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 3 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/native-live-status.lisp` | root | 55 | 46 | 0/14/32/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 22 | 83 | 0/0/83/0 | 0 | 0 | 1 |
+| `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/native-operator.lisp` | root | 23 | 94 | 0/0/94/0 | 0 | 0 | 1 |
 | `books/nntp-auth-fold.lisp` | root | 51 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 31 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 122 | 60 | 42/3/14/1 | 0 | 0 | 3 |
@@ -424,6 +426,7 @@ that `make certify` requests.
 | `books/octets-stobj.lisp` | root | 66 | 33 | 0/1/27/5 | 0 | 0 | 0 |
 | `books/owner-advance-carried.lisp` | root | 23 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 31 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-checkpoint-open.lisp` | root | 19 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/owner-commit-carried.lisp` | root | 30 | 16 | 8/0/8/0 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -436,6 +439,7 @@ that `make certify` requests.
 | `books/owner-intent-carried.lisp` | root | 9 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 158 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner-list-counts-read.lisp` | root | 13 | 3 | 0/3/0/0 | 0 | 0 | 1 |
+| `books/owner-log-reopen.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-log.lisp` | root | 26 | 38 | 0/0/38/0 | 0 | 0 | 0 |
 | `books/owner-numbering.lisp` | root | 47 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/owner-offer-indexed.lisp` | root | 53 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -810,11 +814,13 @@ that `make certify` requests.
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 27 | 1 | 0 |
 | `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 1 | 0 |
+| `tests/acl2/native-config-show-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 54 | 5 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 57 | 0 | 0 |
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 69 | 0 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/native-live-status-tests.lisp` | root | 0 | 7 | 0/5/2/0 | 44 | 14 | 0 |
+| `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 174 | 10 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
@@ -837,6 +843,7 @@ that `make certify` requests.
 | `tests/acl2/octets-stobj-tests.lisp` | root | 26 | 9 | 0/4/1/4 | 19 | 17 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 47 | 11 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
+| `tests/acl2/owner-bound-commit-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 5 | 3 | 0 |
 | `tests/acl2/owner-checkpoint-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 45 | 9 | 0 |
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 5 | 0 |
 | `tests/acl2/owner-config-observe-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
@@ -845,6 +852,7 @@ that `make certify` requests.
 | `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 2 | 3 | 0/0/2/1 | 133 | 6 | 0 |
 | `tests/acl2/owner-intent-carried-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 27 | 5 | 0 |
+| `tests/acl2/owner-log-reopen-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 3 | 0 |
 | `tests/acl2/owner-log-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 61 | 11 | 0 |
 | `tests/acl2/owner-numbering-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 33 | 5 | 0 |
 | `tests/acl2/owner-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 34 | 8 | 0 |
@@ -1026,7 +1034,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 345 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
-| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1081 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
+| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1215 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 847 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-olc-pin-trie-of-unpinned` | `books/owner-list-counts-read.lisp` | 50 | branch-of-definition: the hypothesis negates a branch test of fn-gidx-pin-trie and the conclusion is that branch's value |
