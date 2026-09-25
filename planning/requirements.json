@@ -1968,7 +1968,7 @@
       "title": "A namespace the store holds is bounded by the operator's profile, never by a constant; the writer refuses exactly past it and the reader admits everything within it",
       "specification": "specs/storage.md#authority-and-layout",
       "milestone": "M5",
-      "status": "in-progress",
+      "status": "implemented",
       "proof_targets": [
         "PRF-102"
       ],
