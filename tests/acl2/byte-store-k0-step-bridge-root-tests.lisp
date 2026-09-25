@@ -79,3 +79,40 @@
 ; No must-fail: :transactions quiet and the recovery-window guard are the
 ; keystone's step-input guards (stage lemma, lane k0-cuts); the conclusion is
 ; not shown to need them.
+
+; ---------------------------------------------------------------------------
+; PKT-086: the authority barriers' error outcomes
+; (fn-bs-k0a-authority-fsync-error-preserves-relation, and its arm in
+; fn-bs-k0-step-inputp).  Witnesses: the frontier run's attempted pair 11
+; (the frontier rename pending on :root) and the record run's attempted pair
+; 10 (the link pending on :transactions, :record-attempted).  An EIO that
+; lands the one pending entry and one that drops it give different states,
+; both related, and the keystone's precondition and conclusion hold for each.
+(defun bskr-fd (b d o) (mv-let (r s) (fn-bs-fsync-dir b d o) (declare (ignore r)) s))
+(defun bskr-error-ok (b k d o)
+  (fn-bs-store-relation (bskr-fd b d o) k))
+(assert-event (consp (fn-bs-ops-for-dir (fn-bs-pending (car (bskc-f 11))) :root)))
+(assert-event (bskr-error-ok (car (bskc-f 11)) (cdr (bskc-f 11)) :root '(:eio :apply)))
+(assert-event (bskr-error-ok (car (bskc-f 11)) (cdr (bskc-f 11)) :root '(:eio :drop)))
+(assert-event (not (equal (bskr-fd (car (bskc-f 11)) :root '(:eio :apply))
+                          (bskr-fd (car (bskc-f 11)) :root '(:eio :drop)))))
+(assert-event (bsks-ok (car (bskc-f 11)) (cdr (bskc-f 11)) '(:fsync-dir :root) '(:eio :apply)))
+(assert-event (bsks-ok (car (bskc-f 11)) (cdr (bskc-f 11)) '(:fsync-dir :root) '(:eio :drop)))
+(assert-event (equal (fn-sf-phase (cdr (bskc-r 10))) :record-attempted))
+(assert-event (consp (fn-bs-ops-for-dir (fn-bs-pending (car (bskc-r 10))) :transactions)))
+(assert-event (bskr-error-ok (car (bskc-r 10)) (cdr (bskc-r 10)) :transactions '(:eio :apply)))
+(assert-event (bskr-error-ok (car (bskc-r 10)) (cdr (bskc-r 10)) :transactions '(:eio :drop)))
+(assert-event (not (equal (bskr-fd (car (bskc-r 10)) :transactions '(:eio :apply))
+                          (bskr-fd (car (bskc-r 10)) :transactions '(:eio :drop)))))
+(assert-event (bsks-ok (car (bskc-r 10)) (cdr (bskc-r 10)) '(:fsync-dir :transactions) '(:eio :drop)))
+; Tooth: the relation.  The initial byte image under the same kernels.
+(must-fail (assert-event (bskr-error-ok (bsk5-initial) (cdr (bskc-f 11)) :root '(:eio :drop))))
+(must-fail (assert-event (bskr-error-ok (bsk5-initial) (cdr (bskc-r 10)) :transactions '(:eio :drop))))
+; No must-fail, and why: the recovery-window guard is every step kind's; the
+; directory is :root or :transactions (the staging barrier's error arm is
+; lane k0-steps', and landing or dropping staging entries keeps the relation
+; too); the phase clause for a pending link has no separating reachable
+; instance (at the record run's pairs 7 and 8, :record-data-durable with the
+; link pending, both the landing and the dropping EIO leave related states),
+; it is kept because the landing half stands on
+; fn-bs-k8-pending-link-fence-preserves-relation, stated in :record-attempted.

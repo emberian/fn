@@ -30,7 +30,12 @@
 ;                 marker's, the checkpoint's, config.json's), any outcome
 ;                 (lands or drops it); :root with :ok from any related state
 ;                 (over a pending frontier rename, or quiet:
-;                 fn-bs-k0s-root-fence-preserves-relation, lane k0-cuts).
+;                 fn-bs-k0s-root-fence-preserves-relation, lane k0-cuts);
+;                 :root and :transactions with an error outcome from a
+;                 related state (the transactions barrier over a pending
+;                 link in :record-attempted): the one pending authority
+;                 entry lands or is dropped, and both results are related
+;                 (fn-bs-k0a-authority-fsync-error-preserves-relation).
 ;   :unlink       outside :root and :transactions; any outcome.
 ;   :rename       :staging to any :root name but the allocation frontier
 ;                 (the committed-history marker, the state checkpoint,
@@ -56,14 +61,13 @@
 ; root-rename-pending coverage), so the theorem has no separate coverage
 ; hypothesis.
 ; NOT covered, named: :mkdir and :link-eexist (initialization only; the init
-; program has its own theorem), the error outcomes of the :staging and
-; :transactions barriers, the error outcomes of the root barrier over a
-; pending frontier rename, and every step in the recovery window.  The per-cut theorems that follow
-; from this one are in byte-store-k0-step-bridge.
+; program has its own theorem), and every step in the recovery window.  The
+; per-cut theorems that follow from this one are in the -step-bridge books.
 (in-package "ACL2")
 (include-book "byte-store-k0-step-root-fence")
 (include-book "byte-store-k0-step-lemmas")
 (include-book "byte-store-k0-staging-error")
+(include-book "byte-store-k0-authority-error")
 
 (defthm fn-bs-k0s-covered-of-relation
   (implies (fn-bs-store-relation bs ks) (fn-bs-k0-coveredp bs ks))
@@ -137,7 +141,13 @@
                        (and (fn-bs-store-relation bs ks) (equal d1 :staging) (not (equal outcome :ok))
                             (fn-bs-crash-choicesp (cdr outcome)
                                                   (fn-bs-ops-for-dir (fn-bs-pending bs) :staging)
-                                                  (fn-bs-unit bs)))))
+                                                  (fn-bs-unit bs)))
+                       ; k0-rest (PKT-086): the authority barriers' error outcomes.
+                       (and (fn-bs-store-relation bs ks) (member-equal d1 '(:root :transactions))
+                            (not (equal outcome :ok))
+                            (or (equal d1 :root)
+                                (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+                                (equal (fn-sf-phase ks) :record-attempted)))))
        (:unlink (and (fn-bs-store-relation bs ks) (not (member-equal d1 '(:root :transactions)))))
        (:rename (and (fn-bs-store-relation bs ks) (equal d1 :staging) (equal d3 :root)
                      (let ((ino (fn-bs-lookup bs :staging n2)))
@@ -227,7 +237,8 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-root-rename-barrier-resolves (m bs)) fn-bs-k0s-root-fence-preserves-relation
-                 (:instance fn-bs-k0-staging-fsync-error-preserves-relation (b bs) (k ks)))
+                 (:instance fn-bs-k0-staging-fsync-error-preserves-relation (b bs) (k ks))
+                 (:instance fn-bs-k0a-authority-fsync-error-preserves-relation (b bs) (k ks) (dir (nth 1 step))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation fn-bs-k0s-fsync-dir-ok-is-fence)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
