@@ -21,6 +21,10 @@
 ; lookup is reached on the served path through books/peer-offer-indexed.lisp
 ; (fn-pix-history-hasp, the IHAVE/CHECK history test, and
 ; fn-pix-msgid-retrieval-indexed, the ARTICLE/HEAD/BODY/STAT retrieval).
+; fn-mxc-extend, -build and -refresh have no host caller yet: the owner's
+; refresh (books/owner.lisp fn-own-refresh) calls fn-midx-refresh, which
+; converts one Message-ID per accepted article; rerouting it is a twin of
+; fn-own-refresh under every owner transition, a freeze item.
 ;
 ; The nodes stay association lists.  A node's branch scan is bounded by the
 ; distinct characters that follow its prefix (fn-midx-unique-branchesp);
