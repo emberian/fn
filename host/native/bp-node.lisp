@@ -30,12 +30,25 @@
     (when (stringp line)
       (fnn-out "BP node source ~a" line))))
 
+(defvar *fnn-bpnode-test-busy-answers* 0)
+
+(defun fnn-bpnode-test-busy-p ()
+  ;; Developer-image witness for BP-R17: the first N application answers
+  ;; are the owner's :busy, exactly as fnn-bpapp-accept-locked returns it.
+  (let ((limit (fnn-developer-selector "FN_BP_NODE_TEST_APP_BUSY")))
+    (when (and limit (< *fnn-bpnode-test-busy-answers*
+                        (or (parse-integer limit :junk-allowed t) 0)))
+      (incf *fnn-bpnode-test-busy-answers*)
+      t)))
+
 (defun fnn-bpnode-request-result
     (owner receipt-root destination policy issuer view node-id)
   (fnn-bpnode-source-decision view)
   (unless (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
     (return-from fnn-bpnode-request-result
       (values :request-refused '(0))))
+  (when (fnn-bpnode-test-busy-p)
+    (return-from fnn-bpnode-request-result (values :busy '(0))))
   (let ((journal nil))
     (unwind-protect
          (progn
@@ -74,6 +87,9 @@
                               :request-accepted :request-duplicate)
                           (fnn-octet-list (fnn-string-octets receipt-id)))))
                (:refused (values :request-refused '(0)))
+               ;; BP-R17: the owner deferred (a (:busy reason) plan or the
+               ;; dispatcher's (:busy)); the node keeps the row held.
+               (:busy (values :busy '(0)))
                (otherwise (values :uncertain '(0))))))
       (when journal (fnn-app-journal-close journal)))))
 
@@ -207,15 +223,24 @@
             (fnn-bpapp-pause-after-decision))
           (let ((result
                   (fnn-bps-foundation-step
-                   bp (list :deliver-result (second effect) (third effect)
-                            key status detail))))
+                   bp (if (eq status :busy)
+                          ;; BP-R17: the seven-field busy event carries the
+                          ;; observation ACL2 dates the deferral from.
+                          (list :deliver-result (second effect) (third effect)
+                                key :busy detail
+                                (fnn-bp-observation
+                                 (fnn-bp-tally-wall tally)
+                                 (fnn-bp-tally-wall-error tally)))
+                        (list :deliver-result (second effect) (third effect)
+                              key status detail)))))
             (fnn-bps-drive-effects bp result)
             (when (eq status :uncertain)
               (fnn-indeterminate
                "BP node application result is uncertain; recovery required"))
-            (fnn-bpnode-pause-at-durable-cut
-             "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_SEVEN"
-             "BP NODE KIND7 DURABLE")
+            (unless (eq status :busy)
+              (fnn-bpnode-pause-at-durable-cut
+               "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_SEVEN"
+               "BP NODE KIND7 DURABLE"))
             (fnn-out "BP node delivery ~(~a~)" status)
             t))))))
 

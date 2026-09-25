@@ -56,6 +56,8 @@
 (verify-guards fn-bpnp-live-pendingp)
 (verify-guards fn-bpnp-blockedp)
 (verify-guards fn-bpnp-credit-blockedp)
+(verify-guards fn-bpnp-busy-count)
+(verify-guards fn-bpnp-busy-blockedp)
 (verify-guards fn-bpnp-oldest-eligible-with-credit)
 (verify-guards fn-bpnp-oldest-eligible)
 (verify-guards fn-bpnp-oldest-uncertain-local)
@@ -146,6 +148,9 @@
 (verify-guards fn-bpnp-conflict-refusal)
 (verify-guards fn-bpnp-conflict-propose-step)
 (verify-guards fn-bpnp-conflict-persist-step)
+(verify-guards fn-bpnp-busy-eventp)
+(verify-guards fn-bpnp-busy-wait)
+(verify-guards fn-bpnp-busy-delivery-step)
 (verify-guards fn-bpnp-host-eventp)
 (verify-guards fn-bpnp-preserve-runtime-answer)
 ;; The proposal state keeps the base it was given whenever it carries an
