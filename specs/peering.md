@@ -1183,12 +1183,84 @@ delta list) for K3 and for `fn-peer-injection-arguments`. K0 and K1 can
 start now against `ca66782` with the `cfg-gen` argument omitted and added
 when R2 lands.
 
+## 8. Control messages (proposed, not decided)
+
+Status: **proposed, not decided.** Nothing in this section is implemented. It
+is the spec half of [the control-message design](../planning/design-2026-09-25-control-messages.md),
+which carries the RFC survey, the per-verb table and the ranked packets C1
+to C4. If adopted, it supersedes
+[substrate transport §7](substrate-transport.md#7-control-messages-rfc-5537-5-pgpverify-and-why-fn-implements-neither)'s
+"fn implements none of them", and it answers that section's objections
+rather than dropping them.
+
+**Today.** No book or host file reads the `Control` field. The only match
+for the name is the group-name classifier
+`fn-native-admin-group-name-special-purposep` (`books/native-admin.lisp:519-552`).
+A control article is therefore stored as an ordinary article in whichever
+groups its `Newsgroups` field names that this node serves. It is never
+executed. It is also *not* filed under `control.*`, contrary to the sentence
+in "What this design does not decide" below, and RFC 5537 §3.7 says control
+messages SHOULD NOT be stored in the groups they list.
+
+**Proposed rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
+executed only when all of these hold:
+
+1. `fn-pa-current-plan` (`books/peer-authored-accept.lisp:98`) returns `:ok`:
+   the carrier verified under this node's current enrollment. `:carried`
+   (D23) and unsigned articles never execute.
+2. The verified principal holds a **control-authority row** naming the verb
+   and covering the namespace. This is a new configuration row kind
+   `(namespace principal-hex verbs 0)` in a new `authorities` slot, written
+   by delta kinds `:grant-control` 11 and `:revoke-control` 12, which the
+   operator stages through the assured live path (`fn-ocfg-step`,
+   `fn-ocl-publish`).
+3. For newgroup and rmgroup, the article carries `Approved` (RFC 5537 §5.2)
+   and a signed `FN-Control-Serial` above the recorded high-water for that
+   grant and group.
+
+RFC 5537 §5.1 leaves authentication to "local authorization policy". The
+rule above is fn's policy, and signature verification over the exact
+authored source is its "other means".
+
+**Filing.** Every control article is filed in `control.<verb>` (`control`
+for unknown and obsolete verbs) if the operator created that group, and
+otherwise refused with `:control-not-filed`. It is never filed in the groups
+its `Newsgroups` field names. The stored bytes are unchanged. A `cmsg`
+Subject, a `.ctl` group name and `Also-Control` never make an article a
+control message (RFC 5537 §5).
+
+**Per verb.**
+
+| Verb | Executed as | Record | Inherits / must prove |
+| --- | --- | --- | --- |
+| `cancel`, Supersedes | the served view hides the target. By Message-ID it answers 430 (RFC 3977 §6.2.1.2 "no such article"); by number 423 (§6.2.1.2 "a previously valid article number MAY become invalid"). The response text is `withdrawn`, which §3.2 forbids clients to act on. Retention, the history and the stored bytes are untouched (D03) | a withdrawal record (target, canceller, basis `:author` or `(:authority ns gen)`, reason, cause), written in one composite with the cancel's acceptance | K1 restated over `fn-own-read` with the withdrawal filter applied at `fn-own-refresh`, not per command. Exact-source rule: the canceller is the target's carrier principal, or an authority whose namespace covers every served group of the target |
+| `newgroup`, `rmgroup` | the same `(:reconfigure id deltas)` the operator's `group create` / `group retire` stage (`fn-ocl-request-deltas`) | a configuration record with a new `cause` field (Message-ID, principal, serial), or a declined-discharge Store record | both reconfiguration headlines, unchanged, over `fn-ocfg-step` and `fn-ocl-publish`. New: the delta equality, and discharge exactly once across the acceptance-to-configuration-record crash cut |
+| `checkgroups` | a report the operator may apply; never automatic | a report Store record | the report never reconfigures; applying it goes through the operator's path |
+| `ihave`, `sendme`, obsolete, unknown | never | none | none beyond filing |
+
+**Feed.** A filed control article, executed or not, is relayed as an
+ordinary article with its carrier intact (§3; K5 unchanged). No record of
+the sender's execution travels. The receiver runs the rule above under its
+own keyring and its own control-authority rows, and never trusts the
+sender's execution. For newgroup and rmgroup, RFC 5537 §3.6's exception
+(relay when both sides relay the *named* group) is kept by letting a feed
+group match either the filing group or the named group. Whether to stop
+offering a withdrawn target is open; it would add a new FNFD settlement,
+`:withdrawn`.
+
+**Reader-visible metadata.** `HDR :fn-control` on an article in `control.*`
+answers `executed withdrawal <msgid> author|authority`, `executed
+reconfigure generation <n>`, `owed`, `declined <reason>` or `report
+<serial>`. It is the node's historical claim, like `:fn-verified`, and
+`tools/fn_verify.py` checks only the signature half of it.
+
 ## What this design does not decide
 
 Peer authentication (A-PEER stands; `(:principal id)` is a reserved slot,
 not a mechanism); Distribution header matching; control messages (RFC 5537
-§5; `newgroup`/`rmgroup`/`cancel` are refused as ordinary articles into
-`control.*` only if configured, never executed); the D13 pruning rule
+§5; today never executed and, unlike what this sentence used to say, not
+filed under `control.*` either: they are stored as ordinary articles in the
+groups they name; §8 proposes filing and a granted-authority execution rule); the D13 pruning rule
 (`:date-cutoff` is reserved and unreachable); NEWNEWS-driven pull feeds
 (RFC 3977 §7.4, not needed for push peering); TLS and compression
 extensions; and any multi-node configuration agreement (a peer record is
