@@ -2054,6 +2054,31 @@
           "kind": "theorem",
           "name": "fn-bpnf-conflict-record-round-trip",
           "note": "Kind-14 FNBS codec: every fn-bpnf-conflict-recordp record is exactly what its frame decodes to (books/bp-fnbs-conflict-invariants). Replay (fn-bpnf-family-replay-rows-aux) applies a kind-14 row without changing held rows and faults on one naming no held arrival. Vectors: tests/acl2/bp-node-counterexamples-tests (N11)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-resume-writes-only-for-a-stranded-row",
+          "note": "Over the called fn-bpnp-step on (:operator-resume ARRIVAL), which `bp-node resume` steps (host/native/bp-node.lisp:356, fnn-command-bp-node-resume, through fnn-bps-foundation-step, host/native/bp-service.lisp:170): a proposal of a durable record is exactly the :resumed kind 9 naming the row's arrival, primary identity and last attempt, and only for a row whose uncertain attempt is stranded (at the retry bound) for its next hop at the current epoch; fn-bpnp-step-resume-refusal-keeps-the-state gives every other resume its reason with the state unchanged. Teeth: tests/acl2/bp-node-forward-resume-tests (witness from durable FNBS rows, every refusal reason, must-fail for the stranded hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-resumed-result-clears-only-the-slot",
+          "note": "fn-bpnp-forward-result-apply, which the :persist-result arm of the called fn-bpnp-step and ordered FNBS replay (bp-fnbs-family-replay) both call: a :resumed kind 9 that applies replaces its row by the same row with the attempt slot cleared, and only on a slot stranded at the record's own epoch. Teeth: tests/acl2/bp-node-forward-resume-tests (replayed held list equals the live one; must-fail for a :sent record and for a :resumed record on a row under the bound)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-resumed-row-is-a-forward-candidate",
+          "note": "The row a :resumed kind 9 leaves is fn-bpnp-forward-candidatep for its next hop at any epoch while its bundle is live, with its arrival, next hop and primary identity unchanged; with fn-bpnp-forward-scan-offers-the-only-candidate and fn-bpnp-step-session-offer-is-the-scan-choice the next session offers it. Teeth: tests/acl2/bp-node-forward-resume-tests (the next session's kind 8 names the original arrival and identity, sends the original wire, count 0; must-fail after the bundle's lifetime)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-uncertain-result-keeps-the-count",
+          "note": "A kind 9 :uncertain (host/native/bp-node.lisp:292 and :326 read a connection that ended after the durable kind 8 through fn-bpnp-tcpcl-outcome) keeps the attempt slot and its retry count and leaves the row forward-pending and uncertain at every epoch, so the same process re-offers it under the bound. Teeth: tests/acl2/bp-node-forward-resume-tests (four in-process uncertain sessions strand the row without a restart; replay of the kind-9 frames equals the live held list; must-fail for :failed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
+          "note": "Subject fn-bprq-recovery-plan, called by `bp-obligation recover` (host/native/bp-obligation.lisp:205 through host/workflow-host.lisp:167 fn-workflow-recovery-plan) on the image the journal's open installed (fn-bpiw-replay-journal): when the open succeeded and the plan answers :recover, fn-bpiw-apply (fn-workflow-apply-record) accepts its record, the live image has no pending and no fence, the journal with the record appended replays, and the next open installs the live image after its one restart with ION state unchanged. Teeth: tests/acl2/bp-request-recovery-tests (the 5b cut's journal, committed and absent, every refusal reason, the next request accepted live and after reopen; must-fail per hypothesis)."
         }
       ]
     },

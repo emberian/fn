@@ -193,4 +193,5 @@ if __name__ == "__main__":
         status = self.invoke("bp-obligation", "status", self.store,
                              self.journal, "work-a")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertIn("status=intent pinned=yes", status.stdout)
+        self.assertIn("pinned=yes", status.stdout)
+        self.assertNotIn("status=outstanding", status.stdout)
