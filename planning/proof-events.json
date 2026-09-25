@@ -592,6 +592,31 @@
         {
           "kind": "theorem",
           "name": "fn-bpr-live-receipt-regenerated-after-restart"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sonb-configured-replay-is-fixed-table-replay",
+          "note": "K4 node correspondence (PKT-087): when every configuration record names txid 0 (fn-sonb-configured-before-eventsp), a successful configured replay fn-cpr-replay is the fixed-table fn-replay under the final configuration's domain and capacity, node for node. Not claimed for a history reconfigured after an event; tests/acl2/store-open-node-bridge-tests separates the hypothesis with a release-then-shrink history."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-has-live-history-relation-of-host-open",
+          "note": "fn-snt-relation of the state fn-cpo-open-observed returns, under fn-sonb-configured-before-eventsp; host/store-node-host.lisp:180 (fn-store-sn-recover) and host/owner-host.lisp:178 (fn-owner-recover) call fn-cpo-open-observed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-exact-history-node-of-host-open",
+          "note": "The node conjunct of fn-sn-open-observed-success-exact-history at the host's open, under fn-sonb-configured-before-eventsp; host/store-node-host.lisp:180 (fn-store-sn-recover) and host/owner-host.lisp:178 (fn-owner-recover) call fn-cpo-open-observed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-configured-node-of-host-open",
+          "note": "The node conjunct at the host's open with no reconfiguration hypothesis: the opened node is fn-cst-replay-node of the configuration and Store journals; host/store-node-host.lisp:180 (fn-store-sn-recover) and host/owner-host.lisp:178 (fn-owner-recover) call fn-cpo-open-observed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-live-receipt-regenerated-after-restart-of-host-open",
+          "note": "The receipt-regeneration theorem with the restart reopening through fn-cpo-open-observed; added hypotheses fn-sob-configured-openp and fn-sonb-configured-before-eventsp. No ground witness (the fixed-table keystone has none either)."
         }
       ]
     },
