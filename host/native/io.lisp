@@ -1652,6 +1652,17 @@ after recording why not in open-mode (the caller then replays in full)."
       (:checkpoint (format nil "open=checkpoint:~d suffix=~d" (second mode) (third mode)))
       (t (format nil "open=full-replay reason=~(~a~)" (second mode))))))
 
+(defun fnn-state-checkpoint-file-report (store)
+  "The newest published checkpoint file: its size and modification time.  The
+open above says whether it served (open=checkpoint:S) and why not otherwise.
+While an owner runs it is the only publisher (the verb needs the store lock),
+so after a run this is the owner's last automatic publication."
+  (handler-case
+      (let ((st (sb-posix:lstat (fnn-state-checkpoint-path store))))
+        (format nil "checkpoint-file octets=~d modified=~d"
+                (sb-posix:stat-size st) (sb-posix:stat-mtime st)))
+    (sb-posix:syscall-error () "checkpoint-file=absent")))
+
 (defparameter +fnn-state-checkpoint-model-cuts+
   '("state-checkpoint-created" "state-checkpoint-written"
     "state-checkpoint-staged-durable" "state-checkpoint-replaced"
@@ -2431,6 +2442,7 @@ retention ledger's reserved charge of its capacity."
                          (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
                 (fnn-out-headroom store)
                 (fnn-out "~a" (fnn-open-report store))
+                (fnn-out "~a" (fnn-state-checkpoint-file-report store))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
