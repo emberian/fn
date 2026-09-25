@@ -40,3 +40,27 @@
  (fn-native-hybrid-control-enroll-decode
   (fn-native-hybrid-control-revoke-encode 8 *nhc-principal*))
  nil)
+
+; D27 (PRF-091): the hybrid payload cap is the author spec's width at the v1
+; source ceiling.  A 65 535-octet source, refused before by the fixed 65 536
+; payload cap, now round-trips; one octet more is past the v1 carrier.
+(defconst *nhc-v1-source* (make-list 65535 :initial-element 65))
+(assert-equal
+ (fn-native-hybrid-control-author-decode
+  (fn-native-hybrid-control-author-encode
+   7 *nhc-v1-source* *nhc-ed-signature* *nhc-ml-signature*
+   (fn-record-string-octets "/tmp/ml-public.pem")))
+ (list :hybrid-author 7 *nhc-v1-source* *nhc-ed-signature* *nhc-ml-signature*
+       (fn-record-string-octets "/tmp/ml-public.pem")))
+(assert-equal
+ (fn-native-hybrid-control-author-encode
+  7 (cons 65 *nhc-v1-source*) *nhc-ed-signature* *nhc-ml-signature*
+  (fn-record-string-octets "/tmp/ml-public.pem"))
+ :bad)
+(assert-event (< 65536 *fn-nhctrl-max-payload*))
+; The hybrid read bound never falls below the ordinary one.
+(assert-event (equal (fn-nhctrl-read-bound-for 1048576 4)
+                     (fn-nctrl-read-bound-for 1048576 4)))
+; Every hybrid frame is within the command-frame floor of the ordinary bound.
+(assert-event (<= (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*)
+                  *fn-nctrl-max-command-frame*))

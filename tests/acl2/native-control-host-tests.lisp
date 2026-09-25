@@ -35,6 +35,15 @@
  (equal (fn-native-control-host-lease-path
          (fn-record-string-octets "/tmp/fn.sock"))
         (fn-record-string-octets "/tmp/fn.sock.lock")))
-(assert-event (< (fn-native-control-host-max-article)
-                 (fn-native-control-host-max-frame)))
+; The client reads an article up to the FNCT article width; the owner reads
+; a request under the profile's bound, never below the command frame.
+(assert-event (equal (fn-native-control-host-max-article)
+                     *fn-record-max-payload*))
+(assert-event (< (fn-native-control-host-max-article) *fn-nctrl-max-frame*))
+(assert-event (equal (fn-native-control-host-max-frame)
+                     *fn-nctrl-max-command-frame*))
+(assert-event (equal (fn-native-control-host-read-bound 32768 1)
+                     (fn-native-control-host-max-frame)))
+(assert-event (< (+ 1048576 (fn-native-control-host-max-frame))
+                 (fn-native-control-host-read-bound 1310720 1)))
 (assert-event (equal (fn-native-control-host-max-active-clients) 16))
