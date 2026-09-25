@@ -3368,6 +3368,18 @@
         {
           "kind": "theorem",
           "name": "fn-bpnr-family-replay-aux-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotate-step-proposes-only-own-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-retirement-cut-keeps-open-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-retired-names-never-the-selected-directory"
         }
       ]
     },
