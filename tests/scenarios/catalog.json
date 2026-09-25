@@ -1388,7 +1388,7 @@
         "`control list` shows both grants after the restart, then only Q's; the second revoke is refused (no-such-grant).",
         "(Open.) The fresh reader answers 430 by Message-ID and 423 `withdrawn` by number and the target is absent from listings; the pinned reader still reads it until it advances; the unauthorized cancel and the cross-post withdraw nothing; the early-cancelled target never appears, across the kill.",
         "(control-c3b, passed natively: planning/evidence/control-c3b-2026-09-25/native-control-filing-a541e90f.log) The fresh reader answers 430 for T and for L; U stays 220; LISTGROUP fn.test lists only U (number 3); after the restart the same; the pinned reader answers 220 for T after the cancel (its pinned view).",
-        "(control-c3d) T1 430 on both nodes to a fresh reader, 220 to B's pinned reader; U 430 on B (authority) and 220 on A (no grant); T2 430 on both after the kill and recovery; T3 430 and S 220 on both; after the revoke and restart B still answers 430 for T1, U, T2 and T3 and 220 for S. Open: 423 `withdrawn` by number and HDR :fn-control on the served path."
+        "(control-c3d, passed natively: planning/evidence/control-c3d-2026-09-25/native-control-filing-e8173157.log) T1 430 on both nodes to a fresh reader, 220 to B's pinned reader; U 430 on B (authority) and 220 on A (no grant); T2 430 on both after the kill and recovery; T3 430 and S 220 on both; after the revoke and restart B still answers 430 for T1, U, T2 and T3 and 220 for S. Open: 423 `withdrawn` by number and HDR :fn-control on the served path."
       ],
       "evidence": [
         "tests/acl2/control-authority-tests.lisp",
