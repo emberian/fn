@@ -3398,7 +3398,9 @@
         "planning/evidence/manifests/certify-20260925T051550Z-2568662.json",
         "books/bp-node-retire.lisp",
         "tests/acl2/bp-node-retire-tests.lisp",
-        "planning/evidence/bp-n16-prod-2026-09-25.md"
+        "planning/evidence/bp-n16-prod-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T190512Z-3605421.json",
+        "planning/evidence/manifests/certify-20260925T191828Z-3623771.json"
       ],
       "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests.",
       "events": [
