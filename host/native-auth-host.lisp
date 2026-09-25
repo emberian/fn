@@ -3,13 +3,15 @@
 (include-book "../books/native-auth-profile")
 
 (defun fn-native-auth-host-load (octets presentp requiredp protected-onlyp
-                                        tls-availablep)
+                                        tls-availablep max-credentials)
   (declare (xargs :mode :program))
-  (fn-native-auth-load octets presentp requiredp protected-onlyp tls-availablep))
+  (fn-native-auth-load octets presentp requiredp protected-onlyp tls-availablep
+                       max-credentials))
 
-(defun fn-native-auth-host-max-octets ()
+;; The file bound follows the store profile's max-credentials (D27, PRF-102).
+(defun fn-native-auth-host-max-octets (max-credentials)
   (declare (xargs :mode :program))
-  *fn-native-auth-max-octets*)
+  (fn-native-auth-max-octets max-credentials))
 
 (defun fn-native-auth-host-status (result)
   (declare (xargs :mode :program))
@@ -23,6 +25,6 @@
   (declare (xargs :mode :program))
   (fn-native-auth-result-config result))
 
-(defun fn-native-auth-host-load-bindings (octets presentp)
+(defun fn-native-auth-host-load-bindings (octets presentp max-credentials)
   (declare (xargs :mode :program))
-  (fn-native-auth-load-bindings octets presentp))
+  (fn-native-auth-load-bindings octets presentp max-credentials))

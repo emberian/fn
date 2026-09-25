@@ -63,7 +63,10 @@ set, exact record, candidate replay/open result and generated final name."
                  (mapcar #'fnn-octet-list records) (fnn-store-frontier store)
                  (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
                  (fnn-admin-lock-observation store) (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
-                           observed-names))))
+                           observed-names)
+                 ;; The profile the store opened; ACL2 reads its
+                 ;; max-config-generations (D27, PRF-102).
+                 (fnn-store-config store))))
     (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
         result
       (fnn-refuse "ACL2 refused administrative publication: ~a"

@@ -191,3 +191,43 @@
   (fn-ocfg-make (fn-ocfg-owner *ocl-t-before*)
                 *ocl-t-cfg* nil *ocl-t-refused-record*))
 (assert-event (equal (fn-ocl-complete *ocl-t-refused*) *ocl-t-refused*))
+
+; fn-ocl-view-historyp-of-ready-owner-with-store (restated by control-c3b):
+; the refresh builds the new view's records and visible list from the old
+; view's, so the theorem needs the old owner's view history.  Witness: the
+; owner before the capacity increase and the Store the completion installs
+; (the theorem's one caller, fn-ocl-complete-preserves-full-historical-relation).  The
+; fixture Store holds no article, so the visible list is empty on both sides.
+(defconst *ocl-t-hist-o* (fn-ocfg-owner *ocl-t-before*))
+(defconst *ocl-t-hist-st*
+  (fn-cpo-configure-durable (fn-own-store *ocl-t-hist-o*) *cpo-t-increase*))
+(assert-event (fn-ocl-view-historyp *ocl-t-hist-o*))
+(assert-event (fn-cst-relation *ocl-t-hist-st*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *ocl-t-hist-st*)) :ready))
+(assert-event (true-listp (fn-sf-records (fn-sn-files *ocl-t-hist-st*))))
+(assert-event
+ (fn-ocl-view-historyp (fn-ocl-owner-with-store *ocl-t-hist-o* *ocl-t-hist-st*)))
+
+; Hypothesis (fn-ocl-view-historyp o) removed: the same owner whose view
+; archive shows an article its raw list does not hold.  The Store's article
+; list and verdicts equal the old view's, so the refresh keeps the old
+; visible list, and the refreshed view is not the visible state.
+(defun ocl-t-bad-view-owner (o)
+  (let ((v (fn-own-view o)))
+    (fn-own-make (fn-own-store o)
+                 (fn-own-view-make-visible
+                  (fn-own-view-version v) (fn-own-view-frontier v)
+                  (fn-ctl-visible-state-of (fn-own-view-archive v) '(:not-an-article))
+                  (fn-own-view-verdicts v) (fn-own-view-index v) (fn-own-view-group-index v)
+                  (fn-own-view-withdrawals v) (fn-own-view-raw v))
+                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
+                 (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                 (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+                 (fn-own-inflight o) (fn-own-feeds o))))
+(defconst *ocl-t-hist-bad* (ocl-t-bad-view-owner *ocl-t-hist-o*))
+(assert-event (not (fn-ocl-view-historyp *ocl-t-hist-bad*)))
+(assert-event
+ (not (fn-ocl-view-historyp (fn-ocl-owner-with-store *ocl-t-hist-bad* *ocl-t-hist-st*))))
+(must-fail
+ (assert-event
+  (fn-ocl-view-historyp (fn-ocl-owner-with-store *ocl-t-hist-bad* *ocl-t-hist-st*))))

@@ -180,7 +180,7 @@
 (assert-event
  (equal (lg-reply *lg-env* "CAPABILITIES")
         (lg-block "101 capability list follows"
-                  '("VERSION 2" "READER" "OVER MSGID" "HDR" "NEWNEWS"
+                  '("VERSION 2" "READER" "OVER MSGID" "HDR" "XPAT" "NEWNEWS"
                     "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT"
                     "IMPLEMENTATION fn-nntp-lab"))))
 (defconst *lg-help-lines*

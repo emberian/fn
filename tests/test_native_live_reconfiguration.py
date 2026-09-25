@@ -111,8 +111,12 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         store = (ROOT / "host" / "store-node-host.lisp").read_text(encoding="ascii")
         live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
-        self.assertIn("(fn-cpo-open-observed config-records frontier records)", owner)
-        self.assertIn("(fn-cpo-open-observed config-records frontier records)", store)
+        # Both Store opens extend a checkpoint once and open from it
+        # (fn-sco-store-open-of-extended-capture: the full open
+        # fn-cpo-open-observed); the owner installs from that open.
+        self.assertIn("(fn-sco-extend (fn-sco-capture config-records nil) config-records records)", store)
+        self.assertIn("(fn-sco-store-open e config-records frontier)", store)
+        self.assertIn("(fn-ock-install (cadr opened) (caddr opened) max-conns)", owner)
         publish = (ROOT / "books" / "config-owner-publish.lisp").read_text(encoding="ascii")
         self.assertIn("(fn-ocl-publish (fn-owner-ocfg state) generation", owner)
         self.assertIn("(fn-ocl-complete oc)", publish)

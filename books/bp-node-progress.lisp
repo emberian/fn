@@ -748,7 +748,10 @@
                     (fn-bpb-bundle-age (fn-bpn-nth 2 image))
                     waits))))))))
 
-(defun fn-bpnp-start-one (st peer session mru observation budget)
+;; ORDERED is the rows this session may offer, oldest first: the routed
+;; :session and :resume arms pass the held rows the route table sends to
+;; the session's hop (fn-bpnp-routed-rows).
+(defun fn-bpnp-start-one (st peer session mru observation budget ordered)
   (declare (xargs :guard (and (natp mru)
                               (true-listp (fn-bpnf-held-list st)))
                   :verify-guards nil))
@@ -763,7 +766,7 @@
            (free (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
                                *fn-bpnp-control-margin*))
            (scan (fn-bpnp-forward-scan
-                  (reverse (fn-bpnf-held-list st)) peer mru node observation
+                  ordered peer mru node observation
                   (fn-bpnp-waits st) free (fn-bpnf-epoch st) budget))
            (waits (if (equal (car scan) :ready)
                       (fn-bpn-nth 4 scan) (fn-bpn-nth 1 scan)))
@@ -1480,6 +1483,16 @@
   (declare (xargs :guard t))
   (if (fn-bpnp-session-via event) 7 6))
 
+;; A :resume event is (:resume PEER SESSION OBSERVATION [VIA] [BUDGETS]).
+(defun fn-bpnp-resume-via (event)
+  (declare (xargs :guard t))
+  (let ((v (fn-bpn-nth 4 event)))
+    (if (fn-bpnp-budgetsp v) nil v)))
+
+(defun fn-bpnp-resume-base-length (event)
+  (declare (xargs :guard t))
+  (if (fn-bpnp-resume-via event) 5 4))
+
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
   (case (fn-cbor-ag-car event)
@@ -1502,7 +1515,9 @@
           (< 0 (fn-bpn-nth 4 event))
           (fn-clock-observationp (fn-bpn-nth 5 event))))
     (:resume
-     (and (fn-bpnp-budgeted-lengthp event 4)
+     (and (fn-bpnp-budgeted-lengthp event (fn-bpnp-resume-base-length event))
+          (or (null (fn-bpnp-resume-via event))
+              (fn-bprt-viap (fn-bpnp-resume-via event)))
           (fn-bpp-eidp (fn-bpn-nth 1 event))
           (fn-bpnp-session-idp (fn-bpn-nth 2 event))
           (fn-clock-observationp (fn-bpn-nth 3 event))))
@@ -1618,33 +1633,49 @@
 
 ;; The routing call site (spec 4.6).  A :session event whose seventh field is
 ;; (:via HOP ANNOUNCED TABLE) is an outbound session the host opened to the
-;; boundary HOP.  The row the arrival-order scan would offer is offered only
-;; when books/bp-route.lisp's decision routes its destination to HOP and the
-;; contact announced HOP's enrolled EID; otherwise nothing is offered, the
-;; row stays held with its obligation, and the answer reports it.
+;; boundary HOP; a :resume event carries the same field.  The session
+;; offers only rows whose destination books/bp-route.lisp's decision routes
+;; to HOP, with the contact announcing HOP's enrolled EID: the arrival-order
+;; scan runs over those rows alone (fn-bpnp-routed-rows), so an older row
+;; routed elsewhere or nowhere never blocks a younger routed row.  When no
+;; routed row is ready but an unrouted one is, nothing is offered, every row
+;; stays held with its obligation, and the answer reports the oldest such
+;; row with its decision.  A :session or :resume without VIA offers nothing.
+(defun fn-bpnp-held-dest (h)
+  (declare (xargs :guard t))
+  (fn-bpaj-eid-text (fn-bpn-nth 3 (fn-bpnp-primary h))))
+
+(defun fn-bpnp-routed-rows (ordered via)
+  (declare (xargs :guard t :measure (acl2-count ordered)))
+  (if (atom ordered) nil
+    (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via)
+               :offer)
+        (cons (car ordered) (fn-bpnp-routed-rows (cdr ordered) via))
+      (fn-bpnp-routed-rows (cdr ordered) via))))
+
 (defun fn-bpnp-routed-start (st peer session mru observation via budget)
   (declare (xargs :guard (and (natp mru)
                               (true-listp (fn-bpnf-held-list st)))
                   :verify-guards nil))
-  (let* ((scan (fn-bpnp-forward-scan
-                (reverse (fn-bpnf-held-list st)) peer mru
-                (fn-bpn-config-node-id
-                 (fn-bpn-machine-state-config (fn-bpnf-base st)))
-                observation (fn-bpnp-waits st)
-                (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
-                              *fn-bpnp-control-margin*)
+  (let* ((ordered (reverse (fn-bpnf-held-list st)))
+         (routed (fn-bpnp-routed-rows ordered via))
+         (node (fn-bpn-config-node-id
+                (fn-bpn-machine-state-config (fn-bpnf-base st))))
+         (free (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
+                             *fn-bpnp-control-margin*))
+         (mine (fn-bpnp-forward-scan
+                routed peer mru node observation (fn-bpnp-waits st) free
                 (fn-bpnf-epoch st) budget))
-         (h (fn-bpn-nth 1 scan))
-         (decision
-          (if (equal (car scan) :ready)
-              (fn-bprt-offer-decision
-               (fn-bpaj-eid-text (fn-bpn-nth 3 (fn-bpnp-primary h))) via)
-            :offer)))
-    (if (equal decision :offer)
-        (fn-bpnp-start-one st peer session mru observation budget)
+         (all (fn-bpnp-forward-scan
+               ordered peer mru node observation (fn-bpnp-waits st) free
+               (fn-bpnf-epoch st) budget))
+         (h (fn-bpn-nth 1 all)))
+    (if (or (equal (car mine) :ready) (not (equal (car all) :ready)))
+        (fn-bpnp-start-one st peer session mru observation budget routed)
       (fn-bpnf-answer
        st (list (list :forward-no-route (fn-bpn-nth 3 h)
-                      (fn-bpn-nth 1 via) decision))))))
+                      (fn-bpn-nth 1 via)
+                      (fn-bprt-offer-decision (fn-bpnp-held-dest h) via)))))))
 
 (defun fn-bpnp-step (st event)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
@@ -1701,18 +1732,20 @@
             (if via
                 (fn-bpnp-routed-start
                  updated peer session mru observation via budget)
-              (fn-bpnp-start-one updated peer session mru observation budget)))
+              (fn-bpnf-answer updated nil)))
         (fn-bpnf-answer updated nil))))
    ((equal (fn-cbor-ag-car event) :resume)
     (let ((peer (fn-bpn-nth 1 event))
           (session (fn-bpn-nth 2 event))
           (observation (fn-bpn-nth 3 event)))
       (let ((current (fn-bpnp-find-session
-                      (fn-bpnp-sessions st) peer session)))
-        (if current
-            (fn-bpnp-start-one
-             st peer session (fn-bpn-nth 3 current) observation
-             (fn-bpnp-budget-retries (fn-bpnp-event-budgets event 4)))
+                      (fn-bpnp-sessions st) peer session))
+            (via (fn-bpnp-resume-via event)))
+        (if (and current via)
+            (fn-bpnp-routed-start
+             st peer session (fn-bpn-nth 3 current) observation via
+             (fn-bpnp-budget-retries
+              (fn-bpnp-event-budgets event (fn-bpnp-resume-base-length event))))
           (fn-bpnf-answer st nil)))))
    ((equal (fn-cbor-ag-car event) :operator-resume)
     (let ((budget (fn-bpnp-budget-retries (fn-bpnp-event-budgets event 2)))

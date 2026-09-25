@@ -22,6 +22,13 @@ from tools import build_lists_check as check  # noqa: E402
 CHECKPOINT_LD = '(ld "host/checkpoint-host.lisp" :ld-error-action :error)\n'
 
 
+BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
+                   '(include-book "books/poster-bytes-buffer")\n'
+                   ';; fn-owner-subject-id-buffer (host/owner-host.lisp) calls '
+                   'fn-shb-subject-id, as in build.lisp.\n'
+                   '(include-book "books/sha256-buffer")\n')
+
+
 class BuildListsCheckTests(unittest.TestCase):
     def dtn_text(self):
         return (ROOT / check.DTN_BUILD).read_text()
@@ -93,6 +100,50 @@ class BuildListsCheckTests(unittest.TestCase):
                                  "fnn-native-auth-admin-execute, defined only in "
                                  "host/native/auth-admin.lisp, which "
                                  "host/native/build-dtn.lisp does not load"])
+
+    def test_missing_buffer_includes_are_found(self):
+        # native-drift-2026-09-25 finding 3: at 32842f50 build-dtn.lisp did
+        # not include the octet buffer books host/owner-host.lisp uses, and
+        # the DTN image did not build.  Restore that omission.
+        text = self.dtn_text()
+        self.assertIn(BUFFER_INCLUDES, text)
+        found = check.findings(dtn_text=text.replace(BUFFER_INCLUDES, ""))
+        self.assertEqual(found, [
+            "included: host/owner-host.lisp uses fn-octets, defined in "
+            "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
+            "included when it loads host/owner-host.lisp",
+            "included: host/owner-host.lisp uses fn-pbb-existing-action, defined in "
+            "books/poster-bytes-buffer.lisp, which host/native/build-dtn.lisp has not "
+            "included when it loads host/owner-host.lisp",
+            "included: host/owner-host.lisp uses fn-shb-subject-id, defined in "
+            "books/sha256-buffer.lisp, which host/native/build-dtn.lisp has not "
+            "included when it loads host/owner-host.lisp"])
+
+    def test_include_after_the_ld_is_too_late(self):
+        # The order matters: an include after the `ld` does not serve it.
+        text = self.dtn_text().replace(BUFFER_INCLUDES, "") + BUFFER_INCLUDES
+        found = check.findings(dtn_text=text)
+        self.assertEqual(len(found), 3, found)
+
+    def test_default_build_satisfies_the_include_rule(self):
+        # The same rule over build.lisp: the default image already builds.
+        default = (ROOT / check.DEFAULT_BUILD).read_text()
+        self.assertEqual(check.include_findings(ROOT, default), [])
+
+    def test_local_include_does_not_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "host").mkdir()
+            (root / "books/a.lisp").write_text('(defun fn-a (x) x)\n')
+            (root / "books/b.lisp").write_text('(local (include-book "a"))\n')
+            (root / "books/c.lisp").write_text('(include-book "a")\n')
+            (root / "host/h.lisp").write_text('(defun fn-h (x) (fn-a x))\n')
+            ld = '(ld "host/h.lisp" :ld-error-action :error)\n'
+            self.assertEqual(len(check.include_findings(
+                root, '(include-book "books/b")\n' + ld)), 1)
+            self.assertEqual(check.include_findings(
+                root, '(include-book "books/c")\n' + ld), [])
 
     def test_docstring_mention_is_not_a_call(self):
         text = check.strip_code('(defun f () "see (fnn-x y) here" (fnn-y #\\( 1)) ; (fnn-z)')

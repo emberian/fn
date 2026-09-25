@@ -471,7 +471,8 @@
         "PRF-072",
         "PRF-004",
         "PRF-080",
-        "PRF-083"
+        "PRF-083",
+        "PRF-110"
       ],
       "verification": [
         "proof",
@@ -858,7 +859,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-012",
-        "PRF-082"
+        "PRF-082",
+        "PRF-103"
       ],
       "verification": [
         "proof",
@@ -1437,7 +1439,8 @@
         "PRF-014",
         "PRF-092",
         "PRF-087",
-        "PRF-095"
+        "PRF-095",
+        "PRF-106"
       ],
       "verification": [
         "proof",
@@ -1528,7 +1531,8 @@
         "PRF-049",
         "PRF-051",
         "PRF-092",
-        "PRF-087"
+        "PRF-087",
+        "PRF-106"
       ],
       "verification": [
         "proof",
@@ -1921,9 +1925,12 @@
         "books/control-visible.lisp",
         "tests/acl2/control-visible-tests.lisp",
         "tests/test_native_control_filing.py",
-        "planning/evidence/control-c3-2026-09-25.md"
+        "planning/evidence/control-c3-2026-09-25.md",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "planning/evidence/control-c3b-2026-09-25.md"
       ],
-      "implementation_note": "D29 (planning/decisions.md, 2026-09-25). RFC 5537 section 5.1 leaves control authentication to local authorization policy; fn's policy (a stronger fn guarantee): a control article acts only when this node verified its signature (verdict :verified; :carried and unsigned never act) and the operator granted the principal the verb over a namespace covering every group involved. C2, implemented: the authorities slot of the configuration value, (:grant-control NS P 0 ((NS P VERB 0))) code 11 and (:revoke-control NS P) code 12 through the assured live path, `control grant|revoke|list`, fn-ctl-authorize. C3, the decision implemented: the withdrawal record bound to cause, target, scope and generation (fn-ctl-cancel-plan), its effect on the target's accepted group bindings (author, or an authority covering every served group; the cancel's declared groups never enter), the visible article list, and the journal-derived records (a later revoke rewrites none). RFC 5537 section 5.3 recommends rejecting a target whose cancel arrived first; fn accepts it under ordinary admission and never serves it (local policy, D29). Lane control-c3 (2026-09-25): a signed control article is filed in control.<verb> (the signed record binding names the filing group, fn-hsig-source-filed-groups), so a cancel can be verified here; the visible list has an incremental form (books/control-visible.lisp) proved equal to the definition. Open, so the requirement stays specified: the served view does not apply the withdrawal (430/423 withdrawn, listings, HDR :fn-control), the host does not call fn-ctl-cancel-plan, Supersedes, and feed suppression (a later transition). C4 (group control) is deferred by D29."
+      "implementation_note": "D29 (planning/decisions.md, 2026-09-25). RFC 5537 section 5.1 leaves control authentication to local authorization policy; fn's policy (a stronger fn guarantee): a control article acts only when this node verified its signature (verdict :verified; :carried and unsigned never act) and the operator granted the principal the verb over a namespace covering every group involved. C2, implemented: the authorities slot of the configuration value, (:grant-control NS P 0 ((NS P VERB 0))) code 11 and (:revoke-control NS P) code 12 through the assured live path, `control grant|revoke|list`, fn-ctl-authorize. C3, the decision implemented: the withdrawal record bound to cause, target, scope and generation (fn-ctl-cancel-plan), its effect on the target's accepted group bindings (author, or an authority covering every served group; the cancel's declared groups never enter), the visible article list, and the journal-derived records (a later revoke rewrites none). RFC 5537 section 5.3 recommends rejecting a target whose cancel arrived first; fn accepts it under ordinary admission and never serves it (local policy, D29). Lane control-c3 (2026-09-25): a signed control article is filed in control.<verb> (the signed record binding names the filing group, fn-hsig-source-filed-groups), so a cancel can be verified here; the visible list has an incremental form (books/control-visible.lisp) proved equal to the definition. Lane control-c3b (2026-09-25): the committed view serves the visible state (fn-own-refresh decides a cancel's record with fn-ctl-cancel-plan when it first publishes it and extends the visible list incrementally, fn-ctl-refresh-visible-is-visible; K1 restated in books/owner-invariants.lisp), so a withdrawn target answers 430 by Message-ID and leaves the listings of views published after its cancel; the owner closure certifies (persvati certify-20260925T105921Z-39105, hbox default image roots certify-20260925T111031Z-3228276) and the one-node native withdrawal case passes on the developer image (planning/evidence/control-c3b-2026-09-25.md). Open, so the requirement stays specified: 423 withdrawn by number, HDR :fn-control, the recovery binding at each cancel's own txid (fn-ctl-journal-withdrawals), Supersedes, and feed suppression (a later transition). C4 (group control) is deferred by D29."
     },
     {
       "id": "REP-007",
@@ -1932,7 +1939,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-079"
+        "PRF-079",
+        "PRF-103"
       ],
       "verification": [
         "proof",
@@ -1959,7 +1967,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-083"
+        "PRF-083",
+        "PRF-104"
       ],
       "verification": [
         "proof",
@@ -1973,6 +1982,29 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "STO-015",
+      "title": "A namespace the store holds is bounded by the operator's profile, never by a constant; the writer refuses exactly past it and the reader admits everything within it",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-102"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-profile-namespace.lisp",
+        "books/native-config-observation.lisp",
+        "books/native-admin.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ],
+      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9), BP rows (10) and policy members (13) still have constants (256, 4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
     {
       "id": "HST-006",
@@ -2083,6 +2115,102 @@
         "planning/evidence/path-and-login-2026-09-25.md"
       ],
       "implementation_note": "Local policy, not an RFC requirement (RFC 4643 relates a login to nothing beyond the server's own authorization). `fn principal bind LOGIN HEX` writes the login's `signing` field into the credential file (fn-native-auth-admin-bind; set-password keeps bindings; a malformed value refuses the profile); `fn policy set posting-policy bound-logins|open` is a durable configuration record applied live. host/native/owner.lisp fnn-owner-attempt-served calls fn-lb-owner-gate (through host/owner-host.lisp fn-owner-login-gate) before the transit attempt: under the policy a bound login's unsigned article is :login-unsigned and one whose carrier names another principal :login-not-bound, each its own 441 line; unbound logins, unauthenticated connections, local and BP submissions and policy-off nodes are unchanged. The verdict and its service-log line name the login; the Store's kind-4 verdict record does not."
+    },
+    {
+      "id": "NNT-015",
+      "title": "Opaque carriage is admitted only within the boundary's budget, and a present carrier's transit refusal names its class",
+      "specification": "specs/peering.md#123-the-opaque-carriage-budget-and-the-refusal-classes",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-099"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-carriage-rows.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/peer-carriage-2026-09-25.md"
+      ],
+      "implementation_note": "The carried arm's event is built by fn-pcb-carried-event (host/owner-host.lisp fn-owner-peer-carried-relay-event, called from host/native/owner.lisp fnn-owner-attempt-transit) over the boundary's typed budget rows and the owner-carried usage cache (fn-owner-carried-usage); NNTP transit refusals of a present carrier carry fn-pcb-refusal-class as their log detail. The class is not yet recorded in a durable verdict: no present-carrier article is held unverified on dev (see the evidence record)."
+    },
+    {
+      "id": "NNT-016",
+      "title": "XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step",
+      "specification": "specs/nntp.md#legacy-spellings-rfc-2980",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-110"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/nntp-xpat.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-xpat-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-surface-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim."
+    },
+    {
+      "id": "STO-013",
+      "title": "A record's sequence, transaction ID, generation, charge and stamp are u64; a record that needs a field above 2^32 - 1 carries schema 2, and a store written under schemas 0 and 1 opens to the same records with the same bytes",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-086"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/cbor.lisp",
+        "books/cbor-invariants.lisp",
+        "books/records-shape.lisp",
+        "books/records.lisp",
+        "books/records-schema-v1.lisp",
+        "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "books/byte-store-profile-v1.lisp",
+        "tests/acl2/byte-store-profile-v1-tests.lisp",
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ],
+      "implementation_note": "The CBOR profile gains an additive wide uint (RFC 8949 eight-octet argument, canonical only above 2^32 - 1); every narrow encoding and every narrow acceptance is unchanged (fn-cbor-encode-uint-wide-is-narrow, fn-cbor-decode-prechecked-wide-extends-narrow). *fn-cbor-max-uint* keeps 2^32 - 1: its other uses are u32 fields. The record decoder refuses a header whose schema octet is not the record's (fn-record-schema-octet). Open: the frontier file and the profile's T field still cap transaction IDs at 2^32 - 1 (byte-store-frame, shared with packet P5); segmented articles (design 2.4 item 3) are not implemented. A profile's R is checked against the record ceiling at the widths the runtime produces (u32 heads, 1 083 octets), so a format-8 profile saved before P6 is admitted unchanged (fn-bs-profile-v1-valid-stays-valid); a schema-2 record is at most 28 octets past it and is refused at the publish gate."
+    },
+    {
+      "id": "STO-016",
+      "title": "The checkpoint open costs less than the full replay it replaces, and a publication does not hold served commands",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-104"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/owner-checkpoint-open.lisp",
+        "books/acceptance-alloc.lisp",
+        "tests/acl2/linear-recognizers-tests.lisp",
+        "tests/acl2/owner-checkpoint-open-tests.lisp",
+        "planning/evidence/checkpoint-cost-2026-09-25.md"
+      ],
+      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
     },
     {
       "id": "NNT-017",

@@ -9,8 +9,8 @@
           (list (fn-record-string-octets "list"))))
         :list))
 (assert-event
- (equal (fn-native-auth-admin-host-max-octets)
-        *fn-native-auth-max-octets*))
+ (equal (fn-native-auth-admin-host-max-octets 128)
+        (fn-native-auth-max-octets 128)))
 (assert-event
  (equal (fn-native-auth-admin-host-salt-octets)
         *fn-authsec-salt-octets*))

@@ -29,6 +29,7 @@
 (in-package "ACL2")
 (include-book "owner-recover-ocl")
 (include-book "store-checkpoint-open")
+(include-book "store-checkpoint-codec")
 
 ; -----------------------------------------------------------------------------
 ; The owner the host installs
@@ -279,7 +280,92 @@
            (equal (car (fn-sco-select :ok durable count k)) :checkpoint))
   :hints (("Goal" :in-theory (enable fn-sco-select))))
 
+; KEYSTONE of the one-pass Store open.  Over the capture of any prefix P
+; extended over any Q (the checkpoint path; P = NIL is the full path), the
+; open the host installs is the full open of P ++ Q, and when that open is
+; :ok the configuration it serves is the full replay's.
+(defthm fn-sco-store-open-of-extended-capture
+  (let ((r (fn-sco-store-open (fn-sco-extend (fn-sco-capture configs prefix)
+                                             configs suffix)
+                              configs frontier)))
+    (and (equal (cadr r)
+                (fn-cpo-open-observed configs frontier (append prefix suffix)))
+         (implies (equal (fn-sn-open-kind (cadr r)) :ok)
+                  (equal (car r)
+                         (fn-cpr-replay configs (append prefix suffix))))))
+  :hints (("Goal"
+           :use ((:instance fn-sn-recover-from-checkpoint-equals-full-recover)
+                 (:instance fn-ock-open-ok-has-history
+                            (events (append prefix suffix)))
+                 (:instance fn-sco-extend-of-capture-when-history))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-sco-store-open fn-sco-open
+                                        car-cons cdr-cons)))))
+
+; -----------------------------------------------------------------------------
+; The owner installs from the Store open (checkpoint-cost, PKT-141 finding 3)
+;
+; The host's Store open (host/store-node-host.lisp fn-store-sn-open-extended)
+; computes E and (fn-sco-store-open E configs frontier) once and keeps them;
+; the owner (host/owner-host.lisp fn-owner-recover-from-store-open) installs
+; with fn-ock-install over that pair, without extending or finalizing again.
+(defthm fn-ock-install-of-store-open-by-definition
+  (equal (fn-ock-install (car (fn-sco-store-open e configs frontier))
+                         (cadr (fn-sco-store-open e configs frontier))
+                         max-conns)
+         (fn-ock-recover-extended e configs frontier max-conns))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-sco-store-open fn-ock-recover-extended
+                                               car-cons cdr-cons)))))
+
+; -----------------------------------------------------------------------------
+; The publication off the owner mutex (checkpoint-cost, PKT-141 finding 2)
+;
+; Under the owner mutex the host captures the base, the configuration
+; history and the record list (host/owner-host.lisp fn-owner-sco-capture);
+; these are values, and a later commit makes new ones.  Outside the mutex it
+; calls `fn-ock-publication' on the captured values and writes the octets;
+; back under the mutex it installs the new base and the durable sequence
+; (fn-owner-sco-publication-done).  The file is `fn-sco-freeze' of the next
+; checkpoint: its count, not its record list.
+(defun fn-ock-publication (base configs records segment-octets)
+  ; (NEXT OCTETS); OCTETS is :unencodable when the codec refuses.
+  (declare (xargs :guard (natp segment-octets) :verify-guards nil))
+  (let ((next (fn-ock-next-checkpoint base configs records)))
+    (list next (fn-scc-file-octets (fn-sco-freeze next) segment-octets))))
+
+; KEYSTONE of the publication.  What the owner publishes from a capture it
+; took is the capture of the history at the capture point, whatever was
+; committed while it encoded.
+(defthm fn-ock-publication-is-the-capture-at-the-capture-point
+  (implies (fn-sn-observed-historyp frontier records)
+           (equal (car (fn-ock-publication (fn-sco-capture configs prefix)
+                                           configs records segment-octets))
+                  (fn-sco-capture configs records)))
+  :hints (("Goal" :use fn-ock-next-checkpoint-is-the-capture
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-ock-publication car-cons)))))
+
+; The segments written for a checkpoint value decode, and thaw, to it: the
+; codec round trip (fn-scc-decode-segments-of-segments, under its two width
+; hypotheses) composed with fn-sco-thaw-of-freeze.
+(defthm fn-ock-published-segments-decode-to-the-checkpoint
+  (implies (and (fn-sco-shapep c)
+                (fn-scc-treep (fn-sco-freeze c))
+                (< (+ 1 (len (fn-scc-encode (fn-sco-freeze c)))) *fn-scc-u64-bound*)
+                (< (fn-scc-value-sequence (fn-sco-freeze c)) *fn-scc-u64-bound*))
+           (equal (fn-sco-thaw (cadr (fn-scc-decode-segments
+                                      (fn-scc-segments (fn-sco-freeze c)
+                                                       segment-octets))))
+                  c))
+  :hints (("Goal" :use ((:instance fn-scc-decode-segments-of-segments
+                                   (c (fn-sco-freeze c)))
+                        fn-sco-thaw-of-freeze)
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(car-cons cdr-cons)))))
+
 (verify-guards fn-ock-install)
 (verify-guards fn-ock-recover-full)
 (verify-guards fn-ock-recover-extended)
 (verify-guards fn-ock-next-checkpoint)
+(verify-guards fn-ock-publication)

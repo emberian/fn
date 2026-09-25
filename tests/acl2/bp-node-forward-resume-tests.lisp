@@ -147,7 +147,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (let* ((open (fn-bpnp-step st (list :session *bpfr-dest*
                                       (cons (fn-bpnf-epoch st) n) t 32768
-                                      *bpfr-obs*)))
+                                      *bpfr-obs* *bpfr-via*)))
          (sent (bpfr-durable open))
          (effect (car (fn-bpnf-answer-effects sent)))
          (result (fn-bpnp-step (fn-bpnf-answer-state sent)
@@ -167,7 +167,7 @@
 (make-event `(defconst *bprs-u5-open*
   ',(fn-bpnp-step (bprs-after *bprs-u4*)
                   (list :session *bpfr-dest* (cons (fn-bpnf-epoch *bpfr-s2*) 5) t
-                        32768 *bpfr-obs*))))
+                        32768 *bpfr-obs* *bpfr-via*))))
 ;; fn-bpnp-uncertain-result-keeps-the-count: witness.  The first attempt's
 ;; kind 9 is :uncertain, durable, and the slot keeps retries 0 under the
 ;; :uncertain head; the machine is not fenced (issued is empty) and the next
@@ -211,7 +211,7 @@
  `(defconst *bprs-failed*
     ',(let* ((open (fn-bpnp-step *bpfr-s2* (list :session *bpfr-dest*
                                                   (cons (fn-bpnf-epoch *bpfr-s2*) 1)
-                                                  t 32768 *bpfr-obs*)))
+                                                  t 32768 *bpfr-obs* *bpfr-via*)))
              (sent (bpfr-durable open))
              (effect (car (fn-bpnf-answer-effects sent))))
         (fn-bpnf-answer-state
