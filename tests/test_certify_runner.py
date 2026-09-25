@@ -201,6 +201,13 @@ cat > "$book.cert" <<CERT
 NIL
 CERT
 printf '(in-package "ACL2")\n' > "$book.port"
+# ACL2 on SBCL compiles after writing the certificate (Step 5), so the
+# compiled file is the newer of the two.  FAKE_NO_FASL names books whose
+# certification produced none.
+case " ${FAKE_NO_FASL:-} " in
+  *" $book "*) ;;
+  *) printf 'fake fasl for %s\n' "$book" > "$book.fasl" ;;
+esac
 # `<certified book>:<book to edit>`: a source that changes while the run is
 # still going, which is what the cache must never file a pair against.
 case "${FAKE_EDIT_AFTER:-}" in
@@ -245,7 +252,7 @@ class FakeRepository:
     def certify(self, books: list[str], jobs: int, fail: str = "",
                 slots: int = 16, extra: list[str] | None = None,
                 quiet_fail: str = "", edit_after: str = "",
-                convert_fail: str = "") -> tuple[int, dict]:
+                convert_fail: str = "", no_fasl: str = "") -> tuple[int, dict]:
         extra = extra or []
         self.runs += 1
         self.events.write_text("")
@@ -257,6 +264,7 @@ class FakeRepository:
             "FAKE_QUIET_FAIL": quiet_fail,
             "FAKE_CONVERT_FAIL": convert_fail,
             "FAKE_EDIT_AFTER": edit_after,
+            "FAKE_NO_FASL": no_fasl,
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             # A private slot pool and a private certificate cache: a unit test
             # must not contend with this machine's real ACL2 runs or publish
@@ -705,15 +713,48 @@ class ClosureTests(unittest.TestCase):
 class IncrementalTests(unittest.TestCase):
     """`--incremental`: install what the cache holds, certify only the rest."""
 
-    def seeded(self, directory: str, books: list[str]) -> FakeRepository:
+    def seeded(self, directory: str, books: list[str],
+               no_fasl: str = "") -> FakeRepository:
         """A repository whose cache holds `books` and whose tree holds no pair."""
         repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
-        code, _ = repository.certify(books, jobs=2)
+        code, _ = repository.certify(books, jobs=2, no_fasl=no_fasl)
         self.assertEqual(code, 0)
-        for path in list(repository.root.glob("books/*.cert")) + \
-                list(repository.root.glob("books/*.port")):
-            path.unlink()
+        for suffix in ("cert", "port", "fasl"):
+            for path in repository.root.glob(f"books/*.{suffix}"):
+                path.unlink()
         return repository
+
+    def test_installed_pairs_bring_their_compiled_files_and_the_manifest_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory, ["books/base", "books/mid"])
+            code, manifest = repository.certify(
+                ["books/leaf-a"], jobs=2, extra=["--incremental"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual((manifest["cache_install"]["fasl_installed"],
+                              manifest["cache_install"]["fasl_missing"]), (2, 0))
+            for book in ("books/base", "books/mid"):
+                fasl = repository.root / f"{book}.fasl"
+                cert = repository.root / f"{book}.cert"
+                self.assertEqual(fasl.read_text(), f"fake fasl for {book}\n")
+                # ACL2 refuses a compiled file older than its certificate.
+                self.assertGreaterEqual(fasl.stat().st_mtime, cert.stat().st_mtime)
+            self.assertIn("books/leaf-a", manifest["compiled_digests_sha256"])
+
+    def test_a_pair_cached_without_a_compiled_file_still_installs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory, ["books/base", "books/mid"],
+                                     no_fasl="books/base")
+            # A compiled file left from some other certification.
+            (repository.root / "books/base.fasl").write_text("stale\n")
+            code, manifest = repository.certify(
+                ["books/leaf-a"], jobs=2, extra=["--incremental"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["cache_install"]["installed"], 2)
+            self.assertEqual((manifest["cache_install"]["fasl_installed"],
+                              manifest["cache_install"]["fasl_missing"]), (1, 1))
+            self.assertTrue((repository.root / "books/base.cert").is_file())
+            self.assertFalse((repository.root / "books/base.fasl").exists())
+            self.assertTrue((repository.root / "books/mid.fasl").is_file())
 
     def test_a_cached_bottom_certifies_exactly_the_top_in_order(self):
         with tempfile.TemporaryDirectory() as directory:

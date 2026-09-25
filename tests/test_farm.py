@@ -425,8 +425,10 @@ class CacheTests(unittest.TestCase):
             parsed = farm.parse_installed(
                 "install-partial: 3 books, cache /c\n  toolchain t; installed 2, "
                 "kept 0, missing 1, removed 1; roots installed 0 of 1; "
-                "origins /o=2; recertify books/beta\n")
+                "origins /o=2; recertify books/beta; fasl 1 missing 1\n")
             self.assertEqual(parsed["origins"], {"/o": 2})
+            self.assertEqual((parsed["installed"], parsed["fasl_installed"],
+                              parsed["fasl_missing"]), (2, 1, 1))
             with self.assertRaises(farm.FarmError):
                 farm.submit("persvati", root, ["books/alpha"], jobs=8,
                             timeout_seconds=60, affected_by=[], closure=True,
