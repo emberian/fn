@@ -185,3 +185,16 @@ GENERATION entries (contiguity), so the writer and listing keystones are
 composed in prose only. The admin's serialized credential file is not
 proved within the loader's octet bound; it is checked (`:fault
 :serialized-profile`).
+
+## Join with path-and-login (merge e31ecd2f)
+
+`fn-native-auth-load-bindings` and `fn-native-auth-admin-bind`, both from
+dev, now take MAX-CREDENTIALS. They load, and bind rewrites, under it, so a
+binding is never read from a file the bounded load refuses. The callers are
+the owner's loader (host/native/auth.lisp `fnn-native-auth-install`) and the
+operator's bind (host/native/auth-admin.lisp). The scenario is renumbered
+SCN-052. Run 4, run-20260925T101049Z-1c75 (`--affected-by` native-auth-profile,
+native-auth-admin and login-binding), manifest
+`certify-20260925T101146Z-3714036`: 56 of 56 passed. books/store-node-invariants
+took 11.9 s. This lane did not change it: it was recertified as a dependency,
+and its time is dev's. No native bind test exists, so none was rerun.
