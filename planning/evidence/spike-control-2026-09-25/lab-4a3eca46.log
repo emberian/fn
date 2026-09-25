@@ -1,0 +1,58 @@
+test_two_node_control_lab (tests.test_native_control_exec.NativeControlExecLab.test_two_node_control_lab) ... LAB grant a configured generation=4 record=00000004.cfg verification=VERIFIED
+LAB grant b configured generation=4 record=00000004.cfg verification=VERIFIED
+LAB author a q t-signed rc=0  
+LAB post unsigned 240 article received OK
+LAB present a t-signed '223'
+LAB present a t-unsigned '223'
+LAB present b t-signed '223'
+LAB present b t-unsigned '223'
+LAB post unsigned-cancel 240 article received OK
+LAB author a q c-stranger rc=0  
+LAB decision a c-unsigned 'declined unsigned'
+LAB decision a c-stranger 'declined no-grant'
+LAB still served a t-signed
+LAB still served a t-unsigned
+LAB decision b c-unsigned 'declined unsigned'
+LAB decision b c-stranger 'declined no-grant'
+LAB still served b t-signed
+LAB still served b t-unsigned
+LAB author a p c-authority rc=0  
+LAB author a q c-author rc=0  
+LAB withdrawn a t-unsigned '430'
+LAB withdrawn a t-signed '430'
+LAB listgroup fn.test a []
+LAB withdrawn b t-unsigned '430'
+LAB withdrawn b t-signed '430'
+LAB listgroup fn.test b []
+LAB author a p g-new-1 rc=0  
+LAB newgroup a '211'
+LAB active after newgroup a ['fn.created']
+LAB decision a executed reconfigure group newgroup fn.created 1 5555555555555555555555555555555555555555555555555555555555555555
+LAB newgroup b '211'
+LAB active after newgroup b ['fn.created']
+LAB decision b executed reconfigure group newgroup fn.created 1 5555555555555555555555555555555555555555555555555555555555555555
+LAB author a q g-stranger rc=0  
+LAB author a p g-rm-2 rc=0  
+LAB author a p g-new-1-replay rc=0  
+LAB decision a g-stranger 'declined no-grant'
+LAB rmgroup decision a 'executed reconfigure group rmgroup fn.created 2 5555555555555555555555555555555555555555555555555555555555555555'
+LAB active after rmgroup a ['fn.created'] GROUP 211
+LAB decision a g-new-1-replay 'declined stale-serial'
+LAB decision b g-stranger 'declined no-grant'
+LAB rmgroup decision b 'executed reconfigure group rmgroup fn.created 2 5555555555555555555555555555555555555555555555555555555555555555'
+LAB active after rmgroup b ['fn.created'] GROUP 211
+LAB decision b g-new-1-replay 'declined stale-serial'
+LAB author a p g-check rc=0  
+LAB report a 'report 7 fn +fn.extra'
+LAB report b 'report 7 fn +fn.extra'
+LAB apply-checkgroups rc=0  accepted operator control
+LAB applied a '211'
+LAB not applied b fn.extra 411
+LAB after restart b t-unsigned '430'
+LAB done
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 7.173s
+
+OK
