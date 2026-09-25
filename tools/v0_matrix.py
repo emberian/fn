@@ -687,6 +687,22 @@ PLAN = (
       ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "node"),
     S("V0-CLIENT-SLRN", "F-CLIENT", "slrn reads a group and an article",
       ("NNT-002",), ("SCN-014",), ACCEPTED),
+    # The "client" phase: tin 2.6.2 in a tmux pane, its wire recorded by
+    # tools/nntp_wire_log.py; each verdict is the node's reply line to the
+    # command tin sent (reader spike, D28, planning/evidence/spike-reader-2026-09-25.md).
+    S("V0-CLIENT-TIN-READ", "F-CLIENT",
+      "tin logs in, lists groups, opens a group and reads an article",
+      ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "single",
+      "tin's own XOVER/OVER, HDR and ARTICLE use; one node, one group"),
+    S("V0-CLIENT-TIN-REPLY", "F-CLIENT", "tin posts a followup (References set by tin)",
+      ("NNT-002",), ("SCN-014",), ACCEPTED, "single",
+      "tin always sends a Path field (inews.c, post.c); fn refuses a supplied Path "
+      "as local policy (specs/nntp.md), so this row reads refused until that policy moves"),
+    S("V0-CLIENT-TIN-POST", "F-CLIENT", "tin posts a new article",
+      ("NNT-002",), ("SCN-014",), ACCEPTED),
+    S("V0-CLIENT-TIN-CANCEL", "F-CLIENT", "tin cancels its own article (cmsg cancel)",
+      ("NNT-002",), ("SCN-014",), ACCEPTED, "single",
+      "needs an accepted own article first; tin's cancel also carries Path"),
 )
 
 PLAN_BY_KEY = {spec.key: spec for spec in PLAN}
@@ -909,6 +925,48 @@ def traceback_line(output: str) -> str:
 
 
 EXIT_FAULT, EXIT_USAGE = 4, 5
+
+
+def tin_wire_outcomes(text: str) -> dict:
+    """From a tools/nntp_wire_log.py log: what the node answered tin, in order.
+
+    `read` is the node's first reply to ARTICLE; `posts` lists, for each POST
+    tin sent, the reply line after its terminating dot and the article's
+    Subject.  Nothing here judges an article; it only reads reply lines.
+    """
+    out = {"read": None, "posts": []}
+    lines = [line.split(" ", 2)[2] if line.count(" ") >= 2 else "" for line in
+             text.splitlines()]
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if line.startswith("C: ARTICLE") and out["read"] is None and index + 1 < len(lines):
+            out["read"] = lines[index + 1][3:]
+        if line == "C: POST":
+            subject, cursor, answer = "", index + 1, None
+            while cursor < len(lines):
+                one = lines[cursor]
+                if one.startswith("C: Subject: ") and not subject:
+                    subject = one[len("C: Subject: "):]
+                if one == "C: .":
+                    answer = next((x[3:] for x in lines[cursor + 1:] if x.startswith("S: ")),
+                                  None)
+                    break
+                cursor += 1
+            out["posts"].append({"subject": subject, "reply": answer})
+            index = cursor
+        index += 1
+    return out
+
+
+def reply_verdict(line) -> str:
+    if not line:
+        return UNCERTAIN
+    if line.startswith(("240", "220")):
+        return ACCEPTED
+    if line.startswith(("441", "430", "423")):
+        return REFUSED
+    return UNCERTAIN
 
 
 def exit_verdict(rc) -> str:
@@ -3800,6 +3858,59 @@ else echo NONE; fi
                   step.first_line or "(no output)", exit_code=step.rc,
                   client="slrn", limit="one newsreader against node A only")
 
+    TIN_KEYS = ("V0-CLIENT-TIN-READ", "V0-CLIENT-TIN-REPLY", "V0-CLIENT-TIN-POST",
+                "V0-CLIENT-TIN-CANCEL")
+
+    def tin_client(self):
+        """The "client" phase: stock tin against node A, every reply line recorded.
+
+        tin is driven in a tmux pane by tools/spike_tin_drive.sh through
+        tools/nntp_wire_log.py, which forwards to node A and logs both
+        directions with AUTHINFO PASS redacted.  The login is the matrix's
+        principal, written to tin's ~/.newsauth file, never to a command line.
+        """
+        tin = getattr(self, "clients", {}).get("tin", "ABSENT")
+        if tin in ("ABSENT", "") or not self.a.port:
+            self.blocked(self.TIN_KEYS, "tin is not installed on {} (build it without "
+                         "root: planning/evidence/spike-reader-2026-09-25.md) or node A has "
+                         "no listener".format(self.host.label))
+            return
+        user, secret = self.credential()
+        home = "{}/tin-home".format(self.run)
+        self.push_file("{} {} {}\n".format("127.0.0.1", secret, user),
+                       "{}/.newsauth".format(home), mode="600")
+        self.push_file("{}:\n".format(self.served_group()), "{}/.newsrc".format(home))
+        self.push_file("#!/bin/sh\nsleep 1.2\nfor a; do f=$a; done\n"
+                       "echo 'a followup from tin in the v0 matrix' >> \"$f\"\n",
+                       "{}/editor.sh".format(home), mode="755")
+        wire, port = "{}/tin-wire.log".format(self.run), self.a.port + 7
+        step = self.sh("tin client", self.cd(
+            "python3 tools/nntp_wire_log.py {port} {target} {wire} & relay=$!; sleep 1; "
+            "sh tools/spike_tin_drive.sh {tin} {port} {home} {run}/tin-screens "
+            "'ENTER|3|group' 'ENTER|3|article' 'f|5|followup' 'p|6|followup-posted' "
+            "'q|3|index' 'w|3|subject' 'TEXT:tin in the v0 matrix|1|typed' "
+            "'ENTER|5|check' 'p|6|posted'; tmux kill-session -t spiketin; "
+            "kill $relay; cat {wire}".format(port=port, target=self.a.port, wire=wire,
+                                             tin=shlex.quote(tin), home=home, run=self.run)),
+            timeout=600, expect=None)
+        seen = tin_wire_outcomes(step.output)
+        self.emit("V0-CLIENT-TIN-READ", reply_verdict(seen["read"]), step.command,
+                  "ARTICLE -> {}".format(seen["read"]), client="tin", log=wire)
+        posts = seen["posts"]
+        for key, position in (("V0-CLIENT-TIN-REPLY", 0), ("V0-CLIENT-TIN-POST", 1)):
+            if position < len(posts):
+                self.emit(key, reply_verdict(posts[position]["reply"]), step.command,
+                          "POST {!r} -> {}".format(posts[position]["subject"],
+                                                   posts[position]["reply"]),
+                          client="tin", log=wire)
+            else:
+                self.emit(key, NOT_EXERCISED, step.command, "tin sent no such POST",
+                          client="tin", log=wire,
+                          blocker="the pane never reached tin's post prompt")
+        self.emit("V0-CLIENT-TIN-CANCEL", NOT_EXERCISED, step.command,
+                  "no own article was accepted to cancel", client="tin", log=wire,
+                  blocker="tin's post was not accepted; see V0-CLIENT-TIN-POST")
+
     # -- the server entry point --------------------------------------------
     def server_candidates(self, node: NodeSpec):
         """Every entry point this commit might serve from, best first.
@@ -5535,6 +5646,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         live = [n for n in self.nodes if n.port and self.alive(n)]
         if len(live) == 2:
             self.phase("independent clients", self.independent_clients)
+            self.phase("client", self.tin_client)
             for source, target, way in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
                 if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
                     self.phase("transit {}".format(way.upper()),
@@ -5654,6 +5766,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
 
         if all(n.port and self.alive(n) for n in self.nodes):
             self.phase("independent clients", self.independent_clients)
+            self.phase("client", self.tin_client)
         else:
             self.blocked(("V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN"),
                          "a node had no live listener when the independent client "

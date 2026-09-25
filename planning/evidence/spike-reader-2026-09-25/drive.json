@@ -1,0 +1,138 @@
+[
+ {
+  "step": "signed-new",
+  "badge": "accepted",
+  "reason": "240 article received OK",
+  "meta": "Message-ID: <fn-client.20260925T082813Z.9f027434@ember.invalid> · signed on this machine (FN-Authorship carrier)"
+ },
+ {
+  "step": "signed-reply",
+  "badge": "accepted",
+  "reason": "240 article received OK",
+  "meta": "Message-ID: <fn-client.20260925T082814Z.f8700c22@ember.invalid> · signed on this machine (FN-Authorship carrier)"
+ },
+ {
+  "step": "unsigned-reply",
+  "badge": "accepted",
+  "reason": "240 article received OK",
+  "meta": "Message-ID: <fn-client.20260925T082815Z.9ef4685b@ember.invalid> · unsigned"
+ },
+ {
+  "step": "refused-441",
+  "badge": "refused",
+  "reason": "441 posting failed; From is not a valid mailbox list",
+  "meta": "Message-ID: <fn-client.20260925T082816Z.f9437b27@ember.invalid> · unsigned"
+ },
+ {
+  "step": "refused-signed",
+  "badge": "refused",
+  "reason": "441 posting failed; From is not a valid mailbox list",
+  "meta": "Message-ID: <fn-client.20260925T082816Z.be097626@ember.invalid> · signed on this machine (FN-Authorship carrier)"
+ },
+ {
+  "step": "thread-order",
+  "rows": [
+   {
+    "cls": "thread depth-0",
+    "subject": "probe root",
+    "badge": "absent"
+   },
+   {
+    "cls": "thread depth-1",
+    "subject": "Re: probe root",
+    "badge": "absent"
+   },
+   {
+    "cls": "thread depth-0",
+    "subject": "Signed hello from the reader spike",
+    "badge": "verified"
+   },
+   {
+    "cls": "thread depth-1",
+    "subject": "Re: Signed hello from the reader spike",
+    "badge": "verified"
+   },
+   {
+    "cls": "thread depth-2",
+    "subject": "Re: Signed hello from the reader spike",
+    "badge": "absent"
+   },
+   {
+    "cls": "thread depth-2",
+    "subject": "Re: Signed hello from the reader spike",
+    "badge": "absent"
+   },
+   {
+    "cls": "thread depth-1",
+    "subject": "Re: Signed hello from the reader spike",
+    "badge": "verified"
+   },
+   {
+    "cls": "thread depth-0",
+    "subject": "ember logs in, guest's key signs",
+    "badge": "verified"
+   },
+   {
+    "cls": "thread depth-0",
+    "subject": "Signed hello from the reader spike",
+    "badge": "verified"
+   }
+  ]
+ },
+ {
+  "step": "article-verdict",
+  "text": "Server report of historical verification verdict: verified by principal 9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403 under keyring generation 1. This reports what this node recorded; it is not an independent cryptographic check or current authorization."
+ },
+ {
+  "step": "search-subject",
+  "hits": [
+   "Re: probe root",
+   "probe root"
+  ],
+  "cmd": "XPAT Subject 1-9 *probe?root*"
+ },
+ {
+  "step": "search-from",
+  "hits": [
+   "Re: probe root"
+  ],
+  "cmd": "XPAT From 1-9 *guest*"
+ },
+ {
+  "step": "search-case",
+  "hits": []
+ },
+ {
+  "step": "unread",
+  "badges": [
+   "nothing unread",
+   "7 unread"
+  ]
+ },
+ {
+  "step": "draft-reload",
+  "subject": "Draft that survives",
+  "body": "typed before the reload",
+  "note": "Restored the draft this browser kept for this form."
+ },
+ {
+  "step": "operator",
+  "text": "fn / news\nember at 127.0.0.1:11919 · TLSv1.3, certificate verified\nLocal outbox\nGroupsNode\nNode\n\nRead-only. Every value here is the node's answer or a local command's output, shown verbatim.\n\nOver NNTP\n\n111 20260925082817\n\ngroup\tarticles\tnumbers\tstatus\nfn.agents\t0\t1–0\ty\nfn.test\t9\t1–9\ty\nCapabilities\nOn this machine\nstatus and headroom\t--fn store /tank/fn/scratch/spike-reader/node1/store status\nexit 1\nstore: store is already locked\n\n\nretention pins\t--fn store /tank/fn/scratch/spike-reader/node1/store retention\nexit 1\nstore: store is already locked\n\n\npeers\t/tank/fn/scratch/spike-reader/tree/bin/fn --config /tank/fn/scratch/spike-reader/node1/fn.toml peer list\nexit 1\nrefused peer list  store is already locked\n"
+ },
+ {
+  "step": "09-phone-groups",
+  "scrollWidth": 390
+ },
+ {
+  "step": "10-phone-group",
+  "scrollWidth": 390
+ },
+ {
+  "step": "11-phone-article",
+  "scrollWidth": 390
+ },
+ {
+  "step": "12-phone-compose",
+  "scrollWidth": 390
+ }
+]

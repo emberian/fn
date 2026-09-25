@@ -1,0 +1,40 @@
+Fri, 25 Sep 2026 04:11:31                               fn.test                                     Thread    1 of    2
+Lines 2                                    Signed hello from the reader spike                               2 Responses
+ember <ember@spike.invalid>
+
+Newsgroups: fn.test
+
+This article is signed on the author's machine.
+.a dot-led line
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       <n>=set current to n; <TAB>=next unread; /=search pattern; ^K=kill/select
+                           a=author search; B=body search; c=catchup; f=followup; K=mark read
+                          |=pipe; m=mail; o=print; q=quit; r=reply mail; s=save; t=tag; w=post
+
+Post subject []> A new post from tin

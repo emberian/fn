@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Post accepted · fn</title><style>
+:root { color-scheme: light; font-family: system-ui, sans-serif; background:#f5f3eb; color:#172725 }
+body { max-width: 940px; margin: 0 auto; padding: 1.5rem 1rem 5rem; line-height:1.5 }
+header { display:flex; align-items:baseline; justify-content:space-between; border-bottom:2px solid #214e43; margin-bottom:1.5rem }
+h1,h2 { line-height:1.2; letter-spacing:-.03em } h1 { font-size:2rem; margin:.5rem 0 } h2 { font-size:1.45rem }
+a { color:#145f50; text-decoration-thickness:1px; text-underline-offset:.17em }
+a:hover { color:#922e24 } nav a { margin-right:1rem }
+.card, article { background:#fffefa; border:1px solid #cbd5cd; border-radius:12px; padding:1rem 1.2rem; margin:.7rem 0; box-shadow:0 2px 5px #193d2b0d }
+.meta { color:#52645d; font-size:.88rem; overflow-wrap:anywhere }
+.badge { display:inline-block; border-radius:100px; padding:.15rem .6rem; font-size:.8rem; background:#e2efe7; color:#144d3d }
+.accepted { background:#daf1df } .refused { background:#fae0d9 } .uncertain { background:#fff0be }
+.thread { border-left:3px solid #b7d5c6 } pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:ui-monospace, monospace }
+details { margin-top:1rem; border-top:1px solid #d9e1d9; padding-top:.6rem } summary { cursor:pointer; font-weight:650 }
+.hint { border-left:3px solid #d1a24b; padding:.5rem .8rem; background:#fff9e8 }
+input,textarea { box-sizing:border-box; width:100%; padding:.7rem; margin:.2rem 0 .9rem; border:1px solid #9cad9e; border-radius:6px; font:inherit; background:#fff }
+textarea { min-height:12rem } label { display:block; font-weight:650 }
+button,.button { display:inline-block; border:0; border-radius:6px; padding:.65rem 1rem; background:#145f50; color:white; font:inherit; cursor:pointer; text-decoration:none }
+button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
+.verified { background:#daf1df; color:#0f4a2a } .unverified { background:#fae0d9; color:#7a2217 }
+.absent,.unavailable { background:#ecebe4; color:#4a4a42 } .unread { font-weight:700 }
+.unread-dot { color:#922e24 } .reason { font-family:ui-monospace, monospace; background:#fdf1ee; padding:.5rem .8rem; border-radius:6px; overflow-wrap:anywhere }
+.identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
+form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
+.row label { flex:1 1 12rem }
+.carried { background:#e3e9f7; color:#1f3a73 } .revoked,.withdrawn { background:#f3dff0; color:#6b1f5e }
+.depth-1 { margin-left:18px } .depth-2 { margin-left:36px } .depth-3 { margin-left:54px }
+.depth-4,.depth-5,.depth-6,.depth-7,.depth-8 { margin-left:72px }
+.search { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end } .search label { flex:1 1 10rem }
+.search select { padding:.6rem; margin:.2rem 0 .9rem } table.ops { border-collapse:collapse; width:100% }
+table.ops td,table.ops th { text-align:left; padding:.3rem .5rem; border-bottom:1px solid #d9e1d9; overflow-wrap:anywhere }
+.signing { border-left:3px solid #1f3a73; padding:.4rem .8rem; background:#eef2fb }
+.check { display:flex; gap:.5rem; align-items:center; font-weight:400 } .check input { width:auto; margin:0 }
+@media (max-width: 600px) {
+  body { padding: .8rem .75rem 4rem } h1 { font-size:1.4rem } h2 { font-size:1.15rem }
+  header { flex-wrap:wrap; gap:.3rem } .identity { flex-basis:100% }
+  .card, article { padding:.75rem .8rem; border-radius:8px }
+  .depth-1 { margin-left:8px } .depth-2 { margin-left:16px } .depth-3 { margin-left:24px }
+  .depth-4,.depth-5,.depth-6,.depth-7,.depth-8 { margin-left:32px }
+  nav a { display:inline-block; margin:.2rem .8rem .2rem 0 } button,.button { width:100%; margin:.2rem 0 }
+  form.inline button { width:auto } textarea { min-height:9rem }
+}
+</style></head><body><header><h1><a href="/">fn / news</a></h1><span class="identity muted">ember at 127.0.0.1:11919 · TLSv1.3, certificate verified</span><a href="/outbox">Local outbox</a></header><nav class="top"><a href="/">Groups</a><a href="/operator">Node</a></nav><span data-clear-draft="fn.test|new"></span><article><span class="badge accepted">accepted</span><h2>The node answered that it accepted this article.</h2><p class="meta">Message-ID: <code>&lt;fn-client.20260925T082813Z.9f027434@ember.invalid&gt;</code> · signed on this machine (FN-Authorship carrier)</p><p>The node's answer:</p><p class="reason">240 article received OK</p><p><a href="/g?name=fn.test">Back to fn.test</a></p><p><a href="/settle?id=O4H0l7lfaTm_uCfEavSglrlZqSCdIKb0">Check whether the node serves this Message-ID</a></p><details><summary>The exact article sent</summary><pre>FN-Authorship: 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
+	DBMVHCE=
+From: ember &lt;ember@spike.invalid&gt;
+Newsgroups: fn.test
+Subject: Signed hello from the reader spike
+Message-ID: &lt;fn-client.20260925T082813Z.9f027434@ember.invalid&gt;
+Date: Fri, 25 Sep 2026 08:28:13 +0000
+
+This article is signed on the author's machine.
+.a dot-led line</pre></details><details><summary>Node response and diagnostic detail</summary><pre>127.0.0.1:11919 &lt;fn-client.20260925T082813Z.9f027434@ember.invalid&gt; 240 article received OK</pre></details><p class="muted">Refresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart.</p></article><script src="/static/clear.js"></script></body></html>

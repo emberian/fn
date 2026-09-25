@@ -694,5 +694,57 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 503)
 
 
+class ReaderSpikeTests(unittest.TestCase):
+    """Reader spike (D28): verdict tokens, In-Reply-To threading, node-side search."""
+
+    def test_carried_and_forward_tokens_are_the_nodes_words(self):
+        report = fn_web.parse_verdict_hdr("4 carried " + "ab" * 32, 4)
+        self.assertEqual(fn_web.verdict_kind(report), "carried")
+        self.assertIn("verified nothing", report)
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 carried nothex", 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 carried " + "ab" * 32, 5))
+        self.assertEqual(fn_web.verdict_kind(
+            fn_web.parse_verdict_hdr("4 revoked " + "cd" * 32 + " keyring 3", 4)), "revoked")
+        self.assertEqual(fn_web.verdict_kind(
+            fn_web.parse_verdict_hdr("4 withdrawn by-author", 4)), "withdrawn")
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 revoked " + "cd" * 32 + " at 3", 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 revoked", 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 trusted " + "ab" * 32, 4))
+
+    def test_in_reply_to_threads_a_reply_without_references(self):
+        rows = [{"number": 1, "message_id": "<a@x>", "references": "", "in_reply_to": ""},
+                {"number": 2, "message_id": "<b@x>", "references": "", "in_reply_to": "<a@x>"},
+                {"number": 3, "message_id": "<c@x>", "references": "<a@x>",
+                 "in_reply_to": "<b@x>"}]
+        order = [(row["number"], depth) for row, depth, _ in fn_web.thread_rows(rows)]
+        # References wins over In-Reply-To when both are present (row 3).
+        self.assertEqual(order, [(1, 0), (2, 1), (3, 1)])
+
+    def test_search_is_one_xpat_with_reserved_characters_as_single_wildcards(self):
+        sent = []
+
+        class Client:
+            def cmd(self, text, multiline=False):
+                sent.append(text)
+                if text.startswith("GROUP"):
+                    return "211 3 1 3000 fn.test", []
+                if text.startswith("XPAT"):
+                    return "221 header follows", ["2999 a [b] c", "12 outside"]
+                return "224 overview follows", ["2999\ta [b] c\tme <m@x>\tdate\t<m@x>\t\t1\t1"]
+
+        args = SimpleNamespace(host="127.0.0.1", port=1, timeout=1.0, plain=True, cafile=None)
+        backend = fn_web.Backend(args, "", "")
+        backend.using = lambda operation: operation(Client())
+        result = backend.search("fn.test", "subject", "a [b] c")
+        self.assertEqual(sent[1], "XPAT Subject 1001-3000 *a??b??c*")
+        self.assertEqual([hit["number"] for hit in result.data["hits"]], [2999])
+        self.assertEqual(result.data["start"], 1001)
+        sent.clear()
+        backend.search("fn.test", "from", "me", before=1000)
+        self.assertEqual(sent[1], "XPAT From 1-1000 *me*")
+        with self.assertRaises(ValueError):
+            backend.search("fn.test", "body", "x")
+
+
 if __name__ == "__main__":
     unittest.main()

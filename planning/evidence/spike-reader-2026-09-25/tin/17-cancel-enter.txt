@@ -1,0 +1,40 @@
+                                                 Check Prepared Article
+
+Read carefully!
+
+  You are about to cancel an article seemingly not written by you.  This will
+  wipe the article from lots of news servers throughout the world;
+  Usenet's majority  considers this  rather inappropriate,  to say the least.
+  Only press 'd'  if you are  absolutely positive  that you are ready to take
+  the rap.
+
+This is the article you are about to cancel:
+
+From: ember <ember@spike.invalid>
+Subject: ember logs in, guest's key signs
+Date: Fri, 25 Sep 2026 08:12:03 +0000
+Message-ID: <fn-client.20260925T081203Z.b92e3e21@ember.invalid>
+Newsgroups: fn.test
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+e=edit cancel message, q=quit, d=delete (cancel) [ember logs in, guest's key signs]: d

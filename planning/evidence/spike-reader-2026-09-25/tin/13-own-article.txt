@@ -1,0 +1,40 @@
+                                                fn.test (2B 2+ 0* 2o 0K)                                          h=help
+
+   1   o   2    1  Signed hello from the reader spike                                  ember
+   2            1  ember logs in, guest's key signs                                    ember
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       <n>=set current to n; <TAB>=next unread; /=search pattern; ^K=kill/select
+                    a=author search; c=catchup; ^N=line down; ^P=line up; K=mark read; l=list thread
+                      |=pipe; m=mail; o=print; q=quit; r=toggle all/unread; s=save; t=tag; w=post
+
+                                                *** End of articles ***
