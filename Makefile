@@ -214,6 +214,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
 	books/byte-store-k0-staging-error \
+	books/byte-store-k0-authority-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
@@ -290,6 +291,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-k0-step-bridge-tests \
 	books/byte-store-k0-step-bridge-frontier \
 	tests/acl2/byte-store-k0-cuts-tests \
+	books/byte-store-k0-step-bridge-root \
+	tests/acl2/byte-store-k0-step-bridge-root-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \

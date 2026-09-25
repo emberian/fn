@@ -255,7 +255,7 @@
            :use ((:instance fn-bs-store-relation-unfolds))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0p-stage-dir-ops2 fn-bs-k0p-stage-lookups fn-bs-statep)
                            (fn-bs-store-relation fn-bs-lookup fn-bs-authority-inode-list fn-bs-k0p-s1 fn-bs-k0p-s2
-                            fn-bs-k0s-marker-pendingp fn-bs-k0-coveredp fn-bs-replay-visiblep
+                            fn-bs-k0s-root-rename-pendingp fn-bs-k0-coveredp fn-bs-replay-visiblep
                             fn-bs-crash-choicesp fn-bs-ops-for-ino fn-bs-k0-observation-inputp)))))
 (defthm fn-bs-k0p-stage-pairs-by-step
   (implies (fn-bs-k0p-stage-hyps)
@@ -269,15 +269,15 @@
                  (:instance fn-bs-step-preserves-k0-coverage (step (list :create :staging stage)) (outcome :ok) (groups nil) (capacity nil))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-k0p-s1 bs stage)) (step (list :write-all :staging stage octets)) (outcome :ok) (groups nil) (capacity nil))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-k0p-s2 bs stage octets)) (step (list :fsync-file :staging stage)) (outcome :ok) (groups nil) (capacity nil))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-k0p-s1 bs stage)) (k ks))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-k0p-s2 bs stage octets)) (k ks))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-k0p-s3 bs stage octets)) (k ks))
-                 (:instance fn-bs-k0b-root-quiet-has-no-root-marker (ops (fn-bs-pending (fn-bs-k0p-s1 bs stage))))
-                 (:instance fn-bs-k0b-root-quiet-has-no-root-marker (ops (fn-bs-pending (fn-bs-k0p-s2 bs stage octets))))
-                 (:instance fn-bs-k0b-root-quiet-has-no-root-marker (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage octets)))))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-k0p-s1 bs stage)) (k ks))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-k0p-s2 bs stage octets)) (k ks))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-k0p-s3 bs stage octets)) (k ks))
+                 (:instance fn-bs-k0b-root-quiet-has-no-root-rename (ops (fn-bs-pending (fn-bs-k0p-s1 bs stage))))
+                 (:instance fn-bs-k0b-root-quiet-has-no-root-rename (ops (fn-bs-pending (fn-bs-k0p-s2 bs stage octets))))
+                 (:instance fn-bs-k0b-root-quiet-has-no-root-rename (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage octets)))))
            :in-theory (e/d (fn-bs-k0p-stage-dir-ops2)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0-step-inputp
-                            fn-bs-step fn-bs-lookup fn-bs-k0m-has-root-marker fn-bs-k0b-root-quiet-has-no-root-marker
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0-step-inputp
+                            fn-bs-step fn-bs-lookup fn-bs-k0m-has-root-rename fn-bs-k0b-root-quiet-has-no-root-rename
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-replay-visiblep)))))
 (defthm fn-bs-k0p-frontier-run-prefix
   (implies (and (fn-bs-namep stage) (not (fn-bs-lookup bs :staging stage)))
@@ -320,14 +320,14 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-step-preserves-k0-coverage (step '(:observe (:start-frontier))) (outcome :ok) (groups g) (capacity c))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b bs) (k (fn-sf-dispatch ks '(:start-frontier) g c)))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker (b bs) (k ks))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b bs) (k (fn-sf-dispatch ks '(:start-frontier) g c)))
+                 (:instance fn-bs-k0b-relation-has-no-root-rename (b bs) (k ks))
                  fn-bs-store-relation-unfolds)
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0-observation-inputp fn-bs-frontier-noncommit-observationp
                             fn-bs-k0s-observe-step fn-bs-frontier-inputp fn-sf-dispatch fn-sf-start-frontier
                             fn-bs-replay-visiblep fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0m-has-root-marker fn-sf-statep
-                            fn-bs-k0b-relation-has-no-root-marker)))))
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0m-has-root-rename fn-sf-statep
+                            fn-bs-k0b-relation-has-no-root-rename)))))
 (defthm fn-bs-k0-frontier-created-and-written-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-frontier-inputp ks stage octets)
@@ -360,15 +360,15 @@
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-k0p-s3 bs stage octets))
                   (ks (fn-sf-dispatch ks '(:start-frontier) groups capacity))
                   (step '(:observe (:frontier-file :ok))) (outcome :ok))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (fn-bs-k0p-s3 bs stage octets))
                   (k (fn-sf-dispatch (fn-sf-dispatch ks '(:start-frontier) groups capacity) '(:frontier-file :ok) groups capacity)))
-                 (:instance fn-bs-k0b-root-quiet-has-no-root-marker (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage octets)))))
+                 (:instance fn-bs-k0b-root-quiet-has-no-root-rename (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage octets)))))
            :in-theory (e/d (fn-bs-frontier-inputp fn-bs-k0-step-inputp fn-bs-k0-observation-inputp
                             fn-bs-frontier-noncommit-observationp fn-bs-k0s-observe-step fn-bs-k0p-stage-dir-ops2)
                            (fn-bs-store-relation fn-bs-run fn-bs-frontier-program fn-sf-dispatch fn-bs-lookup
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-replay-visiblep fn-bs-k0-coveredp
-                            fn-bs-k0m-has-root-marker fn-bs-k0b-root-quiet-has-no-root-marker
+                            fn-bs-k0m-has-root-rename fn-bs-k0b-root-quiet-has-no-root-rename
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0p-record-entry-phase
   (implies (fn-bs-record-inputp ks stage name frame)
@@ -407,14 +407,14 @@
                  (:instance fn-bs-k0p-stage-pairs-by-step (octets frame))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-k0p-s3 bs stage frame))
                   (step '(:observe (:record-file :ok))) (outcome :ok) (groups g) (capacity c))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (fn-bs-k0p-s3 bs stage frame)) (k (fn-sf-dispatch ks '(:record-file :ok) g c)))
-                 (:instance fn-bs-k0b-root-quiet-has-no-root-marker (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage frame)))))
+                 (:instance fn-bs-k0b-root-quiet-has-no-root-rename (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage frame)))))
            :in-theory (e/d (fn-bs-record-inputp fn-bs-k0-step-inputp fn-bs-k0-observation-inputp
                             fn-bs-k0s-observe-step fn-bs-k0p-stage-dir-ops2)
                            (fn-bs-store-relation fn-sf-dispatch fn-bs-lookup
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-replay-visiblep fn-bs-k0-coveredp
-                            fn-bs-k0m-has-root-marker fn-bs-k0b-root-quiet-has-no-root-marker
+                            fn-bs-k0m-has-root-rename fn-bs-k0b-root-quiet-has-no-root-rename
                             fn-bs-frontier-noncommit-observationp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0-record-staged-durable-cut-relation-by-step
@@ -518,11 +518,11 @@
                             fn-bs-durable-records fn-sf-statep fn-bs-statep fn-bs-fencedp fn-bs-durable-content
                             fn-bs-record-of-octets fn-store-event-sequence fn-bs-inop
                             fn-sf-frontier-new-visiblep)))))
-(defthm fn-bs-k0p-link-step-keeps-root-marker-status
+(defthm fn-bs-k0p-link-step-keeps-root-rename-status
   (implies (not (equal ddir :root))
-           (equal (fn-bs-k0m-has-root-marker (fn-bs-pending (mv-nth 1 (fn-bs-step b k (list :link sdir sname ddir dname) o g c))))
-                  (fn-bs-k0m-has-root-marker (fn-bs-pending b))))
-  :hints (("Goal" :in-theory (e/d (fn-bs-step fn-bs-link fn-bs-k0m-has-root-marker) (fn-bs-lookup fn-bs-inop)))))
+           (equal (fn-bs-k0m-has-root-rename (fn-bs-pending (mv-nth 1 (fn-bs-step b k (list :link sdir sname ddir dname) o g c))))
+                  (fn-bs-k0m-has-root-rename (fn-bs-pending b))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-step fn-bs-link fn-bs-k0m-has-root-rename) (fn-bs-lookup fn-bs-inop)))))
 (defthm fn-bs-k0p-record-program-link-steps
   (let ((prog (fn-bs-record-program stage name frame)))
     (and (equal (nth 7 prog) (list :link :staging stage :transactions name))
@@ -539,15 +539,15 @@
            :use ((:instance fn-bs-k0p-record-run-prefix (g groups) (c capacity))
                  (:instance fn-bs-k0p-record-link-inputs (g groups) (c capacity))
                  fn-bs-k0p-record-entry-phase fn-bs-k0p-related-quiet-outside-visible-phases
-                 (:instance fn-bs-k0b-root-quiet-has-no-root-marker (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage frame))))
+                 (:instance fn-bs-k0b-root-quiet-has-no-root-rename (ops (fn-bs-pending (fn-bs-k0p-s3 bs stage frame))))
                  (:instance fn-bs-k0b-cut-after-step (k 6) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair (k 6) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 8 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
                   (k (cdr (nth 8 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-k0p-record-program-link-steps fn-bs-k0p-stage-dir-ops2
-                            fn-bs-k0p-link-step-keeps-root-marker-status fn-bs-record-inputp)
+                            fn-bs-k0p-link-step-keeps-root-rename-status fn-bs-record-inputp)
                            (fn-bs-store-relation fn-bs-run fn-bs-record-program fn-sf-dispatch fn-bs-lookup
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-step fn-bs-k0-step-inputp
-                            fn-bs-k0-coveredp fn-bs-k0m-has-root-marker fn-bs-k0b-root-quiet-has-no-root-marker
+                            fn-bs-k0-coveredp fn-bs-k0m-has-root-rename fn-bs-k0b-root-quiet-has-no-root-rename
                             nth nthcdr fn-bs-replay-visiblep fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
