@@ -262,6 +262,8 @@
     "tests/acl2/store-compact-verb-tests",
     "books/store-history-marker",
     "tests/acl2/store-history-marker-tests",
+    "books/store-history-required",
+    "tests/acl2/store-history-required-tests",
     "books/byte-store-marker-program",
     "books/byte-store-k0-marker",
     "tests/acl2/byte-store-k0-marker-tests",
@@ -798,19 +800,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 810,
-    "books_in_root_closure": 806,
-    "roots": 794,
-    "theorems": 10953,
-    "functions": 7705,
-    "assert_events": 11797,
-    "must_fails": 1110,
+    "books": 812,
+    "books_in_root_closure": 808,
+    "roots": 796,
+    "theorems": 10980,
+    "functions": 7731,
+    "assert_events": 11863,
+    "must_fails": 1120,
     "encapsulates": 44,
     "guards": {
       "verified": 2146,
-      "declared-off": 562,
-      "default-guarded": 3891,
-      "default-unguarded": 1106
+      "declared-off": 566,
+      "default-guarded": 3900,
+      "default-unguarded": 1119
     },
     "suspect_theorems": 94,
     "export_hygiene_warnings": 137,
@@ -4887,17 +4889,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 22,
-      "functions": 40,
+      "functions": 42,
       "guards": {
         "verified": 2,
         "declared-off": 0,
-        "default-guarded": 35,
+        "default-guarded": 37,
         "default-unguarded": 3
       },
       "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 39,
+      "defconsts": 40,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8422,11 +8424,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 21,
-      "functions": 66,
+      "functions": 67,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 66,
+        "default-guarded": 67,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11651,6 +11653,32 @@
       "encapsulates": 0,
       "includes": [
         "byte-store-frame"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-history-required.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 27,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-history-marker",
+        "store-profile-upgrade"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16318,7 +16346,7 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 65,
+      "assert_events": 67,
       "must_fails": 0,
       "defconsts": 4,
       "defmacros": 1,
@@ -19062,7 +19090,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 150,
+      "assert_events": 153,
       "must_fails": 9,
       "defconsts": 30,
       "defmacros": 0,
@@ -21207,6 +21235,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-history-required-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 13
+      },
+      "verify_guards_events": 0,
+      "assert_events": 61,
+      "must_fails": 10,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-history-required"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-identity-replay-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22862,7 +22917,7 @@
     {
       "theorem": "fn-bs-profile-validp-of-profile-of",
       "book": "books/byte-store-frame.lisp",
-      "line": 360,
+      "line": 371,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp"
       ]
@@ -23010,7 +23065,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 881,
+      "line": 896,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -23579,7 +23634,7 @@
       {
         "theorem": "fn-bs-frontier-next-is-successor",
         "book": "books/byte-store-frame.lisp",
-        "line": 889,
+        "line": 913,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -27411,7 +27466,7 @@
       },
       {
         "book": "books/store-profile-upgrade.lisp",
-        "line": 44,
+        "line": 46,
         "include": "byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -35547,7 +35602,7 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2205,
+        "line": 2244,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
