@@ -173,6 +173,10 @@
         {
           "kind": "theorem",
           "name": "fn-own-served-local-number-is-never-reassigned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-raw-local-number-is-never-reassigned"
         }
       ]
     },
