@@ -11,8 +11,12 @@
 (in-package "ACL2")
 (include-book "article")
 
+; RFC 5536 §3.1.3.
 (defconst *fn-af-max-message-id-octets* 250)
-(defconst *fn-af-max-field-value-octets* 8192)
+; One field value is part of the header, so the header's work bound
+; (`*fn-article-max-header-octets*', books/article) already bounds it; this
+; is that bound, not a separate cap on data.
+(defconst *fn-af-max-field-value-octets* *fn-article-max-header-octets*)
 
 (defconst *fn-af-message-id-name* '(109 101 115 115 97 103 101 45 105 100))
 (defconst *fn-af-newsgroups-name* '(110 101 119 115 103 114 111 117 112 115))

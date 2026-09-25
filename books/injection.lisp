@@ -746,6 +746,14 @@
         (if (<= *fn-inj-cycle-days*
                 (floor (fn-clock-wall observation) *fn-inj-ms-per-day*))
             (fn-inj-refuse :clock-out-of-range)
+          ; The configuration's bound (the operator's profile bound, installed
+          ; by the host) is the parser's input bound: a source past it is
+          ; refused before the parse walks it, so the parse's work is bounded
+          ; by the configuration, not by the codec ceiling.  The same source
+          ; would be refused :oversize below in any case (the injected octets
+          ; contain it).
+          (if (not (fn-cbor-at-mostp source (fn-inj-config-max-octets config)))
+              (fn-inj-refuse :oversize)
           (let ((parsed (fn-article-parse source)))
             (if (not (fn-article-result-okp parsed))
                 (fn-inj-refuse :unparsable)
@@ -784,7 +792,7 @@
                                       (fn-inj-refuse :oversize)
                                     (fn-inj-make-decision
                                      :injected nil msgid groups
-                                     octets)))))))))))))))))))
+                                     octets))))))))))))))))))))
 
 (verify-guards fn-inj-car)
 (verify-guards fn-inj-cdr)

@@ -12,11 +12,28 @@
 (include-book "cbor")
 (include-book "std/lists/rev" :dir :system)
 
-(defconst *fn-article-max-octets* 32768)
+; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds §2.3).
+;
+; Codec ceiling, not policy: the widest article a record can carry, equal to
+; the record codec's payload ceiling `*fn-record-max-payload*'
+; (books/records-shape.lisp; the equality is
+; `fn-nctrl-article-ceiling-is-the-record-payload-ceiling',
+; books/native-control, the first book that sees both).
+; The operator's article bound is the store profile's, and every served path
+; hands the parser at most that many octets first (the injection
+; configuration's max-octets, `fn-inj-decide').
+(defconst *fn-article-max-octets* 4261412864)
+; Work bounds.  The header parse's certified work bound
+; (`fn-article-parse-work-profile-bound', books/article-public-bound) is
+; fuel-per-header-line times input length, so these three are what keep a
+; header's parse linear in the article: removing them needs a work theorem
+; linear in the header, not a larger constant.  They bound the work of one
+; parse, not what a store holds.
 (defconst *fn-article-max-header-octets* 16384)
-(defconst *fn-article-max-line-octets* 998)
 (defconst *fn-article-max-header-lines* 256)
 (defconst *fn-article-max-fields* 64)
+; RFC 5322 §2.1.1: a line is at most 998 octets.
+(defconst *fn-article-max-line-octets* 998)
 
 ; -----------------------------------------------------------------------------
 ; Octet grammar helpers
