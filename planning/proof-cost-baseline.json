@@ -11,9 +11,16 @@
       "jobs": 2,
       "verdict": "passed"
     },
+    "books/owner-invariants": {
+      "seconds": 10.16,
+      "run": "certify-20260924T230829Z-1666590",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/store-node-traces": {
-      "seconds": 10.432,
-      "run": "certify-20260924T222039Z-1241937",
+      "seconds": 10.281,
+      "run": "certify-20260924T230829Z-1666590",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
