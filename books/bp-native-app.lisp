@@ -1,7 +1,14 @@
 ; Native BP application join: intent-first FNRJ replay and exact Store binding.
 (in-package "ACL2")
 (include-book "bp-receipt-records")
-(include-book "owner")
+; books/owner.lisp's own includes, not owner: this book names none of
+; owner's definitions (audit 2026-09-25, packet 2), so a change to the owner
+; no longer recertifies the BP application join and the 80 roots above it.
+(include-book "store-observed")
+(include-book "served")
+(include-book "clock")
+(include-book "owner-feed")
+(include-book "msgid-index")
 (include-book "provenance-codec")
 (include-book "identity")
 (set-verify-guards-eagerness 0)

@@ -27,6 +27,10 @@
 
 (in-package "ACL2")
 (include-book "store-node")
+; The injection inverse (fn-inj-source-of) and the injected-block octets.
+; Reached through books/hybrid-store.lisp until that book included only
+; books/injection-shape.lisp (audit 2026-09-25, packet 1).
+(include-book "injection")
 
 ; The agent of a Path line this node writes, `Path: AGENT!not-for-mail' CRLF,
 ; at the front of x; nil when x does not open with such a line.

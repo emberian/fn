@@ -28,6 +28,9 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-source-decision-line view (fn-owner-config state))))
 (include-book "../books/bp-native-app-fast")
+; fn-own-clock.  Reached through books/bp-native-app.lisp until that book
+; dropped its unused include of owner (audit 2026-09-25, packet 2).
+(include-book "../books/owner")
 (include-book "../books/bp-transit-join")
 (include-book "../books/bp-release-authority")
 
