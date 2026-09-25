@@ -198,7 +198,7 @@ class Conn:
             return "281 authentication accepted", []
         if text == "CAPABILITIES":
             return "101 capability list follows", ["READER", "POST", "IHAVE",
-                                                     "STREAMING", "OVER", "HDR", "LIST"]
+                                                     "STREAMING", "OVER", "HDR", "LIST", "XPAT"]
         if text == "POST":
             return "340 send article", []
         if text.startswith("IHAVE"):
@@ -577,6 +577,30 @@ class ReportPublicationTests(unittest.TestCase):
                 v0_matrix.publish_current(self.repo, self.doc, stopped=True)
         self.assertFalse(self.target.exists())
 
+
+
+class TinWireTests(unittest.TestCase):
+    """tin_wire_outcomes reads only the node's reply lines (the tin phase)."""
+
+    def test_reads_the_article_reply_and_each_post_reply_in_order(self):
+        log = "\n".join([
+            "1.0 1 --- connection",
+            "1.1 1 C: ARTICLE 1",
+            "1.2 1 S: 220 1 <a@b> article follows",
+            "2.0 1 C: POST", "2.1 1 S: 340 send article to be posted",
+            "2.2 1 C: Path: not-for-mail", "2.3 1 C: Subject: Re: root",
+            "2.4 1 C: ", "2.5 1 C: body", "2.6 1 C: .",
+            "2.7 1 S: 240 article received",
+            "3.0 1 C: POST", "3.1 1 S: 340 send article to be posted",
+            "3.2 1 C: Subject: cmsg cancel <x@y>", "3.3 1 C: .",
+            "3.4 1 S: 441 posting failed; Path is not a valid path",
+        ])
+        seen = v0_matrix.tin_wire_outcomes(log)
+        self.assertEqual(seen["read"], "220 1 <a@b> article follows")
+        self.assertEqual([p["subject"] for p in seen["posts"]],
+                         ["Re: root", "cmsg cancel <x@y>"])
+        self.assertEqual([v0_matrix.reply_verdict(p["reply"]) for p in seen["posts"]],
+                         [v0_matrix.ACCEPTED, v0_matrix.REFUSED])
 
 if __name__ == "__main__":
     unittest.main()
