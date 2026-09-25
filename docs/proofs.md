@@ -554,6 +554,10 @@ by construction, so it certifies them and whatever else the cache lacks).
 `--require-origin ORIGIN` is the explicit demand for one complete dependency
 set from one origin and refuses otherwise; `--closure` stays root's
 from-scratch recertification (purge on a miss, certify the whole closure).
+`--recertify BOOK` (repeatable, passed to both the preflight and the runner)
+keeps a cached book out of the install so the run certifies it and its
+manifest records its digest, which is how a book that every run installs and
+no archived manifest certifies gets evidence `certified_claims.py` accepts.
 The invocation for a lane is
 
     python3 tools/farm.py submit persvati --jobs 12 \

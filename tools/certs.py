@@ -197,6 +197,8 @@ class Report:
     # Where the installed (or, for `status`, the usable) pairs came from:
     # origin root -> number of books.  More than one is a composed set.
     origins: dict[str, int] = field(default_factory=dict)
+    # install-partial: books named to be certified afresh, never installed.
+    recertified: list[str] = field(default_factory=list)
     # install-partial: which origin each installed book's pair came from, the
     # roots asked for, and those whose own pair installed (nothing to certify).
     installed_from: dict[str, str] = field(default_factory=dict)
@@ -236,7 +238,9 @@ class Report:
                     self.toolchain_identity or "NONE", self.installed, self.kept,
                     len(self.uncached), self.removed_foreign,
                     len(self.roots_installed), len(self.roots))
-                + (f"; origins {self.origin_words()}" if self.origins else ""))
+                + (f"; origins {self.origin_words()}" if self.origins else "")
+                + (f"; recertify {' '.join(self.recertified)}"
+                   if self.recertified else ""))
         else:
             out.append(f"  certified here {self.certified_locally}, "
                        f"usable from the cache "
@@ -880,7 +884,8 @@ def compatible_partial_choices(
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     toolchain_identity: str, acl2: Path | None = None,
                     pair_checker=None,
-                    _attempt: int = 0) -> Report:
+                    _attempt: int = 0,
+                    recertify: Iterable[str] = ()) -> Report:
     """Install every book of the roots' closure that has a usable pair, and
     name the rest, which the runner then certifies in dependency order.
 
@@ -895,11 +900,22 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     installer that mixes origins per book, and it must not mix provers.
     Every uninstalled book loses any local pair, so nothing left from an
     earlier attempt can stand in for the certificate this run will write.
+
+    ``recertify`` names books of the closure that install nothing whatever
+    the cache holds, so the runner certifies them fresh and its manifest
+    records their digest; their cached dependents follow them, as for any
+    uncached child, and their dependencies still install.
     """
     report = Report(action="install-partial", cache=str(cache))
     roots = tuple(roots)
+    recertify = tuple(sorted(set(recertify)))
     target = str(root.resolve())
     required = required_closure(root, roots)
+    outside = [name for name in recertify if name not in required]
+    if outside:
+        raise ValueError("a book to recertify is not in the roots' closure: "
+                         + ", ".join(outside))
+    report.recertified = list(recertify)
     report.books = len(required)
     report.toolchain_identity = toolchain_identity
     options: dict[str, list[tuple[Path, dict]]] = {}
@@ -909,6 +925,9 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                   if usable_origin(meta, target)
                   and meta.get("toolchain_identity") == toolchain_identity]
         own = [entry for entry in usable if entry[1].get("origin_root") == target]
+        if name in recertify:
+            options[name] = []
+            continue
         options[name] = ((own[:1] + sorted(
             [entry for entry in usable if entry not in own],
             key=lambda entry: (str(entry[1].get("published_at", "")), str(entry[0])),
@@ -940,7 +959,7 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
             if _attempt >= 2:
                 raise
             return install_partial(root, cache, roots, toolchain_identity, acl2,
-                                   pair_checker, _attempt + 1)
+                                   pair_checker, _attempt + 1, recertify)
         if moved:
             report.installed += 1
         else:
@@ -1368,6 +1387,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dependencies-only", action="store_true",
                         help="for install-set, install the requested roots' local "
                              "dependencies but not roots that this run will author")
+    parser.add_argument("--recertify", action="append", default=[], metavar="BOOK",
+                        help="for install-partial, install nothing for this book of "
+                             "the closure (repeatable), so the runner certifies it")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
     cache = Path(arguments.cache).expanduser() if arguments.cache else cache_directory()
@@ -1400,8 +1422,13 @@ def main(argv: list[str] | None = None) -> int:
                          "each book's pair on its own and must not mix provers")
         if not arguments.acl2:
             parser.error("install-partial needs --acl2 to check certificate alists")
-        report = install_partial(root, cache, names, arguments.toolchain_identity,
-                                 Path(arguments.acl2).resolve())
+        try:
+            report = install_partial(root, cache, names, arguments.toolchain_identity,
+                                     Path(arguments.acl2).resolve(),
+                                     recertify=[name[:-len(".lisp")] if name.endswith(".lisp")
+                                                else name for name in arguments.recertify])
+        except ValueError as error:
+            parser.error(str(error))
     else:
         report = status(root, cache)
     for line in report.lines():
