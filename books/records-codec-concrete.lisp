@@ -63,16 +63,16 @@
 (defun fn-rcon-record-p (x)
   (declare (xargs :guard t))
   (and (fn-record-shapep x)
-       (fn-record-uint32p (fn-record-sequence x))
-       (fn-record-uint32p (fn-record-txid x))
-       (fn-record-uint32p (fn-record-generation x))
+       (fn-record-uint64p (fn-record-sequence x))
+       (fn-record-uint64p (fn-record-txid x))
+       (fn-record-uint64p (fn-record-generation x))
        (fn-rcon-msgidp (fn-record-msgid x))
        (fn-record-payloadp (fn-record-payload x))
        (fn-record-groups-validp (fn-record-groups x))
        (fn-rcon-metadata-bytes-p (fn-record-obligation-id x))
        (fn-rcon-metadata-bytes-p (fn-record-content-subject x))
        (fn-rcon-metadata-bytes-p (fn-record-release-evidence x))
-       (fn-record-uint32p (fn-record-charge x))
+       (fn-record-uint64p (fn-record-charge x))
        (fn-record-stampp (fn-record-stamp x))))
 
 ; -----------------------------------------------------------------------------
@@ -179,15 +179,15 @@
     (let ((octets
            (append
             (fn-record-item-encode (cons :bytes *fn-record-magic*))
-            (fn-cbor-encode (cons :uint (fn-record-schema-octet record)))
-            (fn-cbor-encode (cons :uint (fn-record-sequence record)))
-            (fn-cbor-encode (cons :uint (fn-record-txid record)))
-            (fn-cbor-encode (cons :uint (fn-record-generation record)))
+            (fn-record-uint-encode (fn-record-schema-octet record))
+            (fn-record-uint-encode (fn-record-sequence record))
+            (fn-record-uint-encode (fn-record-txid record))
+            (fn-record-uint-encode (fn-record-generation record))
             (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-msgid record))))
             (fn-record-item-encode (cons :bytes (fn-record-payload record)))
-            (fn-cbor-encode (cons :uint (len (fn-record-groups record))))
+            (fn-record-uint-encode (len (fn-record-groups record)))
             (fn-record-encode-groups (fn-record-groups record))
             (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
@@ -198,10 +198,10 @@
             (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
-            (fn-cbor-encode (cons :uint (fn-record-charge record)))
+            (fn-record-uint-encode (fn-record-charge record))
             (if (equal (fn-record-stamp record) :legacy)
                 nil
-              (fn-cbor-encode (cons :uint (fn-record-stamp record)))))))
+              (fn-record-uint-encode (fn-record-stamp record))))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
 

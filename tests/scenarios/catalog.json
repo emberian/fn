@@ -1367,6 +1367,27 @@
         "tests/acl2/store-checkpoint-open-tests.lisp",
         "planning/evidence/bounds-p3-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-047",
+      "title": "A store written by an image before the u64 record codec opens under the new image with the same records and bytes; a u64 charge commits as schema 2",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-013"
+      ],
+      "steps": [
+        "With the previous image, init a store and post two articles; hash every file.",
+        "Open it with the new image (recover, status) and hash every file again.",
+        "With the new image post an article with charge 2^40 and recover."
+      ],
+      "expected": [
+        "The new image recovers the same transaction and article counts; every file hash is unchanged by the open.",
+        "The u64 charge commits (schema-2 record) and recovers; the previous image refuses the store's new record fail-closed by its version octet."
+      ],
+      "evidence": [
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ]
     }
   ]
 }
