@@ -51,12 +51,19 @@
        (fn-hsig-exact-octets-p (fn-cbor-ag-cdr (fn-cbor-ag-car (fn-cbor-ag-cdr signatures)))
                                *fn-hsig-ml-dsa-65-signature-octets*)))
 
+; The v1 carrier's signed-source bound.  Its length field is a u16
+; (fn-hsig-subject-body), so this is a codec bound, not the article ceiling
+; (books/article.lisp, now the record payload width): packet P4 raises it to
+; 65535 and adds the u32 v2 carrier (design 2026-09-25-bounds §2.3).  The
+; value is the one v1 was proved at.
+(defconst *fn-hsig-max-source* 32768)
+
 (defun fn-hsig-subject-p (principal keys source)
   (declare (xargs :guard t))
   (and (fn-hsig-exact-octets-p principal 32)
        (fn-hsig-keyset-p keys)
        (fn-cbor-octet-listp source)
-       (<= (len source) *fn-article-max-octets*)))
+       (<= (len source) *fn-hsig-max-source*)))
 
 (defun fn-hsig-subject-body (principal keys source)
   (declare (xargs :guard (fn-hsig-subject-p principal keys source)))

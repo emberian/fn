@@ -21,7 +21,7 @@
 
 (defun fn-hsig-host-max-source-octets ()
   (declare (xargs :mode :program))
-  *fn-article-max-octets*)
+  *fn-hsig-max-source*)
 
 (defun fn-hsig-host-max-received-octets ()
   (declare (xargs :mode :program))

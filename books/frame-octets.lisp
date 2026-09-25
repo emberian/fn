@@ -31,10 +31,13 @@
 ; Field-level caps.  A text field is node-generated (names, reasons,
 ; Message-IDs), bounded by construction.
 (defconst *fn-frame-max-text* 512)
-; Codec ceiling: a blob field's length is a u32 (books/frame-journal.lisp);
-; a schema that carries an article bounds it by the profile's article bound
-; before the frame is built, not by this width.
-(defconst *fn-frame-max-blob* 4294967295)
+; A blob field's length is a u32, but this cap stays: the frame-field length
+; lemmas bound a schema's payload by its field count times this cap, and a
+; journal spec of seven fields at a u32 blob cap no longer fits the u32 frame
+; (verify-guards fn-frame-workflow-encode, books/frame-journal).  Raising it
+; is a per-schema blob width (design 2026-09-25-bounds §2.3, open under P2);
+; until then the control socket carries an article of at most this size.
+(defconst *fn-frame-max-blob* 131072)
 (defconst *fn-frame-max-nat* 18446744073709551615)
 
 (defconst *fn-frame-u32-modulus* 4294967296)
