@@ -49,10 +49,23 @@ A runaway proof now dies inside its own process with "heap exhausted" (the
 launcher's `--disable-ldb` makes that an exit), and the slot and the
 machine survive it.
 
-## What remains a footgun
+## The bare shell, closed
 
-A bare `acl2 <` in a shell bypasses both the pool and the cap. The one-line
-fix is `export SBCL_USER_ARGS="${SBCL_USER_ARGS:---dynamic-space-size 8000}"`
-in the login environment (ember's `~/.zshenv` is a synced dotfile, so that
-is ember's edit). Until then the rule for lanes is: laptop ACL2 only through
-`tools/acl2` or `tools/proof_repl.py`; everything else on the farm.
+ember added the same export to the login environment (`~/.zshenv`,
+2026-09-25 ~04:00 UTC), so a bare `acl2 <` in any shell on this laptop
+also gets 8,000 MB; verified in a fresh login shell. Every ACL2 on this
+machine is now bounded regardless of who starts it.
+
+## Is 8,000 MB enough to use
+
+The ACL2 core image is 224 MB. A session with a large book loaded runs at
+0.65 to 0.71 GB RSS (persvati, live sessions). hbox certifies the entire
+tree (about 740 books) under the `acl2-literal-4g` toolchain, a 4 GB
+dynamic space per worker, with no book failing for memory. The heaviest
+runtime object measured today, an owner holding a thousand 16 KiB
+articles, is 858 MB. So 8,000 MB is about twice what any certification in
+the tree needs and ten times a session. What it excludes is a proof whose
+live term graph passes a few gigabytes, which in this tree has only ever
+meant an opened codec or recognizer, never a theorem that needed the
+space. A genuine exception raises the cap for that one session with
+`FN_ACL2_DYNAMIC_SPACE_MB` (or `SBCL_USER_ARGS`), on purpose.
