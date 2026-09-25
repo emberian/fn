@@ -75,6 +75,21 @@
   (and (fn-record-ascii-stringp text)
        (<= (len (fn-record-string-octets text)) *fn-cfg-max-label*)))
 
+;  KEYSTONE (the group-name ceiling is the label width).  Every group name the
+; record codec admits (`fn-record-group-namep', at most
+; `*fn-record-max-group-name*' octets, books/records-shape) is a
+; configuration label, so `group create' stages it as a typed delta
+; (native-admin `fn-native-admin-live-group-delta-is-a-typed-delta').  This
+; is the one statement relating the two numbers: raising the group-name
+; ceiling past `*fn-cfg-max-label*' (to the wire's 460) fails here, in the
+; book that owns the label, and the store profile's name field is bounded by
+; the group-name ceiling (`fn-bs-profile-validp').
+(defthm fn-cfg-labelp-of-record-group-name
+  (implies (fn-record-group-namep s) (fn-cfg-labelp s))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-record-group-namep fn-cfg-labelp
+                                     fn-record-nonempty-at-mostp))))
+
 (defun fn-cfg-stampp (s)
   ; A clock observation whose three times fit the schema-0 uint32 fields.
   ; The narrower domain is a format ceiling, not a claim about clocks: the
