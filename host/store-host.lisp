@@ -378,6 +378,33 @@
 (defun fn-store-metadata-config-decode (octets)
   (fn-bs-config-decode octets))
 
+;; The store profile (D27, format 8): every value the host reads from it is
+;; one of these accessors over the decoded values, never a list position.
+(defun fn-store-profile-admittedp (values)
+  (fn-bs-profile-admittedp values))
+
+(defun fn-store-profile-init-verdict (request)
+  (fn-bs-profile-init-verdict request))
+
+(defun fn-store-profile-max-transactions (values)
+  (fn-bs-profile-max-transactions values))
+
+(defun fn-store-profile-max-article-octets (values)
+  (fn-bs-profile-max-article-octets values))
+
+(defun fn-store-profile-report (values)
+  (fn-bs-profile-report values))
+
+;; The Python store's view (tools/run_store.py): the persisted format (8, or 7
+;; for a store not yet upgraded), then T, H, R and A, every one ACL2's reading.
+(defun fn-store-profile-summary (values)
+  (list (if (fn-bs-profile-validp values) 8
+          (if (fn-bs-profile-admittedp values) 7 0))
+        (fn-bs-profile-max-transactions values)
+        (fn-bs-profile-max-history-octets values)
+        (fn-bs-profile-max-record-octets values)
+        (fn-bs-profile-max-article-octets values)))
+
 (defun fn-store-metadata-frontier-frame (n)
   (fn-bs-frontier-encode n))
 

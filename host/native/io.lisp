@@ -666,13 +666,12 @@ execution-boundary fault, never a claim that the core refused an input."
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
+  "ACL2's decoded store profile: a format-8 profile, or a format-7 tuple the
+store runs under by its translation.  The host keeps the value opaque and
+reads every field through an ACL2 accessor."
   (let ((value (fnn-core 'fn-store-metadata-config-decode
                          (fnn-octet-list octets))))
-    (unless (and (listp value) (= (length value) 6)
-                 (fnn-octet-list-p (first value))
-                 (every (lambda (n) (and (integerp n) (>= n 0)))
-                        (subseq value 1 5))
-                 (fnn-octet-list-p (nth 5 value)))
+    (unless (and value (fnn-core 'fn-store-profile-admittedp value))
       (fnn-fault "ACL2 rejected durable configuration frame"))
     value))
 
@@ -1039,9 +1038,17 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil))
 
-(defun fnn-config-capacity (store) (second (fnn-store-config store)))
-(defun fnn-config-max-payload (store) (third (fnn-store-config store)))
-(defun fnn-config-max-transactions (store) (nth 4 (fnn-store-config store)))
+(defun fnn-profile-nat (name store)
+  (let ((value (fnn-core name (fnn-store-config store))))
+    (unless (and (integerp value) (> value 0))
+      (fnn-fault "ACL2 returned a malformed profile field from ~(~a~)" name))
+    value))
+;; The operator's article bound A and transaction bound T of the profile the
+;; store runs under (books/byte-store-frame.lisp accessors).
+(defun fnn-config-max-payload (store)
+  (fnn-profile-nat 'fn-store-profile-max-article-octets store))
+(defun fnn-config-max-transactions (store)
+  (fnn-profile-nat 'fn-store-profile-max-transactions store))
 
 (defun make-fnn-store (root &key writable fault)
   (let ((store (%make-fnn-store :root (fnn-absolute root) :writable writable)))
@@ -2026,14 +2033,17 @@ write nothing."
            (unless (and (consp verdict) (member (first verdict) '(:upgrade :refused)))
              (fnn-fault "ACL2 returned a malformed profile verdict"))
            (if (eq (first verdict) :refused)
-               (fnn-refuse "store profile upgrade refused: ~(~a~)" (second verdict))
+               (fnn-refuse "store profile upgrade refused: ~(~a~)~@[ ~a~]"
+                           (second verdict) (third verdict))
                (destructuring-bind (octets old-budget new-budget) (rest verdict)
                  (unless (and (fnn-octet-list-p octets) octets
                               (integerp old-budget) (integerp new-budget))
                    (fnn-fault "ACL2 returned a malformed profile frame"))
                  (fnn-upgrade-profile-write store (fnn-octets octets))
                  (fnn-out "upgraded profile=~(~a~) transactions-used=~d transactions-budget=~d previous-budget=~d"
-                          profile (length records) new-budget old-budget)
+                          (if (symbolp profile) profile (first profile))
+                          (length records) new-budget old-budget)
+                 (fnn-out-profile (fnn-metadata-config-decode octets))
                  +fnn-exit-ok+)))
       (fnn-store-close store))))
 
@@ -2134,8 +2144,11 @@ error for the same reason."
          (fault (fnn-post-entry-fault inject)))
     (let ((store (fnn-open-live-store root t fault)))
       (unwind-protect
-           (let* ((payload (fnn-read-regular-bounded payload-path
-                                                     (fnn-config-max-payload store)))
+           (let* ((payload (fnn-read-regular-bounded
+                            ;; One octet past the profile's A, so that a longer
+                            ;; payload reaches ACL2's boundary and is refused
+                            ;; there by name (`:payload-bound'), not by the read.
+                            payload-path (1+ (fnn-config-max-payload store))))
                   (codes (fnn-group-codes-for store groups))
                   (charge (if charge-text (parse-integer charge-text) (fnn-charge (length payload))))
                   (sequence nil))
@@ -2210,16 +2223,31 @@ this reads only whether there is one."
              code))
       (fnn-store-close store))))
 
+(defun fnn-out-profile (values)
+  "Print the store profile ACL2 reports: its persisted format and every
+field by its operator name (books/byte-store-frame.lisp `fn-bs-profile-report')."
+  (let ((report (fnn-core 'fn-store-profile-report values)))
+    (unless (and (consp report)
+                 (every (lambda (entry)
+                          (and (consp entry) (stringp (car entry))
+                               (integerp (cdr entry)) (>= (cdr entry) 0)))
+                        report))
+      (fnn-fault "ACL2 returned a malformed profile report"))
+    (fnn-out "profile~{ ~a=~d~}"
+             (loop for (name . value) in report collect name collect value))))
+
 (defun fnn-out-headroom (store)
   "Print ACL2's headroom for the open Store: transactions used of the
-profile's budget, and the retention ledger's reserved charge of its capacity."
+profile's budget, committed record octets of its history bound, and the
+retention ledger's reserved charge of its capacity."
   (let ((headroom (fnn-core-state 'fn-store-sn-headroom (fnn-store-config store))))
-    (unless (and (listp headroom) (= (length headroom) 4)
+    (unless (and (listp headroom) (= (length headroom) 6)
                  (every (lambda (n) (and (integerp n) (>= n 0))) headroom))
       (fnn-fault "ACL2 returned malformed headroom"))
-    (destructuring-bind (used budget reserved capacity) headroom
-      (fnn-out "headroom transactions-used=~d transactions-budget=~d charge-reserved=~d charge-capacity=~d"
-               used budget reserved capacity))))
+    (destructuring-bind (used budget bytes-used history reserved capacity) headroom
+      (fnn-out-profile (fnn-store-config store))
+      (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
+               used budget bytes-used history reserved capacity))))
 
 (defun fnn-command-status (root)
   (multiple-value-bind (store records) (fnn-open-live-store root nil)

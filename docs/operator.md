@@ -34,7 +34,7 @@ store and a supported minimal configuration, its component commands are:
 ```sh
 packaging/fn-native operator /path/to/fn.toml help
 packaging/fn-native operator /path/to/fn.toml init fn.letters fn.test
-packaging/fn-native operator /path/to/fn.toml init --profile scale fn.letters fn.test
+packaging/fn-native operator /path/to/fn.toml init fn.letters fn.test
 packaging/fn-native operator /path/to/fn.toml status
 packaging/fn-native operator /path/to/fn.toml recover
 packaging/fn-native operator /path/to/fn.toml group create fn.announce
@@ -91,45 +91,90 @@ entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
 locked to find that out. An existing store is adopted by `run` and repaired by
 `recover`; `init` does not reinitialise one.
 
-**Store profile and transaction budget (M5).** `init` writes one of two named
-store profiles (`books/byte-store-frame.lisp`, `fn-bs-config-for-profile`),
-and the profile's transaction budget is fixed for the life of the store:
+**Store profile (M5, D27).** The store profile is the operator's: every
+bound on the data a store holds is a field `init` writes into `config.json`
+(format `fn-store-8`, `books/byte-store-frame.lisp`) and only the offline
+upgrade raises. ACL2 fixes the relations between the fields
+(`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
+values.
 
-| profile | selected by | transactions | aggregate record bound | per-record bound |
-| --- | --- | --- | --- | --- |
-| `development` | `init GROUP...` (the default) | 128 | 25,165,824 octets (24 MiB) | 196,608 octets |
-| `scale` | `init --profile scale GROUP...` | 4096 | 805,306,368 octets (768 MiB) | 196,608 octets |
+| field (flag `--NAME N`) | bounds | default at `init` |
+| --- | --- | --- |
+| `max-transactions` (T) | committed transactions | 4,294,967,295 (the u32 txid width) |
+| `max-history-octets` (H) | total committed record octets | 1 TiB |
+| `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
+| `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
+| `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
+| `max-group-name-octets` | one group name | 128 (the record codec's today) |
+| `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
+| `max-consumers`, `max-bp-rows`, `max-config-generations`, `max-credentials`, `max-policy-members` | namespace counts | 1,048,576 each |
 
-Every committed transaction (an article, a retention, keyring, consumer or
-topic event) takes one. The owner refuses the next POST once the store holds
-its budget, and says so: `441 posting failed; the store has no capacity for
-this article`, a refusal (never uncertain, never a silent drop); an article
-already stored is still answered as a duplicate. The decision is ACL2's
-(`fn-sbud-prepare`, `books/owner-store-budget.lisp`), from the profile the
-owner read at open and the count of the store it carries. The budget cannot
-be raised by a configuration record: the profile bounds the work of opening
-the store (the transaction directory is enumerated up to the budget, the
-replay input up to the aggregate bound) before any configuration record is
-read. Raising it is an offline step on the existing store:
+The D27 defaults are 64 MiB records, 16 MiB articles, 4096 groups and
+460-octet names; each default is capped at the codec ceiling the tree carries
+today, and rises when that ceiling does (packet P2). The relations, each
+reported by name when it fails (exit 1, nothing written): `1 <= T <= 2^32-1`;
+`R <= H`; R at least the worst-case record of every Store event kind (today
+exactly 196,608: the accepted-statement kind's ceiling equals the codec's);
+R, A, G and the name bound within their codec ceilings; `1 <= K <= T`; each
+namespace count in `1..2^32-1`.
 
 ```text
+fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
+fn operator /path/to/fn.toml init --profile development fn.letters   # 128 transactions, 24 MiB
+fn operator /path/to/fn.toml init --profile scale fn.letters         # 4096 transactions, 768 MiB
+```
+
+`--profile development|scale|default` names a base (the first two are the
+pre-D27 presets, kept so existing stores and tests keep their witnesses);
+flags override its fields. `status` prints the profile the store runs under
+and the headroom against it:
+
+```text
+profile format=8 max-transactions=100000 max-history-octets=1099511627776 max-record-octets=196608 max-article-octets=20000 ...
+headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-bound=1099511627776 charge-reserved=... charge-capacity=...
+```
+
+Every committed transaction (an article, a retention, keyring, consumer or
+topic event) takes one of T, and its record octets count against H. The owner
+refuses the next POST once either is reached, and says so: `441 posting
+failed; the store has no capacity for this article`, a refusal (never
+uncertain, never a silent drop); an article already stored is still answered
+as a duplicate. The decision is ACL2's (`fn-sbud-verdict-at`,
+`books/store-budget.lisp`; `fn-sbud-prepare`, `books/owner-store-budget.lisp`),
+from the profile the owner read at open, the count of the store it carries and
+the record octets it carries (each record encoded once per owner process,
+`fn-sbud-bytes-used-is-kernel-sum`). A POST whose payload is longer than A is
+refused by name (`payload exceeds the modelled bound`). The profile cannot be
+raised by a configuration record: it bounds the work of opening the store
+(the transaction directory is enumerated up to T, the replay input up to H)
+before any configuration record is read. Raising it is an offline step on the
+existing store:
+
+```text
+fn operator /path/to/fn.toml store upgrade-profile --max-transactions 1000000
 fn operator /path/to/fn.toml store upgrade-profile scale
-upgraded profile=scale transactions-used=7 transactions-budget=4096 previous-budget=128
+fn operator /path/to/fn.toml store upgrade-profile          # format 7 -> 8, bounds unchanged
+upgraded profile=current transactions-used=7 transactions-budget=1000000 previous-budget=100000
 ```
 
 It opens the store as `recover` does, so it is refused (1, `store is already
 locked`) while an owner runs: stop the unit first. ACL2 decides
-(`fn-profile-upgrade-verdict`, `books/store-profile-upgrade.lisp`): only an
-upgrade is written (same format, no bound smaller), so `development` to
-`scale` is the one upgrade; the same profile (`same-profile`) and a downgrade
-(`not-an-upgrade`) are refused (1) and write nothing. The new frame replaces
-`config.json` by stage, fsync, rename and root fsync; a death at any point
-leaves the old or the new profile, never a torn one
-(`fn-bs-profile-program-crash-is-old-or-new`), and an I/O error before the
-rename is a refusal (1), at or after it an uncertain outcome (3) that the next
-`status` resolves by reading whichever frame is there. The retention charge capacity is a different number and IS reconfigurable
-(`capacity DECIMAL-UINT32`). Any profile word other than `development` or
-`scale` is a usage error (5), at `init` and at `store upgrade-profile`.
+(`fn-profile-upgrade-verdict`, `books/store-profile-upgrade.lisp`): the new
+profile must be valid and no field may shrink (`fn-profile-upgradep`); the
+same profile (`same-profile`), a shrink (`not-an-upgrade FIELD`) and a
+broken relation (by its name) are refused (1) and write nothing. With no word
+the base is the store's own profile, so the bare verb on a format-7 store (one
+written before D27) rewrites it as format 8 with every bound unchanged
+(`fn-profile-upgrade-format-7-to-8`); a format-7 store is otherwise served
+under that translation until it is upgraded. Format-6 stores are no longer
+opened. The new frame replaces `config.json` by stage, fsync, rename and
+root fsync; a death at any point leaves the old or the new profile, never a
+torn one (`fn-bs-profile-program-crash-is-old-or-new`), and an I/O error
+before the rename is a refusal (1), at or after it an uncertain outcome (3)
+that the next `status` resolves by reading whichever frame is there. The
+retention charge capacity is a different number and IS reconfigurable
+(`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
+value that is not a decimal below 2^64 is a usage error (5).
 
 Compaction is the other offline store step. It replaces the transaction
 files of the committed history with one lossless pack:

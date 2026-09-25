@@ -216,8 +216,9 @@
 ; books/store-budget.lisp says why it is fixed at init.
 (defun fn-owner-install-profile (values state)
   (declare (xargs :stobjs state :mode :program))
-  (if (fn-bs-meta-config-valuesp values)
-      (let ((state (f-put-global 'fn-owner-store-profile values state)))
+  (if (fn-bs-profile-admittedp values)
+      (let* ((state (f-put-global 'fn-owner-store-profile values state))
+             (state (f-put-global 'fn-owner-record-octets nil state)))
         (value :installed))
     (value :refused)))
 
@@ -256,19 +257,45 @@
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
         (value :configured)))))
 
-; The owner's verdict on one more record of KIND: its budget from the carried
-; profile against the count of the Store it carries.
+; The committed record octets of the carried Store, from the carried
+; (K . SUM) of the first K records extended by the records committed since
+; (books/store-budget.lisp `fn-sbud-bytes-extend'; equal to
+; `fn-sbud-bytes-used' when the cache is valid,
+; `fn-sbud-bytes-used-is-kernel-sum').  Committed records only grow while one
+; owner runs, and the cache is reset when a profile is installed at open, so
+; each record is encoded once per owner process, not once per POST.
+(defun fn-owner-record-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+         (cache (if (boundp-global 'fn-owner-record-octets state)
+                    (f-get-global 'fn-owner-record-octets state)
+                  nil))
+         (bytes (fn-sbud-bytes-extend cache records))
+         (state (f-put-global 'fn-owner-record-octets
+                              (cons (len records) bytes) state)))
+    (mv bytes state)))
+
+; The owner's verdict on one more record of KIND: the carried profile's count
+; and history gates against the Store it carries.
 (defun fn-owner-publication-verdict (kind state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-verdict (fn-owner-store-profile state) kind
-                          (fn-owner-store state))))
+  (mv-let (bytes state) (fn-owner-record-octets state)
+    (let ((s (fn-owner-store state)))
+      (value (fn-sbud-verdict-at (fn-owner-store-profile state) kind
+                                 (fn-sbud-used s) bytes)))))
 
-; (used budget reserved-charge charge-capacity), all read from the carried
-; state; the host prints it and computes none of it.
+; (used budget bytes-used history-bound reserved-charge charge-capacity), all
+; read from the carried state; the host prints it and computes none of it.
 (defun fn-owner-headroom (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-headroom (fn-owner-store-profile state)
-                           (fn-owner-store state))))
+  (mv-let (bytes state) (fn-owner-record-octets state)
+    (value (fn-sbud-headroom-at (fn-owner-store-profile state)
+                                (fn-owner-store state) bytes))))
+
+; The carried profile as the operator reads it (field names and values).
+(defun fn-owner-profile-report (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bs-profile-report (fn-owner-store-profile state))))
 
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))

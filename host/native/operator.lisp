@@ -221,7 +221,7 @@ observation into the outcome and this function only carries it out."
               (let* ((profile (fnn-core
                                'fn-native-operator-host-result-init-profile result))
                      (code (progn
-                             (unless (member profile '(:development :scale))
+                             (unless (consp profile)
                                (fnn-fault "ACL2 accepted an init plan with no store profile"))
                              (fnn-command-init root groups profile))))
                 (fnn-operator-emit-status
@@ -287,7 +287,7 @@ observation into the outcome and this function only carries it out."
                        (let ((profile (fnn-core
                                        'fn-native-operator-host-result-upgrade-profile
                                        result)))
-                         (unless (member profile '(:development :scale))
+                         (unless (consp profile)
                            (fnn-fault "ACL2 accepted a store plan with no profile"))
                          (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))

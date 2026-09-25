@@ -30,7 +30,7 @@
 (make-event `(defconst *cvt-names*
                ',(list (fn-bs-txn-name 0) (fn-bs-txn-name 1) (fn-bs-txn-name 2)
                        (fn-bs-txn-name 3) (fn-bs-txn-name 4))))
-(defconst *cvt-dev* *fn-bs-meta-development-values*)
+(defconst *cvt-dev* *fn-bs-profile-development*)
 (defconst *cvt-footprint* '(212 150 150 180 170))
 
 (assert-event (fn-cc-octet-event-listp *cvt-records* 0 0 6))
@@ -46,7 +46,7 @@
  (<= (+ (fn-cverb-octet-sum *cvt-footprint*)
         (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture *cvt-records* 6))))
         *fn-frame-trailer-octets*)
-     (fn-bs-meta-nth 3 *cvt-dev*)))
+     (fn-bs-profile-max-history-octets *cvt-dev*)))
 ; The accounted pack octets are an upper bound of the real payload, and
 ; close to it: the real encoding is at most 32 + 5 per event smaller.
 (assert-event
@@ -84,7 +84,7 @@
 
 ; Temporary space: the same store beside 24 MiB of other history is refused
 ; before a byte is written.
-(defconst *cvt-full* (list (- (fn-bs-meta-nth 3 *cvt-dev*) 100)))
+(defconst *cvt-full* (list (- (fn-bs-profile-max-history-octets *cvt-dev*) 100)))
 (assert-event
  (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil *cvt-full*)
         '(:refused :temporary-space)))
@@ -96,7 +96,7 @@
     (<= (+ (fn-cverb-octet-sum *cvt-full*)
            (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture *cvt-records* 6))))
            *fn-frame-trailer-octets*)
-        (fn-bs-meta-nth 3 *cvt-dev*)))))
+        (fn-bs-profile-max-history-octets *cvt-dev*)))))
 
 ; The compaction unit: 4097 events (one over the pack's event limit) of a
 ; valid history.  The decision refuses it by name and so does the capture.
@@ -137,12 +137,17 @@
   (defthm cvt-capture-without-event-list
     (equal (car (fn-cc-capture '((1 2 3)) 6)) :ok))))
 
-; Tooth for fn-cverb-profile-count-within-pack-events: a profile that is not
-; one of the named four may name more transactions than a pack holds.
+; Tooth for fn-cverb-preset-count-within-pack-events: a valid operator
+; profile that is not a preset -- the D27 defaults -- names more transactions
+; than a pack holds, so under it the pack's event limit can be the refusal.
+(assert-event (fn-bs-profile-validp *fn-bs-profile-defaults*))
+(assert-event (< *fn-cc-max-events*
+                 (fn-bs-profile-max-transactions *fn-bs-profile-defaults*)))
 (local
  (must-fail
-  (defthm cvt-count-without-named-profile
-    (<= (fn-bs-meta-nth 4 '(7 1048576 32768 805306368 5000 1)) *fn-cc-max-events*))))
+  (defthm cvt-count-without-preset
+    (implies (fn-bs-profile-validp profile)
+             (<= (fn-bs-profile-max-transactions profile) *fn-cc-max-events*)))))
 (assert-event (equal (fn-cverb-decide '(7 1048576 32768 805306368 5000 1)
                                       *cvt-records* 0 *cvt-names* nil nil nil)
                      '(:refused :profile)))

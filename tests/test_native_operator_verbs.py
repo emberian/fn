@@ -200,7 +200,7 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         helped = self.operator("help", "init")
         self.assertEqual(helped.returncode, EXIT_OK, helped.stderr.decode())
         self.assertEqual(helped.stdout.decode(),
-                         "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]\n")
+                         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]\n")
 
 
 class NativeOperatorReservedGroupSourceTests(unittest.TestCase):
@@ -506,8 +506,9 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(owner.wait(timeout=60), EXIT_OK,
                          owner.stderr.read().decode("utf-8", "replace"))
 
-    def test_the_default_profile_budget_is_reported_and_refused_by_name(self):
-        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+    def test_the_development_profile_budget_is_reported_and_refused_by_name(self):
+        self.assertEqual(self.operator("init", "--profile", "development", "fn.test").returncode,
+                         EXIT_OK)
         before = self.headroom()
         self.assertEqual(before["transactions-used"], 0)
         self.assertEqual(before["transactions-budget"], 128)
@@ -566,3 +567,42 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(room["transactions-budget"], 4096)
         huge = self.operator("init", "--profile", "huge", "fn.other")
         self.assertEqual(huge.returncode, EXIT_USAGE, huge.stderr.decode())
+
+    def profile_line(self):
+        status = self.operator("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        for line in status.stdout.decode("ascii").splitlines():
+            if line.startswith("profile "):
+                return {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
+        self.fail(status.stdout.decode())
+
+    def test_init_writes_the_operators_fields_and_status_prints_them(self):
+        # D27: no flag is the default profile; flags set fields; a relation
+        # the fields break is refused by its name and writes nothing.
+        created = self.operator("init", "--max-transactions", "1000",
+                                "--max-article-octets", "20000", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        fields = self.profile_line()
+        self.assertEqual(fields["format"], 8)
+        self.assertEqual(fields["max-transactions"], 1000)
+        self.assertEqual(fields["max-article-octets"], 20000)
+        self.assertEqual(fields["max-history-octets"], 1 << 40)
+        self.assertEqual(fields["max-open-suffix"], 1000)
+        room = self.headroom()
+        self.assertEqual((room["transactions-used"], room["transactions-budget"]), (0, 1000))
+        self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
+
+    def test_bare_init_is_the_default_profile(self):
+        created = self.operator("init", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        fields = self.profile_line()
+        self.assertEqual((fields["format"], fields["max-transactions"]), (8, 4294967295))
+
+    def test_init_refuses_a_profile_by_the_relation_it_breaks(self):
+        refused = self.operator("init", "--max-record-octets", "100", "fn.test")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"max-record-octets-below-an-event-kind", refused.stderr.lower())
+        self.assertFalse((self.store / "config.json").exists())
+        repeated = self.operator("init", "--max-transactions", "5",
+                                 "--max-transactions", "6", "fn.test")
+        self.assertEqual(repeated.returncode, EXIT_USAGE, repeated.stderr.decode())

@@ -239,7 +239,7 @@
 
 ; One owner of field 4: the reclaim plan under a profile upgrade.
 (assert-event
- (fn-profile-upgradep *fn-bs-meta-development-values* *fn-bs-meta-scale-values*))
+ (fn-profile-upgradep *fn-bs-profile-development* *fn-bs-profile-scale*))
 (assert-event
  (equal (fn-bs-pack-reclaim-plan *ccpt-names* 3 4) :invalid))
 (assert-event
@@ -248,18 +248,40 @@
  (must-fail
   (defthm ccpt-plan-without-upgrade
     (implies (not (equal (fn-bs-pack-reclaim-plan
-                          names (fn-bs-meta-nth 4 old) lower)
+                          names (fn-bs-profile-max-transactions old) lower)
                          :invalid))
-             (equal (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 new) lower)
-                    (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 old)
-                                             lower))))))
+             (equal (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions new) lower)
+                    (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions old)
+                                             lower)))
+    :hints (("Goal" :in-theory (disable fn-bs-profile-max-transactions
+                                        fn-bs-pack-reclaim-plan))))))
+; Its counterexample: scale's plan over 129 names is not development's.
+; Without the old plan being valid: 129 names are :invalid under development
+; (T = 128) and a plan under scale, across an upgrade.
+(defun ccpt-names (i n)
+  (declare (xargs :measure (nfix (- n i))))
+  (if (and (natp i) (natp n) (< i n))
+      (cons (fn-bs-txn-name-impl i) (ccpt-names (1+ i) n))
+    nil))
+(assert-event
+ (let ((names (ccpt-names 0 129)))
+   (and (fn-profile-upgradep *fn-bs-profile-development* *fn-bs-profile-scale*)
+        (equal (fn-bs-pack-reclaim-plan
+                names (fn-bs-profile-max-transactions *fn-bs-profile-development*) 0)
+               :invalid)
+        (not (equal (fn-bs-pack-reclaim-plan
+                     names (fn-bs-profile-max-transactions *fn-bs-profile-scale*) 0)
+                    :invalid)))))
 (local
  (must-fail
   (defthm ccpt-plan-without-valid-old
     (implies (fn-profile-upgradep old new)
-             (equal (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 new) lower)
-                    (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 old)
-                                             lower))))))
+             (equal (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions new) lower)
+                    (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions old)
+                                             lower)))
+    :hints (("Goal" :in-theory (disable fn-profile-upgradep
+                                        fn-bs-profile-max-transactions
+                                        fn-bs-pack-reclaim-plan))))))
 (assert-event
  (equal (fn-ccp-coverage-framed *ccpt-framed* *ccpt-digest* 3 6)
         '(:error :coverage)))

@@ -34,10 +34,17 @@ Store profile. The metadata frame `config.json` (FNSM, books/byte-store-frame.li
 bounds the work of opening a store before any configuration record is replayed:
 the transaction-namespace observation (`fn-profile-txn-observation`), the
 aggregate replay input (`fn-profile-replay-within-boundp`) and the per-record
-publication ceiling. It is written by `init` and changed only offline, by the
-profile upgrade (`operator CONFIG store upgrade-profile PROFILE`,
+publication ceiling. Since D27 its values are the operator's (format
+`fn-store-8`: transactions, history octets, record octets, article octets,
+groups per article, group-name octets, open suffix and five namespace counts,
+docs/operator.md), set at `init` by flags and validated by the relations of
+`fn-bs-profile-validp`; ACL2 fixes no value except the codec ceilings above
+them. A format-7 store runs under its translation until it is upgraded. It is
+written by `init` and changed only offline, by the profile upgrade (`operator
+CONFIG store upgrade-profile [PRESET] [--FIELD N ...]`,
 books/store-profile-upgrade.lisp): ACL2 admits only an upgrade
-(`fn-profile-upgradep`: same record and frontier format, no bound smaller), and
+(`fn-profile-upgradep`: a valid profile, no field smaller; the format 7 to 8
+step is the case of equal fields, `fn-profile-upgrade-format-7-to-8`), and
 each gate above is monotone under one, so a store valid under the old profile is
 valid under the new one and replays to the same state (replay takes no profile).
 The write is the byte program `fn-bs-profile-program`
