@@ -33,7 +33,7 @@
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
-    (cond ((equal kind :set-bp-boundary)
+    (cond ((member-equal kind '(:set-bp-boundary :set-bp-route))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ((equal kind :set-peer)
