@@ -1,0 +1,6 @@
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.725s
+
+OK

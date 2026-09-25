@@ -1,0 +1,14 @@
+test_developer_init_reads_profile_flags_and_refuses_flag_groups (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups) ... ok
+test_needs_upgrade_and_rollback_check (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_needs_upgrade_and_rollback_check)
+PKT-099: `store needs-upgrade' is the no-argument upgrade's own ... ok
+test_refused_posts_are_logged_on_both_paths (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_refused_posts_are_logged_on_both_paths) ... ok
+test_set_password_answers_from_the_owner (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_set_password_answers_from_the_owner) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 5.270s
+
+OK
+NATIVE-DEV-INIT refused='fn-host: error: init refused: flag-word-as-group' status='transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment\nprofile format=8 max-transactions=4294967295 max-history-octets=0 max-record-octets=67108864 max-article-octets=65536 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0\nheadroom transactions-used=0 transactions-budget=4294967295 bytes-used=0 history-bound=0 charge-reserved=0 charge-capacity=1048576\nopen=full-replay reason=absent\npins=0 reserved=0 connections=0'
+NATIVE-UPGRADE ['needs-upgrade', 'upgraded profile=current transactions-used=1 transactions-budget=128 previous-budget=128\nprofile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked', 'current', 'rollback sound transactions=1', 'rollback refused invalid-rollback-profile']
+NATIVE-REFUSAL-LOG ['refused post path=served connection=0 reason=unknown-group time=2026-09-25T10:10:34Z', 'refused post path=control message-id=<ov-control-refused@example.invalid> reason=unknown-group time=2026-09-25T10:10:34Z', 'accepted post path=served connection=1 message-id=<ov-served-ok@example.invalid> agent=fn.example.invalid time=2026-09-25T10:10:34Z'] control-exit=1 refused operator post REFUSED
+NATIVE-PRINCIPAL offline='Password: Confirm password: accepted operator principal set-password effective-at-next-start' online='Password: Confirm password: accepted operator principal set-password restart-required'
