@@ -11,6 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-progress-bridge")
 (include-book "../../books/bp-node-machine-gaps")
+(include-book "../../books/bp-node-busy-delivery")
 (include-book "../../books/bp-fnbs-conflict-publication")
 (include-book "../../books/bp-node-progress-selection-invariants")
 (include-book "../../books/bp-node-receive-boundary")
@@ -613,7 +614,9 @@
  `(defconst *bpcx-n11-auth*
     ',(bpcx-n11-authorize *bpcx-n11-s* *bpcx-n11-epoch* *bpcx-n11-op* *bpcx-n11-record* t t)))
 (assert-event
- (and (fn-bpnf-conflict-publication-operationp *bpcx-n11-auth*)
+ (and (fn-bpnf-operationp (fn-bpnf-issued *bpcx-n11-s*))
+      (equal (fn-bpn-nth 3 (fn-bpnf-issued *bpcx-n11-s*)) :conflict)
+      (fn-bpnf-conflict-publication-operationp *bpcx-n11-auth*)
       (equal (fn-bpnf-conflict-publication-name *bpcx-n11-auth*)
              (fn-bpnf-stored-record-name *bpcx-n11-epoch* *bpcx-n11-op*))
       (equal (fn-bpnf-conflict-publication-frame *bpcx-n11-auth*)
@@ -621,6 +624,11 @@
       (equal (fn-bpnf-conflict-unframe
               (fn-bpnf-conflict-publication-frame *bpcx-n11-auth*))
              *bpcx-n11-record*)))
+;; The issued :conflict operation is an fn-bpnf-operationp only because the
+;; kind list names :conflict: the same row with an unlisted kind is not one.
+(must-fail
+ (assert-event
+  (fn-bpnf-operationp (update-nth 3 :rotate (fn-bpnf-issued *bpcx-n11-s*)))))
 ;; Each binding the keystone concludes, broken alone, refuses authority:
 ;; lock not held, final name present, another operation id, another record,
 ;; the operation no longer pending (after an uncertain outcome), and a state
@@ -806,12 +814,156 @@
   (equal (car (car (fn-bpnf-answer-effects *bpcx-r16*))) :persist-dispatch)))
 
 ;; ---------------------------------------------------------------------
+;; BP-R17: the owner answers a local delivery busy.  The row stays held
+;; and :dispatch-pending, nothing is proposed, and class 3 offers it again
+;; after the backoff; at the kind-8 retry bound it is stranded, still held,
+;; and not offered until recovery clears the volatile wait.
+(defun bpcx-obs-at (m) (fn-clock-observation m 0 0 nil))
+(defun bpcx-busy-event (deliver-answer m)
+  (let ((effect (car (fn-bpnf-answer-effects deliver-answer))))
+    (list :deliver-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
+          (fn-bpn-nth 3 effect) :busy '(0) (bpcx-obs-at m))))
+(defun bpcx-tick (st m)
+  (fn-bpnp-step st (list :progress *bpcx-local* (bpcx-obs-at m) nil 0)))
+(defconst *bpcx-r17-d1* (fn-bpnf-answer-state *bpcx-deliver*))
+(defconst *bpcx-r17-busy1-event* (bpcx-busy-event *bpcx-deliver* 1000))
+(defconst *bpcx-r17-busy1* (fn-bpnp-step *bpcx-r17-d1* *bpcx-r17-busy1-event*))
+(defconst *bpcx-r17-b1* (fn-bpnf-answer-state *bpcx-r17-busy1*))
+(defconst *bpcx-r17-early* (bpcx-tick *bpcx-r17-b1* 3000))
+(defconst *bpcx-r17-redeliver2* (bpcx-tick *bpcx-r17-b1* 6000))
+(defconst *bpcx-r17-busy2*
+  (fn-bpnp-step (fn-bpnf-answer-state *bpcx-r17-redeliver2*)
+                (bpcx-busy-event *bpcx-r17-redeliver2* 6000)))
+(defconst *bpcx-r17-redeliver3*
+  (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-busy2*) 11000))
+(defconst *bpcx-r17-busy3*
+  (fn-bpnp-step (fn-bpnf-answer-state *bpcx-r17-redeliver3*)
+                (bpcx-busy-event *bpcx-r17-redeliver3* 11000)))
+(defconst *bpcx-r17-b3* (fn-bpnf-answer-state *bpcx-r17-busy3*))
+(defconst *bpcx-r17-late* (bpcx-tick *bpcx-r17-b3* 60000))
+(defconst *bpcx-r17-key* (fn-bpn-nth 3 *bpcx-r17-busy1-event*))
+
+(defun bpcx-busy-defers-p (st event)
+  (let* ((ans (fn-bpnp-step st event))
+         (key (fn-bpn-nth 3 event))
+         (wait (fn-bpnp-busy-wait key (fn-bpnp-waits st) (fn-bpn-nth 6 event))))
+    (and (equal (fn-bpnf-answer-state ans)
+                (update-nth 11 (cons wait (fn-bpnp-remove-wait
+                                           key (fn-bpnp-waits st)))
+                            (update-nth 7 nil st)))
+         (equal (fn-bpnf-held-list (fn-bpnf-answer-state ans))
+                (fn-bpnf-held-list st))
+         (null (fn-bpnf-issued (fn-bpnf-answer-state ans)))
+         (member-equal (car (car (fn-bpnf-answer-effects ans)))
+                       '(:delivery-deferred :delivery-stranded)))))
+
+;; Positive: the keystone's full antecedent and conclusion on the reached
+;; busy answer, then redelivery after the backoff and the stranded bound.
+(assert-event
+ (and (fn-bpnp-host-eventp *bpcx-r17-busy1-event*)
+      (fn-bpnp-busy-eventp *bpcx-r17-busy1-event*)
+      (true-listp *bpcx-r17-d1*)
+      (equal (fn-bpnf-waits *bpcx-r17-d1*)
+             (list :delivery (fn-bpn-nth 1 *bpcx-r17-busy1-event*)
+                   (fn-bpn-nth 2 *bpcx-r17-busy1-event*) *bpcx-r17-key*))
+      (equal (fn-bpnf-epoch *bpcx-r17-d1*) (fn-bpn-nth 1 *bpcx-r17-busy1-event*))
+      (null (fn-bpnf-issued *bpcx-r17-d1*))
+      (bpcx-busy-defers-p *bpcx-r17-d1* *bpcx-r17-busy1-event*)
+      (equal (fn-bpnf-answer-effects *bpcx-r17-busy1*)
+             (list (list :delivery-deferred *bpcx-r17-key* 1 6000)))
+      ;; held, pending, nothing proposed; the handoffs are untouched
+      (equal (fn-bpnf-held-list *bpcx-r17-b1*) (fn-bpnf-held-list *bpcx-q1*))
+      (equal (fn-bpnf-handoffs *bpcx-r17-b1*) (fn-bpnf-handoffs *bpcx-q1*))
+      ;; before the backoff: nothing; after it: the same row is offered
+      (null (fn-bpnf-answer-effects *bpcx-r17-early*))
+      (equal (car (car (fn-bpnf-answer-effects *bpcx-r17-redeliver2*))) :deliver)
+      (equal (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpcx-r17-redeliver2*)))
+             *bpcx-r17-key*)
+      (equal (fn-bpnf-answer-effects *bpcx-r17-busy2*)
+             (list (list :delivery-deferred *bpcx-r17-key* 2 11000)))
+      ;; the third busy answer reaches the kind-8 bound: stranded, held
+      (equal (fn-bpnf-answer-effects *bpcx-r17-busy3*)
+             (list (list :delivery-stranded *bpcx-r17-key*
+                         *fn-bpnp-max-forward-retries*)))
+      (equal (fn-bpnf-held-list *bpcx-r17-b3*) (fn-bpnf-held-list *bpcx-q1*))
+      (null (fn-bpnf-answer-effects *bpcx-r17-late*))
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpcx-r17-late*))
+             (fn-bpnf-held-list *bpcx-q1*))
+      ;; recovery clears the volatile wait and the row is offered again
+      (equal (car (car (fn-bpnf-answer-effects
+                        (bpcx-tick (bpcx-recover *bpcx-r17-b3* 1) 60000))))
+             :deliver)))
+
+;; Teeth of fn-bpnp-step-busy-delivery-defers, one per hypothesis.
+;; busy-eventp dropped: the six-field busy event (no observation) reaches
+;; the foundation, which answers the host :refused and keeps the marker.
+(must-fail
+ (assert-event
+  (bpcx-busy-defers-p *bpcx-r17-d1* (take 6 *bpcx-r17-busy1-event*))))
+;; the same with an :uncertain outcome: the delivery-uncertain fence.
+(must-fail
+ (assert-event
+  (bpcx-busy-defers-p *bpcx-r17-d1*
+                      (update-nth 4 :uncertain *bpcx-r17-busy1-event*))))
+;; marker dropped: the event names another operation id.
+(must-fail
+ (assert-event
+  (bpcx-busy-defers-p *bpcx-r17-d1*
+                      (update-nth 2 (1+ (fn-bpn-nth 2 *bpcx-r17-busy1-event*))
+                                  *bpcx-r17-busy1-event*))))
+;; epoch dropped: marker and event agree on an epoch the state is not in.
+(must-fail
+ (assert-event
+  (let ((e2 (update-nth 1 (1+ (fn-bpn-nth 1 *bpcx-r17-busy1-event*))
+                        *bpcx-r17-busy1-event*)))
+    (bpcx-busy-defers-p
+     (update-nth 7 (list :delivery (fn-bpn-nth 1 e2) (fn-bpn-nth 2 e2)
+                         (fn-bpn-nth 3 e2))
+                 *bpcx-r17-d1*)
+     e2))))
+;; issued dropped: a pending operation is issued.
+(must-fail
+ (assert-event
+  (bpcx-busy-defers-p
+   (update-nth 6 (fn-bpnf-operation (fn-bpnf-epoch *bpcx-r17-d1*) 99
+                                    :store nil :pending)
+               *bpcx-r17-d1*)
+   *bpcx-r17-busy1-event*)))
+;; true-listp dropped (corrupted state, not reachable): a dotted state.
+(must-fail
+ (assert-event
+  (bpcx-busy-defers-p (append *bpcx-r17-d1* 7) *bpcx-r17-busy1-event*)))
+;; Teeth of fn-bpnp-busy-deferral-ends-at-its-reading: the reading before m
+;; holds the row back (the early tick above answered nothing), and at the
+;; bound it is held back at every reading.
+(assert-event
+ (let ((h (car (fn-bpnf-held-list *bpcx-r17-b1*))))
+   (and (fn-bpnp-busy-blockedp h (fn-bpnp-waits *bpcx-r17-b1*) (bpcx-obs-at 5999))
+        (not (fn-bpnp-busy-blockedp h (fn-bpnp-waits *bpcx-r17-b1*)
+                                    (bpcx-obs-at 6000))))))
+(must-fail
+ (assert-event
+  (not (fn-bpnp-busy-blockedp (car (fn-bpnf-held-list *bpcx-r17-b1*))
+                              (fn-bpnp-waits *bpcx-r17-b1*) (bpcx-obs-at 5999)))))
+(must-fail
+ (assert-event
+  (not (fn-bpnp-busy-blockedp (car (fn-bpnf-held-list *bpcx-r17-b3*))
+                              (fn-bpnp-waits *bpcx-r17-b3*) (bpcx-obs-at 60000)))))
+;; Tooth of fn-bpnp-busy-stranded-row-is-not-offered: under the bound the
+;; deferred row is the selection once its reading is reached.
+(must-fail
+ (assert-event
+  (null (fn-bpnf-answer-effects *bpcx-r17-redeliver2*))))
+
+;; ---------------------------------------------------------------------
 ;; Coverage of spec 11.1 over this machine (each row names its subject).
 ;; Present here: N05, N06 (machine half), N07 (the seven-field recovery
 ;; event, which the host builds at bp-service.lisp fnn-bps-open with the
 ;; decision fnn-bps-clock-domain-gate returns; the six-field form stays
 ;; ungated for callers that pass no decision), N08, N11 (both halves, and
-;; the kind-14 publication authority), BP-R02, R06, R07, R15, R16.
+;; the kind-14 publication authority), BP-R02, R06, R07, R15, R16, BP-R17
+;; (the seven-field busy delivery event, bp-node-busy-delivery; the host
+;; issues it at bp-node.lisp fnn-bpnode-dispatch-one).
 ;; Present elsewhere: N03 (bp-node-machine-teeth-tests), N04
 ;; (bp-node-forwarding-teeth-tests), N09 (bp-fragment-tests), N15
 ;; unlabelled (bp-channel-ingress-tests, fn-bpaj-tcpcl-ingress-result).
@@ -832,7 +984,4 @@
 ;;   BP-R11..R13, R22: fragment family capacity, crash prefixes, scaling.
 ;;   BP-R14: route change against historical replay (no route in replay
 ;;     input; the replay half needs the ordered-row scan, not a fixture).
-;;   BP-R17: no busy delivery outcome; a :deliver-result is accepted,
-;;     duplicate, returned, refused or uncertain, with no deferred-redelivery
-;;     (class-3 backoff) transition.
 ;;   BP-R18, R20: local report processing and reverse relay routing.

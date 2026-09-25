@@ -108,6 +108,13 @@
   (let ((state (f-put-global 'fn-owner-app-refusal-reason reason state)))
     (value (if reason :refused :ready))))
 
+; A (:busy reason) transit plan is a deferral, never a refusal (BP-R17):
+; the answer is :busy with the planner's reason kept for the log line.
+(defun fn-owner-app-plan-deferred (reason state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-app-refusal-reason reason state)))
+    (value :busy)))
+
 (defun fn-owner-app-plan-install-legacy
   (inbound-id request-octets node-id bundle-identity state)
   (declare (xargs :stobjs state :mode :program))
@@ -255,13 +262,14 @@
                                   (and plan (fn-bpaj-nth 8 plan)) state))
              (state (f-put-global 'fn-owner-app-stored-subject
                                   (and plan (fn-bpaj-nth 9 plan)) state)))
-        ; The planner's own refusal comes first: fn-bpaj-transit-plan's
-        ; (:refused :no-principal) or (:refused :request), or the deferral
-        ; reason of a (:busy reason) plan, which this install still answers
-        ; :refused.
+        ; The planner's own answer comes first: fn-bpaj-transit-plan's
+        ; (:refused :no-principal) or (:refused :request) is a refusal; a
+        ; (:busy reason) plan is the deferral :busy, with its reason.
+        (if (and request (equal (car plan) :busy))
+            (fn-owner-app-plan-deferred (or (fn-bpaj-nth 1 plan) :busy) state)
         (fn-owner-app-plan-answer
          (cond ((not request) :request)
-               ((member-equal (car plan) '(:refused :busy))
+               ((equal (car plan) :refused)
                 (or (fn-bpaj-nth 1 plan) (car plan)))
                ((not (or freshp retryp)) :intent)
                ((not (equal (fn-bpa-request-source-eid request)
@@ -272,7 +280,7 @@
                                           state)))
                 :bundle-destination)
                (t nil))
-         state))))))
+         state)))))))
 
 (defun fn-owner-app-plan
   (inbound-id request-octets node-id bundle-identity ingress

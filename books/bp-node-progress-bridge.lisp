@@ -279,6 +279,13 @@
   (fn-bpnp-conflict-persist-step st epoch op result)
   (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal)))
 
+;; BP-R17's deferral answers only :delivery-deferred, :delivery-stranded or
+;; the host's :delivery-answer.
+(local
+ (fn-bpnpb-defquiet bpnpb-busy-delivery-step
+  (fn-bpnp-busy-delivery-step st epoch op key observation)
+  (fn-bpnp-busy-delivery-step)))
+
 ;; The stranded report of the kind-8 retry policy is neither a release nor
 ;; a receipt preparation.
 (local
@@ -331,7 +338,7 @@
                          bpnpb-dispatch-persist-step bpnpb-attempt-persist-step
                          bpnpb-forward-result-persist-step
                          bpnpb-clock-domain-fence bpnpb-conflict-propose-step
-                         bpnpb-conflict-persist-step
+                         bpnpb-conflict-persist-step bpnpb-busy-delivery-step
                          bpnpb-delegate-with-credit bpnpb-preserve-runtime-answer)
                        (theory 'bpnpb-theory))))
   :rule-classes nil))

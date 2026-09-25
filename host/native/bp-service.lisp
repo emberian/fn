@@ -625,6 +625,16 @@ its outcome, which is the refusal to the offering ingress."
                 (second effect) (fourth effect)))
       (:progress-wait
        (fnn-out "BP node progress waiting reason=~(~a~)" (third effect)))
+      (:delivery-deferred
+       ;; BP-R17: ACL2 kept the row held and :dispatch-pending; class 3
+       ;; offers it again once the monotonic reading reaches the fourth field.
+       (fnn-out "BP node delivery deferred busy=~d after=~d"
+                (third effect) (fourth effect)))
+      (:delivery-stranded
+       ;; BP-R17 at the kind-8 retry bound: still held, never refused; not
+       ;; offered again until recovery clears the volatile wait.
+       (fnn-out "BP node delivery stranded busy=~d (held; recovery re-offers it)"
+                (third effect)))
       (:bundle-queue-accepted
        (fnn-out "BP queue accepted work=~a attempt=~a generation=~d status=~(~a~)"
                 (fnn-octets-string (fnn-octets (second effect)))
