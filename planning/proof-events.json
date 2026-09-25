@@ -3905,6 +3905,31 @@
           "note": "Restated (bp-routing finding 2). Over fn-bpnp-step on the routed :session (:session PEER S t MRU OBS VIA), the event host/native/bp-node.lisp fnn-bpnode-forward-session sends: a :persist-attempt names the row the arrival-order scan chooses among fn-bpnp-routed-rows of the held rows, with its primary identity, and the pending image is that scan's forwarding image. A :session open or :resume without VIA offers nothing. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through the routed session) and tests/acl2/bp-route-tests (the 6-field open and the VIA-less :resume answer no effect; the routed :resume proposes the attempt)."
         }
       ]
+    },
+    {
+      "id": "PRF-110",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-pinned-xpat-is-the-xpat-response"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-xpat-alternation-is-or"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-capability-lines-advertise-xpat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-refusals-are-distinct"
+        }
+      ]
     }
   ]
 }
