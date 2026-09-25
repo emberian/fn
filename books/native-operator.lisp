@@ -259,7 +259,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -275,6 +275,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] | compact | checkpoint} (offline; refused while an owner runs; no field may shrink)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
+        ((equal subject "control")
+         "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
          "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list")
         ((equal subject "bp-boundary")
@@ -286,7 +288,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -310,8 +312,12 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-result :accepted :plan command config (list plan argv)))
           ; A reserved group name is a refusal, not a usage error: the
           ; command line is well formed and the node declines it (exit 1).
-          ((equal (fn-native-admin-result-reason plan) :reserved-group-name)
-           (fn-nop-refused (list :administration :reserved-group-name)
+          ; The control verbs' named admission refusals likewise
+          ; (books/native-admin.lisp `fn-native-admin-control-plan').
+          ((member-equal (fn-native-admin-result-reason plan)
+                         '(:reserved-group-name :namespace-pattern :principal
+                           :verb-not-grantable))
+           (fn-nop-refused (list :administration (fn-native-admin-result-reason plan))
                            command config argv))
           (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
                            command config argv)))))
@@ -347,7 +353,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "store") (fn-nop-parse-store rest config))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
-                 (equal command "bp-route") (equal command "policy"))
+                 (equal command "bp-route") (equal command "policy")
+                 (equal command "control"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -645,7 +652,8 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "peer")
            (equal (fn-native-operator-result-command result) "bp-boundary")
            (equal (fn-native-operator-result-command result) "bp-route")
-           (equal (fn-native-operator-result-command result) "policy"))))
+           (equal (fn-native-operator-result-command result) "policy")
+           (equal (fn-native-operator-result-command result) "control"))))
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
@@ -711,7 +719,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "peer")
                (equal (fn-native-operator-result-command result) "bp-boundary")
                (equal (fn-native-operator-result-command result) "bp-route")
-               (equal (fn-native-operator-result-command result) "policy")) :admin)
+               (equal (fn-native-operator-result-command result) "policy")
+           (equal (fn-native-operator-result-command result) "control")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           (t :owner-required))))
 
