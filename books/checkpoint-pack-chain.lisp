@@ -640,8 +640,9 @@
     (list files marker)))
 
 ;; A chain whose boundary is the whole history: the capture is the named
-;; no-op, and the pack changes neither the files nor the marker.
-(defthm fn-ccc-nothing-uncovered-leaves-files-and-marker
+;; no-op, and the pack changes neither the files nor the marker.  By
+;; definition of the capture's branch; the teeth are in the test book.
+(defthm fn-ccc-nothing-uncovered-leaves-files-and-marker-by-definition
   (implies (equal lower (len records))
            (and (equal (fn-ccc-capture-link records lower lf gen digest)
                        (list :nothing-uncovered lower))
