@@ -182,7 +182,8 @@
            (e/d (fn-nntp-archive-command-pinned
                   fn-nntp-msgid-retrieval-indexed
                   fn-nntp-verdict-hdr-response fn-post-offeredp
-                  fn-nntp-reply-effect fn-nntp-article-response)
+                  fn-nntp-reply-effect fn-nntp-article-response
+                  fn-nntp-withdrawn-reply fn-nntp-control-hdr-response)
                 (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                  fn-nntp-archive-command fn-nntp-keywordp
                  fn-nntp-stuff-lines fn-nntp-crlf)))))

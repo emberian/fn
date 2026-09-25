@@ -40,7 +40,8 @@
            (equal (fn-nntp-archive-command-pinned
                    session archive index verdicts env keyword args)
                   (fn-nntp-single session "423 withdrawn")))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp
+                                   fn-nntp-withdrawn-reply)
                                   (fn-nntp-single fn-nntp-upcase-keyword)))))
 
 ; KEYSTONE (423 withdrawn, sound).  The served answer to a retrieval by
@@ -108,7 +109,7 @@
                    session archive index verdicts env keyword args)
                   (fn-nntp-single session "430 withdrawn")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp
-                                   fn-nntp-number-withdrawn-p)
+                                   fn-nntp-number-withdrawn-p fn-nntp-withdrawn-reply)
                                   (fn-nntp-single fn-nntp-upcase-keyword
                                    fn-nntp-message-id-tokenp)))))
 
@@ -203,16 +204,17 @@
              (equal (fn-nntp-archive-command-pinned
                      session archive index verdicts env keyword args)
                     (if (consp c)
-                        (fn-nntp-multi
-                         session (fn-nntp-hdr-initial nil)
-                         (list (fn-nntp-hdr-line
-                                (fn-nntp-decimal-field 0)
-                                (fn-nntp-string-octets
-                                 (fn-ctl-control-item
-                                  (fn-ctl-control-status c visible withdrawn
-                                                         (fn-ctl-pin-ws control)
-                                                         verdicts)
-                                  (fn-ctl-target-octets (fn-article-payload c)))))))
+                        (let ((item (fn-nntp-string-octets
+                                     (fn-ctl-control-item
+                                      (fn-ctl-control-status c visible withdrawn
+                                                             (fn-ctl-pin-ws control)
+                                                             verdicts)
+                                      (fn-ctl-target-octets (fn-article-payload c))))))
+                          (if (fn-nntp-control-cleanp item)
+                              (fn-nntp-multi
+                               session (fn-nntp-hdr-initial nil)
+                               (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item)))
+                            (fn-nntp-single session "503 control status unavailable")))
                       (fn-nntp-single session "430 no article with that message-id")))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp
                                    fn-nntp-control-hdr-response)
@@ -222,7 +224,7 @@
                                    fn-ctl-find-held fn-midx-correspondencep
                                    fn-nntp-hdr-line fn-nntp-decimal-field
                                    fn-nntp-string-octets fn-ctl-target-octets
-                                   fn-nntp-message-id-tokenp)))))
+                                   fn-nntp-message-id-tokenp fn-nntp-control-cleanp)))))
 
 ; KEYSTONE (HDR :fn-control, executed, over the served step).  When the
 ; pin's W is RAW's withdrawn list, the served list is RAW's visible list and

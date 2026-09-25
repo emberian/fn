@@ -212,6 +212,10 @@
 (defthm fn-gidx-pin-control-of-pin-with-control
   (equal (fn-gidx-pin-control (fn-gidx-pin-with-control trie buckets control))
          control))
+(defthm fn-gidx-pin-with-control-shape
+  (and (consp (fn-gidx-pin-with-control trie buckets control))
+       (true-listp (fn-gidx-pin-with-control trie buckets control))))
+(in-theory (disable fn-gidx-pin-with-control))
 
 ; Proof-side cache relation.  Served transitions carry this relation; no
 ; dispatcher evaluates it while processing a command.

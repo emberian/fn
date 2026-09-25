@@ -137,7 +137,7 @@
 ; RAW (`fn-ctl-subseq-diff', which is `fn-ctl-withdrawn-articles' by
 ; `fn-ctl-subseq-diff-of-filter').  RAW is the connection's pinned prefix.
 (defun fn-own-control-okp (control archive verdicts raw)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (or (null control)
       (and (equal (fn-state-articles archive)
                   (fn-ctl-visible-articles raw (fn-ctl-pin-ws control) verdicts))
