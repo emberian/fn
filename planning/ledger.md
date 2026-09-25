@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 751 |
 | Certification roots in the Makefile | 740 |
 | Books inside the root closure | 749 |
-| `defthm` and `defthmd` events | 9969 |
-| `defun` events | 7071 |
+| `defthm` and `defthmd` events | 9983 |
+| `defun` events | 7086 |
 | Functions with verified guards | 2085 |
 | Functions declared `:verify-guards nil` and never verified | 480 |
-| Functions left at the default with an explicit guard | 3512 |
+| Functions left at the default with an explicit guard | 3527 |
 | Functions left at the default with no guard | 994 |
-| `assert-event` checks | 11022 |
-| `must-fail` checks | 956 |
+| `assert-event` checks | 11033 |
+| `must-fail` checks | 957 |
 | `encapsulate` events | 31 |
-| Theorems flagged SUSPECT by shape | 87 |
+| Theorems flagged SUSPECT by shape | 88 |
 | Export-hygiene warnings | 117 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 61 |
@@ -338,7 +338,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 22 | 63 | 1/0/62/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 36 | 78 | 1/0/77/0 | 0 | 0 | 1 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
@@ -703,7 +703,7 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 5 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 152 | 12 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 163 | 13 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -933,3 +933,4 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-th-decode-refuses-oversize-by-definition` | `books/topic-history-metadata.lisp` | 292 | branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value |
 | `fn-th-topic-decode-refuses-oversize` | `books/topic-history-store-events.lisp` | 198 | branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 1071 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
+| `list-octets-of-atom` | `books/native-admin.lisp` | 965 | branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value |
