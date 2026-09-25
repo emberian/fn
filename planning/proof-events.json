@@ -2082,6 +2082,42 @@
           "name": "fn-bs-k0a-drop-dir-preserves-relation",
           "note": "Dropping every pending entry operation of one directory from a related state outside the recovery window keeps the relation: the durable projections are unchanged, the pending shape loses entries, and the pending authority targets become a sublist. The dropped half of the authority-barrier error keystone.",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0w-step-preserves-relation",
+          "note": "The recovery window as step kinds (P-RECOVER): from a byte state related to a kernel in the recovery window, whose pending list may hold the one un-fenced :root rename or :transactions link a dead process left, :cut, :fsync-file on a fenced target (any outcome), :fsync-dir with :ok on any directory or any outcome on a quiet one, and the (:recover) and (:recovery-barrier ...) observations (leaving the window only with :root and :transactions quiet) keep fn-bs-replay-matches-scan; fn-bs-step-preserves-k0-coverage covers them through its second disjunct. Not covered: a barrier error with an authority entry pending in that directory, and (:recover) from :replaying with one pending.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0w-fence-preserves-relation",
+          "note": "A successful fsync of any directory keeps the recovery-window relation: the fence keeps the view and so the scan, and moves the one pending authority entry into the durable directory. The keystone of the window's barrier steps.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0v-recover-program-by-step",
+          "note": "From any byte state related to the kernel the host's reopen installs (fn-bs-recovered-kernel f r 0), whatever is pending, every step of fn-bs-recover-program satisfies fn-bs-k0-step-inputp at the pair before it, every pair of the run is related, and the run ends drained (authority quiet) with the kernel :ready. The quiet-image recovery theorems are its special case.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut",
+          "note": "Host subject: the in-process re-recovery at host/native/admin.lisp:107 (fnn-admin-verify-under-lock: fnn-bridge-reset, then fnn-recover, which reads the live view and opens through fn-cpo-open-observed via fnn-bridge-recover and fn-store-sn-recover). From a related pair with :root and :transactions quiet, when that open succeeds its kernel is related to the live byte state (not a crash image) and every step and pair of the recovery program run from it is covered and related. The quiet hypothesis is what the admin process has after its own recovery; it is sufficient, not shown necessary. The administrative publication's own syscalls are not modelled.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0i-step-preserves-pre-init",
+          "note": "Before initialisation: every step kind but :observe, :mkdir and :link-eexist included, with any outcome, keeps fn-bs-k0i-pre-init-relation (initial kernel, no allocation-frontier entry in :root, durable or pending) unless it names that entry; every crash image of such a state scans as no store (fn-bs-k0i-pre-init-crash-image-is-uninitialised). The fresh initializer's pairs before its frontier publication and the existing-config publication's pairs are pre-init (fn-bs-k0i-current-init-prefix-keeps-pre-init, fn-bs-k0i-existing-config-publication-keeps-pre-init); the frontier publication's pairs from its link to the end are not proved.",
+          "pending_subject": "model-only: the subject is fn-bs-step and the byte-model initializer programs (books/byte-store-initializer.lisp) that no host line calls; the native initializer is not tied to them by a theorem."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0i-pre-init-crash-image-is-uninitialised",
+          "note": "Every crash image of a pre-init state has no allocation-frontier entry and its scan faults: a reopen finds no store.",
+          "pending_subject": "model-only: the subject is fn-bs-step and the byte-model initializer programs (books/byte-store-initializer.lisp) that no host line calls; the native initializer is not tied to them by a theorem."
         }
       ]
     },
