@@ -1028,3 +1028,9 @@
                                fn-record-impl-accepted-input-is-canonical
                                fn-record-encode-impl-schema-byte)))
   :rule-classes nil)
+
+; The bounded-encoder rule rewrites toward `fn-cbor-encode', whose definition
+; is `fn-cbor-encode-bounded' at the generic width: with the definition
+; enabled (as provenance-codec's item-length lemmas enable it) the two loop.
+; Its uses are above; a later book that needs it names it in a hint.
+(in-theory (disable fn-record-cbor-encode-bounded-of-uint-value))
