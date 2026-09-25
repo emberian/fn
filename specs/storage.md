@@ -68,6 +68,20 @@ reading a fixed-schema file that names the store, and the file holds no
 collection. Consumers, BP rows and policy members are not yet read from the
 profile (planning/evidence/bounds-profile-2026-09-25.md).
 
+STO-013: a record's sequence, transaction ID, generation, charge and stamp
+are u64 (design 2026-09-25-bounds §2.3, packet P6). A record that needs a
+field above 2^32 - 1 carries schema octet 2 and eight-octet CBOR uint heads
+(RFC 8949 §3.1); every other record keeps its schema-0 or schema-1 octet and
+its bytes, and a store written under schemas 0 and 1 opens to the same
+records (`fn-record-v1-bytes-decode-identically`,
+`fn-record-v1-bytes-are-their-translation`). A profile's record bound R is
+checked against the record ceiling at the widths the runtime produces (u32
+heads, 1 083 octets of fixed overhead), so a format-8 profile saved before
+P6 is admitted unchanged (`fn-bs-profile-v1-valid-stays-valid`); a schema-2
+record is at most 28 octets past that ceiling and the publish gate refuses
+it. The frontier and the profile's T field still cap transaction IDs at
+2^32 - 1. The widths are a stronger fn guarantee; no RFC requires them.
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or

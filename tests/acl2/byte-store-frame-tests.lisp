@@ -30,8 +30,9 @@
                      1099511627776))
 (assert-event (equal (fn-bs-profile-max-open-suffix *fn-bs-profile-defaults*)
                      65536))
-; The translation's R is the article record of (32 768, 65 535), above the
-; format-7 H / T of 196 608.
+; The translation's R is the article record of (32 768, 65 535) at the
+; record overhead of the widths the runtime produces (1 083 fixed octets,
+; unchanged by packet P6), above the format-7 H / T of 196 608.
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-development*)
                      17138486))
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-scale*)
@@ -192,6 +193,37 @@
         (equal (len (fn-record-payload r)) 0)
         (equal (len (fn-record-groups r)) 0)
         (< (fn-bs-profile-max-record-octets '(1 2 3))
+           (len (fn-record-encode r))))))
+
+;  The width hypothesis (packet P6).  Under *bsft-g1* (R the article record
+; of (195 264, 1) at the 1 083-octet overhead), a record at A in one 256-octet
+; group with a 250-octet Message-ID and 256-octet metadata strings encodes
+; within R while its integer fields fit u32 (196 589 octets), and one octet
+; past R (196 609) when the same five fields are 2^32: the wide heads add 4
+; octets each.  So the conclusion fails without the hypothesis, at a record
+; that meets every other one.
+(defun bsft-full-record (n)
+  (fn-record-make n n n (coerce (make-list 250 :initial-element #\m) 'string)
+                  (make-list 195264 :initial-element 65)
+                  (list (bsft-name #\a))
+                  (bsft-name #\o) (bsft-name #\s) (bsft-name #\e) n n))
+(assert-event
+ (let ((r (bsft-full-record 4294967295)))
+   (and (fn-record-p r)
+        (not (fn-record-widep r))
+        (equal (len (fn-record-encode r)) 196589)
+        (<= (len (fn-record-encode r))
+            (fn-bs-profile-max-record-octets *bsft-g1*)))))
+(assert-event
+ (let ((r (bsft-full-record 4294967296)))
+   (and (fn-record-p r)
+        (fn-record-widep r)
+        (<= (len (fn-record-payload r))
+            (fn-bs-profile-max-article-octets *bsft-g1*))
+        (<= (len (fn-record-groups r))
+            (fn-bs-profile-max-groups-per-article *bsft-g1*))
+        (equal (len (fn-record-encode r)) 196609)
+        (< (fn-bs-profile-max-record-octets *bsft-g1*)
            (len (fn-record-encode r))))))
 
 ; -----------------------------------------------------------------------------
