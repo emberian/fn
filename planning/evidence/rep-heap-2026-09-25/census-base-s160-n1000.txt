@@ -1,0 +1,216 @@
+dynamic-usage-before-gc 1297007264
+dynamic-usage-after-gc 256249456
+==== room t
+Dynamic space usage is:   256,249,456 bytes.
+Immobile space usage is:   43,918,016 bytes (6,384 bytes overhead).
+Read-only space usage is:  35,257,728 bytes.
+Static space usage is:          2,832 bytes.
+Control stack usage is:         3,056 bytes.
+Binding stack usage is:           256 bytes.
+Control and binding stack usage is for the current thread only.
+Garbage collection is currently enabled.
+
+Summary of spaces: dynamic immobile static 
+
+CONS:
+    167,410,528 bytes, 10,463,158 objects, 100% dynamic.
+
+CODE:
+    42,322,624 bytes, 52,228 objects, 100% immobile, 0% dynamic.
+
+SIMPLE-CHARACTER-STRING:
+    36,331,872 bytes, 26,492 objects, 0% static, 100% dynamic.
+
+SIMPLE-VECTOR:
+    18,323,408 bytes, 46,675 objects, 0% static, 100% dynamic.
+
+INSTANCE:
+    10,752,352 bytes, 170,933 objects, 0% static, 1% immobile, 99% dynamic.
+
+SIMPLE-ARRAY-FIXNUM:
+    8,016,752 bytes, 5 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-32:
+    7,660,848 bytes, 533 objects, 100% dynamic.
+
+SYMBOL:
+    6,101,440 bytes, 127,113 objects, 0% static, 24% immobile, 76% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-8:
+    1,527,024 bytes, 27,387 objects, 0% static, 100% dynamic.
+
+CLOSURE:
+    593,984 bytes, 17,545 objects, 100% dynamic.
+
+FDEFN:
+    122,336 bytes, 3,823 objects, 100% dynamic.
+
+FUNCALLABLE-INSTANCE:
+    108,272 bytes, 2,193 objects, 100% dynamic.
+
+SIMPLE-BASE-STRING:
+    102,784 bytes, 852 objects, 0% static, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-16:
+    71,904 bytes, 91 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-64:
+    4,912 bytes, 3 objects, 100% dynamic.
+
+ARRAY-HEADER:
+    4,496 bytes, 68 objects, 100% dynamic.
+
+SIMPLE-BIT-VECTOR:
+    576 bytes, 18 objects, 100% dynamic.
+
+BIGNUM:
+    368 bytes, 8 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-FIXNUM:
+    352 bytes, 11 objects, 100% dynamic.
+
+WEAK-POINTER:
+    256 bytes, 16 objects, 100% dynamic.
+
+VALUE-CELL:
+    224 bytes, 14 objects, 100% dynamic.
+
+SAP:
+    176 bytes, 11 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-2:
+    48 bytes, 1 object, 100% dynamic.
+
+DOUBLE-FLOAT:
+    16 bytes, 1 object, 100% dynamic.
+
+Summary total:
+    299,457,552 bytes, 10,939,179 objects.
+
+Top 10 dynamic instance types:
+  SB-IMPL::GENERAL-HASH-TABLE                  15,804,528 bytes,      92 objects (171788.34 per object).
+  SB-C::COMPILED-DEBUG-INFO                     5,138,496 bytes,  52,227 objects (98.39 per object).
+  SB-INT:PACKED-INFO                            1,594,704 bytes,  44,105 objects (36.16 per object).
+  SB-C::CORE-DEBUG-SOURCE                       1,510,224 bytes,  31,463 objects (48 per object).
+  SB-PCL::STRUCTURE-EFFECTIVE-SLOT-DEFINITION     398,880 bytes,   2,770 objects (144 per object).
+  SB-C::VOP-INFO                                  319,680 bytes,   1,110 objects (288 per object).
+  SB-PCL::STRUCTURE-DIRECT-SLOT-DEFINITION        277,632 bytes,   1,928 objects (144 per object).
+  SB-PCL::SLOT-INFO                               275,136 bytes,   4,299 objects (64 per object).
+  SB-C::FUN-INFO                                  219,024 bytes,   1,053 objects (208 per object).
+  SB-C:DEFINITION-SOURCE-LOCATION                 206,112 bytes,   6,441 objects (32 per object).
+
+  Other types                                   2,142,720 bytes,  26,812 objects (79.92 per object).
+  Dynamic instance total                       27,887,136 bytes, 172,300 objects (161.85 per object).
+
+Top 10 immobile instance types:
+  SB-KERNEL:LAYOUT         110,720 bytes, 865 objects (128 per object).
+
+  Immobile instance total  110,720 bytes, 865 objects (128 per object).
+
+Top 10 static instance types:
+  SB-LOCKLESS::LIST-NODE  16 bytes, 1 object (16 per object).
+
+  Static instance total   16 bytes, 1 object (16 per object).
+==== instance-usage
+
+Top 25 dynamic instance types:
+  SB-IMPL::GENERAL-HASH-TABLE                  15,804,528 bytes,      92 objects (171788.34 per object).
+  SB-C::COMPILED-DEBUG-INFO                     5,138,496 bytes,  52,227 objects (98.39 per object).
+  SB-INT:PACKED-INFO                            1,594,704 bytes,  44,105 objects (36.16 per object).
+  SB-C::CORE-DEBUG-SOURCE                       1,510,224 bytes,  31,463 objects (48 per object).
+  SB-PCL::STRUCTURE-EFFECTIVE-SLOT-DEFINITION     398,880 bytes,   2,770 objects (144 per object).
+  SB-C::VOP-INFO                                  319,680 bytes,   1,110 objects (288 per object).
+  SB-PCL::STRUCTURE-DIRECT-SLOT-DEFINITION        277,632 bytes,   1,928 objects (144 per object).
+  SB-PCL::SLOT-INFO                               275,136 bytes,   4,299 objects (64 per object).
+  SB-C::FUN-INFO                                  219,024 bytes,   1,053 objects (208 per object).
+  SB-C:DEFINITION-SOURCE-LOCATION                 206,112 bytes,   6,441 objects (32 per object).
+  COMMON-LISP:HASH-TABLE                          169,216 bytes,      49 objects (3453.39 per object).
+  SB-DISASSEM:INSTRUCTION                         163,104 bytes,   1,699 objects (96 per object).
+  SB-KERNEL:FUN-TYPE                              147,680 bytes,   1,846 objects (80 per object).
+  SB-PCL::FAST-METHOD-CALL                        137,136 bytes,   2,857 objects (48 per object).
+  SB-KERNEL:DEFSTRUCT-SLOT-DESCRIPTION            133,296 bytes,   2,777 objects (48 per object).
+  SB-PCL::CONDITION-EFFECTIVE-SLOT-DEFINITION     124,288 bytes,     971 objects (128 per object).
+  COMMON-LISP:STANDARD-GENERIC-FUNCTION            88,704 bytes,     504 objects (176 per object).
+  COMMON-LISP:STRUCTURE-CLASS                      80,496 bytes,     387 objects (208 per object).
+  SB-MOP:STANDARD-EFFECTIVE-SLOT-DEFINITION        79,920 bytes,     555 objects (144 per object).
+  COMMON-LISP:STANDARD-METHOD                      79,520 bytes,     710 objects (112 per object).
+  SB-PCL::CONDITION-CLASS                          62,784 bytes,     327 objects (192 per object).
+  SB-PCL::ARG-INFO                                 57,456 bytes,     513 objects (112 per object).
+  SB-KERNEL:DEFSTRUCT-DESCRIPTION                  55,872 bytes,     388 objects (144 per object).
+  SB-KERNEL::CONDITION-SLOT                        52,704 bytes,     549 objects (96 per object).
+  SB-PCL::%METHOD-FUNCTION                         50,928 bytes,   1,061 objects (48 per object).
+
+  Other types                                     670,960 bytes,  11,633 objects (57.68 per object).
+  Dynamic instance total                       27,898,480 bytes, 172,314 objects (161.90 per object).
+==== owner by order, depth 6
+ROW owner.0.0.0.0    len=(SIMPLE-ARRAY CHARACTER (7)) objs=1 bytes=48 cons=0/0 str=1/48 chars=7 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.0*     len=1 objs=2 bytes=64 cons=1/16 str=1/48 chars=7 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.2.4    len=1000 objs=250780 bytes=5068480 cons=246780/3948480 str=4000/1120000 chars=260000 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.2.7    len=1000 objs=2000 bytes=32000 cons=2000/32000 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.2*     len=9 objs=252789 bytes=5100624 cons=248789/3980624 str=4000/1120000 chars=260000 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.0.0*  len=1 objs=1 bytes=16 cons=1/16 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.0.1.0  len=improper objs=1 bytes=16 cons=1/16 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.0.1*  len=1 objs=2 bytes=32 cons=2/32 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.0.2  len=1000 objs=9000 bytes=144000 cons=9000/144000 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.0*   len=6 objs=9009 bytes=144144 cons=9009/144144 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.1.2  len=1000 objs=6000 bytes=96000 cons=6000/96000 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.1*   len=4 objs=6004 bytes=96064 cons=6004/96064 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3.3    len=1000 objs=4000 bytes=64000 cons=4000/64000 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.3*     len=4 objs=19017 bytes=304272 cons=19017/304272 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.5*     len=3 objs=3 bytes=48 cons=3/48 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.7      len=1000 objs=5000 bytes=80000 cons=5000/80000 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10.0.3.0  len=5 objs=6 bytes=176 cons=5/80 str=1/96 chars=19 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10.0.3.1  len=5 objs=7 bytes=112 cons=5/80 str=2/32 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10.0.3.2  len=5 objs=7 bytes=160 cons=5/80 str=2/80 chars=11 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10.0.3*  len=3 objs=23 bytes=496 cons=18/288 str=5/208 chars=30 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10.0.4*  len=5 objs=5 bytes=80 cons=5/80 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10.0*  len=5 objs=33 bytes=656 cons=28/448 str=5/208 chars=30 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.10*    len=1 objs=34 bytes=672 cons=29/464 str=5/208 chars=30 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.12*    len=7 objs=7 bytes=112 cons=7/112 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13.0.1.1  len=257 objs=1025 bytes=16400 cons=1025/16400 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13.0.1.2  len=257 objs=1025 bytes=16400 cons=1025/16400 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13.0.1.3  len=257 objs=1025 bytes=16400 cons=1025/16400 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13.0.1.4  len=233 objs=929 bytes=14864 cons=929/14864 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13.0.1*  len=5 objs=4009 bytes=64144 cons=4009/64144 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13.0*  len=2 objs=4011 bytes=64176 cons=4011/64176 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0.13*    len=1 objs=4012 bytes=64192 cons=4012/64192 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.0*       len=14 objs=280878 bytes=5550208 cons=276872/4429952 str=4006/1120256 chars=260037 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1.4.0.1.1  len=2 objs=38231 bytes=611696 cons=38231/611696 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1.4.0.1*  len=2 objs=38233 bytes=611728 cons=38233/611728 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1.4.0*   len=2 objs=38235 bytes=611760 cons=38235/611760 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1.4*     len=1 objs=38236 bytes=611776 cons=38236/611776 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1.5.0    len=1001 objs=4001 bytes=64016 cons=4001/64016 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1.5*     len=1 objs=4002 bytes=64032 cons=4002/64032 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.1*       len=6 objs=42244 bytes=675904 cons=42244/675904 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.3*   len=8 objs=8 bytes=128 cons=8/128 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.4.0.0  len=2 objs=6 bytes=96 cons=6/96 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.4.0.4  len=4 objs=16 bytes=256 cons=16/256 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.4.0.5  len=2 objs=23 bytes=368 cons=21/336 str=2/32 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.4.0*  len=6 objs=51 bytes=816 cons=49/784 str=2/32 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.4.1*  len=5 objs=5 bytes=80 cons=5/80 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.4*   len=6 objs=62 bytes=992 cons=60/960 str=2/32 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.6.1  len=18 objs=18 bytes=288 cons=18/288 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.6.2.0  len=7 objs=7 bytes=112 cons=7/112 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.6.2*  len=1 objs=8 bytes=128 cons=8/128 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.6*   len=4 objs=30 bytes=480 cons=30/480 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0.7*   len=5 objs=5 bytes=80 cons=5/80 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2.0*     len=11 objs=116 bytes=1856 cons=114/1824 str=2/32 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.2*       len=1 objs=117 bytes=1872 cons=115/1840 str=2/32 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.6        len=1000 objs=2000 bytes=32000 cons=2000/32000 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0.7*       len=5 objs=5 bytes=80 cons=5/80 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.0*         len=13 objs=325257 bytes=6260272 cons=321249/5139984 str=4008/1120288 chars=260037 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.2.0*       len=3 objs=1 bytes=16 cons=1/16 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner.2*         len=1 objs=2 bytes=32 cons=2/32 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW owner*           len=4 objs=325263 bytes=6260368 cons=321255/5140080 str=4008/1120288 chars=260037 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+==== owner slots alone
+ROW alone.owner.0    len=13 objs=325257 bytes=6260272 cons=321249/5139984 str=4008/1120288 chars=260037 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW alone.owner.1    len=2 objs=31 bytes=656 cons=26/416 str=5/240 chars=37 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+ROW alone.owner.2    len=1 objs=33 bytes=688 cons=28/448 str=5/240 chars=37 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+==== other ACL2 globals (after owner), >= 32 KiB
+ROW global.GLOBAL-ENABLED-STRUCTURE  len=improper objs=100964 bytes=1615424 cons=100964/1615424 str=0/0 chars=0 sv=0/0 ua=0/0 big=0/0 inst=0/0 oth=0/0
+==== host service (after owner and globals)
+ROW service          len=FNN-OWNER-SERVICE objs=26 bytes=2736 cons=11/176 str=3/224 chars=41 sv=0/0 ua=0/0 big=0/0 inst=4/464 oth=8/1872
+==== host service alone
+ROW alone.service    len=0 objs=83 bytes=3648 cons=68/1088 str=3/224 chars=41 sv=0/0 ua=0/0 big=0/0 inst=4/464 oth=8/1872
+dynamic-usage-after-census-gc 546670304
+census-seconds 0.34

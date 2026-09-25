@@ -1,0 +1,22 @@
+{
+ "image": "/tank/fn/scratch/rep-heap/base-tree/build/fn-host-census",
+ "launcher_sha256": "1f8b4516c9527aaace4203bc73fbb4a498bafc26f74be39ae5c7147f9f23b9c5",
+ "core_sha256": "a1a381f550eefeda0bc82571eb6684015fe2b897a38ffe23c88688ed07b0cacc",
+ "size": 0,
+ "article0_octets": 155,
+ "points": [
+  {
+   "n": 0,
+   "rss_kib": 341432,
+   "census_s": 0.8017726382240653,
+   "rss_after_census_kib": 567804
+  },
+  {
+   "n": 1000,
+   "load_s": 2.170547004789114,
+   "rss_kib": 1896636,
+   "census_s": 1.0011953022331,
+   "rss_after_census_kib": 582596
+  }
+ ]
+}

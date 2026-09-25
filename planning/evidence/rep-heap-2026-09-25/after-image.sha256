@@ -1,0 +1,5 @@
+bfe49c69c882c4520df9a11d60784385c66b8a3c7c50f184c0fc490b3e8396a8  build/fn-host-census
+7a5e4edd23d96bab85396bb752b9c9793e7407f00509657b390ffb63b01bd7d4  build/fn-host-census.core
+724694f6c0d539c0ba0499b0d0f435728bd86b8803bfd0abfab324c8574e2623  build/freeze/native-build-census.log
+aa0e40b81c6870e7612ca552563b356bbbf50d2cde9af3a03a40d8f3733fad78  build/freeze/acquire-default.txt
+cdce3faa2566bf5ddf80f8e3f6c0ae6ea8977a1a5e3d15f00c5ac148f178c707  build/freeze/validate-default.txt
