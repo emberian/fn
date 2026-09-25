@@ -1,0 +1,7 @@
+n=16 rc=0
+stat_present median 0.091 ms  p95 0.178 ms  max 0.193 ms;stat_absent median 0.081 ms  p95 0.089 ms  max 0.102 ms;ihave_duplicate median 0.186 ms  p95 0.249 ms  max 0.286 ms;check_duplicate median 0.257 ms  p95 0.310 ms  max 0.311 ms;check_absent median 0.422 ms  p95 0.522 ms  max 0.618 ms;
+n=50 rc=0
+stat_present median 0.173 ms  p95 0.221 ms  max 0.296 ms;stat_absent median 0.085 ms  p95 0.089 ms  max 0.091 ms;ihave_duplicate median 0.094 ms  p95 0.201 ms  max 0.225 ms;check_duplicate median 0.113 ms  p95 0.131 ms  max 0.142 ms;check_absent median 0.118 ms  p95 0.135 ms  max 0.191 ms;
+n=120 rc=0
+stat_present median 0.215 ms  p95 0.301 ms  max 0.322 ms;stat_absent median 0.092 ms  p95 0.098 ms  max 0.101 ms;ihave_duplicate median 0.095 ms  p95 0.117 ms  max 0.121 ms;check_duplicate median 0.113 ms  p95 0.116 ms  max 0.206 ms;check_absent median 0.120 ms  p95 0.124 ms  max 0.132 ms;
+ 22:17:07 up 71 days,  4:01, 53 users,  load average: 2.25, 2.22, 2.37

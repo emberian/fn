@@ -1,0 +1,8 @@
+cert rc=0
+Installed from the cache: 294 books
+ACL2 certification passed: books/bp-channel-ingress, books/bp-fnbs-deletion-publication, books/bp-fnbs-delivery-publication, books/bp-fnbs-family-publication, books/bp-fnbs-inspect, books/bp-fnbs-publication, books/bp-handoff-status, books/bp-release-authority, books/bp-transit-join
+Certification evidence: build/acl2/certify-20260925T020709Z-2376326
+build rc=0
+816059cb25052f52a6af90c96cb1e7d64fa94faa73dde41007ec6eded5ced01d  build/freeze/acquire-default.txt
+cdce3faa2566bf5ddf80f8e3f6c0ae6ea8977a1a5e3d15f00c5ac148f178c707  build/freeze/validate-default.txt
+BUILD-OK
