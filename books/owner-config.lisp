@@ -392,8 +392,11 @@
 ; WHAT IS PUBLISHED IS WHAT RECOVERY REPLAYS.  The host calls `:complete'
 ; only after the staged record is durable in the configuration directory
 ; (host/owner-host.lisp `fn-owner-reconfigure-complete'), and at the next
-; open `fn-owner-recover' replays that directory through
-; `fn-cnode-config-replay', whose step on a configuration record is
+; open `fn-owner-recover' replays that directory through `fn-cpr-replay'
+; (books/config-physical-replay.lisp), every :ok of which is an :ok of
+; `fn-cnode-config-replay' with the same configuration
+; (`fn-ocl-cpr-replay-ok-is-config-replay-ok', books/config-crash-replay.lisp).
+; `fn-cnode-config-replay''s step on a configuration record is
 ; `fn-cnode-apply-config' over a configured node with no reservation and no
 ; stage.  So the live configuration after `:complete' is that step's
 ; configuration: `fn-cfg-apply-record' of the WHOLE record when the record
@@ -858,8 +861,11 @@
 ; and, after the immutable publisher reports the record durable,
 ; `(:complete)' through `fn-owner-reconfigure-complete'.  Recovery is
 ; `fn-owner-recover', which replays the configuration directory through
-; `fn-cnode-config-replay' and installs exactly that configuration with no
-; staged record: the base case of the second theorem's hypothesis stack.
+; `fn-cpr-replay' and installs exactly that configuration with no staged
+; record.  Every :ok of `fn-cpr-replay' is an :ok of `fn-cnode-config-replay'
+; with the same configuration (`fn-ocl-cpr-replay-ok-is-config-replay-ok',
+; books/config-crash-replay.lisp), which gives the base case of the second
+; theorem's hypothesis stack.
 ;
 ; The recovery half is proved with the record codec CLOSED: nothing below
 ; enables `fn-record-codec-vocabulary' or `fn-record-record-vocabulary'.  The
@@ -1076,9 +1082,13 @@
 
 ; KEYSTONE (headline 2).  A CRASH AT ANY INSTANT RECOVERS THE LIVE
 ; GENERATION, AND NEVER A PARTIAL ONE.  Hypotheses: nothing is staged, and the
-; durable configuration history replays (`fn-cnode-config-replay', the
-; function `fn-owner-recover' calls) to the owner's live configuration --
-; both established by `fn-owner-recover' and re-established by the
+; durable configuration history replays (`fn-cnode-config-replay') to the
+; owner's live configuration -- both established by `fn-owner-recover',
+; whose replay is `fn-cpr-replay' (an :ok of it is an :ok of this one with
+; the same configuration, `fn-ocl-cpr-replay-ok-is-config-replay-ok'; the
+; headline over the called replay is
+; `fn-ocl-crash-at-any-instant-recovers-the-live-generation',
+; books/config-crash-replay.lisp), and re-established by the
 ; theorem's own last three conjuncts, so the statement chains across every
 ; later live reconfiguration.  Over the host's exact event sequence
 ; (reconfigure, close the private connection, complete):
@@ -1169,28 +1179,31 @@
 ;
 ; 1. THE WIRE.  `fn-ocfg-list-active' is not the function the host calls.
 ;    The served port is `fn-own-read' -> `fn-served-step' ->
-;    `fn-served-dispatch' -> `fn-nntp-dispatch', and `fn-nntp-dispatch'
-;    supplies `(fn-state-groups archive)' -- the allocation domain -- at
-;    books/nntp-responses.lisp lines 225, 308 and 319.  The equating theorem
-;    the assurance rules require,
+;    `fn-served-dispatch' -> `fn-auth-step-pinned' (books/served.lisp), and
+;    the responses supply `(fn-state-groups archive)' -- the allocation
+;    domain -- at books/nntp-responses.lisp lines 258, 265, 279, 288 and
+;    289.  The equating theorem the assurance rules require, for E a LIST
+;    ACTIVE event,
 ;
 ;      (defthm fn-ocfg-served-port-answers-list-active-at-the-pin
 ;        (implies (and (fn-ocfg-statep oc)
 ;                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
-;                 (equal (car (fn-own-read-step (fn-ocfg-owner oc) id
-;                                               *fn-nntp-list-active-event*))
+;                 (equal (car (fn-own-read-step (fn-ocfg-owner oc) id E))
 ;                        (fn-ocfg-list-active oc id))))
 ;
 ;    is FALSE today and is not stated as a theorem here.  It becomes true
 ;    when the NNTP cluster threads a served table through
-;    `fn-served-conn'/`fn-nntp-dispatch' beside the archive; that is one
+;    `fn-served-conn' and the response functions beside the archive; that is one
 ;    argument on three functions and is posted on the board as the R5 wire
 ;    seam.  Until then the domain is what a reader sees, as
 ;    specs/reconfiguration.md section 8 item (3) already records.
 ;
 ; 2. RECOVERY: CLOSED at the configuration level by
 ;    `fn-ocfg-crash-at-any-instant-recovers-the-live-generation' above, over
-;    `fn-cnode-config-replay', which is what `fn-owner-recover' replays.
+;    `fn-cnode-config-replay'.  `fn-owner-recover' replays through
+;    `fn-cpr-replay'; `fn-ocl-cpr-replay-ok-is-config-replay-ok' and
+;    `fn-ocl-crash-at-any-instant-recovers-the-live-generation'
+;    (books/config-crash-replay.lisp) carry the headline to that replay.
 ;    `fn-own-reopen' still replays the article history only; the owner's
 ;    reopen is the host's process restart, not a model event.
 ;

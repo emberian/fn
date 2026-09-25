@@ -2,10 +2,13 @@
 ;
 ; specs/crash-model-v2.md section 3.3.  K1 and K2 live in
 ; books/byte-store-scan.lisp, whose include-closure is the byte model and
-; the file kernel.  K3 needs nothing more, but K4 is a statement about the
-; HOST's reopen entry (fn-sn-open-observed, which host/store-node-host.lisp:70
-; calls at every process start), so it needs books/store-observed and the
-; store-node closure under it.  That is the seam this book exists at: no
+; the file kernel.  K3 needs nothing more, but K4 is a statement about
+; fn-sn-open-observed, the store-only reopen of books/store-observed, so it
+; needs that book and the store-node closure under it.  The host's reopen
+; entry is fn-cpo-open-observed (books/config-observed.lisp), which
+; host/store-node-host.lisp:159 and host/owner-host.lisp:193 call at every
+; process start; K4 does not name it (books/byte-store-k0-recovery.lisp
+; states the host's reopen).  That is the seam this book exists at: no
 ; theorem here reasons about bytes, each is one kernel theorem applied to
 ; K2's conclusion.
 ;

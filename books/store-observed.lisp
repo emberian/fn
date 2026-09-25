@@ -7,8 +7,11 @@
 ; and calls the actual fn-sn-recover transition.  Recovered operation remains
 ; gated on five subsequent host fsync observations through fn-sn-io.
 ;
-; This is the root of every process: host/store-node-host.lisp:27 calls
-; fn-sn-open-observed on each start.  The theorems that root the trace
+; This was the root of every process.  The host now calls
+; fn-cpo-open-observed (books/config-observed.lisp) on each start
+; (host/store-node-host.lisp:159, host/owner-host.lisp:193), which replays
+; the configuration journal first and does not call fn-sn-open-observed;
+; the theorems below are over fn-sn-open-observed.  The theorems that root the trace
 ; relation at this entry (D6) and carry acknowledged-record retention across
 ; the reopen boundary with A-DURABILITY as the hypothesis fn-sf-crash-imagep
 ; (D5) live in store-observed-traces.lisp, which includes this book and the
@@ -571,10 +574,12 @@
 
 ; =============================================================================
 ; Trace theorems rooted at the observed physical-image entry (folded from
-; store-observed-traces.lisp, 2026-09-19 realignment).  host/store-node-host.lisp:27
-; calls fn-sn-open-observed on each process start.  This part (1) establishes
-; fn-snt-relation at that root, so every trace theorem in store-node-traces
-; and store-node-resolution applies to the state the host resumes from (D6),
+; store-observed-traces.lisp, 2026-09-19 realignment).  They are over
+; fn-sn-open-observed; the host calls fn-cpo-open-observed on each process
+; start (host/store-node-host.lisp:159), which these do not name.  This part
+; (1) establishes fn-snt-relation at that root, so every trace theorem in
+; store-node-traces and store-node-resolution applies to the state
+; fn-sn-open-observed resumes from (D6),
 ; and (2) carries acknowledged-record retention across the reopen boundary
 ; with A-DURABILITY as the hypothesis fn-sf-crash-imagep (D5).  The retention
 ; claim is stated over records, which the adapter persists; no acknowledgement

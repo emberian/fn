@@ -835,7 +835,8 @@
       o)))
 
 ; The owner of a store.  The host calls this once per process over the state
-; fn-sn-open-observed returned (host/owner-host.lisp, fn-owner-recover).
+; fn-cpo-open-observed returned (books/config-observed.lisp;
+; host/owner-host.lisp, fn-owner-recover).
 (defun fn-own-start (store max-conns)
   (declare (xargs :guard t))
   (fn-own-refresh
@@ -1510,7 +1511,9 @@
 
 ; A process restart.  The image (frontier records) is what the platform left
 ; behind (A-DURABILITY as the hypothesis fn-sf-crash-imagep); the new process
-; reopens through fn-sn-open-observed exactly as the host does, with no
+; reopens through fn-sn-open-observed, the store-only model reopen (the host
+; reopens through fn-cpo-open-observed, which replays the configuration
+; journal first; fn-own-reopen does not name it), with no
 ; connections, no pending transaction and no clock (the monotonic counter has
 ; no meaning across processes).  The ledger is proof-only and is kept.  This
 ; is a model event: the host restarts by calling fn-owner-recover, which
@@ -1637,10 +1640,13 @@
 
 ; What a submission tells the feed.  Both kinds carry the Message-ID and the
 ; article as octets; only a transit submission has an origin peer.  The octets
-; are the ones that became durable: books/injection's injected form for a
-; POST (it carries the generated Path and Message-ID) and the peer's own
-; octets for a transit article, which is what fn-peer-injection-arguments
-; stages as the payload.
+; are the submission's: books/injection's injected form for a POST (it
+; carries the generated Path and Message-ID), which is what became durable,
+; and the octets received from the peer for a transit article.  What the
+; owner stages for a transit article is fn-peer-relayed-octets of those
+; (fn-own-sub-stored-octets, books/owner-served-invariants.lisp: the Path
+; with this node's identity prepended when one is set, Xref removed), so
+; with a Path identity the durable octets differ from these.
 (defun fn-own-sub-origin (sub)
   (declare (xargs :guard t))
   (if (fn-peer-submissionp (fn-own-sub-decision sub))
@@ -1945,7 +1951,8 @@
     o))
 
 ; The Store refusal words the host may relay.  Each is the kind an ACL2
-; step decided: :duplicate and :conflict are fn-sn-existing-action's,
+; step decided: :duplicate and :conflict are fn-pb-existing-action's
+; (books/poster-bytes.lisp, the decision the host calls since D25),
 ; :malformed is fn-owner-prepare's :invalid, :unaffordable is the persisted
 ; profile's or the capacity's refusal, :storage-failed is a write that failed
 ; before publication whose reservation fn-owner-known-abort consumed, and
