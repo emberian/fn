@@ -457,21 +457,31 @@ distinguish an unobserved refusal from a durable acceptance."
                             (groups (fn-nctrl-group-strings groups)))
                  (:instance fn-nctrl-group-strings-len)))))
 
+;; These two are the FNCT payload's length at its three fields and the
+;; Message-ID's text width; the keystone below `:use's them.
 (local
  (defthm fn-nctrl-request-fields-length
    (implies (fn-frame-values-okp *fn-nctrl-request-spec* (list x y z))
-            (and (equal (len (fn-frame-fields-octets *fn-nctrl-request-spec*
-                                                     (list x y z)))
-                        (+ 4 (len x) 2 (len y) 4 (len z)))
-                 (<= (len y) *fn-frame-max-text*)))
+            (equal (len (fn-frame-fields-octets *fn-nctrl-request-spec*
+                                                (list x y z)))
+                   (+ 4 (len x) 2 (len y) 4 (len z))))
    :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-frame-textp-len-bound (value y)))
             :in-theory (e/d (fn-frame-fields-octets fn-frame-field-octets
                              fn-frame-values-okp fn-frame-field-okp
                              fn-frame-wide-blob-specp fn-frame-len-of-append
                              fn-frame-u32-bytes-len fn-frame-u16-bytes-len)
                             (fn-cbor-u32-bytes fn-cbor-u16-bytes
                              fn-frame-textp fn-frame-blob-withinp))))))
+
+(local
+ (defthm fn-nctrl-request-msgid-bound
+   (implies (fn-frame-values-okp *fn-nctrl-request-spec* (list x y z))
+            (<= (len y) *fn-frame-max-text*))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-frame-textp-len-bound (value y)))
+            :in-theory (e/d (fn-frame-values-okp fn-frame-field-okp)
+                            (fn-frame-textp fn-frame-blob-withinp))))))
 
 (defthm fn-native-control-request-within-profile-frame
   (implies (and (natp a) (natp g)
@@ -495,6 +505,9 @@ distinguish an unobserved refusal from a durable acceptance."
                                       (list article msgid
                                             (fn-nctrl-groups-encode groups)))))
                  (:instance fn-nctrl-request-fields-length
+                            (x article) (y msgid)
+                            (z (fn-nctrl-groups-encode groups)))
+                 (:instance fn-nctrl-request-msgid-bound
                             (x article) (y msgid)
                             (z (fn-nctrl-groups-encode groups)))
                  (:instance fn-nctrl-groups-encode-length-bound)
