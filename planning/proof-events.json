@@ -3323,6 +3323,19 @@
           "note": "KEYSTONE (spec 4.3.2). Under the lower machine's lifecycle invariant and the same hypotheses, after the uncertain transfer and the durable :requeued record (both through the called fn-bpnp-step), the second step's effects are exactly the :attempted transport and the :uncertain retention report, the job at KEY is fn-bpn-job-with-status of the same job :queued (same work, attempt, generation, peer, route, wire), and fn-bpnp-receipt-contact-event (fnn-bpnode-send-receipts) answers (:contact PEER t) for its peer again, so the next contact offers it by the same identity. Teeth: tests/acl2/bp-node-receipt-send-tests (witness through the re-offered :attempting record; must-fail for a malformed base, issued, uncertain delivery, fenced, and at the token bound)."
         }
       ]
+    },
+    {
+      "id": "PRF-089",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nls-live-report-is-the-offline-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-client-step-of-owner-reply"
+        }
+      ]
     }
   ]
 }

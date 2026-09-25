@@ -309,7 +309,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-010",
-        "PRF-067"
+        "PRF-067",
+        "PRF-089"
       ],
       "verification": [
         "proof",
@@ -1963,7 +1964,7 @@
     {
       "id": "HST-006",
       "title": "The operator's status, pins, obligations and peers answer while the owner runs, in the offline words",
-      "specification": "docs/operator.md#status-while-the-owner-runs",
+      "specification": "specs/host.md#status-while-the-owner-runs",
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
