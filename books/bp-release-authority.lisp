@@ -526,12 +526,14 @@
                             (work (fn-bpah-receipt-obligation
                                    wf (fn-bpah-view-receipt view))))))))
 
-; KEYSTONE 5.  The third way: a signed receipt whose signature verifies
-; under the issuer's own enrollment at this node, and which names the held
-; obligation, is released by the host's function exactly as the workflow
-; releases an authorized receipt ADU -- through ANY delivering neighbour.
-; No hypothesis mentions the carrier's rows: it need be neither the issuer
-; nor list it, and its require-signed-receipts flag does not matter.
+; KEYSTONE 5.  The third way: for a signed receipt whose signature verifies
+; under the issuer's own enrollment at this node, the host's function is the
+; workflow's answer for the carried ADU with the obligation check as its
+; only remaining question -- through ANY delivering neighbour.  No
+; hypothesis mentions the carrier's rows: it need be neither the issuer nor
+; list it, and its require-signed-receipts flag does not matter.  When the
+; receipt names the held obligation the authorization is t and the record
+; is the workflow's (reachable witness 5 in the test book).
 (defthm fn-bpah-signed-receipt-releases-through-any-carrier
   (let* ((receipt (fn-bpah-view-receipt view))
          (signed (fn-bpah-view-signed view)))
@@ -540,12 +542,12 @@
                   (fn-bpah-receipt-signature-verifiedp
                    cfg snapshots (fn-bpah-view-generation view)
                    (fn-bpaj-issuer-eid (fn-bpn-nth 6 view))
-                   (fn-bpn-nth 7 view) signed obs)
-                  (fn-bpah-receipt-names-obligationp
-                   wf receipt (fn-bpah-receipt-obligation wf receipt)))
+                   (fn-bpn-nth 7 view) signed obs))
              (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
                     (fn-bprl-receipt-auto-record
-                     wf (fn-bpsr-adu signed) t))))
+                     wf (fn-bpsr-adu signed)
+                     (fn-bpah-receipt-names-obligationp
+                      wf receipt (fn-bpah-receipt-obligation wf receipt))))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-receipt-release-record
                                 fn-bpah-view-release-authorizedp
@@ -555,6 +557,8 @@
                                 fn-bpah-view-adu-octets
                                 fn-bpah-view-signed
                                 fn-bpsr-adu-octets
+                                (:type-prescription
+                                 fn-bpah-receipt-names-obligationp)
                                 fn-bpaj-issuer-eid fn-bpaj-tagged-value
                                 car-cons cdr-cons)
                               (theory 'minimal-theory)))))
@@ -602,11 +606,11 @@
                             (ed (fn-bpa-nth 1 obs))
                             (ml (fn-bpa-nth 2 obs)))))))
 
-; KEYSTONE 8.  The delegation profile, stated honestly: a bare receipt the
-; gate trusts (its issuer is the delivering neighbour or on its release
-; list) and that names the held obligation is released -- nothing here
+; KEYSTONE 8.  The delegation profile, stated honestly: for a bare receipt
+; the gate trusts (its issuer is the delivering neighbour or on its release
+; list) the only remaining question is the obligation check -- nothing here
 ; says the issuer wrote it, so a listed relay's forgery naming the exact
-; obligation releases too.  Unless the carrier requires signed receipts:
+; obligation releases too (witness 2).  Unless the carrier requires signed receipts:
 ; KEYSTONE 9.
 (defthm fn-bpah-trusted-bare-receipt-releases
   (let ((receipt (fn-bpah-view-receipt view)))
@@ -614,11 +618,12 @@
                   (not (fn-bpah-require-signed-receiptsp
                         cfg (fn-bpah-view-carrier view)
                         (fn-bpah-view-generation view)))
-                  (fn-bpah-receipt-trustedp view cfg)
-                  (fn-bpah-receipt-names-obligationp
-                   wf receipt (fn-bpah-receipt-obligation wf receipt)))
+                  (fn-bpah-receipt-trustedp view cfg))
              (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
-                    (fn-bprl-receipt-auto-record wf (fn-bpn-nth 3 view) t))))
+                    (fn-bprl-receipt-auto-record
+                     wf (fn-bpn-nth 3 view)
+                     (fn-bpah-receipt-names-obligationp
+                      wf receipt (fn-bpah-receipt-obligation wf receipt))))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-receipt-release-record
                                 fn-bpah-view-release-authorizedp
@@ -628,6 +633,8 @@
                                 fn-bpah-view-adu-octets
                                 fn-bpah-view-signed
                                 fn-bpsr-adu-octets-of-unsigned
+                                (:type-prescription
+                                 fn-bpah-receipt-names-obligationp)
                                 fn-bpaj-issuer-eid fn-bpaj-tagged-value
                                 car-cons cdr-cons)
                               (theory 'minimal-theory)))))
