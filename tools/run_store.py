@@ -1049,7 +1049,7 @@ class Store:
             session = frame_bridge.session(bridge)
             config = session.metadata_config_frame(self.profile)
             if self._publish_initial_file(self.config_path, config):
-                self.config = self._config_from_metadata(session.metadata_config_decode(config))
+                self.config = self._config_from_metadata(session.metadata_config_decode(config), session)
             else:
                 self._load_config(session)
             # A missing allocator alongside committed history would permit
@@ -1085,13 +1085,17 @@ class Store:
             os.close(lock_fd)
 
     @staticmethod
-    def _config_from_metadata(values):
-        format_id, capacity, max_payload, max_recovery, max_transactions, frontier_format = values
-        return {"format": format_id.decode("ascii"), "capacity": capacity,
-                "max_payload_bytes": max_payload,
-                "max_recovery_record_bytes": max_recovery,
-                "max_transactions": max_transactions,
-                "allocation_frontier_format": frontier_format.decode("ascii")}
+    def _config_from_metadata(values, bridge=None):
+        """The decoded profile, kept opaque as `profile`, and ACL2's reading
+        of its fields (`fn-store-profile-summary`): no position is read here."""
+        fmt, max_transactions, max_history, max_record, max_article = (
+            frame_bridge.session(bridge).profile_summary(values))
+        return {"profile": values,
+                "format": "fn-store-8" if fmt == 8 else "fn-store-experiment-7",
+                "max_payload_bytes": max_article,
+                "max_record_octets": max_record,
+                "max_recovery_record_bytes": max_history,
+                "max_transactions": max_transactions}
 
     def _load_config(self, bridge=None):
         check_regular(self.config_path)
@@ -1102,8 +1106,9 @@ class Store:
         if raw.startswith(b"{"):
             raise StoreFault("legacy JSON metadata is retained in place; explicit offline migration is required")
         try:
+            session = frame_bridge.session(bridge)
             config = self._config_from_metadata(
-                frame_bridge.session(bridge).metadata_config_decode(raw))
+                session.metadata_config_decode(raw), session)
         except frame_bridge.BridgeError as error:
             raise StoreFault("invalid durable config frame") from error
         self.config = config
@@ -1599,11 +1604,7 @@ def conservative_charge(payload, bridge=None):
 def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
     """One call: `fn-store-post-boundary` applies every bound in the model."""
     session = frame_bridge.session(bridge)
-    profile = (config["format"].encode("ascii"), config["capacity"],
-               config["max_payload_bytes"], config["max_recovery_record_bytes"],
-               config["max_transactions"],
-               config["allocation_frontier_format"].encode("ascii"))
-    verdict = session.post_boundary(profile, msgid, len(payload), len(groups), charge)
+    verdict = session.post_boundary(config["profile"], msgid, len(payload), len(groups), charge)
     if verdict == "ok":
         return
     raise StoreError({
