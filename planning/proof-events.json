@@ -1893,8 +1893,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-k0m-marker-rename-crash-is-a-resolution-crash",
-          "note": "For any byte state whose every pending root entry operation is the rename of inode INO onto committed-history.json and whose directory table holds the root directory: every crash image of it is a crash image of the state with that rename's root entry dropped from the pending list, or of that state with the entry durable. Under the same choices for every other pending operation (fn-bs-k0m-crash-of-pending-marker-rename)."
+          "name": "fn-bs-k0m-root-rename-crash-is-a-resolution-crash",
+          "note": "For any byte state whose every pending root entry operation is the set-entry of inode INO onto one :root name NAME other than the allocation frontier (committed-history.json, store-checkpoint.fnsc, config.json) and whose directory table holds the root directory: every crash image of it is a crash image of the state with those root entries dropped from the pending list, or of that state with the entry NAME -> INO durable, under the same choices for every other pending operation (fn-bs-k0m-crash-of-pending-root-rename). Generic over the name since lane k0-rest; the marker program's theorems use it at committed-history.json."
         },
         {
           "kind": "theorem",
@@ -2042,6 +2042,42 @@
           "name": "fn-bs-k0-staging-fsync-error-preserves-relation",
           "note": "K0 step kind (PKT-086, k0-steps): from any related state outside the recovery window, an fsync of :staging that fails and lands any well-formed crash selection of the staging entry operations keeps the relation; fn-bs-k0-step-inputp admits it and fn-bs-step-preserves-k0-coverage covers it.",
           "pending_subject": "model-only: the subject is fn-bs-fsync-dir inside fn-bs-step; no host line calls it (the native host is tied to the programs by tools/native_program_check.py only)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-state-checkpoint-cuts-relation-by-step",
+          "note": "The state-checkpoint program (fn-bs-scp-program, store-checkpoint.fnsc) from a related entry pair outside the recovery window with :root and :transactions quiet, the stage a name and absent, the octets typed: at its five cuts the stage pairs and the durable pair are related, the replaced pair is fn-bs-k0s-root-rename-pendingp, and the kernel is the entry kernel. Derived by fn-bs-step-preserves-k0-coverage alone (fn-bs-k0r-pairs-by-step). Teeth: tests/acl2/byte-store-k0-step-bridge-root-tests.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-profile-cuts-relation-by-step",
+          "note": "The profile program (fn-bs-profile-program, config.json) under the checkpoint theorem's hypotheses and (fn-bs-config-okp octets): the same five-cut statement. The landed resolution at the replaced cut names the new inode at config.json, which fn-bs-k0s-with-config-entry-preserves-relation relates. Teeth include octets the configuration check refuses.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-step-at-state-checkpoint-pairs-preserves-k0-coverage",
+          "note": "Every step of the state-checkpoint program, taken from the pair the successful run reaches before it, with any outcome (the stage fsync with :ok or a well-formed crash selection of its writes): the result is covered and the kernel unchanged. The host's error arms (known failure before the rename, uncertain at or after it) are these steps' error outcomes.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-step-at-profile-pairs-preserves-k0-coverage",
+          "note": "The profile program's every step with any outcome, as for the checkpoint, under (fn-bs-config-okp octets).",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0a-authority-fsync-error-preserves-relation",
+          "note": "KEYSTONE (lane k0-rest, PKT-086). A failed fsync of :root or :transactions from a related state outside the recovery window (for :transactions with a pending link, in :record-attempted): the result is related. At most one authority entry is pending per directory (fn-bs-pending-shape-okp), so the result is the fence's (fn-bs-k0s-root-fence-preserves-relation, fn-bs-k8-pending-link-fence-preserves-relation) or the dropped state (fn-bs-k0a-error-is-fence-or-drop). fn-bs-k0-step-inputp admits it; covers the K7 pair-11 EIO for any related state and the root barrier's error outcomes over a pending frontier rename.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0a-drop-dir-preserves-relation",
+          "note": "Dropping every pending entry operation of one directory from a related state outside the recovery window keeps the relation: the durable projections are unchanged, the pending shape loses entries, and the pending authority targets become a sublist. The dropped half of the authority-barrier error keystone.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         }
       ]
     },
