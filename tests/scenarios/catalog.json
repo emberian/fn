@@ -1438,12 +1438,12 @@
       ]
     },
     {
-      "id": "SCN-050",
+      "id": "SCN-054",
       "title": "a carrying boundary holds articles only within its budget, and a refused present carrier is named by its class",
       "milestone": "M3",
       "status": "implemented",
       "requirements": [
-        "NNT-012"
+        "NNT-015"
       ],
       "steps": [
         "Relay R adds peer A with no carried list, then `peer carries A HEX` and `peer budget A OCTETS 1`; A posts two signed articles by a principal R never enrolled.",
