@@ -3363,6 +3363,37 @@
         "fn-bs-scp-program-crash-is-old-or-new",
         "fn-bs-read-ranges-concatenate"
       ]
+    },
+    {
+      "id": "PRF-086",
+      "title": "Records of the old schemas decode and re-encode identically under the u64 record codec",
+      "statement": "fn-record-v1-bytes-decode-identically: for all octets, if the pre-P6 decoder (fn-record-v1-decode-exact, books/records-schema-v1.lisp, the text of books/records.lisp at e366c633) accepts them, then (fn-record-decode-exact-impl octets) equals (fn-record-v1-decode-exact octets); fn-record-v1-bytes-are-their-translation: under the same hypothesis the new encoder writes the decoded record back to exactly those octets. The host reaches fn-record-decode-exact-impl through fn-store-event-decode-exact (host/store-host.lisp fn-store-decode-records, called by fn-store-sn-recover) and the seam attachment (books/records-attach.lisp), so an old store opens to the records the old image read and nothing is rewritten. Built on fn-cbor-decode-prechecked-wide-extends-narrow and the restated record keystones fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical (now over u64 fields and schema 2).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-013"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/records-schema-v1.lisp",
+        "books/cbor-invariants.lisp",
+        "books/records-canonicality.lisp",
+        "books/records-invariants.lisp",
+        "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ],
+      "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event.",
+      "events": [
+        "fn-record-v1-bytes-decode-identically",
+        "fn-record-v1-bytes-are-their-translation",
+        "fn-cbor-decode-prechecked-wide-extends-narrow",
+        "fn-cbor-encode-uint-wide-is-narrow",
+        "fn-cbor-decode-prechecked-wide-of-uint",
+        "fn-cbor-decode-prechecked-wide-uint-reencode-prefix",
+        "fn-record-impl-round-trip",
+        "fn-record-impl-accepted-input-is-canonical"
+      ]
     }
   ]
 }

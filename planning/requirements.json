@@ -1924,6 +1924,30 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "STO-013",
+      "title": "A record's sequence, transaction ID, generation, charge and stamp are u64; a record that needs a field above 2^32 - 1 carries schema 2, and a store written under schemas 0 and 1 opens to the same records with the same bytes",
+      "specification": "planning/design-2026-09-25-bounds.md#23-codec-widths-p2-p4-p6",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-086"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/cbor.lisp",
+        "books/cbor-invariants.lisp",
+        "books/records-shape.lisp",
+        "books/records.lisp",
+        "books/records-schema-v1.lisp",
+        "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ],
+      "implementation_note": "The CBOR profile gains an additive wide uint (RFC 8949 eight-octet argument, canonical only above 2^32 - 1); every narrow encoding and every narrow acceptance is unchanged (fn-cbor-encode-uint-wide-is-narrow, fn-cbor-decode-prechecked-wide-extends-narrow). *fn-cbor-max-uint* keeps 2^32 - 1: its other uses are u32 fields. The record decoder refuses a header whose schema octet is not the record's (fn-record-schema-octet). Open: the frontier file and the profile's T field still cap transaction IDs at 2^32 - 1 (byte-store-frame, shared with packet P5); segmented articles (design 2.4 item 3) are not implemented."
     }
   ]
 }
