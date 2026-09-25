@@ -6,6 +6,8 @@
 (include-book "nntp-projection")
 (include-book "article-fields")
 (include-book "clock")
+; D13: a reclaimed article's payload is a tombstone (STO-014).
+(include-book "reclaim-tombstone")
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
@@ -41,6 +43,14 @@
 (defun fn-nntp-article-response (session article number kind updatep group)
   (if (not (fn-nntp-article-idp article))
       (fn-nntp-single session "503 stored article identifier unavailable")
+    ; D13 (STO-014): a reclaimed article's history stays -- its Message-ID
+    ; is still held and its number never reused -- but its bytes are gone.
+    ; By number or as the current article it is 423, by Message-ID 430,
+    ; and the text says why.  The cursor does not move.
+    (if (fn-rcl-tombstonep (fn-article-payload article))
+        (fn-nntp-single session (if updatep
+                                    "423 article reclaimed"
+                                  "430 article reclaimed"))
     (let ((next-session (if updatep
                             (fn-nntp-set-cursor session group number)
                           session)))
@@ -58,7 +68,21 @@
                       (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
                               (fn-nntp-stuff-lines (car (cdr section)))
                               '(46 13 10)))))
-            (fn-nntp-single session "503 stored article framing unavailable")))))))
+            (fn-nntp-single session "503 stored article framing unavailable"))))))))
+
+;  KEYSTONE (D13 served projection).  A stored article whose payload is a
+; tombstone is answered 423 (by number or as the current article) or 430
+; (by Message-ID), "article reclaimed", for ARTICLE, HEAD, BODY and STAT,
+; and the session is unchanged.
+(defthm fn-nntp-reclaimed-article-answers-reclaimed
+  (implies (and (fn-nntp-article-idp article)
+                (fn-rcl-tombstonep (fn-article-payload article)))
+           (equal (fn-nntp-article-response session article number kind
+                                            updatep group)
+                  (fn-nntp-single session (if updatep
+                                              "423 article reclaimed"
+                                            "430 article reclaimed"))))
+  :hints (("Goal" :in-theory (disable fn-rcl-tombstonep fn-nntp-article-idp))))
 
 (defun fn-nntp-current-retrieval (session archive kind)
   (let ((group (fn-nntp-session-group session))
