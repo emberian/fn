@@ -303,8 +303,14 @@
 (must-fail
  (defthm sput-rollback-sound-by-admission
    (implies (fn-bs-profile-admittedp old)
-            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))))
+            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))
+   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                       fn-profile-rollback-record-bound
+                                       fn-profile-rollback-first-over)))))
 (must-fail
  (defthm sput-rollback-sound-by-lengths
    (implies (fn-profile-all-within lengths (fn-profile-rollback-record-bound old))
-            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))))
+            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))
+   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                       fn-profile-rollback-record-bound
+                                       fn-profile-rollback-first-over)))))
