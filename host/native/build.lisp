@@ -119,6 +119,8 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+(include-book "books/bp-route-jobs")
+(include-book "books/bp-fragment-send")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-handoff-status")

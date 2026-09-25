@@ -381,6 +381,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-forward-retry-tests \
 	books/bp-route \
 	books/bp-route-step \
+	books/bp-route-jobs \
+	tests/acl2/bp-route-jobs-tests \
 	tests/acl2/bp-route-tests \
 	tests/acl2/bp-node-receipt-send-tests \
 	books/bp-node-forward-resume \
@@ -430,6 +432,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	books/bp-fragment-fast \
+	books/bp-fragment-send \
+	tests/acl2/bp-fragment-send-tests \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
