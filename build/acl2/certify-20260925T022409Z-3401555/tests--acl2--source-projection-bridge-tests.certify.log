@@ -1,0 +1,406 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-
+projection-bridge-tests.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp"
+
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 24 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "../../books/source-projection-bridge")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "hybrid-carrier" ...):
+Unable to load compiled file for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/hybrid-carrier.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-
+bridge.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK "../../books/source-projection-bridge" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  1.09 seconds (prove: 0.00, print: 0.00, other: 1.08)
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "std/testing/must-fail"
+                       :DIR :SYSTEM)
+
+Summary
+Form:  ( INCLUDE-BOOK "std/testing/must-fail" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+"/home/ember/fn-tools/acl2-8.7/books/std/testing/must-fail.lisp"
+
+
+ACL2 !>>>(DEFUN SPJT-CODES (CS)
+           (IF (CONSP CS)
+               (CONS (CHAR-CODE (CAR CS))
+                     (SPJT-CODES (CDR CS)))
+             NIL))
+
+The admission of SPJT-CODES is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT CS).  We observe that the type of SPJT-CODES is
+described by the theorem (TRUE-LISTP (SPJT-CODES CS)).  We used primitive
+type reasoning.
+
+Summary
+Form:  ( DEFUN SPJT-CODES ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SPJT-CODES
+
+
+ACL2 !>>>(DEFUN SPJT-OCT (S)
+           (SPJT-CODES (COERCE S 'LIST)))
+
+Since SPJT-OCT is non-recursive, its admission is trivial.  We observe
+that the type of SPJT-OCT is described by the theorem 
+(TRUE-LISTP (SPJT-OCT S)).  We used the :type-prescription rule SPJT-CODES.
+
+Summary
+Form:  ( DEFUN SPJT-OCT ...)
+Rules: ((:TYPE-PRESCRIPTION SPJT-CODES))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SPJT-OCT
+
+
+ACL2 !>>>(DEFCONST *SPJT-AGENT*
+           (SPJT-OCT "news.example"))
+
+Summary
+Form:  ( DEFCONST *SPJT-AGENT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-AGENT*
+
+
+ACL2 !>>>(DEFCONST *SPJT-MSGID*
+           (SPJT-OCT "<a@b.example>"))
+
+Summary
+Form:  ( DEFCONST *SPJT-MSGID* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-MSGID*
+
+
+ACL2 !>>>(DEFCONST *SPJT-DATE*
+           (SPJT-OCT "Thu, 24 Sep 2026 00:00:00 +0000"))
+
+Summary
+Form:  ( DEFCONST *SPJT-DATE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-DATE*
+
+
+ACL2 !>>>(DEFUN SPJT-CRLF (S)
+           (APPEND (SPJT-OCT S) '(13 10)))
+
+Since SPJT-CRLF is non-recursive, its admission is trivial.  We observe
+that the type of SPJT-CRLF is described by the theorem 
+(AND (CONSP (SPJT-CRLF S)) (TRUE-LISTP (SPJT-CRLF S))).  We used the
+:executable-counterpart of TRUE-LISTP and the :type-prescription rules
+BINARY-APPEND and TRUE-LISTP-APPEND.
+
+Summary
+Form:  ( DEFUN SPJT-CRLF ...)
+Rules: ((:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SPJT-CRLF
+
+
+ACL2 !>>>(DEFCONST *SPJT-NATIVE*
+           (APPEND (SPJT-CRLF "From: a@b.example")
+                   (SPJT-CRLF "Subject: s")
+                   (SPJT-CRLF "Date: Thu, 24 Sep 2026 00:00:00 +0000")
+                   (SPJT-CRLF "Message-ID: <a@b.example>")
+                   (SPJT-CRLF "Newsgroups: fn.test")
+                   '(13 10)
+                   (SPJT-CRLF "body")))
+
+Summary
+Form:  ( DEFCONST *SPJT-NATIVE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-NATIVE*
+
+
+ACL2 !>>>(DEFCONST *SPJT-CARRIER*
+           (APPEND (SPJT-CRLF "From: a@b.example")
+                   (SPJT-CRLF "FN-Statement: xyz")
+                   (SPJT-CRLF "Subject: s")
+                   (SPJT-CRLF "Date: Thu, 24 Sep 2026 00:00:00 +0000")
+                   (SPJT-CRLF "Message-ID: <a@b.example>")
+                   (SPJT-CRLF "Newsgroups: fn.test")
+                   '(13 10)
+                   (SPJT-CRLF "body")))
+
+Summary
+Form:  ( DEFCONST *SPJT-CARRIER* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-CARRIER*
+
+
+ACL2 !>>>(DEFUN SPJT-STORED (AGENT GID GDATE SRC)
+           (APPEND (FN-INJ-PREFIX *SPJT-DATE*
+                                  *SPJT-MSGID* AGENT GID GDATE)
+                   SRC))
+
+Since SPJT-STORED is non-recursive, its admission is trivial.  We observe
+that the type of SPJT-STORED is described by the theorem 
+(OR (CONSP (SPJT-STORED AGENT GID GDATE SRC))
+    (EQUAL (SPJT-STORED AGENT GID GDATE SRC)
+           SRC)).
+We used the :type-prescription rule BINARY-APPEND.
+
+Summary
+Form:  ( DEFUN SPJT-STORED ...)
+Rules: ((:TYPE-PRESCRIPTION BINARY-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SPJT-STORED
+
+
+ACL2 !>>>(DEFUN SPJT-PROJ (OCTETS)
+           (FN-HC-AUTHORED-SOURCE
+                (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE OCTETS))))
+
+Since SPJT-PROJ is non-recursive, its admission is trivial.  We observe
+that the type of SPJT-PROJ is described by the theorem 
+(TRUE-LISTP (SPJT-PROJ OCTETS)).  We used the :type-prescription rule
+FN-HC-AUTHORED-SOURCE.
+
+Summary
+Form:  ( DEFUN SPJT-PROJ ...)
+Rules: ((:TYPE-PRESCRIPTION FN-HC-AUTHORED-SOURCE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SPJT-PROJ
+
+
+ACL2 !>>>(DEFUN SPJT-OK (OCTETS)
+           (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE OCTETS)))
+
+Since SPJT-OK is non-recursive, its admission is trivial.  We observe
+that the type of SPJT-OK is described by the theorem 
+(OR (EQUAL (SPJT-OK OCTETS) T) (EQUAL (SPJT-OK OCTETS) NIL)).  We used
+the :type-prescription rule FN-ARTICLE-RESULT-OKP.
+
+Summary
+Form:  ( DEFUN SPJT-OK ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ARTICLE-RESULT-OKP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SPJT-OK
+
+
+ACL2 !>>>(ASSERT-EVENT
+          (AND
+           (FN-SPJ-LINE-FREEP *SPJT-AGENT*)
+           (SPJT-OK *SPJT-NATIVE*)
+           (SPJT-OK (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-NATIVE*))
+           (SPJT-OK *SPJT-CARRIER*)
+           (SPJT-OK (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-CARRIER*))
+           (FN-HC-REQUIRED-SOURCEP
+                (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE *SPJT-NATIVE*)))
+           (FN-HC-REQUIRED-SOURCEP
+               (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE *SPJT-CARRIER*)))
+           (EQUAL
+                (SPJT-PROJ (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-NATIVE*))
+                (SPJT-PROJ *SPJT-NATIVE*))
+           (EQUAL
+                (SPJT-PROJ (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-CARRIER*))
+                (SPJT-PROJ *SPJT-CARRIER*))))
+:PASSED
+
+
+ACL2 !>>>(ASSERT-EVENT
+              (LET ((S1 (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-NATIVE*))
+                    (S2 (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-CARRIER*)))
+                (AND (EQUAL (FN-INJ-SOURCE-OF S1 *SPJT-AGENT* *SPJT-MSGID*)
+                            (CONS T *SPJT-NATIVE*))
+                     (EQUAL (FN-INJ-SOURCE-OF S2 *SPJT-AGENT* *SPJT-MSGID*)
+                            (CONS T *SPJT-CARRIER*))
+                     (EQUAL (SPJT-PROJ S1) *SPJT-NATIVE*)
+                     (EQUAL (SPJT-PROJ S2) *SPJT-NATIVE*)
+                     (NOT (EQUAL (SPJT-PROJ S2)
+                                 *SPJT-CARRIER*)))))
+:PASSED
+
+
+ACL2 !>>>(ASSERT-EVENT
+              (AND (SPJT-OK (SPJT-STORED *SPJT-AGENT* T NIL *SPJT-NATIVE*))
+                   (NOT (FN-HC-RESERVED-NAMEP (SPJT-OCT "message-id")))))
+:PASSED
+
+
+ACL2 !>>>(MUST-FAIL
+          (ASSERT-EVENT
+            (EQUAL (SPJT-PROJ (SPJT-STORED *SPJT-AGENT* T NIL *SPJT-NATIVE*))
+                   (SPJT-PROJ *SPJT-NATIVE*))))
+
+Summary
+Form:  ( MAKE-EVENT (QUOTE ...) ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+T
+
+
+ACL2 !>>>(DEFCONST *SPJT-BAD-AGENT*
+           (APPEND (SPJT-OCT "x")
+                   '(13 10)
+                   (SPJT-OCT "X-Y: z")))
+
+Summary
+Form:  ( DEFCONST *SPJT-BAD-AGENT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-BAD-AGENT*
+
+
+ACL2 !>>>(ASSERT-EVENT (AND (NOT (FN-SPJ-LINE-FREEP *SPJT-BAD-AGENT*))
+                            (SPJT-OK (SPJT-STORED *SPJT-BAD-AGENT*
+                                                  NIL NIL *SPJT-NATIVE*))))
+:PASSED
+
+
+ACL2 !>>>(MUST-FAIL
+          (ASSERT-EVENT
+           (EQUAL
+             (SPJT-PROJ (SPJT-STORED *SPJT-BAD-AGENT* NIL NIL *SPJT-NATIVE*))
+             (SPJT-PROJ *SPJT-NATIVE*))))
+
+Summary
+Form:  ( MAKE-EVENT (QUOTE ...) ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+T
+
+
+ACL2 !>>>(DEFCONST *SPJT-FOLDED*
+           (APPEND (SPJT-CRLF " tail")
+                   *SPJT-NATIVE*))
+
+Summary
+Form:  ( DEFCONST *SPJT-FOLDED* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SPJT-FOLDED*
+
+
+ACL2 !>>>(ASSERT-EVENT
+            (AND (NOT (SPJT-OK *SPJT-FOLDED*))
+                 (SPJT-OK (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-FOLDED*))))
+:PASSED
+
+
+ACL2 !>>>(MUST-FAIL
+          (ASSERT-EVENT
+            (EQUAL
+                 (SPJT-PROJ (SPJT-STORED *SPJT-AGENT* NIL NIL *SPJT-FOLDED*))
+                 (SPJT-PROJ *SPJT-FOLDED*))))
+
+Summary
+Form:  ( MAKE-EVENT (QUOTE ...) ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+T
+
+* Step 3:  That completes the admissibility check.  Each form read
+was an embedded event form and was admissible.  No LOCAL or SET-GUARD-
+CHECKING forms make it necessary to check for local incompatibilities,
+so we skip that check.
+
+ACL2 Warning [Guards] in (CERTIFY-BOOK 
+"tests/acl2/source-projection-bridge-tests" ...):  The book 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp"
+defines the functions SPJT-CODES, SPJT-CRLF, SPJT-OCT, SPJT-OK, SPJT-PROJ
+and SPJT-STORED, which have not had their guards verified.  Moreover,
+this book's included sub-books define functions DEFUN-THEORY-FN, 
+DEFUN-THEORY-FN-REC, DEFUN-TYPE/EXEC-THEORY-FN, 
+DEFUN-TYPE/EXEC-THEORY-FN-REC, ELEMENT-EQUIV, ELEMENT-LIST-EQUIV, 
+ELEMENT-LIST-FIX, ELEMENT-LIST-NONEMPTY-P, ELEMENT-LIST-P, 
+ELEMENTLIST-MAPAPPEND, ELEMENTLIST-PROJECTION, ERROR-FROM-EVAL-FN,
+FN-RECORD-SCHEMA0-ENCODE, FN-SPJ-RESERVED-FIELD-LINEP, 
+FN-STMT-ITEMS-FUEL-INDUCT, U::FORCE-TERM-LIST, U::IMPORT-AS-MACROS-FN,
+XDOC::MAKE-XDOC-FRAGMENTS, OUTELEMENT-LIST-P, 
+U::REASON-FOR-NOT-KEYWORD-OPTION-LISTP, RULETABLE-DELETE-TAGS and 
+RULETABLE-KEEP-TAGS, which have not had their guards verified.  See
+:DOC guards.
+
+
+* Step 4:  Write the certificate for 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp"
+in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.cert".
+
+
+* Step 5:  Compile the functions defined in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp".
+
+
+Note: Writing book expansion file, /home/ember/fn-gates/k4-bridges-
+b5724fce/tests/acl2/source-projection-bridge-tests@expansion.lsp.
+
+
+Note: Deleting expansion file for the book, /home/ember/fn-gates/k4-
+bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp.
+
+Summary
+Form:  (CERTIFY-BOOK "tests/acl2/source-projection-bridge-tests" ...)
+Rules: NIL
+Warnings:  Guards and Compiled file
+Time:  1.43 seconds (prove: 0.00, print: 0.00, other: 1.43)
+ "/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/source-projection-bridge-tests.lisp"
+ACL2 !>>
+FN_CERTIFY_SUCCESS 2ea4bf5d7588afa9f3032935e88f197a ddc018f66278
+ NIL
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
