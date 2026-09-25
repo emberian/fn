@@ -6,10 +6,18 @@
 (defconst *fn-nhctrl-enroll-kind* 4)
 (defconst *fn-nhctrl-author-kind* 5)
 (defconst *fn-nhctrl-revoke-kind* 6)
+; PRF-098: the next-generation requests.  The operator names no generation;
+; the owner asks ACL2 for it (books/hybrid-lifecycle.lisp
+; fn-hl-next-generation) under its serialized Store coordinates.  Kinds 4
+; and 6 keep their explicit generation, and 0 there means nothing.
+(defconst *fn-nhctrl-enroll-next-kind* 7)
+(defconst *fn-nhctrl-revoke-next-kind* 8)
 (defconst *fn-nhctrl-max-payload* 65536)
 (defconst *fn-nhctrl-enroll-spec* '(:nat :blob :blob :blob))
 (defconst *fn-nhctrl-author-spec* '(:nat :blob :blob :blob :text))
 (defconst *fn-nhctrl-revoke-spec* '(:nat :blob))
+(defconst *fn-nhctrl-enroll-next-spec* '(:blob :blob :blob))
+(defconst *fn-nhctrl-revoke-next-spec* '(:blob))
 
 (defun fn-native-hybrid-control-uint32 (text)
   (declare (xargs :guard t))
@@ -126,3 +134,75 @@
              (fn-record-uint32p (nth 0 v))
              (fn-hsig-exact-octets-p (nth 1 v) 32))
         (cons :hybrid-revoke v) nil)))
+
+(defun fn-native-hybrid-control-enroll-next-encode (principal ed-key ml-key)
+  (declare (xargs :guard t))
+  (if (not (and (fn-hsig-exact-octets-p principal 32)
+                (fn-hsig-exact-octets-p ed-key 32)
+                (fn-hsig-exact-octets-p ml-key 1952))) :bad
+    (fn-nhctrl-seal *fn-nhctrl-enroll-next-kind* *fn-nhctrl-enroll-next-spec*
+                    (list principal ed-key ml-key))))
+
+(defun fn-native-hybrid-control-enroll-next-decode (octets)
+  (declare (xargs :guard t))
+  (let ((v (fn-nhctrl-open-values octets *fn-nhctrl-enroll-next-kind*
+                                  *fn-nhctrl-enroll-next-spec*)))
+    (if (and (true-listp v)
+             (equal (len v) 3)
+             (fn-hsig-exact-octets-p (nth 0 v) 32)
+             (fn-hsig-exact-octets-p (nth 1 v) 32)
+             (fn-hsig-exact-octets-p (nth 2 v) 1952))
+        (cons :hybrid-enroll-next v) nil)))
+
+(defun fn-native-hybrid-control-revoke-next-encode (principal)
+  (declare (xargs :guard t))
+  (if (not (fn-hsig-exact-octets-p principal 32)) :bad
+    (fn-nhctrl-seal *fn-nhctrl-revoke-next-kind* *fn-nhctrl-revoke-next-spec*
+                    (list principal))))
+
+(defun fn-native-hybrid-control-revoke-next-decode (octets)
+  (declare (xargs :guard t))
+  (let ((v (fn-nhctrl-open-values octets *fn-nhctrl-revoke-next-kind*
+                                  *fn-nhctrl-revoke-next-spec*)))
+    (if (and (true-listp v)
+             (equal (len v) 1)
+             (fn-hsig-exact-octets-p (nth 0 v) 32))
+        (cons :hybrid-revoke-next v) nil)))
+
+; The owner's events for the two requests: the lifecycle constructors at
+; ACL2's next generation.  host/native/hybrid-control.lisp calls these
+; through host/native-hybrid-control-host.lisp.
+(defun fn-native-hybrid-control-enroll-next-event
+    (sequence txid store-generation principal keys snapshots)
+  (declare (xargs :guard t))
+  (fn-hl-enroll-event sequence txid store-generation
+                      (fn-hl-next-generation snapshots) principal keys
+                      snapshots))
+
+(defun fn-native-hybrid-control-revoke-next-event
+    (sequence txid store-generation principal snapshots)
+  (declare (xargs :guard t))
+  (fn-hl-revoke-event sequence txid store-generation
+                      (fn-hl-next-generation snapshots) principal snapshots))
+
+; The request is ACL2's: an event it builds is at exactly the generation
+; after the Store's newest snapshot (1 for an empty keyring).
+(defthm fn-native-hybrid-control-enroll-next-event-is-at-the-next-generation
+  (let ((e (fn-native-hybrid-control-enroll-next-event
+            sequence txid store-generation principal keys snapshots)))
+    (implies e
+             (equal (fn-stxk-keyring-generation e)
+                    (fn-hl-next-generation snapshots))))
+  :hints (("Goal" :in-theory (disable fn-hl-enroll-event fn-hl-next-generation)
+           :use ((:instance fn-hl-enroll-event-enrolls-its-keys
+                            (keyring-generation (fn-hl-next-generation snapshots)))))))
+
+(defthm fn-native-hybrid-control-revoke-next-event-is-at-the-next-generation
+  (let ((e (fn-native-hybrid-control-revoke-next-event
+            sequence txid store-generation principal snapshots)))
+    (implies e
+             (equal (fn-stxk-keyring-generation e)
+                    (fn-hl-next-generation snapshots))))
+  :hints (("Goal" :in-theory (disable fn-hl-revoke-event fn-hl-next-generation)
+           :use ((:instance fn-hl-revoke-event-is-the-principals-tombstone
+                            (keyring-generation (fn-hl-next-generation snapshots)))))))

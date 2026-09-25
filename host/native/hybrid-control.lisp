@@ -33,6 +33,42 @@
                (progn (fnn-owner-identity-commit service event) :accepted)
              :refused)))))))
 
+;; PRF-098: the next-generation requests (kinds 7 and 8).  The generation
+;; is ACL2's (fn-hl-next-generation over the owner's snapshots, inside the
+;; serialized section), never the operator's number.
+(defun fnn-hybrid-control-enroll-next (service request)
+  (destructuring-bind (tag principal ed-key ml-key) request
+    (declare (ignore tag))
+    (fnn-owner-serialized
+     service nil
+     (lambda ()
+       (destructuring-bind (sequence txid generation)
+           (fnn-owner-core 'fn-owner-next-store-coordinates)
+         (let* ((keys (list (cons :ed25519 ed-key) (cons :ml-dsa-65 ml-key)))
+                (snapshots (fnn-owner-core 'fn-owner-hybrid-snapshots))
+                (event (fnn-core 'fn-native-hybrid-control-host-enroll-next-event
+                                 sequence txid generation principal keys
+                                 snapshots)))
+           (if event
+               (progn (fnn-owner-identity-commit service event) :accepted)
+             :refused)))))))
+
+(defun fnn-hybrid-control-revoke-next (service request)
+  (destructuring-bind (tag principal) request
+    (declare (ignore tag))
+    (fnn-owner-serialized
+     service nil
+     (lambda ()
+       (destructuring-bind (sequence txid generation)
+           (fnn-owner-core 'fn-owner-next-store-coordinates)
+         (let* ((snapshots (fnn-owner-core 'fn-owner-hybrid-snapshots))
+                (event (fnn-core 'fn-native-hybrid-control-host-revoke-next-event
+                                 sequence txid generation principal
+                                 snapshots)))
+           (if event
+               (progn (fnn-owner-identity-commit service event) :accepted)
+             :refused)))))))
+
 (defun fnn-hybrid-control-author (service request)
   (destructuring-bind
       (tag keyring-generation source ed-signature ml-signature ml-path) request
@@ -120,10 +156,16 @@
     (let* ((octets (fnn-octet-list frame))
            (enroll (fnn-core 'fn-native-hybrid-control-host-enroll-decode octets))
            (author (fnn-core 'fn-native-hybrid-control-host-author-decode octets))
-           (revoke (fnn-core 'fn-native-hybrid-control-host-revoke-decode octets)))
+           (revoke (fnn-core 'fn-native-hybrid-control-host-revoke-decode octets))
+           (enroll-next (fnn-core 'fn-native-hybrid-control-host-enroll-next-decode
+                                  octets))
+           (revoke-next (fnn-core 'fn-native-hybrid-control-host-revoke-next-decode
+                                  octets)))
       (cond (enroll (fnn-hybrid-control-enroll service enroll))
             (author (fnn-hybrid-control-author service author))
             (revoke (fnn-hybrid-control-revoke service revoke))
+            (enroll-next (fnn-hybrid-control-enroll-next service enroll-next))
+            (revoke-next (fnn-hybrid-control-revoke-next service revoke-next))
             (t nil)))))
 
 (setq *fnn-hybrid-control-handler* #'fnn-hybrid-control-handle)
@@ -226,6 +268,37 @@
 (fnn-register-verb "hybrid-revoke"
                    (lambda (first rest)
                      (fnn-command-hybrid-revoke (cons first rest))))
+(defun fnn-command-hybrid-enroll-next (args)
+  (unless (= (length args) 4)
+    (error 'fnn-usage-error
+           :message "hybrid-enroll-next CONTROL PRINCIPAL ED-PUBLIC ML-PUBLIC-PEM"))
+  (destructuring-bind (control principal-path ed-path ml-path) args
+    (let ((request
+            (fnn-core
+             'fn-native-hybrid-control-host-enroll-next-encode
+             (fnn-hsig-command-read-exact principal-path 32 "principal")
+             (fnn-hsig-command-read-exact ed-path 32 "Ed25519 public key")
+             (coerce (fnn-hsig-ml-dsa-65-public-key ml-path) 'list))))
+      (fnn-core 'fn-native-control-host-status-exit-code
+                (fnn-hybrid-control-send control request)))))
+
+(defun fnn-command-hybrid-revoke-next (args)
+  (unless (= (length args) 2)
+    (error 'fnn-usage-error :message "hybrid-revoke-next CONTROL PRINCIPAL"))
+  (destructuring-bind (control principal-path) args
+    (let ((request
+            (fnn-core 'fn-native-hybrid-control-host-revoke-next-encode
+                      (fnn-hsig-command-read-exact principal-path 32
+                                                   "principal"))))
+      (fnn-core 'fn-native-control-host-status-exit-code
+                (fnn-hybrid-control-send control request)))))
+
+(fnn-register-verb "hybrid-enroll-next"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-enroll-next (cons first rest))))
+(fnn-register-verb "hybrid-revoke-next"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-revoke-next (cons first rest))))
 (fnn-register-verb "hybrid-key-history"
                    (lambda (first rest)
                      (fnn-command-hybrid-key-history (cons first rest))))

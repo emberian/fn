@@ -505,6 +505,278 @@
                                    fn-hsig-carried-record-metadatap
                                    fn-hsig-authored-source-id)))))
 
+;; ---------------------------------------------------------------------------
+;; The :revoked composite (PRF-098).  A node that revoked principal P at
+;; keyring generation G (a kind-3 tombstone, books/hybrid-lifecycle.lisp
+;; fn-hl-revoke-event) may still receive, by NNTP transit, an article P
+;; signed before G under keys this node had enrolled for P.  It stores the
+;; article as evidence with the token :revoked at G: the carried composite's
+;; structural bindings (article record, authored source, carrier), a verdict
+;; whose detail is the carrier's principal and whose keyring generation is
+;; the composite's, never 0 (the carried composite's) and never a key
+;; snapshot's (replay requires a tombstone there).  Constructor:
+;; books/peer-authored-accept.lisp fn-pa-revoked-event.
+
+; "fn-hybrid-revoked-v1": a tombstone's profile; its payload is exactly the
+; 32-octet principal.  books/hybrid-lifecycle.lisp names it
+; *fn-hl-revoked-profile*; this book owns the value so replay can read it.
+(defconst *fn-hsig-revoked-profile*
+  '(102 110 45 104 121 98 114 105 100 45 114 101 118 111 107 101 100 45 118 49))
+
+; PRINCIPAL was enrolled with exactly KEYS by some snapshot of SNAPSHOTS.
+(defun fn-hsig-enrolled-keys-of-principalp (principal keys snapshots)
+  (declare (xargs :guard t))
+  (if (consp snapshots)
+      (let ((value (fn-hsig-keyring-snapshot-value (car snapshots))))
+        (or (and (true-listp value) (equal (len value) 2)
+                 (equal (car value) principal)
+                 (equal (cadr value) keys))
+            (fn-hsig-enrolled-keys-of-principalp principal keys
+                                                 (cdr snapshots))))
+    nil))
+
+; The carrier (principal keys signatures) the composite's stored article
+; carries, or nil.
+(defun fn-hsig-article-event-carrier (event)
+  (declare (xargs :guard t))
+  (let* ((article (fn-record-decode-exact (fn-stxa-article-record event)))
+         (received (and (fn-record-result-okp article)
+                        (fn-record-payload (fn-record-result-record article))))
+         (plan (fn-hc-received-plan received)))
+    (if (and (fn-hc-okp plan)
+             (true-listp (fn-hc-value plan))
+             (equal (len (fn-hc-value plan)) 2))
+        (cadr (fn-hc-value plan))
+      nil)))
+
+(defun fn-hsig-article-event-carrier-keys (event)
+  (declare (xargs :guard t))
+  (let ((carrier (fn-hsig-article-event-carrier event)))
+    (if (and (consp carrier) (consp (cdr carrier))) (cadr carrier) nil)))
+
+(defun fn-hsig-article-event-revoked-bindsp (event)
+  (declare (xargs :guard t))
+  (if (not (and (fn-stxa-p event)
+                (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
+                (posp (fn-stxa-keyring-generation event))
+                (equal (fn-stxa-profile event)
+                       (fn-hsig-evidence-tag (fn-stxa-authored-source event)))))
+      nil
+    (let* ((article (fn-record-decode-exact (fn-stxa-article-record event)))
+           (verdict (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+           (received (and (fn-record-result-okp article)
+                          (fn-record-payload (fn-record-result-record article))))
+           (plan (fn-hc-received-plan received)))
+      (and (fn-stxa-bindsp event)
+           (fn-record-result-okp article)
+           (fn-hsig-carried-record-metadatap
+            (fn-stxa-authored-source event) received
+            (fn-record-result-record article))
+           (fn-hc-okp plan)
+           (true-listp (fn-hc-value plan))
+           (equal (len (fn-hc-value plan)) 2)
+           (let ((carrier (cadr (fn-hc-value plan))))
+             (and (true-listp carrier) (equal (len carrier) 3)
+                  (equal (car (fn-hc-value plan))
+                         (fn-stxa-authored-source event))
+                  (equal (fn-stxa-authored-id event)
+                         (fn-hsig-authored-source-id
+                          (fn-stxa-authored-source event)))
+                  (fn-hsig-exact-octets-p (first carrier) 32)
+                  (fn-hsig-signatures-p (third carrier))
+                  (fn-stmt-okp verdict)
+                  (equal (fn-stxe-token (fn-stmt-value verdict)) :revoked)
+                  (equal (fn-stxe-keyring-generation (fn-stmt-value verdict))
+                         (fn-stxa-keyring-generation event))
+                  (equal (fn-stxe-detail (fn-stmt-value verdict))
+                         (first carrier))))))))
+
+;; Replay's check on a :revoked verdict E (books/replay.lisp
+;; fn-replay-apply-revoked-verdict), and the constructor's last gate
+;; (fn-pa-revoked-event): the generation E names is, in SNAPSHOTS, a
+;; revocation tombstone of exactly E's principal, and KEYS (the stored
+;; carrier's) were enrolled for that principal by a snapshot of SNAPSHOTS.
+(defun fn-hsig-revoked-tombstone-bindsp (e keys snapshots)
+  (declare (xargs :guard t))
+  (let ((tombstone (fn-stxk-find (fn-stxe-keyring-generation e) snapshots)))
+    (and (fn-stxk-p tombstone)
+         (equal (fn-stxk-profile tombstone) *fn-hsig-revoked-profile*)
+         (equal (fn-stxk-snapshot tombstone) (fn-stxe-detail e))
+         (fn-hsig-enrolled-keys-of-principalp (fn-stxe-detail e) keys
+                                              snapshots)
+         t)))
+
+; A key snapshot's value exists only under the key profile, so a tombstone
+; (whose profile is *fn-hsig-revoked-profile*) never enrolls anything.
+(defthm fn-hsig-keyring-snapshot-value-requires-the-key-profile
+  (implies (fn-hsig-keyring-snapshot-value snapshot)
+           (equal (fn-stxk-profile snapshot) *fn-hsig-profile-tag*))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-hsig-keyring-snapshot-value))))
+
+; The binding facts replay and the owner rely on, the analogue of
+; fn-hsig-article-event-carried-bindsp-facts: a revoked composite is a bound
+; kind-4 record at a positive keyring generation whose verdict decodes, is
+; :revoked, names that same generation, and names the principal of the
+; carrier it stores.
+(defthm fn-hsig-article-event-revoked-bindsp-facts
+  (implies (fn-hsig-article-event-revoked-bindsp event)
+           (and (fn-stxa-p event)
+                (fn-stxa-bindsp event)
+                (posp (fn-stxa-keyring-generation event))
+                (fn-stmt-okp (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+                (equal (fn-stxe-token
+                        (fn-stmt-value
+                         (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+                       :revoked)
+                (equal (fn-stxe-keyring-generation
+                        (fn-stmt-value
+                         (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+                       (fn-stxa-keyring-generation event))
+                (equal (fn-stxe-detail
+                        (fn-stmt-value
+                         (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+                       (car (fn-hsig-article-event-carrier event)))
+                (fn-hsig-exact-octets-p
+                 (car (fn-hsig-article-event-carrier event)) 32)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-hsig-article-event-revoked-bindsp
+                                   fn-hsig-article-event-carrier)
+                                  (fn-stxa-bindsp fn-stxa-p
+                                   fn-stxe-decode-exact
+                                   fn-hc-received-plan
+                                   fn-hsig-carried-record-metadatap
+                                   fn-hsig-authored-source-id
+                                   fn-hsig-signatures-p)))))
+
+; A revoked composite is never a carried one (generation 0) and never binds
+; a key snapshot (whose v1 binding needs the token :verified), so replay's
+; three kind-4 branches are disjoint.
+(defthm fn-hsig-article-event-revoked-is-not-carried
+  (implies (fn-hsig-article-event-revoked-bindsp event)
+           (not (fn-hsig-article-event-carried-bindsp event)))
+  :hints (("Goal" :in-theory (enable fn-hsig-article-event-revoked-bindsp
+                                     fn-hsig-article-event-carried-bindsp))))
+
+(defthm fn-hsig-article-event-revoked-binds-no-snapshot
+  (implies (fn-hsig-article-event-revoked-bindsp event)
+           (not (fn-hsig-article-event-snapshot-bindsp event snapshot)))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-article-event-snapshot-bindsp
+                                   fn-hsig-article-event-snapshot-bindsp-v1
+                                   fn-hsig-article-event-revoked-bindsp)
+                                  (fn-hsig-article-event-snapshot-bindsp-v0
+                                   fn-stxa-bindsp fn-stxa-p
+                                   fn-stxe-decode-exact fn-hc-received-plan
+                                   fn-hsig-carried-record-metadatap
+                                   fn-hsig-keyring-snapshot-value
+                                   fn-hsig-authored-source-id)))))
+
+;; PRF-098: the keyring snapshot codec round trip.  The kind-3 event
+;; fn-hsig-keyring-event builds decodes, through the one selector every
+;; acceptance reads (fn-hsig-keyring-snapshot-value), to exactly the
+;; principal and key set it was built from, so an enrollment (in particular a
+;; succession's) enrolls what it names.
+(defthm fn-hsig-stxe-encode-items-is-stmt-encode-items
+  (equal (fn-stxe-encode-items items) (fn-stmt-encode-items items))
+  :hints (("Goal" :in-theory (enable fn-stxe-encode-items))))
+
+(encapsulate ()
+(local (defthm fn-hsig-keyring-items-are-items
+  (implies (and (fn-hsig-exact-octets-p principal 32) (fn-hsig-keyset-p keys))
+           (fn-stmt-item-listp
+            (list (cons :bytes principal)
+                  (cons :uint *fn-hsig-ed25519-algorithm*)
+                  (cons :bytes (cdr (car keys)))
+                  (cons :uint *fn-hsig-ml-dsa-65-algorithm*)
+                  (cons :bytes (cdr (car (cdr keys)))))))
+  :hints (("Goal" :in-theory (enable fn-hsig-exact-octets-p fn-hsig-keyset-p
+                                     fn-stmt-item-listp fn-cbor-valuep
+                                     fn-cbor-valuep-bounded)))))
+(local (defthm fn-hsig-keyring-snapshot-folds
+  (implies (and (fn-hsig-exact-octets-p principal 32) (fn-hsig-keyset-p keys))
+           (equal (fn-stmt-encode-items
+                   (list (cons :bytes principal)
+                         (cons :uint *fn-hsig-ed25519-algorithm*)
+                         (cons :bytes (cdr (car keys)))
+                         (cons :uint *fn-hsig-ml-dsa-65-algorithm*)
+                         (cons :bytes (cdr (car (cdr keys))))))
+                  (fn-hsig-keyring-snapshot principal keys)))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-keyring-snapshot)
+                                  (fn-stmt-encode-items-of-cons))))))
+(local (defthm fn-hsig-keyring-snapshot-decodes
+  (implies (and (fn-hsig-exact-octets-p principal 32) (fn-hsig-keyset-p keys)
+                (<= (len (fn-hsig-keyring-snapshot principal keys)) 65536))
+           (equal (fn-stmt-decode-items 5 (fn-hsig-keyring-snapshot principal keys))
+                  (fn-stmt-ok
+                   (list (cons :bytes principal)
+                         (cons :uint *fn-hsig-ed25519-algorithm*)
+                         (cons :bytes (cdr (car keys)))
+                         (cons :uint *fn-hsig-ml-dsa-65-algorithm*)
+                         (cons :bytes (cdr (car (cdr keys))))))))
+  :hints (("Goal" :in-theory (e/d () (fn-stmt-decode-items fn-hsig-keyring-snapshot
+                                      fn-stmt-encode-items-of-cons
+                                      fn-hsig-keyring-snapshot-folds))
+           :use ((:instance fn-hsig-keyring-snapshot-folds)
+                 (:instance fn-stmt-decode-items-of-encode-items
+                            (fuel 5)
+                            (items (list (cons :bytes principal)
+                                         (cons :uint *fn-hsig-ed25519-algorithm*)
+                                         (cons :bytes (cdr (car keys)))
+                                         (cons :uint *fn-hsig-ml-dsa-65-algorithm*)
+                                         (cons :bytes (cdr (car (cdr keys))))))))))))
+(local (defthm fn-hsig-keyring-event-snapshot-bound
+  (let ((e (fn-hsig-keyring-event sequence txid generation keyring-generation
+                                  principal keys)))
+    (implies e
+             (and (fn-stxk-p e)
+                  (equal (fn-stxk-profile e) *fn-hsig-profile-tag*)
+                  (equal (fn-stxk-snapshot e)
+                         (fn-hsig-keyring-snapshot principal keys))
+                  (fn-hsig-keyring-snapshot principal keys)
+                  (fn-hsig-exact-octets-p principal 32) (fn-hsig-keyset-p keys)
+                  (<= (len (fn-hsig-keyring-snapshot principal keys)) 65536))))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-keyring-event fn-stxk-p
+                                   fn-stxe-bounded-octetsp)
+                                  (fn-hsig-keyring-snapshot-folds))
+           :expand ((fn-hsig-keyring-snapshot principal keys))))))
+(local (defthm fn-hsig-keyset-rebuilds
+  (implies (and (consp keys) (true-listp (cdr keys))
+                (equal (+ 1 (len (cdr keys))) 2)
+                (equal (car (car keys)) :ed25519)
+                (equal (car (cadr keys)) :ml-dsa-65))
+           (equal (list (cons :ed25519 (cdr (car keys)))
+                        (cons :ml-dsa-65 (cdr (cadr keys))))
+                  keys))
+  :hints (("Goal" :expand ((len (cdr keys)) (len (cddr keys)))
+                  :cases ((consp (car keys)))))))
+(defthm fn-hsig-keyring-snapshot-value-of-keyring-event
+  (let ((e (fn-hsig-keyring-event sequence txid generation keyring-generation
+                                  principal keys)))
+    (implies e
+             (equal (fn-hsig-keyring-snapshot-value e)
+                    (list principal keys))))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-keyring-snapshot-value
+                                   fn-hsig-subject-p fn-stmt-ok fn-stmt-okp
+                                   fn-stmt-value fn-stmt-bytes-item-p
+                                   fn-stmt-uint-item-p fn-record-uint32p
+                                   fn-hsig-keyset-p fn-hsig-exact-octets-p)
+                                  (fn-stmt-decode-items fn-stmt-encode-items-of-cons
+                                   fn-hsig-keyring-event fn-stxk-p
+                                   fn-hsig-keyring-snapshot
+                                   fn-hsig-keyring-event-snapshot-bound))
+           :use ((:instance fn-hsig-keyring-event-snapshot-bound)))
+))
+)
+
+(defthm fn-hsig-keyring-event-shape
+  (let ((e (fn-hsig-keyring-event sequence txid generation keyring-generation
+                                  principal keys)))
+    (implies e
+             (and (fn-stxk-p e)
+                  (equal (fn-stxk-keyring-generation e) keyring-generation)
+                  (equal (fn-stxk-profile e) *fn-hsig-profile-tag*))))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-keyring-event) (fn-stxk-p)))))
+
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
                     (:d fn-hsig-evidence-tag)
                     (:d fn-hsig-octet-fields-to-strings)
@@ -521,4 +793,9 @@
                     (:d fn-hsig-article-event-snapshot-bindsp-v0)
                     (:d fn-hsig-article-event-snapshot-bindsp-v1)
                     (:d fn-hsig-article-event-snapshot-bindsp)
-                    (:d fn-hsig-article-event-carried-bindsp)))
+                    (:d fn-hsig-article-event-carried-bindsp)
+                    (:d fn-hsig-enrolled-keys-of-principalp)
+                    (:d fn-hsig-article-event-carrier)
+                    (:d fn-hsig-article-event-carrier-keys)
+                    (:d fn-hsig-article-event-revoked-bindsp)
+                    (:d fn-hsig-revoked-tombstone-bindsp)))

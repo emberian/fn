@@ -84,19 +84,33 @@
        t))
 
 ; The one acceptance decision for a present carrier (served POST, bound local
-; submission, NNTP transit).  Four outcomes:
+; submission, NNTP transit).  Five outcomes:
 ;   (:ok source principal keys signatures exact-current-snapshot generation)
 ;     this node's current enrollment of the principal names the carried keys;
 ;   (:carried source principal keys signatures)
 ;     D23: this node has no snapshot of the principal at all (never enrolled,
 ;     never revoked) and CARRIED, the delivering boundary's list, names it;
+;   (:revoked source principal keys signatures tombstone generation)
+;     PRF-098: NNTP transit only (TRANSITP), this node's newest snapshot of the
+;     principal is its revocation tombstone at GENERATION, that tombstone is
+;     the snapshot the generation names, and the carried keys are keys this
+;     node enrolled for the principal before: evidence of an article signed
+;     before the revocation, stored as :revoked, never :verified;
 ;   (:refused REASON), carrier-form's refusals and :local-enrollment;
 ;   :absent, the unsigned arm.
-; CARRIED is nil on every path without a delivering peer (served POST, bound
-; submission, BP transit), where the decision is the D02 one unchanged
-; (fn-pa-current-plan-without-carried-list-never-carries).  A revoked
-; principal, or one enrolled under other keys, is refused whatever the list.
-(defun fn-pa-current-plan (received snapshots carried)
+; CARRIED is nil and TRANSITP nil on every path without a delivering peer
+; (served POST, bound submission, BP transit), where the decision is the D02
+; one unchanged (fn-pa-current-plan-off-the-transit-arms-is-the-d02-plan).
+; A principal enrolled under other keys is refused whatever the list.
+(defun fn-pa-revoked-tombstonep (current generation principal keys snapshots)
+  (declare (xargs :guard t))
+  (and (fn-stxk-p current)
+       (equal (fn-stxk-profile current) *fn-hl-revoked-profile*)
+       (posp generation)
+       (equal (fn-stxk-find generation snapshots) current)
+       (fn-hsig-enrolled-keys-of-principalp principal keys snapshots)))
+
+(defun fn-pa-current-plan (received snapshots carried transitp)
   (declare (xargs :guard t))
   (let ((form (fn-pa-carrier-form received)))
     (if (not (and (consp form) (eq (car form) :ok))) form
@@ -120,6 +134,11 @@
                     ((and (null current)
                           (fn-pa-carriesp principal carried))
                      (list :carried source principal keys signatures))
+                    ((and transitp
+                          (fn-pa-revoked-tombstonep current generation
+                                                    principal keys snapshots))
+                     (list :revoked source principal keys signatures
+                           current generation))
                     (t (list :refused :local-enrollment)))))))
 
 ; The caller supplies primitive observations, not an authorization Boolean.
@@ -131,7 +150,7 @@
               content-subject release-evidence charge snapshots
               observed-ml-key ed-observation ml-observation clock-observation)
   (declare (xargs :guard t))
-  (let ((plan (fn-pa-current-plan received snapshots nil)))
+  (let ((plan (fn-pa-current-plan received snapshots nil nil)))
     (if (not (and (consp plan) (eq (car plan) :ok))) nil
       (fn-hsig-authorized-carried-submission-event-base
        sequence txid generation (nth 6 plan)
@@ -154,7 +173,7 @@
               content-subject release-evidence charge snapshots carried
               clock-observation)
   (declare (xargs :guard t))
-  (let ((plan (fn-pa-current-plan received snapshots carried)))
+  (let ((plan (fn-pa-current-plan received snapshots carried t)))
     (if (not (and (consp plan) (eq (car plan) :carried))) nil
       (let* ((source (nth 1 plan))
              (principal (nth 2 plan))
@@ -194,24 +213,32 @@
   :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form)
                                   (fn-pa-carrier-kind fn-hc-received-plan)))))
 
-; Four outcomes and no fifth: accepted under this node's enrollment, carried
-; for the delivering boundary, refused with a reason, or the unsigned arm.
+(defthm fn-pa-carrier-form-is-never-revoked
+  (not (equal (car (fn-pa-carrier-form received)) :revoked))
+  :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan)))))
+
+; Five outcomes and no sixth: accepted under this node's enrollment, carried
+; for the delivering boundary, revoked evidence on transit, refused with a
+; reason, or the unsigned arm.
 (defthm fn-pa-current-plan-outcomes
-  (let ((plan (fn-pa-current-plan received snapshots carried)))
+  (let ((plan (fn-pa-current-plan received snapshots carried transitp)))
     (or (equal plan :absent)
         (equal (car plan) :ok)
         (equal (car plan) :carried)
+        (equal (car plan) :revoked)
         (equal (car plan) :refused)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carrier-form)
                                   (fn-pa-carrier-kind fn-hc-received-plan
                                    fn-hl-current-for-principal
-                                   fn-hl-current-enrollment fn-pa-carriesp)))))
+                                   fn-hl-current-enrollment fn-pa-carriesp
+                                   fn-pa-revoked-tombstonep)))))
 
 ; The carried arm needs both: the delivering boundary lists the principal,
 ; and this node has no snapshot of it (never enrolled, never revoked).
 (defthm fn-pa-carried-arm-needs-the-list-and-no-local-snapshot
-  (let ((plan (fn-pa-current-plan received snapshots carried)))
+  (let ((plan (fn-pa-current-plan received snapshots carried transitp)))
     (implies (equal (car plan) :carried)
              (and (fn-pa-carriesp (nth 2 plan) carried)
                   (null (fn-hl-current-for-principal (nth 2 plan) snapshots))
@@ -220,36 +247,56 @@
   :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carrier-form)
                                   (fn-pa-carrier-kind fn-hc-received-plan
                                    fn-hl-current-for-principal
-                                   fn-hl-current-enrollment fn-pa-carriesp)))))
+                                   fn-hl-current-enrollment fn-pa-carriesp
+                                   fn-pa-revoked-tombstonep)))))
 
-; Off the carried arm the decision is the D02 one: an enrolled receiver
+; Off the two transit arms the decision is the D02 one: an enrolled receiver
 ; accepts exactly as before and an unlisted, unenrolled principal is refused
-; with :local-enrollment, whatever list the boundary carries.
-(defthm fn-pa-current-plan-off-the-carried-arm-is-the-d02-plan
-  (implies (not (equal (car (fn-pa-current-plan received snapshots carried))
-                       :carried))
-           (equal (fn-pa-current-plan received snapshots carried)
-                  (fn-pa-current-plan received snapshots nil)))
+; with :local-enrollment, whatever list the boundary carries and whatever
+; the path.
+(defthm fn-pa-current-plan-off-the-transit-arms-is-the-d02-plan
+  (implies (and (not (equal (car (fn-pa-current-plan received snapshots
+                                                     carried transitp))
+                            :carried))
+                (not (equal (car (fn-pa-current-plan received snapshots
+                                                     carried transitp))
+                            :revoked)))
+           (equal (fn-pa-current-plan received snapshots carried transitp)
+                  (fn-pa-current-plan received snapshots nil nil)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carriesp)
                                   (fn-pa-carrier-form
                                    fn-hl-current-for-principal
-                                   fn-hl-current-enrollment)))))
+                                   fn-hl-current-enrollment
+                                   fn-pa-revoked-tombstonep)))))
 
 ; Every path without a delivering peer passes nil: it never carries.
 (defthm fn-pa-current-plan-without-carried-list-never-carries
-  (not (equal (car (fn-pa-current-plan received snapshots nil)) :carried))
+  (not (equal (car (fn-pa-current-plan received snapshots nil transitp))
+              :carried))
   :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carriesp)
                                   (fn-pa-carrier-form
                                    fn-hl-current-for-principal
-                                   fn-hl-current-enrollment)))))
+                                   fn-hl-current-enrollment
+                                   fn-pa-revoked-tombstonep)))))
+
+; Every path but NNTP transit passes TRANSITP nil: it never reports
+; :revoked (a served POST under a revoked key is refused :local-enrollment).
+(defthm fn-pa-current-plan-off-transit-never-revoked
+  (not (equal (car (fn-pa-current-plan received snapshots carried nil))
+              :revoked))
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
+                                  (fn-pa-carrier-form fn-pa-carriesp
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment
+                                   fn-pa-revoked-tombstonep)))))
 
 (defthm fn-pa-carried-event-requires-the-carried-arm
   (implies (fn-pa-carried-event
             sequence txid generation msgid received groups obligation-id
             content-subject release-evidence charge snapshots carried
             clock-observation)
-           (equal (car (fn-pa-current-plan received snapshots carried))
+           (equal (car (fn-pa-current-plan received snapshots carried t))
                   :carried))
   :hints (("Goal" :in-theory
            (e/d (fn-pa-carried-event)
@@ -281,7 +328,8 @@
                  fn-hc-received-plan fn-hsig-authored-source-id)))))
 
 (defthm fn-pa-absent-is-only-parser-confirmed-absence
-  (implies (equal (fn-pa-current-plan received snapshots carried) :absent)
+  (implies (equal (fn-pa-current-plan received snapshots carried transitp)
+                  :absent)
            (equal (fn-pa-carrier-kind received) :absent))
   :hints (("Goal" :in-theory (enable fn-pa-current-plan
                                      fn-pa-carrier-form))))
@@ -291,11 +339,231 @@
             sequence txid generation msgid received groups obligation-id
             content-subject release-evidence charge snapshots
             observed-ml-key ed-observation ml-observation clock-observation)
-           (equal (car (fn-pa-current-plan received snapshots nil)) :ok))
+           (equal (car (fn-pa-current-plan received snapshots nil nil)) :ok))
   :hints (("Goal" :in-theory
            (e/d (fn-pa-authorized-event)
                 (fn-pa-current-plan fn-hc-received-plan
                  fn-hsig-authorized-carried-submission-event-base)))))
+
+;; ---------------------------------------------------------------------------
+;; PRF-098: the revoked arm's Store event.  The same article record, authored
+;; source and carrier the carried arm binds, a verdict whose token is
+;; :revoked, whose detail is the carrier's principal and whose keyring
+;; generation is the tombstone's, and BOTH primitive observations: the
+;; caller supplies them over the carrier's keys (the keys this node once
+;; enrolled for the principal) and this constructor requires
+;; fn-hsig-authorize-at of them, exactly as the :ok arm does.  It is
+;; returned only when replay's revoked branch admits it at these snapshots
+;; (fn-hsig-article-event-revoked-bindsp, fn-hsig-revoked-tombstone-bindsp),
+;; so the host has nothing to commit otherwise.  NNTP transit only (the plan
+;; is asked with TRANSITP t).  Host: host/owner-host.lisp
+;; fn-owner-peer-revoked-event, called from host/native/owner.lisp
+;; fnn-owner-attempt-transit on the plan's :revoked arm.
+(defun fn-pa-revoked-event
+    (sequence txid generation msgid received groups obligation-id
+              content-subject release-evidence charge snapshots
+              observed-ml-key ed-observation ml-observation clock-observation)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pa-current-plan received snapshots nil t)))
+    (if (not (and (consp plan) (eq (car plan) :revoked))) nil
+      (let* ((source (nth 1 plan))
+             (principal (nth 2 plan))
+             (keys (nth 3 plan))
+             (signatures (nth 4 plan))
+             (tombstone (nth 6 plan))
+             (fields (fn-hsig-authored-source-fields source))
+             (stamp (fn-record-stamp-of-observation clock-observation))
+             (record (fn-record-make sequence txid generation msgid received
+                                     groups obligation-id content-subject
+                                     release-evidence charge stamp))
+             (source-id (fn-hsig-authored-source-id source)))
+        (if (and (natp stamp) fields source-id
+                 (equal msgid (car fields))
+                 (equal groups (cadr fields))
+                 (equal charge (fn-charge-for-payload (len received)))
+                 (fn-hsig-carried-record-metadatap source received record)
+                 (fn-hsig-authorize-at (fn-hsig-source-version source)
+                                       principal keys source signatures
+                                       observed-ml-key ed-observation
+                                       ml-observation))
+            (let* ((verdict (fn-stxe-make sequence txid generation msgid
+                                          :revoked principal tombstone
+                                          (fn-hsig-evidence-tag source)))
+                   (event (fn-stxa-make-carried
+                           sequence txid generation tombstone
+                           (fn-hsig-evidence-tag source)
+                           (fn-record-string-octets content-subject)
+                           (fn-record-encode record)
+                           (fn-stxe-encode verdict)
+                           source source-id)))
+              (if (and (fn-hsig-article-event-revoked-bindsp event)
+                       (fn-hsig-revoked-tombstone-bindsp
+                        (fn-stmt-value
+                         (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+                        (fn-hsig-article-event-carrier-keys event)
+                        snapshots))
+                  event
+                nil))
+          nil)))))
+
+;; Keystones over fn-pa-current-plan's revoked arm and the event.
+
+; The revoked arm is taken only on NNTP transit, only for a principal whose
+; newest snapshot here is its tombstone at the plan's generation, and only
+; for keys this node enrolled for that principal.
+(defthm fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys
+  (let ((plan (fn-pa-current-plan received snapshots carried transitp)))
+    (implies (equal (car plan) :revoked)
+             (and (not (null transitp))
+                  (equal (nth 5 plan)
+                         (fn-hl-current-for-principal (nth 2 plan) snapshots))
+                  (fn-stxk-p (nth 5 plan))
+                  (equal (fn-stxk-profile (nth 5 plan)) *fn-hl-revoked-profile*)
+                  (equal (nth 6 plan) (fn-stxk-keyring-generation (nth 5 plan)))
+                  (posp (nth 6 plan))
+                  (equal (fn-stxk-find (nth 6 plan) snapshots) (nth 5 plan))
+                  (fn-hsig-enrolled-keys-of-principalp (nth 2 plan) (nth 3 plan)
+                                                       snapshots)
+                  (equal (nth 1 plan) (nth 1 (fn-pa-carrier-form received)))
+                  (equal (nth 2 plan) (nth 2 (fn-pa-carrier-form received)))
+                  (equal (nth 3 plan) (nth 3 (fn-pa-carrier-form received))))))
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-revoked-tombstonep)
+                                  (fn-pa-carrier-form fn-pa-carriesp
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment
+                                   fn-hsig-enrolled-keys-of-principalp)))))
+
+; KEYSTONE (theorem 3 of the spike record, first half).  While a principal's
+; newest snapshot here is a revocation tombstone, no plan for a carrier
+; naming that principal is :ok, on any path, whatever the boundary carries.
+(defthm fn-pa-no-ok-plan-for-a-revoked-principal
+  (implies (and (equal (nth 2 (fn-pa-carrier-form received)) principal)
+                (equal (fn-stxk-profile
+                        (fn-hl-current-for-principal principal snapshots))
+                       *fn-hl-revoked-profile*))
+           (not (equal (car (fn-pa-current-plan received snapshots carried
+                                                transitp))
+                       :ok)))
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
+                                  (fn-pa-carrier-form fn-pa-carriesp
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment
+                                   fn-hsig-keyring-snapshot-value
+                                   fn-pa-revoked-tombstonep))
+           :use ((:instance fn-hl-current-enrollment-selects-an-enrolled-snapshot
+                            (requested (fn-stxk-keyring-generation
+                                        (fn-hl-current-for-principal
+                                         principal snapshots))))
+                 (:instance fn-hsig-keyring-snapshot-value-requires-the-key-profile
+                            (snapshot (fn-hl-current-for-principal
+                                       principal snapshots)))))))
+
+; KEYSTONE (theorem 3, over the revocation the owner commits).  After the
+; tombstone fn-hl-revoke-event builds for P at G is the newest snapshot, no
+; plan for P is :ok; on NNTP transit a carrier under keys this node enrolled
+; for P before is :revoked at G, and on every other path it is refused
+; :local-enrollment.
+(defthm fn-pa-revocation-leaves-no-ok-plan
+  (let ((tomb (fn-hl-revoke-event sequence txid store-generation g
+                                  principal snapshots)))
+    (implies (and tomb
+                  (equal (nth 2 (fn-pa-carrier-form received)) principal))
+             (not (equal (car (fn-pa-current-plan received (cons tomb snapshots)
+                                                  carried transitp))
+                         :ok))))
+  :hints (("Goal" :in-theory (disable fn-hl-revoke-event fn-pa-carrier-form
+                                      fn-hl-current-for-principal)
+           :use ((:instance fn-hl-revoke-event-is-the-principals-tombstone
+                            (keyring-generation g))
+                 (:instance fn-pa-no-ok-plan-for-a-revoked-principal
+                            (snapshots
+                             (cons (fn-hl-revoke-event sequence txid
+                                                       store-generation g
+                                                       principal snapshots)
+                                   snapshots)))))))
+
+(defthm fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone
+  (let ((tomb (fn-hl-revoke-event sequence txid store-generation g
+                                  principal snapshots))
+        (form (fn-pa-carrier-form received)))
+    (implies (and tomb
+                  (equal (car form) :ok)
+                  (equal (nth 2 form) principal)
+                  (fn-hsig-enrolled-keys-of-principalp principal (nth 3 form)
+                                                       snapshots))
+             (equal (fn-pa-current-plan received (cons tomb snapshots)
+                                        carried transitp)
+                    (if transitp
+                        (list :revoked (nth 1 form) principal (nth 3 form)
+                              (nth 4 form) tomb g)
+                      (list :refused :local-enrollment)))))
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-revoked-tombstonep
+                                   fn-hsig-enrolled-keys-of-principalp
+                                   fn-stxk-find)
+                                  (fn-hl-revoke-event fn-pa-carrier-form
+                                   fn-pa-carriesp fn-hl-current-enrollment
+                                   fn-hsig-keyring-snapshot-value
+                                   fn-hl-current-for-principal))
+           :use ((:instance fn-hl-revoke-event-is-the-principals-tombstone
+                            (keyring-generation g))
+                 (:instance fn-pa-no-ok-plan-for-a-revoked-principal
+                            (snapshots
+                             (cons (fn-hl-revoke-event sequence txid
+                                                       store-generation g
+                                                       principal snapshots)
+                                   snapshots)))))))
+
+; KEYSTONE (the revoked event).  A revoked composite the owner can commit
+; exists only on the revoked arm with both primitive observations verified
+; over the carrier's keys, is the record replay's revoked branch admits at
+; these snapshots, and its verdict is :revoked at the tombstone's generation,
+; never :verified.
+(defthm fn-pa-revoked-event-binds-the-arm-and-both-observations
+  (let ((e (fn-pa-revoked-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots
+            observed-ml-key ed-observation ml-observation clock-observation))
+        (plan (fn-pa-current-plan received snapshots nil t)))
+    (implies e
+             (and (equal (car plan) :revoked)
+                  (fn-hsig-authorize-at (fn-hsig-source-version (nth 1 plan))
+                                        (nth 2 plan) (nth 3 plan) (nth 1 plan)
+                                        (nth 4 plan) observed-ml-key
+                                        ed-observation ml-observation)
+                  (equal ed-observation :verified)
+                  (equal ml-observation :verified)
+                  (fn-hsig-article-event-revoked-bindsp e)
+                  (fn-hsig-revoked-tombstone-bindsp
+                   (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event e)))
+                   (fn-hsig-article-event-carrier-keys e)
+                   snapshots)
+                  (equal (fn-stxe-token
+                          (fn-stmt-value
+                           (fn-stxe-decode-exact (fn-stxa-verdict-event e))))
+                         :revoked))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-pa-revoked-event fn-hsig-authorize-at)
+                (fn-pa-current-plan fn-pa-carrier-form
+                 fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys
+                 fn-hsig-article-event-revoked-bindsp
+                 fn-hsig-article-event-revoked-bindsp-facts
+                 fn-hsig-revoked-tombstone-bindsp fn-hsig-article-event-carrier
+                 fn-hsig-article-event-carrier-keys
+                 fn-stxa-make-carried fn-stxe-encode fn-stxe-decode-exact
+                 fn-stxe-make fn-record-make
+                 fn-hsig-carried-record-metadatap
+                 fn-hsig-subject-at-p fn-hsig-signatures-p fn-hsig-source-version
+                 fn-hc-received-plan fn-hsig-authored-source-id
+                 fn-hsig-authored-source-fields fn-hsig-evidence-tag
+                 fn-record-stamp-of-observation fn-charge-for-payload))
+           :use ((:instance fn-hsig-article-event-revoked-bindsp-facts
+                            (event (fn-pa-revoked-event
+                                    sequence txid generation msgid received
+                                    groups obligation-id content-subject
+                                    release-evidence charge snapshots
+                                    observed-ml-key ed-observation
+                                    ml-observation clock-observation)))))))
 
 ;; The served POST's outcome word after the carried attempt (served NNTP
 ;; POST and the bound local submissions call the same attempt transit does,
@@ -422,5 +690,6 @@
                                    fn-record-string-octets)))))
 
 (in-theory (disable (:d fn-pa-current-plan) (:d fn-pa-authorized-event)
+                    (:d fn-pa-revoked-event) (:d fn-pa-revoked-tombstonep)
                     (:d fn-pa-carried-event) (:d fn-pa-carriesp)
                     (:d fn-pa-filing-plan)))
