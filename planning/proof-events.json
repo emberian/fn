@@ -3684,6 +3684,34 @@
         {
           "kind": "theorem",
           "name": "fn-nntp-number-retrieval-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclb-existing-action-is-rcl-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-by-msgid-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-current-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-lines-indexed-skip-a-reclaimed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-lines-skip-a-reclaimed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-lists-only-live-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-holders-hold-behind-a-lagging-consumer"
         }
       ]
     }
