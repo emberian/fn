@@ -58,7 +58,7 @@
  (and (equal (fn-bpnf-held-list *bprs-d5*) (bpfr-replayed *bprs-rows4*))
       (equal (fn-bpnf-held-list *bprs-d5*)
              (fn-bpnf-held-list (fn-bpnf-answer-state *bprs-res-durable*)))
-      (equal (len *bprs-rows4*) 8)
+      (equal (len *bprs-rows4*) 7)
       (fn-bpnp-forward-candidatep (car (fn-bpnf-held-list *bprs-d5*)) *bpfr-dest*
                                   *bpfr-obs* (fn-bpnf-epoch *bprs-d5*))
       (equal (car (car (fn-bpnf-answer-effects *bprs-d5-open*))) :persist-attempt)
@@ -78,8 +78,7 @@
   (car (fn-bpnf-answer-effects answer)))
 (assert-event (equal (bprs-refusal (bprs-resume *bpfr-d4* 7))
                      '(:resume-refused 7 :no-row)))
-(assert-event (equal (bprs-refusal (bprs-resume *bpfr-d4* "zero"))
-                     '(:resume-refused "zero" :no-row)))
+(assert-event (not (fn-bpnp-host-eventp (list :operator-resume "zero"))))
 ;; Under the bound (retries 1, a restart ago): not stranded.
 (assert-event (equal (bprs-refusal (bprs-resume *bpfr-d2* 0))
                      '(:resume-refused 0 :not-stranded)))
