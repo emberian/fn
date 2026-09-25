@@ -309,10 +309,11 @@
 (assert-event (and (consp (fn-rcon-record-encode-impl *rcon-t-msgid-250*))
                    (equal (fn-rcon-record-encode-impl *rcon-t-msgid-250*)
                           (fn-record-encode-impl *rcon-t-msgid-250*))))
-; So the encoder does not encode every shaped record.
+; So "the encoder encodes every shaped record" is refuted at that record.
 (must-fail
- (defthm rcon-t-encode-every-shaped-record
-   (implies (fn-record-shapep r) (consp (fn-rcon-record-encode-impl r)))))
+ (defthm rcon-t-encode-shaped-251
+   (implies (fn-record-shapep *rcon-t-msgid-251*)
+            (consp (fn-rcon-record-encode-impl *rcon-t-msgid-251*)))))
 ; The attachment: fn-record-encode evaluates through the twin.
 (assert-event
  (eq (cdr (assoc-eq 'fn-record-encode
