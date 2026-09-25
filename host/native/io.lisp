@@ -977,6 +977,10 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
+  ;; D31: the committed-history frame this open writes before it returns
+  ;; (fn-hmr-catch-up), or NIL.  Set by fnn-check-history-marker, written by
+  ;; fnn-recover after its barriers, only by a writable open.
+  (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil))
 
@@ -1313,9 +1317,11 @@ after the syscall."
       (fnn-fault "legacy JSON allocator is retained in place; explicit offline migration is required"))
     (setf (fnn-store-frontier store) (fnn-metadata-frontier-decode raw))))
 
-;; The committed-history boundary (books/store-history-marker).  The open
-;; reads the marker once and ACL2 (fn-hm-open-verdict) compares it with the
-;; length of the record list replay is handed: pack events plus suffix files.
+;; The committed-history boundary (books/store-history-marker,
+;; books/store-history-required).  The open reads the marker once and ACL2
+;; (fn-hmr-open-verdict, under the profile's history-marker requirement)
+;; compares it with the length of the record list replay is handed: pack
+;; events plus suffix files.
 (defun fnn-history-marker-observation (store)
   "(:absent) or (:present OCTETS): one bounded read of committed-history.json."
   (let ((path (fnn-history-marker-path store)))
@@ -1328,22 +1334,37 @@ after the syscall."
                    (fnn-fault "cannot read the committed-history marker: ~a" e))))))))
 
 (defun fnn-check-history-marker (store record-count)
-  "Refuse an open whose committed history is short of its marker.
+  "Refuse an open whose committed history is short of its marker, or whose
+required marker is missing; remember the frame the open must write.
 
 A refusal is detected damage to committed data (specs/storage.md STO-005):
-a fault naming ACL2's reason, never a silent rollback to the shorter history."
-  (let* ((verdict (fnn-core 'fn-hm-open-verdict
-                            (fnn-history-marker-observation store) record-count))
+a fault naming ACL2's reason, never a silent rollback to the shorter history.
+An admitted open records ACL2's catch-up frame (fn-hmr-catch-up): the marker
+of the reconstructed count when the marker is absent or behind it, which
+fnn-recover writes before the open returns (D31 case 2)."
+  (let* ((observation (fnn-history-marker-observation store))
+         (verdict (fnn-core 'fn-hmr-open-verdict
+                            (fnn-store-config store) observation record-count))
          (word (and (consp verdict) (first verdict))))
     (case word
-      (:admitted verdict)
+      (:admitted
+       (let ((frame (fnn-core 'fn-hmr-catch-up
+                              (fnn-store-config store) observation record-count)))
+         (unless (or (null frame) (fnn-octet-list-p frame))
+           (fnn-fault "ACL2 returned a malformed committed-history catch-up"))
+         (setf (fnn-store-marker-catch-up store) frame))
+       verdict)
       (:refused
        (fnn-fault "committed history refused at open: ~(~a~)~@[ marker=~d~] records=~d"
                   (second verdict) (third verdict) record-count))
       (otherwise (fnn-fault "ACL2 returned a malformed committed-history verdict")))))
 
-(defun fnn-mark-committed (store sequence)
+(defun fnn-mark-committed (store sequence &optional catch-up)
   "Replace the committed-history marker after record SEQUENCE is durable.
+
+With CATCH-UP (ACL2's fn-hmr-catch-up frame, SEQUENCE NIL) it is fnn-recover's
+catch-up: the same program and cuts, run after the recovery barriers made the
+reconstructed records durable and before the open returns.
 
 Every caller runs this after fnn-publish returned :durable and before
 fnn-finish, so a record the node acknowledges is below a durable marker, and
@@ -1355,7 +1376,7 @@ uncertain: the record is durable and the marker may or may not be replaced,
 so the store stays fenced and recovery decides; the transaction is never
 acknowledged without its marker."
   (fnn-require-writer store)
-  (let ((frame (fnn-core 'fn-hm-after-commit sequence))
+  (let ((frame (or catch-up (fnn-core 'fn-hm-after-commit sequence)))
         (stage (fnn-join (fnn-staging store)
                          (format nil ".stage-marker-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
     (setf (fnn-store-fenced store) t)
@@ -1725,6 +1746,7 @@ records after it, or captures the whole history after a full replay
 
 (defun fnn-recover (store)
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
+        (fnn-store-marker-catch-up store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
   (let ((records nil))
     (handler-case
@@ -1775,6 +1797,17 @@ records after it, or captures the whole history after a full replay
       ((or fnn-store-fault fnn-store-indeterminate) (e)
         (setf (fnn-store-fenced store) t)
         (error e)))
+    ;; D31 case 2: the marker catches up here, after the fifth barrier made
+    ;; every reconstructed record durable and before the open returns, so a
+    ;; record this process later answers as stored (a retry resolved as
+    ;; already stored, with no later commit) is below a durable marker.  A
+    ;; reader under the shared lock writes nothing and answers no submission.
+    ;; An error in the marker program is uncertain (exit 3); the next open
+    ;; catches up again.
+    (let ((frame (fnn-store-marker-catch-up store)))
+      (when (and frame (fnn-store-writable store))
+        (fnn-mark-committed store nil frame)
+        (setf (fnn-store-marker-catch-up store) nil)))
     ; Full journal replay above remains authoritative.  The checkpoint layer
     ; restores into separate ACL2 globals and compares that image with
     ; fn-store-sn; it cannot reset or replace the live node.
@@ -2122,7 +2155,10 @@ in-process retry."
         (unless colon
           (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT (expected MODEL-CUT:eio|kill)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
-          (unless (member label +fnn-recovery-model-cuts+ :test #'string=)
+          ;; The recovery's marker catch-up runs the marker program, whose
+          ;; cuts are ACL2's table (books/store-history-marker).
+          (unless (or (member label +fnn-recovery-model-cuts+ :test #'string=)
+                      (member label (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
             (fnn-fault "unknown FN_NATIVE_RECOVERY_FAULT cut: ~a" label))
           (list (intern (string-upcase label) :keyword)
                 (cond ((string= action "eio") 'fnn-os-error)
@@ -2158,7 +2194,10 @@ process; eio raises the host's EIO there."
         (unless colon
           (fnn-fault "invalid FN_NATIVE_PROFILE_FAULT (expected MODEL-CUT:eio|kill)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
-          (unless (member label +fnn-profile-model-cuts+ :test #'string=)
+          ;; The upgrade's open runs the marker catch-up before the profile
+          ;; program (the two-step of books/store-history-required).
+          (unless (or (member label +fnn-profile-model-cuts+ :test #'string=)
+                      (member label (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
             (fnn-fault "unknown FN_NATIVE_PROFILE_FAULT cut: ~a" label))
           (list (intern (string-upcase label) :keyword)
                 (cond ((string= action "eio") 'fnn-os-error)
@@ -2202,8 +2241,13 @@ writes it.  Same profile and anything but an upgrade are refused (exit 1) and
 write nothing."
   (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
     (unwind-protect
-         (let ((verdict (fnn-core 'fn-store-profile-upgrade-verdict
-                                  (fnn-store-config store) profile)))
+         ;; The open (fnn-recover) already wrote the catch-up marker; the
+         ;; verdict reads it back and grants `required' only over a marker
+         ;; that counts the reconstructed history (fn-hmr-upgrade-verdict).
+         (let ((verdict (fnn-core 'fn-hmr-upgrade-verdict
+                                  (fnn-store-config store) profile
+                                  (fnn-history-marker-observation store)
+                                  (length records))))
            (unless (and (consp verdict) (member (first verdict) '(:upgrade :refused)))
              (fnn-fault "ACL2 returned a malformed profile verdict"))
            (if (eq (first verdict) :refused)
@@ -2405,10 +2449,11 @@ field by its operator name (books/byte-store-frame.lisp `fn-bs-profile-report').
     (unless (and (consp report)
                  (every (lambda (entry)
                           (and (consp entry) (stringp (car entry))
-                               (integerp (cdr entry)) (>= (cdr entry) 0)))
+                               (or (stringp (cdr entry))
+                                   (and (integerp (cdr entry)) (>= (cdr entry) 0)))))
                         report))
       (fnn-fault "ACL2 returned a malformed profile report"))
-    (fnn-out "profile~{ ~a=~d~}"
+    (fnn-out "profile~{ ~a=~a~}"
              (loop for (name . value) in report collect name collect value))))
 
 (defun fnn-out-headroom (store)

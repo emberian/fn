@@ -101,9 +101,11 @@
   (if (zp n) (if (consp values) (car values) nil)
     (fn-bs-meta-nth (1- n) (if (consp values) (cdr values) nil))))
 
-; Format 8: two texts, then twelve eight-octet frame naturals, in this order.
+; Format 8: two texts, then thirteen eight-octet frame naturals, in this
+; order.  The last is the committed-history requirement (D31): 0 `unmarked',
+; 1 `required' (books/store-history-required.lisp).
 (defconst *fn-bs-meta-profile-spec*
-  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat))
+  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat))
 
 (defconst *fn-bs-pf-max-transactions* 2)        ; T
 (defconst *fn-bs-pf-max-history-octets* 3)      ; H
@@ -117,6 +119,7 @@
 (defconst *fn-bs-pf-max-config-generations* 11)
 (defconst *fn-bs-pf-max-credentials* 12)
 (defconst *fn-bs-pf-max-policy-members* 13)
+(defconst *fn-bs-pf-history-marker* 14)         ; 0 unmarked, 1 required
 
 ; The fields in order, with the operator's name for each (the `init' and
 ; `store upgrade-profile' flag is `--' followed by the name).
@@ -126,7 +129,7 @@
     (6 . "max-groups-per-article") (7 . "max-group-name-octets")
     (8 . "max-open-suffix") (9 . "max-consumers") (10 . "max-bp-rows")
     (11 . "max-config-generations") (12 . "max-credentials")
-    (13 . "max-policy-members")))
+    (13 . "max-policy-members") (14 . "history-marker")))
 
 ; The codec ceilings no field may pass.  Each is the width the codec that
 ; carries the bounded quantity accepts today; packet P2 (codec ceilings) and
@@ -206,6 +209,7 @@
                      (fn-bs-profile-countp (fn-bs-pf 12 values))
                      (fn-bs-profile-countp (fn-bs-pf 13 values))))
            :namespace-count-outside-width)
+          ((< 1 (fn-bs-pf 14 values)) :history-marker-not-a-word)
           (t nil))))
 
 (defun fn-bs-profile-validp (values)
@@ -243,7 +247,8 @@
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
-          *fn-bs-profile-default-namespace-count*)))
+          *fn-bs-profile-default-namespace-count*
+          0)))
 
 ; The profile a store is run under: a valid format-8 profile as it is, a
 ; format-7 tuple as its translation, anything else NIL.
@@ -297,6 +302,12 @@
 (defun fn-bs-profile-max-open-suffix (values)
   (declare (xargs :guard t))
   (fn-bs-profile-field 8 values))
+; D31: the committed-history requirement of the profile a store runs under.
+; T when absence of the marker is damage (`required'), NIL for `unmarked'
+; (every format-7 store, and a format-8 store not yet migrated).
+(defun fn-bs-profile-marker-requiredp (values)
+  (declare (xargs :guard t))
+  (equal (fn-bs-profile-field 14 values) 1))
 
 ; Kept under its old name: the record ceiling is now field R itself.
 (defun fn-bs-profile-record-ceiling (values)
@@ -610,7 +621,7 @@
 ; -----------------------------------------------------------------------------
 ; The profile frame
 
-; A valid profile's payload: two fixed texts and twelve eight-octet naturals.
+; A valid profile's payload: two fixed texts and thirteen eight-octet naturals.
 (local
  (defun fn-bs-all-nat-specp (specs)
    (if (consp specs)
@@ -636,7 +647,7 @@
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
                       (len (fn-frame-field-octets
                             :text *fn-bs-meta-frontier-format*))
-                      96)))
+                      104)))
    :hints (("Goal"
             :use ((:instance fn-bs-profile-validp-facts)
                   (:instance fn-bs-all-nat-fields-octets-len
@@ -758,7 +769,8 @@
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-namespace-count*
-        *fn-bs-profile-default-namespace-count*))
+        *fn-bs-profile-default-namespace-count*
+        0))
 
 (defun fn-bs-config-for-profile (profile)
   (declare (xargs :guard t))
@@ -835,9 +847,14 @@
                                            (list request nil)
                                          request)
                                        nil)))
-    (if (and (consp values) (equal (car values) :invalid))
-        (list :refused (if (consp (cdr values)) (cadr values) :request))
-      (list :init (fn-bs-config-encode values)))))
+    (cond ((and (consp values) (equal (car values) :invalid))
+           (list :refused (if (consp (cdr values)) (cadr values) :request)))
+          ; D31: the requirement becomes durable only over a covering
+          ; marker, so a store is born `unmarked' and migrates
+          ; (`store upgrade-profile --history-marker required').
+          ((equal (fn-bs-pf 14 values) 1)
+           (list :refused :history-marker-required-before-a-marker))
+          (t (list :init (fn-bs-config-encode values))))))
 
 (defun fn-bs-config-frame-for-profile (profile)
   "The frame `init' writes for PROFILE, a preset word or a request, or NIL."
@@ -849,12 +866,19 @@
 ; persisted in (8, or 7 for a store not yet upgraded) and every field by its
 ; operator name, read through `fn-bs-profile-of' (0 for a value that is not
 ; a profile).  `operator status' prints it; the host formats, never computes.
+(defun fn-bs-profile-report-value (i values)
+  "Field I as the operator reads it: the word for the history requirement."
+  (declare (xargs :guard (natp i)))
+  (if (equal i 14)
+      (if (equal (fn-bs-profile-field 14 values) 1) "required" "unmarked")
+    (fn-bs-profile-field i values)))
+
 (defun fn-bs-profile-report-fields (names values)
   (declare (xargs :guard t))
   (if (consp names)
       (let ((entry (car names)))
         (if (and (consp entry) (natp (car entry)))
-            (cons (cons (cdr entry) (fn-bs-profile-field (car entry) values))
+            (cons (cons (cdr entry) (fn-bs-profile-report-value (car entry) values))
                   (fn-bs-profile-report-fields (cdr names) values))
           (fn-bs-profile-report-fields (cdr names) values)))
     nil))
