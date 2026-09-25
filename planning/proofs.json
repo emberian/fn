@@ -3965,6 +3965,46 @@
         "fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted",
         "fn-sbud-post-boundary-refusals-are-distinct"
       ]
+    },
+    {
+      "id": "PRF-086",
+      "title": "Records of the old schemas decode and re-encode identically under the u64 record codec",
+      "statement": "fn-record-v1-bytes-decode-identically: for all octets, if the pre-P6 decoder (fn-record-v1-decode-exact, books/records-schema-v1.lisp, the text of books/records.lisp at e366c633) accepts them, then (fn-record-decode-exact-impl octets) equals (fn-record-v1-decode-exact octets); fn-record-v1-bytes-are-their-translation: under the same hypothesis the new encoder writes the decoded record back to exactly those octets. The host reaches fn-record-decode-exact-impl through fn-store-event-decode-exact (host/store-host.lisp fn-store-decode-records, called by fn-store-sn-recover) and the seam attachment (books/records-attach.lisp), so an old store opens to the records the old image read and nothing is rewritten. Built on fn-cbor-decode-prechecked-wide-extends-narrow and the restated record keystones fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical (now over u64 fields and schema 2). Record ceiling (the fix of the lane's first cut, which raised the overhead a profile's R must hold to 1 111 octets and so refused a saved format-8 profile with R = 17 138 486): fn-record-impl-encode-narrow-length-bound: a record that is not fn-record-widep (sequence, txid, generation, charge and a natural stamp all at most 2^32 - 1) encodes to at most fn-record-encoded-octets-ceiling of its payload length and group count, the 1 083-octet overhead the profile relation reads; the seam exports it as fn-record-encode-narrow-length-bound, and any record, wide or not, is within fn-record-wide-encoded-octets-ceiling (1 111). fn-bs-profile-admits-every-article-record gains the hypothesis that the record is not wide (every record was narrow before P6; the width of the producers is stated, not proved, and a wide record past R is refused at the publish gate, host/store-host.lisp fn-store-publication-admissibility). fn-bs-profile-v1-valid-stays-valid (books/byte-store-profile-v1.lisp): every VALUES the relation of dev 56eb33ee admitted (fn-bs-profile-v1-invalid-reason, frozen, the ceiling written out at 1 083) is admitted by fn-bs-profile-admittedp, which host/store-host.lisp fn-store-profile-admittedp calls, and fn-bs-profile-of VALUES is VALUES; its relation half is fn-bs-profile-v1-valid-is-valid.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-013"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/records-schema-v1.lisp",
+        "books/cbor-invariants.lisp",
+        "books/records-canonicality.lisp",
+        "books/records-invariants.lisp",
+        "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "books/byte-store-profile-v1.lisp",
+        "books/byte-store-frame.lisp",
+        "books/records-seam.lisp",
+        "tests/acl2/byte-store-profile-v1-tests.lisp",
+        "tests/acl2/byte-store-frame-tests.lisp",
+        "tests/acl2/records-ceiling-tests.lisp",
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ],
+      "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event.",
+      "events": [
+        "fn-record-v1-bytes-decode-identically",
+        "fn-record-v1-bytes-are-their-translation",
+        "fn-cbor-decode-prechecked-wide-extends-narrow",
+        "fn-cbor-encode-uint-wide-is-narrow",
+        "fn-cbor-decode-prechecked-wide-of-uint",
+        "fn-cbor-decode-prechecked-wide-uint-reencode-prefix",
+        "fn-record-impl-round-trip",
+        "fn-record-impl-accepted-input-is-canonical",
+        "fn-record-impl-encode-narrow-length-bound",
+        "fn-bs-profile-v1-valid-is-valid",
+        "fn-bs-profile-v1-valid-stays-valid"
+      ]
     }
   ]
 }
