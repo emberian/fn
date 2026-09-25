@@ -1,0 +1,20 @@
+node probe 127.0.0.1:11961 as prober
+  held      first:greeting                           201 fn-nntp experimental reader ready
+  held      first:capabilities-offer-starttls        VERSION 2 READER OVER MSGID HDR XPAT NEWNEWS LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVER
+  held      first:authinfo-before-tls-refused        483 a protected channel is required; use STARTTLS   (RFC 4643 section 2.3.2)
+  held      first:starttls                           382 continue with TLS negotiation
+  held      first:capabilities-withdraw-starttls     VERSION 2 READER OVER MSGID HDR XPAT NEWNEWS LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVER   (RFC 4642 section 2.2.2, RFC 4643 section 2.1)
+  held      first:login                              281 authentication accepted
+  held      first:post-offered-after-login           VERSION 2 READER POST OVER MSGID HDR XPAT NEWNEWS LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS   (RFC 4643 section 2.1: the posting allowance is the principal's)
+  held      group                                    211 60 1 60 local.test
+  held      post                                     240 article received OK   (message-id <node-probe.20260925T204144Z.292bb2c3@probe.invalid>)
+  held      second:greeting                          201 fn-nntp experimental reader ready
+  held      second:capabilities-offer-starttls       VERSION 2 READER OVER MSGID HDR XPAT NEWNEWS LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVER
+  held      second:authinfo-before-tls-refused       483 a protected channel is required; use STARTTLS   (RFC 4643 section 2.3.2)
+  held      second:starttls                          382 continue with TLS negotiation
+  held      second:capabilities-withdraw-starttls    VERSION 2 READER OVER MSGID HDR XPAT NEWNEWS LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVER   (RFC 4642 section 2.2.2, RFC 4643 section 2.1)
+  held      second:login                             281 authentication accepted
+  held      second:post-offered-after-login          VERSION 2 READER POST OVER MSGID HDR XPAT NEWNEWS LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS   (RFC 4643 section 2.1: the posting allowance is the principal's)
+  held      reread-fresh-connection                  220 61 <node-probe.20260925T204144Z.292bb2c3@probe.invalid> article follows   (body marker found)
+  tls TLSv1.3 TLS_AES_256_GCM_SHA384
+  exit 0

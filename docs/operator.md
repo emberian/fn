@@ -252,9 +252,11 @@ books/native-live-status.lisp) whoever answers:
 ```
 $ fn-native operator fn.toml status
 transactions=12 articles=12 staging-orphans=0 unsigned-legacy-experiment
-profile format=8 max-transactions=4294967295 ...
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 ... history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
 headroom transactions-used=12 transactions-budget=4294967295 bytes-used=5321 history-bound=1099511627776 charge-reserved=24 charge-capacity=...
 open=full-replay reason=no-checkpoint
+checkpoint-file=absent
 pins=12 reserved=24 connections=1
 connection id=3 config-generation=4
 accepted operator status
@@ -265,6 +267,17 @@ $ fn-native operator fn.toml pins
 pins=12 reserved=24 connections=1
 connection id=3 config-generation=4
 ```
+
+Every value prints in full decimal, and `history-marker` prints its word
+(`required` or `unmarked`). `open-cost` is the profile's pessimistic open
+figure, not a measurement: the worst open is a full replay of up to
+`max-transactions` records (a checkpoint may be absent or refused), holding
+the record payloads as octet lists, two copies at 16 octets of cons per
+payload octet, so 32 × `max-history-octets`. `open=` says how this answering
+process opened the store; `checkpoint-file` is the newest published state
+checkpoint's size and modification time when the report was asked for
+(`checkpoint-file=absent` when there is none). The owner renders a report
+once per request and answers its later pages from that rendering.
 
 `pins` is the retention ledger's count and reserved charge, then each open
 connection's configuration pin (the generation it reads under);
@@ -397,6 +410,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
 | `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
+| `FN_NATIVE_KEY_STATEMENT_FAULT` | `statement-committed:kill` | the cut between a key statement's commit and its key change's (books/key-statements.lisp `fn-ks-cut`) |
 | `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
 | `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
@@ -637,6 +651,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
 | `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
+| `FN_NATIVE_KEY_STATEMENT_FAULT` | `statement-committed:kill` | the cut between a key statement's commit and its key change's (books/key-statements.lisp `fn-ks-cut`) |
 | `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
 | `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |

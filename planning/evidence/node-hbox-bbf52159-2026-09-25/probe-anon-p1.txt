@@ -1,0 +1,16 @@
+> (greeting) | 201 fn-nntp experimental reader ready
+> CAPABILITIES | 101 capability list follows
+   cap VERSION 2
+   cap READER
+   cap OVER MSGID
+   cap HDR
+   cap XPAT
+   cap NEWNEWS
+   cap LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT
+   cap IMPLEMENTATION fn-nntp-lab
+   cap STARTTLS
+> GROUP fn.agents | 480 authentication required
+> STARTTLS | 382 continue with TLS negotiation
+  tls TLSv1.3
+> GROUP fn.agents | 480 authentication required
+> QUIT | 205 closing connection

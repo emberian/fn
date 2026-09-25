@@ -151,6 +151,12 @@
               (fn-native-admin-arg 4 argv) 0 (fn-native-admin-arg 2 argv)
               (fn-native-admin-arg 3 argv))))))
 
+; A decimal word is a string, which is all the guards below need of it; with
+; this the guard proofs keep the decimal recognizer and its value closed.
+(local (defthm fn-native-admin-decimalp-is-a-string
+  (implies (fn-native-admin-decimalp text) (stringp text))
+  :rule-classes :forward-chaining))
+
 ; The DAYS of `retention set release-after DAYS', or nil.
 (defun fn-native-admin-retention-days (words)
   (declare (xargs :guard t))
@@ -161,7 +167,10 @@
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-decimal-value)))))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
@@ -245,7 +254,7 @@
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
-               (member-equal (cadr words) '("budget" "carries")))
+               (member-equal (cadr words) '("budget" "carries" "pull")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ((and (consp words) (equal (car words) "control"))
@@ -361,14 +370,32 @@
                                fn-native-admin-bp-boundary-base-plan
                                kind-of-result status-of-result
                                (:executable-counterpart equal))))))
+; The argv words, closed: the plan's tests read the words and its results
+; the argv, and these four rules relate them without re-expanding the map
+; at every occurrence (16,000 expansions, 6.4 s REPL hbox, with the
+; retention and peer-extend arms).
+(local (defthm car-of-words
+  (equal (car (fn-native-admin-words argv))
+         (if (consp argv) (fn-record-octets-string (car argv)) nil))))
+(local (defthm cdr-of-words
+  (equal (cdr (fn-native-admin-words argv))
+         (fn-native-admin-words (cdr argv)))))
+(local (defthm consp-of-words
+  (equal (consp (fn-native-admin-words argv)) (consp argv))))
+(local (defthm len-of-words
+  (equal (len (fn-native-admin-words argv)) (len argv))))
 (defthm fn-native-admin-plan-group-name-is-a-group-name
   (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
                 (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
                               '(:create-group :remove-group)))
            (fn-record-group-namep
             (fn-record-octets-string (fn-native-admin-result-name (fn-native-admin-plan argv)))))
-  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan fn-native-admin-words)
-                                  (fn-native-admin-peer-plan fn-record-group-namep
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                  (fn-native-admin-words
+                                   fn-native-admin-carries-rows
+                                   fn-native-admin-carries-hexp subsetp-equal
+                                   fn-native-admin-retention-days
+                                   fn-native-admin-peer-plan fn-record-group-namep
                                    fn-path-identityp fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-bp-boundary-split
@@ -444,6 +471,23 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
               (list 10)
               (fn-native-admin-control-report (cdr rows)))
     nil))
+
+;; `control list' lists exactly when the configuration holds a grant row:
+;; the report is empty only over no authority row (qual-e747dbcc A3 printed
+;; nothing over a durable grant).
+(defthm fn-native-admin-control-report-empty-iff-no-rows
+  (iff (consp (fn-native-admin-control-report rows))
+       (consp rows))
+  :hints (("Goal" :expand ((fn-native-admin-control-report rows)))))
+
+;; The status-path report kind an accepted query plan names: the live owner's
+;; FNLS request and the offline report (books/native-live-status.lisp
+;; fn-nls-report) take it, so the host names no kind of its own.
+(defun fn-native-admin-result-report-kind (plan)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-admin-result-kind plan) :list-control)
+      :control
+    :peers))
 
 ;; The report a query plan asks for, over a replayed configuration value.
 (defun fn-native-admin-query-report (plan value)

@@ -10,7 +10,11 @@
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-gidx-entry-number-article group number entries trie))
-             (over (if (consp article) (fn-nov-overview article) (list :error))))
+             ; D13: a reclaimed article is skipped before the parser.
+             (over (if (and (consp article)
+                            (not (fn-rcl-tombstonep (fn-article-payload article))))
+                       (fn-nov-overview article)
+                     (list :error))))
         (if (fn-nov-okp over)
             (cons (fn-nov-line number over)
                   (fn-nov-lines-for-numbers-indexed

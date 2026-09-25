@@ -1,0 +1,77 @@
+test_allocator_replace_and_directory_barrier_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_allocator_replace_and_directory_barrier_matrix)
+A possibly visible allocator advance fences and is reread on recovery. ... ok
+test_allocator_staging_and_write_progress_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_allocator_staging_and_write_progress_matrix)
+Pre-replacement allocator errors are known failures, including writes. ... ok
+test_completion_return_and_lost_reply_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_completion_return_and_lost_reply_matrix)
+Published crossposts remain recovery authority after completion uncertainty. ... ok
+test_link_and_transaction_directory_barrier_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_link_and_transaction_directory_barrier_matrix)
+Publication uncertainty fences; after-effect final names replay atomically. ... ok
+test_prepublication_create_write_and_file_fsync_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_prepublication_create_write_and_file_fsync_matrix)
+Before/after staging effects remain known aborts; frontier is consumed. ... ok
+test_publication_write_progress_and_cleanup_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_publication_write_progress_and_cleanup_matrix)
+Staging write failures abort; post-barrier cleanup failures do not revoke. ... ok
+test_recovery_helper_close_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_recovery_helper_close_matrix)
+Actual post-effect closes propagate through each recovery helper class. ... ok
+test_recovery_read_and_all_five_barrier_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_recovery_read_and_all_five_barrier_matrix)
+Read and every recovery rebarrier failure close an already-live gate. ... ok
+test_store_lock_close_after_success_matrix (tests.test_store_fault_matrix.StoreFaultMatrixTests.test_store_lock_close_after_success_matrix)
+A teardown I/O fault keeps its own outcome, distinct from the work's. ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 47.101s
+
+OK
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+FN_TEST_BUDGET_RESULT {"module": "tests.test_store_fault_matrix", "tests": 9, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_allocator_replace_and_directory_barrier_matrix", 3.61], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_allocator_staging_and_write_progress_matrix", 7.238], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_completion_return_and_lost_reply_matrix", 1.83], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_link_and_transaction_directory_barrier_matrix", 3.625], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_prepublication_create_write_and_file_fsync_matrix", 9.391], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_publication_write_progress_and_cleanup_matrix", 5.524], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_recovery_helper_close_matrix", 2.682], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_recovery_read_and_all_five_barrier_matrix", 11.148], ["tests.test_store_fault_matrix.StoreFaultMatrixTests.test_store_lock_close_after_success_matrix", 2.053]]}

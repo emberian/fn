@@ -73,7 +73,7 @@
 
 (defun fn-served-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 9)))
+  (and (true-listp x) (equal (len x) 10)))
 
 (defun fn-served-conn-wire (x)
   (declare (xargs :guard t))
@@ -126,73 +126,96 @@
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))
 
+; The control pin (control-c3e): the pinned view's withdrawn list and
+; withdrawal records (`fn-ctl-pin', books/control-served.lisp), nil on a
+; connection opened without one.  Pinned with the archive; read only by the
+; dispatcher's withdrawal arms through the group pin's fourth slot.
+(defun fn-served-conn-control (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))
+
 (defun fn-served-conn-pinned-index (conn)
   (declare (xargs :guard t))
   (if (fn-served-conn-group-index conn)
-      (fn-gidx-pin (fn-served-conn-index conn)
-                   (fn-served-conn-group-index conn))
+      (fn-gidx-pin-with-control (fn-served-conn-index conn)
+                                (fn-served-conn-group-index conn)
+                                (fn-served-conn-control conn))
     (fn-served-conn-index conn)))
 
 (defun fn-served-make-conn-group-indexed
-    (wire session archive config observation injection verdicts index buckets)
+    (wire session archive config observation injection verdicts index buckets
+          control)
   (declare (xargs :guard t))
-  (list wire session archive config observation injection verdicts index buckets))
+  (list wire session archive config observation injection verdicts index buckets
+        control))
 
 (defun fn-served-make-conn-indexed
     (wire session archive config observation injection verdicts index)
   (declare (xargs :guard t))
   (fn-served-make-conn-group-indexed wire session archive config observation
-                                     injection verdicts index nil))
+                                     injection verdicts index nil nil))
 
 (defthm fn-served-conn-wire-of-make-group-indexed
   (equal (fn-served-conn-wire
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          wire))
 
 (defthm fn-served-conn-session-of-make-group-indexed
   (equal (fn-served-conn-session
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          session))
 
 (defthm fn-served-conn-archive-of-make-group-indexed
   (equal (fn-served-conn-archive
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          archive))
 
 (defthm fn-served-conn-config-of-make-group-indexed
   (equal (fn-served-conn-config
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          config))
 
 (defthm fn-served-conn-observation-of-make-group-indexed
   (equal (fn-served-conn-observation
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          observation))
 
 (defthm fn-served-conn-injection-of-make-group-indexed
   (equal (fn-served-conn-injection
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          injection))
 
 (defthm fn-served-conn-verdicts-of-make-group-indexed
   (equal (fn-served-conn-verdicts
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          verdicts))
 
 (defthm fn-served-conn-index-of-make-group-indexed
   (equal (fn-served-conn-index
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
          index))
 (defthm fn-served-conn-group-index-of-make
   (equal (fn-served-conn-group-index
           (fn-served-make-conn-group-indexed
            wire session archive config observation injection verdicts
-           index buckets))
+           index buckets control))
          buckets))
+(defthm fn-served-conn-control-of-make
+  (equal (fn-served-conn-control
+          (fn-served-make-conn-group-indexed
+           wire session archive config observation injection verdicts
+           index buckets control))
+         control))
+(defthm fn-served-conn-control-of-make-indexed
+  (equal (fn-served-conn-control
+          (fn-served-make-conn-indexed
+           wire session archive config observation injection verdicts index))
+         nil))
 (defthm fn-served-conn-shapep-of-group-indexed
   (fn-served-conn-shapep
    (fn-served-make-conn-group-indexed
-    wire session archive config observation injection verdicts index buckets)))
+    wire session archive config observation injection verdicts index buckets control)))
 
 (defthm fn-served-conn-group-index-of-make-indexed
   (equal (fn-served-conn-group-index
@@ -375,7 +398,7 @@
                     (:d fn-served-conn-config) (:d fn-served-conn-observation)
                     (:d fn-served-conn-injection)
                     (:d fn-served-conn-verdicts) (:d fn-served-conn-index)
-                    (:d fn-served-conn-group-index)
+                    (:d fn-served-conn-group-index) (:d fn-served-conn-control)
                     (:d fn-served-make-conn-group-indexed)
                     (:d fn-served-make-conn-indexed)
                     (:d fn-served-make-conn-pinned)
@@ -421,7 +444,7 @@
       (fn-served-conn-archive conn) (fn-served-conn-config conn)
       (fn-served-conn-observation conn) (fn-served-conn-injection conn)
       verdicts (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (fn-served-result-effects result))))
 
 (defthm fn-served-pin-verdicts-retains-effects
@@ -639,7 +662,7 @@
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (mbe :logic (append effects
                          (if submission
                              (list (fn-served-submit-effect submission))
@@ -911,7 +934,7 @@
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (fn-wire-result-events fed))))
 
 (defthm fn-served-feed-byte-preserves-wire-statep
@@ -937,7 +960,7 @@
                               (fn-served-conn-injection conn)
                               (fn-served-conn-verdicts conn)
                               (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn)))
+                              (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
                             (events
                              (fn-wire-result-events
                               (fn-wire-feed-byte
@@ -966,7 +989,7 @@
                               (fn-served-conn-injection conn)
                               (fn-served-conn-verdicts conn)
                               (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn)))
+                              (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
                             (events
                              (fn-wire-result-events
                               (fn-wire-feed-byte
@@ -1016,7 +1039,7 @@
               (fn-served-conn-injection conn)
               (fn-served-conn-verdicts conn)
               (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn))))
+                              (fn-served-conn-group-index conn) (fn-served-conn-control conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-auth-session-consistentp))))))
@@ -1338,7 +1361,8 @@
       (fn-served-conn-wire conn) (fn-served-conn-session conn)
       (fn-served-conn-archive conn) (fn-served-conn-config conn)
       (fn-served-conn-observation conn) (fn-served-conn-injection conn)
-      (fn-served-conn-verdicts conn) (fn-served-conn-index conn) buckets)
+      (fn-served-conn-verdicts conn) (fn-served-conn-index conn) buckets
+      (fn-served-conn-control conn))
      (fn-served-result-effects result))))
 
 (defun fn-served-open-group-indexed
@@ -1944,7 +1968,7 @@
                                        (fn-served-conn-injection conn)
                                        (fn-served-conn-verdicts conn)
                                        (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
                   (fn-wire-result-events fed))))
       (+ (len (fn-wire-result-events fed))
          (fn-served-feed-steps (fn-served-result-conn here) (cdr octets))))))

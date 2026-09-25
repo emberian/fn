@@ -1,0 +1,5 @@
+#!/bin/sh
+cd /tank/fn/scratch/qual-e747dbcc
+sh run.sh test_native_bounds_blob test_native_bounds_join test_native_control_authority test_native_control_filing test_native_history_required test_native_profile_namespace test_native_state_checkpoint test_native_crash_correspondence
+NS_HOST=fn-host-developer NS_TAG=developer sh run.sh test_native_key_statements test_native_operator_verdicts
+touch /tank/fn/scratch/qual-e747dbcc/done.C

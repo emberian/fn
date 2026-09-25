@@ -1,0 +1,10 @@
+test_native_bounds_blob rc=0 OK
+test_native_bounds_join rc=0 OK
+test_native_control_authority rc=1 FAILED (failures=1)
+test_native_control_filing rc=0 
+test_native_history_required rc=1 
+test_native_profile_namespace rc=0 OK
+test_native_state_checkpoint rc=0 OK
+test_native_crash_correspondence rc=0 OK
+test_native_key_statements.developer rc=1 FAILED (failures=1)
+test_native_operator_verdicts.developer rc=0 

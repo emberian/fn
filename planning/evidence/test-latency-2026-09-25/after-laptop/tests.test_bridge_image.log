@@ -1,0 +1,13 @@
+test_a_changed_closure_file_changes_the_digest (tests.test_bridge_image.ClosureTests.test_a_changed_closure_file_changes_the_digest) ... ok
+test_references_follow_include_and_ld_and_skip_system_books (tests.test_bridge_image.ClosureTests.test_references_follow_include_and_ld_and_skip_system_books) ... ok
+test_the_owner_image_extends_the_store_boot (tests.test_bridge_image.ClosureTests.test_the_owner_image_extends_the_store_boot) ... ok
+test_the_store_closure_reaches_every_boot_file (tests.test_bridge_image.ClosureTests.test_the_store_closure_reaches_every_boot_file) ... ok
+test_a_child_of_the_holder_shares_the_only_slot (tests.test_bridge_image.SlotTests.test_a_child_of_the_holder_shares_the_only_slot) ... ok
+test_an_unrelated_process_waits_for_the_held_slot (tests.test_bridge_image.SlotTests.test_an_unrelated_process_waits_for_the_held_slot) ... ok
+test_nested_bridges_in_one_process_hold_one_slot (tests.test_bridge_image.SlotTests.test_nested_bridges_in_one_process_hold_one_slot) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 6.428s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_bridge_image", "tests": 7, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_bridge_image.ClosureTests.test_a_changed_closure_file_changes_the_digest", 0.233], ["tests.test_bridge_image.ClosureTests.test_references_follow_include_and_ld_and_skip_system_books", 0.002], ["tests.test_bridge_image.ClosureTests.test_the_owner_image_extends_the_store_boot", 0.0], ["tests.test_bridge_image.ClosureTests.test_the_store_closure_reaches_every_boot_file", 0.039], ["tests.test_bridge_image.SlotTests.test_a_child_of_the_holder_shares_the_only_slot", 0.073], ["tests.test_bridge_image.SlotTests.test_an_unrelated_process_waits_for_the_held_slot", 3.006], ["tests.test_bridge_image.SlotTests.test_nested_bridges_in_one_process_hold_one_slot", 3.076]]}

@@ -132,7 +132,10 @@
  (defthm nlc-t-work-false-with-repeats
    (<= (fn-gidx-counts-work (fn-gidx-build articles) groups)
        (+ (* (len groups) (len (fn-gidx-build articles)))
-          (len (fn-index-build articles)))))))
+          (len (fn-index-build articles))))
+   ;; The ground witness above refutes it.  Without this hint the attempt
+   ;; nests inductions to the step limit (3.7 s) before it fails.
+   :hints (("Goal" :do-not-induct t)))))
 
 ; The numbered Message-ID answer (RFC 3977 section 6.2.1.2): the number in
 ; the selected group; 0 with no group selected; 0 when the article is not in

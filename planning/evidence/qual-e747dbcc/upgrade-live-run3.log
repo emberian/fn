@@ -1,0 +1,256 @@
+# rehearsal start 2026-09-25T20:25:18Z
+STEP copy-live-store files=22 (auth.toml excluded from the digest list)
+  | d83003f2c454a417efe5cbb415ccbfecabe2c02bacbcf5a564a5427f83c85ea5  allocation-frontier.json
+  | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  auth.toml.lock
+  | e4f49e803f1ef96bf0a334a14abf303ef4bbbc5b761f1e76747d1a085600ca0c  committed-history.json
+  | b7c2fa8b1de716d32f8e4fcc662c5f42c19d24fba35ff3c8fe08044de4bf7835  config/00000001.cfg
+  | b387d299ffa7d600d72b153f43794f9b95d3a32de2b98111c2719ad354eb022a  config/00000002.cfg
+  | 2220bd680c008c69d73b2c03fc83be917a0d33dde6c6742a687d863fb4254732  config/00000003.cfg
+  | bd404129f233ff77711ee7a7cf73dabfee99b0bcaa3048986e5217027aba3fb4  config/00000004.cfg
+  | 323c74ce6e7e6f1377775afe0f025aa2d6e0b70595d04b4d3a2c3991aa714b1c  config/00000005.cfg
+  | bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9  config.json
+  | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  control.sock.lock
+  | 38b74fed9a7d173da040d42b06e3489c824a01f1ae58300858a74d412a5279c3  transactions/00000000000000000000.txn
+  | 5aaa4422f56917f53e74fc09bc7423df8c9a48da701a73538b7294bd51d14e2a  transactions/00000000000000000001.txn
+  | b91f25c75bda4d3a911788f724f38cfeb9f599b556069ede1abaa6e4665e46f8  transactions/00000000000000000002.txn
+  | 693416909ab3d4db4fca1948de78a9b28896273b15ec30a9065d32b9460582a0  transactions/00000000000000000003.txn
+  | 55cd95ba777e2519b74db91270e02d7de44d38411efbd3a186abc23d7f3a83f6  transactions/00000000000000000004.txn
+  | 04dd2b9ad7dadb1e91cb90a0f288fc6d1aabfbbcf618e31f83f27b853c816419  transactions/00000000000000000005.txn
+  | a69a2a428a0dfa73d8c6139d9cc1d8fad91468a38eb28ce30f3cefe7e0ea9f8e  transactions/00000000000000000006.txn
+  | 1074dac7d379baeb9557275df41c81eb7f9b8cc41ba099fd49aa9cfdf8c9b0f0  transactions/00000000000000000007.txn
+  | 41a69c2f9f14ee902b29480e09268986fa6aca8a1424898da5768b523bd9d683  transactions/00000000000000000008.txn
+  | 17c2b977d1aa3eba4c4aeb0b2fa5ce1d6dfdc8ac39f48080308836a6c23b2988  transactions/00000000000000000009.txn
+  | 585783ae5b42aa3e231f1d64afc2d63f22fbbe926a7922be671273295a2506d2  transactions/00000000000000000010.txn
+  | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  writer.lock
+STEP install-native e747dbcc rc=0 OK
+  | installed native fn under /tank/fn/scratch/qual-e747dbcc/upgrade-live/fn-e747dbcc
+CONFIG /tank/fn/scratch/qual-e747dbcc/upgrade-live/w/fn.toml:
+[store]
+path = "/tank/fn/scratch/qual-e747dbcc/upgrade-live/w/store"
+
+[listener]
+host = "127.0.0.1"
+port = 56535
+tls_cert = "/tank/fn/scratch/qual-e747dbcc/upgrade-live/w/tls/cert.pem"
+tls_key = "/tank/fn/scratch/qual-e747dbcc/upgrade-live/w/tls/key.pem"
+
+[auth]
+required = true
+protected_only = true
+path = "/tank/fn/scratch/qual-e747dbcc/upgrade-live/w/store/auth.toml"
+
+[posting]
+enabled = true
+
+[control]
+path = "/tank/fn/scratch/qual-e747dbcc/upgrade-live/w/store/control.sock"
+
+
+[log]
+path = "/tank/fn/scratch/qual-e747dbcc/upgrade-live/w/log/fn.log"
+
+STEP c3420013 status (format 7, offline) rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=11 transactions-budget=4096 charge-reserved=22 charge-capacity=1048576
+  | accepted operator status
+STEP e747dbcc status offline on the format-7 store rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=7 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+STEP e747dbcc store needs-upgrade (format 7) rc=0
+  | needs-upgrade
+  | accepted operator needs-upgrade
+OWNER e747-format7 pid=3791953 announce='LISTENING 56535'
+STEP e747dbcc status live (owner running, format 7) rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=7 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+  greeting 201 fn-nntp experimental reader ready / STARTTLS 382 continue with TLS negotiation
+  > GROUP fn.agents  -> 480 authentication required
+  > QUIT  -> 205 closing connection
+OWNER e747-format7 pid=3791953 exit=0
+STEP e747dbcc status offline after the first owner rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=7 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+  marker after first owner: e4f49e803f1ef96bf0a334a14abf303ef4bbbc5b761f1e76747d1a085600ca0c
+STEP snapshot-pre-migration (cp -a of the stopped store)
+  kept config.json sha256 bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9
+STEP store upgrade-profile (7 to 8, no flag) rc=0 OK
+  | upgraded profile=current transactions-used=11 transactions-budget=4096 previous-budget=4096
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | accepted operator upgrade-profile
+STEP status after 7-to-8 rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+STEP store needs-upgrade (format 8) rc=0
+  | current
+  | accepted operator needs-upgrade
+STEP store rollback-check KEPT-CONFIG rc=0 OK
+  | rollback sound transactions=11
+  | accepted operator rollback-check
+STEP c3420013 status on the format-8 copy (expected refusal) rc=4
+  | fault operator status ACL2 rejected durable configuration frame
+STEP c3420013 status after restoring the kept config.json rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=11 transactions-budget=4096 charge-reserved=22 charge-capacity=1048576
+  | accepted operator status
+OWNER c342-rollback-78 pid=3792465 announce='LISTENING 34659'
+  > GROUP fn.agents  -> 480 authentication required
+  > QUIT  -> 205 closing connection
+OWNER c342-rollback-78 pid=3792465 exit=0
+STEP store upgrade-profile --history-marker required rc=0 OK
+  | upgraded profile=current transactions-used=11 transactions-budget=4096 previous-budget=4096
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+  | accepted operator upgrade-profile
+STEP status after required rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+STEP store needs-upgrade (required) rc=0
+  | current
+  | accepted operator needs-upgrade
+STEP store rollback-check KEPT-CONFIG after required rc=0
+  | rollback sound transactions=11
+  | accepted operator rollback-check
+STEP c3420013 status on the required store (expected refusal) rc=4
+  | fault operator status ACL2 rejected durable configuration frame
+STEP downgrade --history-marker unmarked (expected refusal) rc=1
+  | refused operator upgrade-profile store profile upgrade refused: not-an-upgrade history-marker
+STEP kept format-7 config.json restored over the required store: c3420013 status rc=0
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=11 transactions-budget=4096 charge-reserved=22 charge-capacity=1048576
+  | accepted operator status
+STEP same: c3420013 recover rc=0
+  | recovered transactions=11 articles=11 staging-orphans=0 anchor=none checkpoint=none
+  | accepted operator recover
+STEP same: e747dbcc status (the requirement is gone?) rc=0
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=7 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+STEP same, marker removed: e747dbcc recover (legacy open admits?) rc=0
+  | recovered transactions=11 articles=11 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP c3420013 recover on the restored snapshot rc=0 OK
+  | recovered transactions=11 articles=11 staging-orphans=0 anchor=none checkpoint=none
+  | accepted operator recover
+STEP c3420013 status on the restored snapshot rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=11 transactions-budget=4096 charge-reserved=22 charge-capacity=1048576
+  | accepted operator status
+OWNER c342-rollback-snapshot pid=3792650 announce='LISTENING 55219'
+  > GROUP fn.agents  -> 480 authentication required
+  > GROUP fn.announce  -> 480 authentication required
+  > QUIT  -> 205 closing connection
+OWNER c342-rollback-snapshot pid=3792650 exit=0
+  restored snapshot transactions equal the pristine ones: True
+STEP one-step: upgrade-profile --history-marker required from format 7 rc=0 OK
+  | upgraded profile=current transactions-used=11 transactions-budget=4096 previous-budget=4096
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+  | accepted operator upgrade-profile
+STEP one-step: status rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+STEP one-step: newest transaction file removed, recover (expected refusal) rc=4
+  | fault operator recover committed history refused at open: history-short-of-marker marker=11 records=10
+STEP one-step: marker removed, recover (expected marker-missing) rc=4
+  | fault operator recover committed history refused at open: marker-missing records=11
+STEP one-step: restored, recover rc=0 OK
+  | recovered transactions=11 articles=11 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP principal set-password qual --principal P --posting rc=0
+  | qual principal=5555555555555555555555555555555555555555555555555555555555555555 posting=true
+  | Password: Confirm password: accepted operator principal set-password effective-at-next-start
+STEP group create control.cancel rc=0
+  | configured generation=6 record=00000006.cfg verification=VERIFIED
+  | accepted operator group
+STEP group create fn.keys rc=0
+  | configured generation=7 record=00000007.cfg verification=VERIFIED
+  | accepted operator group
+OWNER e747-required pid=3792756 announce='LISTENING 56535'
+STEP status live (required) rc=0 OK
+  | transactions=11 articles=11 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=0
+  | headroom transactions-used=11 transactions-budget=4096 bytes-used=9340 history-bound=805306368 charge-reserved=22 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | pins=11 reserved=22 connections=0
+  | accepted operator status
+STEP hybrid-enroll P (production image) rc=0
+  > AUTHINFO USER qual  -> 381 password required
+  greeting 201 fn-nntp experimental reader ready / STARTTLS 382 continue with TLS negotiation / AUTHINFO 281 authentication accepted
+  > GROUP fn.agents  -> 211 10 1 10 fn.agents
+  > POST  -> 340 send article to be posted
+  > POST <281 octets>  -> 240 article received OK
+  > ARTICLE <qual-e747-tin@example.invalid>  -> 220 11 <qual-e747-tin@example.invalid> article follows
+  tin article Path: ['Path: hbox.ember.software!not-for-mail']
+  > POST  -> 340 send article to be posted
+  > POST <281 octets>  -> 441 posting failed; this article is already stored here
+  tin resend: 441 posting failed; this article is already stored here
+STEP hybrid-sign-carrier signed rc=0
+  > POST  -> 340 send article to be posted
+  > POST <7717 octets>  -> 240 article received OK
+  > ARTICLE <qual-e747-signed@example.invalid>  -> 220 12 <qual-e747-signed@example.invalid> article follows
+  > HDR :fn-verified <qual-e747-signed@example.invalid>  -> 225 headers follow
+    ['0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1']
+  > GROUP fn.agents  -> 211 12 1 12 fn.agents
+  > XPAT Subject 1- *qual rehearsal*  -> 221 header follows
+    ['11 qual rehearsal tin-shaped', '12 qual rehearsal signed']
+  > XPAT Message-ID <qual-e747-signed@example.invalid> *  -> 221 header follows
+    ['<qual-e747-signed@example.invalid> <qual-e747-signed@example.invalid>']
+STEP hybrid-sign-carrier cancel rc=0
+  > POST  -> 340 send article to be posted
+  > POST <7789 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+  > AUTHINFO USER qual  -> 381 password required
+  fresh reader after the cancel:
+  > ARTICLE <qual-e747-signed@example.invalid>  -> 430 no article with that message-id
+  > LISTGROUP control.cancel  -> 211 1 1 1 control.cancel list follows
+    ['1']
+  > QUIT  -> 205 closing connection
+STEP control grant P keys fn.keys rc=0
+  | accepted operator control
+STEP hybrid-sign PoP rc=0
+  > AUTHINFO USER qual  -> 381 password required
+STEP hybrid-sign-carrier succession rc=1
+STEP hybrid-sign-carrier succession (developer image as the client) rc=1 UNEXPECTED(want 0)
+Traceback (most recent call last):
+  File "/tank/fn/scratch/qual-e747dbcc/upgrade_live.py", line 442, in <module>
+    main()
+  File "/tank/fn/scratch/qual-e747dbcc/upgrade_live.py", line 413, in main
+    c.post(carrier(kset["old"], statement, "succession"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/qual-e747dbcc/upgrade_live.py", line 355, in carrier
+    return out.read_bytes()
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1021, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/qual-e747dbcc/upgrade-live/keys/succession.carrier'

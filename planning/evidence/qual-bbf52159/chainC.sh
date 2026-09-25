@@ -1,0 +1,7 @@
+#!/bin/sh
+cd /tank/fn/scratch/qual-bbf52159
+sh run.sh test_native_peer_invite test_native_peer_pull test_native_bounds_blob test_native_bounds_join test_native_control_authority test_native_control_filing test_native_history_required test_native_profile_namespace test_native_state_checkpoint test_native_crash_correspondence
+NS_HOST=fn-host-developer NS_TAG=developer sh run.sh test_native_key_statements test_native_operator_verdicts
+sh run.sh test_native_hybrid_author test_native_topic_local test_native_topic_metadata test_native_consumer_inspect test_native_consumer_project_bounds test_native_consumer_e2 test_fn_verify
+FN_CONSUMER_POLL_SOURCE_FILE=/tank/fn/scratch/qual-bbf52159/poll-source-dated.eml NS_TAG=dated-source sh run.sh test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply
+touch /tank/fn/scratch/qual-bbf52159/done.C

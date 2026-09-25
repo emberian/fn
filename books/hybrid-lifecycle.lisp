@@ -5,9 +5,9 @@
 (in-package "ACL2")
 (include-book "hybrid-store")
 
-(defconst *fn-hl-revoked-profile*
-  '(102 110 45 104 121 98 114 105 100 45 114 101 118 111 107 101 100 45 118 49))
-; "fn-hybrid-revoked-v1"; payload is exactly the 32-octet principal.
+(defconst *fn-hl-revoked-profile* *fn-hsig-revoked-profile*)
+; "fn-hybrid-revoked-v1"; payload is exactly the 32-octet principal
+; (books/hybrid-store.lisp owns the value; replay reads it there).
 
 (defun fn-hl-current-snapshot (snapshots)
   (declare (xargs :guard t))
@@ -39,6 +39,18 @@
        (if (fn-stxk-p current)
            (equal requested (1+ (fn-stxk-keyring-generation current)))
          (equal requested 1))))
+
+;; PRF-098: the next keyring generation is ACL2's, never the operator's
+;; spelling.  The control codec's next-generation requests
+;; (books/native-hybrid-control.lisp, kinds 7 and 8) and the key-statement
+;; executor (books/key-statements.lisp) ask for it; generation 0 means
+;; nothing.
+(defun fn-hl-next-generation (snapshots)
+  (declare (xargs :guard t))
+  (let ((current (fn-hl-current-snapshot snapshots)))
+    (if (fn-stxk-p current)
+        (1+ (nfix (fn-stxk-keyring-generation current)))
+      1)))
 
 (defun fn-hl-enroll-event
     (sequence txid store-generation keyring-generation principal keys snapshots)
@@ -111,3 +123,78 @@
                                                (cons next history))
                   next))
   :hints (("Goal" :in-theory (enable fn-hl-current-for-principal))))
+
+(defthm fn-hl-next-generation-is-the-next-generation
+  (implies (fn-record-uint32p (fn-hl-next-generation snapshots))
+           (fn-hl-next-generationp (fn-hl-next-generation snapshots)
+                                   (fn-hl-current-snapshot snapshots)))
+  :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxk-shapep
+                                     fn-stxk-keyring-generation
+                                     fn-record-uint32p))))
+
+; The enrollment the selector returns is a key snapshot with a value, never
+; a tombstone.
+(defthm fn-hl-current-enrollment-selects-an-enrolled-snapshot
+  (implies (fn-hl-current-enrollment requested snapshots)
+           (and (fn-hsig-keyring-snapshot-value
+                 (car (fn-hl-current-enrollment requested snapshots)))
+                (equal (cadr (fn-hl-current-enrollment requested snapshots))
+                       (car (fn-hsig-keyring-snapshot-value
+                             (car (fn-hl-current-enrollment requested
+                                                            snapshots)))))
+                (equal (caddr (fn-hl-current-enrollment requested snapshots))
+                       (cadr (fn-hsig-keyring-snapshot-value
+                              (car (fn-hl-current-enrollment requested
+                                                             snapshots)))))))
+  :hints (("Goal" :in-theory (e/d (fn-hl-current-enrollment)
+                                  (fn-hsig-keyring-snapshot-value
+                                   fn-hl-current-for-principal)))))
+
+; A revocation event is a tombstone of exactly its principal at exactly its
+; requested generation.
+(defthm fn-hl-revoke-event-is-the-principals-tombstone
+  (let ((e (fn-hl-revoke-event sequence txid store-generation
+                               keyring-generation principal snapshots)))
+    (implies e
+             (and (fn-stxk-p e)
+                  (equal (fn-stxk-profile e) *fn-hl-revoked-profile*)
+                  (equal (fn-stxk-snapshot e) principal)
+                  (equal (fn-stxk-keyring-generation e) keyring-generation)
+                  (not (fn-hsig-keyring-snapshot-value e))
+                  (equal (fn-hl-snapshot-principal e) principal))))
+  :hints (("Goal" :in-theory (e/d (fn-hl-revoke-event fn-hl-snapshot-principal)
+                                  (fn-stxk-p fn-hsig-keyring-snapshot-value
+                                   fn-hl-current-for-principal))
+           :use ((:instance fn-hsig-keyring-snapshot-value-requires-the-key-profile
+                            (snapshot (fn-stxk-make sequence txid store-generation
+                                                    keyring-generation
+                                                    *fn-hl-revoked-profile*
+                                                    principal)))))))
+
+(defthm fn-hl-revoke-event-generation-is-positive
+  (implies (fn-hl-revoke-event sequence txid store-generation
+                               keyring-generation principal snapshots)
+           (posp keyring-generation))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-hl-revoke-event fn-hl-next-generationp
+                                     fn-record-uint32p))))
+
+; An enrollment event is a key snapshot of exactly its principal and keys.
+(defthm fn-hl-enroll-event-enrolls-its-keys
+  (let ((e (fn-hl-enroll-event sequence txid store-generation
+                               keyring-generation principal keys snapshots)))
+    (implies e
+             (and (fn-stxk-p e)
+                  (equal (fn-stxk-keyring-generation e) keyring-generation)
+                  (equal (fn-hsig-keyring-snapshot-value e)
+                         (list principal keys))
+                  (equal (fn-hl-snapshot-principal e) principal))))
+  :hints (("Goal" :in-theory (e/d (fn-hl-enroll-event fn-hl-snapshot-principal)
+                                  (fn-stxk-p fn-hsig-keyring-snapshot-value
+                                   fn-hsig-keyring-event
+                                   fn-hsig-keyring-event-shape
+                                   fn-hsig-keyring-snapshot-value-of-keyring-event))
+           :use ((:instance fn-hsig-keyring-snapshot-value-of-keyring-event
+                            (generation store-generation))
+                 (:instance fn-hsig-keyring-event-shape
+                            (generation store-generation))))))

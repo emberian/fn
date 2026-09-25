@@ -358,7 +358,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
               (fn-served-conn-injection conn)
               (fn-served-conn-verdicts conn)
               (fn-served-conn-index conn)
-              (fn-served-conn-group-index conn))))
+              (fn-served-conn-group-index conn) (fn-served-conn-control conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-auth-session-consistentp))))))

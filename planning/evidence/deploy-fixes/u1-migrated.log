@@ -1,0 +1,24 @@
+# deploy-fixes U1 native case: production image 6cccdf74afa5ad9b on a cp -a of qual-e747dbcc's migrated copy of the live store (format 8, history-marker required, kept config.json.format-7)
+2:path = "/tank/fn/scratch/deploy-fixes/migrated/store"
+13:path = "/tank/fn/scratch/deploy-fixes/migrated/store/auth.toml"
+19:path = "/tank/fn/scratch/deploy-fixes/migrated/store/control.sock"
+23:path = "/tank/fn/scratch/deploy-fixes/migrated/log/fn.log"
+## status
+rc=0
+history-marker=required
+## needs-upgrade
+current
+accepted operator needs-upgrade
+rc=0
+## rollback-check config.json.format-7 (was: rollback sound on e747dbcc)
+rollback refused history-marker-required-dropped
+refused operator rollback-check
+rc=1
+## rollback-check of the store's own config.json (required over required)
+rollback sound transactions=18
+accepted operator rollback-check
+rc=0
+## control list offline
+grant 5555555555555555555555555555555555555555555555555555555555555555 keys fn.keys
+accepted operator control
+rc=0

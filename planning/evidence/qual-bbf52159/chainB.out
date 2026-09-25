@@ -1,0 +1,21 @@
+test_native_auth rc=0 OK
+test_native_profile rc=0 OK
+test_native_admin rc=0 OK
+test_native_starttls rc=0 OK
+test_native_auth_admin_fidelity rc=0 OK
+test_native_owner rc=0 OK
+test_native_raw_scripts rc=1 FAILED (failures=2)
+test_native_live_reconfiguration rc=1 FAILED (failures=2)
+test_native_control rc=1 FAILED (failures=1)
+test_native_operator_cli rc=0 OK
+test_native_operator_verbs rc=0 OK
+test_native_profile_upgrade rc=0 
+test_native_program_check rc=0 OK
+test_native_initializer_fidelity rc=0 OK
+test_native_recovery rc=0 OK
+test_native_storage_codec rc=0 OK
+test_native_served_differential rc=0 OK
+test_native_reader_index rc=0 OK
+test_native_newnews_migration rc=0 OK (skipped=1)
+test_native_stamp_migration rc=0 OK (skipped=1)
+test_native_history_marker rc=0 OK

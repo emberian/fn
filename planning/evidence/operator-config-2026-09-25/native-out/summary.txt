@@ -1,0 +1,31 @@
+small-community mission exit=0
+small-community mission again exit=1 refused operator mission CONFIG-EXISTS
+small-community show exit=0 same-as-file=yes
+small-community show alerts.headroom_min_percent=10 ops.mission=small-community posting.enabled=true
+small-community init exit=0
+small-community status: max-article-octets=1048576 max-groups-per-article=8 
+small-community started: control-socket=yes listening=1
+relay mission exit=0
+relay mission again exit=1 refused operator mission CONFIG-EXISTS
+relay show exit=0 same-as-file=yes
+relay show alerts.headroom_min_percent=20 ops.mission=relay posting.enabled=false
+relay init exit=0
+relay status: max-article-octets=1048576 max-groups-per-article=16 
+relay started: control-socket=yes listening=1
+archive mission exit=0
+archive mission again exit=1 refused operator mission CONFIG-EXISTS
+archive show exit=0 same-as-file=yes
+archive show alerts.headroom_min_percent=25 ops.mission=archive posting.enabled=false
+archive init exit=0
+archive status: max-article-octets=1048576 max-groups-per-article=16 
+archive started: control-socket=yes listening=1
+rotated at 14 accepted lines; HUP sent to 3828151
+second rotation
+posts exit0=60 accepted-post lines across fn.log.1 fn.log.2 fn.log = 60
+reopen lines: 2
+fn.log first line: reopened log signal=hup requests=2 time=2026-09-25T20:41:31Z
+relay post exit=1 refused operator post POSTING-DISABLED
+principal exit=0
+node_probe exit=0
+units: inactive inactive inactive 
+file-first signed-author exit=0 NATIVE-CONTROL-WITNESS {"article-signed-cancel": "220 0 <c1-signed-cancel@example.invalid> article follows", "hybrid-author-signed-cancel": [0, "", ""], "hybrid-author-signed-ordinary": [0, ""], "listgroup-control.cancel": ["211 1 1 1 control.cancel list follows\r\n", ["1"]], "listgroup-control.cancel-after-restart": ["211 1 1 1 control.cancel list follows\r\n", ["1"]], "listgroup-fn.test": ["211 

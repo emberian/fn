@@ -20,7 +20,7 @@
      (fn-own-conn-observation conn)
      (fn-own-view-verdicts view)
      (fn-own-view-index view)
-     (fn-own-view-group-index view))))
+     (fn-own-view-group-index view) (fn-own-view-control view))))
   :hints (("Goal" :in-theory (enable fn-ocri-connp fn-ocri-viewp))))
 
 (defthm fn-ocari-owner-advance-preserves-reader-pins

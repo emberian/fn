@@ -89,7 +89,7 @@
              session (fn-own-conn-archive conn)
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
              (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
-             (fn-own-conn-group-index conn))))
+             (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
   :hints (("Goal" :in-theory (enable fn-ocri-connp))))
 
 (defthm fn-ocri-reader-context-preserves-reader-pins
@@ -121,7 +121,7 @@
              (fn-wire-initial-state line-limit body-limit)
              session (fn-own-view-archive view) config observation
              (fn-own-view-verdicts view) (fn-own-view-index view)
-             (fn-own-view-group-index view))))
+             (fn-own-view-group-index view) (fn-own-view-control view))))
   :hints (("Goal"
            :use ((:instance fn-wire-initial-state-is-state))
            :in-theory (enable fn-ocri-connp fn-ocri-viewp))))

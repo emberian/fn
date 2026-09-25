@@ -1,0 +1,10 @@
+# qual-e747dbcc A3 probe, production image e747dbcc, scratch store /tank/fn/scratch/qual-e747dbcc/probe-ctl (init fn.test, owner under systemd-run)
+# first run: owner up; control grant 11..11 cancel fn.mod.x -> 'accepted operator control' rc 0; control list (live) -> no rows, 'accepted operator control' rc 0; owner stopped; control list (offline) -> no rows, rc 0; store/config holds 00000001.cfg 00000002.cfg (the grant: 'fn.mod.x', the principal, 'cancel')
+# second run (below): owner restarted; revoke twice
+accepted operator control
+revoke after restart rc=0
+second revoke rc=1
+refused operator control
+00000001.cfg
+00000002.cfg
+00000003.cfg

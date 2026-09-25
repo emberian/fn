@@ -1,0 +1,65 @@
+checkpoint cut candidate-file
+checkpoint cut candidate-link
+checkpoint cut candidate-directory
+checkpoint cut selection-file
+checkpoint cut selection-replace
+checkpoint cut selection-directory
+checkpoint cut pack-reclaim-unlink
+checkpoint cut pack-reclaim-directory
+checkpoint cut pack-retire-unlink
+checkpoint cut pack-retire-directory
+cut frontier-created
+cut frontier-written
+cut frontier-staged-durable
+cut frontier-replaced
+cut frontier-attempted
+cut frontier-durable
+cut frontier-reserved
+cut record-created
+cut record-written
+cut record-staged-durable
+cut record-linked
+cut record-attempted
+cut record-durable
+cut record-completing
+cut record-stage-unlinked
+cut record-staging-cleaned
+cut marker-created
+cut marker-written
+cut marker-staged-durable
+cut marker-replaced
+cut marker-durable
+cut finish-consumed
+cut finish-durable
+cut recover-replayed
+cut recover-barrier-1
+cut recover-barrier-2
+cut recover-barrier-3
+cut recover-barrier-4
+cut recover-barrier-5
+cut recovery-stage-unlinked
+faults
+	Command being timed: "python3 -m tests.campaign.native_operator_campaign --images /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d --work /tank/fn/scratch/qual-bbf52159/campaign/work --out /tank/fn/scratch/qual-bbf52159/campaign/campaign.json"
+	User time (seconds): 49.32
+	System time (seconds): 46.67
+	Percent of CPU this job got: 24%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 6:29.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 349996
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 12
+	Minor (reclaiming a frame) page faults: 26998845
+	Voluntary context switches: 27079
+	Involuntary context switches: 4981
+	Swaps: 0
+	File system inputs: 376699
+	File system outputs: 22840
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0

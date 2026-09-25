@@ -1,0 +1,601 @@
+[
+  {
+    "module": "tests.test_acl2_bridge",
+    "seconds": 0.558,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_acl2_bridge.log",
+    "tests": 16,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_acl2_error_reply_is_answered_without_poisoning",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_call_timeout_grows_with_form_size_and_bounds_the_recorded_reopen",
+        0.149
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_fresh_nonce_per_call",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_marked_reply_is_accepted_and_returns_only_the_result",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_output_bound_trip_poisons_the_bridge",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_reply_without_this_calls_marker_poisons_the_bridge",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_stale_reply_arriving_with_the_marker_is_a_correlation_failure",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeCorrelationTests.test_timeout_poisons_the_bridge_for_good",
+        0.22
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeParsingTests.test_octet_list_accepts_only_bounded_decimal_octets",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.BridgeParsingTests.test_octet_list_parse_is_linear_on_malformed_output",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.FrameSessionLifecycleTests.test_cleanly_closed_adopted_session_is_replaced",
+        0.024
+      ],
+      [
+        "tests.test_acl2_bridge.FrameSessionLifecycleTests.test_poisoned_adopted_session_is_not_silently_replaced",
+        0.001
+      ],
+      [
+        "tests.test_acl2_bridge.ReaderFailClosedTests.test_a_merely_invalid_result_still_only_ends_the_connection",
+        0.0
+      ],
+      [
+        "tests.test_acl2_bridge.ReaderFailClosedTests.test_a_poisoned_bridge_makes_the_reader_process_exit_non_zero",
+        0.021
+      ],
+      [
+        "tests.test_acl2_bridge.ReaderFailClosedTests.test_an_ordinary_connection_leaves_the_reader_exit_zero",
+        0.013
+      ],
+      [
+        "tests.test_acl2_bridge.ReaderFailClosedTests.test_poisoned_bridge_stops_the_reader_instead_of_serving_on",
+        0.0
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_store_config",
+    "seconds": 14.216,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_store_config.log",
+    "tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_store_config.StoreConfigTests.test_capacity_is_a_configuration_record_with_three_outcomes",
+        2.739
+      ],
+      [
+        "tests.test_store_config.StoreConfigTests.test_create_retire_and_revive_resume_numbering_across_recovery",
+        4.595
+      ],
+      [
+        "tests.test_store_config.StoreConfigTests.test_duplicate_create_unknown_retire_and_overflow_are_refused",
+        2.463
+      ],
+      [
+        "tests.test_store_config.StoreConfigTests.test_init_writes_generation_one_from_its_arguments",
+        1.067
+      ],
+      [
+        "tests.test_store_config.StoreConfigTests.test_peer_add_with_no_size_options_is_accepted",
+        1.419
+      ],
+      [
+        "tests.test_store_config.StoreConfigTests.test_reader_pins_the_generation_it_opened_at",
+        1.813
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_anchor",
+    "seconds": 3.964,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 1,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_anchor.log",
+    "tests": 25,
+    "failures": 6,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_acl2_owns_the_delegation_window",
+        0.004
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_reconstruction_matches_the_captured_response",
+        0.001
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_model_orders_the_three_captures",
+        0.002
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_real_batched_capture_is_uncertain_not_accepted",
+        0.002
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_tree_shape_alone_decides_it",
+        0.003
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_verdict_is_over_the_octets_acl2_produced",
+        0.001
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_absent_library_is_not_a_verdict",
+        0.0
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_no_other_module_imports_cryptography",
+        0.009
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_round_trip_and_rejection",
+        0.001
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_a_batched_response_does_not_cover_one_nonce",
+        0.001
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_a_different_pinned_key_does_not_verify",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_a_foreign_nonce_is_not_in_the_tree",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_captured_response_verifies_under_the_pinned_key",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_merkle_root_folds_the_path",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_one_flipped_octet_breaks_the_response",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_pinned_key_is_the_one_in_the_server_file",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_request_is_padded_to_the_minimum",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_the_root_is_the_tenth_field",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_two_captures_cover_one_nonce_and_the_third_is_batched",
+        0.001
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_a_batched_anchor_is_uncertain_at_both_commands",
+        0.603
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_a_store_that_never_anchored_recovers_as_before",
+        0.568
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_anchor_records_then_refuses_a_replay",
+        0.613
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_no_anchor_obtainable_is_uncertain_not_refused",
+        0.586
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_restoring_an_older_snapshot_is_refused",
+        0.624
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_restoring_with_a_fresh_anchor_succeeds",
+        0.6
+      ]
+    ],
+    "passed": false
+  },
+  {
+    "module": "tests.test_media",
+    "seconds": 20.301,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_media.log",
+    "tests": 20,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_bundle_without_an_identity_is_a_usage_error",
+        0.002
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_damaged_copy_is_refused_by_verify_with_no_store_touched",
+        0.024
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_missing_volume_is_refused_not_a_fault",
+        0.001
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_second_export_over_a_written_volume_is_refused",
+        0.021
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_an_adu_without_its_bundle_octets_is_a_usage_error",
+        0.001
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_export_then_verify_reports_accepted",
+        0.025
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_uncertain_dominates_refused_in_a_volume_exit_code",
+        0.001
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_a_corrupted_file_is_refused_before_anything_is_staged",
+        1.79
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_an_uncertain_staging_cut_is_reported_uncertain_not_refused",
+        0.842
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_every_reported_outcome_is_one_of_the_four",
+        2.694
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_import_accepts_through_the_receiver_and_leaves_the_media_unchanged",
+        3.111
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_partial_copy_accepts_the_whole_item_and_refuses_the_truncated_one",
+        2.007
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_quota_exhaustion_refuses_without_charging_or_promising",
+        2.637
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_reimport_of_the_same_media_is_a_duplicate_with_the_same_receipt",
+        5.522
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_export_refuses_a_repeated_bundle_identity",
+        0.04
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_exported_media_is_written_read_only",
+        0.024
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_manifest_boundaries_are_refused",
+        0.033
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_manifest_names_identity_size_and_digest_of_every_bundle",
+        0.028
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_partial_copy_is_absent_from_the_inventory_rather_than_short",
+        0.032
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_same_length_damage_is_caught_by_the_copy_digest",
+        0.039
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_bp_receive_faults",
+    "seconds": 40.469,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_bp_receive_faults.log",
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_a_receiptable_work_id_at_the_bound_is_still_accepted",
+        2.514
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_article_commit_before_context_reopens_without_second_charge",
+        4.132
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_capacity_refusal_preserves_prior_article_and_pin",
+        4.385
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_context_before_intent_reopens_without_second_charge",
+        4.117
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_decision_before_lost_delete_retries_same_adu_without_charge",
+        4.197
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_fnbi_durable_cut_reopens_same_adu_once",
+        2.496
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_intent_before_decision_requires_recovery_without_second_charge",
+        5.3
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_store_at_its_transaction_bound_refuses_and_stays_openable",
+        4.427
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_unreceiptable_work_id_refuses_before_any_store_mutation",
+        4.323
+      ],
+      [
+        "tests.test_bp_receive_faults.ReceiveFaultTests.test_wrong_policy_or_destination_never_publishes_store_record",
+        4.465
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_index_cache",
+    "seconds": 3.908,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_index_cache.log",
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_index_cache.IndexCacheTests.test_configuration_digest_change_is_refused",
+        0.437
+      ],
+      [
+        "tests.test_index_cache.IndexCacheTests.test_forged_generation_is_refused_not_answered",
+        0.426
+      ],
+      [
+        "tests.test_index_cache.IndexCacheTests.test_index_answers_equal_the_fold_command_by_command",
+        0.43
+      ],
+      [
+        "tests.test_index_cache.IndexCacheTests.test_post_between_two_reader_commands_gives_post_generation_truth",
+        1.252
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_store_fault_matrix",
+    "seconds": 47.233,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_store_fault_matrix.log",
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_allocator_replace_and_directory_barrier_matrix",
+        3.61
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_allocator_staging_and_write_progress_matrix",
+        7.238
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_completion_return_and_lost_reply_matrix",
+        1.83
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_link_and_transaction_directory_barrier_matrix",
+        3.625
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_prepublication_create_write_and_file_fsync_matrix",
+        9.391
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_publication_write_progress_and_cleanup_matrix",
+        5.524
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_recovery_helper_close_matrix",
+        2.682
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_recovery_read_and_all_five_barrier_matrix",
+        11.148
+      ],
+      [
+        "tests.test_store_fault_matrix.StoreFaultMatrixTests.test_store_lock_close_after_success_matrix",
+        2.053
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_host_boundary",
+    "seconds": 0.589,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_host_boundary.log",
+    "tests": 16,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_host_boundary.DurabilityBarrierTests.test_a_filesystem_that_rejects_full_fsync_falls_back_to_fsync",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.DurabilityBarrierTests.test_an_unrelated_barrier_error_is_not_swallowed",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.DurabilityBarrierTests.test_darwin_barrier_asks_the_device_to_flush_its_cache",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.DurabilityBarrierTests.test_every_journal_barrier_goes_through_the_one_helper",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.ExitCodeTests.test_documented_table",
+        0.0
+      ],
+      [
+        "tests.test_host_boundary.ExitCodeTests.test_ingress_refusal_and_fault_stay_distinct",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.ExitCodeTests.test_pending_bpa_delete_is_reported_as_acceptance_not_failure",
+        0.0
+      ],
+      [
+        "tests.test_host_boundary.ExitCodeTests.test_store_cli_maps_each_outcome_to_its_own_code",
+        0.005
+      ],
+      [
+        "tests.test_host_boundary.ExitCodeTests.test_store_cli_usage_error_is_its_own_code",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.OwnershipAndOrphanTests.test_a_contended_lock_is_still_a_clean_refusal",
+        0.232
+      ],
+      [
+        "tests.test_host_boundary.OwnershipAndOrphanTests.test_absent_lock_pathname_is_a_fault_not_a_held_lock",
+        0.001
+      ],
+      [
+        "tests.test_host_boundary.OwnershipAndOrphanTests.test_initialization_publishes_metadata_through_staging",
+        0.07
+      ],
+      [
+        "tests.test_host_boundary.OwnershipAndOrphanTests.test_orphan_report_stays_bounded",
+        0.089
+      ],
+      [
+        "tests.test_host_boundary.OwnershipAndOrphanTests.test_recovery_reports_staging_orphans_without_deleting_them",
+        0.077
+      ],
+      [
+        "tests.test_host_boundary.ReceiverBoundaryTests.test_non_ascii_bid_is_refused_rather_than_raising_an_encoding_error",
+        0.0
+      ],
+      [
+        "tests.test_host_boundary.ReceiverBoundaryTests.test_over_long_and_empty_bids_refuse_the_same_way",
+        0.0
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_store_node_host",
+    "seconds": 7.488,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "planning/evidence/test-latency-2026-09-25/after-laptop-neighbours/tests.test_store_node_host.log",
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_store_node_host.StoreClockObservationTests.test_missing_wall_reading_is_marked_unusable",
+        0.001
+      ],
+      [
+        "tests.test_store_node_host.StoreClockObservationTests.test_pre_epoch_reading_is_marked_unusable",
+        0.0
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_failed_or_lost_finish_cannot_retry_before_recovery",
+        0.674
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_finish_rejects_stale_ready_state",
+        0.383
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_known_abort_consumes_frontier_without_a_record",
+        0.997
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_lifecycle_uses_allocator_io_then_finish",
+        1.023
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_link_failure_fences_then_observed_recovery_reopens",
+        1.053
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_lost_bridge_reply_after_namespace_observation_stays_fenced",
+        1.824
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_lost_directory_reply_cannot_retry_finish_before_recovery",
+        0.451
+      ],
+      [
+        "tests.test_store_node_host.StoreNodeHostTests.test_recovery_barrier_error_fences_until_fresh_observed_replay",
+        0.952
+      ]
+    ],
+    "passed": true
+  }
+]

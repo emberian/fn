@@ -167,7 +167,7 @@
                                (fn-own-conn-observation conn)
                                (fn-own-conn-verdicts conn)
                                (fn-own-conn-index conn)
-                               (fn-own-conn-group-index conn))
+                               (fn-own-conn-group-index conn) (fn-own-conn-control conn))
              groups capacity records))
    :hints (("Goal" :in-theory (e/d (fn-own-conn-okp (:d fn-own-conn-boundedp))
                                    (fn-auth-with-base fn-peer-open-session

@@ -1,0 +1,12 @@
+snapshot /tank/fn/node/store.snapshot-pre-bbf52159-format8
+kept config.json.format-7
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+accepted operator upgrade-profile
+accepted operator needs-upgrade
+accepted operator rollback-check
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+active: active
+LISTEN 0      16                   192.168.50.39:1119       0.0.0.0:*   
+Sep 25 17:57:30 hbox fn[3958998]: OWNER-OPEN open=full-replay reason=absent
+Sep 25 17:57:30 hbox fn[3958998]: CONTROL /tank/fn/node/store/control.sock
+Sep 25 17:57:30 hbox fn[3958998]: LISTENING 1119

@@ -8,6 +8,7 @@
 
 (in-package "ACL2")
 (include-book "native-config")
+(include-book "native-config-show")
 (include-book "native-admin")
 (include-book "native-auth-admin")
 (include-book "byte-store-frame")
@@ -238,7 +239,35 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           (fn-nop-some-flag-wordp (cdr words)))
     nil))
 
-(defun fn-nop-parse-init (words config)
+; PKT-097: a mission's store profile, as an operator request over the D27
+; defaults: its article bound and groups per article (the spike's figures).
+; `fn-native-mission-profiles-valid' says each resolves to a valid profile;
+; books/native-mission.lisp that it is the profile the store then opens with.
+(defun fn-native-mission-request (name)
+  (declare (xargs :guard t))
+  (cond ((equal name "small-community") (list :default (list (cons 5 1048576) (cons 6 8))))
+        ((equal name "relay") (list :default (list (cons 5 1048576) (cons 6 16))))
+        ((equal name "archive") (list :default (list (cons 5 1048576) (cons 6 16))))
+        (t nil)))
+
+; The groups a mission's `init' serves when the operator names none; only a
+; small community has a default pair.
+(defun fn-native-mission-default-groups (name)
+  (declare (xargs :guard t))
+  (if (equal name "small-community") '("local.general" "local.test") nil))
+
+(defthm fn-native-mission-profiles-valid
+  (implies (member-equal name *fn-ncfg-mission-names*)
+           (and (fn-bs-profile-validp
+                 (fn-bs-profile-resolve (fn-native-mission-request name) nil))
+                (not (equal (fn-bs-pf 14 (fn-bs-profile-resolve
+                                          (fn-native-mission-request name) nil))
+                            1))))
+  :hints (("Goal" :in-theory (disable fn-bs-profile-validp fn-bs-profile-resolve
+                                      (:e fn-bs-profile-validp)))
+          ("Goal'" :in-theory (enable (:e fn-bs-profile-validp)))))
+
+(defun fn-nop-parse-init-plain (words config)
   (declare (xargs :guard t))
   (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
          (request (if (consp parsed) (car parsed) nil))
@@ -264,6 +293,27 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-refused :reserved-group-name "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
                             (list :init groups request))))))
+
+;  `init' under a configuration that names a mission (`[ops] mission'): the
+; mission fixes the profile, so a profile word is a usage error, and with no
+; group named a small community serves its default pair.
+(defun fn-nop-parse-init (words config)
+  (declare (xargs :guard t))
+  (let ((mission (fn-native-config-ops-mission config)))
+    (if (and mission (fn-native-mission-request mission))
+        (let ((groups (fn-nop-parse-init-groups
+                       (if (consp words) words (fn-native-mission-default-groups mission))
+                       nil)))
+          (cond ((fn-nop-some-flag-wordp words)
+                 (fn-nop-usage :mission-fixes-profile "init" config words))
+                ((equal groups :bad)
+                 (fn-nop-usage :invalid-init-groups "init" config words))
+                ((fn-native-admin-some-group-name-reservedp words)
+                 (fn-nop-refused :reserved-group-name "init" config words))
+                (t (fn-nop-result :accepted :plan "init" config
+                                  (list :init groups
+                                        (fn-native-mission-request mission))))))
+      (fn-nop-parse-init-plain words config))))
 
 ;  The developer image's `store ROOT init [PROFILE-FLAGS] [GROUP ...]'
 ; (host/native/io.lisp fnn-command-developer-init): the operator's profile
@@ -346,7 +396,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -354,6 +404,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   (cond ((equal subject "init")
          "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
+        ((equal subject "show")
+         "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
+        ((equal subject "mission")
+         "usage: fn operator NODE/fn.toml mission small-community|relay|archive [--host H] [--port P] (writes a new fn.toml; then init)")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status")
@@ -370,7 +424,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm FILE (KEYDIR, FILE and OUT absolute; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
@@ -380,7 +434,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -395,6 +449,48 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         (fn-nop-result :accepted :plan "principal" config (list plan))
       (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
                     "principal" config (fn-ncfg-rest argv)))))
+
+;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
+;; values and absolute paths; what the documents say, and whether they are
+;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
+(defconst *fn-nop-peering-arity*
+  '(("genesis" . 1) ("invite" . 7) ("accept" . 5) ("confirm" . 1)))
+
+(defun fn-nop-peering-verbp (word)
+  (declare (xargs :guard t))
+  (and (stringp word) (assoc-equal word *fn-nop-peering-arity*) t))
+
+(defun fn-nop-absolute-pathp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (< 1 (length word))
+       (<= (length word) *fn-ncfg-max-path*)
+       (equal (char word 0) #\/)))
+
+(defun fn-nop-peering-paths-okp (verb args)
+  ; The positions of the path words for each verb.
+  (declare (xargs :guard (true-listp args)))
+  (cond ((equal verb "genesis") (fn-nop-absolute-pathp (nth 0 args)))
+        ((equal verb "invite") (and (fn-nop-absolute-pathp (nth 5 args))
+                                    (fn-nop-absolute-pathp (nth 6 args))))
+        ((equal verb "accept") (and (fn-nop-absolute-pathp (nth 0 args))
+                                    (fn-nop-absolute-pathp (nth 1 args))
+                                    (fn-nop-absolute-pathp (nth 4 args))))
+        ((equal verb "confirm") (fn-nop-absolute-pathp (nth 0 args)))
+        (t nil)))
+
+(defun fn-nop-parse-peering (words config)
+  (declare (xargs :guard t))
+  (let* ((verb (fn-ncfg-first words))
+         (args (fn-ncfg-rest words))
+         (arity (cdr (assoc-equal verb *fn-nop-peering-arity*))))
+    (if (and (true-listp args)
+             (equal (len args) arity)
+             (string-listp args)
+             (fn-nop-peering-paths-okp verb args))
+        (fn-nop-result :accepted :plan "peer" config
+                       (list* :peering verb args))
+      (fn-nop-usage :invalid-peering-command "peer" config words))))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -455,6 +551,22 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
             ((equal command "store") (fn-nop-parse-store rest config))
+            ; PKT-096: the normalized configuration, rendered by ACL2
+            ; (books/native-config-show.lisp fn-native-config-show).
+            ((equal command "show")
+             (if (or (null rest) (equal (len rest) 2))
+                 (let ((shown (fn-native-config-show config (fn-ncfg-first rest)
+                                                     (fn-ncfg-second rest))))
+                   (cond ((equal (fn-ncfg-first shown) :shown)
+                          (fn-nop-result :accepted :plan "show" config
+                                         (list :show (fn-ncfg-second shown))))
+                         ((equal (fn-ncfg-second shown) :unknown-key)
+                          (fn-nop-usage :unknown-key "show" config rest))
+                         (t (fn-nop-refused (fn-ncfg-second shown) "show" config rest))))
+               (fn-nop-usage :unexpected-arguments "show" config rest)))
+            ((and (equal command "peer")
+                  (fn-nop-peering-verbp (fn-ncfg-first rest)))
+             (fn-nop-parse-peering rest config))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
@@ -476,9 +588,73 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
           (not (fn-nop-argvp argv-octets)))
       (fn-nop-usage :argv-bounds nil nil nil)
     (let ((words (fn-nop-argument-texts argv-octets)))
-      (if (and (consp words) (equal (car words) "help"))
-          (fn-nop-parse-command words nil argv-octets)
-        (list :needs-config)))))
+      (cond ((and (consp words) (equal (car words) "help"))
+             (fn-nop-parse-command words nil argv-octets))
+            ((and (consp words) (equal (car words) "mission"))
+             (list :needs-config-path))
+            (t (list :needs-config))))))
+
+(defun fn-native-operator-preflight-needs-config-path-p (result)
+  (declare (xargs :guard t))
+  (equal result '(:needs-config-path)))
+
+; PKT-097: `mission NAME [--host H] [--port P]' writes the mission's fn.toml
+; at the configuration path, which does not exist yet.  PATH is that path's
+; octets; the node directory is everything before its last `/'.
+(defun fn-nop-mission-options (words host port)
+  (declare (xargs :guard t :measure (len words)))
+  (cond ((atom words) (list host port))
+        ((and (equal (car words) "--host") (consp (cdr words)) (stringp (cadr words)))
+         (fn-nop-mission-options (cddr words) (cadr words) port))
+        ((and (equal (car words) "--port") (consp (cdr words))
+              (fn-nop-profile-decimal (cadr words)))
+         (fn-nop-mission-options (cddr words) host (fn-nop-profile-decimal (cadr words))))
+        (t :bad)))
+
+(defun fn-nop-dirname-rev (rev)
+  ; REV is a path reversed: drop through the last `/'.
+  (declare (xargs :guard t))
+  (if (consp rev)
+      (if (equal (car rev) 47) (cdr rev) (fn-nop-dirname-rev (cdr rev)))
+    nil))
+
+(defun fn-native-operator-mission-run (path-octets argv-octets)
+  (declare (xargs :guard t))
+  (let ((words (fn-nop-argument-texts argv-octets)))
+    (if (or (not (true-listp argv-octets))
+            (< *fn-nop-max-arguments* (len argv-octets))
+            (not (fn-nop-argvp argv-octets))
+            (not (equal (fn-ncfg-first words) "mission"))
+            (not (consp (fn-ncfg-rest words)))
+            (not (fn-ncfg-printablep path-octets))
+            (not (true-listp path-octets)))
+        (fn-nop-usage :invalid-mission "mission" nil nil)
+      (let ((options (fn-nop-mission-options (fn-ncfg-rest (fn-ncfg-rest words))
+                                             *fn-ncfg-default-listener-host*
+                                             *fn-ncfg-default-listener-port*))
+            (node (fn-record-octets-string
+                   (fn-ncfg-reverse (fn-nop-dirname-rev (fn-ncfg-reverse path-octets)))))
+            (name (fn-ncfg-second words)))
+        (if (equal options :bad)
+            (fn-nop-usage :invalid-mission-options "mission" nil (fn-ncfg-rest words))
+          (let ((plan (fn-native-mission-plan name node (fn-ncfg-first options)
+                                              (fn-ncfg-second options))))
+            (if (equal (fn-ncfg-first plan) :accepted)
+                (fn-nop-result :accepted :plan "mission" nil
+                               (list :mission name
+                                     (fn-ncfg-third plan)
+                                     (fn-native-mission-directories node)))
+              (fn-nop-refused (fn-ncfg-second plan) "mission" nil (fn-ncfg-rest words)))))))))
+
+; The host's lstat of the configuration path: an existing file is refused;
+; a mission writes a new node only.
+(in-theory (disable fn-native-operator-mission-run))
+
+(defun fn-native-operator-mission-outcome (result existsp)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted) existsp)
+      (fn-nop-refused :config-exists "mission" nil nil)
+    result))
 
 (defun fn-native-operator-preflight-needs-config-p (result)
   (declare (xargs :guard t))
@@ -815,6 +991,23 @@ formed and the operator asked for something the node declined to do."
        (fn-native-config-store (fn-native-operator-result-config result)))
     nil))
 
+(defun fn-native-operator-result-peering-words (result)
+  "The verb and words of an accepted `peer genesis|invite|accept|confirm'."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "peer")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :peering))
+      (fn-ncfg-rest (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-peering-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-peering-words result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -848,6 +1041,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                          :rollback-check)
                   :rollback-check)
                  (t :upgrade-profile)))
+          ((and (equal (fn-native-operator-result-command result) "peer")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :peering))
+           :peering)
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")
@@ -856,6 +1053,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "policy")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
+          ((equal (fn-native-operator-result-command result) "show") :show)
+          ((equal (fn-native-operator-result-command result) "mission") :mission)
           (t :owner-required))))
 
 ; KEYSTONE (RFC 5536 s3.1.4 reserved names at `init').  The subject is
@@ -881,6 +1080,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-native-operator-command-preflight
                                    fn-native-operator-preflight-needs-config-p
                                    fn-nop-parse-command fn-nop-parse-init
+                                   fn-nop-parse-init-plain
                                    fn-nop-usage fn-nop-refused fn-nop-result
                                    fn-native-operator-result-status)
                                   (fn-native-admin-group-name-reservedp
@@ -1208,4 +1408,27 @@ when that store already exists is `fn-native-operator-init-outcome'."
           (fn-native-operator-result-admin-planp result))
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
+; PKT-096/PKT-097 projections the raw host reads.
+(defun fn-native-operator-result-mission-octets (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "mission"))
+      (fn-ncfg-third (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-mission-directory-octets (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "mission"))
+      (fn-native-operator-post-group-octets
+       (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-show-octets (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "show"))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))

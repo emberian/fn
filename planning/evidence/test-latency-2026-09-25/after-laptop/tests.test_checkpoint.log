@@ -1,0 +1,13 @@
+test_corrupt_marker_is_reported (tests.test_checkpoint.CheckpointTests.test_corrupt_marker_is_reported) ... ok
+test_corrupt_selected_generation_is_reported_not_rolled_back (tests.test_checkpoint.CheckpointTests.test_corrupt_selected_generation_is_reported_not_rolled_back) ... ok
+test_differential_mismatch_is_corruption_without_a_debug_flag (tests.test_checkpoint.CheckpointTests.test_differential_mismatch_is_corruption_without_a_debug_flag) ... ok
+test_no_marker_is_a_distinct_outcome (tests.test_checkpoint.CheckpointTests.test_no_marker_is_a_distinct_outcome) ... ok
+test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) ... ok
+test_publish_select_and_suffix_replay_on_128_records (tests.test_checkpoint.CheckpointTests.test_publish_select_and_suffix_replay_on_128_records) ... ok
+test_select_refuses_unpublished_generation (tests.test_checkpoint.CheckpointTests.test_select_refuses_unpublished_generation) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 23.050s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_checkpoint", "tests": 7, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_checkpoint.CheckpointTests.test_corrupt_marker_is_reported", 1.15], ["tests.test_checkpoint.CheckpointTests.test_corrupt_selected_generation_is_reported_not_rolled_back", 2.181], ["tests.test_checkpoint.CheckpointTests.test_differential_mismatch_is_corruption_without_a_debug_flag", 1.094], ["tests.test_checkpoint.CheckpointTests.test_no_marker_is_a_distinct_outcome", 1.234], ["tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation", 9.671], ["tests.test_checkpoint.CheckpointTests.test_publish_select_and_suffix_replay_on_128_records", 7.016], ["tests.test_checkpoint.CheckpointTests.test_select_refuses_unpublished_generation", 0.703]]}
