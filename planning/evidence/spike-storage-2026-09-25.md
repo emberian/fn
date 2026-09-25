@@ -245,15 +245,44 @@ not run here).
 
 ## Measured at N≈100,000 (2 KiB articles, hbox tmpfs)
 
-See the table appended below by the scale run (`tests/spike/scale.sh`, log
-`/tank/fn/scratch/spike-storage/logs/scale.jsonl`, image img2 developer
-launcher 217efde5, core 34cc67a4).
+**Setup.**
 
-The store was built by one owner (`ramp.py`):
+- Logs: `/tank/fn/scratch/spike-storage/logs/{ramp1,ramp2,scale,scale2}.jsonl`.
+- Images:
+  - P3 image: 0 to 35k.
+  - img1: 36k to 101k (launcher 73db26fb, core 1f796549).
+  - img2: the operations (launcher 217efde5, core 34cc67a4).
+- The store holds 100,912 committed articles. POSTs 35,912 to 35,999 were
+  skipped when the first ramp was stopped and resumed.
 
-- 0 to 35,000 on the P3 image. Per POST: 2.4 ms at 1k, 8.1 ms at 9k,
-  14.6 ms at 20k, 22.9 ms at 27k, 44.8 ms at 35k. RSS 2.0 GB at 35k.
-- 36,000 to 101,000 on img1 (launcher 73db26fb, core 1f796549), after an
-  809 s full-replay owner open.
-- ZFS (`/tank`): 73 POSTs in 116 s, about 1.6 s per POST. A 100k store on
-  ZFS was not attempted.
+| Quantity | Measured | Pessimistic sentence, with its scope |
+| --- | --- | --- |
+| Disk | 394 MiB, 100,917 files (403,664 KiB, 4 KiB per record file) | One file of about 4 KiB per record until `compact-chain`. The history grows without bound under D03 until reclaim or a chain. |
+| POST wall at size | 86 ms per POST at 100k (81 to 93 ms from 90k to 101k); 2.4 ms at 1k, 45 ms at 35k | Θ(N) per POST from the served path's group-index rebuild and retention scan. 100k POSTs from empty took about 1.1 h plus two owner opens. |
+| Owner RSS while serving | 4.2 GB at 101k (2.0 GB at 35k) | Octet-list articles held by the node: about 40 KB of heap per 2 KiB article. |
+| Open without a checkpoint (`status`, full replay) | 3,870 s and 3,888 s, 16.9 GB max RSS | Θ(N²) in the ledger and acceptance scans, after the spike fold. On the P3 image the N³ fit gives about 10^6 s. |
+| Owner open (full replay, installs the open's state) | 3,698 s, 8.9 GB | The same fold. The P3 owner replayed a second time. |
+| Checkpoint capture from a full open | **failed**: heap exhausted during GC after 6,471 s at `--dynamic-space-size 32000` (32.6 GB RSS) | The P3 checkpoint holds the record list, the node and the fold accumulators as cons trees, and encodes them to one octet list. At 100k that exceeds 32 GB. **So at N=100k there is no checkpoint and no open with one.** Every open is the 3,870 s replay. |
+| Open with a checkpoint | measured at N=300 (below 1 s) and by P3 at 1k (1.7 s) and 2k (4.6 s); not at 100k | The capture must first fit (representation ranks 4 and 6: payload as byte arrays, bodies by reference). |
+| `store compact` (single pack) | not run | One pack is capped at 4096 events and 4 MiB. At 2.4 KB per record it covers about 1,700 records, so a single pack cannot compact this store. |
+| release, reclaim, compact-chain, history-digest at 100k | in the second run, below | Each opens by full replay (about 3,900 s) before it writes. |
+
+**Reading of the numbers.**
+
+- **The Θ(N³) is gone.** The fast fold keeps the open to hours, not days.
+  Open time is still Θ(N²), and memory is Θ(N) with a constant of about
+  160 bytes of heap per payload octet at open.
+- **The wall at 100k is the representation, not the algorithm.** The
+  checkpoint that would make the open Θ(K) cannot be built in 32 GB.
+- **Order of work for dev:**
+  1. Payloads as byte arrays and archive bodies by reference (the
+     representation design, ranks 4 and 6).
+  2. Carry the ledger and acceptance membership sets as indices, not lists
+     scanned per event. This removes the Θ(N²).
+  3. Only then the checkpoint at scale.
+- **The owner's served path must stop rebuilding the group index per
+  POST.** 86 ms per POST at 100k is Θ(N).
+- **Harness fault.** The scale run's owner survived its unit: the POST
+  client timed out after a 3,698 s open. The spike owner PID was stopped
+  by hand.
+
