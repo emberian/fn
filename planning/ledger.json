@@ -21454,7 +21454,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 844,
+      "line": 847,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -21674,7 +21674,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 494,
+      "line": 497,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -24453,7 +24453,7 @@
       },
       {
         "book": "books/byte-store-keystones.lisp",
-        "line": 25,
+        "line": 28,
         "include": "consumer-store-invariants",
         "included": "books/consumer-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -25160,7 +25160,7 @@
       },
       {
         "book": "books/store-files.lisp",
-        "line": 29,
+        "line": 30,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -25237,7 +25237,7 @@
       },
       {
         "book": "books/store-observed.lisp",
-        "line": 21,
+        "line": 24,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -33065,7 +33065,7 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 820,
+        "line": 821,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -34603,7 +34603,7 @@
       },
       {
         "book": "books/records-shape.lisp",
-        "line": 384,
+        "line": 388,
         "shape": "fn-record-parse-shapep",
         "shapes": 1,
         "accessors": 3,
@@ -34630,7 +34630,7 @@
       },
       {
         "book": "books/store-files.lisp",
-        "line": 278,
+        "line": 279,
         "shape": "fn-sf-phase-shapep",
         "shapes": 1,
         "accessors": 8,
