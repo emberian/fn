@@ -363,12 +363,21 @@
     (journal txid tx-generation work-id attempt-id bp-destination own-bp-eid
              helper observation-directory)
   (let* ((directory (fnn-workflow-ion-private-directory observation-directory))
-         (attempt (fnn-core-state 'fn-workflow-ion-attempt-record
-                                  txid tx-generation work-id attempt-id)))
+         (plan (fnn-core-state 'fn-workflow-ion-attempt-plan
+                               txid tx-generation work-id attempt-id))
+         (retry (first plan))
+         (attempt (second plan)))
     (unless (and (consp attempt) (eq (first attempt) :attempt))
       (fnn-refuse "ACL2 refused ION attempt"))
     (let ((generation (sixth attempt))
           (lifetime (tenth attempt)))
+      ;; A restart-observed attempt is retried by the journaled policy
+      ;; decision first, so the next open replays the new attempt
+      ;; (fn-bprq-ion-attempt-plan).
+      (when retry
+        (fnn-app-publish journal retry)
+        (fnn-out "ION durable retry work=~a attempt=~a generation=~d"
+                 (second retry) (third retry) (fourth retry)))
       (fnn-app-publish journal attempt :reserve-resolution t)
       (fnn-app-publish journal
                        (list :outcome txid tx-generation :ordinary :durable))
