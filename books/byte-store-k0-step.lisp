@@ -1,6 +1,6 @@
 ; fn: the general per-step K0 (T16's model side, lane k0-general-step).
 ;
-; fn-bs-program-step-preserves-relation: from any byte state COVERED by the
+; fn-bs-step-preserves-k0-coverage: from any byte state COVERED by the
 ; kernel (related to it, or a pending committed-history rename both of whose
 ; resolutions are related, fn-bs-k0-coveredp), any step of the byte language
 ; whose precondition fn-bs-k0-step-inputp holds, with ANY outcome the
@@ -226,7 +226,7 @@
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
                             fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
-(defthm fn-bs-program-step-preserves-relation
+(defthm fn-bs-step-preserves-k0-coverage
   (implies (and (fn-bs-k0-coveredp bs ks)
                 (fn-bs-k0-step-inputp bs ks step outcome))
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))

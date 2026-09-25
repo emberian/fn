@@ -1878,7 +1878,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-program-step-preserves-relation",
+          "name": "fn-bs-step-preserves-k0-coverage",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut theorems of byte-store-k0* are not yet derived from this keystone as corollaries (planning/evidence/k0-general-step-2026-09-25.md)."
         },
         {

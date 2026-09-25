@@ -789,7 +789,7 @@
       "default-guarded": 3644,
       "default-unguarded": 1052
     },
-    "suspect_theorems": 92,
+    "suspect_theorems": 91,
     "export_hygiene_warnings": 133,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 84,
@@ -4882,9 +4882,7 @@
         "byte-store-k0-step-lemmas"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-bs-program-step-preserves-relation"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -22112,14 +22110,6 @@
       "line": 310,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-bs-program-step-preserves-relation",
-      "book": "books/byte-store-k0-step.lisp",
-      "line": 229,
-      "reasons": [
-        "preserves-no-subject-call: the statement never calls fn-bs-program-step or a fn-bs-program-step- transition"
       ]
     },
     {
