@@ -133,7 +133,15 @@ fn fields rather than guessing an authored source. This carrier does not give
 FN-Statement's content-id signature the semantics of exact-source authorship.
 `host/native/signatures.lisp` has a ready verification entry that calls the
 ACL2 projection and preimage, asks libsodium and OpenSSL for independent
-observations, and calls ACL2's both-required `fn-hsig-authorize`. The actual
+observations, and calls ACL2's both-required `fn-hsig-authorize`. That
+function (books/hybrid-signature.lisp) authorizes only when the principal,
+ordered key set and authored source form a well-formed subject
+(`fn-hsig-subject-p`), both signature components are present
+(`fn-hsig-signatures-p`), the ML-DSA-65 public key the library observed is
+the one in the enrolled key set, and both the Ed25519 and the ML-DSA-65
+observations are `:verified`. One failing component refuses; there is no
+single-suite fallback.
+
 The kind-4 accepted-event codec preserves version-0's eleven items and bytes.
 Version 1 has thirteen items: the original eleven followed by exact authored
 source and its versioned content identity. Replay accepts version 1 only when

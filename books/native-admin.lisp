@@ -16,6 +16,7 @@
 (include-book "native-config")
 (include-book "peer-config")
 (include-book "identity")
+(include-book "bp-eid-shape")
 
 (defconst *fn-native-admin-max-arguments* 16)
 (defconst *fn-native-admin-max-argument-octets* 512)
@@ -272,16 +273,11 @@ decoded as source-address for durable command compatibility."
             (fn-native-admin-bp-carries-rows name (cdr eids)))
     nil))
 
-; A carried EID is a configuration label with a BP scheme ("dtn:" or
-; "ipn:"), so it cannot be confused with the decimal limits of the long form.
+; A carried or release EID has the shape above; its scheme prefix also keeps
+; it from being confused with the decimal limits of the long form.
 (defun fn-native-admin-bp-eid-wordp (word)
   (declare (xargs :guard t))
-  (and (stringp word)
-       (fn-cfg-labelp word)
-       (<= 5 (length word))
-       (let ((chars (coerce word 'list)))
-         (or (equal (take 4 chars) '(#\d #\t #\n #\:))
-             (equal (take 4 chars) '(#\i #\p #\n #\:))))))
+  (fn-bp-eid-shapep word))
 
 (defun fn-native-admin-bp-carried-wordsp (words)
   (declare (xargs :guard t))
@@ -379,7 +375,7 @@ decoded as source-address for durable command compatibility."
            (fn-cfg-labelp (nth 2 words))
            (not (equal (nth 2 words) ""))
            (fn-path-identityp (fn-record-string-octets (nth 3 words)))
-           (fn-cfg-labelp (nth 4 words))
+           (fn-bp-eid-shapep (nth 4 words))
            (fn-native-admin-decimalp (nth 5 words))
            (<= 1 (fn-native-admin-decimal-value
                   (coerce (nth 5 words) 'list)))
@@ -966,7 +962,10 @@ the address and which has no port or TLS mode of its own."
   (implies (not (consp vs))
            (equal (fn-native-admin-peer-list-octets h vs) nil))))
 
-(defthm fn-native-admin-peer-extra-decode-lists-exactly-the-rows
+; The general reader lemma: over rows whose D23 values each render as one
+; word, the three lists decode to exactly those values.  The hypothesis is
+; discharged for every group `bp-boundary add' writes by the keystone below.
+(defthm fn-native-admin-peer-extra-decode-of-clean-rows
   (implies (fn-native-admin-peer-extra-cleanp rows)
            (equal (fn-native-admin-peer-extra-decode
                    (append (fn-native-admin-peer-extra-octets rows) (list 10)))
@@ -990,6 +989,171 @@ the address and which has no port or TLS mode of its own."
                                (not (consp (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for"))))
                           (and (not (consp (fn-native-admin-peer-slot-values rows "bp-boundary-carries")))
                                (consp (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for")))))))
+
+(encapsulate ()
+(local (in-theory (disable fn-bp-eid-shapep)))
+(local (defthm slot-values-of-append
+  (equal (fn-native-admin-peer-slot-values (append a b) slot)
+         (append (fn-native-admin-peer-slot-values a slot)
+                 (fn-native-admin-peer-slot-values b slot)))))
+(local (defthm slot-values-of-carries-rows
+  (equal (fn-native-admin-peer-slot-values
+          (fn-native-admin-bp-carries-rows name eids) slot)
+         (if (equal slot "bp-boundary-carries") (true-list-fix eids) nil))))
+(local (defthm slot-values-of-releases-rows
+  (equal (fn-native-admin-peer-slot-values
+          (fn-native-admin-bp-releases-rows name eids) slot)
+         (if (equal slot "bp-boundary-releases-for") (true-list-fix eids) nil))))
+(local (defthm shape-list-of-carried-words
+  (implies (fn-native-admin-bp-carried-wordsp eids)
+           (fn-bp-eid-shape-listp eids))))
+(local (defthm shape-list-of-append
+  (equal (fn-bp-eid-shape-listp (append a b))
+         (and (fn-bp-eid-shape-listp a) (fn-bp-eid-shape-listp b)))))
+(local (defthm shape-list-of-true-list-fix
+  (equal (fn-bp-eid-shape-listp (true-list-fix xs)) (fn-bp-eid-shape-listp xs))))
+(local (defthm list-clauses-shaped
+  (implies (mv-nth 0 (fn-native-admin-bp-list-clauses tail))
+           (and (fn-native-admin-bp-carried-wordsp
+                 (mv-nth 1 (fn-native-admin-bp-list-clauses tail)))
+                (fn-native-admin-bp-carried-wordsp
+                 (mv-nth 2 (fn-native-admin-bp-list-clauses tail)))))))
+(local (defthm split-shaped
+  (and (fn-native-admin-bp-carried-wordsp
+        (mv-nth 1 (fn-native-admin-bp-boundary-split words)))
+       (fn-native-admin-bp-carried-wordsp
+        (mv-nth 2 (fn-native-admin-bp-boundary-split words))))
+  :hints (("Goal" :in-theory (disable fn-native-admin-bp-list-clauses
+                                      fn-native-admin-bp-carried-wordsp
+                                      fn-native-admin-bp-list-keywordp)))))
+
+; KEYSTONE (admission).  Every EID an accepted `bp-boundary add' writes, the
+; boundary's own (`transport-bp') and each `carries' and `releases-for' row,
+; has `fn-bp-eid-shapep'.  A word that does not is refused `:bp-boundary'
+; before any row exists.
+(defthm fn-native-admin-bp-boundary-plan-eids-are-shaped
+  (let ((rows (fn-native-admin-result-value
+               (fn-native-admin-bp-boundary-plan words))))
+    (implies (equal (fn-native-admin-result-status
+                     (fn-native-admin-bp-boundary-plan words))
+                    :accepted)
+             (and (fn-bp-eid-shape-listp
+                   (fn-native-admin-peer-slot-values rows "transport-bp"))
+                  (fn-bp-eid-shape-listp
+                   (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+                  (fn-bp-eid-shape-listp
+                   (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for")))))
+  :hints (("Goal" :in-theory (disable fn-native-admin-bp-boundary-split
+                                      fn-path-identityp fn-native-admin-decimalp
+                                      fn-native-admin-decimal-value fn-cfg-wildmatp
+                                      fn-cfg-labelp fn-record-string-octets))))
+
+(local (defthm peer-wordp-of-vchar-octets
+  (implies (fn-bp-eid-vchar-octetsp xs) (fn-native-admin-peer-wordp xs))))
+; An accepted EID renders as one `peer list' word: no octet of it is the
+; space or newline the reader splits on.
+(defthm fn-native-admin-bp-eid-renders-as-one-word
+  (implies (fn-bp-eid-shapep x)
+           (fn-native-admin-peer-wordp (fn-native-admin-peer-label-octets x)))
+  :hints (("Goal" :use fn-bp-eid-shapep-octets-are-vchar
+                  :in-theory (disable fn-bp-eid-shapep-octets-are-vchar))))
+(local (defthm clean-values-of-shape-list
+  (implies (fn-bp-eid-shape-listp vs)
+           (fn-native-admin-peer-clean-valuesp vs))
+  :hints (("Goal" :in-theory (disable fn-native-admin-peer-label-octets)))))
+(local (defthm no-principal-rows-in-a-boundary
+  (equal (fn-native-admin-peer-slot-values
+          (fn-native-admin-result-value
+           (fn-native-admin-bp-boundary-plan words))
+          "carries-principal")
+         nil)
+  :hints (("Goal" :in-theory (disable fn-native-admin-bp-boundary-split
+                                      fn-path-identityp fn-native-admin-decimalp
+                                      fn-native-admin-decimal-value fn-cfg-wildmatp
+                                      fn-cfg-labelp fn-record-string-octets)))))
+(defthm fn-native-admin-bp-boundary-plan-rows-render-clean
+  (implies (equal (fn-native-admin-result-status
+                   (fn-native-admin-bp-boundary-plan words))
+                  :accepted)
+           (fn-native-admin-peer-extra-cleanp
+            (fn-native-admin-result-value
+             (fn-native-admin-bp-boundary-plan words))))
+  :hints (("Goal" :use (fn-native-admin-bp-boundary-plan-eids-are-shaped
+                        no-principal-rows-in-a-boundary)
+                  :in-theory (disable fn-native-admin-bp-boundary-plan
+                                      fn-native-admin-result-value
+                                      fn-native-admin-result-status
+                                      no-principal-rows-in-a-boundary
+                                      fn-native-admin-bp-boundary-plan-eids-are-shaped))))
+
+(local (defthm plan-of-set-bp-boundary
+  (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv))
+                       :accepted)
+                (equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
+                       :set-bp-boundary))
+           (equal (fn-native-admin-plan argv)
+                  (fn-native-admin-bp-boundary-plan (fn-native-admin-words argv))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                  (fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
+                                   fn-record-group-namep fn-native-admin-decimalp
+                                   fn-native-admin-decimal-value fn-native-admin-argvp
+                                   fn-native-admin-words))
+           :use ((:instance fn-native-admin-peer-plan-kind
+                            (words (fn-native-admin-words argv))))))))
+(local (defthm delta-rows-of-set-bp-boundary
+  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
+                (equal (fn-native-admin-result-kind plan) :set-bp-boundary))
+           (equal (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas plan)))
+                  (fn-native-admin-result-value plan)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-set-peer)
+                                  (fn-native-admin-result-value
+                                   fn-native-admin-result-status
+                                   fn-native-admin-result-kind))))))
+
+; KEYSTONE.  `peer list' reads back exactly the rows `bp-boundary add'
+; stages: the D23 words of the line rendered from the boundary's group decode
+; to its carried sources and release issuers, row for row, with no
+; hypothesis on the rows (formerly the hypothesis `fn-native-admin-peer-
+; extra-cleanp', now discharged by `fn-native-admin-bp-boundary-plan-rows-
+; render-clean').  The subject is the delta of `fn-native-admin-plan', which
+; host/native-admin-host.lisp `fn-native-admin-host-plan' calls; the delta is
+; `fn-cfg-set-peer' of exactly these rows, the boundary's whole group.
+; Covered scope: a group written by an accepted `bp-boundary add'.  A group
+; written before `fn-bp-eid-shapep' was enforced, or by another writer, is
+; covered only by `fn-native-admin-peer-extra-decode-of-clean-rows' and its
+; hypothesis.
+(defthm fn-native-admin-peer-extra-decode-lists-exactly-the-rows
+  (let* ((plan (fn-native-admin-plan argv))
+         (rows (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas plan)))))
+    (implies (and (equal (fn-native-admin-result-status plan) :accepted)
+                  (equal (fn-native-admin-result-kind plan) :set-bp-boundary))
+             (equal (fn-native-admin-peer-extra-decode
+                     (append (fn-native-admin-peer-extra-octets rows) (list 10)))
+                    (list (fn-native-admin-peer-label-octets-list
+                           (fn-native-admin-peer-slot-values rows "carries-principal"))
+                          (fn-native-admin-peer-label-octets-list
+                           (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+                          (fn-native-admin-peer-label-octets-list
+                           (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for"))
+                          (list 10)))))
+  :hints (("Goal" :in-theory (disable fn-native-admin-plan fn-native-admin-plan-deltas
+                                      fn-native-admin-bp-boundary-plan
+                                      fn-native-admin-peer-extra-decode
+                                      fn-native-admin-peer-extra-octets
+                                      fn-native-admin-peer-extra-cleanp
+                                      fn-native-admin-peer-label-octets-list
+                                      fn-native-admin-peer-slot-values
+                                      fn-native-admin-result-value
+                                      fn-native-admin-result-status
+                                      fn-native-admin-result-kind)
+                  :use ((:instance plan-of-set-bp-boundary)
+                        (:instance fn-native-admin-bp-boundary-plan-rows-render-clean
+                                   (words (fn-native-admin-words argv)))
+                        (:instance fn-native-admin-peer-extra-decode-of-clean-rows
+                                   (rows (fn-native-admin-result-value
+                                          (fn-native-admin-plan argv))))))))
+)
 
 (defun fn-native-admin-peer-row-octets (p rows)
   "One `peer list' line: the typed record P, then the D23 rows of ROWS (the
