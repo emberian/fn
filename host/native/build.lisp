@@ -52,6 +52,7 @@
 (include-book "books/octets-stobj")
 (include-book "books/frame-stobj")
 (include-book "books/records-stobj")
+(include-book "books/article-stobj")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
