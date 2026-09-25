@@ -1619,8 +1619,7 @@
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-conn-boundedp fn-own-find-conn-okp
-                            fn-own-conn-serves-a-projection)))))
+                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-read-is-served-step-on-pinned-prefix-after-any-trace
   (implies (and (fn-own-relation o)
@@ -1697,8 +1696,7 @@
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-conn-boundedp fn-own-find-conn-okp
-                            fn-own-conn-serves-a-projection)))))
+                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-reader-sees-pinned-prefix-replay-after-any-trace
   (implies (and (fn-own-relation o)
