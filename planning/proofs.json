@@ -3559,6 +3559,45 @@
         "fn-icar-path-is-path-of",
         "fn-icar-submission-targets-is-submission-targets"
       ]
+    },
+    {
+      "id": "PRF-099",
+      "title": "Opaque carriage stays within the boundary's budget over the owner-carried projection, and a present carrier's refusal has exactly one of four classes",
+      "statement": "Over the constructor the host calls for the carried arm (fn-pcb-carried-event, host/owner-host.lisp fn-owner-peer-carried-relay-event): given the projection fn-pcb-usage of the committed records at the event's release evidence, committing whatever it returns keeps the history admitted (fn-pcb-carried-event-keeps-history-admitted), and across any admitted history the carried charge through the boundary is at most its charge budget and the count at most its count budget (fn-pcb-carried-history-within-budget); with no budget nothing is carried (fn-pcb-admission-without-a-budget-admits-nothing, fn-pcb-no-budget-history-carries-nothing) and each exhaustion is refused by its own name. The owner's cache read at the evidence equals the projection whenever it is the fold of a prefix of the committed records (fn-pcb-carried-usage-is-the-projection) and stays so (fn-pcb-extended-cache-is-valid, fn-pcb-cache-valid-after-commit). The operator's budget rows read back exactly after the extension delta (fn-pcb-peer-budget-after-extend-delta). For a present carrier not carried and not accepted under both primitive observations, fn-pcb-refusal-class is one of no-local-binding, unsupported-profile, signature-failed and malformed (fn-pcb-present-carrier-not-accepted-has-a-class); an absent carrier has none.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-012"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-carriage-rows.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "planning/evidence/peer-carriage-2026-09-25.md"
+      ],
+      "progress_note": "Open: the class is a log detail, not a durable :unverified verdict (dev holds no present-carrier article that is not accepted or carried); the budget is fixed across the admitted history in the trace theorem (a lowered budget refuses from then on but is not restated); BP transit keeps the plan reason.",
+      "events": [
+        "fn-pcb-carried-usage-is-the-projection",
+        "fn-pcb-extended-cache-is-valid",
+        "fn-pcb-cache-valid-after-commit",
+        "fn-pcb-carried-history-within-budget",
+        "fn-pcb-carried-event-keeps-history-admitted",
+        "fn-pcb-no-budget-history-carries-nothing",
+        "fn-pcb-admission-names-count-exhaustion",
+        "fn-pcb-admission-names-octet-exhaustion",
+        "fn-pcb-admission-without-a-budget-admits-nothing",
+        "fn-pcb-peer-budget-after-extend-delta",
+        "fn-pcb-budget-after-extension",
+        "fn-pcb-present-carrier-not-accepted-has-a-class",
+        "fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed",
+        "fn-pcb-refused-carrier-is-never-signature-failed",
+        "fn-pcb-absent-carrier-has-no-class"
+      ]
     }
   ]
 }

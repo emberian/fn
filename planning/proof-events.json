@@ -3510,6 +3510,71 @@
           "name": "fn-icar-submission-targets-is-submission-targets"
         }
       ]
+    },
+    {
+      "id": "PRF-099",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-usage-is-the-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-extended-cache-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-cache-valid-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-history-within-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-event-keeps-history-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-no-budget-history-carries-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-names-count-exhaustion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-names-octet-exhaustion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-without-a-budget-admits-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-peer-budget-after-extend-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-budget-after-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-present-carrier-not-accepted-has-a-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-refused-carrier-is-never-signature-failed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-absent-carrier-has-no-class"
+        }
+      ]
     }
   ]
 }
