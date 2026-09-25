@@ -845,17 +845,12 @@
   (declare (xargs :guard t))
   (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s))))
 
-; The configuration a cancel first published by this refresh is decided
-; under: the store's configuration journal through the archive's next txid
-; (`fn-ctl-config-at').  A cancel is published by the refresh at the idle
-; phase its commit reaches, so this is the configuration in force at its
-; commit unless a configuration record is appended between the two (open:
-; planning/evidence/control-c3b-2026-09-25.md).
-(defun fn-own-refresh-config (s archive)
-  (declare (xargs :guard t))
-  (fn-ctl-config-at (fn-state-next-txid archive) (fn-sn-config-history s)))
-(in-theory (disable (:d fn-own-refresh-config)))
-
+; The records a withdrawing article causes are decided by the refresh that
+; first publishes it, under the configuration in force at that article's own
+; Store txid (`fn-ctl-article-withdrawals': the txid of its acceptance record
+; in the Store's records, the configuration journal `fn-sn-config-history').
+; Recovery's rebuild decides alike (`fn-ctl-refresh-withdrawals-is-the-
+; journal', books/control-visible.lisp).
 (defun fn-own-refresh (o)
   (declare (xargs :guard t))
   (let ((s (fn-own-store o)))
@@ -867,7 +862,8 @@
                (verdicts (fn-sn-verdicts s))
                (withdrawals (fn-ctl-refresh-withdrawals
                              raw old-raw (fn-own-view-withdrawals old-view)
-                             verdicts (fn-own-refresh-config s acceptance)))
+                             verdicts (fn-sf-records (fn-sn-files s))
+                             (fn-sn-config-history s)))
                (old-visible (fn-state-articles (fn-own-view-archive old-view)))
                (visible (fn-ctl-refresh-visible
                          raw old-raw old-visible withdrawals

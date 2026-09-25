@@ -168,6 +168,10 @@
                 (equal (fn-state-fenced a) (fn-state-fenced p))))
   :hints (("Goal" :in-theory (e/d (fn-ctl-projectionp) (fn-ctl-subseqp fn-ctl-visible-state-of))
            :use ((:instance fn-ctl-visible-state-of-fields (vis (fn-state-articles a)) (a p))))))
+; Scoped (D26): both rules fire on every `fn-state-groups' term and bind a
+; free P; enabled only in the hints of the proofs that read a projection.
+(in-theory (disable fn-ocl-projectionp-of-a-visible-state
+                    fn-ocl-projection-keeps-state-fields))
 
 (defun fn-ocl-conns-historyp (oc conns)
   (declare (xargs :guard t))
@@ -365,8 +369,8 @@
                             (ws (fn-own-view-withdrawals view))
                             (old-verdicts (fn-own-view-verdicts view))
                             (verdicts (fn-sn-verdicts st))
-                            (cfg (fn-own-refresh-config
-                                  st (fn-node-acceptance (fn-sn-node st))))))
+                            (records (fn-sf-records (fn-sn-files st)))
+                            (configs (fn-sn-config-history st))))
            :in-theory (e/d (fn-ocl-view-historyp fn-ocl-view-visiblep
                             fn-own-refresh fn-own-store-idlep fn-cst-relation
                             fn-ctl-visible-state)
@@ -466,8 +470,8 @@
                             (old-raw (fn-own-view-raw (fn-own-view o)))
                             (new-p (fn-node-acceptance (fn-sn-node st)))
                             (verdicts (fn-sn-verdicts st))
-                            (cfg (fn-own-refresh-config
-                                  st (fn-node-acceptance (fn-sn-node st))))))
+                            (records (fn-sf-records (fn-sn-files st)))
+                            (configs (fn-sn-config-history st))))
            :in-theory (e/d (fn-ocl-view-historyp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep fn-cst-relation)
                            (fn-cst-replay-node fn-cpr-replay fn-own-take
@@ -775,7 +779,9 @@
                                       (fn-sn-files
                                        (fn-own-store (fn-ocfg-owner oc))))))
                             (frontier (fn-own-conn-frontier conn))))
-           :in-theory (e/d (fn-ocl-relation fn-ocl-conn-historyp
+           :in-theory (e/d (fn-ocl-projectionp-of-a-visible-state
+                            fn-ocl-projection-keeps-state-fields
+                            fn-ocl-relation fn-ocl-conn-historyp
                             fn-ocl-view-historyp fn-ocl-view-configp)
                            (fn-cst-replay-node fn-cpr-replay
                             fn-ocl-conns-historyp fn-own-take)))))
@@ -1471,7 +1477,9 @@
                                      (fn-sf-records
                                       (fn-sn-files
                                        (fn-own-store (fn-ocfg-owner oc))))))))
-           :in-theory (e/d (fn-ocl-conn-historyp fn-cst-replay-node
+           :in-theory (e/d (fn-ocl-projectionp-of-a-visible-state
+                            fn-ocl-projection-keeps-state-fields
+                            fn-ocl-conn-historyp fn-cst-replay-node
                             fn-cnode-statep fn-cnode-domain
                             fn-ocfg-conn-config)
                            (fn-cpr-replay fn-own-take)))))

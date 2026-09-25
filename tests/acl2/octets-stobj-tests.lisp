@@ -17,6 +17,9 @@
 (include-book "../../books/poster-bytes-buffer")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "owner-served-invariants-tests")
+; The D32 recipe v3 witnesses (a supplied Path): the tin article, its
+; injections at two clocks and the Store holding the first.
+(include-book "poster-bytes-tests")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every function it may reach is guard-verified.
@@ -35,8 +38,18 @@
       (eq (symbol-class 'fn-oct-suffix-equalp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-line-end (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-strip-at (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-source-after-path (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-path-openp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-path-scan (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-unsplice-at (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-source-index (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-range-match (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-desc-equalp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-line (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-line-at (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-path-line-agent (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-info-line-agent (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pbb-block-agent (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-path-agent (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-same-articlep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-existing-action (w state)) :common-lisp-compliant)))
@@ -344,7 +357,8 @@
 
 ; The held article was injected: it opens with a Path line by the agent
 ; and its source reads.
-(defconst *ost-agent* (fn-pb-path-agent *ost-held*))
+(defconst *ost-agent*
+  (fn-pb-path-agent *ost-held* (fn-record-string-octets *ost-msgid*)))
 (assert-event (consp *ost-agent*))
 (defconst *ost-source*
   (fn-inj-source-of *ost-held* *ost-agent* (fn-record-string-octets *ost-msgid*)))
@@ -432,3 +446,158 @@
 (assert-event (and (fn-octets-p *ost-held*) (fn-octet-listp *ost-held*)
                    (not (fn-octets-p *ost-improper*))
                    (not (fn-octet-listp *ost-improper*))))
+
+; -----------------------------------------------------------------------------
+; D32, recipe v3: the held article was posted with a Path line, so its
+; record opens with the injected block, not with the agent's Path line,
+; and AGENT! sits inside the source's own Path content.  The source is not
+; a suffix of the buffer: it is st[K..A) followed by st[B..), the
+; insertion st[A..B) cut out, and the compare reads both pieces in place.
+; The witnesses are poster-bytes-tests' (the tin article injected at
+; clocks A and B by the real fn-inj-decide, the first held by the real
+; Store).
+
+(defconst *ost-v3-msgid-octets* (fn-record-string-octets *pbt-msgid*))
+(defconst *ost-v3-held* (pbt-octets *pbt-tin* *pbt-a*))
+(defconst *ost-v3-resend* (pbt-octets *pbt-tin* *pbt-b*))
+; No Path line at the front: the v2 walk answers nothing, the v3 arm reads.
+(assert-event (and (equal (fn-inj-strip (fn-inj-path-line *pbt-agent*) *ost-v3-held*) :no)
+                   (equal (fn-inj-strip (fn-inj-path-line *pbt-agent*) *ost-v3-resend*) :no)
+                   (null (fn-inj-source-of-v2 *ost-v3-resend* *pbt-agent*
+                                              *ost-v3-msgid-octets*))
+                   (equal (fn-inj-source-of *ost-v3-resend* *pbt-agent* *ost-v3-msgid-octets*)
+                          (cons t *pbt-tin*))))
+
+; The buffer twins, run the way the host runs them: the payload filled into
+; a live local buffer, the walk by index.
+(defun ost-path-agent (msgid payload)
+  (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
+        (mv (fn-pbb-path-agent msgid fn-octets) fn-octets))
+      r)))
+(defun ost-source-index (agent msgid payload)
+  (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
+        (mv (fn-pbb-source-index agent msgid fn-octets) fn-octets))
+      r)))
+(defun ost-desc-equalp (d xs payload)
+  (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
+        (mv (fn-pbb-desc-equalp d xs fn-octets) fn-octets))
+      r)))
+
+; fn-pbb-path-agent-is-pb-path-agent, the v3 arm: the agent is read from
+; the block's Injection-Info line, on the buffer as on the list.
+(assert-event (and (null (fn-pb-path-line-agent *ost-v3-resend*))
+                   (equal (fn-pb-path-agent *ost-v3-resend* *ost-v3-msgid-octets*) *pbt-agent*)
+                   (equal (ost-path-agent *ost-v3-msgid-octets* *ost-v3-resend*) *pbt-agent*)))
+
+; fn-pbb-source-index-is-inj-source-of, the v3 arm: a description with a
+; real prefix (the source's header before its Path content) and a real
+; cut (AGENT!, "hbox.ember.software!", 20 octets), naming exactly the
+; source the list inverse gives back.
+(defconst *ost-v3-desc*
+  (ost-source-index *pbt-agent* *ost-v3-msgid-octets* *ost-v3-resend*))
+(assert-event
+ (and (fn-pbb-descp *ost-v3-desc* (len *ost-v3-resend*))
+      (< (car *ost-v3-desc*) (cadr *ost-v3-desc*))
+      (equal (- (caddr *ost-v3-desc*) (cadr *ost-v3-desc*))
+             (len (fn-inj-path-insert *pbt-agent*)))
+      (equal (take (- (caddr *ost-v3-desc*) (cadr *ost-v3-desc*))
+                   (nthcdr (cadr *ost-v3-desc*) *ost-v3-resend*))
+             (fn-inj-path-insert *pbt-agent*))
+      (equal (fn-pbb-desc-list *ost-v3-desc* *ost-v3-resend*) *pbt-tin*)
+      (equal (cons t (fn-pbb-desc-list *ost-v3-desc* *ost-v3-resend*))
+             (fn-inj-source-of *ost-v3-resend* *pbt-agent* *ost-v3-msgid-octets*))
+      ; the v2 arm on the same walk: a suffix, K = A = B
+      (let ((d (ost-source-index *ost-agent* (fn-record-string-octets *ost-msgid*)
+                                 *ost-reinjected*)))
+        (and (fn-pbb-descp d (len *ost-reinjected*))
+             (equal (car d) (cadr d)) (equal (cadr d) (caddr d))
+             (equal (fn-pbb-desc-list d *ost-reinjected*) (cdr *ost-source*))))
+      ; another agent reads nothing, on the buffer as on the list
+      (null (fn-inj-source-of *ost-v3-resend* (fn-record-string-octets "fnB.hbox.test")
+                              *ost-v3-msgid-octets*))
+      (null (ost-source-index (fn-record-string-octets "fnB.hbox.test")
+                              *ost-v3-msgid-octets* *ost-v3-resend*))))
+
+; fn-pbb-desc-equalp-is-equal: the two-piece compare against the held
+; source, in place; the same source with one octet changed, or with the
+; insertion left in, is not it.
+(assert-event
+ (and (equal (ost-desc-equalp *ost-v3-desc* *pbt-tin* *ost-v3-resend*) t)
+      (equal (ost-desc-equalp *ost-v3-desc* (cdr *pbt-tin*) *ost-v3-resend*) nil)
+      (equal (ost-desc-equalp *ost-v3-desc* (cons 0 *pbt-tin*) *ost-v3-resend*) nil)
+      (equal (ost-desc-equalp *ost-v3-desc* (nthcdr (car *ost-v3-desc*) *ost-v3-resend*)
+                              *ost-v3-resend*)
+             nil)))
+; Its hypotheses.  Without the true list: the buffer reads to its length
+; where the list keeps its improper tail.
+(defthm ost-r-5 ; a ground witness over a plain value, proved by evaluation
+ (and (fn-pbb-descp '(0 1 1) 2) (not (true-listp '(1 2 . 3)))
+      (equal (fn-pbb-desc-equalp '(0 1 1) '(1 2) '(1 2 . 3)) t)
+      (not (equal (fn-pbb-desc-list '(0 1 1) '(1 2 . 3)) '(1 2))))
+ :rule-classes nil)
+(must-fail
+ (defthm ost-t-desc-equalp-without-true-listp
+   (implies (fn-pbb-descp '(0 1 1) 2)
+            (equal (fn-pbb-desc-equalp '(0 1 1) '(1 2) '(1 2 . 3))
+                   (equal (fn-pbb-desc-list '(0 1 1) '(1 2 . 3)) '(1 2))))))
+; Without the description's shape (K below zero): the list twin takes from
+; before the buffer, the walk answers for the whole buffer.
+(defthm ost-r-6 ; a ground witness over a plain value, proved by evaluation
+ (and (not (fn-pbb-descp '(-1 0 0) 3)) (true-listp '(1 2 3))
+      (equal (fn-pbb-desc-equalp '(-1 0 0) '(1 1 2 3) '(1 2 3)) nil)
+      (equal (fn-pbb-desc-list '(-1 0 0) '(1 2 3)) '(1 1 2 3)))
+ :rule-classes nil)
+(must-fail
+ (defthm ost-t-desc-equalp-without-descp
+   (implies (true-listp '(1 2 3))
+            (equal (fn-pbb-desc-equalp '(-1 0 0) '(1 1 2 3) '(1 2 3))
+                   (equal (fn-pbb-desc-list '(-1 0 0) '(1 2 3)) '(1 1 2 3))))))
+
+; The keystone over the tin Store: the resend at another clock is the
+; held article (:duplicate, where the byte decision says :conflict); a
+; changed supplied Path and a Path-less resend are other articles; the
+; list function and the buffer function agree on each.
+(assert-event
+ (and (equal (fn-sn-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *pbt-tin-store*)
+             :conflict)
+      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *pbt-tin-store*)
+             :duplicate)
+      (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *pbt-tin-store*)
+             :duplicate)
+      (equal (ost-existing-action *pbt-msgid* *ost-v3-held* *pbt-groups* *pbt-tin-store*)
+             :duplicate)
+      (equal (ost-existing-action *pbt-msgid* (pbt-octets *pbt-tin-other-path* *pbt-b*)
+                                  *pbt-groups* *pbt-tin-store*)
+             :conflict)
+      (equal (ost-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-b*)
+                                  *pbt-groups* *pbt-tin-store*)
+             :conflict)
+      (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* '("fn.other") *pbt-tin-store*)
+             :conflict)))
+
+; The keystone's hypothesis over a v3 record: the resend with an improper
+; tail is :conflict for the list function (the improper source is not the
+; held one) and :duplicate for the buffer function, which reads the
+; source's two pieces to its length.
+(defconst *ost-v3-improper* (append *ost-v3-resend* 3))
+(assert-event
+ (and (not (fn-octets-p *ost-v3-improper*))
+      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*)
+             :conflict)))
+(defthm ost-t-v3-improper-buffer-reads-to-its-length
+  (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*)
+         :duplicate)
+  :rule-classes nil)
+(must-fail
+ (defthm ost-t-v3-existing-action-without-octets-p
+   (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*)
+          (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*))))
