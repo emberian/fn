@@ -410,6 +410,8 @@ witness written after the commit:
 
 ### Content reclamation under D13 (STO-014)
 
+STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs.
+
 Status: decision, tombstone and served projection proved (PRF-088); the
 durable `store reclaim` verb is not implemented.
 

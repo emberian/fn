@@ -1443,7 +1443,7 @@
       "id": "SCN-048",
       "title": "Reclaim under released-by-all-holders removes exactly the unheld payloads, and a reclaimed Message-ID stays a duplicate",
       "milestone": "M5",
-      "status": "planned",
+      "status": "specified",
       "requirements": [
         "STO-014"
       ],
