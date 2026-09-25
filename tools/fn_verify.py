@@ -10,7 +10,8 @@ own recorded verdict (`HDR :fn-verified`, specs/substrate-transport.md §5).
 This tool recomputes the verdict from the bytes alone and compares.  It
 imports nothing from fn and runs none of fn's binaries: the carrier layout,
 the authored-source projection and the signed preimage are written here from
-the specification (specs/identity.md, "Portable FN-Authorship v1 carrier";
+the specification (specs/identity.md, "Portable FN-Authorship v1 carrier"
+and "The signed bytes", which gives the v1 and v2 preimages;
 books/hybrid-signature.lisp and books/hybrid-carrier.lisp name the bytes),
 and the signatures are checked by libraries fn does not use for them:
 
@@ -68,9 +69,16 @@ EXIT_USAGE = 64
 DEFAULT_PORT = 119
 
 # books/hybrid-signature.lisp and books/hybrid-carrier.lisp, restated.
-DOMAIN_TAG = b"fn-authored-source-hybrid-v1"
+DOMAIN_TAG = b"fn-authored-source-hybrid-v1"     # *fn-hsig-domain-tag*
+DOMAIN_TAG_V2 = b"fn-authored-source-hybrid-v2"  # *fn-hsig-v2-domain-tag*
 ED_PK, ED_SIG, ML_PK, ML_SIG = 32, 64, 1952, 3309
-ARTICLE_MAX = 32768                 # books/article.lisp *fn-article-max-octets*
+# Carrier item 1 names the version, and each version's length field has its
+# own width (fn-hsig-source-version): v1 is a u16, for sources up to 65535
+# octets; v2 is a u32, for the sources above that.  Codec widths, not
+# policy: how large an article a node accepts is the node's profile.
+SOURCE_MAX_V1 = 65535               # *fn-hsig-v1-max-source*
+SOURCE_MAX_V2 = 4294967295          # *fn-hsig-v2-max-source*
+VERSIONS = {1: (DOMAIN_TAG, 2), 2: (DOMAIN_TAG_V2, 4)}  # tag, length octets
 CARRIER_FIELD_MAX = 8192            # *fn-hc-max-field-octets*
 CARRIER_BINARY_MAX = 5405           # *fn-hc-max-binary-octets*
 CARRIER_NAME = b"fn-authorship"
@@ -84,7 +92,9 @@ REQUIRED_SINGLE = (b"from", b"subject", b"date", b"message-id", b"newsgroups")
 # RFC 9881: SEQUENCE { SEQUENCE { OID }, BIT STRING (1952 octets) }.
 ML_SPKI_PREFIX = bytes.fromhex("308207b2300b0609608648016503040312038207a100")
 MAX_LINE = 16384
-MAX_ARTICLE_WIRE = 2 * ARTICLE_MAX
+# This tool's own read bound: the largest v2 source plus a carrier and
+# relay fields.  It bounds the work of one ARTICLE, not what fn may hold.
+MAX_ARTICLE_WIRE = SOURCE_MAX_V2 + 65536
 
 
 class Undecided(Exception):
@@ -206,24 +216,27 @@ def cbor_bytes_head(n):
 
 
 def decode_carrier(binary):
-    """The nine ordered items of FN-Authorship v1 (specs/identity.md)."""
+    """The nine ordered items of FN-Authorship (specs/identity.md).  Item 1
+    is the version, 1 or 2; the other eight have one shape in both."""
     if len(binary) > CARRIER_BINARY_MAX:
         raise ValueError("binary-limit")
-    shape = [(0, 1), (0, 1), (2, 32), (0, 1), (2, ED_PK), (0, 2), (2, ML_PK),
-             (2, ED_SIG), (2, ML_SIG)]
+    shape = [(0, tuple(VERSIONS)), (0, 1), (2, 32), (0, 1), (2, ED_PK), (0, 2),
+             (2, ML_PK), (2, ED_SIG), (2, ML_SIG)]
     values, pos = [], 0
     for major, expect in shape:
         got_major, value, pos = _cbor_item(binary, pos)
         if got_major != major:
             raise ValueError("profile")
-        if major == 0 and value != expect:
+        if major == 0 and value not in (expect if isinstance(expect, tuple)
+                                        else (expect,)):
             raise ValueError("profile")
         if major == 2 and len(value) != expect:
             raise ValueError("profile")
         values.append(value)
     if pos != len(binary):
         raise ValueError("trailing octets")
-    return {"principal": values[2], "ed25519": values[4], "ml-dsa-65": values[6],
+    return {"version": values[0],
+            "principal": values[2], "ed25519": values[4], "ml-dsa-65": values[6],
             "ed25519-signature": values[7], "ml-dsa-65-signature": values[8]}
 
 
@@ -235,8 +248,8 @@ def parse_fields(article):
     Returns ([(lower-name, [physical lines without CRLF])], body).  Only CRLF
     line endings are accepted, as books/article.lisp requires.
     """
-    if len(article) > ARTICLE_MAX:
-        raise ValueError("article over {} octets".format(ARTICLE_MAX))
+    if len(article) > MAX_ARTICLE_WIRE:
+        raise ValueError("article over {} octets".format(MAX_ARTICLE_WIRE))
     fields, pos = [], 0
     while True:
         end = article.find(b"\r\n", pos)
@@ -268,6 +281,16 @@ def field_value(lines):
     return b"".join([first] + lines[1:])
 
 
+def signed_preimage(version, principal, ed_public, ml_public, source):
+    """specs/identity.md "The signed bytes": the tagged preimage of VERSION."""
+    tag, length_octets = VERSIONS[version]
+    return (cbor_bytes_head(len(tag)) + tag
+            + bytes([version, 1]) + principal
+            + bytes([1]) + ed_public
+            + bytes([2]) + ml_public
+            + len(source).to_bytes(length_octets, "big") + source)
+
+
 def independent_check(article, msgid, keyring):
     """The verdict recomputed from the bytes.  Returns a dict with 'outcome'
     in {'verified', 'unverified'}; raises Undecided."""
@@ -294,9 +317,17 @@ def independent_check(article, msgid, keyring):
     kept = [lines for name, lines in fields if name not in RELAY_FIELDS]
     source = b"".join(line + b"\r\n" for lines in kept for line in lines) + b"\r\n" + body
     source_names = [name for name, lines in fields if name not in RELAY_FIELDS]
-    if len(source) > ARTICLE_MAX or any(
-            source_names.count(name) != 1 for name in REQUIRED_SINGLE):
+    if any(source_names.count(name) != 1 for name in REQUIRED_SINGLE):
         return {"outcome": "unverified", "reason": "source-profile"}
+    # The version item decides the preimage, and a version carries exactly
+    # the sources its length field is for: a v1 carrier on a source over
+    # 65535 octets, or a v2 carrier on one that fits v1, is not fn's.
+    version = carrier["version"]
+    fits_v1 = len(source) <= SOURCE_MAX_V1
+    if (version == 1) != fits_v1 or len(source) > SOURCE_MAX_V2:
+        return {"outcome": "unverified", "reason": "carrier",
+                "detail": "a version {} carrier on a {}-octet source".format(
+                    version, len(source))}
     # The signed source names its own Message-ID.  A node that answered this
     # request with another signed article is not vouching for this one.
     signed_ids = [field_value(lines).strip() for name, lines in fields
@@ -306,17 +337,15 @@ def independent_check(article, msgid, keyring):
                 "detail": "the signed source is {!r}, not {}".format(signed_ids, msgid)}
 
     principal = carrier["principal"]
-    preimage = (cbor_bytes_head(len(DOMAIN_TAG)) + DOMAIN_TAG
-                + bytes([1, 1]) + principal
-                + bytes([1]) + carrier["ed25519"]
-                + bytes([2]) + carrier["ml-dsa-65"]
-                + len(source).to_bytes(2, "big") + source)
+    preimage = signed_preimage(version, principal, carrier["ed25519"],
+                               carrier["ml-dsa-65"], source)
     ed_ok, ed_impls = observe("Ed25519", _ed25519_implementations(), carrier["ed25519"],
                               preimage, carrier["ed25519-signature"])
     ml_ok, ml_impls = observe("ML-DSA-65", _ml_dsa_65_implementations(),
                               carrier["ml-dsa-65"], preimage,
                               carrier["ml-dsa-65-signature"])
     result = {"principal": principal.hex(), "ed25519": ed_ok, "ml-dsa-65": ml_ok,
+              "carrier-version": version,
               "implementations": ed_impls + ml_impls,
               "source-octets": len(source)}
     if not (ed_ok and ml_ok):

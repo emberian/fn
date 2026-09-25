@@ -122,3 +122,22 @@
   (fn-stxk-apply-snapshot (fn-stxk-initial-context 0) *stxk-two*))
 (assert-event (equal (fn-stxk-context-kind *stxk-out-of-order*) :fault))
 (assert-event (equal (fn-stxk-context-tail *stxk-out-of-order*) :sequence))
+
+; Carrier v2 (bounds P4): a `fn-hybrid-v2' verdict replays against the
+; `fn-hybrid-v1' snapshot that enrolled the same D09 keys, and against no
+; other profile; a v1 verdict still needs its v1 snapshot.
+(defconst *stxk-hybrid-one*
+  (fn-stxk-make 0 10 20 7 *fn-hsig-profile-tag* '(1 2 3 4)))
+(defconst *stxk-hybrid-after-one*
+  (fn-stxk-apply-snapshot (fn-stxk-initial-context 0) *stxk-hybrid-one*))
+(defconst *stxk-v2-verdict*
+  (fn-stxe-make 1 11 21 "<v2@example.invalid>" :verified
+                '(115 105 103) 7 *fn-stxe-profile-hybrid-v2*))
+(assert-event
+ (equal (fn-stxk-context-kind
+         (fn-stxk-apply-verdict *stxk-hybrid-after-one* *stxk-v2-verdict*))
+        :ok))
+(assert-event
+ (equal (fn-stxk-context-tail
+         (fn-stxk-apply-verdict *stxk-after-one* *stxk-v2-verdict*))
+        :keyring-profile-mismatch))

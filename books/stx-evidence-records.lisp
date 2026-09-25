@@ -57,13 +57,34 @@
                                      *fn-stxe-max-profile*)))
   :recognizer fn-stxe-p)
 
-; The sole selected profile is the versioned two-signature D09 profile.
-; Future tags can be added without changing the interpretation of v1 bytes.
-; Recognition alone does not validate arbitrary persisted detail bytes: a
-; consumer must bind the kind-4 event to its snapshot and verification path.
+; The selected profile is the versioned two-signature D09 profile.  Its
+; verdicts name the carrier version they checked: `fn-hybrid-v1' for a v1
+; carrier (u16 source length) and `fn-hybrid-v2' for a v2 carrier (u32).
+; Adding v2 does not change the interpretation of v1 bytes.  Recognition
+; alone does not validate arbitrary persisted detail bytes: a consumer must
+; bind the kind-4 event to its snapshot and verification path.
+(defconst *fn-stxe-profile-hybrid-v2*
+  '(102 110 45 104 121 98 114 105 100 45 118 50)) ; fn-hybrid-v2
+
 (defun fn-stxe-profile-supportedp (profile)
   (declare (xargs :guard t))
-  (equal profile *fn-hsig-profile-tag*))
+  (or (equal profile *fn-hsig-profile-tag*)
+      (equal profile *fn-stxe-profile-hybrid-v2*)))
+
+; The keyring profile a verdict's evidence tag is checked against.  Both
+; carrier versions verify under the same enrolled D09 key pair, so a
+; `fn-hybrid-v2' verdict replays against a `fn-hybrid-v1' snapshot
+; (stx-keyring-records.lisp, `fn-stxk-apply-verdict').  Every other tag,
+; and so every existing verdict, maps to itself.
+(defun fn-stxe-keyring-profile (profile)
+  (declare (xargs :guard t))
+  (if (equal profile *fn-stxe-profile-hybrid-v2*)
+      *fn-hsig-profile-tag*
+    profile))
+
+(defthm fn-stxe-keyring-profile-is-identity-off-v2-by-definition
+  (implies (not (equal profile *fn-stxe-profile-hybrid-v2*))
+           (equal (fn-stxe-keyring-profile profile) profile)))
 
 (defun fn-stxe-authority-verdict (e)
   (declare (xargs :guard t))
@@ -169,6 +190,7 @@
 (in-theory (disable (:d fn-stxe-tokenp) (:d fn-stxe-token-code)
                     (:d fn-stxe-code-token) (:d fn-stxe-bounded-octetsp)
                     (:d fn-stxe-profile-supportedp)
+                    (:d fn-stxe-keyring-profile)
                     (:d fn-stxe-authority-verdict)
                     (:d fn-stxe-verdict-detail-octets)
                     (:d fn-stxe-from-verdict) (:d fn-stxe-items)

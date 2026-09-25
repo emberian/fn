@@ -341,3 +341,14 @@
   *hst-principal* *hst-keys* *hst-source* *hst-signatures* *hst-ml-key*
   :verified :verified)
  nil)
+
+; Carrier v2 (bounds P4): the evidence tag follows the source's version, and
+; both tags replay against the one D09 keyring profile.
+(assert-event
+ (and (equal (fn-hsig-evidence-tag (make-list 65535 :initial-element 42))
+             *fn-hsig-profile-tag*)
+      (equal (fn-hsig-evidence-tag (make-list 65536 :initial-element 42))
+             *fn-stxe-profile-hybrid-v2*)
+      (equal (fn-stxe-keyring-profile
+              (fn-hsig-evidence-tag (make-list 65536 :initial-element 42)))
+             *fn-hsig-profile-tag*)))
