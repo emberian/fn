@@ -77,16 +77,13 @@
   :hints (("Goal" :in-theory (enable fn-nntp-withdrawn-reply))))
 
 (defthm fn-nntp-control-line-is-block-text
-  (implies (fn-nov-clean-fieldp item)
-           (fn-nntp-block-textp
-            (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item))))
+  (implies (and (fn-nov-clean-fieldp label) (fn-nov-clean-fieldp item))
+           (fn-nntp-block-textp (list (fn-nntp-hdr-line label item))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-nntp-hdr-line-is-a-clean-field
-                            (label (fn-nntp-decimal-field 0)) (content item))
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field (content item))
                  (:instance fn-nntp-clean-field-is-response-text
-                            (bytes (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item))))
-           :in-theory (e/d (fn-nntp-block-textp fn-nov-decimal-field-is-clean)
-                           (fn-nntp-hdr-line)))))
+                            (bytes (fn-nntp-hdr-line label item))))
+           :in-theory (e/d (fn-nntp-block-textp) (fn-nntp-hdr-line)))))
 
 (defthm fn-nntp-control-hdr-response-effects
   (fn-nntp-effectsp
