@@ -38,6 +38,9 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "proof-cost-baseline.json"
 TOLERANCE = 0.25
+# A book not in the baseline fails only above threshold * (1 + NEAR_BAND); between
+# the threshold and that line it prints NEAR (D30, 2026-09-25).
+NEAR_BAND = 0.10
 # D26: the ten-second rule is measured at this many concurrent jobs or fewer.
 RATCHET_JOBS = 2
 SCOPED, WIDE, UNKNOWN = "scoped", "wide", "unknown"
@@ -399,6 +402,15 @@ def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[s
                     f"run={record.run_id}; improved; remove from baseline")
             continue
         if prior is None:
+            if record.seconds <= threshold * (1 + NEAR_BAND):
+                # D30 (2026-09-25): ten to eleven seconds is a warning band, not
+                # a failure; it is an operating rule, not proof the excursion is
+                # noise, so the line still names the run for a matched re-check.
+                kept.append(
+                    f"NEAR {book}: worst={record.seconds:.3f}s is within "
+                    f"{NEAR_BAND:.0%} above {threshold:g}s host={record.host} "
+                    f"jobs={record.jobs} run={record.run_id}; re-measure under matched load")
+                continue
             failing.append(
                 f"FAIL {book}: worst={record.seconds:.3f}s > {threshold:g}s "
                 f"host={record.host} jobs={record.jobs} run={record.run_id}; not in baseline")
