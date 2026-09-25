@@ -1,0 +1,20 @@
+From: poster@example.invalid
+Newsgroups: fn.test
+Subject: corpus mime
+Date: Fri, 25 Sep 2026 12:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="sc-boundary"
+Message-ID: <sc-mime@example.invalid>
+
+--sc-boundary
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+café — naïve
+.a line that opens with a dot
+--sc-boundary
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+
+AAECAwT/
+--sc-boundary--
