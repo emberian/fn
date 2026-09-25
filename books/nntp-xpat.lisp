@@ -109,8 +109,9 @@
            (iff (fn-nntp-xpat-matchesp (append p q) content)
                 (or (fn-nntp-xpat-matchesp p content)
                     (fn-nntp-xpat-matchesp q content))))
-  :hints (("Goal" :in-theory (disable fn-wildmat-match-codepoints
-                                      fn-wildmat-decode))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-matchesp)
+                                  (fn-wildmat-match-codepoints
+                                   fn-wildmat-decode)))))
 
 ; -----------------------------------------------------------------------------
 ; The label, over the block the served CAPABILITIES arm renders.
