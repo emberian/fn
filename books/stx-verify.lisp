@@ -38,7 +38,13 @@
 ;; article a node held and relays for a neighbour whose boundary allowlists
 ;; the author, without an enrollment of that author here: nothing was
 ;; verified at this node (books/peer-authored-accept.lisp fn-pa-transit-plan).
-(defconst *fn-stx-verdicts* '(:verified :unverified :absent :carried))
+;; SPIKE: defers the dev proof of the fifth token (spike/peering): :revoked is
+;; the Store's record of a signed article that arrived by transit after this
+;; node revoked its principal; the carrier's keys are ones this node had
+;; enrolled for that principal and both primitive observations verified.  Its
+;; generation is the revocation's (books/peer-authored-accept.lisp
+;; fn-pa-revoked-event).  fn-stx-verdict never returns it.
+(defconst *fn-stx-verdicts* '(:verified :unverified :absent :carried :revoked))
 
 (defun fn-stx-make-verdict (token detail generation)
   (declare (xargs :guard t))
@@ -170,6 +176,7 @@
   '(115 105 103 110 97 116 117 114 101))
 (defconst *fn-stx-token-unknown* '(117 110 107 110 111 119 110))
 (defconst *fn-stx-token-carried* '(99 97 114 114 105 101 100))
+(defconst *fn-stx-token-revoked* '(114 101 118 111 107 101 100)) ; "revoked"
 
 (defun fn-stx-reason-token (detail)
   (declare (xargs :guard t))
@@ -197,6 +204,11 @@
           ((equal token :carried)
            (append *fn-stx-token-carried*
                    (append '(32) (fn-stx-hex-octets detail))))
+          ((equal token :revoked)
+           (append *fn-stx-token-revoked*
+                   (append '(32)
+                           (append (fn-stx-hex-octets detail)
+                                   (fn-stx-keyring-suffix generation)))))
           ((equal token :unverified)
            (append *fn-stx-token-unverified*
                    (append '(32)
@@ -298,6 +310,17 @@
               (append *fn-stx-token-carried*
                       (append '(32) (fn-stx-hex-octets detail)))))
   :rule-classes nil)
+
+;; SPIKE: defers the dev separation theorem over five tokens.  A :revoked
+;; record renders `revoked HEX keyring G', never `verified'.
+(defthm fn-stx-verified-item-of-revoked
+  (equal (fn-stx-verified-item (fn-stx-make-verdict :revoked detail generation))
+         (append *fn-stx-token-revoked*
+                 (append '(32)
+                         (append (fn-stx-hex-octets detail)
+                                 (fn-stx-keyring-suffix generation)))))
+  :hints (("Goal" :in-theory (disable (:d fn-stx-hex-octets)
+                                      (:d fn-stx-keyring-suffix)))))
 
 ;; D23: the SUB-002 verdict is one of its three outcomes; :carried is only
 ;; ever a Store record of a relayed article (fn-pa-carried-event), never the

@@ -472,6 +472,48 @@
                   (equal (fn-stxe-detail (fn-stmt-value verdict))
                          (first carrier))))))))
 
+;; SPIKE (spike/peering): defers the dev binding theorem for the :revoked
+;; composite.  The carried composite's structural bindings, with the token
+;; :revoked and the keyring generation of the revocation tombstone (never 0).
+;; Replay (books/replay.lisp) additionally requires that generation to name a
+;; tombstone of the verdict's principal.  Constructor:
+;; books/peer-authored-accept.lisp fn-pa-revoked-event.
+(defun fn-hsig-article-event-revoked-bindsp (event)
+  (declare (xargs :guard t))
+  (if (not (and (fn-stxa-p event)
+                (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
+                (posp (fn-stxa-keyring-generation event))
+                (equal (fn-stxa-profile event)
+                       (fn-hsig-evidence-tag (fn-stxa-authored-source event)))))
+      nil
+    (let* ((article (fn-record-decode-exact (fn-stxa-article-record event)))
+           (verdict (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+           (received (and (fn-record-result-okp article)
+                          (fn-record-payload (fn-record-result-record article))))
+           (plan (fn-hc-received-plan received)))
+      (and (fn-stxa-bindsp event)
+           (fn-record-result-okp article)
+           (fn-hsig-carried-record-metadatap
+            (fn-stxa-authored-source event) received
+            (fn-record-result-record article))
+           (fn-hc-okp plan)
+           (true-listp (fn-hc-value plan))
+           (equal (len (fn-hc-value plan)) 2)
+           (let ((carrier (cadr (fn-hc-value plan))))
+             (and (true-listp carrier) (equal (len carrier) 3)
+                  (equal (car (fn-hc-value plan))
+                         (fn-stxa-authored-source event))
+                  (equal (fn-stxa-authored-id event)
+                         (fn-hsig-authored-source-id
+                          (fn-stxa-authored-source event)))
+                  (fn-hsig-exact-octets-p (first carrier) 32)
+                  (fn-stmt-okp verdict)
+                  (equal (fn-stxe-token (fn-stmt-value verdict)) :revoked)
+                  (equal (fn-stxe-keyring-generation (fn-stmt-value verdict))
+                         (fn-stxa-keyring-generation event))
+                  (equal (fn-stxe-detail (fn-stmt-value verdict))
+                         (first carrier))))))))
+
 (defthm fn-hsig-article-event-carried-bindsp-facts
   (implies (fn-hsig-article-event-carried-bindsp event)
            (and (fn-stxa-p event)
@@ -506,4 +548,5 @@
                     (:d fn-hsig-article-event-snapshot-bindsp-v0)
                     (:d fn-hsig-article-event-snapshot-bindsp-v1)
                     (:d fn-hsig-article-event-snapshot-bindsp)
-                    (:d fn-hsig-article-event-carried-bindsp)))
+                    (:d fn-hsig-article-event-carried-bindsp)
+                    (:d fn-hsig-article-event-revoked-bindsp)))

@@ -191,3 +191,61 @@
 (assert-event (not (fn-hsig-article-event-carried-bindsp *pat-forged-verified*)))
 (assert-event (not (fn-hsig-article-event-snapshot-bindsp
                     *pat-forged-verified* *tha-snapshot*)))
+
+;; ---------------------------------------------------------------------------
+;; SPIKE (spike/peering): the revoked arm.  After this node revokes the
+;; author, the same enrolled keys give the revoked plan at the tombstone's
+;; generation (5), and its event binds as a :revoked composite that replay
+;; records only over that tombstone.
+(defconst *pat-revoked-snapshots* (cons *pat-revoked* *pat-snapshots*))
+(assert-event
+ (equal (fn-pa-revoked-plan *pat-relayed* *pat-revoked-snapshots*)
+        (list :revoked *tha-root-source* *tha-principal* *tha-keys*
+              *tha-signatures* 5)))
+; Teeth: no tombstone (enrolled, still active), no snapshot at all, and a
+; tombstone over a principal enrolled under other keys give no revoked plan.
+(assert-event (null (fn-pa-revoked-plan *pat-relayed* *pat-snapshots*)))
+(assert-event (null (fn-pa-revoked-plan *pat-relayed* nil)))
+(make-event
+ `(defconst *pat-other-enrolled*
+    ',(list (fn-hsig-keyring-event 1 2 3 4 *tha-principal* *tha-other-keys*))))
+(make-event
+ `(defconst *pat-other-revoked*
+    ',(fn-hl-revoke-event 2 3 4 5 *tha-principal* *pat-other-enrolled*)))
+(assert-event (fn-stxk-p *pat-other-revoked*))
+(assert-event (null (fn-pa-revoked-plan
+                     *pat-relayed*
+                     (cons *pat-other-revoked* *pat-other-enrolled*))))
+(must-fail
+ (assert-event (fn-pa-revoked-plan *pat-relayed* *pat-snapshots*)))
+(make-event `(defconst *pat-revoked-event*
+               ',(fn-pa-revoked-event
+                  2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
+                  '("fn.test") *pat-obligation* *pat-subject*
+                  "gateway-peer-evidence"
+                  (fn-charge-for-payload (len *pat-relayed*))
+                  *pat-revoked-snapshots*
+                  (fn-clock-observation 1 841000000000 0 t))))
+(assert-event (fn-stxa-p *pat-revoked-event*))
+(assert-event (fn-hsig-article-event-revoked-bindsp *pat-revoked-event*))
+(assert-event (not (fn-hsig-article-event-carried-bindsp *pat-revoked-event*)))
+(assert-event (not (fn-hsig-article-event-revoked-bindsp *pat-carried-event*)))
+(assert-event (equal (fn-stxa-keyring-generation *pat-revoked-event*) 5))
+(assert-event
+ (equal (fn-stmt-value (fn-stxe-decode-exact
+                        (fn-stxa-verdict-event *pat-revoked-event*)))
+        (fn-stxe-make 2 3 4 "<topic-binding@example.invalid>" :revoked
+                      *tha-principal* 5 *fn-hsig-profile-tag*)))
+(assert-event
+ (equal (fn-stx-verified-item
+         (fn-stx-make-verdict :revoked *tha-principal* 5))
+        (append *fn-stx-token-revoked*
+                (append '(32) (append (fn-stx-hex-octets *tha-principal*)
+                                      (fn-stx-keyring-suffix 5))))))
+(must-fail
+ (assert-event
+  (fn-pa-revoked-event
+   2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
+   '("fn.test") *pat-obligation* *pat-subject* "gateway-peer-evidence"
+   (fn-charge-for-payload (len *pat-relayed*))
+   *pat-snapshots* (fn-clock-observation 1 841000000000 0 t))))
