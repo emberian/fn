@@ -370,7 +370,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm FILE (KEYDIR, FILE and OUT absolute; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
@@ -395,6 +395,48 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         (fn-nop-result :accepted :plan "principal" config (list plan))
       (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
                     "principal" config (fn-ncfg-rest argv)))))
+
+;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
+;; values and absolute paths; what the documents say, and whether they are
+;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
+(defconst *fn-nop-peering-arity*
+  '(("genesis" . 1) ("invite" . 7) ("accept" . 5) ("confirm" . 1)))
+
+(defun fn-nop-peering-verbp (word)
+  (declare (xargs :guard t))
+  (and (stringp word) (assoc-equal word *fn-nop-peering-arity*) t))
+
+(defun fn-nop-absolute-pathp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (< 1 (length word))
+       (<= (length word) *fn-ncfg-max-path*)
+       (equal (char word 0) #\/)))
+
+(defun fn-nop-peering-paths-okp (verb args)
+  ; The positions of the path words for each verb.
+  (declare (xargs :guard (true-listp args)))
+  (cond ((equal verb "genesis") (fn-nop-absolute-pathp (nth 0 args)))
+        ((equal verb "invite") (and (fn-nop-absolute-pathp (nth 5 args))
+                                    (fn-nop-absolute-pathp (nth 6 args))))
+        ((equal verb "accept") (and (fn-nop-absolute-pathp (nth 0 args))
+                                    (fn-nop-absolute-pathp (nth 1 args))
+                                    (fn-nop-absolute-pathp (nth 4 args))))
+        ((equal verb "confirm") (fn-nop-absolute-pathp (nth 0 args)))
+        (t nil)))
+
+(defun fn-nop-parse-peering (words config)
+  (declare (xargs :guard t))
+  (let* ((verb (fn-ncfg-first words))
+         (args (fn-ncfg-rest words))
+         (arity (cdr (assoc-equal verb *fn-nop-peering-arity*))))
+    (if (and (true-listp args)
+             (equal (len args) arity)
+             (string-listp args)
+             (fn-nop-peering-paths-okp verb args))
+        (fn-nop-result :accepted :plan "peer" config
+                       (list* :peering verb args))
+      (fn-nop-usage :invalid-peering-command "peer" config words))))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -455,6 +497,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
             ((equal command "store") (fn-nop-parse-store rest config))
+            ((and (equal command "peer")
+                  (fn-nop-peering-verbp (fn-ncfg-first rest)))
+             (fn-nop-parse-peering rest config))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
@@ -815,6 +860,23 @@ formed and the operator asked for something the node declined to do."
        (fn-native-config-store (fn-native-operator-result-config result)))
     nil))
 
+(defun fn-native-operator-result-peering-words (result)
+  "The verb and words of an accepted `peer genesis|invite|accept|confirm'."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "peer")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :peering))
+      (fn-ncfg-rest (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-peering-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-peering-words result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -848,6 +910,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                          :rollback-check)
                   :rollback-check)
                  (t :upgrade-profile)))
+          ((and (equal (fn-native-operator-result-command result) "peer")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :peering))
+           :peering)
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")

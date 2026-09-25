@@ -3255,7 +3255,8 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FENCE_STORE" "FN_APP_JOURNAL_TEST_READ_ONLY_STORE"
-    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"))
+    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
+    "FN_PEER_TEST_STOP_AFTER_CONSUME"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."

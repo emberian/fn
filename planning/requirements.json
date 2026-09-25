@@ -2240,6 +2240,28 @@
         "tests/test_native_key_statements.py"
       ],
       "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys, grantable beside cancel) with the PoP observations checked in ACL2; the owner executes after every durable kind-4 commit (carried and revoked ones decline); the revoked arm of fn-pa-current-plan on NNTP transit only. The kind-4-then-kind-3 crash cut is a model crash point (fn-ks-cut, fn-ks-recover): the open executes the newest record when it is a statement. A Store refusal of the key change leaves the article accepted and is reported as detail key-change-refused."
+    },
+    {
+      "id": "NNT-017",
+      "title": "An invitation enrols its inviter only when its carrier verifies under the key set its body names, and a node enrols an acceptor only for an acceptance that consumed, exactly once, a pending invitation this node issued",
+      "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-097"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/config.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "planning/evidence/peer-invite-2026-09-25.md"
+      ],
+      "implementation_note": "A stronger fn guarantee over RFC 3977/5537, which say nothing about how peers agree: the spike's JSON invitation state is a configuration slot (delta kinds 13 and 14) with once-only consumption, and every decision is ACL2's. The peer record stays `peer add`; the owner's key-statement executor and succession-era invitations are other lanes' (PRF-098)."
     }
   ]
 }

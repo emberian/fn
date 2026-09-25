@@ -1653,6 +1653,26 @@
         "planning/evidence/peer-keys-2026-09-25.md",
         "tests/test_native_key_statements.py"
       ]
+    },
+    {
+      "id": "SCN-057",
+      "title": "Two nodes that share no key peer by invitation; tampered, replayed, foreign and repeated documents are refused, and a crash between consumption and enrolment enrols once",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-017"
+      ],
+      "steps": [
+        "On A and B run `peer genesis` over fresh key directories; start both owners.",
+        "A: `peer invite nodeB fn.* HOST PORT a.example KEYS OUT`; B: `peer accept OUT KEYS b.example - ACC`; A: `peer confirm ACC`.",
+        "A: confirm ACC again; B: accept the invitation again; A: confirm a tampered ACC, an acceptance of another invitation, and an acceptance of the consumed nonce by another principal.",
+        "On a developer image, A2: invite, B: accept, A2: confirm with FN_PEER_TEST_STOP_AFTER_CONSUME set; restart A2 and confirm again, then once more."
+      ],
+      "expected": [
+        "Each verb exits 0; A's key history lists B's principal and B's lists A's.",
+        "The second confirm and the second accept are refused (1) as already-confirmed and already-enrolled; the tampered acceptance is refused unverified; the foreign one another-invitation; the replayed nonce invitation-consumed.",
+        "A2 dies after the consuming record; after restart the confirm exits 0 and enrols B once; the next confirm is refused already-confirmed."
+      ]
     }
   ]
 }

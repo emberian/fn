@@ -125,19 +125,27 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(fn-own-refresh", live)
 
     def test_the_live_arm_is_the_event_sequence_the_theorem_names(self):
-        # reconfigure, close the private connection, publish, complete
-        start = self.native_admin.index("(defun fnn-owner-live-admin-serialized")
-        body = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
+        # reconfigure, close the private connection, publish, complete.  The
+        # sequence is `fnn-owner-live-reconfigure-locked' (shared with the
+        # peering verbs, host/native/peer-invite.lisp); the admin arm stages
+        # through it with `fn-native-admin-host-owner-reconfigure'.
+        start = self.native_admin.index("(defun fnn-owner-live-reconfigure-locked")
+        body = self.native_admin[start:self.native_admin.index(
+            "(defun fnn-owner-live-admin-serialized", start)]
         order = [body.index(word) for word in (
-            "'fn-owner-open", "'fn-native-admin-host-owner-reconfigure",
+            "'fn-owner-open", "(funcall stage cid)",
             "'fn-owner-close", "(fnn-admin-publish", "'fn-owner-reconfigure-complete")]
         self.assertEqual(order, sorted(order))
+        start = self.native_admin.index("(defun fnn-owner-live-admin-serialized")
+        arm = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
+        self.assertIn("'fn-native-admin-host-owner-reconfigure", arm)
+        self.assertIn("(fnn-owner-live-reconfigure-locked", arm)
 
     def test_the_live_arm_reads_the_open_connection_id_as_an_id(self):
         # `fn-owner-open' answers an integer id or NIL; `fnn-owner-action'
         # faults on anything but a keyword, so reading the id through it
         # stopped the owner on every live request (dabebb84, V0-CFG-LIVE).
-        start = self.native_admin.index("(defun fnn-owner-live-admin-serialized")
+        start = self.native_admin.index("(defun fnn-owner-live-reconfigure-locked")
         body = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
         self.assertIn("(fnn-owner-core 'fn-owner-open)", body)
         self.assertNotIn("(fnn-owner-action 'fn-owner-open)", body)

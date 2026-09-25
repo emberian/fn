@@ -778,6 +778,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-authority-tests \
 	books/key-statements \
 	tests/acl2/key-statements-tests \
+	books/peer-invite \
+	tests/acl2/peer-invite-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-served \
