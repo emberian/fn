@@ -747,18 +747,18 @@
     "books": 751,
     "books_in_root_closure": 749,
     "roots": 740,
-    "theorems": 9969,
-    "functions": 7071,
-    "assert_events": 11022,
-    "must_fails": 956,
+    "theorems": 9983,
+    "functions": 7086,
+    "assert_events": 11033,
+    "must_fails": 957,
     "encapsulates": 31,
     "guards": {
       "verified": 2085,
       "declared-off": 480,
-      "default-guarded": 3512,
+      "default-guarded": 3527,
       "default-unguarded": 994
     },
-    "suspect_theorems": 87,
+    "suspect_theorems": 88,
     "export_hygiene_warnings": 117,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 61,
@@ -7444,18 +7444,18 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 63,
+      "theorems": 36,
+      "functions": 78,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 62,
+        "default-guarded": 77,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 13,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 2,
       "includes": [
@@ -7469,7 +7469,9 @@
         "store-observed"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "list-octets-of-atom"
+      ],
       "read_error": null
     },
     {
@@ -17329,9 +17331,9 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 152,
-      "must_fails": 12,
-      "defconsts": 38,
+      "assert_events": 163,
+      "must_fails": 13,
+      "defconsts": 45,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -21627,6 +21629,14 @@
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value"
       ]
+    },
+    {
+      "theorem": "list-octets-of-atom",
+      "book": "books/native-admin.lisp",
+      "line": 965,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value"
+      ]
     }
   ],
   "lints": {
@@ -21946,7 +21956,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 1025,
+        "line": 1253,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

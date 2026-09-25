@@ -291,6 +291,35 @@ class NativeOperatorPeerListTests(NativeOperatorVerbFixture):
         self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()),
                          before)
 
+    def test_the_d23_rows_are_listed_one_word_per_row(self):
+        # D23 rows the typed record does not hold: an NNTP peer's carried
+        # principals and a BP boundary's carried sources and release issuers.
+        # ACL2 renders every word (`fn-native-admin-peer-extra-octets');
+        # `fn-native-admin-peer-extra-decode-lists-exactly-the-rows' is the
+        # theorem that the words are exactly the rows.
+        hex_a, hex_b = "0a" * 32, "0b" * 32
+        added = self.operator("peer", "add", "far", "far.example.invalid",
+                              "192.0.2.44", "1119", "fn.*", "-", "192.0.2.44",
+                              "true", "carries", hex_a, hex_b)
+        self.assertEqual(added.returncode, EXIT_OK, added.stderr.decode())
+        boundary = self.operator("bp-boundary", "add", "relay",
+                                 "relay.example.invalid", "dtn://relay/", "4557",
+                                 "carries", "dtn://sender/", "ipn:9.1",
+                                 "releases-for", "dtn://receiver/")
+        self.assertEqual(boundary.returncode, EXIT_OK, boundary.stderr.decode())
+        listed = self.operator("peer", "list")
+        self.assertEqual(listed.returncode, EXIT_OK, listed.stderr.decode())
+        lines = listed.stdout.decode("ascii").splitlines()
+        self.assertEqual(lines, [
+            "far path-identity=far.example.invalid address=192.0.2.44 "
+            "port=1119 security=clear inbound=fn.* outbound=- "
+            "auth=source-address:192.0.2.44 "
+            "carries-principal={} carries-principal={}".format(hex_a, hex_b),
+            "relay path-identity=relay.example.invalid address=dtn://relay/ "
+            "port=0 security=- inbound=- outbound=- "
+            "auth=principal:bp-only-no-nntp-principal "
+            "carries=dtn://sender/ carries=ipn:9.1 releases-for=dtn://receiver/"])
+
     def test_peer_list_takes_no_argument(self):
         extra = self.operator("peer", "list", "far")
         self.assertEqual(extra.returncode, EXIT_USAGE, extra.stderr.decode())
@@ -452,7 +481,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(int(fields["transactions-used"]), count)
         return {key: int(value) for key, value in fields.items()}
 
-    def post_many(self, message_ids):
+    def post_many(self, message_ids, subject=b"capacity"):
         replies = []
         with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
             stream = conn.makefile("rwb")
@@ -463,7 +492,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
                 self.assertTrue(stream.readline().startswith(b"340"))
                 stream.write(b"From: author@example.invalid\r\n"
                              b"Newsgroups: fn.test\r\n"
-                             b"Subject: capacity\r\n"
+                             b"Subject: " + subject + b"\r\n"
                              b"Message-ID: " + message_id.encode("ascii") +
                              b"\r\n\r\nbody\r\n.\r\n")
                 stream.flush()
@@ -487,6 +516,17 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         owner = self.start_owner(IMAGE)
         ids = ["<cap-{}@example.invalid>".format(n) for n in range(130)]
         self.assertEqual(self.post_many(ids[:1]), ["240 article received OK"])
+        # D25: the Store compares what the poster sent, not the stored copy
+        # the owner injected Path and Injection-Info into.  A re-POST of the
+        # same bytes is the duplicate answer; one changed authored byte under
+        # the same Message-ID is the conflict answer.  Neither writes a
+        # transaction (the count below is still 1).
+        self.assertEqual(
+            self.post_many(ids[:1]),
+            ["441 posting failed; this article is already stored here"])
+        self.assertEqual(
+            self.post_many(ids[:1], subject=b"capacitz"),
+            ["441 posting failed; a different article with this Message-ID is stored here"])
         self.stop(owner)
         after = self.headroom()
         self.assertEqual(after["transactions-used"], 1)
@@ -500,16 +540,19 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(replies, ["240 article received OK"] * 127)
         # used = budget and used stays = budget: refused by name, twice.  A
         # Message-ID the store already holds is still answered by the Store's
-        # existing-article decision, not by the budget: the owner injected
-        # headers into the stored copy, so this byte-different re-POST is the
-        # conflict answer.
+        # existing-article decision, not by the budget: the same bytes are
+        # the duplicate answer and a changed authored byte the conflict
+        # answer (D25), neither the capacity refusal.
         refused = self.post_many(ids[128:130] + ids[:1])
         self.assertEqual(
             refused[:2],
             ["441 posting failed; the store has no capacity for this article"] * 2)
         self.assertEqual(
             refused[2],
-            "441 posting failed; a different article with this Message-ID is stored here")
+            "441 posting failed; this article is already stored here")
+        self.assertEqual(
+            self.post_many(ids[:1], subject=b"capacitz"),
+            ["441 posting failed; a different article with this Message-ID is stored here"])
         self.stop(owner)
         full = self.headroom()
         self.assertEqual(full["transactions-used"], 128)
