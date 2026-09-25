@@ -55,13 +55,37 @@
              (fn-stxa-encode *stxa-carried-event*))))
 
 ; A valid composite value with two large opaque children crosses the old
-; 65,538-octet decoder ceiling.  The value round-trips exactly; semantic child
+; 65,538-octet decoder ceiling, and its article record crosses the old
+; 65,538-octet record field.  The value round-trips exactly; semantic child
 ; binding remains the separate fn-stxa-bindsp contract exercised below.
 (defconst *stxa-large-event*
   (fn-stxa-make 4 9 12 3 '(112)
                 '(115)
-                (make-list *fn-stxa-max-article-record* :initial-element 1)
+                (make-list 200000 :initial-element 1)
                 (make-list *fn-stxe-max-octets* :initial-element 2)))
+
+; D27: the old data caps are gone.  A carried composite whose article record
+; (300,000) and authored source (220,000) are past the old 65,538 and 32,768
+; caps, and whose encoding is past the old 196,608 composite cap, is a
+; composite, encodes, and round-trips exactly through the Store decoder.
+(defconst *stxa-past-old-caps-event*
+  (fn-stxa-make-carried 4 9 12 3 '(112) '(115)
+                        (make-list 300000 :initial-element 1)
+                        (make-list *fn-stxe-max-octets* :initial-element 2)
+                        (make-list 220000 :initial-element 5)
+                        '(115 1 2 3)))
+(assert-event (fn-stxa-p *stxa-past-old-caps-event*))
+(assert-event (< 196608 (len (fn-stxa-encode *stxa-past-old-caps-event*))))
+(assert-event
+ (equal (fn-stmt-value
+         (fn-store-event-decode-exact
+          (fn-stxa-encode *stxa-past-old-caps-event*)))
+        *stxa-past-old-caps-event*))
+; The bounds are the codecs': the source is the v2 carrier's u32 and the
+; record the record codec's u32, and the composite fits the poll frame.
+(assert-event (equal *fn-stxa-max-authored-source* *fn-cbor-max-uint*))
+(assert-event (equal *fn-stxa-max-article-record* *fn-record-max-octets*))
+(assert-event (equal (+ 9 346 *fn-stxa-max-octets*) *fn-cbor-max-uint*))
 (assert-event (fn-stxa-p *stxa-large-event*))
 (assert-event (< *fn-cbor-max-input* (len (fn-stxa-encode *stxa-large-event*))))
 (assert-event

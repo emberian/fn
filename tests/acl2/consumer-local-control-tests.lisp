@@ -150,32 +150,35 @@
          (fn-ncl-poll-reply-encode :accepted *ncl-token* nil))
         (list :consumer-poll-reply :accepted *ncl-token* nil)))
 
-; Stress the carried event's independent schema-1 field maxima.  Even this
-; deliberately non-binding value fits the consumer report envelope.  A
-; report one octet beyond that envelope is refused before frame creation.
+;; D27: the carried event's fields are codec ceilings (u32), so no witness
+;; sits at them.  A value past every old cap (a 300,000-octet record and a
+;; 220,000-octet source) still fits the consumer report envelope, and a
+;; report past the composite's ceiling is refused before frame creation
+;; (fn-ncl-poll-reply-past-the-composite-is-bad, below).
 (defconst *ncl-max-shape-event*
   (fn-stxa-make-carried
    *fn-cbor-max-uint* *fn-cbor-max-uint*
    *fn-cbor-max-uint* *fn-cbor-max-uint*
    (make-list *fn-stxk-max-profile* :initial-element 1)
    (make-list *fn-record-max-metadata* :initial-element 2)
-   (make-list *fn-stxa-max-article-record* :initial-element 3)
+   (make-list 300000 :initial-element 3)
    (make-list *fn-stxe-max-octets* :initial-element 4)
-   (make-list *fn-stxa-max-authored-source* :initial-element 5)
+   (make-list 220000 :initial-element 5)
    (make-list *fn-record-max-metadata* :initial-element 6)))
 (assert-event (fn-stxa-p *ncl-max-shape-event*))
 (defconst *ncl-max-shape-bytes* (fn-stxa-encode *ncl-max-shape-event*))
 (assert-event
  (and (consp *ncl-max-shape-bytes*)
-      (< 131076 (len *ncl-max-shape-bytes*))
+      (< 196608 (len *ncl-max-shape-bytes*))
       (<= (len *ncl-max-shape-bytes*) *fn-stxa-max-octets*)
       (not (eq (fn-ncl-poll-reply-encode
                 :accepted *ncl-token* *ncl-max-shape-bytes*) :bad))))
-(assert-event
- (eq (fn-ncl-poll-reply-encode
-      :accepted *ncl-token*
-      (make-list (1+ *fn-stxa-max-octets*) :initial-element 7))
-     :bad))
+(defthm fn-ncl-poll-reply-past-the-composite-is-bad
+  (implies (< *fn-stxa-max-octets* (len report))
+           (equal (fn-ncl-poll-reply-encode status cursor report) :bad))
+  :hints (("Goal" :in-theory (enable fn-ncl-poll-reply-encode
+                                     fn-ncl-poll-event-bytesp)))
+  :rule-classes nil)
 (assert-event
  (equal (fn-ncl-reply-decode (fn-ncl-reply-encode :uncertain nil))
         '(:consumer-reply :uncertain nil)))

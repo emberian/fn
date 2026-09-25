@@ -187,3 +187,7 @@
                      :control-not-filed))
 (assert-event (equal (fn-pa-served-word :refused :control-signed)
                      :control-signed))
+; D27 (signed-path): a signed article whose composite was not formed or is
+; past the profile's R carries its word to the poster.
+(assert-event (equal (fn-pa-served-word :refused :signed-record) :signed-record))
+(assert-event (equal (fn-pa-served-word :refused :event) :event))

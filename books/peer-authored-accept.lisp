@@ -308,7 +308,8 @@
 ;; the attempt's own word unchanged.
 (defconst *fn-pa-served-reasons*
   '(:article :carrier :carrier-shape :local-enrollment :signature :conflict
-    :control-not-filed :control-malformed :control-signed))
+    :control-not-filed :control-malformed :control-signed
+    :event :signed-record))
 
 (defun fn-pa-served-word (word detail)
   (declare (xargs :guard t))

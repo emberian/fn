@@ -141,18 +141,27 @@
   (list *fnn-crypto-library* *fnn-crypto-version*))
 
 (defun fnn-crypto-octets (value limit name)
-  "Copy VALUE to a bounded simple (unsigned-byte 8) vector."
+  "Copy VALUE to a bounded simple (unsigned-byte 8) vector in one pass.
+A list is walked by its conses: ELT on a list walks from the head at every
+index, which made this copy quadratic in the message (99.6% of a 215 KB
+signed POST's samples and 99.9% of signing's, signed-path 2026-09-25)."
   (let ((length (handler-case (length value) (type-error () nil))))
     (unless (and (integerp length) (<= 0 length) (<= length limit))
       (error 'fnn-crypto-fault
              :detail (format nil "~a is not bounded to ~d octets" name limit)))
     (let ((answer (make-array length :element-type '(unsigned-byte 8))))
-      (dotimes (index length answer)
-        (let ((octet (elt value index)))
-          (unless (typep octet '(unsigned-byte 8))
-            (error 'fnn-crypto-fault
-                   :detail (format nil "~a contains a non-octet" name)))
-          (setf (aref answer index) octet))))))
+      (flet ((put (index octet)
+               (unless (typep octet '(unsigned-byte 8))
+                 (error 'fnn-crypto-fault
+                        :detail (format nil "~a contains a non-octet" name)))
+               (setf (aref answer index) octet)))
+        (if (listp value)
+            (let ((index 0))
+              (dolist (octet value answer)
+                (put index octet)
+                (incf index)))
+          (dotimes (index length answer)
+            (put index (elt value index))))))))
 
 (defun fnn-crypto-pointer (vector)
   (sb-alien:sap-alien (sb-sys:vector-sap vector)

@@ -352,3 +352,20 @@
       (equal (fn-stxe-keyring-profile
               (fn-hsig-evidence-tag (make-list 65536 :initial-element 42)))
              *fn-hsig-profile-tag*)))
+
+; D27 (signed-path): the composite holds every source a carrier signs
+; (fn-stxa-holds-every-signable-source).  A 70,000-octet source is v2 and
+; past the old 32,768 composite cap; without the subject hypothesis the bound
+; is not a theorem (a list may be longer than any carrier admits).
+(assert-event (equal (fn-hsig-source-version (make-list 70000 :initial-element 65))
+                     *fn-hsig-v2-version*))
+(assert-event (and (< 32768 70000) (< 70000 *fn-stxa-max-authored-source*)))
+(must-fail
+ (defthm hst-source-bound-without-a-subject
+   (<= (len source) *fn-stxa-max-authored-source*)))
+(assert-event
+ (let ((keys (list (cons :ed25519 (make-list 32 :initial-element 1))
+                   (cons :ml-dsa-65 (make-list 1952 :initial-element 2))))
+       (source (make-list 70000 :initial-element 65)))
+   (and (fn-hsig-subject-at-p 2 (make-list 32 :initial-element 3) keys source)
+        (<= (len source) *fn-stxa-max-authored-source*))))
