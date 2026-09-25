@@ -33,6 +33,12 @@ not their book-hash, and ACL2 itself says that for maximum trust a project's
 books are best certified from scratch without it.  So `--pcert` is the
 discovery mode; `tools/triage.py` is its report, and a claim about the tree
 still comes from an ordinary run.
+
+`--recertify BOOK` (repeatable, implies `--incremental`) keeps the named
+books of the closure out of the cache install, so this run certifies them
+fresh, their cached dependents with them, and its manifest records them as
+certified at their digest: the way to give a book whose every run installs
+it a manifest that certifies it.
 """
 
 from __future__ import annotations
@@ -473,15 +479,16 @@ def affected_roots(books: list[str], targets: list[str]) -> list[str]:
 
 
 def install_from_cache(roots: list[str], toolchain_identity: str,
-                       acl2: Path) -> certs.Report:
+                       acl2: Path, recertify: list[str] = ()) -> certs.Report:
     """Install what the cache holds of the roots' closure (`--incremental`).
 
     `certs.install_partial` uses the closure key and toolchain to find
     candidates, then asks ACL2 whether their certificate alists compose.
-    The books it names as uncached are what this run certifies.
+    The books it names as uncached are what this run certifies; the
+    `recertify` books are among them whatever the cache holds.
     """
     return certs.install_partial(ROOT, certs.cache_directory(), roots,
-                                 toolchain_identity, acl2)
+                                 toolchain_identity, acl2, recertify=recertify)
 
 
 def with_dependencies(books: list[str]) -> list[str]:
@@ -891,6 +898,19 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--recertify",
+        action="append",
+        default=[],
+        metavar="BOOK",
+        help=(
+            "certify this book of the selected roots' closure afresh rather "
+            "than installing its cached pair (repeatable; .lisp optional; "
+            "implies --incremental). Its dependencies still install; its "
+            "cached dependents are certified after it. The manifest names it "
+            "under cache_install.recertified"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="print the books this invocation would certify and exit",
@@ -947,6 +967,15 @@ def main() -> int:
         parser.error("--budget-seconds must be positive")
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
+    if args.recertify:
+        if args.closure:
+            parser.error("--recertify takes books out of the cache install, and "
+                         "--closure installs nothing; choose one")
+        args.incremental = True
+        try:
+            args.recertify = sorted({normalize_book(book) for book in args.recertify})
+        except ValueError as error:
+            parser.error(str(error))
     if args.incremental and args.closure:
         parser.error("--incremental and --closure are two plans; choose one")
     requested_before_filter = list(args.books)
@@ -964,6 +993,10 @@ def main() -> int:
             args.books = with_dependencies(args.books)
         except ValueError as error:
             parser.error(str(error))
+    missing = [book for book in args.recertify if book not in args.books]
+    if missing:
+        parser.error("a book to recertify is not in the selected roots' closure: "
+                     + ", ".join(missing))
     if args.dry_run:
         for book in args.books:
             print(book)
@@ -996,6 +1029,7 @@ def main() -> int:
         "affected_by": list(args.affected_by),
         "closure": bool(args.closure),
         "incremental": bool(args.incremental),
+        "recertify": list(args.recertify),
         "roots": roots,
         "pcert": bool(args.pcert),
         "budget_seconds": args.budget_seconds,
@@ -1058,7 +1092,8 @@ def main() -> int:
     manifest["acl2_compatibility"] = toolchain.compatibility
     if args.incremental:
         try:
-            installed = install_from_cache(roots, toolchain.identity, acl2)
+            installed = install_from_cache(roots, toolchain.identity, acl2,
+                                           args.recertify)
         except (OSError, ValueError) as error:
             manifest["failure"] = f"Installing from the certificate cache failed: {error}"
             record(run_dir, manifest)
@@ -1077,6 +1112,7 @@ def main() -> int:
             "removed": installed.removed_foreign,
             "origins": dict(installed.origins),
             "roots_installed": installed.roots_installed,
+            "recertified": installed.recertified,
         }
         manifest["installed_books"] = dict(sorted(installed.installed_from.items()))
         manifest["book_provenance"] = {
