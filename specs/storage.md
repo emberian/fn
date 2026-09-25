@@ -365,6 +365,10 @@ witness written after the commit:
 
 ### Chained packs (P5, 2026-09-25; STO-012)
 
+STO-012: Compaction chains packs: each compaction packs only the uncovered
+suffix into a link naming its predecessor by digest, the open walks the chain,
+retire keeps it.
+
 Each compaction packs only the uncovered suffix, so the pack no longer bounds
 the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
 

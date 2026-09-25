@@ -152,7 +152,7 @@
 ; Without fuel: none walks nothing.
 (assert-event (equal (fn-ccc-walk *ct-files* 0 0 *ct-bound*) :bad))
 
-; Nothing uncovered (fn-ccc-nothing-uncovered-leaves-files-and-marker): the
+; Nothing uncovered (fn-ccc-nothing-uncovered-leaves-files-and-marker-by-definition): the
 ; chain A+B covers all five records, so the capture above it is the named
 ; no-op and the pack changes neither the files nor the marker, selected or not.
 (assert-event (equal (fn-ccc-capture-link *ct-h* 5 5 1 *ct-db*)

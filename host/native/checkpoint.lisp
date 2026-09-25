@@ -73,7 +73,7 @@
 one quantum) into the next pack generation and publish it, unselected.
 Returns the generation, the sealed frame and the new boundary; or
 :NOTHING-UNCOVERED and ACL2's line when the chain already covers RECORDS
-(`fn-ccc-nothing-uncovered-leaves-files-and-marker'), before any directory
+(`fn-ccc-nothing-uncovered-leaves-files-and-marker-by-definition'), before any directory
 operation."
   (fnn-checkpoint-require-mutation-ready store)
   (let ((directory (fnn-pack-directory store))

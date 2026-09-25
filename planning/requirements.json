@@ -571,7 +571,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-009",
-        "PRF-073"
+        "PRF-073",
+        "PRF-085"
       ],
       "verification": [
         "proof",
@@ -1946,6 +1947,7 @@
         "host/native/checkpoint.lisp",
         "tests/test_native_pack_chain.py",
         "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
+        "planning/evidence/manifests/certify-20260925T094221Z-3382380.json",
         "planning/evidence/bounds-p5-2026-09-25.md"
       ],
       "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
