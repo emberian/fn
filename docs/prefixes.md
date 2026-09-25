@@ -167,6 +167,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-cpo-` | `config-observed` | Recovery-only observed-image entry for the ordered physical configuration and Store histories |
 | `fn-sco-` | `store-checkpoint-open`, `tests/acl2/store-checkpoint-open-tests` | P3 Store checkpoint: capture of a record prefix (every replay fold's accumulator), extension over a suffix, the open from it (`fn-sco-open`), the select decision, the keystone `fn-sn-recover-from-checkpoint-equals-full-recover` |
 | `fn-ock-` | `owner-checkpoint-open`, `tests/acl2/owner-checkpoint-open-tests` | The served owner's open from a Store checkpoint (`fn-ock-recover-extended`, keystone `fn-owner-recover-from-checkpoint-equals-full-recover`), its publication (`fn-ock-next-checkpoint`) and the K/2 policy (`fn-ock-publication-duep`) |
+| `fn-ks-` | `acceptance-alloc` | Linear duplicate and subset checks through a local hash-set stobj (`fn-keyset`): `fn-ks-distinctp`, `fn-ks-subsetp`, the `:exec` paths of `fn-no-duplicatesp` and `fn-subsetp` (checkpoint-cost) |
+| `lrt-` | `tests/acl2/linear-recognizers-tests` | Quadratic reference recognizers the linear `:exec` paths are evaluated against |
 | `fn-scc-` | `store-checkpoint-codec` | P3 Store checkpoint bytes: postfix tree program for a stack machine, FNSC segment frames chained by `fn-frame-trailer` |
 | `fn-bs-scp-` | `byte-store-state-checkpoint-program`, `tests/acl2/byte-store-state-checkpoint-program-tests` | The Store checkpoint's publish program (stage, write, fsync, rename, root fsync) and its old-or-new crash keystone |
 | `fn-cst-` | `config-store-traces` | Phase-aware Store trace relation over the carried physical configuration and Store journal histories |

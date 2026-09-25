@@ -34,7 +34,7 @@
 ; store host. Python supplies only ordered filesystem observations.
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (f-put-global 'fn-store-sn
+  (let* ((state (f-put-global 'fn-store-sn
                              ; No compiled group table and no compiled
                              ; capacity: the domain is empty and the capacity
                              ; is zero until the configuration history is
@@ -44,7 +44,8 @@
                              ; rather than accepting into a compiled-in
                              ; default.  The checkpoint host reads the live
                              ; node's capacity (`fn-store-sn-capacity').
-                             (fn-sn-initial nil 0) state)))
+                             (fn-sn-initial nil 0) state))
+        (state (f-put-global 'fn-store-sco-open nil state)))
     (value :ready)))
 
 (defun fn-store-sn-state (state)
@@ -161,6 +162,33 @@ reopen predicate, writer-lock observation and observed final namespace."
           (let ((name (fn-native-admin-publication-name result)))
             (if (stringp name) (fn-record-string-octets name) nil)))))
 
+; The Store open from an extended checkpoint E, on both paths
+; (checkpoint-cost): the configuration fold's result and the opened Store are
+; computed once by fn-sco-store-open, and E with the pair stays in the
+; global `fn-store-sco-open' for the owner, which installs from it without
+; replaying again (fn-owner-recover-from-store-open, host/owner-host.lisp).
+; The :ok test is the open's kind: fn-sco-finalize-okp-is-kind-ok says it is
+; fn-sn-open-okp, without running the whole-state recognizer again.
+; No barrier is fabricated here: Python must report each of five real fsync
+; observations via fn-store-sn-io before this state is :ready.
+(defun fn-store-sn-open-extended (e config-records frontier state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((pair (fn-sco-store-open e config-records frontier))
+         (replayed (car pair))
+         (opened (cadr pair)))
+    (if (and (equal (fn-replay-result-kind replayed) :ok)
+             (equal (fn-sn-open-kind opened) :ok)
+             (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                    :recovering))
+        (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened) state))
+               (state (f-put-global 'fn-store-cfg
+                                    (fn-cnode-config (fn-replay-result-node replayed))
+                                    state))
+               (state (f-put-global 'fn-store-sco-open (list e replayed opened) state)))
+          (value :recovering))
+      (let ((state (f-put-global 'fn-store-sco-open nil state)))
+        (value :fault)))))
+
 ; The physical configuration and Store histories share transaction IDs, but
 ; have independent sequence spaces. ACL2 interleaves them at recovery, with
 ; configuration before a tied Store event, and carries that history in the
@@ -172,23 +200,14 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (equal records :bad) (equal config-records :bad)
             (null config-records))
         (value :fault)
-      (let ((replayed (fn-cpr-replay config-records records)))
-        (if (not (equal (fn-replay-result-kind replayed) :ok))
-            (value :fault)
-          (let* ((cn (fn-replay-result-node replayed))
-                 (cfg (fn-cnode-config cn))
-                 (opened (fn-cpo-open-observed config-records frontier records)))
-            ; No barrier is fabricated here: Python must report each of five
-            ; real fsync observations via fn-store-sn-io before this state is
-            ; :ready.
-            (if (and (fn-sn-open-okp opened)
-                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
-                            :recovering))
-                (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened)
-                                            state))
-                       (state (f-put-global 'fn-store-cfg cfg state)))
-                  (value :recovering))
-              (value :fault))))))))
+      ; The full open is the empty capture extended over the whole history,
+      ; opened once (fn-store-sn-open-extended below).  It is the full open
+      ; fn-cpo-open-observed and the full replay fn-cpr-replay by
+      ; fn-sco-store-open-of-extended-capture (books/owner-checkpoint-open.lisp)
+      ; with PREFIX = NIL.
+      (fn-store-sn-open-extended
+       (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
+       config-records frontier state))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
@@ -204,7 +223,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sco-clear (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
+  (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
+         (state (f-put-global 'fn-store-sco-open nil state)))
     (value :cleared)))
 
 ; SEGMENTS: each segment's octets, in file order, as the host's range reads
@@ -213,8 +233,11 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let ((decoded (fn-scc-decode-segments segments)))
     (if (and (consp decoded) (eq (car decoded) :ok) (consp (cdr decoded)))
-        (let ((state (f-put-global 'fn-store-sco-checkpoint (cadr decoded) state)))
-          (value (list :ok (fn-sco-sequence (cadr decoded)))))
+        ; The file carries the count; the record list is read back out of
+        ; the event index (fn-sco-thaw, fn-sco-thaw-of-freeze).
+        (let* ((checkpoint (fn-sco-thaw (cadr decoded)))
+               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
+          (value (list :ok (fn-sco-sequence checkpoint))))
       (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
         (value (list :refused (if (and (consp decoded) (consp (cdr decoded)))
                                   (cadr decoded)
@@ -272,20 +295,12 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (null checkpoint) (equal records :bad) (equal config-records :bad)
             (null config-records))
         (value :fault)
-      (let ((replayed (fn-sco-replay-result checkpoint config-records records)))
-        (if (not (equal (fn-replay-result-kind replayed) :ok))
-            (value :fault)
-          (let* ((cn (fn-replay-result-node replayed))
-                 (cfg (fn-cnode-config cn))
-                 (opened (fn-sco-open checkpoint config-records frontier records)))
-            (if (and (fn-sn-open-okp opened)
-                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
-                            :recovering))
-                (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened)
-                                            state))
-                       (state (f-put-global 'fn-store-cfg cfg state)))
-                  (value :recovering))
-              (value :fault))))))))
+      ; The suffix is replayed once: E is fn-sco-open's extension, and the
+      ; open and the configuration are read off it (fn-sco-open is
+      ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
+      (fn-store-sn-open-extended
+       (fn-sco-extend checkpoint config-records records)
+       config-records frontier state))))
 
 (defun fn-store-sco-encode-records (records)
   (declare (xargs :mode :program))
@@ -303,24 +318,22 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-store-sco-encode-records (fn-sco-records (fn-store-sco-current state)))))
 
 ; The next checkpoint's file octets from the recovered Store: the open's
-; checkpoint extended over the records after it (fn-sco-extend), or, when
-; the open replayed in full, the capture of the whole history.  The answer
-; is (OCTETS S) or :unencodable.
+; extended checkpoint E (fn-store-sn-open-extended), which is the capture of
+; the recovered history, else the capture of the whole history.  The file
+; carries the count, not the record list (fn-sco-freeze).  The answer is
+; (OCTETS S) or :unencodable.
 (defun fn-store-sco-publish-octets (segment-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (records (fn-sf-records (fn-sn-files st)))
          (configs (fn-sn-config-history st))
-         (old (fn-store-sco-current state))
-         ; The open's checkpoint is extended only when it holds exactly the
-         ; recovered history's first S records (a linear comparison);
-         ; otherwise the whole history is captured.
-         (next (if (and old (<= (fn-sco-sequence old) (len records))
-                        (equal (fn-sco-records old)
-                               (take (fn-sco-sequence old) records)))
-                   (fn-sco-extend old configs (nthcdr (fn-sco-sequence old) records))
+         (opened (and (boundp-global 'fn-store-sco-open state)
+                      (f-get-global 'fn-store-sco-open state)))
+         (e (car opened))
+         (next (if (and opened (equal (fn-sco-records e) records))
+                   e
                  (fn-sco-capture configs records)))
-         (octets (fn-scc-file-octets next segment-octets)))
+         (octets (fn-scc-file-octets (fn-sco-freeze next) segment-octets)))
     (if (equal octets :unencodable)
         (value :unencodable)
       (value (list octets (fn-sco-sequence next))))))
