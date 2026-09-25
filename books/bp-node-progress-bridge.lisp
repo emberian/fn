@@ -255,9 +255,23 @@
   (fn-bpnp-transit-dispatch-step)))
 
 (local
+ (defthm bpnpb-busy-stranded-effects-confined
+   (fn-bpnpb-effects-confinedp (fn-bpnp-busy-stranded-effects held budget))
+   :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnp-busy-stranded-effects
+                                fn-bpnpb-effects-confinedp
+                                fn-bpn-effect-kind-memberp
+                                car-cons cdr-cons
+                                (:executable-counterpart equal)
+                                (:executable-counterpart not)
+                                (:executable-counterpart fn-bpn-effect-kind-memberp))
+                              (theory 'minimal-theory))))))
+
+(local
  (fn-bpnpb-defquiet bpnpb-progress-step
-  (fn-bpnp-progress-step st node observation routes generation)
-  (fn-bpnp-progress-step bpnpb-deliver-step bpnpb-transit-dispatch-step)))
+  (fn-bpnp-progress-step st node observation routes generation budget)
+  (fn-bpnp-progress-step bpnpb-deliver-step bpnpb-transit-dispatch-step
+   bpnpb-busy-stranded-effects-confined)))
 
 (local
  (fn-bpnpb-defquiet bpnpb-dispatch-persist-step
@@ -279,13 +293,23 @@
   (fn-bpnp-conflict-persist-step st epoch op result)
   (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal)))
 
-;; BP-R17's deferral answers only :delivery-deferred, :delivery-stranded or
-;; the host's :delivery-answer.
+;; BP-R17's busy answer proposes the kind 20, or answers the credit wait or
+;; the host's :delivery-answer; its persist arm answers the deferral, the
+;; stranded or resumed report, or its own publication answer.
 (local
  (fn-bpnpb-defquiet bpnpb-busy-delivery-step
-  (fn-bpnp-busy-delivery-step st epoch op key observation)
+  (fn-bpnp-busy-delivery-step st epoch op key observation budgets)
   (fn-bpnp-busy-delivery-step)))
 
+(local
+ (fn-bpnpb-defquiet bpnpb-deferral-persist-step
+  (fn-bpnp-deferral-persist-step st epoch op result)
+  (fn-bpnp-deferral-persist-step fn-bpnp-deferral-effects)))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-busy-resume-step
+  (fn-bpnp-busy-resume-step st arrival budget)
+  (fn-bpnp-busy-resume-step)))
 ;; N16's rotation arms answer only their own publication effects
 ;; (:persist-checkpoint, :generation-selected, :rotation-refused,
 ;; :rotation-uncertain): a journal generation's selection discharges no
@@ -304,7 +328,7 @@
 ;; a receipt preparation.
 (local
  (defthm bpnpb-stranded-effects-confined
-   (fn-bpnpb-effects-confinedp (fn-bpnp-stranded-effects held peer epoch))
+   (fn-bpnpb-effects-confinedp (fn-bpnp-stranded-effects held peer epoch budget))
    :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnp-stranded-effects
                                 fn-bpnpb-effects-confinedp
@@ -317,7 +341,7 @@
 
 (local
  (fn-bpnpb-defquiet bpnpb-start-one
-  (fn-bpnp-start-one st peer session mru observation)
+  (fn-bpnp-start-one st peer session mru observation budget)
   (fn-bpnp-start-one bpnpb-stranded-effects-confined)))
 
 ;; The routed :session arm (spec 4.6) answers start-one's effects or one
@@ -336,7 +360,7 @@
 
 (local
  (fn-bpnpb-defquiet bpnpb-routed-start
-  (fn-bpnp-routed-start st peer session mru observation via)
+  (fn-bpnp-routed-start st peer session mru observation via budget)
   (fn-bpnp-routed-start bpnpb-start-one bpnpb-no-route-report-confined)))
 
 (local
@@ -351,7 +375,7 @@
 
 (local
  (fn-bpnpb-defquiet bpnpb-operator-resume-step
-  (fn-bpnp-operator-resume-step st arrival)
+  (fn-bpnp-operator-resume-step st arrival budget)
   (fn-bpnp-operator-resume-step)))
 
 (local
@@ -378,6 +402,7 @@
                          bpnpb-forward-result-persist-step
                          bpnpb-clock-domain-fence bpnpb-conflict-propose-step
                          bpnpb-conflict-persist-step bpnpb-busy-delivery-step
+                         bpnpb-deferral-persist-step bpnpb-busy-resume-step
                          bpnpb-rotate-step bpnpb-rotation-persist-step
                          bpnpb-delegate-with-credit bpnpb-preserve-runtime-answer)
                        (theory 'bpnpb-theory))))
