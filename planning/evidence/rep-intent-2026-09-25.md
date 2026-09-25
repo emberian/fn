@@ -153,3 +153,12 @@ removed); it changes no exponent in N.
 - The carry's correctness rests on the host global having one writer
   (A-HOST); an ACL2-held slot in the submission record would make it a
   theorem about the owner state and costs owner.lisp's 158 dependents.
+- `tools/ledger.py --check` warns `bare-general-claim` on the three
+  `must-fail` forms (their bodies name no constant). The concrete
+  refutation is the forged-carry `assert-event`s above, which execute the
+  digest through its attachment; a `must-fail` over those constants would
+  fail only because the prover cannot evaluate the constrained
+  `fn-frame-digest`, which refutes no more. Left as is, uncertified change
+  avoided after the third farm run. The ledger itself (`planning/ledger.*`
+  and the generated parts of proofs.json) is stale until the coordinator
+  regenerates it.
