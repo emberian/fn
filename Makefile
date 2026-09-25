@@ -109,6 +109,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-tests \
 	books/native-config \
 	tests/acl2/native-config-tests \
+	books/native-config-show \
+	tests/acl2/native-config-show-tests \
 	books/native-auth-profile \
 	tests/acl2/native-auth-profile-tests \
 	tests/acl2/native-auth-host-tests \
@@ -126,6 +128,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-operator \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
+	books/native-mission \
+	tests/acl2/native-mission-tests \
 	books/native-control \
 	books/native-hybrid-control \
 	books/hybrid-lifecycle \
@@ -732,6 +736,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-agent \
 	books/owner-log \
 	books/owner-served-bound \
+	books/owner-log-reopen \
+	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/consumer-poll-index \
@@ -755,6 +761,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
 	tests/acl2/owner-served-bound-tests \
+	tests/acl2/owner-log-reopen-tests \
+	tests/acl2/owner-bound-commit-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/owner-store-budget \

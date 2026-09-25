@@ -543,19 +543,27 @@ label; it does not select a policy."
 ;;; reported on stderr and stops nothing: the log is an operator's record,
 ;;; never evidence of durable acceptance.
 (defvar *fnn-owner-log-fd* nil)
+;;; PKT-101: the `[log] path' the run opened (NIL for stderr), the SIGHUP
+;;; count the signal handler advances (the handler does nothing else), and
+;;; the mutex under which a line is written and the descriptor is swapped,
+;;; so a line goes whole to the old file or whole to the new one.
+(defvar *fnn-owner-log-path* nil)
+(defvar *fnn-sighup-count* 0)
+(defvar *fnn-owner-log-mutex* (sb-thread:make-mutex :name "fn service log"))
 
 (defun fnn-log-line (line)
   "Write the ACL2-rendered octet list LINE and one LF to the service log."
   (unless (fnn-octet-list-p line)
     (fnn-fault "ACL2 returned a malformed log line"))
   (let ((octets (concatenate 'fnn-octets (fnn-octets line) (fnn-octets (list 10)))))
-    (if *fnn-owner-log-fd*
-        (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
-          (error (condition)
-            (fnn-err "service log write failed: ~a" condition)))
-      (when *fnn-stderr*
-        (write-sequence octets *fnn-stderr*)
-        (finish-output *fnn-stderr*)))))
+    (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+      (if *fnn-owner-log-fd*
+          (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
+            (error (condition)
+              (fnn-err "service log write failed: ~a" condition)))
+        (when *fnn-stderr*
+          (write-sequence octets *fnn-stderr*)
+          (finish-output *fnn-stderr*))))))
 
 (defun fnn-exit (code)
   (when *fnn-stdout* (finish-output *fnn-stdout*))
@@ -3362,6 +3370,12 @@ serialized profile when the saved image later starts."
   ;; A peer that closed first must surface as EPIPE, never as a signal that
   ;; ends the listener; Python ignores SIGPIPE at interpreter start.
   (sb-sys:enable-interrupt sb-unix:sigpipe :ignore)
+  ;; PKT-101: SIGHUP only counts.  The owner asks ACL2 at its next accept
+  ;; poll whether a reopen of `[log] path' is due (fn-owner-log-reopen).
+  (sb-sys:enable-interrupt sb-unix:sighup
+                           (lambda (signal info context)
+                             (declare (ignore signal info context))
+                             (setq *fnn-sighup-count* (1+ *fnn-sighup-count*))))
   (sb-sys:enable-interrupt sb-unix:sigterm
                            (lambda (signal info context)
                              (declare (ignore signal info context))

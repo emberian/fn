@@ -1,0 +1,9 @@
+transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=16 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=0 transactions-budget=4294967295 bytes-used=0 history-bound=1099511627776 charge-reserved=0 charge-capacity=1048576
+open=full-replay reason=absent
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file=absent
+pins=0 reserved=0 connections=0
+accepted operator status
