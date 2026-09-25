@@ -779,6 +779,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-carriage-rows \
 	books/peer-carriage \
 	tests/acl2/peer-carriage-tests \
+	books/peer-pull \
+	tests/acl2/peer-pull-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \

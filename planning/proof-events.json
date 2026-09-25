@@ -4424,6 +4424,55 @@
           "name": "fn-pinv-field-is-a-body-line"
         }
       ]
+    },
+    {
+      "id": "PRF-100",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-close-advances-only-past-a-fully-answered-round"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-unanswered-id-holds-the-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-answers-only-from-the-local-node"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-keeps-the-cursor-and-journals-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-newnews-names-the-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-journal-is-the-cursor-at-every-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-recovery-asks-the-dead-rounds-newnews"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sched-pull-due-is-due-and-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sched-pull-started-is-not-due"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sched-pull-finished-waits-its-interval"
+        }
+      ]
     }
   ]
 }

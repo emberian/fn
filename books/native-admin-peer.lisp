@@ -208,6 +208,18 @@ decoded as source-address for durable command compatibility."
              (fn-native-admin-decimal-value (coerce (nth 3 words) 'list)))
             (fn-native-admin-decimal-value (coerce (nth 4 words) 'list))))
         (fn-native-admin-result :refused :budget nil nil 0 nil nil)))
+     ; PRF-100: `peer pull NAME SECONDS' sets the NEWNEWS pull interval
+     ; (books/peer-pull.lisp); 0 stops pulling.  SECONDS is a uint32.
+     ((equal (nth 1 words) "pull")
+      (if (and (equal (len words) 4)
+               (fn-native-admin-decimalp (nth 3 words)))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-cfg-row-make (nth 2 words) *fn-pcb-pull-interval-slot* ""
+                                  (fn-native-admin-decimal-value
+                                   (coerce (nth 3 words) 'list)))))
+        (fn-native-admin-result :refused :pull nil nil 0 nil nil)))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))
