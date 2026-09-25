@@ -391,6 +391,13 @@ def parse_hdr_item(line):
         if not re.fullmatch(r"[0-9a-fA-F]{64}", parts[2]):
             raise Undecided("the node's carried line names no principal: {!r}".format(line))
         return {"outcome": "carried", "principal": parts[2].lower()}
+    if token == "revoked" and len(parts) >= 5 and parts[3] == "keyring":
+        # SPIKE (spike/peering): the fifth token.  The node holds the article
+        # under keys it once enrolled for this principal and has since
+        # revoked at keyring generation G; it is not `verified'.
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", parts[2]):
+            raise Undecided("the node's revoked line names no principal: {!r}".format(line))
+        return {"outcome": "revoked", "principal": parts[2].lower(), "keyring": parts[4]}
     raise Undecided("unknown HDR :fn-verified token in {!r}".format(line))
 
 
@@ -606,7 +613,23 @@ def verify(args):
                 "(the independent check here says {})".format(
                     claim["principal"],
                     check.get("reason") or check["outcome"]))
-        code, sentence = compare(claim, check)
+        if claim["outcome"] == "revoked":
+            # SPIKE (spike/peering): the signature may well check under the
+            # pinned keys; the node's word is that the principal is revoked.
+            # Agreement is "not verified" (exit 1) when the independent check
+            # verifies the same principal (the bytes are the revoked key's);
+            # a keyring entry with "revoked": true makes the tool itself say
+            # revoked.  A check that fails is a disagreement about the bytes.
+            if check["outcome"] == "verified" and check.get("principal") == claim["principal"]:
+                code, sentence = AGREE_UNVERIFIED, (
+                    "revoked: the node revoked {} at keyring {}; the signature checks "
+                    "under the pinned keys, so the bytes are the revoked key's".format(
+                        claim["principal"], claim["keyring"]))
+            else:
+                code, sentence = DISAGREE, "the node says revoked but the check says {}".format(
+                    check.get("reason") or check["outcome"])
+        else:
+            code, sentence = compare(claim, check)
     except Undecided as error:
         code, sentence = UNDECIDED, str(error)
     except (OSError, ValueError, KeyError) as error:
