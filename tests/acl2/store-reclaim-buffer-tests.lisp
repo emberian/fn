@@ -68,7 +68,7 @@
 ; Why the switch matters: on the reclaimed store the old buffer call calls
 ; a resend of the reclaimed article a conflict.
 (assert-event
- (equal (fn-pbb-existing-action *ost-msgid* *ost-held* *ost-groups* *rbt-s*) :conflict))
+ (equal (ost-existing-action *ost-msgid* *ost-held* *ost-groups* *rbt-s*) :conflict))
 ; And on the live store the new call is the old one.
 (assert-event
  (and (equal (rbt-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s*) :duplicate)
