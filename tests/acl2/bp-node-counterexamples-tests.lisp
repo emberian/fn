@@ -1068,7 +1068,7 @@
        (fn-bpnp-step (fn-bpnf-answer-state (bpcx-n16-new))
                      '(:persist-result 2 0 :durable)))))
 
-;; Teeth of fn-bpnp-step-rotate-proposes-only-own-projection: the proposal
+;; Teeth of fn-bpnp-rotate-step-proposes-only-own-projection: the proposal
 ;; needs a quiescent state and the state's own projection.
 ;; Not quiescent: an operation was allocated after recovery.
 (defconst *bpcx-n16-busy*
