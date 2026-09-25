@@ -51,7 +51,10 @@
                      *fn-record-max-payload*)
                  (integerp (fn-bs-profile-max-article-octets profile))))
    :hints (("Goal" :use ((:instance fn-bs-profile-validp-codecs-accept
-                                    (values profile) (kind 0)))))))
+                                    (values profile) (kind 0)))
+            :in-theory (union-theories
+                        '((:type-prescription fn-bs-profile-max-article-octets))
+                        (theory 'minimal-theory))))))
 
 ; KEYSTONE.  After an admitted profile is installed, every connection the
 ; owner opens reads the profile's A as its article bound: the served bound
@@ -90,4 +93,6 @@
 ; A profile that is not admitted installs nothing.
 (defthm fn-osb-install-refuses-unadmitted-by-definition
   (implies (not (fn-bs-profile-admittedp profile))
-           (equal (fn-osb-install o profile) (mv :refused o))))
+           (equal (fn-osb-install o profile) (mv :refused o)))
+  :hints (("Goal" :in-theory (union-theories '(fn-osb-install)
+                                             (theory 'minimal-theory)))))

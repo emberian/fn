@@ -257,3 +257,54 @@
    (fn-bs-profile-old-or-newp (fn-bs-crash (car (nth 2 *sput-unfenced*))
                                            '(:apply (:zero) :apply :drop))
                               *sput-bs* 3 '(1 2 3))))
+
+; -----------------------------------------------------------------------------
+; `store needs-upgrade' and the rollback check (PKT-099):
+; fn-profile-needs-upgrade-verdict and fn-profile-rollback-verdict, which
+; host/native/io.lisp fnn-command-needs-upgrade and fnn-command-rollback-check
+; call.
+
+(assert-event (equal (fn-profile-needs-upgrade-verdict *sput-7scale*) :needs-upgrade))
+(assert-event (equal (fn-profile-needs-upgrade-verdict *sput-7dev*) :needs-upgrade))
+(assert-event (equal (fn-profile-needs-upgrade-verdict *sput-scale*) :current))
+(assert-event (equal (fn-profile-needs-upgrade-verdict *sput-dev*) :current))
+(assert-event (equal (fn-profile-needs-upgrade-verdict nil) :invalid-current-profile))
+; Teeth: without admission the statement fails (nil is no format-7 tuple, but
+; a format-7-shaped tuple whose translation is invalid is not admitted).
+; Teeth for fn-profile-format-7-store-needs-upgrade.  Without the format-7
+; hypothesis it fails: the admitted scale preset answers :current (above).
+; Without admission it fails: a value that is not a profile answers
+; :invalid-current-profile (above).  Each must-fail keeps the prover to the
+; evaluated counterexample's facts.
+(must-fail
+ (defthm sput-format-7-needs-upgrade-without-format-7
+   (implies (fn-bs-profile-admittedp current)
+            (equal (fn-profile-needs-upgrade-verdict current) :needs-upgrade))
+   :hints (("Goal" :in-theory (disable fn-profile-needs-upgrade-verdict
+                                       fn-bs-profile-admittedp)))))
+(must-fail
+ (defthm sput-needs-upgrade-without-admission
+   (equal (fn-profile-needs-upgrade-verdict current) :needs-upgrade)
+   :hints (("Goal" :in-theory (disable fn-profile-needs-upgrade-verdict)))))
+
+; Rollback: the format-7 scale tuple's image read records up to H / T =
+; 196,608 octets; the format-8 scale preset's R is its own.
+(assert-event (equal (fn-profile-rollback-record-bound *sput-7scale*) 196608))
+(assert-event (equal (fn-profile-rollback-verdict *sput-7scale* '(900 196608)) '(:sound)))
+(assert-event
+ (equal (fn-profile-rollback-verdict *sput-7scale* '(900 196609 12))
+        '(:refused :record-exceeds-rollback-profile 1 196609 196608)))
+(assert-event
+ (equal (fn-profile-rollback-verdict nil '(1)) '(:refused :invalid-rollback-profile)))
+(assert-event
+ (equal (fn-profile-rollback-verdict *sput-scale* nil) '(:sound)))
+; Teeth: soundness does not follow from admission alone, nor from the
+; lengths alone.
+(must-fail
+ (defthm sput-rollback-sound-by-admission
+   (implies (fn-bs-profile-admittedp old)
+            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))))
+(must-fail
+ (defthm sput-rollback-sound-by-lengths
+   (implies (fn-profile-all-within lengths (fn-profile-rollback-record-bound old))
+            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))))
