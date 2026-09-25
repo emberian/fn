@@ -45,7 +45,12 @@ class StateCheckpointSourceTests(unittest.TestCase):
         node_host = (ROOT / "host" / "store-node-host.lisp").read_text(encoding="ascii")
         io = (ROOT / "host" / "native" / "io.lisp").read_text(encoding="ascii")
         recover = native_cuts.host_function(node_host, "fn-store-sn-recover-from-checkpoint")
-        self.assertIn("(fn-sco-open checkpoint config-records frontier records)", recover)
+        # fn-sco-open is fn-sco-finalize of this extension; the open is read
+        # off it once (fn-store-sn-open-extended, fn-sco-store-open).
+        self.assertIn("(fn-sco-extend checkpoint config-records records)", recover)
+        self.assertIn("(fn-store-sn-open-extended", recover)
+        extended = native_cuts.host_function(node_host, "fn-store-sn-open-extended")
+        self.assertIn("(fn-sco-store-open e config-records frontier)", extended)
         opened = native_cuts.host_function(io, "fnn-recover-from-state-checkpoint")
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("'fn-store-sn-recover-from-checkpoint", opened)

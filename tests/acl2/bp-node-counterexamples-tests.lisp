@@ -63,8 +63,14 @@
 (make-event `(defconst *bpcx-dispatch* ',(fn-bpnp-step *bpcx-s1* *bpcx-progress*)))
 (defconst *bpcx-s2* (fn-bpnf-answer-state (bpcx-durable *bpcx-dispatch*)))
 (defconst *bpcx-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-dest/ to the boundary "relay".
+(defconst *bpcx-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpcx-session-event*
-  (list :session *bpcx-dest* *bpcx-session* t 32768 *bpcx-obs*))
+  (list :session *bpcx-dest* *bpcx-session* t 32768 *bpcx-obs* *bpcx-via*))
 (make-event `(defconst *bpcx-open* ',(fn-bpnp-step *bpcx-s2* *bpcx-session-event*)))
 (defconst *bpcx-attempt-effect* (car (fn-bpnf-answer-effects *bpcx-open*)))
 (defconst *bpcx-s3-answer* (bpcx-durable *bpcx-open*))
@@ -194,7 +200,7 @@
 (defconst *bpcx-n08-recovered* (fn-bpnp-step *bpcx-s3* *bpcx-n08-recover-event*))
 (defconst *bpcx-n08-r* (fn-bpnf-answer-state *bpcx-n08-recovered*))
 (make-event `(defconst *bpcx-n08-reopen*
-   ',(fn-bpnp-step *bpcx-n08-r* (list :session *bpcx-dest* (cons 1 2) t 32768 *bpcx-obs*))))
+   ',(fn-bpnp-step *bpcx-n08-r* (list :session *bpcx-dest* (cons 1 2) t 32768 *bpcx-obs* *bpcx-via*))))
 (make-event `(defconst *bpcx-n08-tick*
    ',(fn-bpnp-step *bpcx-n08-r* *bpcx-progress*)))
 (defun bpcx-recover (st used)

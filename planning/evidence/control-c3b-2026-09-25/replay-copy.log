@@ -1,0 +1,24 @@
+659a478beed100f3b7527ff4ab5c93e72e35da38fb5476a4b9a0e6dcc958a6d8  /tank/fn/scratch/control-c3/gate-52b7b816/build/fn-host-developer
+59efa06dda6deb4d00f28500fd85f39a4c03823831b782df528dd9fea010a204  /tank/fn/scratch/control-c3/gate-52b7b816/build/fn-host-developer.core
+200 fn-nntp experimental server ready
+GROUP fn.agents -> 211 10 1 10 fn.agents
+GROUP fn.announce -> 211 1 1 1 fn.announce
+LISTGROUP fn.agents -> 211 10 1 10 fn.agents list follows
+   1
+   2
+   3
+   4
+   5
+   6
+   7
+   8
+   9
+   10
+QUIT -> 205 closing connection
+--- run.out
+Running as unit: run-rcd309a9f85394d598515c85b39363656.scope; invocation ID: 40ba9486733348d4ad977c496511c9b1
+CONTROL /tank/fn/scratch/control-c3b/replay/control.sock
+LISTENING 11397
+accepted operator run
+--- fn.log
+accepted reader connection=0 time=2026-09-25T10:13:20Z

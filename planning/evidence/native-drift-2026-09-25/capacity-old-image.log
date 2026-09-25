@@ -1,0 +1,23 @@
+.....F.
+======================================================================
+FAIL: test_a_raise_of_any_field_and_a_shrink_refused_by_name (tests.test_native_profile_upgrade.OperatorFieldsTests.test_a_raise_of_any_field_and_a_shrink_refused_by_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-drift/src2/tests/test_native_profile_upgrade.py", line 299, in test_a_raise_of_any_field_and_a_shrink_refused_by_name
+    self.init()
+  File "/tank/fn/scratch/native-drift/src2/tests/test_native_profile_upgrade.py", line 111, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'a725e81ece4aec3d89e996bb4e7eb157fbf3fef1aaa670ad92e72f5ecc752460'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ a725e81ece4aec3d89e996bb4e7eb157fbf3fef1aaa670ad92e72f5ecc752460
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 43.165s
+
+FAILED (failures=1)
+store post 19999 0 committed sequence=0 charge=6 
+store post 20000 0 committed sequence=1 charge=6 
+store post 20001 1  store: payload exceeds the modelled bound
+operator post 1000 0  accepted operator post ACCEPTED
+operator post 20001 1  refused operator post ARTICLE-EXCEEDS-PROFILE-BOUND
