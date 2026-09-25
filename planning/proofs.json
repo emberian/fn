@@ -2073,7 +2073,15 @@
         "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
         "fn-bpnp-step-rotate-is-rotate-step",
         "fn-bpnp-step-rotation-result-is-rotation-result",
-        "fn-bpnp-step-rotation-resets-credit-only-on-durable"
+        "fn-bpnp-step-rotation-resets-credit-only-on-durable",
+        "fn-bpnp-step-busy-delivery-proposes-its-count",
+        "fn-bpnp-step-deferral-durable-applies-the-replay-function",
+        "fn-bpnp-busy-count-after-recovery-is-the-live-count",
+        "fn-bpnp-progress-reports-a-stranded-row",
+        "fn-bpnp-busy-stranded-row-is-not-offered",
+        "fn-bpnp-busy-deferral-ends-at-its-reading",
+        "fn-bpnp-forward-scan-offers-a-candidate",
+        "fn-bpnp-attempted-held-counts-one-more"
       ]
     },
     {
@@ -3427,6 +3435,12 @@
         "planning/evidence/manifests/certify-20260925T080134Z-2821914.json",
         "planning/evidence/manifests/certify-20260925T080424Z-2827312.json",
         "tests/test_bp_node_native.py"
+      ],
+      "events": [
+        "fn-bpnp-receipt-contact-offers-the-queued-job",
+        "fn-bpnp-receipt-contact-event-needs-a-queued-job",
+        "fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed",
+        "fn-bpnp-receipt-reoffer-after-uncertain"
       ]
     }
   ]
