@@ -12,9 +12,16 @@
 ; 2026-09-25, packet 4).
 (include-book "config")
 
-; A recovery-time resource limit.  Exceeding it is a fault before the host
-; retains a larger directory listing or treats a prefix as a usable history.
-(defconst *fn-nco-max-config-observations* 8192)
+; The listing bound is the operator's: the profile's `max-config-generations'
+; (books/byte-store-frame.lisp field 11, `fn-bs-profile-max-config-generations'),
+; which the host reads once from the profile it opened and passes as
+; MAX-GENERATIONS.  Exceeding it is a fault before the host retains a larger
+; directory listing or treats a prefix as a usable history.  The writer
+; refuses a generation above the same field
+; (`fn-native-admin-publication-authorize', `:max-config-generations'), and
+; the profile never shrinks (`fn-profile-upgradep'), so a store the node wrote
+; never exceeds its own listing bound.  (D27, PRF-102; the pre-D27 constant
+; was 8192.)
 
 (defun fn-nco-result (status reason entries)
   (declare (xargs :guard t))
@@ -142,11 +149,11 @@ program-mode caller supplies a malformed logical entry."
             (fn-nco-output-entries (cdr entries)))
     nil))
 
-(defun fn-nco-observe (entries)
+(defun fn-nco-observe (entries max-generations)
   "Return :ok only for the exact bounded 1..n filename/generation history."
   (declare (xargs :guard t))
   (if (or (not (true-listp entries))
-          (< *fn-nco-max-config-observations* (len entries)))
+          (< (nfix max-generations) (len entries)))
       (fn-nco-result :fault :budget nil)
     (let ((decoded (fn-nco-decode-entries entries)))
       (if (equal decoded :bad)
@@ -159,7 +166,29 @@ program-mode caller supplies a malformed logical entry."
 
 ; Initialization has not published generation 1 yet.  Only this entry accepts
 ; an exactly empty namespace; recovery continues to require a durable history.
-(defun fn-nco-observe-initial (entries)
+(defun fn-nco-observe-initial (entries max-generations)
   (declare (xargs :guard t))
   (if (null entries) (fn-nco-result :ok nil nil)
-    (fn-nco-observe entries)))
+    (fn-nco-observe entries max-generations)))
+
+; KEYSTONE (D27, PRF-102: the listing refuses exactly past the operator's
+; bound).  For a proper observation list, the budget fault occurs iff the
+; namespace holds more entries than MAX-GENERATIONS, the profile's
+; `max-config-generations' the host passes (host/native/io.lisp
+; `fnn-config-record-observation' -> host/store-node-host.lisp
+; `fn-store-config-observation' -> this function).  No other arm reports
+; :budget, so a namespace within the bound is never refused for its size,
+; however far above the pre-D27 8192 the operator set the field.
+(defthm fn-nco-observe-refuses-exactly-past-the-operator-bound
+  (implies (true-listp entries)
+           (iff (equal (fn-nco-result-reason
+                        (fn-nco-observe entries max-generations))
+                       :budget)
+                (< (nfix max-generations) (len entries))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nco-observe fn-nco-result
+                                   fn-nco-result-reason)
+                                  (fn-nco-decode-entries
+                                   fn-nco-sort-by-generation
+                                   fn-nco-canonical-contiguousp
+                                   fn-nco-output-entries)))))

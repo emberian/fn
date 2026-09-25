@@ -1975,6 +1975,29 @@
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     },
     {
+      "id": "STO-015",
+      "title": "A namespace the store holds is bounded by the operator's profile, never by a constant; the writer refuses exactly past it and the reader admits everything within it",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-102"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-profile-namespace.lisp",
+        "books/native-config-observation.lisp",
+        "books/native-admin.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ],
+      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9), BP rows (10) and policy members (13) still have constants (256, 4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
+    },
+    {
       "id": "HST-006",
       "title": "The operator's status, pins, obligations and peers answer while the owner runs, in the offline words",
       "specification": "specs/host.md#status-while-the-owner-runs",

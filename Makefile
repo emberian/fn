@@ -177,6 +177,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-profile-upgrade \
 	books/byte-store-profile-program \
 	tests/acl2/store-profile-upgrade-tests \
+	books/store-profile-namespace \
+	tests/acl2/store-profile-namespace-tests \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \

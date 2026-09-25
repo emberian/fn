@@ -697,11 +697,16 @@ here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier
                               (mapcar #'fnn-octet-list config-records))))
-(defun fnn-bridge-config-observation-limit ()
-  "The config reader consumes an ACL2-owned bound before readdir retains names."
-  (fnn-nat (fnn-core 'fn-store-config-observation-limit)))
+(defun fnn-bridge-config-observation-limit (store)
+  "The config reader consumes an ACL2-owned bound before readdir retains names:
+the operator's max-config-generations of the profile STORE opened."
+  (let ((value (fnn-core 'fn-store-config-observation-limit
+                         (fnn-store-config store))))
+    (unless (and (integerp value) (> value 0))
+      (fnn-fault "ACL2 returned a malformed configuration generation bound"))
+    value))
 
-(defun fnn-bridge-config-observation (observed &optional initializing)
+(defun fnn-bridge-config-observation (observed limit &optional initializing)
   "Return ACL2-issued (canonical basename . octets) config history entries.
 
 OBSERVED is a bounded physical list.  The core decodes each octet record,
@@ -714,7 +719,8 @@ returned representation; it is not a second filename policy."
                     (mapcar (lambda (entry)
                               (list (fnn-octet-list (fnn-string-octets (car entry)))
                                     (fnn-octet-list (cdr entry))))
-                            observed))))
+                            observed)
+                    limit)))
     (unless (and (true-listp value) (= (length value) 3)
                  (eq (first value) :ok) (null (second value))
                  (listp (third value)))
@@ -1123,7 +1129,7 @@ record byte bound before ACL2 decodes its generation and compares the native
 writer codec name.  A malformed/gapped namespace remains a fault; no suffix
 filter turns it into an absent or shorter history."
   (when test-fault-point (fnn-at store test-fault-point))
-  (let* ((limit (fnn-bridge-config-observation-limit))
+  (let* ((limit (fnn-bridge-config-observation-limit store))
          (names (handler-case
                     (sort (fnn-list-directory-bounded (fnn-config-dir store) limit
                                                       "configuration namespace")
@@ -1138,7 +1144,7 @@ filter turns it into an absent or shorter history."
                        (cons name
                              (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
                    names)))
-    (fnn-bridge-config-observation observed initializing)))
+    (fnn-bridge-config-observation observed limit initializing)))
 
 (defun fnn-config-record-names (store &optional test-fault-point initializing)
   "Canonical config basenames from one bounded ACL2-bound observation."
