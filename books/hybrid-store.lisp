@@ -45,14 +45,24 @@
 ;; refuses it before any Store call, and replay admits no record of it.  The
 ;; classification reads the signed source, so the group a record names is
 ;; the one the author's signature covers the Control field of.
-(defun fn-hsig-source-filed-groups (source fields)
+(defun fn-hsig-second (x)
   (declare (xargs :guard t))
+  (if (and (consp x) (consp (cdr x))) (cadr x) nil))
+
+(defthm fn-hsig-second-is-cadr
+  (equal (fn-hsig-second x) (cadr x)))
+
+(defun fn-hsig-source-filed-groups (source fields)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-ctl-classify-octets
+                                          fn-ctl-filing-group)))))
   (let ((classified (fn-ctl-classify-octets source)))
     (cond ((and (consp classified) (eq (car classified) :control))
-           (list (fn-ctl-filing-group (cadr classified))))
+           (list (fn-ctl-filing-group (fn-hsig-second classified))))
           ((and (consp classified) (eq (car classified) :malformed))
            :malformed)
-          (t (cadr fields)))))
+          (t (fn-hsig-second fields)))))
 
 ; A keyring snapshot is deliberately narrow: one principal and the exact
 ; ordered public-key set used by the signed-preimage function.  Custody and
@@ -551,7 +561,14 @@
                                    fn-id-obligation-of)))))
 
 ;; A malformed control article binds no record: no filing group exists and
-;; the list :malformed is no group list.
+;; the keyword :malformed is no record's group list.
+(local
+ (defthm fn-hsig-record-groups-are-not-a-keyword
+   (implies (fn-record-p record)
+            (not (equal (fn-record-groups record) :malformed)))
+   :hints (("Goal" :in-theory (enable fn-record-record-vocabulary
+                                      fn-record-shape-vocabulary)))))
+
 (defthm fn-hsig-malformed-control-binds-no-record
   (implies (equal (car (fn-ctl-classify-octets source)) :malformed)
            (not (fn-hsig-carried-record-metadatap source received record)))
@@ -560,7 +577,11 @@
                                   (fn-hsig-authored-source-fields
                                    fn-ctl-classify-octets
                                    fn-id-subject-of-payload
-                                   fn-id-obligation-of)))))
+                                   fn-id-obligation-of
+                                   fn-record-p fn-record-groups
+                                   fn-record-payload fn-record-msgid
+                                   fn-record-charge fn-record-content-subject
+                                   fn-record-obligation-id)))))
 
 ;; An ordinary signed article keeps the binding it always had.
 (defthm fn-hsig-ordinary-source-filed-groups-by-definition
