@@ -28,6 +28,7 @@
 (include-book "owner-served-invariants")
 (include-book "owner-invariants")
 (include-book "config-owner-live")
+(include-book "records-concrete")
 
 ; -----------------------------------------------------------------------------
 ; The lookup.
@@ -41,7 +42,7 @@
   (if (consp records)
       (if (and (consp pair) (natp (car pair)) (< seq (car pair)))
           (fn-ccar-seek pair (cdr records) (1+ seq))
-        (if (equal pair (fn-sf-record-pair (car records)))
+        (if (equal pair (fn-rcon-sf-record-pair (car records)))
             (car records)
           nil))
     nil))
@@ -98,9 +99,9 @@
                               (fn-sn-identity-context s) record)) :ok)))
                ((or (fn-cpe-eventp record) (fn-th-topic-eventp record))
                 (consp (fn-replay-apply-record (fn-sn-node s) record)))
-               (t (fn-sn-record-bindsp (fn-sn-node s) record)))
+               (t (fn-rcon-sn-record-bindsp (fn-sn-node s) record)))
               (equal (fn-sf-completion (fn-sn-files s))
-                     (fn-sf-record-pair record))))))
+                     (fn-rcon-sf-record-pair record))))))
 
 (defthm fn-ccar-completion-core-enabledp-is-reference
   (equal (fn-ccar-completion-core-enabledp s)
@@ -127,9 +128,9 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (and (fn-ccar-completion-core-enabledp s)
        (let ((record (fn-ccar-completion-record s)))
-         (and (eq (car (fn-cpe-projection-step
+         (and (eq (car (fn-rcon-cpe-projection-step
                         (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok)
-              (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) record)) :ok)))))
+              (eq (fn-th-at 0 (fn-rcon-th-prefix-step (fn-sn-topic s) record)) :ok)))))
 
 (defthm fn-ccar-completion-enabledp-is-reference
   (equal (fn-ccar-completion-enabledp s)
@@ -155,9 +156,9 @@
              (topicp (fn-th-topic-eventp record))
              (identityp (or (fn-stxe-p record) (fn-stxk-p record)
                             (fn-stxa-p record)))
-             (projection (fn-cpe-projection-step
+             (projection (fn-rcon-cpe-projection-step
                           (fn-sn-consumer s) record (fn-sn-identity-next s)))
-             (topic-projection (fn-th-prefix-step (fn-sn-topic s) record))
+             (topic-projection (fn-rcon-th-prefix-step (fn-sn-topic s) record))
              (node (cond (retentionp
                           (fn-replay-apply-retention-event (fn-sn-node s) record))
                          ((or identityp consumerp topicp)
@@ -166,25 +167,25 @@
                           (fn-node-complete (fn-sn-node s) (fn-record-txid record)
                                             (fn-record-generation record) :durable))))
              (files (fn-sf-core-completion
-                     (fn-sn-files s) (fn-store-event-sequence record)
-                     (fn-store-event-txid record))))
+                     (fn-sn-files s) (fn-rcon-store-event-sequence record)
+                     (fn-rcon-store-event-txid record))))
         (fn-sn-with-topic
          (fn-sn-with-consumer
           (if (or retentionp consumerp topicp)
             (fn-sn-advance-identity-next
              (fn-sn-update-indexed
-              s (fn-sf-emit-success files (fn-store-event-sequence record)
-                                    (fn-store-event-txid record))
+              s (fn-sf-emit-success files (fn-rcon-store-event-sequence record)
+                                    (fn-rcon-store-event-txid record))
               node (fn-sn-index s)))
           (if identityp
               (fn-sn-finish-identity
-               s (fn-sf-emit-success files (fn-store-event-sequence record)
-                                     (fn-store-event-txid record))
+               s (fn-sf-emit-success files (fn-rcon-store-event-sequence record)
+                                     (fn-rcon-store-event-txid record))
                record node)
             (fn-sn-advance-identity-next
              (fn-sn-update-accepted
-              s (fn-sf-emit-success files (fn-store-event-sequence record)
-                                    (fn-store-event-txid record))
+              s (fn-sf-emit-success files (fn-rcon-store-event-sequence record)
+                                    (fn-rcon-store-event-txid record))
               node
               (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))
               (fn-record-msgid record)
@@ -201,7 +202,11 @@
            :in-theory (union-theories
                        '(fn-ccar-sn-finish fn-sn-finish
                          fn-ccar-completion-enabledp-is-reference
-                         fn-ccar-completion-record-is-completion-record)
+                         fn-ccar-completion-record-is-completion-record
+                         fn-rcon-store-event-sequence-is-store-event-sequence
+                         fn-rcon-store-event-txid-is-store-event-txid
+                         fn-rcon-cpe-projection-step-is-cpe-projection-step
+                         fn-rcon-th-prefix-step-is-th-prefix-step)
                        (theory 'minimal-theory))
            :use ((:instance fn-sn-completion-enabledp)
                  (:instance fn-sn-completion-core-enabledp)))))
@@ -250,7 +255,7 @@
   (let ((sub (fn-own-inflight o))
         (record (fn-ccar-completion-record (fn-own-store o))))
     (and sub
-         (fn-record-p record)
+         (fn-rcon-record-p record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
          (equal (fn-record-payload record) (fn-own-sub-stored-octets cfg sub))
@@ -265,7 +270,11 @@
                                   (fn-sn-statep fn-sn-completion-record
                                    fn-record-p)))))
 
-; The function host/owner-host.lisp fn-owner-finish-submission calls.
+; The function host/owner-host.lisp fn-owner-finish-submission calls.  Its
+; executed recognizer is fn-rcon-record-p (books/records-concrete.lisp):
+; every fn-record-p on this path, in the seek's pair, the binding test, the
+; two projection steps and the finish, is reached through a twin equal to
+; its reference, so no octet list is built to recognise a record.
 (defun fn-ccar-own-finish (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
   (cons (if (and (fn-ccar-completion-enabledp (fn-own-store o))
