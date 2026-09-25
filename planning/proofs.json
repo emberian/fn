@@ -3235,12 +3235,7 @@
         "planning/evidence/manifests/certify-20260925T053008Z-1001454.json",
         "planning/evidence/manifests/certify-20260925T050452Z-738350.json"
       ],
-      "progress_note": "Lane bounds-join (2026-09-25). Teeth in tests/acl2/byte-store-frame-tests.lisp: a tight witness (R equal to the article record of its (A, G)); one refusal by name per argument of the relation; a concrete counterexample per hypothesis (a non-profile reads R = 0 while an empty record encodes to 70 octets; 196,609 payload octets in one group; six 256-octet groups at A). config-tests: a 256-octet group name is a 256-octet label; a 257-octet string is not a label. native-control-tests: the named status survives the sealed reply and exits 1; :uncertain and :fault are not refusals.",
-      "events": [
-        "fn-bs-profile-admits-every-article-record",
-        "fn-cfg-labelp-of-record-group-name",
-        "fn-native-control-refusal-status-is-a-refusal"
-      ]
+      "progress_note": "Lane bounds-join (2026-09-25). Teeth in tests/acl2/byte-store-frame-tests.lisp: a tight witness (R equal to the article record of its (A, G)); one refusal by name per argument of the relation; a concrete counterexample per hypothesis (a non-profile reads R = 0 while an empty record encodes to 70 octets; 196,609 payload octets in one group; six 256-octet groups at A). config-tests: a 256-octet group name is a 256-octet label; a 257-octet string is not a label. native-control-tests: the named status survives the sealed reply and exits 1; :uncertain and :fault are not refusals."
     }
   ]
 }
