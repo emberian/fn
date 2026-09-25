@@ -25,6 +25,9 @@
 ; Prefix `fn-ctl-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "control-authority")
+; fn-replay-composite-record: the article record inside a kind-4 signed
+; acceptance composite, decoded as replay decodes it.
+(include-book "replay")
 
 ; Some record in WS whose cause is CAUSE withdraws X.
 (defun fn-ctl-withdrawn-via-p (x ws cause verdicts)
@@ -286,13 +289,27 @@
 ; txid when the new article names a target; the checks are `equal' on
 ; shared structure.
 
-; The txid of MSGID's acceptance record, nil when RECORDS holds none.
+; The Message-ID of an acceptance event: an article record's own, or the
+; article record a signed acceptance composite carries (decoded as replay
+; decodes it, `fn-replay-composite-record').  Cost: a composite is decoded
+; (its article record's octets) when the walk reaches it.
+(defun fn-ctl-event-msgid (e)
+  (declare (xargs :guard t))
+  (if (fn-record-p e)
+      (fn-record-msgid e)
+    (let ((r (fn-replay-composite-record e)))
+      (if (fn-record-p r) (fn-record-msgid r) nil))))
+
+; The txid of MSGID's acceptance event, nil when RECORDS holds none.
+; Pessimistic cost: a walk of RECORDS decoding every signed composite before
+; the match, paid once per withdrawing article the refresh first publishes
+; (and per withdrawing article at recovery).  An index from Message-ID to
+; txid beside the Message-ID trie is the follow-up.
 (defun fn-ctl-record-txid (msgid records)
   (declare (xargs :guard t))
   (if (consp records)
-      (if (and (fn-record-p (car records))
-               (equal (fn-record-msgid (car records)) msgid))
-          (fn-record-txid (car records))
+      (if (and msgid (equal (fn-ctl-event-msgid (car records)) msgid))
+          (fn-store-event-txid (car records))
         (fn-ctl-record-txid msgid (cdr records)))
     nil))
 
@@ -493,7 +510,8 @@
 (defthm fn-ctl-record-txid-of-append
   (implies (fn-ctl-record-txid m records)
            (equal (fn-ctl-record-txid m (append records more))
-                  (fn-ctl-record-txid m records))))
+                  (fn-ctl-record-txid m records)))
+  :hints (("Goal" :in-theory (disable fn-ctl-event-msgid fn-store-event-txid))))
 
 (defun fn-ctl-all-recorded-p (arts records)
   (declare (xargs :guard t))
@@ -625,4 +643,5 @@
                     (:d fn-ctl-verdicts-grow-by-p) (:d fn-ctl-visible-state)
                     (:d fn-ctl-visible-state-of) (:d fn-ctl-projectionp)
                     (:d fn-ctl-subseqp) (:d fn-ctl-archive-entries)
-                    (:d fn-ctl-all-recorded-p) (:d fn-ctl-record-txid)))
+                    (:d fn-ctl-all-recorded-p) (:d fn-ctl-record-txid)
+                    (:d fn-ctl-event-msgid)))
