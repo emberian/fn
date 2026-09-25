@@ -7,7 +7,7 @@ It supersedes, if adopted, the position of
 [substrate transport §7](../specs/substrate-transport.md) (lines 849-900),
 "fn implements none of them", and it answers each of that section's four
 objections rather than overruling them (§2.0). The draft spec section is
-[peering §8](../specs/peering.md#8-control-messages-proposed-not-decided).
+[peering §8](../specs/peering.md#8-control-messages-filing-implemented-execution-proposed-not-decided).
 
 The one-sentence design: **a control article is evidence that a principal
 asked; it is executed only when this node verified that principal's

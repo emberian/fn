@@ -1183,24 +1183,20 @@ delta list) for K3 and for `fn-peer-injection-arguments`. K0 and K1 can
 start now against `ca66782` with the `cfg-gen` argument omitted and added
 when R2 lands.
 
-## 8. Control messages (proposed, not decided)
+## 8. Control messages (filing implemented; execution proposed, not decided)
 
-Status: **proposed, not decided.** Nothing in this section is implemented. It
-is the spec half of [the control-message design](../planning/design-2026-09-25-control-messages.md),
+Status: **the filing rule (packet C1) is implemented**; everything else in
+this section is **proposed, not decided**. It is the spec half of [the control-message design](../planning/design-2026-09-25-control-messages.md),
 which carries the RFC survey, the per-verb table and the ranked packets C1
 to C4. If adopted, it supersedes
 [substrate transport §7](substrate-transport.md#7-control-messages-rfc-5537-5-pgpverify-and-why-fn-implements-neither)'s
 "fn implements none of them", and it answers that section's objections
 rather than dropping them.
 
-**Today.** No book or host file reads the `Control` field. The only match
-for the name is the group-name classifier
-`fn-native-admin-group-name-special-purposep` (`books/native-admin.lisp:519-552`).
-A control article is therefore stored as an ordinary article in whichever
-groups its `Newsgroups` field names that this node serves. It is never
-executed. It is also *not* filed under `control.*`, contrary to the sentence
-in "What this design does not decide" below, and RFC 5537 §3.7 says control
-messages SHOULD NOT be stored in the groups they list.
+**Today (C1, implemented 2026-09-25).** A control article is recognized
+and filed, never executed. The filing paragraph below is what the node does;
+the execution rule, the per-verb table, the feed paragraph and the metadata
+item remain proposals.
 
 **Proposed rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
 executed only when all of these hold:
@@ -1222,12 +1218,40 @@ RFC 5537 §5.1 leaves authentication to "local authorization policy". The
 rule above is fn's policy, and signature verification over the exact
 authored source is its "other means".
 
-**Filing.** Every control article is filed in `control.<verb>` (`control`
-for unknown and obsolete verbs) if the operator created that group, and
-otherwise refused with `:control-not-filed`. It is never filed in the groups
-its `Newsgroups` field names. The stored bytes are unchanged. A `cmsg`
-Subject, a `.ctl` group name and `Also-Control` never make an article a
-control message (RFC 5537 §5).
+**Filing (implemented, C1).** `fn-ctl-classify`
+(`books/control-classify.lisp`) reads only the `Control` field, and the
+`Supersedes` field RFC 5536 §3.2.3 forbids beside it
+(`fn-ctl-classify-reads-only-the-control-field`): an article is `:ordinary`,
+`(:control verb args)` or `(:malformed reason)`. A `cmsg` Subject, a `.ctl`
+group name and `Also-Control` never make an article a control message (RFC
+5537 §5, an RFC requirement; `fn-ctl-cmsg-subject-is-ordinary`), and fn does
+not take the RFC's MAY to reject the `cmsg` form as ambiguous. The filing
+step `fn-pa-filing-plan` (`books/peer-authored-accept.lisp`) is the first
+thing every ingress does: host/native/owner.lisp `fnn-owner-attempt-transit`
+calls it through host/owner-host.lisp `fn-owner-control-filing`, and served
+POST, bound submission, NNTP transit and BP transit reach the Store only
+through that function. A control article is filed in `control.<verb>` for
+`cancel`, `newgroup`, `rmgroup`, `checkgroups`, `ihave` and `sendme`, and in
+`control` for an obsolete or unknown verb (the verb compared in ASCII lower
+case, a local policy), if the operator created that group, and it is never
+filed in the groups its `Newsgroups` field names (RFC 5537 §3.7's SHOULD,
+kept as a requirement; `fn-ctl-control-article-is-filed-only-in-control`).
+Otherwise it is refused with a distinct reason, and nothing is stored:
+`:control-not-filed` (the group is not configured), `:control-malformed`
+(two `Control` fields, `Control` beside `Supersedes`, or a command outside
+the `verb *( 1*WSP argument )` grammar) or `:control-signed`. A served POST
+answers each with its own 441 line; transit answers its ordinary refusal
+code and the service log line names the reason. The stored bytes are the
+received bytes, `Newsgroups` included; the feed still offers the article by
+the groups its `Newsgroups` field names.
+
+*Open (C1):* a control article carrying an `FN-Authorship` carrier is
+refused `:control-signed`, because a signed article's Store record must list
+exactly its source's `Newsgroups` (`books/hybrid-store.lisp`, the event
+constructors and the replay binding), so it cannot yet be recorded under
+`control.<verb>`. Filing it needs that binding to name the filing group,
+which recertifies everything above `hybrid-store`; C2 needs it, since only a
+verified (signed) control article can ever execute.
 
 **Per verb.**
 
@@ -1258,9 +1282,9 @@ reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 
 Peer authentication (A-PEER stands; `(:principal id)` is a reserved slot,
 not a mechanism); Distribution header matching; control messages (RFC 5537
-§5; today never executed and, unlike what this sentence used to say, not
-filed under `control.*` either: they are stored as ordinary articles in the
-groups they name; §8 proposes filing and a granted-authority execution rule); the D13 pruning rule
+§5; never executed; filed under `control.<verb>` only if the operator
+created that group and refused otherwise, never stored in the groups they
+name, §8; §8 proposes a granted-authority execution rule); the D13 pruning rule
 (`:date-cutoff` is reserved and unreachable); NEWNEWS-driven pull feeds
 (RFC 3977 §7.4, not needed for push peering); TLS and compression
 extensions; and any multi-node configuration agreement (a peer record is
