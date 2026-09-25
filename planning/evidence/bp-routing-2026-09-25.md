@@ -89,12 +89,26 @@ Over 10 s at 2 jobs:
 | 7e3e @ 1bf6d8e1 | certify-20260925T044231Z-2513080 (a98ee5e71515b9ec) | 30/30 passed: native-admin 8.3 s, bridge, premises, guards 10.8 s, counterexamples, and the native-operator tests. |
 | 390d @ cca6f61b | certify-20260925T045027Z-2521559 (5f179842916c1f2c) | 4/4 passed: native-operator, native-operator-host and their tests, each about 4 s. |
 
-091f8f78 (`bp-route remove` gets its own kind) has **no manifest**. Both
-granted runs were used. bp-route and native-admin load fully in a proof
-REPL on hbox. The owed run is `--affected-by books/bp-route.lisp
---affected-by books/native-admin.lisp`.
+| 6bf6 @ f247226a | certify-20260925T050457Z-2551445 (ef2a13240dcaec05) | 30/30 passed. Covers 091f8f78 (`bp-route remove` as `:remove-bp-route`). Over 10 s at 2 jobs: native-admin 15.1 s (8.3 s in run 7e3e at nearly the same bytes, so the cost is not stable and is owed an investigation), bp-node-progress-guards 13.2 s, bp-node-progress-invariants 10.2 s. |
 
-## Native (hbox, gate /tank/fn/gates/bp-routing-cca6f61b)
+## Native, final (hbox, gate /tank/fn/gates/bp-routing-f247226a)
+
+- **Image.** DTN developer image from the composed artifact set 2336cc0e
+  (304 books), built under `swarm-build`: launcher `eec7138278fef48f`, core
+  `137d503a42591378`, build log `8c99d7cc87f305a9`.
+- **`tests.test_bp_node_native`: 23 tests, all 23 OK** in 549 s, log
+  `56eb6f4729a348fb`. This includes
+  `test_removed_route_keeps_transit_held_and_reports_no_route`: with the
+  route removed, dispatch logs `BP forwarding no-route
+  destination=dtn://sender/ decision=no-route`, writes no kind 8 and keeps
+  the kind 5 held. With the route added back, the same row is forwarded
+  through `hop=sender-boundary` and settles `status=sent`.
+
+The dtn7 lab was not rerun. It cannot show "the pin stays and `no-route` is
+logged" because of finding 1: A's request is a queued job that keeps its
+queued address. That is the next packet's work.
+
+## Native, earlier (hbox, gate /tank/fn/gates/bp-routing-cca6f61b)
 
 **Image.** DTN developer image built from the composed artifact set
 664f12f3 (304 books, `proof_artifacts acquire --profile dtn`) under
