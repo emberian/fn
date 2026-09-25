@@ -197,6 +197,8 @@
            :max-groups-per-article-outside-codec)
           ((or (< n 1) (< *fn-bs-profile-group-name-ceiling-codec* n))
            :max-group-name-octets-outside-codec)
+          ((< r (fn-record-encoded-octets-ceiling a g))
+           :max-record-octets-below-the-article-record)
           ((or (< k 1) (< tx k)) :max-open-suffix-outside-transactions)
           ((not (and (fn-bs-profile-countp (fn-bs-pf 9 values))
                      (fn-bs-profile-countp (fn-bs-pf 10 values))
@@ -211,11 +213,18 @@
   (not (fn-bs-profile-invalid-reason values)))
 
 ; The format-7 translation: T = transactions, H = aggregate replay octets,
-; R = H / T (the ceiling format 7 derived), A = payload, G, the group name and
-; the namespace counts the codec widths and P1 defaults, K = T.  Both format-7
+; R = H / T (the ceiling format 7 derived), A = payload, K = T, the namespace
+; counts P1's defaults, and G and the group name the record codec's widths
+; every format-7 store was written under: 16 groups of at most 128 octets
+; (pre-D27 `*fn-record-max-groups*' and `*fn-record-max-group-name*').  They
+; are figures of the format, not today's ceilings: at today's 65 535 groups
+; the article record for (A, G) is 17 138 486 octets, above either tuple's R
+; (196 608), so the translation would not be a valid profile.  Both format-7
 ; tuples translate to the format-8 presets of the same name
 ; (`fn-bs-profile-format-7-translates-to-the-presets', in the test book).
 (defconst *fn-bs-profile-default-namespace-count* 1048576)
+(defconst *fn-bs-profile-format-7-groups* 16)
+(defconst *fn-bs-profile-format-7-group-name-octets* 128)
 
 (defun fn-bs-profile-from-format-7 (values)
   (declare (xargs :guard t))
@@ -223,8 +232,8 @@
         (tx (nfix (fn-bs-meta-nth 4 values))))
     (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
           tx h (if (zp tx) 0 (floor h tx)) (nfix (fn-bs-meta-nth 2 values))
-          *fn-bs-profile-groups-ceiling-codec*
-          *fn-bs-profile-group-name-ceiling-codec*
+          *fn-bs-profile-format-7-groups*
+          *fn-bs-profile-format-7-group-name-octets*
           tx
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
@@ -329,12 +338,16 @@
                 (<= (fn-bs-pf 6 values) *fn-bs-profile-groups-ceiling-codec*)
                 (<= 1 (fn-bs-pf 7 values))
                 (<= (fn-bs-pf 7 values) *fn-bs-profile-group-name-ceiling-codec*)
+                (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 values)
+                                                      (fn-bs-pf 6 values))
+                    (fn-bs-pf 4 values))
                 (<= 1 (fn-bs-pf 8 values))
                 (<= (fn-bs-pf 8 values) (fn-bs-pf 2 values))))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp
                                    fn-bs-profile-invalid-reason)
-                                  (fn-bs-pf fn-frame-values-okp)))))
+                                  (fn-bs-pf fn-frame-values-okp
+                                   fn-record-encoded-octets-ceiling)))))
 
 (defthm fn-bs-profile-of-valid
   (implies (fn-bs-profile-validp values)
@@ -387,6 +400,36 @@
                             fn-bs-profile-of fn-bs-profile-validp
                             fn-store-publication-ceiling
                             fn-bs-profile-min-record-octets-covers-every-kind)))))
+
+;  KEYSTONE (an article the profile admits is a record it publishes).  Under
+; the profile a store runs under, every record whose payload is within the
+; article field A and whose groups are within G encodes to at most the record
+; field R: `fn-record-encode-length-bound' (records-seam) bounds the encoding
+; by `fn-record-encoded-octets-ceiling' of its payload and group count, and
+; validity requires R to hold that ceiling at (A, G).  So a POST the boundary
+; admits (`fn-sbud-post-boundary', books/store-budget-naming) never reaches
+; the publish gate's record check (`fn-bs-publication-admissiblep',
+; asserted by host/native/io.lisp `fnn-publish') with a record it refuses.
+(defthm fn-bs-profile-admits-every-article-record
+  (implies (and (fn-bs-profile-admittedp values)
+                (<= (len (fn-record-payload record))
+                    (fn-bs-profile-max-article-octets values))
+                (<= (len (fn-record-groups record))
+                    (fn-bs-profile-max-groups-per-article values)))
+           (<= (len (fn-record-encode record))
+               (fn-bs-profile-max-record-octets values)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-profile-validp-facts
+                                   (values (fn-bs-profile-of values)))
+                        (:instance fn-record-encode-length-bound))
+           :in-theory (e/d (fn-bs-profile-admittedp fn-bs-profile-field
+                            fn-bs-profile-max-record-octets
+                            fn-bs-profile-max-article-octets
+                            fn-bs-profile-max-groups-per-article
+                            fn-record-encoded-octets-ceiling)
+                           (fn-bs-profile-validp-facts
+                            fn-record-encode-length-bound
+                            fn-bs-profile-of fn-bs-profile-validp)))))
 
 (defun fn-bs-meta-frame-okp (frame kind payload bound)
   (declare (xargs :guard t))
@@ -689,7 +732,11 @@
 ; translations.  The defaults are what `init' writes with no flag: the D27
 ; figures (2^32-1 transactions, 1 TiB of history, 64 MiB records, 16 MiB
 ; articles, 4096 groups, 460-octet names, 65536 open suffix, 2^20 per
-; namespace), each capped at the codec ceiling it must not pass today.
+; namespace), each capped at the codec ceiling it must not pass.  With P2's
+; ceilings every figure but the name is below its cap, so the defaults are
+; R 67 108 864, A 16 777 216, G 4096 and names 256 (460 capped at the
+; configuration label's width, `fn-cfg-labelp-of-record-group-name'); the
+; article record for (A, G) is 17 847 355 octets, within R.
 (defconst *fn-bs-profile-development*
   (fn-bs-profile-from-format-7 *fn-bs-meta-format-7-development-values*))
 (defconst *fn-bs-profile-scale*
