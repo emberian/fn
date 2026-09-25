@@ -484,7 +484,7 @@
 
 (defun fn-rcl-tombstone-of (payload msgid)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((agent (fn-pb-path-agent payload))
+  (let* ((agent (fn-pb-path-agent payload msgid))
          (subject (fn-pb-subject payload agent msgid))
          (sourcep (equal (car subject) :source)))
     (append *fn-rcl-magic*
@@ -503,7 +503,7 @@
 ; compares the octets' digests.
 (defun fn-rcl-same-as-tombstonep (msgid payload tomb)
   (declare (xargs :guard t))
-  (let* ((agent (fn-pb-path-agent payload))
+  (let* ((agent (fn-pb-path-agent payload msgid))
          (a (fn-pb-subject payload agent msgid)))
     (if (and (fn-rcl-tomb-sourcep tomb)
              (equal agent (fn-rcl-tomb-agent tomb))
@@ -646,7 +646,7 @@
 ; The fields of a tombstone read back what `fn-rcl-tombstone-of' put there.
 (defthm fn-rcl-tombstone-of-fields
   (let ((tomb (fn-rcl-tombstone-of payload msgid))
-        (agent (fn-pb-path-agent payload)))
+        (agent (fn-pb-path-agent payload msgid)))
     (and (fn-rcl-tombstonep tomb)
          (equal (fn-rcl-tomb-octets-digest tomb) (fn-sha256 payload))
          (equal (fn-rcl-tomb-sourcep tomb)
@@ -670,7 +670,7 @@
   (let* ((held (fn-article-payload (fn-find-article m articles)))
          (mo (fn-record-string-octets m))
          (tomb (fn-rcl-tombstone-of held mo))
-         (agent (fn-pb-path-agent p))
+         (agent (fn-pb-path-agent p mo))
          (a (fn-pb-subject p agent mo))
          (b (fn-pb-subject held agent mo)))
     (implies (and (fn-find-article m articles)
@@ -680,7 +680,7 @@
                         (fn-rcl-action-over x p g articles))
                  (fn-rcl-collisionp p held)
                  (fn-rcl-collisionp (cdr a) (cdr b))
-                 (and (not (equal agent (fn-pb-path-agent held)))
+                 (and (not (equal agent (fn-pb-path-agent held mo)))
                       (equal (car b) :source)))))
   :hints (("Goal" :cases ((equal x m))
                   :in-theory (e/d (fn-pb-same-articlep)

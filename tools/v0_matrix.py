@@ -690,6 +690,13 @@ PLAN = (
     # The "client" phase: tin 2.6.2 in a tmux pane, its wire recorded by
     # tools/nntp_wire_log.py; each verdict is the node's reply line to the
     # command tin sent (planning/evidence/spike-reader-2026-09-25.md, D32).
+)
+
+# The tin client rows (reader-surface, PKT-111).  They enter PLAN with the first
+# matrix run that publishes them: planning/v0-matrix.json is written only by a
+# run, and `--check` refuses a planned row the file lacks.  Move them into PLAN
+# in the commit that archives that run.
+PENDING_TIN_PLAN = (
     S("V0-CLIENT-TIN-READ", "F-CLIENT",
       "tin opens a group and reads an article",
       ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "single",

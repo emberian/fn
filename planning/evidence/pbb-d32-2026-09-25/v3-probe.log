@@ -1,0 +1,6 @@
+PASS v3 first post (Path: not-for-mail) -> 240 article received OK
+PASS v3 resend, same octets -> 441 posting failed; this article is already stored here
+PASS v3 resend, another Path -> 441 posting failed; a different article with this Message-ID is stored here
+PASS resend without a Path -> 441 posting failed; a different article with this Message-ID is stored here
+stored record opens with: Injection-Date: Fri, 25 Sep 2026 18:49:49 +0000
+stored Path line: Path: fn.example.invalid!not-for-mail
