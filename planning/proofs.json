@@ -3586,7 +3586,18 @@
         "tests/acl2/octets-stobj-tests.lisp",
         "planning/evidence/rep-octets-2026-09-25.md"
       ],
-      "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (PRF-014 fn-pbb-existing-action-is-pb-existing-action). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md."
+      "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (PRF-014 fn-pbb-existing-action-is-pb-existing-action). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md.",
+      "events": [
+        "create-fn-octets{correspondence}",
+        "fn-octets-get{correspondence}",
+        "fn-octets-put{correspondence}",
+        "fn-octets-append-octet{correspondence}",
+        "fn-octets-list{correspondence}",
+        "fn-octets-from-list{correspondence}",
+        "fn-oct-slice-list-is-take-nthcdr",
+        "fn-oct-prefix-equalp-is-list-prefixp",
+        "fn-oct-suffix-equalp-is-equal"
+      ]
     }
   ]
 }
