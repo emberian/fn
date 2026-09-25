@@ -97,6 +97,16 @@
          (fn-bpnr-tree-drop name (cdr tree)))
         (t (cons (car tree) (fn-bpnr-tree-drop name (cdr tree))))))
 
+(defun fn-bpnr-tree-entry (name tree)
+  (declare (xargs :guard t))
+  (cond ((atom tree) nil)
+        ((and (consp (car tree)) (equal (caar tree) name)) (cdar tree))
+        (t (fn-bpnr-tree-entry name (cdr tree)))))
+
+(defun fn-bpnr-op-file (op)
+  (declare (xargs :guard t))
+  (if (and (consp op) (consp (cdr op)) (consp (cddr op))) (caddr op) nil))
+
 (defun fn-bpnr-apply-op (tree op)
   (declare (xargs :guard t))
   (let ((name (fn-bpnr-op-name op))
@@ -104,12 +114,11 @@
     (cond ((member-equal kind '(:rmdir :unlink))
            (fn-bpnr-tree-drop name tree))
           ((equal kind :unlink-in)
-           (let ((entry (and (alistp tree) (cdr (assoc-equal name tree)))))
+           (let ((entry (fn-bpnr-tree-entry name tree)))
              (if (and (consp entry) (equal (car entry) :dir))
                  (cons (cons name
-                             (cons :dir (fn-bpnr-tree-drop
-                                         (and (consp (cddr op)) (caddr op))
-                                         (cdr entry))))
+                             (cons :dir (fn-bpnr-tree-drop (fn-bpnr-op-file op)
+                                                           (cdr entry))))
                        (fn-bpnr-tree-drop name tree))
                tree)))
           (t tree))))
@@ -119,17 +128,11 @@
   (if (atom ops) tree
     (fn-bpnr-apply-ops (fn-bpnr-apply-op tree (car ops)) (cdr ops))))
 
-(defun fn-bpnr-tree-entry (name tree)
-  (declare (xargs :guard t))
-  (cond ((atom tree) nil)
-        ((and (consp (car tree)) (equal (caar tree) name)) (cdar tree))
-        (t (fn-bpnr-tree-entry name (cdr tree)))))
-
 ; What the open reads of the root: the selection plan the selection file
 ; gives, the selected generation's directory, and every name in EXTRA (the
 ; root files the open reads besides; the clock-domain and sequence files).
 (defun fn-bpnr-tree-plan (tree budget)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (let ((entry (fn-bpnr-tree-entry (fn-bpnr-selection-name) tree)))
     (fn-bpnr-selection-plan (and entry t)
                             (and (consp entry) (cdr entry)) budget)))
@@ -149,8 +152,9 @@
 
 ; ---------------------------------------------------------------------------
 ; Every step names a retired name.
+;; Specification only (the host never runs it).
 (defun fn-bpnr-ops-within (ops names)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (atom ops) t
     (and (or (not (fn-bpnr-op-mutatesp (car ops)))
              (member-equal (fn-bpnr-op-name (car ops)) names))
@@ -164,7 +168,12 @@
 (local
  (defthm fn-bpnr-retire-dir-ops-within
    (implies (member-equal dir names)
-            (fn-bpnr-ops-within (fn-bpnr-retire-dir-ops dir files) names))))
+            (fn-bpnr-ops-within (fn-bpnr-retire-dir-ops dir files) names))
+   :hints (("Goal" :induct (fn-bpnr-retire-dir-ops dir files)
+            :in-theory (union-theories
+                        '(fn-bpnr-retire-dir-ops fn-bpnr-ops-within
+                          fn-bpnr-op-name car-cons cdr-cons (:e fn-bpnr-op-mutatesp))
+                        (theory 'ground-zero))))))
 
 (local
  (defthm fn-bpnr-retire-ops-aux-within
@@ -198,7 +207,9 @@
 (local
  (defthm fn-bpnr-member-retired-names
    (implies (member-equal name (fn-bpnr-retired-names names selected))
-            (fn-bpnr-retired-namep name selected))))
+            (fn-bpnr-retired-namep name selected))
+   :hints (("Goal" :induct (fn-bpnr-retired-names names selected)
+            :in-theory (disable fn-bpnr-retired-namep)))))
 
 ; The two names the open reads are never retired.
 (defthm fn-bpnr-retired-names-never-the-selected-directory
