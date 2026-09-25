@@ -107,9 +107,7 @@
                                       fn-native-operator-result-arguments)
                                      (fn-nop-parse-init-plain fn-nop-parse-init-groups
                                       fn-nop-some-flag-wordp
-                                      fn-native-admin-some-group-name-reservedp
-                                      fn-nop-result fn-native-operator-result-command
-                                      fn-native-operator-result-status)))))
+                                      fn-native-admin-some-group-name-reservedp)))))
 
    ; The one grammar branch whose plan is named init is `init'.
    (defthm fn-native-mission-parse-command-init
