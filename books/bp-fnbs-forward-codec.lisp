@@ -10,7 +10,8 @@
   '(:nat :nat :nat :blob :blob :nat :nat (:enum :none :some) :nat))
 (defconst *fn-bpnp-result-fields*
   '(:nat :nat :nat :blob :nat :nat :nat :nat
-    (:enum :sent :refused :failed :uncertain) :nat))
+    (:enum :sent :refused :failed :uncertain :resumed) :nat))
+; :resumed is appended, so every earlier kind-9 frame keeps its octets.
 
 (defun fn-bpnp-attempt-values (record)
   (declare (xargs :guard t))

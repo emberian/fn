@@ -44,12 +44,18 @@
   (declare (xargs :guard t))
   (nfix (fn-bpn-nth 5 slot)))
 
+; An attempt is uncertain when its process died before a kind 9 settled it
+; (a :forwarding slot of an earlier epoch), or when a kind 9 recorded the
+; transfer itself as :uncertain (the connection failed after the durable
+; kind 8; fn-bpnp-tcpcl-outcome).  That kind 9 keeps the slot, headed
+; :uncertain, so the count survives it exactly as it survives a restart.
 (defun fn-bpnp-uncertain-attemptp (slot epoch peer)
   (declare (xargs :guard t))
-  (and (equal (fn-bpn-nth 0 slot) :forwarding)
-       (natp (fn-bpn-nth 1 slot))
-       (natp epoch)
-       (< (fn-bpn-nth 1 slot) epoch)
+  (and (or (and (equal (fn-bpn-nth 0 slot) :forwarding)
+                (natp (fn-bpn-nth 1 slot))
+                (natp epoch)
+                (< (fn-bpn-nth 1 slot) epoch))
+           (equal (fn-bpn-nth 0 slot) :uncertain))
        (equal (fn-bpn-nth 3 slot) peer)))
 
 (defun fn-bpnp-retry-eligible-slotp (slot epoch peer)
@@ -107,12 +113,21 @@
               (fn-bpnp-attempted-held h record))
       (list :fault :attempt-row))))
 
-(defun fn-bpnp-forward-outcomep (outcome)
+; What a transfer can report: the TCPCL outcome of one session.
+(defun fn-bpnp-transfer-outcomep (outcome)
   (declare (xargs :guard t))
   (or (and (member-equal outcome '(:sent :failed :uncertain)) t)
       (and (true-listp outcome) (equal (len outcome) 2)
            (equal (car outcome) :refused)
            (fn-frame-natp (cadr outcome)))))
+
+; A kind-9 outcome: a transfer outcome, or :resumed, the operator's durable
+; re-arming of a stranded attempt (fn-bpnp-operator-resume-step).  No
+; transfer reports :resumed; only the operator arm proposes it.
+(defun fn-bpnp-forward-outcomep (outcome)
+  (declare (xargs :guard t))
+  (or (fn-bpnp-transfer-outcomep outcome)
+      (equal outcome :resumed)))
 
 (defun fn-bpnp-forward-terminalp (outcome)
   (declare (xargs :guard t))
@@ -139,9 +154,19 @@
        (fn-bpnp-session-idp (fn-bpn-nth 7 record))
        (fn-bpnp-forward-outcomep (fn-bpn-nth 8 record))))
 
+; A kind 9 settles the slot, except :uncertain, which keeps it (retries
+; and all) headed :uncertain: the transfer may or may not have reached the
+; peer, so the row is retried under the same bound.  :resumed clears it, so
+; the next kind 8 counts from 0; the kind-8 and kind-9 rows keep the history.
+(defun fn-bpnp-forward-result-slot (slot outcome)
+  (declare (xargs :guard t))
+  (if (and (equal outcome :uncertain) (consp slot))
+      (cons :uncertain (cdr slot))
+    nil))
+
 (defun fn-bpnp-forward-result-held (h outcome)
   (declare (xargs :guard (true-listp h)))
-  (update-nth 13 nil
+  (update-nth 13 (fn-bpnp-forward-result-slot (fn-bpn-nth 13 h) outcome)
               (if (fn-bpnp-forward-terminalp outcome)
                   (update-nth 12 '(:dispatch-done) h)
                 h)))
@@ -155,6 +180,17 @@
        (equal (fn-bpn-nth 3 slot) peer)
        (equal (fn-bpn-nth 4 slot) session)))
 
+; The slot a :resumed kind 9 re-arms: stranded at the record's own epoch
+; (the epoch of the process that wrote it, so live and replay agree) for the
+; row's next hop, naming the record's attempt, under either head.
+(defun fn-bpnp-resume-slot-namesp (slot epoch op peer session record-epoch)
+  (declare (xargs :guard t))
+  (and (true-listp slot) (equal (len slot) 6)
+       (fn-bpnp-stranded-slotp slot record-epoch peer)
+       (equal (fn-bpn-nth 1 slot) epoch)
+       (equal (fn-bpn-nth 2 slot) op)
+       (equal (fn-bpn-nth 4 slot) session)))
+
 (defun fn-bpnp-forward-result-matches-heldp (record h)
   (declare (xargs :guard t))
   (and (fn-bpnp-forward-result-recordp record)
@@ -163,9 +199,13 @@
        (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
        (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
        (equal (fn-bpn-nth 12 h) '(:forward-pending))
-       (fn-bpnp-attempt-slot-namesp
-        (fn-bpn-nth 13 h) (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
-        (fn-bpn-nth 11 h) (fn-bpn-nth 7 record))
+       (if (equal (fn-bpn-nth 8 record) :resumed)
+           (fn-bpnp-resume-slot-namesp
+            (fn-bpn-nth 13 h) (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
+            (fn-bpn-nth 11 h) (fn-bpn-nth 7 record) (fn-bpn-nth 1 record))
+         (fn-bpnp-attempt-slot-namesp
+          (fn-bpn-nth 13 h) (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
+          (fn-bpn-nth 11 h) (fn-bpn-nth 7 record)))
        (null (fn-bpn-nth 14 h))))
 
 (defun fn-bpnp-forward-result-replace (arrival outcome held)

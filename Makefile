@@ -356,6 +356,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \
 	tests/acl2/bp-node-forward-retry-tests \
+	books/bp-node-forward-resume \
+	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
 	books/bp-fnbs-dispatch-invariants \
 	books/bp-node-dispatch \
@@ -482,6 +484,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-ion-workflow-replay-tests \
 	books/bp-request-plan \
 	tests/acl2/bp-request-plan-tests \
+	books/bp-request-recovery \
+	tests/acl2/bp-request-recovery-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \

@@ -262,6 +262,7 @@
       (return-from fnn-bpnode-forward-contact nil))
     (let ((socket nil)
           (sent nil)
+          (settled nil)
           (session-id
             (cons (fnn-core 'fn-bpnf-epoch (fnn-bps-state bp))
                   (incf (fnn-bps-next-session bp)))))
@@ -307,35 +308,79 @@
                                  (fnn-out "BP forwarding attempt durable key=~s"
                                           (sixth sent))))))))
                    (when sent
+                     ;; ACL2 reads the transfer: :sent, (:refused r), :failed,
+                     ;; or :uncertain when the connection ended without an
+                     ;; XFER_ACK or XFER_REFUSE.  :uncertain is recorded as
+                     ;; its kind 9 and costs this connection only (spec
+                     ;; 4.3.1): the row is retried on a later session.
                      (let ((result
                              (fnn-core 'fn-bpnp-tcpcl-outcome
                                        (fnn-tclc-outcome conn)
                                        (fnn-tclc-refusal conn))))
-                       (when (eq result :fence)
-                         (setf (fnn-bps-outcome bp) :uncertain)
-                         (fnn-indeterminate
-                          "bp-node: transport outcome uncertain after durable attempt"))
                        ;; Model cut N08: kind 8 durable, the transfer ran, no
                        ;; kind 9 proposed.  Recovery re-offers (spec 4.3.1).
                        (fnn-bpnode-pause-at-durable-cut
                         "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT"
                         "BP NODE KIND8 SENT")
-                       (fnn-bps-drive-effects
-                        bp (fnn-bps-foundation-step
-                            bp (list :forward-result
-                                     (fourth sent) (fifth sent) session-id
-                                     result (fnn-bp-observation wall wall-error))))))
+                       (fnn-bpnode-forward-result
+                        bp sent session-id result wall wall-error)
+                       (setq settled t)))
                    (fnn-bps-drive-effects
                     bp (fnn-bps-foundation-step
                         bp (list :session peer session-id nil 1
                                  (fnn-bp-observation wall wall-error))))))
             (when socket (fnn-socket-shut socket)))
         ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
-          (if sent
-              (fnn-indeterminate
-               "bp-node: transport failed after durable attempt: ~a" e)
-            (fnn-out "BP forwarding session unavailable: ~a" e))))
+          (cond
+            ((not sent)
+             (fnn-out "BP forwarding session unavailable: ~a" e))
+            ((eq (fnn-bps-outcome bp) :uncertain)
+             ;; A publication inside the session was uncertain: that is a
+             ;; shared-owner fault, not a connection-local one.
+             (fnn-indeterminate
+              "bp-node: publication uncertain during forwarding: ~a" e))
+            (t
+             ;; The connection failed after the durable kind 8.  Unless its
+             ;; kind 9 is already durable, ACL2 reads the transfer
+             ;; (:uncertain), its kind 9 keeps the attempt's count, and the
+             ;; node goes on; either way the session closes.
+             (fnn-out "BP forwarding connection failed after durable attempt: ~a" e)
+             (unless settled
+               (fnn-bpnode-forward-result
+                bp sent session-id
+                (fnn-core 'fn-bpnp-tcpcl-outcome :connection-failed nil)
+                wall wall-error))
+             (fnn-bps-drive-effects
+              bp (fnn-bps-foundation-step
+                  bp (list :session peer session-id nil 1
+                           (fnn-bp-observation wall wall-error))))))))
       sent)))
+
+(defun fnn-bpnode-forward-result (bp sent session-id result wall wall-error)
+  (when (eq result :uncertain)
+    (fnn-out "BP forwarding transfer uncertain arrival-key=~s (connection-local; retried on a later session)"
+             (sixth sent)))
+  (fnn-bps-drive-effects
+   bp (fnn-bps-foundation-step
+       bp (list :forward-result (fourth sent) (fifth sent) session-id
+                result (fnn-bp-observation wall wall-error)))))
+
+;;; `bp-node resume JOURNAL NODE-ID ARRIVAL [WALL WALL-ERROR]': the operator
+;;; re-arms a stranded forwarding row (spec bp-node-machine 4.3.1).  ACL2
+;;; decides (fn-bpnp-step's :operator-resume arm): a stranded row gets a
+;;; durable kind 9 :resumed naming its last attempt and becomes a forward
+;;; candidate again; anything else is refused with its reason.  Run it with
+;;; the node stopped: it takes the FNBS lifecycle lock as `bp-node serve' does.
+(defun fnn-command-bp-node-resume (journal-root node-id arrival wall wall-error)
+  (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
+                                +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
+         (bp (fnn-bps-open journal-root config wall wall-error)))
+    (unwind-protect
+         (progn
+           (fnn-bps-drive-effects
+            bp (fnn-bps-foundation-step bp (list :operator-resume arrival)))
+           (fnn-bps-exit-code bp))
+      (fnn-bps-release bp))))
 
 (defun fnn-bpnode-queue-outbox
     (bp owner receipt-root destination policy issuer node-id peer-id view
@@ -626,8 +671,18 @@
       (fnn-bps-release bp))))
 
 (defun fnn-dispatch-bp-node (command args)
+  (when (string= command "resume")
+    ;; JOURNAL NODE-ID ARRIVAL [WALL WALL-ERROR]
+    (when (< (length args) 3)
+      (error 'fnn-usage-error
+             :message "bp-node resume: JOURNAL NODE-ID ARRIVAL [WALL WALL-ERROR]"))
+    (return-from fnn-dispatch-bp-node
+      (fnn-command-bp-node-resume
+       (first args) (second args) (parse-integer (third args))
+       (and (fourth args) (parse-integer (fourth args)))
+       (if (fifth args) (parse-integer (fifth args)) 0))))
   (unless (member command '("serve" "dispatch") :test #'string=)
-    (error 'fnn-usage-error :message "bp-node: expected serve or dispatch"))
+    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch or resume"))
   (let ((offset (if (string= command "serve") 1 0)))
     (when (< (length args) (+ offset 11))
       (error 'fnn-usage-error

@@ -621,8 +621,15 @@ its outcome, which is the refusal to the offering ingress."
       (:forward-stranded
        ;; ACL2 decided the row reached the retry bound (spec 4.3.1); the
        ;; host only reports it.  The row, its attempt and its debt stay held.
-       (fnn-out "BP forwarding stranded arrival=~d retries=~d (held; no session or restart re-offers it)"
+       (fnn-out "BP forwarding stranded arrival=~d retries=~d (held; no session or restart re-offers it; bp-node resume re-arms it)"
                 (second effect) (fourth effect)))
+      (:resume-refused
+       ;; ACL2's refusal of an operator resume (fn-bpnp-resume-refusal);
+       ;; nothing was written.
+       (unless (eq (fnn-bps-outcome service) :uncertain)
+         (setf (fnn-bps-outcome service) :refused))
+       (fnn-out "BP forwarding resume refused arrival=~d reason=~(~a~)"
+                (second effect) (third effect)))
       (:progress-wait
        (fnn-out "BP node progress waiting reason=~(~a~)" (third effect)))
       (:delivery-deferred

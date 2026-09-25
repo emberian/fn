@@ -317,6 +317,11 @@
   (fn-bpnp-forward-result-propose-step)))
 
 (local
+ (fn-bpnpb-defquiet bpnpb-operator-resume-step
+  (fn-bpnp-operator-resume-step st arrival)
+  (fn-bpnp-operator-resume-step)))
+
+(local
  (fn-bpnpb-defquiet bpnpb-forward-result-persist-step
   (fn-bpnp-forward-result-persist-step st epoch op result)
   (fn-bpnp-forward-result-persist-step)))
@@ -335,6 +340,7 @@
            :in-theory (union-theories
                        '(fn-bpnp-step bpnpb-start-one
                          bpnpb-forward-result-propose-step bpnpb-progress-step
+                         bpnpb-operator-resume-step
                          bpnpb-dispatch-persist-step bpnpb-attempt-persist-step
                          bpnpb-forward-result-persist-step
                          bpnpb-clock-domain-fence bpnpb-conflict-propose-step

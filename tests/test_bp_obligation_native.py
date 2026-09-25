@@ -3,8 +3,10 @@
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import tempfile
+import time
 import unittest
 
 
@@ -109,6 +111,90 @@ class NativeBpObligationTests(unittest.TestCase):
         self.assertEqual(refused.returncode, 1, refused.stderr)
         self.assertIn("authentication profile is unsupported", refused.stderr)
         self.assertEqual(before, self.records())
+
+    # `bp-obligation recover': a fenced attempt resolved through ACL2.
+
+    def request(self, attempt, env=None):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            dead_port = reservation.getsockname()[1]
+        return [str(IMAGE), "--fn", "bp-obligation", "request", str(self.store),
+                str(self.journal), "work-a", attempt, str(self.tmp / "fnbs"),
+                "dtn://fn-a/", "127.0.0.1", str(dead_port)]
+
+    def test_kill_between_attempt_and_outcome_then_recover_committed(self):
+        undertaken = self.invoke("bp-obligation", "undertake", self.store,
+                                 self.journal, "work-a", "3")
+        self.assertEqual(undertaken.returncode, 0, undertaken.stderr)
+        env = dict(self.env)
+        env["FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"] = "1"
+        # The pause holds the process after the attempt record is durable;
+        # watch the journal, not the pipe (the marker line is not flushed to
+        # a pipe before the process ends).
+        count = len(self.records())
+        cut = subprocess.Popen(self.request("attempt-a"), cwd=ROOT, env=env,
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+        try:
+            deadline = time.monotonic() + 120
+            while len(self.records()) <= count:
+                self.assertLess(time.monotonic(), deadline)
+                self.assertIsNone(cut.poll())
+                time.sleep(0.2)
+            time.sleep(1)
+            self.assertIsNone(cut.poll())
+        finally:
+            cut.kill()
+            cut.wait(timeout=15)
+
+        status = self.invoke("bp-obligation", "status", self.store,
+                             self.journal, "work-a")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("status=outstanding pinned=yes", status.stdout)
+        refused = subprocess.run(self.request("attempt-b"), cwd=ROOT,
+                                 env=self.env, capture_output=True, text=True,
+                                 timeout=120, check=False)
+        self.assertEqual(refused.returncode, 1, refused.stdout + refused.stderr)
+        self.assertIn("fenced", refused.stdout + refused.stderr)
+
+        before = self.records()
+        for work, attempt, outcome, reason in (
+                ("work-a", "attempt-other", "committed", "attempt-unknown"),
+                ("work-missing", "attempt-a", "committed", "attempt-unknown"),
+                ("work-a", "attempt-a", "maybe", "outcome")):
+            wrong = self.invoke("bp-obligation", "recover", self.store,
+                                self.journal, work, attempt, outcome)
+            self.assertEqual(wrong.returncode, 1, wrong.stdout + wrong.stderr)
+            self.assertIn(f"reason={reason}", wrong.stdout + wrong.stderr)
+        self.assertEqual(self.records(), before)
+
+        recovered = self.invoke("bp-obligation", "recover", self.store,
+                                self.journal, "work-a", "attempt-a", "committed")
+        self.assertEqual(recovered.returncode, 0,
+                         recovered.stdout + recovered.stderr)
+        self.assertIn("recovery durable work=work-a attempt=attempt-a "
+                      "outcome=committed", recovered.stdout)
+        self.assertIn("status=unknown pinned=yes", recovered.stdout)
+        self.assertEqual(len(self.records()), len(before) + 1)
+        again = self.invoke("bp-obligation", "recover", self.store,
+                            self.journal, "work-a", "attempt-a", "committed")
+        self.assertEqual(again.returncode, 1, again.stdout + again.stderr)
+        self.assertIn("reason=not-fenced", again.stdout + again.stderr)
+
+        # The journal reopens and the next request is accepted: its attempt
+        # and outcome are durable (the carrier then meets a dead contact).
+        accepted = subprocess.run(self.request("attempt-b"), cwd=ROOT,
+                                  env=self.env, capture_output=True, text=True,
+                                  timeout=120, check=False)
+        self.assertIn("BP obligation request durable attempt work=work-a "
+                      "attempt=attempt-b", accepted.stdout,
+                      accepted.stdout + accepted.stderr)
+        self.assertIn(accepted.returncode, (0, 3), accepted.stderr)
+        status = self.invoke("bp-obligation", "status", self.store,
+                             self.journal, "work-a")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("pinned=yes", status.stdout)
+        self.assertNotIn("status=outstanding", status.stdout)
 
 
 if __name__ == "__main__":
