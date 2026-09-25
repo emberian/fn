@@ -154,6 +154,15 @@ would fail validation), python-store-f8 (green but its quiet rerun of the
 timed-out modules was pending), bounds-p5 (chained packs; one native test
 red on packing nothing).
 
+Dev's merged bytes are RED at four books (the deputy's third merge
+certification, hbox run-20260925T102957Z-2118, manifest
+certify-20260925T103038Z-3156842, 516 of 520 passed): books/poster-bytes-
+buffer and tests/acl2/octets-stobj-tests (the octets-stobj consumer against
+D32's supplied Path: the terminated Fable lane pbb-d32 was proving the
+repaired chain), books/store-reclaim and its tests (the reclamation books
+against the same merges). Both are join defects to fix first at the reset,
+before any cut.
+
 Not done tonight: no cut, qualification or deploy (dev never converged: P6
 held, C3's served half and wave C in flight); segmented articles (P6's
 second half) not started; the node is still on c3420013 with a format-7
