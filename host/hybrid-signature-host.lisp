@@ -23,9 +23,12 @@
         (fn-hsig-signed-preimage-at version principal keys source)
       nil)))
 
+; The widest authored source a signer or author request may hand ACL2: the
+; v2 carrier's u32 length (a codec width, D27).  Whether a node accepts the
+; article is the store profile's article bound, decided at injection.
 (defun fn-hsig-host-max-source-octets ()
   (declare (xargs :mode :program))
-  *fn-article-max-octets*)
+  *fn-hsig-v2-max-source*)
 
 (defun fn-hsig-host-max-received-octets ()
   (declare (xargs :mode :program))
