@@ -95,6 +95,23 @@ PROFILE_CUTS = (
     NativeCut("profile-durable", "fn-bs-profile-program", "new", book=PROFILE_BOOK),
 )
 
+# The exact-state checkpoint (P3): `operator CONFIG store checkpoint' and the
+# developer `store ROOT checkpoint' write fn-bs-scp-program, selected by
+# FN_NATIVE_STATE_CHECKPOINT_FAULT.  The candidate column is the checkpoint
+# the next open reads: the old one (or none) before the rename, the new one
+# after the root barrier, either at the rename.  At every cut the open reads
+# one of the two whole files, never a torn one
+# (fn-bs-scp-program-crash-is-old-or-new), and either opens to the
+# full-replay state (fn-sn-recover-from-checkpoint-equals-full-recover).
+STATE_CHECKPOINT_BOOK = "byte-store-state-checkpoint-program.lisp"
+STATE_CHECKPOINT_CUTS = tuple(
+    NativeCut(name, "fn-bs-scp-program", candidate, book=STATE_CHECKPOINT_BOOK)
+    for name, candidate in (("state-checkpoint-created", "old"),
+                            ("state-checkpoint-written", "old"),
+                            ("state-checkpoint-staged-durable", "old"),
+                            ("state-checkpoint-replaced", "either"),
+                            ("state-checkpoint-durable", "new")))
+
 # Checkpoint publication and selection are driven by their ACL2 phase machines.
 # Reclamation has one repeated unlink boundary per covered name and a final
 # transaction-directory barrier.  Runtime tests select repeated unlink cuts by
@@ -227,6 +244,7 @@ def verify_native_cut_map() -> None:
     verify_recovery_order()
     verify_swallowed_cuts()
     verify_profile_cut_map()
+    verify_state_checkpoint_cut_map()
     verify_marker_cut_map()
 
 
@@ -263,9 +281,39 @@ def verify_profile_cut_map() -> None:
                 cut.name, cut.candidate, expected))
 
 
+def verify_state_checkpoint_cut_map() -> None:
+    """The host's state-checkpoint cuts are fn-bs-scp-program's, in its order,
+    reached by `fnn-state-checkpoint-write' as the profile writer reaches its own."""
+    declared = tuple(c.name for c in STATE_CHECKPOINT_CUTS)
+    if declared != native_declared_cut_names("fnn-state-checkpoint-model-cuts"):
+        raise AssertionError("native/model state-checkpoint cuts differ")
+    if declared != model_cut_names("fn-bs-scp-program", STATE_CHECKPOINT_BOOK):
+        raise AssertionError("state-checkpoint cuts are not fn-bs-scp-program's")
+    source = (ROOT / "host/native/io.lisp").read_text()
+    write = host_function(source, "fnn-state-checkpoint-write")
+    order = [write.index(":state-checkpoint-created :state-checkpoint-written"),
+             write.index("(fnn-at store :state-checkpoint-staged-durable)"),
+             write.index("(fnn-replace stage (fnn-state-checkpoint-path store))"),
+             write.index("(fnn-at store :state-checkpoint-replaced)"),
+             write.index("(fnn-fsync-dir (fnn-store-root store))"),
+             write.index("(fnn-at store :state-checkpoint-durable)")]
+    if order != sorted(order):
+        raise AssertionError("fnn-state-checkpoint-write is out of the program's order")
+    for cut in STATE_CHECKPOINT_CUTS:
+        steps = model_steps(cut.program, cut.book)
+        index = cut_step_index(cut)
+        renamed = any(s.kind == "rename" for s in steps[:index])
+        fenced = any(s.kind == "fsync-dir" for s in steps[:index])
+        expected = "new" if fenced else ("either" if renamed else "old")
+        if cut.candidate != expected:
+            raise AssertionError("{}: candidate {} but the program says {}".format(
+                cut.name, cut.candidate, expected))
+
+
 def program_book(program: str) -> str:
     """The book whose defun holds PROGRAM, from the cut table."""
-    return next((c.book for c in ALL_CUTS + PROFILE_CUTS if c.program == program),
+    return next((c.book for c in ALL_CUTS + PROFILE_CUTS + STATE_CHECKPOINT_CUTS
+                 if c.program == program),
                 "byte-store-programs.lisp")
 
 
