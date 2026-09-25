@@ -322,9 +322,12 @@
                             (if (zp lower) 0 pred-generation)
                             (if (zp lower) nil pred-digest)
                             events)))
-    (if (and (natp lower) (< lower (len records)) (fn-ccc-linkp link))
-        (list :ok link)
-      (list :error :history))))
+    (cond ((and (natp lower) (< lower (len records)) (fn-ccc-linkp link))
+           (list :ok link))
+          ; The chain already covers every record: a named no-op, which the
+          ; host reports and exits 0 on, writing nothing (D13: accepted).
+          ((equal lower (len records)) (list :nothing-uncovered lower))
+          (t (list :error :history)))))
 
 (defun fn-ccc-prefixp (prefix whole)
   (declare (xargs :guard t))
@@ -622,6 +625,32 @@
                                     *fn-frame-trailer-octets*)
             (fn-cbor-encode (cons :uint (len (fn-ccc-events l))))
             (fn-cc-encode-events (fn-ccc-events l)))))
+
+;; The pack's effect on the generation files (an alist GENERATION -> link
+;; octets) and the selection marker, as the capture decides it: a captured
+;; link is added under GENERATION (and selected with SELECTP); anything else
+;; (the no-op, or a refusal) leaves both unchanged.  The host
+;; (host/native/checkpoint.lisp `fnn-pack-publish-generation') returns before
+;; its first directory operation on every capture that is not :ok.
+(defun fn-ccc-pack-effect (files marker generation captured selectp)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp captured) (equal (car captured) :ok))
+      (list (cons (cons generation (fn-ccc-encode-link (cadr captured))) files)
+            (if selectp generation marker))
+    (list files marker)))
+
+;; A chain whose boundary is the whole history: the capture is the named
+;; no-op, and the pack changes neither the files nor the marker.
+(defthm fn-ccc-nothing-uncovered-leaves-files-and-marker
+  (implies (equal lower (len records))
+           (and (equal (fn-ccc-capture-link records lower lf gen digest)
+                       (list :nothing-uncovered lower))
+                (equal (fn-ccc-pack-effect
+                        files marker g
+                        (fn-ccc-capture-link records lower lf gen digest)
+                        selectp)
+                       (list files marker))))
+  :hints (("Goal" :in-theory (enable fn-ccc-capture-link))))
 
 (defun fn-ccc-uint-itemp (x)
   (declare (xargs :guard t))
@@ -1057,5 +1086,6 @@
   '(fn-ccc-linkp fn-ccc-links-okp fn-ccc-links-events fn-ccc-capture-link
     fn-ccc-observe-chain fn-ccc-coverage-chain fn-ccc-chain-boundary
     fn-ccc-decode-entries fn-ccc-framed-link fn-ccc-entry-step
-    fn-ccc-retire-plan fn-ccc-walk fn-ccc-fit fn-ccc-fit-aux))
+    fn-ccc-retire-plan fn-ccc-walk fn-ccc-fit fn-ccc-fit-aux
+    fn-ccc-pack-effect))
 (in-theory (disable fn-checkpoint-pack-chain-vocabulary))

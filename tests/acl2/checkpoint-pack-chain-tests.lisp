@@ -151,3 +151,33 @@
                                 :bad)))))
 ; Without fuel: none walks nothing.
 (assert-event (equal (fn-ccc-walk *ct-files* 0 0 *ct-bound*) :bad))
+
+; Nothing uncovered (fn-ccc-nothing-uncovered-leaves-files-and-marker): the
+; chain A+B covers all five records, so the capture above it is the named
+; no-op and the pack changes neither the files nor the marker, selected or not.
+(assert-event (equal (fn-ccc-capture-link *ct-h* 5 5 1 *ct-db*)
+                     '(:nothing-uncovered 5)))
+(assert-event (equal (fn-ccc-pack-effect *ct-image* 1 2
+                                         (fn-ccc-capture-link *ct-h* 5 5 1 *ct-db*)
+                                         t)
+                     (list *ct-image* 1)))
+; One uncovered record gives a capture, not the no-op: the link over record 4
+; is added under generation 2 and, with select, the marker moves to it.
+(assert-event (equal (car (fn-ccc-capture-link *ct-h* 4 4 1 *ct-db*)) :ok))
+(assert-event (equal (fn-ccc-boundary (cadr (fn-ccc-capture-link *ct-h* 4 4 1 *ct-db*)))
+                     5))
+(assert-event (let ((e (fn-ccc-pack-effect *ct-image* 1 2
+                                           (fn-ccc-capture-link *ct-h* 4 4 1 *ct-db*)
+                                           t)))
+                (and (not (equal (car e) *ct-image*))
+                     (equal (cadr e) 2)
+                     (equal (cdr (car e)) *ct-image*))))
+; Teeth: without its one hypothesis (the chain's boundary is the whole
+; history), the no-op conclusion fails; the witness is one uncovered record.
+(must-fail
+ (thm (equal (fn-ccc-capture-link records lower lf gen digest)
+             (list :nothing-uncovered lower))
+      :hints (("Goal" :in-theory (enable fn-ccc-capture-link)))))
+(must-fail
+ (thm (equal (fn-ccc-capture-link *ct-h* 4 4 1 *ct-db*)
+             (list :nothing-uncovered 4))))
