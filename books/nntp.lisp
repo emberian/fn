@@ -281,6 +281,22 @@
                                    (fn-gidx-pin-trie index))))
        t))
 
+(defun fn-nntp-withdrawn-reply (session msgidp)
+  (declare (xargs :guard t))
+  (fn-nntp-single session (if msgidp "430 withdrawn" "423 withdrawn")))
+
+; An HDR field is one line with no NUL, TAB, CR or LF (RFC 3977 section
+; 8.5.2; the test is fn-nov-clean-fieldp's, which sits above this book).  An
+; item whose target text would break the line is not sent.
+(defun fn-nntp-control-cleanp (bytes)
+  (declare (xargs :guard t))
+  (if (consp bytes)
+      (and (integerp (car bytes)) (<= 1 (car bytes)) (<= (car bytes) 255)
+           (not (equal (car bytes) 9)) (not (equal (car bytes) 13))
+           (not (equal (car bytes) 10))
+           (fn-nntp-control-cleanp (cdr bytes)))
+    (null bytes)))
+
 (defun fn-nntp-control-hdr-response (session archive index verdicts args)
   (declare (xargs :guard t))
   (if (and (consp args) (consp (cdr args)) (null (cddr args))
@@ -294,15 +310,16 @@
                                     trie visible withdrawn)))
         (if (not (consp c))
             (fn-nntp-single session "430 no article with that message-id")
-          (fn-nntp-multi
-           session (fn-nntp-hdr-initial nil)
-           (list (fn-nntp-hdr-line
-                  (fn-nntp-decimal-field 0)
-                  (fn-nntp-string-octets
-                   (fn-ctl-control-item
-                    (fn-ctl-served-status c trie visible withdrawn
-                                          (fn-ctl-pin-ws control) verdicts)
-                    (fn-ctl-target-octets (fn-article-payload c)))))))))
+          (let ((item (fn-nntp-string-octets
+                       (fn-ctl-control-item
+                        (fn-ctl-served-status c trie visible withdrawn
+                                              (fn-ctl-pin-ws control) verdicts)
+                        (fn-ctl-target-octets (fn-article-payload c))))))
+            (if (fn-nntp-control-cleanp item)
+                (fn-nntp-multi
+                 session (fn-nntp-hdr-initial nil)
+                 (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item)))
+              (fn-nntp-single session "503 control status unavailable")))))
     (fn-nntp-single session "501 syntax error")))
 
 (defun fn-nntp-archive-command-pinned
@@ -321,7 +338,7 @@
              (fn-nntp-keywordp keyword "STAT"))
          (consp args) (null (cdr args))
          (fn-nntp-number-withdrawn-p session archive index (car args)))
-    (fn-nntp-single session "423 withdrawn"))
+    (fn-nntp-withdrawn-reply session nil))
    ((and (or (fn-nntp-keywordp keyword "ARTICLE")
              (fn-nntp-keywordp keyword "HEAD")
              (fn-nntp-keywordp keyword "BODY")
@@ -329,7 +346,7 @@
          (consp args) (null (cdr args))
          (fn-nntp-message-id-tokenp (car args))
          (fn-nntp-msgid-withdrawn-p index (car args)))
-    (fn-nntp-single session "430 withdrawn"))
+    (fn-nntp-withdrawn-reply session t))
    ((and (or (fn-nntp-keywordp keyword "ARTICLE")
              (fn-nntp-keywordp keyword "HEAD")
              (fn-nntp-keywordp keyword "BODY")
@@ -396,13 +413,26 @@
                 (fn-nntp-single session "501 syntax error")))))
       (fn-nntp-single session "501 syntax error"))))
 
+(defthm fn-nntp-withdrawn-reply-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-withdrawn-reply session msgidp))
+         session))
+
 (defthm fn-nntp-control-hdr-response-preserves-session
   (equal (fn-nntp-result-session
           (fn-nntp-control-hdr-response session archive index verdicts args))
-         session))
+         session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
+                                  (fn-ctl-control-item fn-ctl-served-status
+                                   fn-ctl-served-held fn-nntp-string-octets
+                                   fn-nntp-control-cleanp fn-nntp-hdr-line
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-ctl-pin-withdrawn fn-ctl-pin-ws
+                                   fn-nntp-token-string fn-ctl-target-octets
+                                   fn-octet-listp)))))
 
 (in-theory (disable fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
-                    fn-nntp-control-hdr-response))
+                    fn-nntp-control-hdr-response fn-nntp-withdrawn-reply))
 
 (verify-guards fn-nntp-archive-command-pinned)
 (verify-guards fn-nntp-command-pinned)
