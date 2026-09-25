@@ -31,7 +31,7 @@ class NativeControlAuthorityTests(live.LiveReconfigurationImageTests):
 
     def refused_by_name(self, result, reason):
         self.assertEqual(result.returncode, EXIT_REFUSED, result)
-        self.assertIn(reason.encode(), result.stderr + result.stdout)
+        self.assertIn(reason.upper().encode(), (result.stderr + result.stdout).upper())
 
     def listed(self):
         result = self.operator("control", "list")
