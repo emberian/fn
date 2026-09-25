@@ -556,6 +556,15 @@ def main(argv=None):
             setup.append(lab.fn("setup-{}-boundary".format(side), "operator", config,
                                 "bp-boundary", "add", name, remote, eid, port,
                                 *scope, *carries, *releases, *required).returncode)
+            # Spec bp-node-machine 4.6: the topology as routes.  A reaches
+            # B (and B reaches A) through the neighbour boundary, whichever
+            # relay stands behind it.  In this lab the fn endpoints send
+            # through FNBS base jobs (bp-obligation request, bp-contact tick),
+            # which keep their own contact; the route rows are what
+            # `bp-node serve' forwards held transit by.
+            far_dest = RECEIVER if side == "a" else SENDER
+            setup.append(lab.fn("setup-{}-route".format(side), "operator", config,
+                                "bp-route", "add", far_dest + "*", name).returncode)
             if carried:
                 setup.append(lab.fn("setup-{}-author".format(side), "operator", config,
                                     "bp-boundary", "add", far[0], far[1], far[2],

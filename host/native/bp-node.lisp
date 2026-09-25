@@ -271,13 +271,31 @@ observations back.  Nil when there is nothing to observe."
                node-id configured-peer))
   bp)
 
-(defun fnn-bpnode-forward-contact
-    (bp node-id peer-id contact-host contact-port transfer-mru wall wall-error)
-  "Drive one ACL2-selected held forwarding attempt on one negotiated session."
+;;; Routing (spec bp-node-machine 4.6).  ACL2 decides the outbound
+;;; neighbour: `fn-bprt-outbound-choice' over the configuration's route table
+;;; (`fn-owner-bp-route-table') names the boundary, the node ID its contact
+;;; must announce and its contact port (the boundary's own `contact' row).
+;;; CONTACT-HOST:PORT on the command line no longer chooses the next hop; a
+;;; destination with no route opens no session and its rows stay held.
+(defun fnn-bpnode-forward-contact (bp node-id peer-id transfer-mru wall wall-error)
+  "Drive one ACL2-selected held forwarding attempt on one routed session."
   (let ((peer (fnn-bp-eid peer-id)))
     (unless (eq (fnn-core 'fn-bpnp-has-forward-pendingp
                            (fnn-core 'fn-bpnf-held-list (fnn-bps-state bp)) peer) t)
       (return-from fnn-bpnode-forward-contact nil))
+    (let* ((table (fnn-owner-core 'fn-owner-bp-route-table))
+           (choice (fnn-core 'fn-bprt-outbound-choice
+                             (fnn-core 'fn-bpaj-eid-text peer) table)))
+      (unless (eq (first choice) :hop)
+        (fnn-out "BP forwarding no-route destination=~a decision=~(~a~) (held; the obligation stays)"
+                 peer-id (first choice))
+        (return-from fnn-bpnode-forward-contact nil))
+      (fnn-bpnode-forward-session bp node-id peer transfer-mru wall wall-error
+                                  (second choice) (third choice) (fourth choice)
+                                  table))))
+
+(defun fnn-bpnode-forward-session
+    (bp node-id peer transfer-mru wall wall-error hop hop-eid hop-port table)
     (let ((socket nil)
           (sent nil)
           (settled nil)
@@ -287,7 +305,8 @@ observations back.  Nil when there is nothing to observe."
       (handler-case
           (unwind-protect
                (progn
-                 (setq socket (fnn-tcl-connect contact-host contact-port))
+                 (fnn-out "BP forwarding route hop=~a port=~d" hop hop-port)
+                 (setq socket (fnn-tcl-connect "127.0.0.1" hop-port))
                  (let* ((*fnn-bps-forward-send*
                           (lambda (effect)
                             (unless (and (null sent) (= (length effect) 7)
@@ -299,14 +318,13 @@ observations back.  Nil when there is nothing to observe."
                         (conn
                           (fnn-tcl-session
                            (fnn-socket-fd socket) :active
-                           ;; No expected TCPCL peer.  PEER-ID is the
-                           ;; application peer: ACL2 selects the held bundle
-                           ;; by that destination (fn-bpnp-has-forward-
-                           ;; pendingp, then fn-bpnp-step's :session).  The
-                           ;; next hop is the operator's CONTACT-HOST:PORT,
-                           ;; and through a BPA it announces its own node
-                           ;; ID, as bp-service and bp-contact already allow.
-                           (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
+                           ;; The expected TCPCL peer is the routed
+                           ;; boundary's enrolled EID: ACL2's session
+                           ;; machine refuses any other SESS_INIT node ID
+                           ;; (fn-tcl-init-acceptablep), and the routed
+                           ;; :session event checks it again
+                           ;; (fn-bprt-offer-decision).
+                           (fnn-tcl-params node-id hop-eid +fnn-tcl-keepalive+
                                            +fnn-tcl-segment-mru+ transfer-mru)
                            "bp-node-forward" (fnn-bps-root bp)
                            :on-ready
@@ -316,10 +334,13 @@ observations back.  Nil when there is nothing to observe."
                                                 (fnn-tclc-session connection)))
                                     (mru (fnn-core 'fn-tcl-negotiated-transfer-mtu
                                                    negotiated))
+                                    (announced (fnn-core 'fn-tcl-negotiated-peer-node-id
+                                                         negotiated))
                                     (obs (fnn-bp-observation wall wall-error)))
                                (fnn-bps-drive-effects
                                 bp (fnn-bps-foundation-step
-                                    bp (list :session peer session-id t mru obs)))
+                                    bp (list :session peer session-id t mru obs
+                                             (list :via hop announced table))))
                                (when sent
                                  (setf (fnn-tclc-pending connection)
                                        (cons "bp-node-forward" (seventh sent)))
@@ -372,7 +393,7 @@ observations back.  Nil when there is nothing to observe."
               bp (fnn-bps-foundation-step
                   bp (list :session peer session-id nil 1
                            (fnn-bp-observation wall wall-error))))))))
-      sent)))
+      sent))
 
 (defun fnn-bpnode-forward-result (bp sent session-id result wall wall-error)
   (when (eq result :uncertain)
@@ -659,8 +680,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
             bp owner receipt-root workflow-root destination policy issuer
             node-id peer-id)
            (fnn-bpnode-forward-contact
-            bp node-id peer-id contact-host contact-port transfer-mru
-            wall wall-error)
+            bp node-id peer-id transfer-mru wall wall-error)
            (fnn-bpnode-queue-outboxes
             bp owner receipt-root destination policy issuer node-id peer-id
             contact-host contact-port transfer-mru wall wall-error)
@@ -723,8 +743,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
                  bp owner receipt-root workflow-root destination policy issuer
                  node-id peer-id)
                 (fnn-bpnode-forward-contact
-                 bp node-id peer-id contact-host contact-port transfer-mru
-                 wall wall-error)
+                 bp node-id peer-id transfer-mru wall wall-error)
                 (fnn-bpnode-queue-outboxes
                  bp owner receipt-root destination policy issuer node-id peer-id
                  contact-host contact-port transfer-mru wall wall-error)
