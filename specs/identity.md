@@ -117,9 +117,14 @@ bounded to 8192 octets before emission and before decoding. A fixed nine-item
 budget and the bounded article parser constrain work before any carrier value
 can become a verification subject. A future version or suite is a separate
 profile: these v1 bytes keep their meaning, and unknown bounded evidence may
-be retained without gaining authority.
-`fn-stxe-profile-supportedp` recognizes exactly `fn-hybrid-v1`. The evidence
-record's `fn-stxe-authority-verdict` returns `:requires-binding` for that tag:
+be retained without gaining authority. Carrier version 2 (bounds P4, 2026-09-25)
+is the same nine items with item 1 equal to 2; it signs a different preimage
+(see "The signed bytes") and exists only for sources over 65535 octets.
+`fn-stxe-profile-supportedp` recognizes exactly `fn-hybrid-v1` and
+`fn-hybrid-v2`, the evidence tags of verdicts over a v1 and a v2 carrier;
+both replay against the one D09 keyring profile `fn-hybrid-v1`
+(`fn-stxe-keyring-profile`). The evidence
+record's `fn-stxe-authority-verdict` returns `:requires-binding` for either tag:
 a tag and stored token alone cannot upgrade arbitrary detail bytes to a
 verified author. The T10 Store join must bind the accepted event, keyring
 snapshot and both primitive observations before presenting a verdict.
@@ -260,11 +265,23 @@ widths or dropped field names. It does not compare the layouts themselves;
 [P8 record](../planning/evidence/p8-verifier-2026-09-24.md) do that.
 
 **Carrier.** The `FN-Authorship` value is the field's unfolded value with
-SP and HTAB removed, then strict base64 (`fn-hc-field-decode`). The decoded
+SP and HTAB removed, then strict base64 (`fn-hc-field-decode-at`). The decoded
 binary is the nine canonical CBOR items above in that order, each with a
-minimal head and nothing after the ninth (`fn-hc-decode`). The value is at
+minimal head and nothing after the ninth (`fn-hc-decode-at`). The value is at
 most 8192 octets (`*fn-hc-max-field-octets*`) and the binary at most 5405
-(`*fn-hc-max-binary-octets*`).
+(`*fn-hc-max-binary-octets*`) under either version.
+
+**Version.** Item 1 is the carrier version, 1 or 2, and it is decided by the
+authored source's length (`fn-hsig-source-version`): version 1
+(`*fn-hsig-version*`) when the source is at most 65535 octets
+(`*fn-hsig-v1-max-source*`, the u16 length's width), version 2
+(`*fn-hsig-v2-version*`) when it is longer, up to 4294967295 octets
+(`*fn-hsig-v2-max-source*`, the u32's width). These are codec widths; how
+large an article a node accepts is its store profile. The node decodes a
+received carrier at the version its source's length names, so a carrier
+whose item 1 says otherwise is refused as `:carrier`
+(`fn-hc-received-plan`). A verifier may equally dispatch on item 1 and then
+require the source length to be in that version's range; the two agree.
 
 **Authored source** (`fn-hc-authored-source`, over the article
 `fn-hc-received-plan` parsed). These are the article's octets, not the NNTP
@@ -288,29 +305,47 @@ dot-stuffed wire form.
 5. Then one CRLF (the empty line), then the body octets unchanged.
 6. The result must itself parse as an article with exactly one each of
    `From`, `Subject`, `Date`, `Message-ID` and `Newsgroups`, and with no
-   reserved field (`fn-hc-required-sourcep`, `fn-hc-fields-nativep`). It is
-   at most 32768 octets (`*fn-article-max-octets*`).
+   reserved field (`fn-hc-required-sourcep`, `fn-hc-fields-nativep`). Its
+   length selects the carrier version above; the node's article bound is a
+   separate, operator-set policy.
 
-**Preimage** (`fn-hsig-signed-preimage`, which is `fn-digest-tagged-preimage`
-of `*fn-hsig-domain-tag*` and `fn-hsig-subject-body`), in order:
+**Preimage** (`fn-hsig-signed-preimage-at`: for version 1
+`fn-hsig-signed-preimage`, which is `fn-digest-tagged-preimage` of
+`*fn-hsig-domain-tag*` and `fn-hsig-subject-body`; for version 2
+`fn-hsig-signed-preimage-v2`, of `*fn-hsig-v2-domain-tag*` and
+`fn-hsig-subject-body-v2`), in order:
 
-| Octets | Content | Defined by |
-| --- | --- | --- |
-| 2 | `58 1c`: the CBOR byte-string head for 28 octets | `fn-digest-tagged-preimage` |
-| 28 | ASCII `fn-authored-source-hybrid-v1` | `*fn-hsig-domain-tag*` |
-| 1 | `01`, the profile version | `*fn-hsig-version*` |
-| 1 | `01`, the suite | `*fn-hsig-suite*` |
-| 32 | the principal | `fn-hsig-subject-body` |
-| 1 | `01`, the Ed25519 algorithm | `*fn-hsig-ed25519-algorithm*` |
-| 32 | the Ed25519 public key | `*fn-hsig-ed25519-public-key-octets*` |
-| 1 | `02`, the ML-DSA-65 algorithm | `*fn-hsig-ml-dsa-65-algorithm*` |
-| 1952 | the ML-DSA-65 public key | `*fn-hsig-ml-dsa-65-public-key-octets*` |
-| 2 | the source length, unsigned big-endian | `fn-cbor-u16-bytes` |
-| n | the authored source | `fn-hsig-subject-body` |
+| v1 octets | v2 octets | Content | Defined by |
+| --- | --- | --- | --- |
+| 2 | 2 | `58 1c`: the CBOR byte-string head for 28 octets | `fn-digest-tagged-preimage` |
+| 28 | 28 | ASCII `fn-authored-source-hybrid-v1` (v1) or `fn-authored-source-hybrid-v2` (v2) | `*fn-hsig-domain-tag*`, `*fn-hsig-v2-domain-tag*` |
+| 1 | 1 | the profile version: `01` (v1) or `02` (v2) | `*fn-hsig-version*`, `*fn-hsig-v2-version*` |
+| 1 | 1 | `01`, the suite | `*fn-hsig-suite*` |
+| 32 | 32 | the principal | `fn-hsig-subject-body` |
+| 1 | 1 | `01`, the Ed25519 algorithm | `*fn-hsig-ed25519-algorithm*` |
+| 32 | 32 | the Ed25519 public key | `*fn-hsig-ed25519-public-key-octets*` |
+| 1 | 1 | `02`, the ML-DSA-65 algorithm | `*fn-hsig-ml-dsa-65-algorithm*` |
+| 1952 | 1952 | the ML-DSA-65 public key | `*fn-hsig-ml-dsa-65-public-key-octets*` |
+| 2 | 4 | the source length, unsigned big-endian: u16 (v1), u32 (v2) | `fn-cbor-u16-bytes`, `fn-cbor-u32-bytes` |
+| n | n | the authored source | `fn-hsig-subject-body`, `fn-hsig-subject-body-v2` |
+
+A v1 preimage is 2052 + n octets and a v2 preimage 2054 + n. The v1 bytes
+are those of every signature fn made before carrier v2: existing signed
+records, their verdicts (evidence tag `fn-hybrid-v1`) and their
+`:fn-verified` lines keep their meaning, and nothing is re-signed or
+re-verified (`fn-hsig-preimage-at-v1-source-is-v1-preimage-by-definition`).
+A verdict over a v2 carrier records the evidence tag `fn-hybrid-v2`.
+
+The two tags differ in their last octet, so no v1 preimage equals any v2
+preimage (`fn-hsig-v1-v2-preimages-disjoint`): a signature over one version
+is never a signature over the other. Across both versions, equal preimages
+mean the same version, principal, keys and source
+(`fn-hsig-signed-preimage-at-injective`).
 
 After the tag, the body is raw octets: no CBOR items, no padding. The
 fixed widths delimit the key set, and the final length makes an empty or
-prefix-related source unambiguous (`fn-hsig-subject-body-injective`). The
+prefix-related source unambiguous (`fn-hsig-subject-body-injective`,
+`fn-hsig-subject-body-v2-injective`). The
 principal and keys come from the carrier.
 
 **Signatures.** Both primitives sign the preimage itself, not a digest of
@@ -329,7 +364,7 @@ it (a stronger fn choice: authorship is not reduced to a content-id).
   default. Signing is hedged, so equal inputs do not give equal signatures.
   A verifier checks signatures and never compares their bytes.
 
-Both must verify, and `fn-hsig-authorize` decides. Neither signature alone
+Both must verify, and `fn-hsig-authorize-at` at the source's version decides. Neither signature alone
 authorizes.
 
 ## What a `:fn-verified` line binds

@@ -14,6 +14,7 @@
                           fn-record-invariants-vocabulary)))
 
 (defconst *fn-hsig-version* 1)
+(defconst *fn-hsig-v2-version* 2)
 (defconst *fn-hsig-suite* 1)
 (defconst *fn-hsig-ed25519-algorithm* 1)
 (defconst *fn-hsig-ml-dsa-65-algorithm* 2)
@@ -24,6 +25,16 @@
 (defconst *fn-hsig-domain-tag*
   '(102 110 45 97 117 116 104 111 114 101 100 45 115 111 117 114 99 101
     45 104 121 98 114 105 100 45 118 49)) ; fn-authored-source-hybrid-v1
+(defconst *fn-hsig-v2-domain-tag*
+  '(102 110 45 97 117 116 104 111 114 101 100 45 115 111 117 114 99 101
+    45 104 121 98 114 105 100 45 118 50)) ; fn-authored-source-hybrid-v2
+
+; Codec ceilings, not data bounds: the largest source each version's length
+; field can carry (u16 for v1, u32 for v2).  A signer uses v1 exactly when
+; the source fits it (`fn-hsig-source-version'), so every source has one
+; version and a v1-only verifier keeps checking every article it could.
+(defconst *fn-hsig-v1-max-source* 65535)
+(defconst *fn-hsig-v2-max-source* 4294967295)
 
 (defun fn-hsig-exact-octets-p (x n)
   (declare (xargs :guard t))
@@ -56,7 +67,7 @@
   (and (fn-hsig-exact-octets-p principal 32)
        (fn-hsig-keyset-p keys)
        (fn-cbor-octet-listp source)
-       (<= (len source) *fn-article-max-octets*)))
+       (<= (len source) *fn-hsig-v1-max-source*)))
 
 (defun fn-hsig-subject-body (principal keys source)
   (declare (xargs :guard (fn-hsig-subject-p principal keys source)))
@@ -98,6 +109,72 @@
   (fn-digest-tagged-preimage *fn-hsig-domain-tag*
                              (fn-hsig-subject-body principal keys source)))
 
+; Carrier v2: the same fixed-width fields under version 2, a u32 source
+; length and its own domain tag.  Only sources the u16 cannot carry are v2.
+(defun fn-hsig-subject-v2-p (principal keys source)
+  (declare (xargs :guard t))
+  (and (fn-hsig-exact-octets-p principal 32)
+       (fn-hsig-keyset-p keys)
+       (fn-cbor-octet-listp source)
+       (< *fn-hsig-v1-max-source* (len source))
+       (<= (len source) *fn-hsig-v2-max-source*)))
+
+(defun fn-hsig-subject-body-v2 (principal keys source)
+  (declare (xargs :guard (fn-hsig-subject-v2-p principal keys source)))
+  (append (list *fn-hsig-v2-version* *fn-hsig-suite*)
+          principal
+          (list *fn-hsig-ed25519-algorithm*)
+          (fn-cbor-ag-cdr (fn-cbor-ag-car keys))
+          (list *fn-hsig-ml-dsa-65-algorithm*)
+          (fn-cbor-ag-cdr (fn-cbor-ag-car (fn-cbor-ag-cdr keys)))
+          (fn-cbor-u32-bytes (len source))
+          source))
+
+(defthm fn-hsig-subject-body-v2-is-octets
+  (implies (fn-hsig-subject-v2-p principal keys source)
+           (fn-cbor-octet-listp (fn-hsig-subject-body-v2 principal keys source)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-hsig-subject-v2-p fn-hsig-keyset-p
+                            fn-hsig-exact-octets-p fn-hsig-subject-body-v2
+                            fn-hsig-octets-append
+                            fn-cbor-octet-listp fn-cbor-octetp)
+                           (fn-cbor-u32-bytes))
+           :use ((:instance fn-cbor-u32-bytes-are-octets
+                            (n (len source)))))))
+
+(defun fn-hsig-signed-preimage-v2 (principal keys source)
+  (declare (xargs :guard (fn-hsig-subject-v2-p principal keys source)
+                  :guard-hints
+                  (("Goal" :use fn-hsig-subject-body-v2-is-octets
+                    :in-theory (disable fn-hsig-subject-body-v2-is-octets)))))
+  (fn-digest-tagged-preimage *fn-hsig-v2-domain-tag*
+                             (fn-hsig-subject-body-v2 principal keys source)))
+
+; The version a source is signed under.  ACL2 decides it from the source
+; length; the carrier's version item must name it (hybrid-carrier.lisp).
+(defun fn-hsig-source-version (source)
+  (declare (xargs :guard t))
+  (if (<= (len source) *fn-hsig-v1-max-source*)
+      *fn-hsig-version*
+    *fn-hsig-v2-version*))
+
+(defun fn-hsig-subject-at-p (version principal keys source)
+  (declare (xargs :guard t))
+  (cond ((equal version *fn-hsig-version*)
+         (fn-hsig-subject-p principal keys source))
+        ((equal version *fn-hsig-v2-version*)
+         (fn-hsig-subject-v2-p principal keys source))
+        (t nil)))
+
+; The preimage both primitives sign and verify, by carrier version.  The
+; native host reaches it through `fn-hsig-host-preimage' with the version
+; `fn-hsig-source-version' names.
+(defun fn-hsig-signed-preimage-at (version principal keys source)
+  (declare (xargs :guard (fn-hsig-subject-at-p version principal keys source)))
+  (if (equal version *fn-hsig-v2-version*)
+      (fn-hsig-signed-preimage-v2 principal keys source)
+    (fn-hsig-signed-preimage principal keys source)))
+
 ; This is the authorization subject the native host calls after it has asked
 ; both primitive libraries to verify the single ACL2-produced preimage.
 (defun fn-hsig-authorize (principal keys source signatures
@@ -105,6 +182,19 @@
                                     ed25519-observation ml-dsa-65-observation)
   (declare (xargs :guard t))
   (and (fn-hsig-subject-p principal keys source)
+       (fn-hsig-signatures-p signatures)
+       (equal observed-ml-public-key
+              (fn-cbor-ag-cdr (fn-cbor-ag-car (fn-cbor-ag-cdr keys))))
+       (equal ed25519-observation :verified)
+       (equal ml-dsa-65-observation :verified)))
+
+; The same conjunction over the version's subject.  The event constructors
+; of hybrid-store.lisp call it with `fn-hsig-source-version'.
+(defun fn-hsig-authorize-at (version principal keys source signatures
+                                     observed-ml-public-key
+                                     ed25519-observation ml-dsa-65-observation)
+  (declare (xargs :guard t))
+  (and (fn-hsig-subject-at-p version principal keys source)
        (fn-hsig-signatures-p signatures)
        (equal observed-ml-public-key
               (fn-cbor-ag-cdr (fn-cbor-ag-car (fn-cbor-ag-cdr keys))))
@@ -133,9 +223,15 @@
 (in-theory (disable (:d fn-hsig-exact-octets-p)
                     (:d fn-hsig-keyset-p) (:d fn-hsig-signatures-p)
                     (:d fn-hsig-subject-p) (:d fn-hsig-subject-body)
-                    (:d fn-hsig-signed-preimage) (:d fn-hsig-authorize)))
+                    (:d fn-hsig-signed-preimage) (:d fn-hsig-authorize)
+                    (:d fn-hsig-subject-v2-p) (:d fn-hsig-subject-body-v2)
+                    (:d fn-hsig-signed-preimage-v2) (:d fn-hsig-source-version)
+                    (:d fn-hsig-subject-at-p) (:d fn-hsig-signed-preimage-at)
+                    (:d fn-hsig-authorize-at)))
 
 (deftheory fn-hybrid-signature-vocabulary
   '(fn-hsig-exact-octets-p fn-hsig-keyset-p fn-hsig-signatures-p
     fn-hsig-subject-p fn-hsig-subject-body fn-hsig-signed-preimage
-    fn-hsig-authorize))
+    fn-hsig-authorize fn-hsig-subject-v2-p fn-hsig-subject-body-v2
+    fn-hsig-signed-preimage-v2 fn-hsig-source-version fn-hsig-subject-at-p
+    fn-hsig-signed-preimage-at fn-hsig-authorize-at))
