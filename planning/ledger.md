@@ -10,10 +10,10 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 796 |
-| Certification roots in the Makefile | 781 |
-| Books inside the root closure | 793 |
-| `defthm` and `defthmd` events | 10709 |
+| Books read | 797 |
+| Certification roots in the Makefile | 782 |
+| Books inside the root closure | 794 |
+| `defthm` and `defthmd` events | 10718 |
 | `defun` events | 7519 |
 | Functions with verified guards | 2117 |
 | Functions declared `:verify-guards nil` and never verified | 553 |
@@ -23,10 +23,10 @@ stale. Counts describe artifacts, not coverage; see
 | `must-fail` checks | 1064 |
 | `encapsulate` events | 43 |
 | Theorems flagged SUSPECT by shape | 94 |
-| Export-hygiene warnings | 134 |
+| Export-hygiene warnings | 135 |
 | Enabled-projection warnings | 42 |
 | Teeth-form warnings | 86 |
-| Include-hygiene warnings | 795 |
+| Include-hygiene warnings | 798 |
 | Host-names warnings | 873 |
 | Hand-written-record warnings | 18 |
 
@@ -361,7 +361,7 @@ that `make certify` requests.
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/native-admin-peer.lisp` | root | 33 | 46 | 0/0/46/0 | 0 | 0 | 1 |
 | `books/native-admin-shape.lisp` | root | 5 | 16 | 1/0/15/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 18 | 24 | 0/0/24/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 19 | 24 | 0/0/24/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
@@ -490,7 +490,8 @@ that `make certify` requests.
 | `books/store-node-invariants.lisp` | root | 159 | 2 | 0/1/0/1 | 0 | 0 | 2 |
 | `books/store-node-resolution.lisp` | root | 37 | 8 | 6/0/0/2 | 0 | 0 | 2 |
 | `books/store-node-retention.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/store-node-traces.lisp` | root | 91 | 8 | 5/0/1/2 | 0 | 0 | 1 |
+| `books/store-node-traces-prepare.lisp` | root | 43 | 6 | 5/0/1/0 | 0 | 0 | 1 |
+| `books/store-node-traces.lisp` | root | 56 | 2 | 0/0/0/2 | 0 | 0 | 1 |
 | `books/store-node.lisp` | root | 119 | 65 | 36/2/27/0 | 0 | 0 | 1 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 16 | 15/0/1/0 | 0 | 0 | 1 |
@@ -971,7 +972,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 157 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 497 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 151 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
-| `fn-snt-apply-record-of-a-retention-event` | `books/store-node-traces.lisp` | 746 | branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value |
+| `fn-snt-apply-record-of-a-retention-event` | `books/store-node-traces-prepare.lisp` | 749 | branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value |
 | `fn-stmt-impl-encode-items-of-atom` | `books/statement-codec.lisp` | 394 | branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 57 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
 | `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 784 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |

@@ -163,6 +163,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-tests \
 	tests/acl2/consumer-store-node-tests \
 	tests/acl2/store-node-existing-tests \
+	books/store-node-traces-prepare \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
 	books/store-prepare-correspondence \
@@ -796,7 +797,8 @@ ACL2_BOOKS ?= books/defrecord \
 # its books; when the list is every book, `--strict` runs without `--books`.
 THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-files books/store-files-invariants books/store-files-traces \
-	books/store-node books/store-node-invariants books/store-node-traces \
+	books/store-node books/store-node-invariants books/store-node-traces-prepare \
+	books/store-node-traces \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
