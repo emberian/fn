@@ -2978,6 +2978,23 @@
           "name": "fn-bprq-plan-is-the-works-request"
         }
       ]
+    },
+    {
+      "id": "PRF-078",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-control-article-is-filed-only-in-control"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-classify-reads-only-the-control-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cmsg-subject-is-ordinary"
+        }
+      ]
     }
   ]
 }

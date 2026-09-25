@@ -866,8 +866,12 @@ squeamish.
   create an obligation by naming it. A control message is precisely the
   opposite arrangement — authority conveyed by content, with the *verb* in the
   data. [Peering](peering.md) already states the transit rule: `newgroup`,
-  `rmgroup` and `cancel` are accepted as *ordinary articles* into `control.*`
-  if the operator configured that group, and executed never.
+  `rmgroup` and `cancel` are accepted as *ordinary articles* into
+  `control.<verb>` if the operator configured that group, refused
+  `:control-not-filed` otherwise, never stored in the groups they name, and
+  executed never (implemented by packet C1, peering §8 "Filing"; a signed
+  control article is refused `:control-signed` until its Store binding can
+  name the filing group).
 - **Unsigned control is a remote root shell.** Anything that reaches the feed
   can forge a `From` and a `Control` field. This is not hypothetical; it is why
   pgpverify exists at all. fn's answer is not "sign the control message"; it is

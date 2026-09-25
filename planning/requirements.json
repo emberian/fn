@@ -1839,6 +1839,33 @@
       ],
       "implementation_note": "The separate loopback client persists editable drafts without NNTP, then exact in-flight POST intent before opening NNTP; it restores in-flight records as uncertain, retains three distinct replies and read-only ARTICLE observations, and never automatically retries an identifier. Private locked bounded spool writes use atomic replacement and file/directory fsync, including an outbox-parent startup barrier.",
       "note": "Real local HTTP and fake NNTP socket tests cover draft save/restart/edit, POST restart, lost reply, duplicate/concurrent handlers, full spool, target mismatch, parent-barrier failure and persistence failures before and after network. This is client behavior, not native-node qualification, a physical power-loss proof, server acceptance, or an fn retention record."
+    },
+    {
+      "id": "NNT-010",
+      "title": "A control article is filed only in its control group, or refused; never in the groups it names",
+      "specification": "specs/peering.md#8-control-messages-filing-implemented-execution-proposed-not-decided",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-078"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc5536.txt",
+        "rfc5537.txt",
+        "books/control-classify.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/control-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/native_peer_authored_accept_raw.lisp",
+        "planning/evidence/control-c1-2026-09-25.md"
+      ],
+      "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). Open: a control article carrying an FN-Authorship carrier is refused :control-signed, because a signed article's Store record must list exactly its source's Newsgroups (books/hybrid-store.lisp)."
     }
   ]
 }
