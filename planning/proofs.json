@@ -3625,7 +3625,7 @@
         "tests/acl2/octets-stobj-tests.lisp",
         "planning/evidence/rep-octets-2026-09-25.md"
       ],
-      "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (PRF-014 fn-pbb-existing-action-is-pb-existing-action). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md.",
+      "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (fn-pbb-existing-action-is-pb-existing-action, host/owner-host.lisp fn-owner-existing-action-buffer and fn-owner-prepare-buffer). Since 2026-09-25 (pbb-d32) the buffer twin reads a recipe v3 record (D32, a supplied Path): the source is a description (K A B) of buffer positions, st[K..A) then st[B..) with the AGENT! insertion cut out, found by the index Path scan (fn-pbb-path-scan-is-inj-path-scan, fn-pbb-unsplice-at-is-inj-unsplice, fn-pbb-source-index-is-inj-source-of) and compared in place (fn-pbb-range-match-is-equal-of-append, fn-pbb-desc-equalp-is-equal); the agent of a v3 record is read from its block (fn-pbb-block-agent-is-pb-block-agent, fn-pbb-path-agent-is-pb-path-agent). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md.",
       "events": [
         "create-fn-octets{correspondence}",
         "fn-octets-get{correspondence}",
@@ -3635,7 +3635,16 @@
         "fn-octets-from-list{correspondence}",
         "fn-oct-slice-list-is-take-nthcdr",
         "fn-oct-prefix-equalp-is-list-prefixp",
-        "fn-oct-suffix-equalp-is-equal"
+        "fn-oct-suffix-equalp-is-equal",
+        "fn-pbb-path-scan-is-inj-path-scan",
+        "fn-pbb-unsplice-at-is-inj-unsplice",
+        "fn-pbb-source-index-is-inj-source-of",
+        "fn-pbb-range-match-is-equal-of-append",
+        "fn-pbb-desc-equalp-is-equal",
+        "fn-pbb-block-agent-is-pb-block-agent",
+        "fn-pbb-path-agent-is-pb-path-agent",
+        "fn-pbb-same-articlep-is-pb-same-articlep",
+        "fn-pbb-existing-action-is-pb-existing-action"
       ]
     },
     {
