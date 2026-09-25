@@ -476,13 +476,16 @@
                                 (coerce (nth 4 words) 'list))
                              *fn-bprt-default-priority*))))
      ((and named (equal (nth 1 words) "remove") (equal (len words) 4))
+      ; Its own kind: the offline executor's `:remove-peer' refuses a name
+      ; that denotes no typed peer (host/store-node-host.lisp
+      ; fn-store-cfg-remove-peer), and a route group is none.
       (fn-native-admin-result
-       :accepted nil :remove-peer (fn-record-string-octets name) 0 nil nil))
+       :accepted nil :remove-bp-route (fn-record-string-octets name) 0 nil nil))
      (t (fn-native-admin-result :refused :bp-route nil nil 0 nil nil)))))
 
 (defthm fn-bprt-admin-plan-kind
   (member-equal (fn-native-admin-result-kind (fn-bprt-admin-plan words))
-                '(:set-bp-route :remove-peer nil))
+                '(:set-bp-route :remove-bp-route nil))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-result fn-native-admin-result-kind)
                                   (fn-bprt-route-rows fn-bprt-group-name)))))

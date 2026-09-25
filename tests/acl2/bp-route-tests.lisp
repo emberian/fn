@@ -178,7 +178,7 @@
                      nil))
 (assert-event (equal (fn-native-admin-result-kind
                       (fn-bprt-admin-plan (list "bp-route" "remove" "dtn://bp-dest/*" "relay")))
-                     :remove-peer))
+                     :remove-bp-route))
 (assert-event (equal (fn-native-admin-result-status
                       (fn-bprt-admin-plan (list "bp-route" "add" "not-an-eid" "relay")))
                      :refused))
