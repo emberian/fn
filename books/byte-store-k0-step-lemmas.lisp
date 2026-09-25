@@ -377,3 +377,136 @@
                            (fn-bs-apply-ops fn-bs-apply-entries fn-bs-apply-writes fn-bs-crash-select
                             fn-bs-k0s-root-target fn-bs-k0m-root-marker-onlyp fn-bs-k0m-has-root-marker)))
           (and stable-under-simplificationp '(:expand ((:free (i) (fn-bs-apply-writes i nil)) (:free (d) (fn-bs-apply-entries d nil)))))))
+
+; The transaction link with every outcome, and the step-shape facts the
+; general theorem uses.
+(defthm fn-bs-k0s-writes-knownp-of-append
+  (equal (fn-bs-writes-knownp (append a b) i)
+         (and (fn-bs-writes-knownp a i) (fn-bs-writes-knownp b i)))
+  :hints (("Goal" :induct (append a b) :in-theory (enable fn-bs-writes-knownp))))
+(defthm fn-bs-k0s-knownp-of-append
+  (equal (fn-bs-inode-list-knownp bs (append a b))
+         (and (fn-bs-inode-list-knownp bs a) (fn-bs-inode-list-knownp bs b)))
+  :hints (("Goal" :induct (append a b) :in-theory (enable fn-bs-inode-list-knownp))))
+(defthm fn-bs-k0s-all-fencedp-of-append
+  (equal (fn-bs-all-fencedp bs (append a b))
+         (and (fn-bs-all-fencedp bs a) (fn-bs-all-fencedp bs b)))
+  :hints (("Goal" :induct (append a b) :in-theory (enable fn-bs-all-fencedp))))
+(defthm fn-bs-k0s-knownp-ignores-pending
+  (equal (fn-bs-inode-list-knownp (fn-bs-make u i d p n) ys)
+         (fn-bs-inode-list-knownp (fn-bs-make u i d nil n) ys))
+  :hints (("Goal" :induct (len ys) :in-theory (enable fn-bs-inode-list-knownp))))
+(defthm fn-bs-k0s-entry-targets-of-append
+  (equal (fn-bs-pending-entry-targets (append a b))
+         (append (fn-bs-pending-entry-targets a) (fn-bs-pending-entry-targets b)))
+  :hints (("Goal" :induct (append a b) :in-theory (enable fn-bs-pending-entry-targets))))
+(defthm fn-bs-k0s-all-fencedp-with-entry-op
+  (equal (fn-bs-all-fencedp (fn-bs-make u i d (append p (list (list :set-entry dir name ino))) n) ys)
+         (fn-bs-all-fencedp (fn-bs-make u i d p n) ys))
+  :hints (("Goal" :induct (len ys) :in-theory (enable fn-bs-all-fencedp fn-bs-fencedp fn-bs-ops-for-ino-of-append fn-bs-ops-for-ino))))
+(defthm fn-bs-k0s-durable-ignores-appended-pending
+  (let ((b2 (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+                        (append (fn-bs-pending b) ops) (fn-bs-next-ino b))))
+    (and (equal (fn-bs-durable-entry b2 dir name) (fn-bs-durable-entry b dir name))
+         (equal (fn-bs-durable-content b2 i) (fn-bs-durable-content b i))
+         (equal (fn-bs-durable-names b2 dir) (fn-bs-durable-names b dir))
+         (equal (fn-bs-durable b2) (fn-bs-durable b))
+         (equal (fn-bs-durable-records b2) (fn-bs-durable-records b))
+         (equal (fn-bs-durable-frontier b2) (fn-bs-durable-frontier b))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-durable-entry fn-bs-durable-content fn-bs-durable-names
+                                   fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable)
+                                  (fn-bs-read-records)))))
+(defthm fn-bs-k0s-all-fencedp-nil (fn-bs-all-fencedp b nil) :hints (("Goal" :in-theory (enable fn-bs-all-fencedp))))
+(defthm fn-bs-k0s-knownp-nil (fn-bs-inode-list-knownp b nil) :hints (("Goal" :in-theory (enable fn-bs-inode-list-knownp))))
+(defthm fn-bs-k0s-all-fencedp-cons
+  (equal (fn-bs-all-fencedp b (cons x ys)) (and (fn-bs-fencedp b x) (fn-bs-all-fencedp b ys)))
+  :hints (("Goal" :in-theory (enable fn-bs-all-fencedp))))
+(defthm fn-bs-k0s-knownp-cons
+  (equal (fn-bs-inode-list-knownp b (cons x ys))
+         (and (consp (assoc-equal x (fn-bs-inodes b))) (fn-bs-inode-list-knownp b ys)))
+  :hints (("Goal" :in-theory (enable fn-bs-inode-list-knownp))))
+(defthm fn-bs-k0s-fencedp-appended-entry
+  (equal (fn-bs-fencedp (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+                                    (append (fn-bs-pending b) (list (list :set-entry dir name ino))) (fn-bs-next-ino b)) x)
+         (fn-bs-fencedp b x))
+  :hints (("Goal" :in-theory (enable fn-bs-fencedp fn-bs-ops-for-ino-of-append fn-bs-ops-for-ino))))
+(defthm fn-bs-k0s-knownp-appended-pending
+  (equal (fn-bs-inode-list-knownp (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+                                              (append (fn-bs-pending b) ops) (fn-bs-next-ino b)) ys)
+         (fn-bs-inode-list-knownp b ys))
+  :hints (("Goal" :induct (len ys) :in-theory (e/d (fn-bs-inode-list-knownp) (fn-bs-k0s-knownp-cons fn-bs-k0s-knownp-ignores-pending)))))
+(defthm fn-bs-k0s-make-of-parts
+  (implies (fn-bs-shapep b)
+           (equal (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b) (fn-bs-pending b) (fn-bs-next-ino b)) b))
+  :hints (("Goal" :expand ((len b) (len (cdr b)) (len (cddr b)) (len (cdddr b)) (len (cddddr b)) (len (cdr (cddddr b))) (len (cddr (cddddr b))))
+           :in-theory (enable fn-bs-shapep fn-bs-make fn-bs-unit fn-bs-inodes fn-bs-dirs fn-bs-pending fn-bs-next-ino))))
+(defthm fn-bs-k0s-entry-targets-of-one-set
+  (equal (fn-bs-pending-entry-targets (list (list :set-entry dir name ino)))
+         (if (member-equal dir '(:root :transactions)) (list ino) nil))
+  :hints (("Goal" :in-theory (enable fn-bs-pending-entry-targets))))
+(defthm fn-bs-k0s-add-pending-transaction-link-preserves-relation
+  (implies (and (fn-bs-store-relation b k)
+                (not (fn-bs-replay-visiblep k))
+                (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
+                (fn-bs-inop ino)
+                (fn-bs-fencedp b ino)
+                (consp (assoc-equal ino (fn-bs-inodes b)))
+                (equal name (fn-bs-txn-name (len (fn-bs-durable-names b :transactions))))
+                (fn-sf-record-present-visiblep k)
+                (equal (fn-bs-durable-records b) (fn-sf-records k))
+                (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-sf-record-candidate k)))
+           (fn-bs-store-relation
+            (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+                        (append (fn-bs-pending b) (list (list :set-entry :transactions name ino)))
+                        (fn-bs-next-ino b))
+            k))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
+                 (:instance fn-bs-op-listp-implies-true-listp (x (fn-bs-pending b))))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase fn-bs-pending-shape-okp
+                            fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-authority-inode-list
+                            fn-bs-ops-for-dir-of-append fn-bs-k0s-writes-knownp-of-append
+                            fn-bs-writes-nonemptyp-of-append fn-bs-k0s-knownp-of-append fn-bs-k0s-all-fencedp-of-append
+                            fn-bs-k0s-entry-targets-of-append fn-bs-k0s-durable-ignores-appended-pending fn-bs-k0s-all-fencedp-nil fn-bs-k0s-knownp-nil fn-bs-k0s-all-fencedp-cons fn-bs-k0s-knownp-cons fn-bs-k0s-knownp-appended-pending fn-bs-k0s-fencedp-appended-entry fn-bs-k0s-make-of-parts fn-bs-k0s-entry-targets-of-one-set fn-bs-statep fn-bs-shapep
+                            fn-bs-op-listp-of-append fn-bs-writes-knownp fn-bs-writes-nonemptyp fn-bs-opp
+                            fn-bs-op-listp fn-bs-entry-valuep fn-bs-namep)
+                           (fn-bs-k0s-knownp-ignores-pending fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep fn-sf-crash-imagep
+                            fn-bs-contiguous-namesp fn-bs-inode-list-knownp fn-bs-all-fencedp
+                            fn-bs-durable fn-bs-durable-entry fn-bs-durable-names fn-bs-durable-records
+                            fn-bs-durable-frontier fn-bs-durable-content
+                            fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
+(defthm fn-bs-k0s-link-preserves-relation
+  (let ((ino (fn-bs-lookup b :staging stage)))
+    (implies (and (fn-bs-store-relation b k)
+                  (not (fn-bs-replay-visiblep k))
+                  (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
+                  (fn-bs-fencedp b ino)
+                  (consp (assoc-equal ino (fn-bs-inodes b)))
+                  (equal name (fn-bs-txn-name (len (fn-bs-durable-names b :transactions))))
+                  (fn-sf-record-present-visiblep k)
+                  (equal (fn-bs-durable-records b) (fn-sf-records k))
+                  (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-sf-record-candidate k)))
+             (fn-bs-store-relation (mv-nth 1 (fn-bs-link b :staging stage :transactions name outcome)) k)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0s-add-pending-transaction-link-preserves-relation
+                  (ino (fn-bs-lookup b :staging stage))))
+           :in-theory (e/d (fn-bs-link) (fn-bs-store-relation fn-bs-lookup fn-bs-record-of fn-bs-durable
+                                         fn-bs-durable-names fn-bs-durable-records fn-bs-fencedp)))))
+(defthm fn-bs-k0s-observe-step
+  (equal (fn-bs-step bs ks (list :observe event) outcome g c)
+         (list :ok bs (fn-sf-dispatch ks event g c)))
+  :hints (("Goal" :in-theory (enable fn-bs-step))))
+(defthm fn-bs-k0s-syscall-step-keeps-kernel
+  (implies (not (equal (car step) :observe))
+           (equal (mv-nth 2 (fn-bs-step bs ks step outcome g c)) ks))
+  :hints (("Goal" :in-theory (enable fn-bs-step))))
+(defthm fn-bs-k0s-fsync-dir-ok-is-fence
+  (equal (mv-nth 1 (fn-bs-fsync-dir s d :ok)) (fn-bs-fence-dir s d))
+  :hints (("Goal" :in-theory (enable fn-bs-fsync-dir))))
+(defthm fn-bs-k0s-observe-step-any
+  (implies (equal (car step) :observe)
+           (equal (fn-bs-step bs ks step outcome g c)
+                  (list :ok bs (fn-sf-dispatch ks (nth 1 step) g c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-step) (fn-sf-dispatch)))))
