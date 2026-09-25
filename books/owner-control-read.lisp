@@ -65,6 +65,401 @@
           (fn-nntp-keyword-tokenp (car ,tokens))
           (fn-nntp-archive-keywordp (car ,tokens)))))
 
+;; The pinned dispatcher's effects are a true list on every arm (the served
+;; chain appends the submission effect after them).  Proved per response
+;; function, with each callee closed.
+(local
+ (defthm fn-octl-result-effects-of-cons
+   (equal (fn-nntp-result-effects (cons session effects)) effects)
+   :hints (("Goal" :in-theory (enable fn-nntp-result-effects)))))
+
+(local
+ (defthm fn-octl-article-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-article-response session article number kind updatep group)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-article-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-msgid-retrieval-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-msgid-retrieval session archive kind token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-msgid-retrieval fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-number-retrieval-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-number-retrieval session archive kind token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-number-retrieval fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-current-retrieval-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-current-retrieval session archive kind)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-current-retrieval fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-retrieval-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-retrieval session archive kind args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-retrieval fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-hdr-current-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-hdr-current session archive field legacyp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-hdr-current fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-hdr-range-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-hdr-range session archive field token legacyp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-hdr-range fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-hdr-msgid-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-hdr-msgid session archive field token legacyp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-hdr-msgid fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-hdr-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-hdr-command session archive args legacyp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-hdr-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-hdr-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-hdr-response session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-hdr-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-active-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-active session archive groups)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-active fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-newsgroups-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-newsgroups session groups)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-newsgroups fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-filtered-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-filtered-response session archive kind wildmat)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-filtered-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-active-or-newsgroups-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-active-or-newsgroups session archive kind args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-active-or-newsgroups fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-overview-fmt-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-overview-fmt session)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-overview-fmt fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-headers-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-headers session)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-headers fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-unmaintained-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-unmaintained-response session keyword args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-unmaintained-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-response session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-active-times-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-active-times session env args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-active-times fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-counts-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-counts session archive groups)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-counts fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-counts-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-counts-command session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-counts-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-list-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-command session archive env args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-listgroup-result-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-listgroup-result session archive group range)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-listgroup-result fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-listgroup-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-listgroup-command session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-listgroup-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-next-or-last-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-next-or-last session archive direction)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-next-or-last fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-over-current-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-current session archive)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-current fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-over-range-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-range session archive token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-range fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-over-msgid-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-msgid session archive token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-msgid fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-over-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-response session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-xhdr-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-xhdr-response session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-xhdr-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-xover-range-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-xover-range session archive token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-xover-range fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-xover-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-xover-response session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-xover-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-xpat-range-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-xpat-range session archive field patterns token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-xpat-range fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-xpat-msgid-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-xpat-msgid session archive field patterns token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-xpat-msgid fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-xpat-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-xpat-response session archive args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-xpat-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-gidx-list-counts-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-gidx-list-counts-command session archive buckets args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-gidx-list-counts-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-withdrawn-reply-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-withdrawn-reply session msgidp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-withdrawn-reply fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-verdict-hdr-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-verdict-hdr-response session archive verdicts args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-verdict-hdr-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-over-range-indexed-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-range-indexed session buckets trie token legacyp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-range-indexed fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-gidx-listgroup-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-gidx-listgroup-command session archive buckets args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-gidx-listgroup-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-msgid-retrieval-indexed-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-msgid-retrieval-indexed session archive index kind token)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-msgid-retrieval-indexed fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-newgroups-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-newgroups-response session archive env args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-newgroups-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-newnews-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-newnews-response session archive env args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-newnews-response fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-group-result-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-group-result session archive group)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-group-result fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-archive-command-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-archive-command session archive env keyword args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-archive-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects))))))
+
+(local
+ (defthm fn-octl-control-hdr-response-effects-true-listp
+   (true-listp (fn-nntp-result-effects
+                (fn-nntp-control-hdr-response session archive index verdicts args)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-control-hdr-response fn-nntp-single
+                                    fn-nntp-multi fn-nntp-make-result)
+                                   (fn-nntp-result-effects fn-nntp-control-cleanp
+                                    fn-ctl-served-held fn-ctl-control-item
+                                    fn-ctl-served-status fn-nntp-hdr-line
+                                    fn-nntp-string-octets fn-nntp-hdr-initial
+                                    fn-nntp-stuff-lines fn-nntp-crlf
+                                    fn-ctl-target-octets fn-nntp-decimal-field))))))
+
+(defthm fn-octl-archive-command-pinned-effects-true-listp
+  (true-listp (fn-nntp-result-effects
+               (fn-nntp-archive-command-pinned session archive index verdicts
+                                               env keyword args)))
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (e/d (fn-nntp-archive-command-pinned)
+                                  (fn-nntp-result-effects fn-nntp-archive-command
+                                   fn-nntp-withdrawn-reply fn-gidx-list-counts-command
+                                   fn-nntp-msgid-retrieval-indexed fn-gidx-listgroup-command
+                                   fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
+                                   fn-nntp-control-hdr-response fn-nntp-keywordp
+                                   fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p)))))
+
 ;; One framed archive command line through the pinned chain: the dispatch's
 ;; effects are the pinned dispatcher's reply, and the wire is kept, when the
 ;; reply offers no article.
@@ -220,10 +615,10 @@
                   (fn-midx-correspondencep (fn-own-conn-index conn)
                                            (fn-state-articles
                                             (fn-own-conn-archive conn))))))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-control-okp)
+  :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-control-okp fn-own-conn-okp)
                                   (fn-own-prefix-archive fn-ctl-visible-articles
                                    fn-ctl-withdrawn-articles fn-ctl-subseq-diff
-                                   fn-own-conn-boundedp fn-own-view-okp
+                                   fn-own-conn-boundedp fn-own-view-okp fn-own-conn-control
                                    fn-midx-correspondencep))
            :use ((:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))

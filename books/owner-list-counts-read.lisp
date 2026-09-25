@@ -315,7 +315,8 @@
                                    fn-nntp-archive-keywordp
                                    fn-nntp-number-withdrawn-p
                                    fn-nntp-message-id-token-is-not-a-number-token)
-                                  (fn-nntp-msgid-retrieval-indexed
+                                  (fn-nntp-archive-command-pinned-msgid-arms-are-the-scan
+                                   fn-nntp-msgid-retrieval-indexed
                                    fn-nntp-msgid-retrieval
                                    fn-olc-buckets-okp fn-served-conn-pinned-index
                                    fn-midx-correspondencep
