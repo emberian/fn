@@ -459,6 +459,8 @@ its outcome, which is the refusal to the offering ingress."
          (key (fourth effect))
          (wire (fifth effect))
          (socket nil)
+         (fragments nil)
+         (plan-refused nil)
          (outcome :uncertain))
     (handler-case
         (unwind-protect
@@ -470,16 +472,73 @@ its outcome, which is the refusal to the offering ingress."
                  (fnn-fault "bp-service: injected send core fault"))
                (setq socket (fnn-tcl-connect (fnn-bps-route-host route)
                                              (fnn-bps-route-port route)))
-               (let ((conn (fnn-tcl-session
-                            (fnn-socket-fd socket) :active
-                            (fnn-tcl-params
-                             (fnn-bps-route-node route) (fnn-bps-expected service)
-                             (fnn-bps-route-keepalive route)
-                             (fnn-bps-route-segment-mru route)
-                             (fnn-bps-route-transfer-mru route))
-                            "bp-service" (fnn-bps-root service)
-                            :bundle wire :expect 0)))
-                 (setq outcome (or (fnn-tclc-outcome conn) :uncertain))))
+               ;; RFC 9174 5.4.1: no transfer exceeds the peer's Transfer
+               ;; MRU.  Once SESS_INIT has negotiated it, ACL2's
+               ;; fn-bpfs-plan (books/bp-fragment-send.lisp) answers whether
+               ;; WIRE goes whole, as RFC 9171 5.8 fragments each at most
+               ;; that MRU (fn-bpfs-plan-fragments-fit-mru), or not at all.
+               ;; The first transfer rides this session; each further
+               ;; fragment gets its own session to the same hop.
+               (let* ((params (fnn-tcl-params
+                               (fnn-bps-route-node route) (fnn-bps-expected service)
+                               (fnn-bps-route-keepalive route)
+                               (fnn-bps-route-segment-mru route)
+                               (fnn-bps-route-transfer-mru route)))
+                      (conn (fnn-tcl-session
+                             (fnn-socket-fd socket) :active params
+                             "bp-service" (fnn-bps-root service)
+                             :expect 0
+                             :on-ready
+                             (lambda (connection)
+                               (let* ((mtu (fnn-core 'fn-tcl-negotiated-transfer-mtu
+                                                     (fnn-core 'fn-tcl-session-negotiated
+                                                               (fnn-tclc-session connection))))
+                                      (plan (fnn-core 'fn-bpfs-plan wire mtu)))
+                                 (case (first plan)
+                                   (:whole
+                                    (setf (fnn-tclc-pending connection)
+                                          (cons "bp-service" wire)))
+                                   (:fragments
+                                    (fnn-out "BP fragmenting length=~d peer-mru=~d fragments=~d"
+                                             (length wire) mtu (length (rest plan)))
+                                    (setf (fnn-tclc-pending connection)
+                                          (cons "bp-service" (second plan)))
+                                    (setq fragments (cddr plan)))
+                                   (otherwise
+                                    (fnn-out "BP fragmentation refused reason=~(~a~) length=~d peer-mru=~d"
+                                             (second plan) (length wire) mtu)
+                                    (setq plan-refused t))))))))
+                 (setq outcome (if plan-refused
+                                   :refused
+                                 (or (fnn-tclc-outcome conn) :uncertain)))
+                 (fnn-socket-shut socket)
+                 (setq socket nil)
+                 ;; The job's one attempt covers all of its fragments: ACL2
+                 ;; (fn-bpfs-fragment-outcome) reads each further transfer,
+                 ;; and after the first fragment has gone a connect that
+                 ;; sent nothing is :uncertain, never :failed.
+                 (loop for fragment in fragments
+                       for index from 2
+                       while (eq outcome :accepted)
+                       do (let* ((next nil)
+                                 (transfer
+                                   (handler-case
+                                       (unwind-protect
+                                            (progn
+                                              (setq next (fnn-tcl-connect
+                                                          (fnn-bps-route-host route)
+                                                          (fnn-bps-route-port route)))
+                                              (or (fnn-tclc-outcome
+                                                   (fnn-tcl-session
+                                                    (fnn-socket-fd next) :active params
+                                                    "bp-service" (fnn-bps-root service)
+                                                    :bundle fragment :expect 0))
+                                                  :uncertain))
+                                         (when next (fnn-socket-shut next)))
+                                     ((or fnn-os-error sb-bsd-sockets:socket-error) ()
+                                       (if next :uncertain :failed)))))
+                            (setq outcome (fnn-core 'fn-bpfs-fragment-outcome index transfer))
+                            (fnn-out "BP fragment ~d transfer ~(~a~)" index outcome)))))
           (when socket (fnn-socket-shut socket)))
       (fnn-store-fault (e) (error e))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()
@@ -718,18 +777,23 @@ its outcome, which is the refusal to the offering ingress."
       (:restart-ready
        (fnn-out "BP FNBS recovered held=~d" (second effect)))
       (:persist-checkpoint
-       ;; (:persist-checkpoint EPOCH OP GENERATION): publish the selection
-       ;; of GENERATION, then answer the machine with the program's outcome.
+       ;; (:persist-checkpoint EPOCH OP GENERATION CHECKPOINT): publish
+       ;; ACL2's CHECKPOINT (fn-bpnr-rotation-checkpoint, whose operation
+       ;; frontier is (EPOCH . OP)) as the selection of GENERATION, then
+       ;; answer the machine with the program's outcome.
        (let* ((epoch (second effect))
               (operation-id (third effect))
-              (outcome (fnn-bps-publish-generation service (fourth effect))))
+              (outcome (fnn-bps-publish-generation service (fourth effect)
+                                                   (fifth effect))))
          (when (eq outcome :uncertain)
            (setf (fnn-bps-outcome service) :uncertain))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:generation-selected
-       (fnn-out "BP journal generation selected generation=~d" (second effect)))
+       (fnn-out "BP journal generation selected generation=~d" (second effect))
+       ;; The selection is durable: retire what no recovery reads again.
+       (fnn-bps-retire-generations service (second effect)))
       (:rotation-refused
        (unless (eq (fnn-bps-outcome service) :uncertain)
          (setf (fnn-bps-outcome service) :refused))
@@ -749,15 +813,65 @@ so a test can kill it there (N16)."
     (finish-output)
     (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))
 
-(defun fnn-bps-publish-generation (service generation)
-  "Publish GENERATION's selection file under ACL2's phase driver
-fn-bpnr-publish-action/-step/-outcome: the generation directory and its
-barriers, then the staged selection file and its barrier, the rename over
-the final name, and the root barrier.  Every octet is ACL2's."
+(defun fnn-bps-retire-generations (service generation)
+  "Remove the names ACL2 retires after GENERATION's selection is durable
+(fn-bpnr-retired-names: older generation directories and a killed rotation's
+staged selection files) by running ACL2's program fn-bpnr-retire-ops one
+step at a time: each retired directory's files, the directory, then one root
+barrier.  Every prefix of the program is a crash point of the model
+(books/bp-node-retire.lisp fn-bpnr-retirement-cut-keeps-open-view): the
+selection file, the selected directory and the other names the open reads
+are unchanged at every cut, so a death or a failed step changes no recovery
+and the next run (the next `bp-node checkpoint') finishes the removal.  A
+failed step stops the program; the selection is already durable."
+  (let* ((root (fnn-bps-root service))
+         (limit (fnn-core 'fn-bpnf-namespace-max-entries))
+         (names (fnn-list-directory-bounded root limit "bp journal root"))
+         (retired (fnn-core 'fn-bpnr-retired-names names generation))
+         (listings
+           (loop for name in retired
+                 for path = (fnn-join root name)
+                 for st = (fnn-lstat path)
+                 when (and st (not (fnn-symlink-p st)) (fnn-directory-p st))
+                   collect (cons name (fnn-list-directory-bounded path limit name))))
+         (ops (fnn-core 'fn-bpnr-retire-ops names listings generation))
+         (step 0))
+    (when retired
+      (handler-case
+          (dolist (op ops)
+            (let ((kind (first op)))
+              (case kind
+                (:unlink-in
+                 (let ((file (fnn-join (fnn-join root (second op)) (third op))))
+                   (fnn-check-regular file)
+                   (fnn-unlink file)))
+                (:rmdir
+                 (let ((dir (fnn-join root (second op))))
+                   (fnn-fsync-dir dir)
+                   (fnn-posix (dir) (sb-posix:rmdir dir))
+                   (fnn-out "BP journal generation retired name=~a" (second op))))
+                (:unlink
+                 (let ((file (fnn-join root (second op))))
+                   (fnn-check-regular file)
+                   (fnn-unlink file)
+                   (fnn-out "BP journal generation retired name=~a" (second op))))
+                (:barrier (fnn-fsync-dir root))
+                (otherwise
+                 (fnn-fault "ACL2 returned an invalid retirement step"))))
+            (incf step)
+            (fnn-bps-rotation-test-stop (format nil "retire-~d" step)))
+        (fnn-os-error (e)
+          (fnn-out "BP journal generation retirement incomplete step=~d: ~a"
+                   (1+ step) e))))))
+
+(defun fnn-bps-publish-generation (service generation ck)
+  "Publish CK, the checkpoint fn-bpnp-rotate-step proposed, as GENERATION's
+selection file under ACL2's phase driver fn-bpnr-publish-action/-step/-outcome:
+the generation directory and its barriers, then the staged selection file and
+its barrier, the rename over the final name, and the root barrier.  Every
+octet is ACL2's."
   (let* ((root (fnn-bps-root service))
          (jobs (fnn-core 'fn-bpn-host-machine-max-jobs))
-         (ck (fnn-core 'fn-bpnr-checkpoint-of-event
-                       (fnn-bps-recovery-event service) generation))
          (octet-list (fnn-core 'fn-bpnr-checkpoint-octets
                                ck (fnn-core 'fn-bpnr-depth-budget jobs)))
          (octets (and octet-list (fnn-octets octet-list)))

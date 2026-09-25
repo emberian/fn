@@ -1,0 +1,23 @@
+tree rev: 5e852264
+dtn roots: 135
+dtn certify rc=0 Installed from the cache: 333 books ACL2 certification passed: books/bp-node-progress, books/bp-fnbs-dispatch-publication, books/bp-fnbs-forward-publication, books/bp-node-progress-premises, books/bp-node-progress-bridge, books/bp-node-receipt-send, books/bp-node-contact-driver, books/bp-node-progre
+profile=dtn image=build/fn-host-dtn roots=135 result=loaded
+default roots: 149
+default certify rc=0 Installed from the cache: 350 books ACL2 certification passed: nothing left to certify Certification evidence: build/acl2/certify-20260925T194909Z-3670835 
+profile=default image=build/fn-host roots=149 result=loaded
+built build/fn-host-dtn-developer profile=developer (129M core)
+dtn undefined lines: 0
+built build/fn-host-developer profile=developer (131M core)
+default undefined lines: 0
+d89568156002e638d7412c410a9ad2e965070c803638e7d653a1e923a0429415  build/fn-host-developer
+f9f52706629503138260b34df96d036277cb0ef24f33b80da66ecb9787b8db26  build/fn-host-developer.core
+abd561cbcc17b69d08f5fb9cb6c7cfa4cc6731a968ff8437997b3b2dab3aac18  /tank/fn/scratch/bp-n16-prod/logs3/native-build-developer.log
+22302b091e098c650dd4b2d4b925e449a6060e68c7cc90823ee0e3f0af20023e  build/fn-host-dtn-developer
+231923b20045d516d55f3fbcf827b3a19d18a8c2f7ef066a522cf4566316297e  build/fn-host-dtn-developer.core
+6944d2b049104623f65efafcb4f032c6749088ebc8185229372e749ea3b9f2ef  /tank/fn/scratch/bp-n16-prod/logs3/native-build-dtn-developer.log
+6e9d42f98a0d3f6a3a398e792261ee016ef724bc7214c9e4075dc55d61f316c3  tests/test_bp_node_native.py
+47289c2f0ffd6bd51c5ac606ff596f422732b86c2ee88a01def61e0131786554  host/native/bp-node.lisp
+start 2026-09-25T19:50:48Z
+test_bp_node_native rc=0 wall=974s end 2026-09-25T20:07:02Z OK ok=26
+7810d607652ee2b9528dff39358dc0e99d9518844b866ac4f31b3c27ee2944c3  /tank/fn/scratch/bp-n16-prod/logs3/test_bp_node_native.log
+ALLDONE

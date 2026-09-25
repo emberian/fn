@@ -66,6 +66,13 @@ Use an existing BP implementation when adding DTN integration. LTP retransmissio
 and BP status reports do not substitute for fn's signed/authorized obligation
 receipts. BP lifetime and fn retention lifetime are separately specified.
 
+REP-008: an outbound bundle never exceeds the peer's TCPCL Transfer MRU: it goes whole, as RFC 9171 5.8 fragments that reassemble exactly to it, or is refused.
+RFC 9174 section 5.4.1 forbids the longer transfer. After SESS_INIT the sender
+asks ACL2's `fn-bpfs-plan` (books/bp-fragment-send.lisp) with the negotiated
+Transfer MTU; each fragment carries the parent's identity and every extension
+block, and is at most that MRU (PRF-114). A bundle whose no-fragment flag is set
+and does not fit is refused, never truncated.
+
 ## Authorization and privacy
 
 Limit what each peer can request, introduce, or learn through inventories. A
