@@ -2119,14 +2119,7 @@
       "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. The framing keystones prove that equal valid subject bodies, and equal tagged signing preimages, determine the same principal, ordered Ed25519/ML-DSA-65 key set and exact authored source. Projection witnesses are non-degenerate and each theorem has one must-fail event per hypothesis. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. These are byte-framing results, not cryptographic injectivity: primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open. The byte-framing injectivity book and its hypothesis counterexamples certified on hbox in certify-20260921T181329Z-2345431; the complete selected closure source digests match the integrated source. This does not certify live author submission or either signature primitive. Bounds P4 (2026-09-25, D27): the v1 source bound is the u16's 65535, not the article constant, and carrier v2 (item 1 = 2, tag fn-authored-source-hybrid-v2, u32 length) signs sources above it; the host calls fn-hsig-authorize-at and fn-hsig-signed-preimage-at through fn-hsig-host-authorize and fn-hsig-host-preimage (host/hybrid-signature-host.lisp) with fn-hsig-source-version. The two -by-definition events are the v1 correspondence, not keystones; the keystones are the per-version injectivity, the cross-version disjointness and the versioned injectivity, each with one must-fail per hypothesis in its test book. Certified with every dependent in certify-20260925T025612Z-3717718; native and verifier results in planning/evidence/bounds-p4-2026-09-25.md.",
       "events": [
         "fn-hsig-subject-body-injective",
-        "fn-hsig-signed-preimage-injective",
-        "fn-hsig-subject-body-v2-injective",
-        "fn-hsig-signed-preimage-v2-injective",
-        "fn-hsig-v1-v2-preimages-disjoint",
-        "fn-hsig-signed-preimage-at-injective",
-        "fn-hsig-subject-at-p-names-the-source-version",
-        "fn-hc-decode-at-of-encode-at",
-        "fn-hc-decode-at-refuses-another-version"
+        "fn-hsig-signed-preimage-injective"
       ]
     },
     {

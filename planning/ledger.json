@@ -774,21 +774,21 @@
     "books": 780,
     "books_in_root_closure": 778,
     "roots": 767,
-    "theorems": 10281,
-    "functions": 7289,
-    "assert_events": 11320,
-    "must_fails": 1014,
+    "theorems": 10308,
+    "functions": 7306,
+    "assert_events": 11334,
+    "must_fails": 1028,
     "encapsulates": 41,
     "guards": {
       "verified": 2093,
       "declared-off": 526,
-      "default-guarded": 3624,
+      "default-guarded": 3641,
       "default-unguarded": 1046
     },
-    "suspect_theorems": 91,
-    "export_hygiene_warnings": 131,
+    "suspect_theorems": 90,
+    "export_hygiene_warnings": 133,
     "enabled_projection_warnings": 42,
-    "teeth_form_warnings": 69,
+    "teeth_form_warnings": 83,
     "include_hygiene_warnings": 768,
     "host_names_warnings": 867,
     "hand_written_record_warnings": 18
@@ -7105,18 +7105,18 @@
       "book": "books/hybrid-carrier.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
-      "functions": 26,
+      "theorems": 18,
+      "functions": 33,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 26,
+        "default-guarded": 33,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7126,10 +7126,7 @@
         "stx-carrier"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-hc-binary-limit-refuses-by-definition",
-        "fn-hc-field-limit-refuses-by-definition"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -7210,12 +7207,12 @@
       "book": "books/hybrid-signature-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 4,
+      "theorems": 29,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -7237,18 +7234,18 @@
       "book": "books/hybrid-signature.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 5,
-      "functions": 7,
+      "theorems": 6,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 7,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 9,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7316,12 +7313,12 @@
       "book": "books/hybrid-store.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 1,
-      "functions": 16,
+      "theorems": 3,
+      "functions": 17,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 16,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11648,18 +11645,18 @@
       "book": "books/stx-evidence-records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 26,
+      "theorems": 15,
+      "functions": 27,
       "guards": {
         "verified": 8,
         "declared-off": 0,
-        "default-guarded": 18,
+        "default-guarded": 19,
         "default-unguarded": 0
       },
       "verify_guards_events": 8,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11668,7 +11665,9 @@
         "stx-lace"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-stxe-keyring-profile-is-identity-off-v2-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -17643,8 +17642,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
-      "must_fails": 1,
+      "assert_events": 24,
+      "must_fails": 4,
       "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
@@ -17729,9 +17728,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
-      "must_fails": 6,
-      "defconsts": 13,
+      "assert_events": 8,
+      "must_fails": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17756,9 +17755,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 2,
-      "defconsts": 8,
+      "assert_events": 16,
+      "must_fails": 4,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17783,7 +17782,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
+      "assert_events": 1,
       "must_fails": 3,
       "defconsts": 13,
       "defmacros": 0,
@@ -20926,8 +20925,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 0,
+      "assert_events": 14,
+      "must_fails": 1,
       "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
@@ -20935,7 +20934,9 @@
         "../../books/codec-attach",
         "../../books/stx-evidence-records"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -20952,9 +20953,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 28,
+      "assert_events": 30,
       "must_fails": 0,
-      "defconsts": 22,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -22065,22 +22066,6 @@
       ]
     },
     {
-      "theorem": "fn-hc-binary-limit-refuses-by-definition",
-      "book": "books/hybrid-carrier.lisp",
-      "line": 358,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-hc-decode and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-hc-field-limit-refuses-by-definition",
-      "book": "books/hybrid-carrier.lisp",
-      "line": 377,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-hc-field-decode and the conclusion is that branch's value"
-      ]
-    },
-    {
       "theorem": "fn-inj-instantp-opens",
       "book": "books/injection-invariants.lisp",
       "line": 294,
@@ -22448,6 +22433,14 @@
       ]
     },
     {
+      "theorem": "fn-stxe-keyring-profile-is-identity-off-v2-by-definition",
+      "book": "books/stx-evidence-records.lisp",
+      "line": 85,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-stxe-keyring-profile and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-tcl-segment-never-exceeds-mru",
       "book": "books/tcpcl-octets.lisp",
       "line": 1065,
@@ -22795,13 +22788,25 @@
       {
         "theorem": "fn-hsigi-ed-key-of-subject-body",
         "book": "books/hybrid-signature-invariants.lisp",
-        "line": 81,
+        "line": 82,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-hsigi-ml-key-of-subject-body",
         "book": "books/hybrid-signature-invariants.lisp",
-        "line": 105,
+        "line": 106,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-hsigi-ed-key-of-subject-body-v2",
+        "book": "books/hybrid-signature-invariants.lisp",
+        "line": 275,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-hsigi-ml-key-of-subject-body-v2",
+        "book": "books/hybrid-signature-invariants.lisp",
+        "line": 299,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -23885,6 +23890,24 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "hc-decode-at-of-encode-at-without-emission",
+        "book": "tests/acl2/hybrid-carrier-tests.lisp",
+        "line": 208,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hc-decode-at-refuses-without-other-version",
+        "book": "tests/acl2/hybrid-carrier-tests.lisp",
+        "line": 215,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hc-decode-at-refuses-without-emission",
+        "book": "tests/acl2/hybrid-carrier-tests.lisp",
+        "line": 221,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "hsigi-body-without-left-subject",
         "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
         "line": 95,
@@ -23918,6 +23941,66 @@
         "check": "hsigi-preimage-without-byte-equality",
         "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
         "line": 124,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-v2-body-without-left-subject",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 175,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-v2-body-without-right-subject",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 181,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-v2-preimage-without-byte-equality",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 187,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-v1-v1-preimages-disjoint",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 196,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-at-without-left-subject",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 203,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-at-without-right-subject",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 209,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-at-without-byte-equality",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 215,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hsigi-version-without-subject",
+        "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
+        "line": 222,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hs-preimage-at-v1-without-length",
+        "book": "tests/acl2/hybrid-signature-tests.lisp",
+        "line": 139,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hs-authorize-at-v1-without-length",
+        "book": "tests/acl2/hybrid-signature-tests.lisp",
+        "line": 146,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -24122,6 +24205,12 @@
         "check": "sbnt-name-without-kernel-invariant",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
         "line": 131,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "stxe-keyring-profile-identity-without-off-v2",
+        "book": "tests/acl2/stx-evidence-records-tests.lisp",
+        "line": 72,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -29832,7 +29921,7 @@
       },
       {
         "host": "host/hybrid-signature-host.lisp",
-        "line": 57,
+        "line": 77,
         "name": "fn-sn-keyring-snapshots",
         "source": "books/store-node.lisp",
         "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -34998,112 +35087,112 @@
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 45,
+        "line": 46,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 45,
+        "line": 46,
         "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 59,
+        "line": 60,
         "name": "fnn-octet-list-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 59,
+        "line": 60,
         "name": "fnn-hsig-verify-received-carrier",
         "source": "host/native/signatures.lisp",
         "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 59,
+        "line": 60,
         "name": "unsigned-byte",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 95,
+        "line": 96,
         "name": "caar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 95,
+        "line": 96,
         "name": "cdar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 95,
+        "line": 96,
         "name": "caadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 95,
+        "line": 96,
         "name": "cdadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 95,
+        "line": 96,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 154,
+        "line": 155,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signatures.lisp",
-        "line": 92,
-        "name": "fnn-crypto-initialize",
-        "source": "host/native/crypto.lisp",
-        "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/signatures.lisp",
-        "line": 154,
-        "name": "fnn-crypto-octets",
-        "source": "host/native/crypto.lisp",
-        "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/signatures.lisp",
-        "line": 288,
-        "name": "fnn-crypto-ed25519-observe",
-        "source": "host/native/crypto.lisp",
-        "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/signatures.lisp",
-        "line": 321,
+        "line": 18,
         "name": "fnn-core",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signatures.lisp",
-        "line": 321,
+        "line": 97,
+        "name": "fnn-crypto-initialize",
+        "source": "host/native/crypto.lisp",
+        "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 159,
+        "name": "fnn-crypto-octets",
+        "source": "host/native/crypto.lisp",
+        "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 293,
+        "name": "fnn-crypto-ed25519-observe",
+        "source": "host/native/crypto.lisp",
+        "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 326,
         "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
