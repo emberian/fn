@@ -10,6 +10,10 @@
 (in-package "ACL2")
 (include-book "peer-inbound")
 (include-book "path-update-tail")
+; fn-cnode-node-prepare-stages-the-offered-groups (a :use hint below).
+; Reached through books/peer-inbound.lisp until that book dropped its unused
+; include of node-config (audit 2026-09-25, packet 2).
+(include-book "node-config")
 
 (local (in-theory (enable fn-peer-vocabulary fn-path-vocabulary)))
 
