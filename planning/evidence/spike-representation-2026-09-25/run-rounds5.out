@@ -1,0 +1,109 @@
+91494851e5a995bd0d8b01bb7639b647c2537395bc8dfc5ec9f4cdb983654f9f  build/freeze/acquire-default.txt
+1f6a3c675cbcc0b4cf039b694360eedfe1eac96de865f4e1e54ea57557f9d154  build/freeze/validate-default.txt
+BUILD-OK
+SETUP-DONE
+8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582  /tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer.core
+24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8  /tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer.core
+0
+after r7 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 47151, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06645883992314339, "load_seconds": 2.8375977175310254, "rss_after_load_kib": 454680, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 461400}
+post_all median 22.898 ms  p95 26.831 ms  max 34.134 ms
+post_first_quarter median 23.114 ms  p95 28.021 ms  max 34.134 ms
+post_last_quarter median 22.920 ms  p95 25.817 ms  max 26.990 ms
+stat_present median 0.086 ms  p95 0.170 ms  max 0.171 ms
+article_present median 34.598 ms  p95 36.650 ms  max 38.509 ms
+over_present median 1.472 ms  p95 1.635 ms  max 1.784 ms
+memo r7 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2", "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 57327, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.05825216416269541, "load_seconds": 1.9826407935470343, "rss_after_load_kib": 453308, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460412}
+post_all median 15.709 ms  p95 19.169 ms  max 26.531 ms
+post_first_quarter median 15.687 ms  p95 20.269 ms  max 26.531 ms
+post_last_quarter median 16.007 ms  p95 18.327 ms  max 19.361 ms
+stat_present median 0.084 ms  p95 0.172 ms  max 0.178 ms
+article_present median 34.707 ms  p95 38.242 ms  max 43.499 ms
+over_present median 1.592 ms  p95 1.688 ms  max 1.800 ms
+after r7 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 55533, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06286754086613655, "load_seconds": 0.24235090240836143, "rss_after_load_kib": 387472, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387664}
+post_all median 1.877 ms  p95 2.300 ms  max 4.585 ms
+post_first_quarter median 2.175 ms  p95 2.262 ms  max 2.970 ms
+post_last_quarter median 1.860 ms  p95 1.898 ms  max 1.916 ms
+stat_present median 0.084 ms  p95 0.170 ms  max 0.176 ms
+article_present median 2.395 ms  p95 2.439 ms  max 2.483 ms
+over_present median 0.307 ms  p95 0.330 ms  max 0.347 ms
+memo r7 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2", "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 58969, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06352847162634134, "load_seconds": 0.18916107062250376, "rss_after_load_kib": 386896, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387088}
+post_all median 1.407 ms  p95 1.903 ms  max 3.905 ms
+post_first_quarter median 1.813 ms  p95 1.979 ms  max 2.877 ms
+post_last_quarter median 1.370 ms  p95 1.423 ms  max 1.469 ms
+stat_present median 0.082 ms  p95 0.162 ms  max 0.184 ms
+article_present median 2.319 ms  p95 2.428 ms  max 2.439 ms
+over_present median 0.289 ms  p95 0.317 ms  max 0.347 ms
+after r8 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 56655, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.061516947112977505, "load_seconds": 2.82839272916317, "rss_after_load_kib": 454404, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 461316}
+post_all median 23.159 ms  p95 27.231 ms  max 35.241 ms
+post_first_quarter median 23.706 ms  p95 27.796 ms  max 35.241 ms
+post_last_quarter median 22.086 ms  p95 24.142 ms  max 25.935 ms
+stat_present median 0.088 ms  p95 0.176 ms  max 0.181 ms
+article_present median 37.069 ms  p95 39.350 ms  max 41.459 ms
+over_present median 1.662 ms  p95 1.697 ms  max 1.889 ms
+memo r8 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2", "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 34069, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.056285629980266094, "load_seconds": 2.0178574062883854, "rss_after_load_kib": 454020, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460740}
+post_all median 16.014 ms  p95 19.997 ms  max 27.973 ms
+post_first_quarter median 15.651 ms  p95 20.212 ms  max 27.973 ms
+post_last_quarter median 15.913 ms  p95 18.585 ms  max 19.701 ms
+stat_present median 0.083 ms  p95 0.178 ms  max 0.204 ms
+article_present median 34.332 ms  p95 36.375 ms  max 38.682 ms
+over_present median 1.662 ms  p95 1.705 ms  max 1.741 ms
+after r8 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 46393, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06221390422433615, "load_seconds": 0.24144797399640083, "rss_after_load_kib": 386960, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387344}
+post_all median 1.860 ms  p95 2.328 ms  max 4.463 ms
+post_first_quarter median 2.177 ms  p95 2.465 ms  max 3.588 ms
+post_last_quarter median 1.849 ms  p95 1.889 ms  max 1.895 ms
+stat_present median 0.082 ms  p95 0.162 ms  max 0.187 ms
+article_present median 2.332 ms  p95 2.373 ms  max 2.381 ms
+over_present median 0.302 ms  p95 0.336 ms  max 0.419 ms
+memo r8 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2", "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 39049, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06023671664297581, "load_seconds": 0.19075954798609018, "rss_after_load_kib": 386728, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 386920}
+post_all median 1.425 ms  p95 1.971 ms  max 3.982 ms
+post_first_quarter median 1.800 ms  p95 2.015 ms  max 2.276 ms
+post_last_quarter median 1.415 ms  p95 1.462 ms  max 1.474 ms
+stat_present median 0.083 ms  p95 0.086 ms  max 0.089 ms
+article_present median 2.373 ms  p95 2.490 ms  max 2.535 ms
+over_present median 0.299 ms  p95 0.448 ms  max 0.454 ms
+after r9 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 49413, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06126691494137049, "load_seconds": 2.8894397178664804, "rss_after_load_kib": 454560, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 461472}
+post_all median 23.352 ms  p95 27.098 ms  max 35.882 ms
+post_first_quarter median 23.406 ms  p95 27.294 ms  max 35.882 ms
+post_last_quarter median 23.251 ms  p95 25.760 ms  max 26.777 ms
+stat_present median 0.081 ms  p95 0.088 ms  max 0.100 ms
+article_present median 34.547 ms  p95 36.118 ms  max 39.104 ms
+over_present median 1.621 ms  p95 1.770 ms  max 1.795 ms
+memo r9 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2", "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 47435, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.05778928101062775, "load_seconds": 2.0285365618765354, "rss_after_load_kib": 453924, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460836}
+post_all median 16.036 ms  p95 20.395 ms  max 30.137 ms
+post_first_quarter median 16.557 ms  p95 21.107 ms  max 30.137 ms
+post_last_quarter median 15.687 ms  p95 18.354 ms  max 19.447 ms
+stat_present median 0.212 ms  p95 0.260 ms  max 0.319 ms
+article_present median 35.474 ms  p95 37.134 ms  max 39.083 ms
+over_present median 1.496 ms  p95 1.582 ms  max 1.627 ms
+after r9 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 60173, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06063011195510626, "load_seconds": 0.2420899886637926, "rss_after_load_kib": 387552, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387744}
+post_all median 1.874 ms  p95 2.273 ms  max 4.414 ms
+post_first_quarter median 2.195 ms  p95 2.292 ms  max 3.346 ms
+post_last_quarter median 1.854 ms  p95 1.907 ms  max 1.954 ms
+stat_present median 0.168 ms  p95 0.222 ms  max 0.231 ms
+article_present median 2.321 ms  p95 2.393 ms  max 2.409 ms
+over_present median 0.294 ms  p95 0.369 ms  max 0.397 ms
+memo r9 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2", "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 52111, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.05869574751704931, "load_seconds": 0.18823367729783058, "rss_after_load_kib": 387084, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387468}
+post_all median 1.425 ms  p95 1.837 ms  max 3.811 ms
+post_first_quarter median 1.739 ms  p95 1.921 ms  max 3.170 ms
+post_last_quarter median 1.405 ms  p95 1.484 ms  max 1.681 ms
+stat_present median 0.083 ms  p95 0.085 ms  max 0.089 ms
+article_present median 2.321 ms  p95 2.391 ms  max 2.405 ms
+over_present median 0.314 ms  p95 0.407 ms  max 0.409 ms
+MEMO-120-DONE
+after r7 n=120 o=32768 rc=0 stats 48 seconds 1.1816217647865415 per_ms 24.617120099719614
+memo r7 n=120 o=32768 rc=0 stats 48 seconds 0.8133280435577035 per_ms 16.94433424078549
+after r8 n=120 o=32768 rc=0 stats 48 seconds 1.1856050714850426 per_ms 24.700105655938387
+memo r8 n=120 o=32768 rc=0 stats 48 seconds 0.8421593802049756 per_ms 17.54498708760366
+ROUNDS5-DONE

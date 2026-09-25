@@ -434,8 +434,57 @@ both images, which is what boundary 10 changes to L + 16 plus the same
 would be 0.36 GB after boundary 10.
 
 **The memo image** (after plus `(memoize 'fn-record-payloadp)` in
-`host/native/build.lisp`, commit `6cedc7df`): filled in from `m-memo-*`
-and `post-memo-*` below.
+`host/native/build.lisp`, commit `6cedc7df`; core `8a59eb79…`,
+`memo-images-and-reopen.txt`; rounds 7 to 9, alternated with the after
+image, N = 120, no census). `memoize` is ACL2's own facility, a logical
+no-op keyed by the argument's pointer identity, so the second, third and
+fourth recognitions of the same payload object on one POST (the commit's
+seek, its completion gates, its finish, all through `fn-rcon-record-p`)
+are table hits. (The first two "memo" runs in `run-rounds3.out` and
+`run-rounds4.out` measured the after image again: the memo tree lacked
+`article-stobj` and then the cached certificates, so its build stopped
+and the copied after image ran under the label; `run-rounds5.out` is the
+real one, and the core digests say which is which.)
+
+| Cell | POST median (all / last quarter), r7, r8, r9 | load s | ARTICLE | OVER |
+| --- | --- | ---: | ---: | ---: |
+| after, 2 KiB | 1.88/1.86, 1.86/1.85, 1.87/1.85 | 0.24, 0.24, 0.24 | 2.39, 2.33, 2.32 | 0.31, 0.30, 0.29 |
+| memo, 2 KiB | 1.41/1.37, 1.42/1.41, 1.43/1.40 | 0.19, 0.19, 0.19 | 2.32, 2.37, 2.32 | 0.29, 0.30, 0.31 |
+| after, 32 KiB | 22.9/22.9, 23.2/22.1, 23.4/23.3 | 2.84, 2.83, 2.89 | 34.6, 37.1, 34.6 | 1.47, 1.66, 1.62 |
+| memo, 32 KiB | 15.7/16.0, 16.0/15.9, 16.0/15.7 | 1.98, 2.02, 2.03 | 34.7, 34.3, 35.5 | 1.59, 1.66, 1.50 |
+
+A 32 KiB POST goes from 22.9 to 23.4 ms to 15.7 to 16.0 ms (−31%), a
+2 KiB POST from 1.86 to 1.88 to 1.41 to 1.43 ms (−24%), the load of 120
+articles from 2.84 to 2.0 s; the reads are unchanged. The profile
+(`post-memo-n120-o32768-r7/r8-flat.txt`, 752 and 784 samples against
+1,112 on after over the same 48 POSTs) no longer lists
+`fn-record-payloadp` in its top twenty; what remains is the session
+machine's feed (`fn-scar-feed-counted` 63% cumulative, `fn-ag-cdr` 9%,
+`fn-wire-ag-cdr` 6 to 8% self) and SHA-256 (4%). So after wave A, the
+same payload list was being recognised about four times per POST, and
+that was 30% of a large POST; one line removes it. What dev must own
+instead of the table: the recognition carried in state (boundary 10's
+`fn-owner-corr` carries `fn-record-p` of every stored record, so the
+commit never re-recognises), or at least a `fn-rcon-record-p` that reads
+a carried payload verdict; the table here holds one key per payload
+object it has seen and is never cleared.
+
+**The N = 10,000 reopen.** Measured as a bound, not a number. In the
+first plan the driver waited for the reopened owner's LISTENING line
+under a 3,600 s deadline at N = 10,000, 2 KiB, and the deadline expired
+on both images (`native startup deadline expired; stdout=b''`, the
+driver's text in this session's console; the second plan overwrote those
+two logs, and `run-rounds.out` keeps only their exit codes). The second
+plan's single attempt under a 10,800 s deadline was stopped by the lane
+about ten minutes in, when the session's budget ran out (a clock misread
+first made that ten minutes look like four hours; the artefact's local
+mtime against `date -u` settles it). So: the owner's open at N = 10,000
+with 2 KiB articles exceeds 3,600 s on both images, against 1.5 s at
+N = 120 and 454 s at N = 1,000; the open is not the decode (the after
+image's reopen matches the base's at every measured N), it is the
+whole-history replay, and the checkpoint slice D27 names is the only way
+to a load time that a store of 10,000 articles can have. A quadratic fit
+through the two measured points puts it near 45,000 s.
 
 ## 6. Logs (planning/evidence/spike-representation-2026-09-25/)
 

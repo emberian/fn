@@ -1,0 +1,9 @@
+cert rc=0
+Installed from the cache: 322 books
+ACL2 certification passed: books/frame-stobj, books/records-stobj
+Certification evidence: build/acl2/certify-20260925T172846Z-3520350
+build rc=0
+91494851e5a995bd0d8b01bb7639b647c2537395bc8dfc5ec9f4cdb983654f9f  build/freeze/acquire-default.txt
+1f6a3c675cbcc0b4cf039b694360eedfe1eac96de865f4e1e54ea57557f9d154  build/freeze/validate-default.txt
+BUILD-OK
+SETUP-DONE
