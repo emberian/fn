@@ -60,7 +60,7 @@
 (defconst *stxa-large-event*
   (fn-stxa-make 4 9 12 3 '(112)
                 '(115)
-                (make-list *fn-record-max-octets* :initial-element 1)
+                (make-list *fn-stxa-max-article-record* :initial-element 1)
                 (make-list *fn-stxe-max-octets* :initial-element 2)))
 (assert-event (fn-stxa-p *stxa-large-event*))
 (assert-event (< *fn-cbor-max-input* (len (fn-stxa-encode *stxa-large-event*))))

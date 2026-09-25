@@ -31,8 +31,17 @@
 ; Exact source preflight boundary, including rejection before octet validation.
 (defconst *fn-aw-test-max-source* (append '(13 10) (fn-aw-test-repeat 32766 0)))
 (assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse *fn-aw-test-max-source*))))
-(assert-event (equal (fn-aw-parse (cons '(not-an-octet) (fn-aw-test-repeat 32768 0)))
-                     '((:error :limit) 32770)))
+; The source preflight runs at the codec ceiling `*fn-article-max-octets*'
+; (D27), whose limit branch no test can reach by construction; the served
+; paths refuse past the operator's bound first (`fn-inj-decide', the
+; injection tests).  Below the ceiling a non-octet reaches octet validation.
+(assert-event (equal (fn-aw-v (fn-aw-parse (cons '(not-an-octet)
+                                                 (fn-aw-test-repeat 32768 0))))
+                     '(:error :invalid-header)))
+; The preflight itself refuses one octet past any bound before validation.
+(assert-event (not (fn-aw-v (fn-aw-at-most (cons '(not-an-octet)
+                                                 (fn-aw-test-repeat 32768 0))
+                                           32768))))
 
 ; Exact line, physical-header-line, and field-count boundaries.
 (defconst *fn-aw-test-max-line*
@@ -69,9 +78,16 @@
 (assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-fold-sample*))
                      (fn-article-parse *fn-aw-test-fold-sample*)))
 
-; Numeric documentation witness for the selected 256-header-line profile.
+; Numeric documentation witnesses for the 256-header-line work bound: at the
+; codec ceiling (the certified bound's own figure, 9.0e15 steps) and at the
+; development profile's 32 768-octet article bound, which the served paths
+; apply before the parse (6.9e10 steps, the pre-D27 figure).
 (assert-event
  (equal (+ 3 (* 2 *fn-article-max-octets*)
            (fn-aw-budget (1+ *fn-article-max-header-lines*)
                          *fn-article-max-octets* 0))
+        9006794391183396))
+(assert-event
+ (equal (+ 3 (* 2 32768)
+           (fn-aw-budget (1+ *fn-article-max-header-lines*) 32768 0))
         69261680676))

@@ -84,10 +84,16 @@
  (equal (fn-record-item-decode
          (append (fn-record-item-encode (cons :bytes *rct-payload*)) '(1 2)))
         (fn-cbor-ok (cons :bytes *rct-payload*) '(1 2))))
-(assert-event
- (not (fn-cbor-result-okp
-       (fn-record-item-decode
-        (append (fn-record-item-encode (cons :bytes '(1 2))) '(300))))))
+; Outside the guard, so stated as a ground theorem over the logical
+; definition rather than evaluated.
+(local
+ (defthm rct-item-decode-refuses-a-non-octet-remainder
+   (not (fn-cbor-result-okp
+         (fn-record-item-decode
+          (append (fn-record-item-encode (cons :bytes '(1 2))) '(300)))))
+   :hints (("Goal" :in-theory (enable fn-record-item-decode
+                                      fn-record-item-encode)))
+   :rule-classes nil))
 (must-fail
  (thm (implies (and (<= (len xs) *fn-record-max-octets*)
                     (fn-cbor-octet-listp rest))
@@ -97,6 +103,12 @@
 (must-fail
  (thm (implies (and (fn-cbor-octet-listp xs)
                     (<= (len xs) *fn-record-max-octets*))
+               (equal (fn-record-item-decode
+                       (append (fn-record-item-encode (cons :bytes xs)) rest))
+                      (fn-cbor-ok (cons :bytes xs) rest)))))
+(must-fail
+ (thm (implies (and (fn-cbor-octet-listp xs)
+                    (fn-cbor-octet-listp rest))
                (equal (fn-record-item-decode
                        (append (fn-record-item-encode (cons :bytes xs)) rest))
                       (fn-cbor-ok (cons :bytes xs) rest)))))

@@ -125,25 +125,30 @@
          *fn-frame-test-digest*)
         (fn-frame-error :magic)))
 
-; The physical ceiling counts payload octets.  The fixed frame overhead is 42.
+;; The physical ceiling is the u32 LENGTH width (D27); no evaluated witness
+;; reaches it.  A payload one octet above the pre-D27 196 608-octet ceiling
+;; encodes and decodes (the overhead is 42), and the caller's own cap (a
+;; profile's per-record ceiling) is what refuses it.
+(assert-event (equal *fn-frame-max-store-payload* 4294967295))
 (defconst *fn-frame-max-store-witness*
-  (make-list *fn-frame-max-store-payload* :initial-element 165))
+  (make-list 196609 :initial-element 165))
 (defconst *fn-frame-max-store-file*
   (fn-frame-store-encode *fn-frame-max-store-witness*
                          *fn-frame-test-digest*))
 (assert-event
- (equal (len *fn-frame-max-store-file*)
-        (+ 42 *fn-frame-max-store-payload*)))
+ (equal (len *fn-frame-max-store-file*) (+ 42 196609)))
 (assert-event
  (equal (fn-frame-result-payload
          (fn-frame-store-decode *fn-frame-max-store-file*
                                 *fn-frame-test-digest*))
         *fn-frame-max-store-witness*))
 (assert-event
- (equal (fn-frame-store-encode
-         (make-list (1+ *fn-frame-max-store-payload*) :initial-element 165)
-         *fn-frame-test-digest*)
-        :bad))
+ (fn-frame-result-okp
+  (fn-frame-decode *fn-frame-max-store-file* *fn-frame-test-digest* 196609)))
+(assert-event
+ (not (fn-frame-result-okp
+       (fn-frame-decode *fn-frame-max-store-file* *fn-frame-test-digest*
+                        196608))))
 
 ; -----------------------------------------------------------------------------
 ; Field grammar

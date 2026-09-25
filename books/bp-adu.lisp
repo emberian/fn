@@ -22,6 +22,13 @@
 (defconst *fn-bpa-field-count* 9)
 (defconst *fn-bpa-max-metadata* 256)
 (defconst *fn-bpa-max-octets* 65538)
+; The article one ADU carries.  D27 widened the record payload ceiling
+; (`fn-record-payloadp', books/records-shape) to the u32 record width; the
+; ADU keeps the article bound it was proved at, which with eight metadata
+; fields fits `*fn-bpa-max-octets*' (`fn-bpa-encoding-bound').  Packet P5
+; bounds the ADU by the profile's record ceiling instead (design
+; 2026-09-25-bounds §2.3 row "BP ADU").
+(defconst *fn-bpa-max-article* 32768)
 
 ; Total selectors preserve malformed-input behavior without a Lisp reader.
 (defun fn-bpa-car (x)
@@ -105,7 +112,8 @@
        (fn-bpa-metadatap (fn-bpa-request-incarnation x))
        (fn-bpa-metadatap (fn-bpa-request-auth-context x))
        (fn-bpa-metadatap (fn-bpa-request-terms-id x))
-       (fn-record-payloadp (fn-bpa-request-article x))))
+       (fn-record-payloadp (fn-bpa-request-article x))
+       (<= (len (fn-bpa-request-article x)) *fn-bpa-max-article*)))
 
 (defun fn-bpa-receiptp (x)
   (declare (xargs :guard t))
