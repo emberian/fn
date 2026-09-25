@@ -159,7 +159,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
 - Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:170.
-- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T230640Z-2140288` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-node-foundation.lisp`, `books/bp-node-progress.lisp` and 3 more changed.
+- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T230640Z-2140288` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-fnbs-forward-codec.lisp`, `books/bp-forward-attempt.lisp` and 5 more changed.
 - Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile DTN developer image, bp_node and bp_app modules; changed since it: `books/bp-node-forward-retry.lisp`, `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: bp_node 17/17 with N08 on both developer images, bp_app 5/5, contact_relay 1/1 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
