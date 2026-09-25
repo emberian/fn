@@ -151,7 +151,9 @@ consumer, not unrelated productive engineering.
 ## Boxes
 
 `swarm-build` around every build on hbox; `tools/acl2` for every ACL2 you
-start by hand (it takes a slot); never a bare `&` in a lane shell; `free` lies
+start by hand (it takes a slot and caps the heap at 8,000 MB on the laptop:
+a bare `acl2 <` gets the launcher's 32 GB and no slot, which is how the
+laptop hard-crashed on 2026-09-25); never a bare `&` in a lane shell; `free` lies
 on hbox (read `arcstats` and summed RSS); a farm run's `--remote-root` is
 absolute; a farm run installs its dependencies from the box's cache, composed
 from several snapshot origins when no one origin holds them all, and never

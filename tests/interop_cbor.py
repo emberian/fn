@@ -8,6 +8,15 @@ does not interpolate or evaluate Lisp forms supplied by a peer.
 
 from __future__ import annotations
 
+
+def _heap_capped(environment):
+    """The pool's heap cap (tools/acl2_slots.py) for an ACL2 this check starts."""
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+    import acl2_slots
+    return acl2_slots.apply_heap_cap(environment)
+
 import argparse
 import datetime as dt
 import hashlib
@@ -112,6 +121,7 @@ class ACL2:
         environment = os.environ.copy()
         environment["ACL2_CUSTOMIZATION"] = "NONE"
         environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
+        environment = _heap_capped(environment)
         environment.pop("ACL2_SYSTEM_BOOKS", None)
         self.proc = subprocess.Popen(
             [str(executable)], cwd=ROOT, stdin=subprocess.PIPE,

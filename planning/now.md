@@ -98,9 +98,11 @@ the session):**
 | bounds-p4-carrier: carrier v2 | 2 commits ahead; its persvati run (hybrid-* affected-by) was still certifying |
 | control-c1: file control articles, never execute | 5 commits ahead |
 
-Rule from the crash: no lane runs ACL2, an image, an owner or a heap census
-on the laptop; only on hbox (under `swarm-build` or a `systemd-run` memory
-cap) or persvati. The coordinator writes that into every brief.
+Rule from the crash (cause and cap in
+`planning/evidence/laptop-oom-2026-09-25.md`): ACL2 on the laptop only
+through `tools/acl2` or `tools/proof_repl.py`, which now cap each process at
+8,000 MB and pool six; never a bare `acl2 <`; images, owners and censuses on
+hbox under `swarm-build` or a `systemd-run` memory cap, or on persvati.
 
 ## Where to read next
 
