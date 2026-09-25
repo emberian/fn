@@ -115,8 +115,10 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         for verb in (("status",), ("retention",), ("config",)):
             out = self.store_cli(*verb)
             self.assertEqual(out.returncode, EXIT_OK, out.stderr.decode())
+            # How the store opened and the checkpoint file's size and
+            # time are not reconstructed state.
             words.append([l for l in out.stdout.decode("ascii").splitlines()
-                          if not l.startswith("open=")])
+                          if not l.startswith(("open=", "checkpoint-file"))])
         for message_id in self.ids:
             out = self.store_cli("inspect", message_id)
             words.append((out.returncode, hashlib.sha256(out.stdout).hexdigest()))
