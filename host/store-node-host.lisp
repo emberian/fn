@@ -22,6 +22,9 @@
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
+; fn-rcl-existing-action: the duplicate-versus-tombstone decision
+; fn-store-sn-prepare and the retention prepare call.
+(include-book "../books/store-reclaim")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-host.lisp defines, so a session that loads this file alone
@@ -692,7 +695,7 @@ reopen predicate, writer-lock observation and observed final namespace."
       (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pb-existing-action msgid payload groups s)))
+             (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -821,7 +824,7 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pb-existing-action
+      (let ((action (fn-rcl-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (f-get-global 'fn-store-sn state))))
         (value (if action action :absent))))))

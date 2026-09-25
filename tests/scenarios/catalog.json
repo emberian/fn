@@ -1653,6 +1653,72 @@
         "planning/evidence/peer-keys-2026-09-25.md",
         "tests/test_native_key_statements.py"
       ]
+    },
+    {
+      "id": "SCN-057",
+      "title": "Two nodes that share no key peer by invitation; tampered, replayed, foreign and repeated documents are refused, and a crash between consumption and enrolment enrols once",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-017"
+      ],
+      "steps": [
+        "On A and B run `peer genesis` over fresh key directories; start both owners.",
+        "A: `peer invite nodeB fn.* HOST PORT a.example KEYS OUT`; B: `peer accept OUT KEYS b.example - ACC`; A: `peer confirm ACC`.",
+        "A: confirm ACC again; B: accept the invitation again; A: confirm a tampered ACC, an acceptance of another invitation, and an acceptance of the consumed nonce by another principal.",
+        "On a developer image, A2: invite, B: accept, A2: confirm with FN_PEER_TEST_STOP_AFTER_CONSUME set; restart A2 and confirm again, then once more."
+      ],
+      "expected": [
+        "Each verb exits 0; A's key history lists B's principal and B's lists A's.",
+        "The second confirm and the second accept are refused (1) as already-confirmed and already-enrolled; the tampered acceptance is refused unverified; the foreign one another-invitation; the replayed nonce invitation-consumed.",
+        "A2 dies after the consuming record; after restart the confirm exits 0 and enrols B once; the next confirm is refused already-confirmed."
+      ]
+    },
+    {
+      "id": "SCN-058",
+      "title": "a node behind NAT pulls from a second fn node and from INN by NEWNEWS, and a crash mid-round skips no id",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-018"
+      ],
+      "steps": [
+        "B (behind NAT: no peer record for B anywhere, only B dials) adds peer A (inbound fn.*, outbound none) and `peer pull A 2`; A holds two articles in fn.test; a recording proxy in front of A logs every command B sends.",
+        "A third article is held at A; the proxy withholds B's ARTICLE for it, so B's round is frozen after NEWNEWS and a local 335; B is killed (SIGKILL) there and restarted.",
+        "B adds INN 2.7.4's nnrpd (a private innd and nnrpd on hbox) as a peer with `peer pull INN 2`; INN holds an article in fn.test, injected into innd by IHAVE."
+      ],
+      "expected": [
+        "B's next round lists both, stores both (235), and its FNPL cursor advances once; the next round answers 435 or lists nothing.",
+        "After restart B's first NEWNEWS names the same instant as the killed round's, and the third article is stored.",
+        "B stores INN's article (235) and its cursor for INN advances."
+      ],
+      "evidence": [
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peer-pull-2026-09-25/native-peer-pull.log"
+      ]
+    },
+    {
+      "id": "SCN-059",
+      "title": "A request above the receiving node's Transfer MRU is fragmented, reassembled once and delivered once",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-008"
+      ],
+      "steps": [
+        "Serve the receiver with a Transfer MRU below the request bundle's length.",
+        "Send the request with `bp-service run`."
+      ],
+      "expected": [
+        "The sender logs `BP fragmenting` with more than one fragment, each at most the peer's MRU, and every further fragment's transfer is accepted.",
+        "The receiver publishes the fragment family once and hands the reassembled request to the application once: one article in its Store."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ]
     }
   ]
 }

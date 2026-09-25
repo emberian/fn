@@ -60,6 +60,63 @@
     (fnn-operator-emit-status :accepted "help")
     +fnn-exit-ok+))
 
+(defun fnn-operator-execute-show (result)
+  "Print ACL2's rendering of the configuration (PKT-096); decide nothing."
+  (let ((octets (fnn-core 'fn-native-operator-host-result-show-octets result)))
+    (unless (fnn-octet-list-p octets)
+      (fnn-fault "ACL2 show action returned no octets"))
+    (write-sequence (fnn-octets octets) *fnn-stdout*)
+    (unless (and (consp octets) (eql (car (last octets)) 10))
+      (write-sequence (fnn-octets (list 10)) *fnn-stdout*))
+    (finish-output *fnn-stdout*)
+    (fnn-operator-emit-status :accepted "show")
+    +fnn-exit-ok+))
+
+(defun fnn-operator-execute-mission (result config-path)
+  "Write the mission's fn.toml, ACL2's rendering, at CONFIG-PATH (PKT-097).
+
+The observation is lstat of CONFIG-PATH; ACL2 refuses an existing file.  The
+file is created exclusively, so a racing writer is refused by open(2), never
+overwritten.  The directories ACL2 names are created if absent."
+  (let ((status (fnn-core 'fn-native-operator-host-result-status result)))
+    (if (not (eq status :accepted))
+        (progn (fnn-operator-emit-result result)
+               (fnn-core 'fn-native-operator-host-result-exit-code result))
+      (handler-case
+          (let ((outcome (fnn-core 'fn-native-operator-host-mission-outcome
+                                   result (and (fnn-lstat config-path) t))))
+            (if (not (eq (fnn-core 'fn-native-operator-host-result-status outcome)
+                         :accepted))
+                (progn (fnn-operator-emit-result outcome)
+                       (fnn-core 'fn-native-operator-host-result-exit-code outcome))
+              (let ((octets (fnn-core 'fn-native-operator-host-result-mission-octets
+                                      result))
+                    (dirs (fnn-core
+                           'fn-native-operator-host-result-mission-directory-octets
+                           result)))
+                (unless (and (fnn-octet-list-p octets) (listp dirs)
+                             (every #'fnn-octet-list-p dirs))
+                  (fnn-fault "ACL2 mission plan is malformed"))
+                (dolist (dir dirs)
+                  (let ((path (fnn-octets-string (fnn-octets dir))))
+                    (unless (fnn-lstat path) (fnn-mkdir path #o700))))
+                (let ((fd (fnn-open config-path
+                                    (logior sb-posix:o-wronly sb-posix:o-creat
+                                            sb-posix:o-excl +fnn-o-nofollow+)
+                                    #o640)))
+                  (unwind-protect
+                       (progn (fnn-write-all fd (fnn-octets octets))
+                              (fnn-fsync-file fd))
+                    (fnn-close fd)))
+                (fnn-out "wrote ~a" config-path)
+                (fnn-operator-emit-status :accepted "mission")
+                +fnn-exit-ok+)))
+        (error (condition)
+          (let ((code (fnn-exit-code-for condition)))
+            (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                      "mission" condition)
+            code))))))
+
 (defun fnn-operator-optional-path (result projection)
   "Decode one ACL2-projected optional path without supplying a default."
   (let ((value (fnn-core projection result)))
@@ -114,11 +171,8 @@ order, and the names it found handed straight back."
               ;; symlink, never truncated or rotated here.  Opened before
               ;; the store so a wrong path is refused before recovery runs.
               (when log-path
-                (setq *fnn-owner-log-fd*
-                      (fnn-open log-path
-                                (logior sb-posix:o-wronly sb-posix:o-append
-                                        sb-posix:o-creat +fnn-o-nofollow+)
-                                #o640)))
+                (setq *fnn-owner-log-fd* (fnn-owner-open-log log-path)
+                      *fnn-owner-log-path* log-path))
               ;; ACL2 already enforced paired presence.  Only a successfully
               ;; loaded and key-checked context is passed to auth/owner.
               (when certificate
@@ -127,12 +181,17 @@ order, and the names it found handed straight back."
               (let* ((*fnn-owner-startup-hooks*
                        (list (fnn-native-auth-startup-hook
                               auth-path auth-required auth-protected)))
+                     ;; The NEWNEWS pull feed (PRF-100) is a sibling lifecycle
+                     ;; extension: host/native/pull-service.lisp.
                      (*fnn-owner-start-hooks*
-                       (cons #'fnn-feed-service-start *fnn-owner-start-hooks*))
+                       (list* #'fnn-feed-service-start #'fnn-pull-service-start
+                              *fnn-owner-start-hooks*))
                      (*fnn-owner-stop-hooks*
-                       (cons #'fnn-feed-service-wake *fnn-owner-stop-hooks*))
+                       (list* #'fnn-feed-service-wake #'fnn-pull-service-wake
+                              *fnn-owner-stop-hooks*))
                      (*fnn-owner-close-hooks*
-                       (cons #'fnn-feed-service-close *fnn-owner-close-hooks*))
+                       (list* #'fnn-feed-service-close #'fnn-pull-service-close
+                              *fnn-owner-close-hooks*))
                      (code
                        (fnn-control-owner-run-normalized
                         (fnn-octets
@@ -154,9 +213,11 @@ order, and the names it found handed straight back."
                  (fnn-operator-status-of-exit-code code) "run")
                 code))
           (when tls-context (fnn-tls-close-context tls-context))
-          (when *fnn-owner-log-fd*
-            (ignore-errors (fnn-close *fnn-owner-log-fd*))
-            (setq *fnn-owner-log-fd* nil))))
+          (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+            (when *fnn-owner-log-fd*
+              (ignore-errors (fnn-close *fnn-owner-log-fd*))
+              (setq *fnn-owner-log-fd* nil
+                    *fnn-owner-log-path* nil)))))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)
@@ -260,12 +321,15 @@ observation into the outcome and this function only carries it out."
                    ;; nothing to send the live owner and nothing to serialize
                    ;; behind its mutex: the read-only executor is the only
                    ;; one, live socket or not.
+                   ;; The report kind is the plan's
+                   ;; (fn-native-admin-result-report-kind): `control list'
+                   ;; reports the authority rows, `peer list' the peers.
                    ((and queryp (fnn-admin-plan-acceptedp plan))
                     (fnn-operator-status-once
                      root (and (fnn-octet-list-p control-path-list)
                                (consp control-path-list)
                                (fnn-octets control-path-list))
-                     :peers))
+                     (fnn-core 'fn-native-admin-host-report-kind plan)))
                    (queryp (fnn-admin-query root plan))
                    (livep
                     (fnn-core 'fn-native-control-host-status-exit-code
@@ -410,7 +474,10 @@ configuration usage result."
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (let ((omitted (case action
                          ((:run :post) :nntp-service)
-                         (:principal :credentials))))
+                         (:principal :credentials)
+                         ;; peer genesis|invite|accept|confirm reach the owner
+                         ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
+                         (:peering :control))))
           (when (and (eq action :compact) (null *fnn-compact-callback*))
             (fnn-operator-emit-status
              :usage "action" "compact needs the checkpoint surface, which this image omits")
@@ -423,6 +490,7 @@ configuration usage result."
             (return-from fnn-operator-dispatch-plan +fnn-exit-usage+)))
         (case action
           (:help (fnn-operator-execute-help result))
+          (:show (fnn-operator-execute-show result))
           (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
@@ -431,6 +499,7 @@ configuration usage result."
             :rollback-check)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
+          (:peering (fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
@@ -442,6 +511,12 @@ configuration usage result."
          (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
          (argv-octets (fnn-operator-argv-octets argv max-arguments max-octets))
          (preflight (fnn-core 'fn-native-operator-host-preflight argv-octets)))
+    (when (fnn-core 'fn-native-operator-host-preflight-needs-config-path-p preflight)
+      (return-from fnn-command-operator
+        (fnn-operator-execute-mission
+         (fnn-core 'fn-native-operator-host-mission-run
+                   (fnn-ascii-octet-list config-path) argv-octets)
+         config-path)))
     (if (fnn-core 'fn-native-operator-host-preflight-needs-config-p preflight)
         (let* ((config-bound (fnn-core 'fn-native-config-host-max-octets))
                (config-octets (fnn-operator-read-config config-path config-bound)))

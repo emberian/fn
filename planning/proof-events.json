@@ -3408,6 +3408,18 @@
         {
           "kind": "theorem",
           "name": "fn-bpnr-family-replay-aux-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotate-step-proposes-only-own-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-retirement-cut-keeps-open-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-retired-names-never-the-selected-directory"
         }
       ]
     },
@@ -3495,6 +3507,31 @@
         {
           "kind": "theorem",
           "name": "fn-nls-client-step-of-owner-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-page-of-buffer-is-reply",
+          "note": "The D27 twin of the owner's page (PKT-145): the substring page of the string buffer equals the octet-list page, for every report and offset. Host: fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer). Teeth: tests/acl2/native-live-status-tests (witnesses at offset 0, past the first chunk, and a refused non-octet report; no hypothesis to drop)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-client-step-of-owner-page",
+          "note": "KEYSTONE. fn-nls-client-step-of-owner-reply restated over the page the owner answers from the buffer it rendered once per request. Teeth: a two-page buffered report joins; one must-fail per hypothesis (octets, prefix, length, same report, uint32 total)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-cached-buffer-of-put",
+          "note": "A later page of one request reads the buffer its first page stored. Teeth: witness with another kind's buffer present; must-fail at offset 0 (a request from 0 renders anew)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-nat-is-the-decimal-digits",
+          "note": "KEYSTONE (PKT-156). Every natural renders as its decimal digits: nonempty, digits only, and fn-nntp-decimal-value reads back the natural. The old renderer (fn-nntp-decimal-field) answered 0 past ten digits, so status printed 0 for H >= 2^34. Teeth: 2^40 and 2^64-1 render in full; must-fail at -5 (not a natural renders 0)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-report-of-query-kind-is-query-report",
+          "note": "KEYSTONE (qual-e747dbcc A3). Host: host/native/operator.lisp fnn-operator-execute-admin passes fn-native-admin-host-report-kind to fnn-operator-status-once. Teeth: tests/acl2/native-live-status-tests (a replayed configuration with one grant lists the grant line under the plan's kind, while :peers prints nothing; must-fail of the equality at :peers; no hypothesis to drop)."
         }
       ]
     },
@@ -3874,6 +3911,91 @@
         {
           "kind": "theorem",
           "name": "fn-nntp-number-retrieval-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclb-existing-action-is-rcl-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-by-msgid-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-current-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-lines-indexed-skip-a-reclaimed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-lines-skip-a-reclaimed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-lists-only-live-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-holders-hold-behind-a-lagging-consumer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-absent-verdict-contributes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-tombstone-refused-at-carrier-form"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rca-nul-first-octet-is-not-an-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-tombstone-contributes-nothing"
+        }
+      ]
+    },
+    {
+      "id": "PRF-094",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-show-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-load-renderable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-loaded-show-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-mission-profiles-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-mission-store-opens-with-its-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-init-under-a-mission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olr-reopen-iff-requested"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obc-commit-only-after-filing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obc-control-commits-only-in-its-filing-group"
         }
       ]
     },
@@ -3923,6 +4045,11 @@
         {
           "kind": "theorem",
           "name": "fn-profile-rollback-sound-iff-records-within"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-rollback-keeps-a-required-marker",
+          "note": "KEYSTONE (qual-e747dbcc U1). Host: host/native/io.lisp fnn-command-rollback-check passes the store's own profile as CURRENT. Teeth: tests/acl2/store-profile-upgrade-tests (the kept format-7 scale tuple over the scale preset marked required refuses by name; a required kept profile is sound; must-fail without the current requirement and without the :sound verdict)."
         }
       ]
     },
@@ -4346,6 +4473,137 @@
         {
           "kind": "theorem",
           "name": "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
+        }
+      ]
+    },
+    {
+      "id": "PRF-097",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-step-enrols-only-a-bound-invitation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-issue-plan-records-the-signed-invitation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-consumes-only-a-pending-named-invitation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-step-enrols-only-the-consuming-acceptance"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-consumed-stays-consumed-across-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-consumed-refuses-consumption"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-consumption-consumes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-after-its-consumption-enrols"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-step-never-enrols-twice"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-field-is-a-body-line"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-close-advances-only-past-a-fully-answered-round"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-unanswered-id-holds-the-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-answers-only-from-the-local-node"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-keeps-the-cursor-and-journals-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-newnews-names-the-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-journal-is-the-cursor-at-every-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-recovery-asks-the-dead-rounds-newnews"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sched-pull-due-is-due-and-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sched-pull-started-is-not-due"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sched-pull-finished-waits-its-interval"
+        }
+      ]
+    },
+    {
+      "id": "PRF-114",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-fit-mru"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-exactly"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-restore-parent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-within-caps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-primary-length-shift"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-canvas-of-extents"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-views-of-cut"
         }
       ]
     }

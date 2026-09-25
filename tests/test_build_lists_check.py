@@ -24,9 +24,29 @@ CHECKPOINT_LD = '(ld "host/checkpoint-host.lisp" :ld-error-action :error)\n'
 
 BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    '(include-book "books/poster-bytes-buffer")\n'
-                   ';; fn-owner-subject-id-buffer (host/owner-host.lisp) calls '
-                   'fn-shb-subject-id, as in build.lisp.\n'
-                   '(include-book "books/sha256-buffer")\n')
+                   ';; host/native/io.lisp fnn-subject-id-buffer calls '
+                   'fn-shb-subject-id-bounded, as in build.lisp.\n'
+                   '(include-book "books/sha256-buffer")\n'
+                   ';; D13 (STO-014): the duplicate-versus-conflict verdict over a '
+                   'store that may\n'
+                   ';; hold tombstones.  host/owner-host.lisp and '
+                   'host/store-node-host.lisp call\n'
+                   ';; fn-rcl-existing-action (list payload) and '
+                   'fn-rclb-existing-action (buffer).\n'
+                   '(include-book "books/store-reclaim-buffer")\n')
+BUFFER_FINDINGS = [
+    "included: host/owner-host.lisp uses fn-octets, defined in "
+    "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/owner-host.lisp",
+    "included: host/owner-host.lisp uses fn-rclb-existing-action, defined in "
+    "books/store-reclaim-buffer.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/owner-host.lisp"]
+# fn-rcl-existing-action is no longer a finding: host/store-node-host.lisp
+# includes books/store-reclaim itself since test-latency (the Python bridge
+# loads that host file alone).
+# host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
+# the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
+# (qual-e747dbcc A4), outside the `ld` closure this check reads.
 
 
 class BuildListsCheckTests(unittest.TestCase):
@@ -108,22 +128,13 @@ class BuildListsCheckTests(unittest.TestCase):
         text = self.dtn_text()
         self.assertIn(BUFFER_INCLUDES, text)
         found = check.findings(dtn_text=text.replace(BUFFER_INCLUDES, ""))
-        self.assertEqual(found, [
-            "included: host/owner-host.lisp uses fn-octets, defined in "
-            "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
-            "included when it loads host/owner-host.lisp",
-            "included: host/owner-host.lisp uses fn-pbb-existing-action, defined in "
-            "books/poster-bytes-buffer.lisp, which host/native/build-dtn.lisp has not "
-            "included when it loads host/owner-host.lisp",
-            "included: host/owner-host.lisp uses fn-shb-subject-id, defined in "
-            "books/sha256-buffer.lisp, which host/native/build-dtn.lisp has not "
-            "included when it loads host/owner-host.lisp"])
+        self.assertEqual(found, BUFFER_FINDINGS)
 
     def test_include_after_the_ld_is_too_late(self):
         # The order matters: an include after the `ld` does not serve it.
         text = self.dtn_text().replace(BUFFER_INCLUDES, "") + BUFFER_INCLUDES
         found = check.findings(dtn_text=text)
-        self.assertEqual(len(found), 3, found)
+        self.assertEqual(len(found), len(BUFFER_FINDINGS), found)
 
     def test_default_build_satisfies_the_include_rule(self):
         # The same rule over build.lisp: the default image already builds.

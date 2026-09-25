@@ -109,6 +109,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-tests \
 	books/native-config \
 	tests/acl2/native-config-tests \
+	books/native-config-show \
+	tests/acl2/native-config-show-tests \
 	books/native-auth-profile \
 	tests/acl2/native-auth-profile-tests \
 	tests/acl2/native-auth-host-tests \
@@ -126,6 +128,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-operator \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
+	books/native-mission \
+	tests/acl2/native-mission-tests \
 	books/native-control \
 	books/native-hybrid-control \
 	books/hybrid-lifecycle \
@@ -282,6 +286,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-reclaim \
 	books/nntp-reclaimed \
 	tests/acl2/store-reclaim-tests \
+	books/store-reclaim-buffer \
+	tests/acl2/store-reclaim-buffer-tests \
+	books/store-reclaim-holders \
+	tests/acl2/store-reclaim-holders-tests \
+	books/reclaim-admission \
+	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \
@@ -413,6 +423,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
 	books/bp-node-rotation-step \
+	books/bp-node-retire \
+	tests/acl2/bp-node-retire-tests \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
@@ -477,6 +489,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
 	tests/acl2/bp-limits-tests \
+	books/bp-fragment-send \
+	tests/acl2/bp-fragment-send-tests \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
@@ -726,6 +740,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-agent \
 	books/owner-log \
 	books/owner-served-bound \
+	books/owner-log-reopen \
+	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/consumer-poll-index \
@@ -749,6 +765,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
 	tests/acl2/owner-served-bound-tests \
+	tests/acl2/owner-log-reopen-tests \
+	tests/acl2/owner-bound-commit-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/owner-store-budget \
@@ -773,11 +791,15 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-carriage-rows \
 	books/peer-carriage \
 	tests/acl2/peer-carriage-tests \
+	books/peer-pull \
+	tests/acl2/peer-pull-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
 	books/key-statements \
 	tests/acl2/key-statements-tests \
+	books/peer-invite \
+	tests/acl2/peer-invite-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-served \
@@ -861,7 +883,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
+.PHONY: check check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1069,8 +1091,18 @@ tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
-	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts -v
+	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
+	    tests.test_test_budget tests.test_bridge_image -v
 
+# Every test module in its own process under a wall-time budget (PKT-163):
+# the report lists each module's seconds and slowest tests, and a module
+# still running at 300 s is terminated and fails the target (exit 2; test
+# failures exit 1).  tests/test_budgets.json may lower a module's budget,
+# never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
+# chosen set the same way.
 test: check certify
 	$(PYTHON) tools/run_simulator.py
-	$(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) tools/test_budget.py --discover --logs build/test-budget --json build/test-budget/report.json
+
+test-modules:
+	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget

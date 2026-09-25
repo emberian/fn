@@ -54,8 +54,12 @@
 ;; (host/owner-host.lisp) call fn-pbb-existing-action.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
-;; The subject digest over the buffer (D27 wave C): fn-owner-subject-id-buffer
-;; (host/owner-host.lisp) calls fn-shb-subject-id.
+;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
+;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
+;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+(include-book "books/store-reclaim-buffer")
+;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
+;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
@@ -77,6 +81,7 @@
 (include-book "books/native-operator")
 (include-book "books/native-control")
 (include-book "books/native-hybrid-control")
+(include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-native-app-fast")
 (include-book "books/bp-workflow-records")
@@ -105,6 +110,7 @@
 ; into this saved image's ACL2 world.
 (include-book "books/bp-node-machine-guards")
 (include-book "books/bp-node-fragment-guards")
+(include-book "books/bp-fragment-send")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
 (include-book "books/bp-fnbs-inspect")
@@ -130,6 +136,7 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+(include-book "books/bp-node-retire")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-handoff-status")
@@ -169,6 +176,7 @@
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
+(ld "host/peer-invite-host.lisp" :ld-error-action :error)
 (ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -242,6 +250,8 @@
         ; public operator activates it; the developer-only low-level owner
         ; entry retains its separate diagnostic surface.
         (load "host/native/feed-service.lisp")
+        ; The NEWNEWS pull feed, the same owner's other lifecycle extension.
+        (load "host/native/pull-service.lisp")
         (load "host/native/control.lisp")
         (load "host/native/topic-local.lisp")
         (load "host/native/consumer-local.lisp")
@@ -251,6 +261,9 @@
         ; executor for the ACL2-planned group/capacity actions.
         (load "host/native/operator.lisp")
         (load "host/native/signature-command.lisp")
+        ; Peering invitations (PRF-097): after the hybrid control handler it
+        ; wraps, the signing commands it reuses and the admin publisher.
+        (load "host/native/peer-invite.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.

@@ -70,6 +70,7 @@
 ; Carry the verified step guards into this image as well as the default one.
 (include-book "books/bp-node-machine-guards")
 (include-book "books/bp-node-fragment-guards")
+(include-book "books/bp-fragment-send")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
 (include-book "books/bp-fnbs-inspect")
@@ -92,6 +93,7 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+(include-book "books/bp-node-retire")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")
@@ -124,8 +126,12 @@
 ;; tools/build_lists_check.py `included` checks this now.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
-;; fn-owner-subject-id-buffer (host/owner-host.lisp) calls fn-shb-subject-id, as in build.lisp.
+;; host/native/io.lisp fnn-subject-id-buffer calls fn-shb-subject-id-bounded, as in build.lisp.
 (include-book "books/sha256-buffer")
+;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
+;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
+;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+(include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose

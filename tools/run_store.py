@@ -8,10 +8,12 @@ Python owns bounded filesystem I/O, POSIX barriers, and SHA-256 over byte
 strings it does not interpret (A-CRYPTO).
 """
 import argparse
+import contextlib
 import base64
 import errno
 import fcntl
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -19,6 +21,7 @@ import select
 import stat
 import subprocess
 import sys
+import threading
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,6 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools import frame_bridge  # noqa: E402
+from tools import acl2_slots, bridge_image  # noqa: E402
 
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
@@ -369,12 +373,73 @@ def acl2_boolean(output):
     raise StoreError("ACL2 returned a non-boolean")
 
 
+def acl2_environment():
+    """The environment every bridge ACL2 gets: the certification settings
+    (`tools/acl2` and the runner use the same two) and the pool's heap cap."""
+    env = os.environ.copy()
+    env["ACL2_CUSTOMIZATION"] = "NONE"
+    env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
+    return acl2_slots.apply_heap_cap(env)
+
+
+# One pool slot per process tree.  A process takes a slot for its first live
+# bridge and returns it with its last, and publishes its pid in
+# SLOT_HOLDER_VARIABLE while it holds it; a child it starts (the tests run
+# `tools/run_store.py` as a subprocess while holding a bridge) inherits that
+# slot instead of waiting for a second one, which would deadlock a full pool
+# of parents each waiting on its child.  A tree therefore counts once against
+# the pool however many bridges it nests.
+SLOT_HOLDER_VARIABLE = "FN_ACL2_SLOT_HOLDER"
+_SLOT_LOCK = threading.Lock()
+_SLOT_STACK = None
+_SLOT_USERS = 0
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _inherited_slot():
+    holder = os.environ.get(SLOT_HOLDER_VARIABLE, "")
+    return holder.isdigit() and _pid_alive(int(holder))
+
+
+def _acquire_slot(label):
+    global _SLOT_STACK, _SLOT_USERS
+    with _SLOT_LOCK:
+        if _SLOT_USERS == 0 and not _inherited_slot():
+            stack = contextlib.ExitStack()
+            stack.enter_context(acl2_slots.slot(label))
+            _SLOT_STACK = stack
+            os.environ[SLOT_HOLDER_VARIABLE] = str(os.getpid())
+        _SLOT_USERS += 1
+
+
+def _release_slot():
+    global _SLOT_STACK, _SLOT_USERS
+    with _SLOT_LOCK:
+        _SLOT_USERS = max(0, _SLOT_USERS - 1)
+        if _SLOT_USERS == 0 and _SLOT_STACK is not None:
+            stack, _SLOT_STACK = _SLOT_STACK, None
+            if os.environ.get(SLOT_HOLDER_VARIABLE) == str(os.getpid()):
+                del os.environ[SLOT_HOLDER_VARIABLE]
+            stack.close()
+
+
 class Acl2Store:
     """Fixed ACL2 calls: all externally-derived values become decimal octets."""
-    def __init__(self):
-        env = os.environ.copy()
-        env["ACL2_CUSTOMIZATION"] = "NONE"
-        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
+
+    # Which boot this bridge is: `tools/bridge_image.KINDS` names its forms.
+    BRIDGE_KIND = "store"
+
+    def __init__(self, _forms=None, _use_image=True, _reset=True):
+        env = acl2_environment()
         self.proc = None
         # A bridge whose correlation is lost cannot be repaired by reading
         # further: a new ACL2 process is the only recovery.
@@ -383,28 +448,36 @@ class Acl2Store:
         # ACL2.  An explicit close is the context boundary that lets its
         # process-wide cache discard that adoption on the next use.
         self.closed = False
+        self._slot_held = False
+        forms = bridge_image.KINDS[self.BRIDGE_KIND] if _forms is None else _forms
         try:
-            self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
+            # The machine-wide ACL2 pool (tools/acl2_slots.py) and its heap
+            # cap, as every other fn tool that starts ACL2 (PKT-162).
+            _acquire_slot("bridge " + self.BRIDGE_KIND)
+            self._slot_held = True
+            command = [str(bridge_image.resolve_acl2(env))]
+            # True when the process already holds the boot's world.
+            self.preloaded = False
+            if _use_image and bridge_image.enabled():
+                command = [str(bridge_image.ensure(self.BRIDGE_KIND, env))]
+                self.preloaded = True
+            self.proc = subprocess.Popen(command, cwd=ROOT,
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                          stderr=subprocess.STDOUT, env=env)
             read_prompt(self.proc, ACL2_START_TIMEOUT_SECONDS)
-            self.call('(include-book "books/replay")')
-            # Every codec seam's attachment: the books call the constrained
-            # encoders and decoders; this makes them evaluate.
-            self.call('(include-book "books/codec-attach")')
-            # The record encoder's attachment over the concrete recognizer.
-            self.call('(include-book "books/records-attach-concrete")')
-            # The store bridge's record dispatchers call the concrete twins.
-            self.call('(include-book "books/records-concrete")')
-            self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
-            self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
-            self.call('(ld "host/checkpoint-host.lisp" :ld-error-action :return :ld-error-triples t)')
-            self.call('(ld "host/anchor-host.lisp" :ld-error-action :return :ld-error-triples t)')
-            self.call('(ld "host/config-host.lisp" :ld-error-action :return :ld-error-triples t)')
-            self.reset()
+            if not self.preloaded:
+                for form in forms:
+                    self.call(form)
+            if _reset:
+                self.reset()
         except BaseException:
             self.close()
             raise
+
+    def release_slot(self):
+        if getattr(self, "_slot_held", False):
+            self._slot_held = False
+            _release_slot()
 
     @staticmethod
     def form_timeout(form):
@@ -806,6 +879,7 @@ class Acl2Store:
             return
         if self.proc is None:
             self.closed = True
+            self.release_slot()
             return
         try:
             if self.proc.poll() is None and self.proc.stdin and not self.proc.stdin.closed:
@@ -831,6 +905,7 @@ class Acl2Store:
                         stream.close()
             finally:
                 self.closed = True
+                self.release_slot()
 
 
 class Store:
@@ -1108,7 +1183,7 @@ class Store:
             raise StoreFault("invalid durable allocation frontier frame") from error
         self.frontier = next_txid
 
-    def acquire(self):
+    def acquire(self, bridge=None):
         self._safe_directory(self.root)
         self._safe_directory(self.transactions)
         self._safe_directory(self.staging)
@@ -1116,8 +1191,8 @@ class Store:
             self.lock_fd = self._open_lock(exclusive=self.writable, create=self.writable)
             # Frontiers are mutable writer-owned state.  Read them only after
             # the process-wide lock prevents a concurrent allocation update.
-            self._load_config()
-            self._load_frontier()
+            self._load_config(bridge)
+            self._load_frontier(bridge)
         except BaseException:
             # Metadata syscalls and interruption can fail outside StoreError.
             # Acquisition must not leak ownership when no Store is returned.
@@ -1219,7 +1294,7 @@ class Store:
         aggregate = 0
         # The bounded read is sized from the model's record bound, not from a
         # host copy of it.
-        session = frame_bridge.session()
+        session = frame_bridge.session(acl2)
         constants = session.constants
         bound = constants["overhead"] + constants["max_store"]
         for sequence, path in self.transaction_files():
@@ -1830,11 +1905,17 @@ def command_config(args):
 
 
 def open_live_store(path, writable, faults=NO_FAULTS):
+    # The bridge first, and the Store's metadata decoded on it: acquiring
+    # without one opens a second, process-wide framing ACL2 only to decode
+    # two small frames, which the recovery bridge then replaces.
+    bridge = Acl2Store()
     store = Store(path, writable=writable, faults=faults)
-    store.acquire()
-    bridge = None
     try:
-        bridge = Acl2Store()
+        store.acquire(bridge)
+    except BaseException:
+        bridge.close()
+        raise
+    try:
         records = store.recover(bridge)
         return store, bridge, records
     except BaseException:
@@ -2063,11 +2144,14 @@ def anchor_verdict(bridge, anchor):
 
 def command_anchor(args):
     """Obtain one anchor and record it durably if the model accepts it."""
+    bridge = Acl2Store()
     store = Store(args.store, writable=True)
-    store.acquire()
-    bridge = None
     try:
-        bridge = Acl2Store()
+        store.acquire(bridge)
+    except BaseException:
+        bridge.close()
+        raise
+    try:
         incarnation, held = store.load_anchor(bridge)
         anchor, reason = obtain_anchor(args)
         if anchor is None:

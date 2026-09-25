@@ -192,3 +192,28 @@
 (defun fn-native-operator-host-result-status-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status-control-path-octets result))
+
+;; PKT-096 and PKT-097.
+(defun fn-native-operator-host-preflight-needs-config-path-p (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-preflight-needs-config-path-p result))
+
+(defun fn-native-operator-host-mission-run (path-octets argv-octets)
+  (declare (xargs :mode :program))
+  (fn-native-operator-mission-run path-octets argv-octets))
+
+(defun fn-native-operator-host-mission-outcome (result existsp)
+  (declare (xargs :mode :program))
+  (fn-native-operator-mission-outcome result existsp))
+
+(defun fn-native-operator-host-result-mission-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-mission-octets result))
+
+(defun fn-native-operator-host-result-mission-directory-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-mission-directory-octets result))
+
+(defun fn-native-operator-host-result-show-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-show-octets result))

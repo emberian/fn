@@ -231,6 +231,33 @@ is the projection of the committed carried records, each exhaustion refused
 by name; and a present carrier refused on transit is named by exactly one of
 no-local-binding, unsupported-profile, signature-failed and malformed.
 
+#### 1.2.8 The NEWNEWS pull feed
+
+A peer this node cannot be dialled by (behind NAT) or a server that only
+answers readers (INN's nnrpd) is fed by pulling (RFC 3977 section 7.4). The
+row `(name "pull-interval" "" SECONDS)` of the peer's group, set by
+`fn operator CONFIG peer pull NAME SECONDS` (0 stops), makes the owner run a
+round every SECONDS against the peer's NNTP transport in the clear, asking
+for the peer's own inbound accept-groups (`fn-pull-plans`,
+books/peer-pull.lisp; a TLS transport is not pulled yet). A round is DATE,
+`NEWNEWS wildmat since GMT`, then for each listed Message-ID an IHAVE to
+this node on a logical transit connection of that peer (the served IHAVE,
+so the answer is the node's own), and ARTICLE from the peer only after a
+335, its octets forwarded as the IHAVE body. The cursor is
+`(peer since advances)`, journaled as FNPL frames in `<store>/pull/`
+(FNFD's envelope, phase machine and filename codec). It moves past a round
+only when every listed Message-ID drew 235, 435 or 437; a 436, a lost
+connection or a peer that cannot produce a listed article holds it
+(`fn-pull-close-advances-only-past-a-fully-answered-round`). A fresh
+cursor's first instant (one day before the owner's wall reading, local
+policy) is journaled before the round dials, no step changes the cursor,
+and the close journals exactly the cursor it moves to, so recovery after a
+crash anywhere in a round asks the dead round's NEWNEWS again
+(`fn-pull-recovery-asks-the-dead-rounds-newnews`). The schedule is
+`fn-sched-pull-*` in books/scheduler-peers.lisp.
+
+NNT-018: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
@@ -1520,6 +1547,81 @@ principal (`fn-hsig-revoked-tombstone-bindsp`).
 **The next generation.** Control request kinds 7 and 8
 (`hybrid-enroll-next`, `hybrid-revoke-next`) name no generation; the owner
 asks `fn-hl-next-generation`. Kinds 4 and 6 keep their explicit generation.
+
+## 10. Peering invitations (issue, accept, confirm; PRF-097)
+
+Two nodes that share no key agree to peer by exchanging two signed
+documents. The shape is the spike's (`spike/peering`,
+`planning/evidence/spike-peering-2026-09-25.md`); on dev every decision is
+ACL2's (`books/peer-invite.lisp`) and the host does I/O only
+(`host/native/peer-invite.lisp`).
+
+NNT-017: an invitation enrols its inviter only when its carrier verifies
+under the key set its body names, and a node enrols an acceptor only for an
+acceptance that consumed, exactly once, a pending invitation this node issued
+
+**Documents.** An invitation and an acceptance are ordinary authored
+sources (From, Date, Newsgroups `fn.peering`, Subject, Message-ID) carried by
+FN-Authorship, whose body is `Key: value` lines of printable ASCII. The
+invitation names `FN-Peering: invitation fn-peering-v1`, `Nonce` (16 octets,
+hex), `Principal`, `Genesis-Token`, `Ed25519`, `ML-DSA-65` (hex), and the
+informational `Invitee`, `Inviter-Path`, `Groups`, `Host`, `Port`. The
+acceptance names `FN-Peering: acceptance fn-peering-v1`, the invitation's
+`Nonce`, its `Invitation-Source-Id` (the 48-octet ACL2 authored-source
+identity, hex) and `Inviter-Principal`, then its own `Principal`,
+`Genesis-Token`, `Ed25519`, `ML-DSA-65`, `Acceptor-Path` and `Reachable`.
+ACL2 renders both sources; the host signs the preimage ACL2 builds.
+
+**Shared checks** (`fn-pinv-document`): the carrier decodes and verifies
+under the key set it carries (ACL2's `fn-hsig-authorize-at` over the two
+primitive observations); the body has the kind line and names the carrier's
+principal and both keys (`fn-pinv-body-names-p`, a line of the body); the
+principal is the genesis identity of the two public keys and the body's
+token (`fn-prin-genesis-bindsp`, D09's tagged digest; `peer genesis` writes
+it); the nonce is 32 hexadecimal characters.
+
+**The invitations slot.** The configuration value's ninth slot holds one
+row per invitation this node issued, keyed on the nonce and never removed:
+`(NONCE INVITER SOURCE-ID 0)` while pending, `(NONCE ACCEPTOR
+ACCEPTANCE-SOURCE-ID 1)` once consumed. Two delta kinds write it
+(`books/config.lisp`): `:issue-invitation` (13), refused when the nonce keys
+any row (`:invitation-nonce-reused`), and `:consume-invitation` (14),
+refused unless the row is pending (`:invitation-not-pending`). Both travel
+the assured reconfiguration path, so a row is durable exactly when its
+configuration record is, and replay reproduces it.
+
+**Verbs** (`fn operator CONFIG peer ...`, planned by
+`books/native-operator.lisp`; the three live verbs reach the owner as hybrid
+control requests 9, 10 and 11, each carrying one carrier):
+
+| verb | host I/O | ACL2 decision | effect |
+| --- | --- | --- | --- |
+| `genesis KEYDIR` | read the two public keys; draw a 16-octet token if `token.bin` is absent | `fn-pinv-genesis-principal` | writes `principal.bin` |
+| `invite NAME GROUPS HOST PORT PATH KEYDIR OUT` | nonce from the CSPRNG, wall clock, sign | `fn-pinv-invitation-source`; at the owner `fn-pinv-issue-plan` | one `:issue-invitation` record, then `OUT` |
+| `accept FILE KEYDIR PATH REACHABLE OUT` | observe, sign | at the owner `fn-pinv-accept-step`; then `fn-pinv-acceptance-source` | a kind-3 enrolment of the inviter at ACL2's next generation, then `OUT` |
+| `confirm FILE` | observe | at the owner `fn-pinv-confirm-plan`, then `fn-pinv-confirm-step` | one `:consume-invitation` record, then a kind-3 enrolment of the acceptor |
+
+The peer record itself is still `peer add` (the documents carry its words);
+folding it into the consuming record is open.
+
+**Crash between consumption and enrolment.** The consuming record is
+published before the enrolment. A process death between the two leaves a row
+consumed by this acceptance and no enrolment; the next `confirm` of the same
+acceptance is an enrolment and never a second consumption
+(`fn-pinv-confirm-after-its-consumption-enrols`); after the enrolment it is
+refused (`:already-confirmed`). Any other acceptance of that nonce is refused
+(`:invitation-consumed`).
+
+**Refusals, by name:** `unverified`, `document-kind`, `claimed-keys`,
+`genesis`, `nonce`, `source-id`, `invitation-source-id`,
+`inviter-principal`, `no-such-invitation`, `another-inviter`,
+`another-invitation`, `invitation-consumed`, `already-confirmed`,
+`already-enrolled`, `invitation-nonce-reused`.
+
+What is not claimed: that a signature is unforgeable, a digest collision
+resistant or a primitive's observation true (A-CRYPTO); that the operator on
+the control socket is honest; that "this node's principal" is more than the
+principal that signed the invitations this node recorded.
 
 ## What this design does not decide
 
