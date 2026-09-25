@@ -307,7 +307,8 @@ def host_uses(text: str) -> set[str]:
     return names
 
 
-def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None) -> list[str]:
+def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
+                     loader: str = DTN_BUILD) -> list[str]:
     index = index or BookIndex(root)
     available: set[str] = set()
     out: list[str] = []
@@ -336,7 +337,7 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None) 
                 books = index.owner.get(name)
                 if books:
                     out.append(f"included: {path} uses {name}, defined in "
-                               f"{', '.join(sorted(books))}, which {DTN_BUILD} has not "
+                               f"{', '.join(sorted(books))}, which {loader} has not "
                                f"included when it loads {path}")
             visit(host_text, host_dir)
 
@@ -344,8 +345,32 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None) 
     return out
 
 
+def bridge_findings(root: Path = ROOT, kinds: dict | None = None,
+                    index: BookIndex | None = None) -> list[str]:
+    """The `included` rule over the Python bridges' boots.
+
+    `tools/bridge_image.KINDS` is each bridge's load list, the forms its
+    saved image replays: a host file it `ld`s must find every book function
+    it calls already included, by the forms before it or by its own
+    includes.  On dev at 483987b1 host/owner-host.lisp called
+    fn-rcon-ocfg-io, fn-rclb-existing-action and the fn-octets stobj, which
+    only the native build list included; the owner bridge did not boot and
+    every owner test module was red (harness-repair, PKT-176).
+    """
+    if kinds is None:
+        sys.path.insert(0, str(ROOT))
+        from tools import bridge_image
+        kinds = bridge_image.KINDS
+    index = index or BookIndex(root)
+    out: list[str] = []
+    for kind, forms in sorted(kinds.items()):
+        out.extend(include_findings(root, "\n".join(forms) + "\n", index,
+                                    loader=f"the {kind} bridge (tools/bridge_image.py)"))
+    return out
+
+
 def main() -> int:
-    found = findings()
+    found = findings() + bridge_findings()
     for line in found:
         print(f"build-lists: {line}")
     default = ld_closure(ROOT, (ROOT / DEFAULT_BUILD).read_text())
