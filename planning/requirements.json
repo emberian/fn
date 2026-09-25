@@ -1924,6 +1924,30 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "HST-006",
+      "title": "The operator's status, pins, obligations and peers answer while the owner runs, in the offline words",
+      "specification": "docs/operator.md#status-while-the-owner-runs",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-089"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-live-status.lisp",
+        "tests/acl2/native-live-status-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/control.lisp",
+        "host/native/operator.lisp",
+        "planning/evidence/live-status-2026-09-25.md"
+      ],
+      "implementation_note": "`operator CONFIG status|pins|obligations|peer list` asks the owner whose control socket the configuration names (FNLS frames); the owner renders the report from the Store, configuration and connection pins it carries (fn-nls-live-report) under its mutex and returns no state; with no owner the Store is opened read-only and the same renderer runs (fn-nls-offline-report). fn-nls-route: no socket, or a socket nothing accepts on, is the offline path, whose shared lock refuses behind a live owner; any other failure is uncertain (3), an owner refusal is refused (1). `status --watch N` re-asks every N seconds (1..86400).",
+      "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
     }
   ]
 }
