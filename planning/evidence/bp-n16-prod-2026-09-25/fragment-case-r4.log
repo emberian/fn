@@ -1,0 +1,7 @@
+test_request_above_peer_mru_is_fragmented_and_reassembled (tests.test_bp_node_native.NativeBpNodeTests.test_request_above_peer_mru_is_fragmented_and_reassembled)
+PKT-061: a bundle longer than the peer's Transfer MRU is cut. ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 20.433s
+
+OK
