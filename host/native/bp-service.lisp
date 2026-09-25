@@ -9,7 +9,10 @@
 
 (defstruct fnn-bps
   root lifecycle tally state spool-lock lock-fd (stages nil)
-  (next-session 0) (outcome :accepted))
+  (next-session 0) (outcome :accepted)
+  ;; ACL2's reading of the generation selection file, and the recovery
+  ;; event built from it (spec bp-node-machine 3.6; N16).
+  (plan (list :none)) (recovery-event nil))
 
 ; Bound only during a negotiated outbound TCPCL contact.  The ACL2 effect
 ; supplies the exact image after immutable kind-8 publication.
@@ -84,8 +87,9 @@ fn-bpnp-step admits it or fences (spec bp-node-machine 11.1 N07)."
            (fnn-check-regular
             (fnn-join (fnn-join root "sequence") "frontier.fnb")))
          (legacy-evidence
-           (fnn-core 'fn-bpnf-clock-domain-legacy-evidence
-                     namespace-plan (and sequence-frontier t)))
+           (fnn-core 'fn-bpnr-clock-domain-evidence
+                     namespace-plan (and sequence-frontier t)
+                     (fnn-bps-plan service)))
          (saved (and present
                      (fnn-octet-list
                       (fnn-read-regular-bounded
@@ -669,8 +673,88 @@ its outcome, which is the refusal to the offering ingress."
                             (second effect))))
       (:restart-ready
        (fnn-out "BP FNBS recovered held=~d" (second effect)))
+      (:persist-checkpoint
+       ;; (:persist-checkpoint EPOCH OP GENERATION): publish the selection
+       ;; of GENERATION, then answer the machine with the program's outcome.
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (outcome (fnn-bps-publish-generation service (fourth effect))))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
+      (:generation-selected
+       (fnn-out "BP journal generation selected generation=~d" (second effect)))
+      (:rotation-refused
+       (unless (eq (fnn-bps-outcome service) :uncertain)
+         (setf (fnn-bps-outcome service) :refused))
+       (fnn-out "BP journal rotation refused generation=~d" (second effect)))
+      (:rotation-uncertain
+       (setf (fnn-bps-outcome service) :uncertain)
+       (fnn-out "BP journal rotation uncertain generation=~d" (second effect)))
       (t nil)))
   service)
+
+(defun fnn-bps-rotation-test-stop (point)
+  "Developer cut: stop this process at a named point of the rotation program
+so a test can kill it there (N16)."
+  (when (string= (or (fnn-developer-selector "FN_BP_ROTATION_TEST_STOP") "")
+                 point)
+    (fnn-out "BP journal rotation stopped at=~a" point)
+    (finish-output)
+    (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))
+
+(defun fnn-bps-publish-generation (service generation)
+  "Publish GENERATION's selection file under ACL2's phase driver
+fn-bpnr-publish-action/-step/-outcome: the generation directory and its
+barriers, then the staged selection file and its barrier, the rename over
+the final name, and the root barrier.  Every octet is ACL2's."
+  (let* ((root (fnn-bps-root service))
+         (jobs (fnn-core 'fn-bpn-host-machine-max-jobs))
+         (ck (fnn-core 'fn-bpnr-checkpoint-of-event
+                       (fnn-bps-recovery-event service) generation))
+         (octet-list (fnn-core 'fn-bpnr-checkpoint-octets
+                               ck (fnn-core 'fn-bpnr-depth-budget jobs)))
+         (octets (and octet-list (fnn-octets octet-list)))
+         (dir (fnn-join root (fnn-core 'fn-bpnr-generation-directory generation)))
+         (final (fnn-join root (fnn-core 'fn-bpnr-selection-name)))
+         (stage (fnn-join root (format nil ".bp-generation-~d-~a"
+                                       (sb-posix:getpid) (fnn-random-hex 12))))
+         (phase :directory))
+    (unless octets
+      (fnn-indeterminate "bp-service: ACL2 refused the checkpoint octets"))
+    (flet ((attempt (point thunk fail)
+             (setq phase
+                   (handler-case
+                       (progn (funcall thunk)
+                              (let ((next (fnn-core 'fn-bpnr-publish-step phase :ok)))
+                                (fnn-bps-rotation-test-stop point)
+                                next))
+                     (fnn-os-error ()
+                       (fnn-core 'fn-bpnr-publish-step phase fail))))))
+      (unwind-protect
+           (loop
+             (case (fnn-core 'fn-bpnr-publish-action phase)
+               (:make-directory
+                (attempt "directory"
+                         (lambda ()
+                           (fnn-safe-directory dir t)
+                           (fnn-fsync-dir dir)
+                           (fnn-fsync-dir root))
+                         :error))
+               (:stage-and-file-barrier
+                (attempt "stage" (lambda () (fnn-write-staged stage octets))
+                         :known-fail))
+               (:replace
+                (attempt "replace" (lambda () (fnn-replace stage final)) :error))
+               (:directory-barrier
+                (attempt "barrier" (lambda () (fnn-fsync-dir root)) :error))
+               (:done (return))
+               (otherwise
+                (fnn-fault "ACL2 returned an invalid rotation publication action"))))
+        (ignore-errors (when (fnn-check-regular stage) (fnn-unlink stage)))))
+    (fnn-core 'fn-bpnr-publish-outcome phase)))
 
 (defun fnn-bps-fragment-progress (service)
   ;; The ACL2 selector chooses an exact ready family from the one held list.
@@ -755,12 +839,32 @@ which runs no FNBS machine."
                (second answer)))
     (third answer)))
 
+(defun fnn-bps-selection-plan (root)
+  "ACL2's reading of the generation selection file: (:none), (:selected CK)
+or (:damaged).  The read bound and decode budget are the profile's."
+  (let* ((path (fnn-join root (fnn-core 'fn-bpnr-selection-name)))
+         (jobs (fnn-core 'fn-bpn-host-machine-max-jobs))
+         (octets-bound (fnn-core 'fn-bpn-host-machine-max-octets))
+         (present (fnn-check-regular path))
+         (octets (and present
+                      (fnn-octet-list
+                       (fnn-read-regular-bounded
+                        path (fnn-core 'fn-bpnr-read-bound jobs octets-bound))))))
+    (fnn-core 'fn-bpnr-selection-plan (and present t) octets
+              (fnn-core 'fn-bpnr-depth-budget jobs))))
+
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((root (fnn-bp-journal-dir journal))
          ; Shared journal ownership precedes cleanup and the lifecycle lock.
          ; No live bp/tcpcl writer can lose its staging file to recovery.
          (spool-lock (fnn-tcl-spool-acquire root))
-         (life (fnn-join root "lifecycle"))
+         ;; The selected generation names the lifecycle namespace this
+         ;; process reads and publishes into; generation 0 is "lifecycle".
+         (plan (handler-case (fnn-bps-selection-plan root)
+                 (error (e)
+                   (fnn-tcl-spool-release spool-lock)
+                   (error e))))
+         (life (fnn-join root (fnn-core 'fn-bpnr-plan-directory plan)))
          (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
                                    :journal root :spool-lock spool-lock))
          (service nil))
@@ -784,6 +888,7 @@ which runs no FNBS machine."
                 (make-fnn-bps
                  :root root :lifecycle life :tally tally
                  :spool-lock spool-lock :lock-fd (fnn-bps-lock root)
+                 :plan plan
                  :state (fnn-core 'fn-bpnf-initial-state
                                   config
                                   (fnn-core 'fn-bpn-host-machine-max-jobs)
@@ -824,10 +929,11 @@ which runs no FNBS machine."
                      ;; Seventh field: ACL2's boot-domain decision.  The
                      ;; machine fences unless it admits it (N07).
                      (event (append
-                             (fnn-core 'fn-bpnf-family-recover-auto-event
+                             (fnn-core 'fn-bpnr-recover-auto-event
                                        (fnn-bps-state service) records
-                                       sequence rows)
+                                       sequence rows plan)
                              (list domain))))
+                (setf (fnn-bps-recovery-event service) event)
                 (setf (fnn-bps-stages service)
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
                 (fnn-bps-drive-effects

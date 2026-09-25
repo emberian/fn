@@ -81,9 +81,9 @@
 
 (verify-guards fn-bpnr-codes)
 (verify-guards fn-bpnr-chars)
-(verify-guards fn-bpnr-counted)
+(verify-guards fn-bpnr-counted
+  :hints (("Goal" :in-theory (disable fn-bpc-u64-bytes floor mod))))
 (verify-guards fn-bpnr-symbol-tag)
-(verify-guards fn-bpnr-enc)
 (verify-guards fn-bpnr-depth-budget)
 
 (defun fn-bpnr-read-u64 (bytes)
@@ -263,6 +263,9 @@
                 (true-listp (fn-bpnr-enc x d))
                 (fn-cbor-octet-listp (fn-bpnr-enc x d))))
   :hints (("Goal" :use fn-bpnr-enc-shape :in-theory nil)))
+
+(verify-guards fn-bpnr-enc
+  :hints (("Goal" :in-theory (disable fn-bpc-u64-bytes floor mod))))
 
 ; ---------------------------------------------------------------------------
 ; The checkpoint value (kind 19).
@@ -446,3 +449,42 @@
   (+ 65536 (* 4 (nfix max-octets)) (* 65536 (nfix max-jobs))))
 
 (verify-guards fn-bpnr-read-bound)
+
+; ---------------------------------------------------------------------------
+; The publication program of a new generation, as a phase driver the host
+; loop follows (host/native/bp-service.lisp fnn-bps-publish-generation).
+; It is the Store marker program's driver (books/checkpoint-publish.lisp
+; fn-cpp-marker-driver-*) with one step in front: the new generation's
+; directory is created and barriered before the selection is staged, so a
+; selected generation's namespace always exists.  The Store driver itself
+; is not in the BP image's closure; the phases and outcomes are the same.
+(defun fn-bpnr-publish-action (phase)
+  (declare (xargs :guard t))
+  (cond ((equal phase :directory) :make-directory)
+        ((equal phase :marker-staged) :stage-and-file-barrier)
+        ((equal phase :marker-data-durable) :replace)
+        ((equal phase :marker-attempted) :directory-barrier)
+        (t :done)))
+
+(defun fn-bpnr-publish-step (phase result)
+  (declare (xargs :guard t))
+  (cond ((equal phase :directory)
+         (if (equal result :ok) :marker-staged :refused))
+        ((equal phase :marker-staged)
+         (cond ((equal result :ok) :marker-data-durable)
+               ((equal result :known-fail) :refused)
+               (t phase)))
+        ((or (equal phase :marker-data-durable)
+             (equal phase :marker-attempted))
+         (cond ((equal result :ok)
+                (if (equal phase :marker-data-durable) :marker-attempted :idle))
+               ((equal result :error) :fenced-marker)
+               (t phase)))
+        (t phase)))
+
+(defun fn-bpnr-publish-outcome (phase)
+  (declare (xargs :guard t))
+  (cond ((equal phase :idle) :durable)
+        ((equal phase :refused) :refused)
+        ((equal phase :fenced-marker) :uncertain)
+        (t :pending)))

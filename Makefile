@@ -361,6 +361,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-conflict-publication \
 	books/bp-node-machine-gaps \
 	books/bp-node-busy-delivery \
+	books/bp-node-rotation-codec \
+	books/bp-node-rotation \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
