@@ -1,0 +1,27 @@
+{"size": 3145728, "reply": "240 article received OK\r\n", "wall_s": 2.82, "owner_vmhwm": "752332 kB", "alive_after": true, "inspect_rc": 4, "inspect_len": 0}
+---- owner stderr tail
+accepted reader connection=0 time=2026-09-25T05:57:40Z
+accepted post path=served connection=0 message-id=<candidate@campaign.invalid> agent=fn.example.invalid time=2026-09-25T05:57:41Z
+accepted operator run
+
+---- inspect stderr
+INFO: Control stack guard page unprotected
+Control stack guard page temporarily disabled: proceed with caution
+store: ACL2 error in fn-store-frame-store-decode: Control stack exhausted (no more space for function call frames).
+This is probably due to heavily nested or infinitely recursive function
+calls, or a tail call that SBCL cannot or has not optimized away.
+
+PROCEED WITH CAUTION.
+
+Traceback (most recent call last):
+  File "/tank/fn/scratch/large-article/tree/../repro.py", line 40, in <module>
+    art = node.nntp_article(C.CANDIDATE_ID)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/large-article/tree/tests/campaign/native_operator_campaign.py", line 251, in nntp_article
+    with socket.create_connection(("127.0.0.1", self.port), timeout=60) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 865, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/socket.py", line 850, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused

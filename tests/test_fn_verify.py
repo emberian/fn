@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -570,6 +571,11 @@ class NativeVerifyTests(unittest.TestCase):
         # "--max-article-octets" and "4194304" and kept the 32,768 default.
         cls.invoke("operator", cls.config, "init",
                    *os.environ.get("FN_VERIFY_INIT_FLAGS", "").split(), "fn.test")
+        # The store profile's article field, as `status' reports it (the
+        # operator's default profile when no flag was given).  Read before
+        # the owner holds the store lock.
+        status = cls.invoke("operator", cls.config, "status").stdout.decode()
+        cls.article_bound = int(re.search(r"max-article-octets=(\d+)", status).group(1))
         env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
         env.pop("FN_HOST", None)
         enrolled = subprocess.run(
@@ -643,7 +649,8 @@ class NativeVerifyTests(unittest.TestCase):
                  ("verify-tampered", True, True, b"exact post source\r\n"),
                  ("verify-unsigned", False, False, b"exact post source\r\n")]
         if LARGE:
-            cases += [("verify-v1-60k", False, True, big_body(60 * 1024)),
+            cases += [("verify-unsigned-200k", False, False, big_body(200 * 1024)),
+                      ("verify-v1-60k", False, True, big_body(60 * 1024)),
                       ("verify-v2-200k", False, True, big_body(200 * 1024)),
                       ("verify-v2-tampered", True, True, big_body(200 * 1024))]
         for stem, tamper, signed, body in cases:
@@ -665,19 +672,23 @@ class NativeVerifyTests(unittest.TestCase):
         return carried.read_bytes()
 
     @classmethod
-    def upstream(cls):
+    def upstream(cls, timeout=30.0):
         return fn_verify.Node("127.0.0.1", cls.port, cafile=str(cls.cert),
-                              credentials=(cls.USER, cls.PASSWORD))
+                              credentials=(cls.USER, cls.PASSWORD), timeout=timeout)
 
     @classmethod
     def post(cls, octets):
-        node = cls.upstream()
+        # A large POST's reply waits on the node reading the whole article;
+        # the wait is printed, and bounded well above it.
+        node = cls.upstream(timeout=600.0)
+        started = time.monotonic()
         try:
             status = node.command("POST")
             assert status.startswith("340"), status
             node.sock.sendall(dot_stuff(octets) + b".\r\n")
             return node.line()
         finally:
+            print("  POST wall {:.2f} s".format(time.monotonic() - started), flush=True)
             node.close()
 
     @classmethod
@@ -722,9 +733,7 @@ class NativeVerifyTests(unittest.TestCase):
         # left a TLS suffix") and stopped the process: the client saw a
         # closed socket, and so did every later client.  A refusal is a 441
         # naming its reason, and the listener stays.
-        flags = os.environ.get("FN_VERIFY_INIT_FLAGS", "").split()
-        bound = (int(flags[flags.index("--max-article-octets") + 1])
-                 if "--max-article-octets" in flags else 32768)
+        bound = self.article_bound
         body = big_body(bound + 1)
         octets = source_for("<verify-past-bound@example.invalid>", body=body)
         self.assertGreater(len(octets), bound)

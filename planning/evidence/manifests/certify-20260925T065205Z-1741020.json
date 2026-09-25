@@ -1,0 +1,211 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "tests/acl2/stack-depth-twins-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/large-article-7fc757a8-t/build/acl2/certify-20260925T065205Z-1741020",
+  "book_failures": {},
+  "book_provenance": {
+    "books/acceptance-alloc": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/frame-octets": "installed",
+    "tests/acl2/stack-depth-twins-tests": "certified"
+  },
+  "book_results": {
+    "tests/acl2/stack-depth-twins-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/stack-depth-twins-tests": 1.117
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 4,
+    "origins": {
+      "/home/ember/fn-gates/large-article-4d75b021": 2,
+      "/home/ember/fn-gates/t8b-owner-union-d6fb3802": 2
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "tests/acl2/stack-depth-twins-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/stack-depth-twins-tests": "c8412d84daf1bfa3151d9d894d4da5c0af2394481633358aeeebf22dc9e48a82"
+  },
+  "certify_wall_seconds": 1.121,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/stack-depth-twins-tests": "325abf4b8085234719bcfc30115ac34555e3825db27b8bcd8990394272d2d1f1"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null,
+    "SBCL_USER_ARGS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS ddbbae0f4ac66bed394adea511aa1403 80b134c58615"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-25T06:52:06+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/acceptance-alloc": "/home/ember/fn-gates/large-article-4d75b021",
+    "books/cbor": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/cbor-invariants": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/frame-octets": "/home/ember/fn-gates/large-article-4d75b021"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS ddbbae0f4ac66bed394adea511aa1403 80b134c58615"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "tests/acl2/stack-depth-twins-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/stack-depth-twins-tests"
+  ],
+  "roots": [
+    "tests/acl2/stack-depth-twins-tests"
+  ],
+  "run_id": "certify-20260925T065205Z-1741020",
+  "runner_sha256": "dc12c83149a57351558cfcfbdb48ce0010a1afbdba672e9b9b1b9c6ea0566b42",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "tests/acl2/stack-depth-twins-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "1f174e59a9192d42268dad200e11b804125a7f4622c5f57c28c0f377c66d2c31",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/frame-octets.lisp": "c98d9385cb9253ac2c7b72e08096c59f6e9a216b538b94d09d689c9a817b090f",
+    "tests/acl2/stack-depth-twins-tests.lisp": "caa3f9af29fcf4f8b112f887ca5fd191bb7e448a0f924a3e8f7b4a34b351d24f"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "1f174e59a9192d42268dad200e11b804125a7f4622c5f57c28c0f377c66d2c31",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/frame-octets.lisp": "c98d9385cb9253ac2c7b72e08096c59f6e9a216b538b94d09d689c9a817b090f",
+    "tests/acl2/stack-depth-twins-tests.lisp": "caa3f9af29fcf4f8b112f887ca5fd191bb7e448a0f924a3e8f7b4a34b351d24f"
+  },
+  "start_order": [
+    "tests/acl2/stack-depth-twins-tests"
+  ],
+  "started_utc": "2026-09-25T06:52:05+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/home/ember/fn-gates/large-article-7fc757a8-t"
+}

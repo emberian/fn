@@ -1,0 +1,14 @@
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... FAIL
+
+======================================================================
+FAIL: test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/large-article/tree/tests/test_native_owner.py", line 575, in test_article_over_the_body_limit_is_refused_and_the_owner_survives
+    self.assertEqual(
+AssertionError: b'441 posting failed; the article was refused\r\n' != b'441 posting failed; the article exceeds the configured size\r\n' : an oversize article got b'441 posting failed; the article was refused\r\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.204s
+
+FAILED (failures=1)
