@@ -3312,7 +3312,7 @@
     {
       "id": "PRF-082",
       "title": "Owed receipts leave from bp-node serve: the contact offers exactly the queued receipt job on its route",
-      "statement": "fn-bpnp-receipt-contact-offers-the-queued-job: over the called fn-bpnp-step on (:base E), where E is fn-bpnp-receipt-contact-event of the node state and the peer (the event host/native/bp-node.lisp fnn-bpnode-send-receipts asks for after each fnn-bpnode-queue-outboxes in bp-node serve), for a well-formed base, a non-nil event and a journal token below *fn-bpn-machine-max-records*, the one effect persists the :attempting record of the first :queued job for that peer and the pending success effect is that job's :cl-send with its route, peer, key and wire. fn-bpnp-receipt-contact-event-needs-a-queued-job: the event is non-nil exactly when the peer is an EID, nothing is issued, no delivery is uncertain, the base is neither fenced nor pending and a :queued job for the peer exists. Covered scope: the decision and the offer; the transfer is the lower machine's and a connect that produces no socket reads :failed and requeues. Open: 'offered once per contact' is not an ACL2 statement over the host loop (fnn-bpc-drive-contact stops at the first outcome that is not :accepted and the durable :attempting record takes the job out of :queued; the latter is witnessed in the test book, not proved over a driver).",
+      "statement": "fn-bpnp-receipt-contact-offers-the-queued-job: over the called fn-bpnp-step on (:base E), where E is fn-bpnp-receipt-contact-event of the node state and the peer (the event host/native/bp-node.lisp fnn-bpnode-send-receipts asks for after each fnn-bpnode-queue-outboxes in bp-node serve), for a well-formed base, a non-nil event and a journal token below *fn-bpn-machine-max-records*, the one effect persists the :attempting record of the first :queued job for that peer and the pending success effect is that job's :cl-send with its route, peer, key and wire. fn-bpnp-receipt-contact-event-needs-a-queued-job: the event is non-nil exactly when the peer is an EID, nothing is issued, no delivery is uncertain, the base is neither fenced nor pending and a :queued job for the peer exists. fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed and fn-bpnp-receipt-reoffer-after-uncertain (spec 4.3.2): an uncertain base transfer is connection-local; over the called fn-bpnp-step it proposes only the durable :requeued :uncertain record, keeps the job :attempting until that is durable, fences nothing and emits no release, receipt-prepare or :forwarded; once durable the job is :queued again with its own identity and the receipt contact event opens for its peer again. Only an uncertain publication fences. Covered scope: the decision, the offer and the uncertain transfer's outcome; a connect that produces no socket reads :failed and requeues the same way. The host's exit scope (serve and dispatch continue; bp-contact tick answers exit 3) is host reporting over these effects. Open: 'offered once per contact' is not an ACL2 statement over the host loop (fnn-bpc-drive-contact stops at the first transfer or outcome that is not :accepted and the durable :attempting record takes the job out of :queued; the latter is witnessed in the test book, not proved over a driver).",
       "milestone": "M4",
       "requirements": [
         "RET-003",
@@ -3333,7 +3333,9 @@
         "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
         "planning/evidence/bp-budgets-receipts-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T070406Z-2708294.json",
-        "planning/evidence/manifests/certify-20260925T071636Z-2729359.json"
+        "planning/evidence/manifests/certify-20260925T071636Z-2729359.json",
+        "host/native/bp-service.lisp",
+        "specs/bp-node-machine.md"
       ]
     }
   ]

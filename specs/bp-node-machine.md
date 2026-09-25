@@ -1328,6 +1328,53 @@ journal's history unreplayable. Each durable kind 8 counts exactly one more
 (`fn-bpnp-attempted-held-counts-one-more`); the bound theorems are restated
 with the row under the budget as a hypothesis.
 
+### 4.3.2 An uncertain receipt transfer is connection-local (2026-09-25, lane bp-budgets-receipts)
+
+The base contact (the FNBS lower machine, `fn-bpn-step` under `(:base E)`)
+carries the owed receipts `bp-node serve` and `dispatch` now send
+themselves (§9.4). Its transfer outcome has the same scope as a forwarding
+transfer's in §4.3.1: an uncertain transfer costs its connection, never the
+node.
+
+- **The model.** On `(:forward-result KEY :uncertain)` for an `:attempting`
+  job, `fn-bpn-forward-result-step` proposes the lifecycle record
+  `(:requeued TOKEN WORK ATTEMPT GENERATION :uncertain :requeued)`. Until it
+  is durable the job stays `:attempting` under its durable `:attempting`
+  record; nothing fences, nothing FNBS-level is issued, no delivery becomes
+  uncertain, and no effect releases, prepares a receipt or reports the
+  transfer `:forwarded`
+  (`fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed`, over the called
+  `fn-bpnp-step`, books/bp-node-receipt-send.lisp; the form of
+  `fn-bpnp-step-emits-no-release-and-no-receipt-prepare`). Once the record
+  is durable the job is `:queued` again with its own work, attempt,
+  generation, peer, route and wire; the effects are exactly the `:attempted`
+  transport observation and the retention report; and
+  `fn-bpnp-receipt-contact-event` opens the contact for that peer again, so
+  the next contact offers the job by the same identity
+  (`fn-bpnp-receipt-reoffer-after-uncertain`, with
+  `fn-bpnp-receipt-contact-offers-the-queued-job`). The job is never
+  dropped and never acknowledged by a transport reading.
+- **Why a re-offer is safe.** A second carrier of the same receipt is a
+  second carrier of the same receipt fact, never a second receipt fact
+  (§2.4); the requester's join answers it from the committed receipt.
+- **What still fences.** Only an uncertain *publication*: the requeue
+  record's own persistence answered `:uncertain` fences the base
+  (`:bundle-queue-uncertain`, `fn-bpn-persist-result-step`), as for every
+  lifecycle record.
+- **No retry budget.** Unlike §4.3.1, the base job carries no retry count:
+  each contact offers it at most once (the host stops the contact at the
+  first transfer that is not accepted), and it leaves the queue by a
+  durable `:finished` or by expiry (`fn-bpn-clock-step`). Work per contact
+  is bounded; the number of contacts is the operator's.
+- **The host.** `fnn-bps-send-effect` records the transfer reading in the
+  service; under `bp-node serve` and `dispatch` (transfer scope
+  `:connection`, set by `fnn-bpnode-send-receipts`) it does not become the
+  process outcome, and the pass prints `BP node receipt transfer uncertain`
+  and continues (exit 0 for the pass). `bp-contact tick` and `bp-service
+  run` keep scope `:process`: their caller asked for the transfer, so an
+  uncertain one is their answer (exit 3) and a refused one exit 2, although
+  ACL2 has requeued the job exactly as under `serve`.
+
 ### 4.4 Authoring: `fn-bpn-transmit-step`, `fn-bpn-report-step`
 
 `fn-bpn-transmit-step st submission destination sequence adu obs`:
@@ -3253,9 +3300,11 @@ tick` does. Over `fn-bpnp-step`, the event's one proposal is the
 `:cl-send` of that job's route, peer, key and wire
 (`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
 produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
-any failure after the connection exists stays `:uncertain`. Not claimed as
-a theorem: once per contact (the host stops the contact at the first
-non-accepted outcome; a durable `:attempting` makes the job not `:queued`).
+any failure after the connection exists stays `:uncertain`, and that
+reading is connection-local (§4.3.2): the pass logs it and continues. Not
+claimed as a theorem: once per contact (the host stops the contact at the
+first transfer or outcome that is not accepted; a durable `:attempting`
+makes the job not `:queued`).
 
 The first native A3 caller is `host/native/bp-node.lisp` in the full image.
 It opens the clock-gated single FNBS owner, then the Store owner. `serve`

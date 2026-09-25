@@ -737,15 +737,27 @@ this node's own base contact, so `bp-contact tick' is not the only path
 (spec bp-node-machine 9.4).  ACL2 decides whether a contact opens
 (fn-bpnp-receipt-contact-event: a queued job for the peer, nothing issued,
 fenced or pending); the offer is the lower machine's, on the job's route.
-The send drives the same effects as `bp-contact tick', so an uncertain or
-refused transfer stays in (fnn-bps-outcome bp) for the exit code."
+The send drives the same effects as `bp-contact tick', with one difference
+of scope (spec bp-node-machine 4.3.2): a refused, failed or uncertain
+transfer is connection-local.  ACL2's durable :requeued record keeps the job
+owed under its own identity (fn-bpnp-uncertain-receipt-transfer-keeps-the-
+job-owed) and the next contact offers it again (fn-bpnp-receipt-reoffer-
+after-uncertain), so the pass logs it and continues.  Only an uncertain
+publication (:bundle-queue-uncertain, the persist arm) makes the pass
+uncertain, as it does everywhere else."
   (when (eq (fnn-bps-outcome bp) :uncertain)
     (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
   (let ((event (fnn-core 'fn-bpnp-receipt-contact-event
                          (fnn-bps-state bp) (fnn-bp-eid peer-id))))
     (when event
       (fnn-out "BP node receipt contact peer=~a" peer-id)
-      (fnn-bpc-drive-contact bp event))
+      (setf (fnn-bps-transfer-scope bp) :connection)
+      (unwind-protect (fnn-bpc-drive-contact bp event)
+        (setf (fnn-bps-transfer-scope bp) :process))
+      (let ((transfer (fnn-bps-transfer bp)))
+        (when (and transfer (not (eq transfer :accepted)))
+          (fnn-out "BP node receipt transfer ~(~a~) peer=~a (connection-local; the job stays owed and is offered again on the next contact)"
+                   transfer peer-id))))
     bp))
 
 (defun fnn-command-bp-node
