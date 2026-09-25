@@ -30,12 +30,13 @@
                      1099511627776))
 (assert-event (equal (fn-bs-profile-max-open-suffix *fn-bs-profile-defaults*)
                      65536))
-; The translation's R is the article record of (32 768, 65 535), above the
+; The translation's R is the article record of (32 768, 65 535) at the u64
+; record overhead (packet P6: 1 111 fixed octets), above the
 ; format-7 H / T of 196 608.
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-development*)
-                     17138486))
+                     17138514))
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-scale*)
-                     17138486))
+                     17138514))
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-development*)
                      128))
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-scale*) 4096))
@@ -210,7 +211,7 @@
 (assert-event (equal (fn-bs-profile-max-transactions
                       *fn-bs-meta-format-7-scale-values*) 4096))
 (assert-event (equal (fn-bs-profile-record-ceiling
-                      *fn-bs-meta-format-7-development-values*) 17138486))
+                      *fn-bs-meta-format-7-development-values*) 17138514))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report
                                                  *fn-bs-meta-format-7-scale-values*)))
                      7))
