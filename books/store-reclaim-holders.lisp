@@ -79,8 +79,14 @@
                   (stringp g) (posp n)
                   (member-equal (cons g n) (true-list-fix (fn-article-memberships article))))
              (not (fn-rcl-reclaimable rule now (fn-rcl-store-holders s) verdicts article))))
-  :hints (("Goal" :in-theory (disable fn-rcl-tombstonep fn-rcl-rulep fn-rcl-rule-permits
+  :hints (("Goal" :use ((:instance fn-rcl-above-zero-in-cursors
+                                   (groups (fn-state-groups
+                                            (fn-node-acceptance (fn-sn-node s))))
+                                   (memberships (fn-article-memberships article))))
+                  :in-theory (disable fn-rcl-tombstonep fn-rcl-rulep fn-rcl-rule-permits
                                       fn-rcl-pinned-p fn-rcl-undelivered-p
+                                      fn-rcl-unacknowledged-p fn-rcl-above-zero-in-cursors
+                                      fn-rcl-cursors-at-zero
                                       fn-rcl-verdict-heldp fn-sn-consumer))))
 
 ; -----------------------------------------------------------------------------

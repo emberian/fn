@@ -83,8 +83,10 @@
 (local (defthm rh-number-token-no-lt
   (implies (member-equal 60 x) (not (fn-nntp-number-tokenp x)))
   :hints (("Goal" :in-theory (enable fn-nntp-number-tokenp)))))
-(local (include-book "std/lists/reverse" :dir :system))
-(local (include-book "std/lists/sets" :dir :system))
+(local (defthm rh-member-revappend
+  (iff (member-equal a (revappend x y))
+       (or (member-equal a x) (member-equal a y)))
+  :hints (("Goal" :induct (revappend x y)))))
 (local (defthm rh-member-rev
   (iff (member-equal a (rev x)) (member-equal a x))
   :hints (("Goal" :in-theory (enable rev)))))
