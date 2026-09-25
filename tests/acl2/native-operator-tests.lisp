@@ -309,31 +309,61 @@
                      (list (fn-record-string-octets "fn.letters")
                            (fn-record-string-octets "fn.test"))))
 
-; `store upgrade-profile PROFILE': an offline store action whose plan names
-; the profile keyword; the verdict (upgrade or refusal) is the store's
-; (books/store-profile-upgrade.lisp), so both named words are plans here.
+; `store upgrade-profile [WORD] [--FIELD N ...]': an offline store action
+; whose plan names the profile request (base and overrides); the verdict
+; (upgrade or refusal) is the store's (books/store-profile-upgrade.lisp), so
+; every well-formed request is a plan here.
 (defconst *fn-nop-upgrade*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("store" "upgrade-profile" "scale"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-upgrade*) :accepted))
 (assert-event (equal (fn-native-operator-result-native-action *fn-nop-upgrade*)
                      :upgrade-profile))
-(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-upgrade*) :scale))
+(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-upgrade*)
+                     '(:scale nil)))
 (assert-event (equal (fn-native-operator-result-upgrade-profile
                       (fn-native-operator-run
                        *fn-nop-minimal-config*
                        (fn-nop-test-argv '("store" "upgrade-profile" "development"))))
-                     :development))
+                     '(:development nil)))
+; With no word the base is the store's current profile: alone, the format 7
+; to 8 step; with flags, the operator's raise of those fields.
+(assert-event (equal (fn-native-operator-result-upgrade-profile
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("store" "upgrade-profile"))))
+                     '(:current nil)))
+(assert-event (equal (fn-native-operator-result-upgrade-profile
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("store" "upgrade-profile"
+                                           "--max-transactions" "100000"
+                                           "--max-article-octets" "20000"))))
+                     '(:current ((2 . 100000) (5 . 20000)))))
+; A repeated field, a value that is not a decimal frame natural, and an
+; unknown flag are usage errors.
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--max-transactions" "5"
+                                                                  "--max-transactions" "6"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--max-transactions" "18446744073709551616"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--max-capacity" "5"))))
+                     5))
 ; An init plan names no upgrade profile, and malformed store commands are
 ; usage: an unknown word, a missing word, an extra word, another subcommand.
 (assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-init*) nil))
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("store" "upgrade-profile" "huge"))))
-                     5))
-(assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile"))))
                      5))
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-run *fn-nop-minimal-config*
@@ -431,11 +461,45 @@
                                               (fn-nop-test-argv '("init"))))
                      nil))
 
-; The store profile: 128 transactions unless the operator names the
-; 4096-transaction scale profile.  An unnamed profile word is a usage error,
-; not the default; `--profile` without a group is a usage error as before.
+; The store profile: the D27 defaults unless the operator names a preset
+; (`--profile development|scale') or fields.  An unnamed profile word is a
+; usage error, not the default; `--profile` without a group is a usage error
+; as before.
 (assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init*)
-                     :development))
+                     '(:default nil)))
+; Fields: the request carries them, in the order named.
+(defconst *fn-nop-init-fields*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv
+                           '("init" "--max-transactions" "1000"
+                             "--max-article-octets" "20000" "fn.letters"))))
+(assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init-fields*)
+                     '(:default ((2 . 1000) (5 . 20000)))))
+(assert-event (equal (fn-native-operator-result-init-group-octets *fn-nop-init-fields*)
+                     (list (fn-record-string-octets "fn.letters"))))
+; A request that breaks a relation is refused at init, by the relation's
+; name: a record ceiling below an event kind's, a history bound below the
+; record ceiling, a zero transaction count.
+(defconst *fn-nop-init-small-record*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv
+                           '("init" "--max-record-octets" "100" "fn.letters"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-small-record*)
+                     :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-init-small-record*)
+                     :max-record-octets-below-an-event-kind))
+(assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init-small-record*)
+                     nil))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv
+                                               '("init" "--max-history-octets" "1000" "fn.letters"))))
+                     :max-history-octets-below-max-record-octets))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv
+                                               '("init" "--max-transactions" "0" "fn.letters"))))
+                     :max-transactions-outside-txid-width))
 (defconst *fn-nop-init-scale*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv
@@ -443,7 +507,7 @@
 (assert-event (equal (fn-native-operator-result-status *fn-nop-init-scale*)
                      :accepted))
 (assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init-scale*)
-                     :scale))
+                     '(:scale nil)))
 (assert-event (equal (fn-native-operator-result-init-group-octets *fn-nop-init-scale*)
                      (list (fn-record-string-octets "fn.letters"))))
 (assert-event (equal (fn-native-operator-result-init-profile
@@ -451,7 +515,7 @@
                        *fn-nop-minimal-config*
                        (fn-nop-test-argv
                         '("init" "--profile" "development" "fn.letters"))))
-                     :development))
+                     '(:development nil)))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        *fn-nop-minimal-config*
@@ -551,10 +615,10 @@
 ; Help names both new subjects, and only from the ACL2 subject table.
 (assert-event (fn-nop-help-subjectp "init"))
 (assert-event (equal (fn-nop-help-text "init")
-                     "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]"))
+                     "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]"))
 (assert-event (equal (fn-native-operator-result-arguments
                       (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
-                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]")))
+                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")))
 (assert-event (not (fn-nop-help-subjectp "initialise")))
 
 ; The run refusal names the key, and an admitted log path reaches the run
@@ -659,7 +723,7 @@
                                     fn-native-operator-result-status)
                                    (fn-native-admin-group-name-reservedp
                                     fn-native-admin-some-group-name-reservedp
-                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                    fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-nop-argument-texts
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))
@@ -679,7 +743,7 @@
                                     fn-native-operator-result-status)
                                    (fn-native-admin-group-name-reservedp
                                     fn-native-admin-some-group-name-reservedp
-                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                    fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-nop-argument-texts
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))
@@ -699,7 +763,7 @@
                                     fn-native-operator-result-status)
                                    (fn-native-admin-group-name-reservedp
                                     fn-native-admin-some-group-name-reservedp
-                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                    fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-nop-argument-texts
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))

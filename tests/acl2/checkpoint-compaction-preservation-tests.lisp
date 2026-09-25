@@ -239,7 +239,7 @@
 
 ; One owner of field 4: the reclaim plan under a profile upgrade.
 (assert-event
- (fn-profile-upgradep *fn-bs-meta-development-values* *fn-bs-meta-scale-values*))
+ (fn-profile-upgradep *fn-bs-profile-development* *fn-bs-profile-scale*))
 (assert-event
  (equal (fn-bs-pack-reclaim-plan *ccpt-names* 3 4) :invalid))
 (assert-event
@@ -248,17 +248,17 @@
  (must-fail
   (defthm ccpt-plan-without-upgrade
     (implies (not (equal (fn-bs-pack-reclaim-plan
-                          names (fn-bs-meta-nth 4 old) lower)
+                          names (fn-bs-profile-max-transactions old) lower)
                          :invalid))
-             (equal (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 new) lower)
-                    (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 old)
+             (equal (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions new) lower)
+                    (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions old)
                                              lower))))))
 (local
  (must-fail
   (defthm ccpt-plan-without-valid-old
     (implies (fn-profile-upgradep old new)
-             (equal (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 new) lower)
-                    (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 old)
+             (equal (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions new) lower)
+                    (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions old)
                                              lower))))))
 (assert-event
  (equal (fn-ccp-coverage-framed *ccpt-framed* *ccpt-digest* 3 6)

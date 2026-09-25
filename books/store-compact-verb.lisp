@@ -68,8 +68,8 @@ plus the frame trailer the host's seal appends."
 (defun fn-cverb-space-budget (profile)
   "The persisted profile's aggregate history bound, in octets."
   (declare (xargs :guard t))
-  (if (fn-bs-meta-config-valuesp profile)
-      (nfix (fn-bs-meta-nth 3 profile))
+  (if (fn-bs-profile-admittedp profile)
+      (fn-bs-profile-max-history-octets profile)
     0))
 
 (defun fn-cverb-older-count (generations selected)
@@ -86,9 +86,10 @@ plus the frame trailer the host's seal appends."
 (defun fn-cverb-decide (profile records lower names generations selected footprint)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((used (len records))
-         (reclaim (fn-bs-pack-reclaim-plan names (fn-bs-meta-nth 4 profile) lower))
+         (reclaim (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions profile)
+                                           lower))
          (older (fn-cverb-older-count generations selected)))
-    (cond ((not (fn-bs-meta-config-valuesp profile)) (list :refused :profile))
+    (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
           ((or (not (natp lower)) (< used lower) (equal reclaim :invalid))
            (list :refused :observation))
           ((equal lower used)
@@ -182,7 +183,7 @@ plus the frame trailer the host's seal appends."
            (<= (+ (fn-cverb-octet-sum footprint)
                   (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture records frontier))))
                   *fn-frame-trailer-octets*)
-               (fn-bs-meta-nth 3 profile)))
+               (fn-bs-profile-max-history-octets profile)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cverb-decide fn-cverb-pack-octets
                                    fn-cverb-space-budget)
@@ -190,7 +191,7 @@ plus the frame trailer the host's seal appends."
                                    fn-cc-event-octets-size
                                    fn-bs-pack-reclaim-plan
                                    fn-cverb-older-count
-                                   fn-bs-meta-config-valuesp)))))
+                                   fn-bs-profile-admittedp)))))
 
 ; A history of exact Store events below the frontier has fewer events than
 ; the frontier: each takes a distinct txid in [lower, frontier).
@@ -239,7 +240,7 @@ plus the frame trailer the host's seal appends."
                                    fn-cc-event-octets-size
                                    fn-bs-pack-reclaim-plan
                                    fn-cverb-older-count
-                                   fn-bs-meta-config-valuesp)))))
+                                   fn-bs-profile-admittedp)))))
 
 ; A store whose selected pack already covers every committed record is never
 ; packed again: a retry after a cut at or after the selection finishes the
@@ -252,16 +253,23 @@ plus the frame trailer the host's seal appends."
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cverb-decide)
                                   (fn-bs-pack-reclaim-plan fn-cverb-older-count
-                                   fn-bs-meta-config-valuesp)))))
+                                   fn-bs-profile-admittedp)))))
 
-; The pack's event limit is never the refusal: the open's namespace gate
-; admits at most field 4 of the persisted profile, and every named profile's
-; field 4 is at most the pack's 4096 events.
-(defthm fn-cverb-profile-count-within-pack-events
-  (implies (fn-bs-meta-config-valuesp profile)
-           (<= (fn-bs-meta-nth 4 profile) *fn-cc-max-events*))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bs-meta-config-valuesp))))
+; The pack's event limit is never the refusal under a preset: the open's
+; namespace gate admits at most the profile's max_transactions, and each
+; preset's (format 8 or its format-7 tuple) is at most the pack's 4096
+; events.  Under an operator's profile with max_transactions above 4096 (the
+; D27 default is 2^32-1) it can be: a history of more than 4096 events is
+; refused by name (`:exceeds-compaction-unit'), a work bound of the one-unit
+; pack, until chained packs (design 2026-09-25-bounds, P5).  The test book
+; carries that witness.
+(defthm fn-cverb-preset-count-within-pack-events
+  (implies (member-equal profile (list *fn-bs-profile-development*
+                                       *fn-bs-profile-scale*
+                                       *fn-bs-meta-format-7-development-values*
+                                       *fn-bs-meta-format-7-scale-values*))
+           (<= (fn-bs-profile-max-transactions profile) *fn-cc-max-events*))
+  :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; Finding 3 of m5-compaction: what the open can and cannot detect
