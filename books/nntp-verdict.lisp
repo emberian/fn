@@ -182,7 +182,10 @@
 (defthm fn-nntp-control-hdr-response-keeps-session
   (equal (fn-nntp-result-session
           (fn-nntp-control-hdr-response session archive verdicts args))
-         session))
+         session)
+  :hints (("Goal" :in-theory (enable fn-nntp-single fn-nntp-multi
+                                     fn-nntp-make-result
+                                     fn-nntp-result-session))))
 
 (defthm fn-nntp-control-item-is-printable
   (fn-stx-printablep (fn-nntp-control-item msgid verdicts)))
