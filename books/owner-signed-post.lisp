@@ -286,6 +286,47 @@
            (fn-post-store-refusalp detail))
   :hints (("Goal" :in-theory (enable fn-post-store-refusalp))))
 
+; KEYSTONE (transit refusal on the wire).  The IHAVE arm of the same relay.
+; Host path: host/native/owner.lisp fnn-owner-transit-complete feeds
+; fn-owner-transit-outcome (host/owner-host.lisp, which runs
+; fn-own-transit-outcome) the word fn-owner-served-carried-word gives, that
+; is fn-pa-served-word over the attempt's word and the ingress detail, as
+; fnn-owner-attempt-served does for POST.  For a relayed reason the 437 the
+; peer reads names it, with the text POST's 441 line carries for the same
+; word (fn-post-store-refusal-text); no Store, ledger or feed changes.
+(defthm fn-osp-transit-refusal-renders-its-reason
+  (let* ((word (fn-pa-served-word :refused detail))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (sub (fn-own-inflight o))
+         (r (fn-own-transit-outcome o id :want reason word)))
+    (implies (and conn sub (equal (fn-own-sub-id sub) id)
+                  (fn-own-transit-subp sub)
+                  (equal (fn-peer-submission-kind (fn-own-sub-decision sub))
+                         :ihave)
+                  (not (fn-own-completion-consumedp o))
+                  (member-equal detail *fn-pa-served-reasons*))
+             (and (equal word detail)
+                  (equal (car r)
+                         (fn-peer-single
+                          (fn-auth-session-base (fn-own-conn-session conn))
+                          (string-append "437 transfer rejected; "
+                                         (fn-post-store-refusal-text detail))))
+                  (equal (fn-own-store (cdr r)) (fn-own-store o))
+                  (equal (fn-own-ledger (cdr r)) (fn-own-ledger o))
+                  (equal (fn-own-feeds (cdr r)) (fn-own-feeds o)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-own-transit-outcome fn-own-outcome-completion
+                            fn-own-outcome-rendering fn-own-refusal-wordp
+                            fn-post-store-refusalp fn-served-transit-outcome
+                            fn-peer-transit-outcome
+                            fn-peer-transit-outcome-effects
+                            fn-peer-transit-code fn-peer-transit-refusal-line
+                            fn-pa-served-word)
+                           (fn-own-completion-consumedp fn-own-feed-durable
+                            fn-own-advance fn-peer-single
+                            fn-post-store-refusal-text)))))
+
 ; -----------------------------------------------------------------------------
 ; D23, the carried arm (planning/decisions.md, 2026-09-24).  Host path:
 ; host/native/owner.lisp fnn-owner-attempt-transit, NNTP transit only

@@ -167,12 +167,20 @@ class Campaign:
         if bound is None:
             yield
             return
-        original = run_store.DEFAULT_CONFIG["max_transactions"]
-        run_store.DEFAULT_CONFIG["max_transactions"] = bound
+        # The bound is ACL2's (`fn-sbud-verdict`); the scenario stands in a
+        # verdict that refuses after BOUND admissions.
+        admitted = [0]
+        original = run_store.publication_admissible
+
+        def publication_admissible(store, bridge=None, kind="article"):
+            admitted[0] += 1
+            return admitted[0] <= bound
+
+        run_store.publication_admissible = publication_admissible
         try:
             yield
         finally:
-            run_store.DEFAULT_CONFIG["max_transactions"] = original
+            run_store.publication_admissible = original
 
     # -- host entry points --------------------------------------------------
     @staticmethod

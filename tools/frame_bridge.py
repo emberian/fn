@@ -82,6 +82,18 @@ def read_form(output: bytes):
     return value
 
 
+def path_component(value) -> str:
+    """An ACL2-issued filename as a path component.
+
+    The name is ACL2's; this is the boundary guard every host applies to a
+    returned path component (non-empty ASCII, no separator, not a dot name),
+    never a second grammar."""
+    name = _as_bytes(value).decode("ascii")
+    if not name or "/" in name or "\0" in name or name in (".", ".."):
+        raise BridgeError("ACL2 returned an unusable path component")
+    return name
+
+
 def _octets(data: bytes) -> str:
     return "'(" + " ".join(str(byte) for byte in data) + ")"
 
@@ -445,12 +457,44 @@ class FrameSession:
         it (`fn-sbud-post-boundary`)."""
         literal = "'" + _lisp_literal(profile)
         value = self.call(
-            "(fn-store-post-boundary {} {} {} {} {})".format(
+            "(fn-sbud-post-boundary {} {} {} {} {})".format(
                 literal, _octets(msgid), int(payload_length), int(group_count),
                 int(charge)))
         if not isinstance(value, Keyword):
             raise BridgeError("ACL2 returned an unexpected boundary verdict")
         return str(value)
+
+    def publication_verdict(self, profile, kind: str) -> str:
+        """`fn-sbud-verdict` over the recovered Store: :admissible or why not.
+
+        The transaction bound is the persisted profile's, read by ACL2 against
+        the Store this session recovered (`fn-store-sn-publication-verdict`),
+        as the native `store post` asks it."""
+        value = self.call("(fn-store-sn-publication-verdict {} :{} state)".format(
+            "'" + _lisp_literal(profile), kind))
+        if not isinstance(value, Keyword):
+            raise BridgeError("ACL2 returned an unexpected publication verdict")
+        return str(value)
+
+    def config_record_name(self, generation: int) -> str:
+        """`fn-native-admin-config-name`: the fixed-width record filename."""
+        value = self.call("(fn-store-cfg-record-name {})".format(int(generation)))
+        if value == []:
+            raise BridgeError("ACL2 refused configuration record generation")
+        return path_component(value)
+
+    def txn_observation(self, names, maximum: int):
+        """One transaction namespace observation, decided by ACL2.
+
+        `fn-store-txn-observation-selected` at lower bound 0: the grammar,
+        the count bound (MAXIMUM, the profile's) and the gap policy.  None
+        when ACL2 answers :invalid, else [(sequence, name)] in order."""
+        value = self.call("(fn-store-txn-observation-octets '({}) {})".format(
+            " ".join("(" + " ".join(str(b) for b in n) + ")" for n in names),
+            int(maximum)))
+        if isinstance(value, Keyword):
+            return None
+        return [(int(sequence), path_component(name)) for sequence, name in value]
 
     def charge(self, length: int) -> int:
         value = self.call("(fn-store-charge {})".format(int(length)))

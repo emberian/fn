@@ -13,6 +13,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -265,9 +266,9 @@ class MediaImportTests(unittest.TestCase):
     def test_quota_exhaustion_refuses_without_charging_or_promising(self):
         # A store whose configured transaction bound is already reached: the
         # receiver refuses before any frontier advance, charge or receipt.
-        original = run_store.DEFAULT_CONFIG["max_transactions"]
-        run_store.DEFAULT_CONFIG["max_transactions"] = 1
-        try:
+        # ACL2's verdict (`fn-sbud-verdict`) refuses the second publication.
+        with mock.patch.object(run_store, "publication_admissible",
+                               side_effect=[True, False]):
             quota_node = self.root / "quota"
             quota_node.mkdir(mode=0o700, parents=True, exist_ok=True)
             run_store.Store(quota_node / "store", True).initialize()
@@ -275,8 +276,6 @@ class MediaImportTests(unittest.TestCase):
                 media_root=self.root / "volume", store_root=quota_node / "store",
                 inbox_root=quota_node / "inbox", receipt_root=quota_node / "receipts",
                 consumed_root=quota_node / "consumed", source_eid="dtn://carrier.lab")
-        finally:
-            run_store.DEFAULT_CONFIG["max_transactions"] = original
         self.assertEqual([o.outcome for o in outcomes], ["accepted", "refused"])
         self.assertEqual(outcomes[1].reason, "refused-capacity")
         self.assertEqual(outcomes[1].receipt_sha256, "")

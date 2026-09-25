@@ -991,7 +991,7 @@ which `fn-store-sn-prepare' then refuses."
 
 (defun fnn-post-boundary (profile msgid payload-length group-count charge)
   "ACL2's POST boundary verdict under PROFILE, the values ACL2 decoded at open."
-  (let ((value (fnn-core 'fn-store-post-boundary profile (fnn-octet-list msgid)
+  (let ((value (fnn-core 'fn-sbud-post-boundary profile (fnn-octet-list msgid)
                          payload-length group-count charge)))
     (unless (keywordp value) (fnn-fault "ACL2 returned an unexpected boundary verdict"))
     value))

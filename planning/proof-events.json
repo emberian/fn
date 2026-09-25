@@ -2761,6 +2761,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-osp-transit-refusal-renders-its-reason",
+          "note": "Keystone, NNTP transit refused arm (IHAVE), over fn-own-transit-outcome (host/owner-host.lisp fn-owner-transit-outcome, fed by host/native/owner.lisp fnn-owner-transit-complete with the word fn-owner-served-carried-word gives): for a relayed reason, a :want decision, an IHAVE transit in flight on this connection and no completion consumed, the reply is `437 transfer rejected; ` followed by fn-post-store-refusal-text of that reason, the text POST's 441 carries for the same word (RFC 3977 section 6.3.2 allows text after the code), and Store, ledger and feeds are unchanged. Witness: *ospt-taken* with an IHAVE transit in flight on the poster's connection (constructed as owner-tests own-fed-transit-on-connection builds one), :control-not-filed and :local-enrollment, and the wire octets. Must-fail per hypothesis: a Store word not relayed, another connection, a POST in flight, TAKETHIS (439 echo), a :refuse decision, completion consumed, connection gone."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-osp-plan-refusal-is-a-served-reason",
           "note": "A present carrier the plan refuses is never :absent (never the unsigned arm), and its reason is one of :article :carrier :carrier-shape :local-enrollment. Witness: :local-enrollment with no enrollment, :carrier for a malformed field."
         }

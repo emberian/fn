@@ -458,11 +458,6 @@
         :bad
       (fn-store-codes-from-groups names domain))))
 
-; The whole POST admission boundary in one call, over the persisted PROFILE
-; the caller was handed at open (`fn-bs-config-decode's values): the payload
-; bound is that profile's payload field, the Message-ID grammar is
-; `books/article-fields`, the group count and charge range the record codec's
-; (books/store-budget-naming.lisp `fn-sbud-post-boundary').  No host constant
-; enters it.
-(defun fn-store-post-boundary (profile msgid payload-length group-count charge)
-  (fn-sbud-post-boundary profile msgid payload-length group-count charge))
+; The whole POST admission boundary is `fn-sbud-post-boundary'
+; (books/store-budget-naming.lisp), over the persisted PROFILE the caller was
+; handed at open; both hosts call it by that name.  No host constant enters it.

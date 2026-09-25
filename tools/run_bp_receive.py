@@ -225,14 +225,14 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
                                       faults)
             _delete_after_decision(delete, bid, "accepted", receipt, staged, faults)
             return ReceiveResult("accepted", receipt, staged)
-        if len(records) >= store.config["max_transactions"]:
+        if not run_store.publication_admissible(store, bridge):
             # A transaction published past the configured bound makes every
             # later Store.recover() fault, so the store would be unopenable
             # with no recovery path.  Refuse before any frontier advance or
             # charge; the BPA request and its staged frame stay present.
             return ReceiveResult("refused-capacity", b"", staged)
         article = _acl2_octets(bridge, "(fn-bpreq-article '" + bridge.literal(request_adu) + " state)")
-        if not article or len(article) > run_store.DEFAULT_CONFIG["max_payload_bytes"]:
+        if not article or len(article) > store.config["max_payload_bytes"]:
             raise BpReceiveError("ACL2 rejected request/article boundary")
         msgid = bridge.extract_message_id(article)
         if not msgid: raise BpReceiveError("ACL2 rejected article Message-ID")
