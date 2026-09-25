@@ -287,6 +287,19 @@ witness written after the commit:
   (`fn-hm-run-keeps-every-open-admitted`). A lost suffix that contains an
   acknowledged record is refused as `history-short-of-marker`, whatever
   history follows it (`fn-hm-open-refuses-a-lost-acknowledged-record`).
+- The crash table is no longer an assumption: the program is
+  `fn-bs-marker-program` of the byte crash model
+  (`books/byte-store-marker-program.lisp`), between the record program and
+  the finish program in every commit's coordinate
+  (`tests/campaign/native_cuts.py` `POST_PROGRAMS`). In every crash image of
+  every cut the marker is the old one before the rename, old or new at it,
+  and new after the root barrier, never torn
+  (`fn-bs-marker-program-crash-is-old-or-new`), which is exactly the history
+  step above (`fn-bs-marker-crash-is-the-history-table`), so the open after
+  recovery stays admitted (`fn-bs-marker-crash-open-stays-admitted`). K0 at
+  the five cuts is `fn-bs-k0-marker-cuts-relation`
+  (`books/byte-store-k0-marker.lisp`); at `marker-replaced` it is stated on
+  the two resolutions of the pending rename.
 - Cost: one more staged write, two fsyncs and a rename per committed
   record, in every profile. Measured with the in-process commit probe (120
   commits of 32 KiB, hbox, three runs each): on tmpfs, 110 ms per commit

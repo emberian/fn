@@ -150,8 +150,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Keystone: `fn-bs-recover-program-keeps-relation-at-every-cut` (books/byte-store-k0-recovery.lisp:469; PRF-041 (in-progress)); certified at the current source and closure by `certify-20260925T004450Z-2510809` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile developer twin for the cuts, production refuses selectors; it carries this source.
 - Deployed: yes: node image `c3420013`; it carries this source.
-- Latest positive result: all 25 cuts pass through both entries; production refuses 30/30 selector starts with exit 5; checkpoint 23/23, recovery 13/13 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
-- Remaining obstruction: the byte crash model's finish program has no committed-history marker, so the differential fails at finish-consumed and finish-durable on c3420013 although every native cut passes; a lane is adding the transition
+- Latest positive result: the committed-history marker is fn-bs-marker-program in the byte crash model between the record and the finish (lane p10-marker-model); the cut table is 30; the differential and the served differential pass at every cut on a branch developer image ([p10-marker-model](evidence/p10-marker-model-2026-09-25.md)).
+- Remaining obstruction: at marker-replaced K0 is stated on the two resolutions of the pending rename; that every crash image there is a crash image of one of them (a commutation of the root entry with the pending list) is open, though the marker in every such image is proved old or new.
 - Next positive gate: `fn-bs-program-step-preserves-relation`, the general per-step K0, certified.
 
 ### P11
