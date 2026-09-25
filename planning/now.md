@@ -225,6 +225,24 @@ each lane's record is under [`evidence/`](evidence/). The backlog is
 - **Not in `e747dbcc` (merged after the cut):** status-join, peer-invite,
   reclaim-host part one, peer-pull. A second cut follows.
 
+**Update ~21:00 UTC:** qual-e747dbcc's verdict is **not deployable as cut**
+([record](evidence/qual-e747dbcc-2026-09-25.md)). A POST reaching the
+transaction budget stops the owner; that was fixed on dev after the cut, at
+8a381541. The rest of the run was green:
+- matrix 0 disagreed; cuts 60/60, marker cuts 20/20;
+- ACL2 differential 7/7 and served crash model 3/3, which closes c3420013's
+  F1 to F3;
+- kill run clean;
+- the upgrade path rehearsed on copies of the live store.
+
+Three runtime defects remain, and the deploy-fixes lane is fixing them:
+- `control list` prints no grants;
+- an ACL2 invariant-risk warning appears on the owner's stdout;
+- rollback-check says "sound" when the rollback would drop a required marker.
+
+operator-config merged. Next: a second cut after deploy-fixes, qualification,
+then deploy format 8 unmarked (the qualification recommends the same).
+
 ### 2. Landed, by goal item
 
 - **Bounds (D27):**
