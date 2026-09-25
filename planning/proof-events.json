@@ -922,7 +922,7 @@
         {
           "kind": "theorem",
           "name": "fn-own-240-follows-consumed-completion",
-          "pending_subject": "Subject is fn-own-finish (books/owner-served-invariants.lisp), the (:complete) event with its word computed in ACL2. The host still runs (:complete) through fn-owner-step and decides :durable by comparing phases and ledger lengths in fn-owner-finish (host/owner-host.lisp:495-507), then passes that word to fn-own-outcome (host/owner-host.lisp:1034). Under that host word a 240 over a completion of another record is reachable (tests/acl2/owner-served-invariants-tests.lisp, *own-240*). Met when fn-owner-finish returns (car (fn-own-finish o))."
+          "pending_subject": "Subject is fn-own-finish (books/owner-served-invariants.lisp), the (:complete) event with its word computed in ACL2. The host no longer decides :durable itself: fn-owner-finish-submission (host/owner-host.lisp:597-604) returns the word of fn-ccar-own-finish (books/owner-commit-carried.lisp, called at host/owner-host.lisp:602), which fn-ccar-own-finish-is-own-finish equates with fn-own-finish for every owner and configuration, and host/native/owner.lisp:1219 passes that word to fn-owner-outcome. So the condition this note waited for (the host's word is (car (fn-own-finish o))) is met through that equation. fn-owner-finish (phases and ledger lengths) remains the word only for retention, identity and config completions, which name no article submission. The 240-over-another-record witness (tests/acl2/owner-served-invariants-tests.lisp, *own-240*) is against the older phase-comparing word."
         },
         {
           "kind": "theorem",
@@ -1943,12 +1943,12 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-sf-step-preserves-nonreuse",
-          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
+          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:156-157) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:877-884), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
         },
         {
           "kind": "theorem",
           "name": "fn-bpn-sf-trace-preserves-safety",
-          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
+          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:156-157) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:877-884), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
         },
         {
           "kind": "theorem",
@@ -1963,17 +1963,17 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-base-event-refines-fn-bpn-step",
-          "note": "Subject-equating keystone (AGENTS.md rule 1) for the lower machine keystones below: on (:base E), which fnn-bps-step (bp-service.lisp:178-179) builds for every lower machine event, host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step and answers exactly fn-bpn-step's base state and effects when nothing is issued and no delivery is uncertain, otherwise no effect with the base unchanged. Teeth: tests/acl2/bp-node-counterexamples-tests (witness plus one must-fail per hypothesis)."
+          "note": "Subject-equating keystone (AGENTS.md rule 1) for the lower machine keystones below: on (:base E), which fnn-bps-step (bp-service.lisp:176-177) builds for every lower machine event, host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step and answers exactly fn-bpn-step's base state and effects when nothing is issued and no delivery is uncertain, otherwise no effect with the base unchanged. Teeth: tests/acl2/bp-node-counterexamples-tests (witness plus one must-fail per hypothesis)."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-emits-no-release-and-no-receipt-prepare",
-          "note": "Over every event of the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step), no hypotheses: no :release and no :receipt-prepare effect. The release path is the bp-release receipt join. Teeth: reachable kind-8/kind-9 witnesses and a release mutant in tests/acl2/bp-node-counterexamples-tests."
+          "note": "Over every event of the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step), no hypotheses: no :release and no :receipt-prepare effect. The release path is the bp-release receipt join. Teeth: reachable kind-8/kind-9 witnesses and a release mutant in tests/acl2/bp-node-counterexamples-tests."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-preserves-guard-premises",
-          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): the base machine invariant, session table and held-list shape survive every host event. Teeth: tests/acl2/bp-node-progress-premises-tests."
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step): the base machine invariant, session table and held-list shape survive every host event. Teeth: tests/acl2/bp-node-progress-premises-tests."
         },
         {
           "kind": "theorem",
@@ -1998,12 +1998,12 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-recovery-success-clears-sessions-and-pending-image",
-          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step; the only recovery event is built at bp-service.lisp:744 in fnn-bps-open): on a :recover-fnbs event whose first effect is tagged :restart-ready, the outbound session table and the pending kind-8 wire are empty afterwards. A faulted recovery keeps both. Teeth: tests/acl2/bp-node-counterexamples-tests (N08 recovery witness with a live session before; one must-fail for the :restart-ready hypothesis; the recovery-event hypothesis has no separating case since only fn-bpnf-recover-fnbs-step builds :restart-ready)."
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step; the only recovery event is built at bp-service.lisp:819-823 in fnn-bps-open): on a :recover-fnbs event whose first effect is tagged :restart-ready, the outbound session table and the pending kind-8 wire are empty afterwards. A faulted recovery keeps both. Teeth: tests/acl2/bp-node-counterexamples-tests (N08 recovery witness with a live session before; one must-fail for the :restart-ready hypothesis; the recovery-event hypothesis has no separating case since only fn-bpnf-recover-fnbs-step builds :restart-ready)."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-session-offer-is-the-scan-choice",
-          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step) on a (:session peer s t mru obs) open event: any :persist-attempt it answers names the arrival and primary identity of the row fn-bpnp-forward-scan returns over the state's own held list, waits, credit and epoch, and the pending image is that scan's forwarding image. Bridge for the scan keystone. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step) on a (:session peer s t mru obs) open event: any :persist-attempt it answers names the arrival and primary identity of the row fn-bpnp-forward-scan returns over the state's own held list, waits, credit and epoch, and the pending image is that scan's forwarding image. Bridge for the scan keystone. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
         },
         {
           "kind": "theorem",
@@ -2013,7 +2013,7 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-attempt-persist-preserves-the-retry-bound",
-          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step) on (:persist-result e o r) with an issued kind 8: every held row keeps its retry count within *fn-bpnp-max-forward-retries* (3). Only this arm writes an attempt slot on a served path; other arms are not claimed. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step) on (:persist-result e o r) with an issued kind 8: every held row keeps its retry count within *fn-bpnp-max-forward-retries* (3). Only this arm writes an attempt slot on a served path; other arms are not claimed. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
         },
         {
           "kind": "theorem",
@@ -2023,27 +2023,27 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-different-boot-fences",
-          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery event carrying fn-bpnf-clock-domain-plan's decision, whose saved clock-domain record and observed boot ID both decode and differ, answers exactly (:restart-fault :clock-domain :different-boot). Scope: the host still builds the six-field recovery event (bp-service.lisp:752), which stays ungated until it passes the decision. Teeth: tests/acl2/bp-node-counterexamples-tests (N07 trace, one must-fail per hypothesis)."
+          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery event carrying fn-bpnf-clock-domain-plan's decision, whose saved clock-domain record and observed boot ID both decode and differ, answers exactly (:restart-fault :clock-domain :different-boot). Scope: the host builds the seven-field recovery event at bp-service.lisp:819-823 (fnn-bps-open), appending the decision fnn-bps-clock-domain-gate returns (:796). Teeth: tests/acl2/bp-node-counterexamples-tests (N07 trace, one must-fail per hypothesis)."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-domain-disagreement-fences",
-          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery whose domain decision is neither :same nor :initialize-with-nothing-retained keeps every held row, answers one :restart-fault naming the reason, and leaves a state in which every later non-recovery event is inert, so no retained Bundle Age anchor is compared. Teeth: tests/acl2/bp-node-counterexamples-tests."
+          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery whose domain decision is neither :same nor :initialize-with-nothing-retained keeps every held row, answers one :restart-fault naming the reason, and leaves a state in which every later non-recovery event is inert, so no retained Bundle Age anchor is compared. Teeth: tests/acl2/bp-node-counterexamples-tests."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-ready-recovery-is-same-boot",
-          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery carrying fn-bpnf-clock-domain-plan over the host's observations that answers :restart-ready happened in the boot the durable record names, or at first initialization with no legacy evidence, base records or received rows. Teeth: tests/acl2/bp-node-counterexamples-tests."
+          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery carrying fn-bpnf-clock-domain-plan over the host's observations that answers :restart-ready happened in the boot the durable record names, or at first initialization with no legacy evidence, base records or received rows. Teeth: tests/acl2/bp-node-counterexamples-tests."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-identity-conflict-is-refused-or-recorded",
-          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a host-admitted reception whose exact wire conflicts with a live held identity keeps every held row and answers either the refusal to its ingress or, exactly when the kind-14 record is well formed and journal credit admits one zero-debt final, the :persist-conflict proposal naming the held row, the ingress and the carrier's fn-digest content id. The TCPCL callback (fnn-bps-receive) settles the :persist-conflict through fnn-bps-persist-kind-fourteen before it takes the final answer. Teeth: tests/acl2/bp-node-counterexamples-tests (one witness per hypothesis: the event-kind witness is a six-field recovery event carrying the same bundle, wire and ingress; the next-arrival witness is reached through fn-bpnp-step recovery; the epoch, next-op and next-op-bound witnesses are corrupted states, unreachable because recovery admits only a frame epoch and resets next-op to 0)."
+          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step): a host-admitted reception whose exact wire conflicts with a live held identity keeps every held row and answers either the refusal to its ingress or, exactly when the kind-14 record is well formed and journal credit admits one zero-debt final, the :persist-conflict proposal naming the held row, the ingress and the carrier's fn-digest content id. The TCPCL callback (fnn-bps-receive) settles the :persist-conflict through fnn-bps-persist-kind-fourteen before it takes the final answer. Teeth: tests/acl2/bp-node-counterexamples-tests (one witness per hypothesis: the event-kind witness is a six-field recovery event carrying the same bundle, wire and ingress; the next-arrival witness is reached through fn-bpnp-step recovery; the epoch, next-op and next-op-bound witnesses are corrupted states, unreachable because recovery admits only a frame epoch and resets next-op to 0)."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-conflict-publication-answers-refusal",
-          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): the matching persist result of a pending kind-14 operation answers the recorded ingress exactly :identity-conflict for every outcome, keeps every held row, clears the operation on :durable or :refused and fences otherwise; a durable record consumes one final of credit. Teeth: tests/acl2/bp-node-counterexamples-tests."
+          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:170 (fnn-bps-foundation-step) calls fn-bpnp-step): the matching persist result of a pending kind-14 operation answers the recorded ingress exactly :identity-conflict for every outcome, keeps every held row, clears the operation on :durable or :refused and fences otherwise; a durable record consumes one final of credit. Teeth: tests/acl2/bp-node-counterexamples-tests."
         },
         {
           "kind": "theorem",

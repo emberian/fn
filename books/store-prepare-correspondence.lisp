@@ -349,8 +349,10 @@
 
 ; The actual post-open store mutations, expressed as already-decoded logical
 ; events.  The dispatcher never tests the relation and never rolls a failed
-; check back.  Recovery is intentionally absent: a process begins at
-; fn-sn-open-observed, below, and recovery remains the authoritative replay.
+; check back.  Recovery is intentionally absent: a process begins at the
+; observed open (the host calls fn-cpo-open-observed; fn-sn-open-observed,
+; below, is the store-only model open), and recovery remains the
+; authoritative replay.
 (defun fn-spc-step (s event)
   (case (car event)
     (:prepare (fn-spc-prepare s (cadr event)))

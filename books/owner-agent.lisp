@@ -78,7 +78,7 @@
 The host calls this at host/owner-host.lisp `fn-owner-post-config', which
 `fn-owner-recover' and `fn-owner-reconfigure-complete' install with
 fn-own-configure.  MAX-OCTETS is the store's payload bound, which the host
-still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
+supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (declare (xargs :guard t))
   (fn-inj-make-config t (fn-oag-agent cfg)
                       (fn-oag-group-octets (fn-cnode-served-of cfg))

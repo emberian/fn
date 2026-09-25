@@ -383,8 +383,9 @@
            :in-theory (disable fn-bprv-system-invariantp fn-bprv-system-step))))
 
 ; -----------------------------------------------------------------------------
-; Process restart (L22).  The host reopens through fn-sn-open-observed
-; (host/store-node-host.lisp:27); A-DURABILITY enters as fn-sf-crash-imagep,
+; Process restart (L22).  The host reopens through fn-cpo-open-observed
+; (books/config-observed.lisp; host/store-node-host.lisp:159, in
+; fn-store-sn-recover); A-DURABILITY enters as fn-sf-crash-imagep,
 ; exactly as in store-observed-traces (D5).  The receiver state is whatever
 ; the next fn-bprj-install replays; here it is the pre-crash state, and the
 ; theorem below says the invariant still holds against the reopened Store.
@@ -470,15 +471,17 @@
 ; The live receiver trace (tools/run_bp_receive.py).  A live state is
 ; (store st journal): the Store global fn-store-sn, the receiver global
 ; fn-bprj-state, and the receiver journal on disk.  The host's calls, in
-; order: open_live_bp_store (line 134; fn-sn-open-observed then barriers),
-; receipt_journal.open (line 138; fn-bprj-install, host line 12, replays the
-; journal against the current Store), Store ingress (lines 210-217; fn-sn-io,
-; fn-sn-prepare, fn-sn-finish through the bridge), accept_request (line 218)
-; and _durably_decide (lines 92-95), each a fn-bprj-apply (host line 22) of
-; one record after fn-bprj-preflight (host line 18) against the same Store and
-; state (tools/receipt_journal.py lines 56-79: preflight, durable write,
+; order: open_live_bp_store (line 164; store.recover, which reaches
+; fn-store-sn-recover and so fn-cpo-open-observed, then barriers),
+; receipt_journal.open (line 170; fn-bprj-install,
+; host/bp-receipt-journal-host.lisp:40, replays the journal against the
+; current Store), Store ingress (lines 245-252; fn-sn-io, fn-sn-prepare,
+; fn-sn-finish through the bridge), accept_request (line 254) and
+; _durably_decide (lines 92-96), each a fn-bprj-apply (host line 56) of one
+; record after fn-bprj-preflight (host line 50) against the same Store and
+; state (tools/receipt_journal.py lines 50-81: preflight, durable write,
 ; apply).  The journal therefore holds exactly the records fn-bprj-apply
-; accepted; fn-bprj-receipt-adu (host line 38) is a query of fn-bprj-state.
+; accepted; fn-bprj-receipt-adu (host line 77) is a query of fn-bprj-state.
 
 (defun fn-bpr-live-store (live) (car live))
 (defun fn-bpr-live-state (live) (cadr live))

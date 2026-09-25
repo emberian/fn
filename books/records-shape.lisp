@@ -104,9 +104,13 @@
 ;; so no space, no leading, trailing or doubled dot, and no other octet.
 ;; The RFC's SHOULD NOTs (uppercase, all-digit components, a leading "_",
 ;; "+" or "-") restrict generation only; a server MUST accept such names,
-;; so this recognizer admits them.  The reserved names of s3.1.4 ("example.*",
-;; "poster", "to.*", "control.*", "junk", "all", "ctl") are a creation
-;; policy, not syntax, and are not decided here.  The octet bound
+;; so this recognizer admits them.  The names s3.1.4 reserves (first
+;; component "example", exactly "poster") and its special-purpose names
+;; (first or only component "to" or "control", any component "all" or
+;; "ctl", exactly "junk") are patterns and a creation policy, not syntax;
+;; books/native-admin.lisp decides them
+;; (fn-native-admin-group-name-reservedp,
+;; fn-native-admin-group-name-special-purposep), not this book.  The octet bound
 ;; `*fn-record-max-group-name*' is a local fn policy: the RFC sets none.
 (defun fn-record-group-component-octetp (x)
   (declare (xargs :guard t))
