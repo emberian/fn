@@ -14,7 +14,9 @@
 ; The codec behind the seam (books/records-seam.lisp constrains
 ; fn-record-encode; books/records-attach.lisp attaches the implementation)
 ; tested its argument with fn-record-p before encoding.  fn-rcon-record-encode-impl
-; is fn-record-encode-impl (books/records.lisp) with that test replaced;
+; is fn-record-encode-impl (books/records.lisp) with that test replaced,
+; every byte-string item through the same bounded item encoder
+; (fn-record-item-encode, at the record width *fn-record-max-octets*);
 ; fn-rcon-record-encode-impl-is-record-encode-impl equates them on every
 ; input, with no hypothesis, and books/records-attach-concrete.lisp attaches
 ; the twin in the host images, so every ground fn-record-encode the host
@@ -176,24 +178,24 @@
       nil
     (let ((octets
            (append
-            (fn-cbor-encode (cons :bytes *fn-record-magic*))
+            (fn-record-item-encode (cons :bytes *fn-record-magic*))
             (fn-cbor-encode (cons :uint (fn-record-schema-octet record)))
             (fn-cbor-encode (cons :uint (fn-record-sequence record)))
             (fn-cbor-encode (cons :uint (fn-record-txid record)))
             (fn-cbor-encode (cons :uint (fn-record-generation record)))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-msgid record))))
-            (fn-cbor-encode (cons :bytes (fn-record-payload record)))
+            (fn-record-item-encode (cons :bytes (fn-record-payload record)))
             (fn-cbor-encode (cons :uint (len (fn-record-groups record))))
             (fn-record-encode-groups (fn-record-groups record))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-obligation-id record))))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-content-subject record))))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
             (fn-cbor-encode (cons :uint (fn-record-charge record)))

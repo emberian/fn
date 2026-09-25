@@ -323,3 +323,45 @@
  (and (eq (symbol-class 'fn-rcon-record-encode-impl (w state)) :common-lisp-compliant)
       (equal (guard 'fn-rcon-record-encode-impl nil (w state))
              (guard 'fn-record-encode-impl nil (w state)))))
+
+; -----------------------------------------------------------------------------
+; The codec ceilings (bounds-p2): the twin reads the record's own width.
+; A 65,536-octet payload is above the old record payload bound (32,768) and
+; one octet above the generic CBOR item cap (*fn-cbor-max-bytes*, 65,535),
+; so the generic encoder refuses the item and the record encodes only through
+; the bounded item encoder at *fn-record-max-octets*: the twin encodes it,
+; to the implementation's bytes, and the decoder reads the record back.
+; The witness stays small: the new payload ceiling is 4,261,412,864 octets.
+; Its group is a name of *fn-record-max-group-name* (256) characters; one
+; more is refused by both recognizers.
+(defconst *rcon-t-s256-group* (coerce (make-list 256 :initial-element #\a) 'string))
+(defconst *rcon-t-s257-group* (coerce (make-list 257 :initial-element #\a) 'string))
+(defconst *rcon-t-wide*
+  (fn-record-make 1 2 3 (fn-record-msgid *rcon-t-r*)
+                  (make-list 65536 :initial-element 97)
+                  (list *rcon-t-s256-group*)
+                  (fn-record-obligation-id *rcon-t-r*)
+                  (fn-record-content-subject *rcon-t-r*)
+                  (fn-record-release-evidence *rcon-t-r*) 1 :legacy))
+(defconst *rcon-t-wide-group-257*
+  (fn-record-make 1 2 3 (fn-record-msgid *rcon-t-r*) '(97)
+                  (list *rcon-t-s257-group*)
+                  (fn-record-obligation-id *rcon-t-r*)
+                  (fn-record-content-subject *rcon-t-r*)
+                  (fn-record-release-evidence *rcon-t-r*) 1 :legacy))
+(assert-event (and (equal *fn-record-max-group-name* 256)
+                   (< 32768 (len (fn-record-payload *rcon-t-wide*)))
+                   (< *fn-cbor-max-bytes* (len (fn-record-payload *rcon-t-wide*)))
+                   (<= (len (fn-record-payload *rcon-t-wide*)) *fn-record-max-payload*)))
+(assert-event (and (fn-record-p *rcon-t-wide*) (fn-rcon-record-p *rcon-t-wide*)))
+(assert-event (and (not (fn-record-p *rcon-t-wide-group-257*))
+                   (not (fn-rcon-record-p *rcon-t-wide-group-257*))))
+(assert-event (null (fn-cbor-encode (cons :bytes (fn-record-payload *rcon-t-wide*)))))
+(assert-event (and (consp (fn-rcon-record-encode-impl *rcon-t-wide*))
+                   (< *fn-cbor-max-input* (len (fn-rcon-record-encode-impl *rcon-t-wide*)))
+                   (equal (fn-rcon-record-encode-impl *rcon-t-wide*)
+                          (fn-record-encode-impl *rcon-t-wide*))
+                   (equal (fn-record-decode-exact-impl
+                           (fn-rcon-record-encode-impl *rcon-t-wide*))
+                          (list :ok *rcon-t-wide*))))
+(assert-event (null (fn-rcon-record-encode-impl *rcon-t-wide-group-257*)))
