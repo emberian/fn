@@ -35,18 +35,15 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    'fn-rclb-existing-action (buffer).\n'
                    '(include-book "books/store-reclaim-buffer")\n')
 BUFFER_FINDINGS = [
-    "included: host/store-node-host.lisp uses fn-rcl-existing-action, defined in "
-    "books/store-reclaim.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/store-node-host.lisp",
     "included: host/owner-host.lisp uses fn-octets, defined in "
     "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/owner-host.lisp",
-    "included: host/owner-host.lisp uses fn-rcl-existing-action, defined in "
-    "books/store-reclaim.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp",
     "included: host/owner-host.lisp uses fn-rclb-existing-action, defined in "
     "books/store-reclaim-buffer.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]
+# fn-rcl-existing-action is no longer a finding: host/store-node-host.lisp
+# includes books/store-reclaim itself since test-latency (the Python bridge
+# loads that host file alone).
 # host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
 # the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
 # (qual-e747dbcc A4), outside the `ld` closure this check reads.
