@@ -299,6 +299,16 @@
  (defthm fn-native-auth-len-of-reverse-aux
    (equal (len (fn-ncfg-reverse-aux xs acc)) (+ (len xs) (len acc)))))
 
+; A refused finish carries its reason, a symbol, never a credential list.
+(local
+ (defthm fn-native-auth-finish-refusal-has-no-credentials
+   (implies (equal (car (fn-native-auth-finish name fields)) :refused)
+            (equal (len (cadr (fn-native-auth-finish name fields))) 0))
+   :hints (("Goal" :in-theory (e/d (fn-native-auth-finish)
+                                   (fn-native-auth-string-field fn-native-auth-bool-field
+                                    fn-native-auth-hex fn-native-auth-assoc
+                                    fn-auth-credp fn-auth-make-cred fn-authsec-verifier))))))
+
 ; KEYSTONE (D27, PRF-102: the credential count is refused exactly past the
 ; operator's bound).  The parser the host-called loader runs
 ; (`fn-native-auth-load', host/native-auth-host.lisp
