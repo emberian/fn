@@ -309,7 +309,7 @@
 ; (2) a malformed configuration with the same rows and generation.
 (defconst *btj-malformed-cfg*
   (fn-cfg-make 1 (fn-cfg-value-make '(junk) 0 nil nil nil
-                   (fn-cfg-peers (fn-cfg-value *btj-unenrolled-cfg*)) nil)))
+                   (fn-cfg-peers (fn-cfg-value *btj-unenrolled-cfg*)) nil nil)))
 (assert-event (not (fn-cfgp *btj-malformed-cfg*)))
 (must-fail (assert-event (btj-unenrolledp *btj-malformed-cfg*
                                           *btj-relay-ingress*)))

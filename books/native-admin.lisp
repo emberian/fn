@@ -111,6 +111,33 @@
   (and (fn-record-group-namep text)
        (not (fn-native-admin-group-name-reservedp text))))
 
+;; Control authority (D29, packet C2): `control grant PRINCIPAL VERB
+;; NAMESPACE-PATTERN' and `control revoke PRINCIPAL VERB NAMESPACE-PATTERN'.
+;; The plan carries the namespace as NAME, the principal as PEER and the
+;; verb as VALUE, each the octets the operator typed; the delta's structural
+;; admissibility is `fn-cfg-delta-reason' (books/config.lisp).  A reserved
+;; namespace (RFC 5536 section 3.1.4, the first component of the pattern) is
+;; refused here by name.
+(defun fn-native-admin-control-plan (words argv)
+  (declare (xargs :guard t))
+  (let ((op (cadr words)) (principal (caddr words))
+        (verb (cadddr words)) (ns (car (cddddr words))))
+    (cond ((not (and (equal (len words) 5)
+                     (member-equal op '("grant" "revoke"))))
+           (fn-native-admin-result :refused :syntax nil nil nil nil nil))
+          ((fn-native-admin-group-name-reservedp ns)
+           (fn-native-admin-result :refused :reserved-group-name nil nil 0 nil nil))
+          ((not (fn-cfg-namespace-patternp ns))
+           (fn-native-admin-result :refused :namespace-pattern nil nil 0 nil nil))
+          ((not (fn-cfg-principal-hexp principal))
+           (fn-native-admin-result :refused :principal nil nil 0 nil nil))
+          ((not (member-equal verb *fn-cfg-control-verbs*))
+           (fn-native-admin-result :refused :verb-not-grantable nil nil 0 nil nil))
+          (t (fn-native-admin-result
+              :accepted nil
+              (if (equal op "grant") :grant-control :revoke-control)
+              (car (cddddr argv)) 0 (caddr argv) (cadddr argv))))))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
@@ -172,6 +199,8 @@
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          (t (fn-native-admin-peer-plan words))))
+       ((and (consp words) (equal (car words) "control"))
+        (fn-native-admin-control-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
         (fn-native-admin-bp-boundary-plan words))
        ((and (consp words) (equal (car words) "bp-route"))
@@ -217,6 +246,15 @@
              (list (fn-cfg-set-policy
                     name
                     (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :grant-control)
+             (list (fn-cfg-grant-control
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan))
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :revoke-control)
+             (list (fn-cfg-revoke-control
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan)))))
             (t nil)))))
 
 (encapsulate ()
