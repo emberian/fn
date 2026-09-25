@@ -311,8 +311,8 @@ witness written after the commit:
   `fnn-publish` returned `:durable` (the record passed its
   transaction-directory barrier) and before `fnn-finish`. It is called at
   the three publish sites: `store post`, the capacity probe, and the owner's
-  `fnn-owner-publish-prepared`. No reservation, abort, refusal or recovery
-  writes it.
+  `fnn-owner-publish-prepared`. The one other writer is the recovery
+  catch-up below. No reservation, abort or refusal writes it.
 - The byte program (`*fn-hm-marker-program*`): create a `.stage-` name in
   `staging/`, write it, fsync the file, rename it onto
   `committed-history.json`, fsync the root directory. Each step has a cut:
@@ -325,9 +325,11 @@ witness written after the commit:
   against the length of the reconstructed record list (pack events plus
   suffix files, so a reclaim does not shorten it). A count below the marker
   is a fault that names `history-short-of-marker`. A frame that is not
-  kind 3 names `marker-damaged`. An absent marker is admitted as
-  `:unmarked`: that is every store written before the marker, and the first
-  commit on such a store writes the marker.
+  kind 3 names `marker-damaged`. Under the profile's `history-marker =
+  unmarked` an absent marker is admitted as `:unmarked`: that is every store
+  written before the marker, and its first writable open writes the marker.
+  The host calls `fn-hmr-open-verdict` (`books/store-history-required.lisp`),
+  which is `fn-hm-open-verdict` except as below.
 - Proved (PRF-076), over a model whose crash table is rename atomicity for
   this one program: no history the host can produce is refused. Such a
   history is any interleaving of burned reservations, uncertain
@@ -355,13 +357,56 @@ witness written after the commit:
   before and 388 ms after: 62 ms more per commit (+19%). The ZFS runs vary
   (before: 279 to 360 ms per commit). See
   [the record](../planning/evidence/m5-history-lifetimes-2026-09-24.md).
-- Not detected: losing the marker together with the files it covers (reads
-  as `:unmarked`); an unacknowledged record that survived above the marker
-  (`fnn-publish` uncertain, or a crash before the marker's rename); replacing
-  the whole store with an older valid copy, which needs a freshness anchor
-  (D14); the configuration history and the BP stores. The crash table is
-  not yet derived from the `fn-bs` byte model, which has no program for the
-  marker (**open**).
+- **The guarantee (D31)**, with A the committed prefix covered by success
+  answers a client may rely on, M the durable marker's count and D the
+  durable reconstructable length: A <= M <= D. The syscall sequence is not
+  frozen; a cheaper publication program is legitimate when its
+  acknowledgments and crash behaviour refine the same invariant, and moving
+  the count into the allocation barrier is not (allocation precedes the
+  record's durability).
+- **The requirement (D31 case 1).** The format-8 profile's thirteenth field,
+  `history-marker`, is `unmarked` (0: every format-7 store, and a format-8
+  store not migrated) or `required` (1). Under `required` an absent marker
+  is damage: `fn-hmr-open-verdict` answers `:marker-missing` and the open
+  faults (exit 4). `init` never writes `required`
+  (`history-marker-required-before-a-marker`); `store upgrade-profile
+  --history-marker required` does, and `fn-hmr-upgrade-verdict` grants it
+  only when the marker is present and counts exactly the reconstructed
+  history (`history-marker-not-covering` otherwise). The command opens the
+  store first, and that open writes the covering marker, so a migration is
+  the two-step: the marker program, then the profile program
+  (`fn-hmr-legacy-store-migrates-by-the-two-step`,
+  `fn-hmr-requirement-follows-a-covering-marker`). The upgrade relation
+  lets the field rise and never fall (`not-an-upgrade history-marker`), so a
+  required store never admits an absent marker, whatever follows
+  (`fn-hmr-required-store-never-admits-an-absent-marker`).
+- **The recovery catch-up (D31 case 2).** A record can be durable while its
+  marker is not: the process died between the record's barrier and the
+  marker's. The next open finds the record, and a retry of that submission
+  is then answered as already stored (NNTP 441 with the duplicate text, the
+  developer `duplicate`, BP `:duplicate`) with no later commit to advance
+  the marker. The catch-up point is recovery: after `fnn-recover`'s fifth
+  barrier (so the reconstructed records are durable) and its staging sweep,
+  and before the open returns, a writable open writes `fn-hmr-catch-up`'s
+  frame, the reconstructed count, through `fnn-mark-committed`: the same
+  program and cuts (selectable on `recover` as
+  `FN_NATIVE_RECOVERY_FAULT=CUT:kill|eio`, and on `store upgrade-profile` as
+  `FN_NATIVE_PROFILE_FAULT`). An error there is uncertain (exit 3) and the
+  next open catches up again. A reader under the shared lock writes nothing
+  and answers no submission. Proved over the history model of commits,
+  opens, resolutions and migrations: `fn-hmr-step-preserves-the-invariant`
+  (the open admits, A <= M, and a live process's marker equals D) and
+  `fn-hmr-open-refuses-below-every-answered-record` (an open that finds
+  fewer records than the newest one answered as stored, by a 240 or by a
+  resolution, is refused naming the marker).
+- Not detected: losing the marker together with the files it covers in an
+  `unmarked` store (reads as `:unmarked`); an unacknowledged record that
+  survived above the marker and was never answered (`fnn-publish`
+  uncertain, or a crash before the marker's rename, with no open since);
+  replacing the whole store with an older valid copy, which needs a
+  freshness anchor (D14); the configuration history and the BP stores. A
+  shared-lock reader may serve a record above the marker until the next
+  writable open.
 
 ### Chained packs (not implemented)
 

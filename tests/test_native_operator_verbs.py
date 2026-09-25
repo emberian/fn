@@ -573,7 +573,8 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         for line in status.stdout.decode("ascii").splitlines():
             if line.startswith("profile "):
-                return {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
+                return {k: int(v) if v.isdigit() else v
+                        for k, v in (w.split("=", 1) for w in line.split()[1:])}
         self.fail(status.stdout.decode())
 
     def test_init_writes_the_operators_fields_and_status_prints_them(self):

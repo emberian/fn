@@ -3122,8 +3122,8 @@
     },
     {
       "id": "PRF-076",
-      "title": "M5 committed-history boundary: no reachable history is refused, and a lost suffix containing an acknowledged record is refused by name",
-      "statement": "Over the host-called decisions fn-hm-after-commit (what the marker holds after the record of SEQUENCE: the FNSM kind-3 frame of SEQUENCE+1, host/native/io.lisp fnn-mark-committed) and fn-hm-open-verdict (the open's check, io.lisp fnn-check-history-marker called by fnn-recover with the reconstructed record count), and the history step fn-hm-step: burned reservations, uncertain publications that did or did not survive, and commits whose marker program crashed at any cut, with a crash table in which the marker is old before the rename, old or new after it, and new after the root barrier. fn-hm-run-keeps-every-open-admitted: from an admitted state, every such history with its count within uint32 is admitted. fn-hm-open-refuses-a-lost-acknowledged-record: after a commit whose marker program completed at a natural count C, followed by any history within uint32, an open that observes K <= C records is (:refused :history-short-of-marker M), where M is the marker's count. fn-hm-decode-of-encode: the marker codec round-trips every uint32.",
+      "title": "M5 committed-history boundary: no reachable history is refused, a lost suffix containing an acknowledged or resolved record is refused by name, and a required store refuses an absent marker",
+      "statement": "Over the host-called decisions fn-hm-after-commit (what the marker holds after the record of SEQUENCE: the FNSM kind-3 frame of SEQUENCE+1, host/native/io.lisp fnn-mark-committed) and fn-hm-open-verdict (the open's check, io.lisp fnn-check-history-marker called by fnn-recover with the reconstructed record count), and the history step fn-hm-step: burned reservations, uncertain publications that did or did not survive, and commits whose marker program crashed at any cut, with a crash table in which the marker is old before the rename, old or new after it, and new after the root barrier. fn-hm-run-keeps-every-open-admitted: from an admitted state, every such history with its count within uint32 is admitted. fn-hm-open-refuses-a-lost-acknowledged-record: after a commit whose marker program completed at a natural count C, followed by any history within uint32, an open that observes K <= C records is (:refused :history-short-of-marker M), where M is the marker's count. fn-hm-decode-of-encode: the marker codec round-trips every uint32. D31 (books/store-history-required.lisp), over the host-called decisions fn-hmr-open-verdict and fn-hmr-catch-up (io.lisp fnn-check-history-marker, the catch-up written by fnn-recover through fnn-mark-committed) and fn-hmr-upgrade-verdict (io.lisp fnn-command-upgrade-profile), and the history step fn-hmr-step over (D marker A profile live): burns, uncertain publications, commits in a live process crashed at any marker cut or finished (A covers the record), opens whose catch-up crashed at any cut or completed (live only then), resolutions of a held record in a live process (A covers it), and migrations whose profile crash image is old or new. fn-hmr-step-preserves-the-invariant (the model lemma the next rests on; not a registry event): the open admits, A <= M, and a live process's marker counts D. fn-hmr-open-refuses-below-every-answered-record: after any history from an invariant state, an open observing K < A records (K natural) is (:refused :history-short-of-marker M). fn-hmr-required-store-never-admits-an-absent-marker: from a required profile, after any history, an absent marker at any natural count is (:refused :marker-missing). fn-hmr-requirement-follows-a-covering-marker: a step that makes an unmarked profile required is a migration in a live process over a marker counting D, and leaves the marker. fn-hmr-legacy-store-migrates-by-the-two-step: from an unmarked store no process holds, two steps reach required only as an open (the catch-up) then a migration, over the covering marker.",
       "milestone": "M5",
       "requirements": [
         "STO-009"
@@ -3143,7 +3143,11 @@
         "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
         "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
-        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md",
+        "books/store-history-required.lisp",
+        "tests/acl2/store-history-required-tests.lisp",
+        "tests/test_native_history_required.py",
+        "planning/evidence/marker-required-2026-09-25.md"
       ],
       "progress_note": "Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
       "events": [
@@ -3151,7 +3155,11 @@
         "fn-hm-open-refuses-a-lost-acknowledged-record",
         "fn-hm-decode-of-encode",
         "fn-bs-marker-crash-is-the-history-table",
-        "fn-bs-marker-crash-open-stays-admitted"
+        "fn-bs-marker-crash-open-stays-admitted",
+        "fn-hmr-open-refuses-below-every-answered-record",
+        "fn-hmr-required-store-never-admits-an-absent-marker",
+        "fn-hmr-requirement-follows-a-covering-marker",
+        "fn-hmr-legacy-store-migrates-by-the-two-step"
       ]
     },
     {

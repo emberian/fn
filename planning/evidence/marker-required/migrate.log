@@ -1,0 +1,104 @@
+## images
+7a124c6f70e072dbd0a8ade9b29b756bbdad8b821dc801c1f234826b242a9ec8  /tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host.core
+b22251d8db73ba46ca77ef8c075ad1d83985ab544183265f413a1faa8039e41e  /tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host-developer.core
+6b65a57c3a26ddf65749f4e85181091a0639817a02a8cf2dab382e867d88ebe5  /tank/fn/scratch/marker-required/src/build/fn-host-developer.core
+4005d947379b6b48e77c7c046e7713e96bb2f354e90d9b6dae79c400728fbba1  /tank/fn/scratch/marker-required/src/build/fn-host.core
+## 1. the deployed kind of store: c3420013 production, init, three posts through its owner
+initialized /tank/fn/scratch/marker-required/migrate/orig/store
+init rc=0
+owner old pid=2972750 CONTROL /tank/fn/scratch/marker-required/migrate/orig/control.sock
+accepted operator post ACCEPTED
+post 1 rc=0
+accepted operator post ACCEPTED
+post 2 rc=0
+accepted operator post ACCEPTED
+post 3 rc=0
+owner exit 0
+transactions: 3
+marker: sha256 7ae1647f5c3d42a5 octets 43
+config: sha256 dcbd90d34e72bd72
+accepted operator status
+headroom transactions-used=3 transactions-budget=128 charge-reserved=6 charge-capacity=1048576
+## 2. copy; the new image reads it as format 7, unmarked
+accepted operator status
+profile format=7 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+headroom transactions-used=3 transactions-budget=128 bytes-used=1812 history-bound=25165824 charge-reserved=6 charge-capacity=1048576
+## 3. migrate: store upgrade-profile --history-marker required
+upgraded profile=current transactions-used=3 transactions-budget=128 previous-budget=128
+profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+accepted operator upgrade-profile
+upgrade rc=0
+transactions: 3
+marker: sha256 7ae1647f5c3d42a5 octets 43
+config: sha256 8801e094d58ee349
+accepted operator status
+profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+headroom transactions-used=3 transactions-budget=128 bytes-used=1812 history-bound=25165824 charge-reserved=6 charge-capacity=1048576
+recovered transactions=3 articles=3 staging-orphans=0 anchor=none checkpoint=none
+open=full-replay reason=absent
+reopen rc=0
+## 3a. a downgrade is refused
+refused operator upgrade-profile store profile upgrade refused: not-an-upgrade history-marker
+downgrade rc=1
+## 3b. the old image cannot open the migrated store (no rollback in place: restore the copy)
+store: ACL2 rejected durable configuration frame
+c3420013 open of migrated rc=4
+## 4. the served owner of the new production image serves the migrated store
+owner newprod pid=2972957 CONTROL /tank/fn/scratch/marker-required/migrate/copy/control.sock
+accepted operator post ACCEPTED
+post 4 rc=0
+owner exit 0
+transactions: 4
+marker: sha256 652649b93c33d7db octets 43
+config: sha256 8801e094d58ee349
+## 5. the newest transaction file deleted: damage
+deleting transactions/00000000000000000003.txn
+store: committed history refused at open: history-short-of-marker marker=4 records=3
+open after loss rc=4
+store: committed history refused at open: history-short-of-marker marker=4 records=3
+production open after loss rc=4
+## 6. the marker deleted: damage, not legacy
+store: committed history refused at open: marker-missing records=4
+open without marker rc=4
+## 6a. contrast: the unmigrated copy with its marker deleted opens (legacy) and the open writes it
+recovered transactions=3 articles=3 staging-orphans=0 anchor=none checkpoint=none
+open=full-replay reason=absent
+legacy open rc=0
+transactions: 3
+marker: sha256 7ae1647f5c3d42a5 octets 43
+config: sha256 dcbd90d34e72bd72
+## 7. a c3420013 store whose marker is behind (developer image, killed at marker-created)
+initialized /tank/fn/scratch/marker-required/migrate/behind/store
+owner old pid=2973090 CONTROL /tank/fn/scratch/marker-required/migrate/behind/control.sock
+accepted operator post ACCEPTED
+post 1 rc=0
+accepted operator post ACCEPTED
+post 2 rc=0
+owner exit 0
+Killed
+killed post rc=137
+transactions: 3
+marker: sha256 7451831e2e86ba96 octets 43
+config: sha256 dcbd90d34e72bd72
+upgraded profile=current transactions-used=3 transactions-budget=128 previous-budget=128
+profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+accepted operator upgrade-profile
+upgrade rc=0
+transactions: 3
+marker: sha256 7ae1647f5c3d42a5 octets 43
+config: sha256 8801e094d58ee349
+accepted operator status
+profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+headroom transactions-used=3 transactions-budget=128 bytes-used=1648 history-bound=25165824 charge-reserved=6 charge-capacity=1048576
+duplicate
+retry rc=0
+store: committed history refused at open: history-short-of-marker marker=3 records=2
+open after loss rc=4
+## 8. the originals are untouched
+transactions: 3
+marker: sha256 7ae1647f5c3d42a5 octets 43
+config: sha256 dcbd90d34e72bd72
+transactions: 3
+marker: sha256 7451831e2e86ba96 octets 43
+config: sha256 dcbd90d34e72bd72
+MIGRATE-DONE
