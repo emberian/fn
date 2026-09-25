@@ -6,6 +6,7 @@
 ; still to come.  Split after the first event, the checkpoint open equals
 ; the full open, and the full open succeeds.
 (in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/store-checkpoint-open")
 (include-book "../../books/store-checkpoint-codec")
 
@@ -111,31 +112,33 @@
 ; through segments of 64 octets, and the segment chain refuses reorder,
 ; truncation, splice and a corrupt octet.
 
-(defconst *sco-t-segments* (fn-scc-segments *sco-t-capture* 64))
+; The segment trailer is fn-frame-trailer, which evaluates under its SHA-256
+; attachment only outside defconst, so the segments are a macro.
+(defmacro sco-t-segments () '(fn-scc-segments *sco-t-capture* 64))
 (assert-event (fn-scc-treep *sco-t-capture*))
-(assert-event (< 2 (len *sco-t-segments*)))
-(assert-event (equal (fn-scc-decode-segments *sco-t-segments*)
+(assert-event (< 2 (len (sco-t-segments))))
+(assert-event (equal (fn-scc-decode-segments (sco-t-segments))
                      (list :ok *sco-t-capture*)))
 (assert-event (equal (fn-scc-file-octets *sco-t-capture* 64)
-                     (fn-scc-concat *sco-t-segments*)))
-(assert-event (equal (fn-scc-segment-extent (take 37 (car *sco-t-segments*)))
-                     (len (car *sco-t-segments*))))
+                     (fn-scc-concat (sco-t-segments))))
+(assert-event (equal (fn-scc-segment-extent (take 37 (car (sco-t-segments))))
+                     (len (car (sco-t-segments)))))
 (assert-event (not (equal (car (fn-scc-decode-segments
-                                (list* (cadr *sco-t-segments*) (car *sco-t-segments*)
-                                       (cddr *sco-t-segments*))))
+                                (list* (cadr (sco-t-segments)) (car (sco-t-segments))
+                                       (cddr (sco-t-segments)))))
                           :ok)))
-(assert-event (not (equal (car (fn-scc-decode-segments (butlast *sco-t-segments* 1)))
+(assert-event (not (equal (car (fn-scc-decode-segments (butlast (sco-t-segments) 1)))
                           :ok)))
-(defconst *sco-t-other-segments*
-  (fn-scc-segments (fn-sco-capture *sco-t-configs* *sco-t-events*) 64))
+(defmacro sco-t-other-segments ()
+  '(fn-scc-segments (fn-sco-capture *sco-t-configs* *sco-t-events*) 64))
 (assert-event (not (equal (car (fn-scc-decode-segments
-                                (cons (car *sco-t-segments*)
-                                      (cdr *sco-t-other-segments*))))
+                                (cons (car (sco-t-segments))
+                                      (cdr (sco-t-other-segments)))))
                           :ok)))
 (assert-event (not (equal (car (fn-scc-decode-segments
-                                (cons (update-nth 40 (mod (+ 1 (nth 40 (car *sco-t-segments*))) 256)
-                                                  (car *sco-t-segments*))
-                                      (cdr *sco-t-segments*))))
+                                (cons (update-nth 40 (mod (+ 1 (nth 40 (car (sco-t-segments)))) 256)
+                                                  (car (sco-t-segments)))
+                                      (cdr (sco-t-segments)))))
                           :ok)))
 ; fn-scc-decode-segments-of-segments: a value outside the tree universe is
 ; not encoded.
