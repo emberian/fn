@@ -3,7 +3,7 @@
 Dev lane `lane/peer-carriage` from `534a68d3`, theorems 4 and 5 of the
 peering spike record (`spike/mega:planning/evidence/spike-peering-2026-09-25.md`),
 re-implemented in `:logic` mode with verified guards; no `;; SPIKE` marks,
-no host sidecar. Requirement NNT-012, scenario SCN-050.
+no host sidecar. Requirement NNT-015, scenario SCN-054.
 
 ## What changed in behaviour
 

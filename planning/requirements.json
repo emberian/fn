@@ -1988,7 +1988,7 @@
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
     },
     {
-      "id": "NNT-012",
+      "id": "NNT-015",
       "title": "Opaque carriage is admitted only within the boundary's budget, and a present carrier's transit refusal names its class",
       "specification": "specs/peering.md#123-the-opaque-carriage-budget-and-the-refusal-classes",
       "milestone": "M3",

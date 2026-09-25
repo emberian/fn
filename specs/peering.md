@@ -225,7 +225,7 @@ carrier). None is `verified`, and a present carrier is never the unsigned
 arm (`fn-pcb-present-carrier-not-accepted-has-a-class`). The class is the
 transit refusal's log detail; the served POST keeps its own words.
 
-NNT-012: a boundary carries articles of principals this node has not
+NNT-015: a boundary carries articles of principals this node has not
 enrolled only within its operator-set charge and count budget, whose usage
 is the projection of the committed carried records, each exhaustion refused
 by name; and a present carrier refused on transit is named by exactly one of
