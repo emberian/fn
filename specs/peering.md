@@ -231,6 +231,33 @@ is the projection of the committed carried records, each exhaustion refused
 by name; and a present carrier refused on transit is named by exactly one of
 no-local-binding, unsupported-profile, signature-failed and malformed.
 
+#### 1.2.8 The NEWNEWS pull feed
+
+A peer this node cannot be dialled by (behind NAT) or a server that only
+answers readers (INN's nnrpd) is fed by pulling (RFC 3977 section 7.4). The
+row `(name "pull-interval" "" SECONDS)` of the peer's group, set by
+`fn operator CONFIG peer pull NAME SECONDS` (0 stops), makes the owner run a
+round every SECONDS against the peer's NNTP transport in the clear, asking
+for the peer's own inbound accept-groups (`fn-pull-plans`,
+books/peer-pull.lisp; a TLS transport is not pulled yet). A round is DATE,
+`NEWNEWS wildmat since GMT`, then for each listed Message-ID an IHAVE to
+this node on a logical transit connection of that peer (the served IHAVE,
+so the answer is the node's own), and ARTICLE from the peer only after a
+335, its octets forwarded as the IHAVE body. The cursor is
+`(peer since advances)`, journaled as FNPL frames in `<store>/pull/`
+(FNFD's envelope, phase machine and filename codec). It moves past a round
+only when every listed Message-ID drew 235, 435 or 437; a 436, a lost
+connection or a peer that cannot produce a listed article holds it
+(`fn-pull-close-advances-only-past-a-fully-answered-round`). A fresh
+cursor's first instant (one day before the owner's wall reading, local
+policy) is journaled before the round dials, no step changes the cursor,
+and the close journals exactly the cursor it moves to, so recovery after a
+crash anywhere in a round asks the dead round's NEWNEWS again
+(`fn-pull-recovery-asks-the-dead-rounds-newnews`). The schedule is
+`fn-sched-pull-*` in books/scheduler-peers.lisp.
+
+NNT-017: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,

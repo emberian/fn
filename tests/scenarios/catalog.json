@@ -1115,7 +1115,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -1622,6 +1622,28 @@
       "evidence": [
         "planning/evidence/checkpoint-cost-2026-09-25.md",
         "tests/acl2/owner-checkpoint-open-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-057",
+      "title": "a node behind NAT pulls from a second fn node and from INN by NEWNEWS, and a crash mid-round skips no id",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-017"
+      ],
+      "steps": [
+        "B adds peer A (reachable, inbound fn.*) and `peer pull A 30`; A holds two articles in fn.test.",
+        "A third article is held at A; B's round is killed after NEWNEWS and before its answers; B restarts.",
+        "B adds INN's nnrpd as a peer with `peer pull INN 30`; INN holds an article in fn.test."
+      ],
+      "expected": [
+        "B's next round lists both, stores both (235), and its FNPL cursor advances once; the next round answers 435 or lists nothing.",
+        "After restart B's first NEWNEWS names the same instant as the killed round's, and the third article is stored.",
+        "B stores INN's article (235) and its cursor for INN advances."
+      ],
+      "evidence": [
+        "planning/evidence/peer-pull-2026-09-25.md"
       ]
     }
   ]

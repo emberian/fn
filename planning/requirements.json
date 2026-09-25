@@ -203,7 +203,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1374,7 +1374,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1393,7 +1393,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -2211,6 +2211,26 @@
         "planning/evidence/checkpoint-cost-2026-09-25.md"
       ],
       "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
+    },
+    {
+      "id": "NNT-017",
+      "title": "A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-100"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "planning/evidence/peer-pull-2026-09-25.md"
+      ],
+      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 7.4 defines NEWNEWS; the ack-bounded cursor and its FNPL journal are fn's. `fn operator CONFIG peer pull NAME SECONDS` sets the interval row; the owner's pull worker (host/native/pull-service.lisp) offers each listed id on a logical transit connection of that peer, so the local answer is the served IHAVE's."
     }
   ]
 }
