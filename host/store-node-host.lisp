@@ -15,6 +15,11 @@
 (include-book "../books/store-budget")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
+; P3: open from an exact-state checkpoint.
+(include-book "../books/store-checkpoint-open")
+(include-book "../books/store-checkpoint-codec")
+; fn-bs-scp-program: the checkpoint file name is its rename target.
+(include-book "../books/byte-store-state-checkpoint-program")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-host.lisp defines, so a session that loads this file alone
@@ -184,6 +189,141 @@ reopen predicate, writer-lock observation and observed final namespace."
                        (state (f-put-global 'fn-store-cfg cfg state)))
                   (value :recovering))
               (value :fault))))))))
+
+;; ---------------------------------------------------------------------------
+;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
+;; books/store-checkpoint-codec.lisp).  The decoded checkpoint stays in the
+;; ACL2 global `fn-store-sco-checkpoint' from its decode to the open and the
+;; next publication; the host holds only its octets and the sequence S.
+
+(defun fn-store-sco-current (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-store-sco-checkpoint state)
+      (f-get-global 'fn-store-sco-checkpoint state)
+    nil))
+
+(defun fn-store-sco-clear (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
+    (value :cleared)))
+
+; SEGMENTS: each segment's octets, in file order, as the host's range reads
+; returned them (fnn-state-checkpoint-segments, host/native/checkpoint.lisp).
+(defun fn-store-sco-decode (segments state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((decoded (fn-scc-decode-segments segments)))
+    (if (and (consp decoded) (eq (car decoded) :ok) (consp (cdr decoded)))
+        (let ((state (f-put-global 'fn-store-sco-checkpoint (cadr decoded) state)))
+          (value (list :ok (fn-sco-sequence (cadr decoded)))))
+      (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
+        (value (list :refused (if (and (consp decoded) (consp (cdr decoded)))
+                                  (cadr decoded)
+                                :malformed)))))))
+
+; The checkpoint's file name: the rename target of the byte program
+; fn-bs-scp-program (step 6, (:rename :staging STAGE :root NAME)).
+(defun fn-store-sco-file-name ()
+  (declare (xargs :mode :program))
+  (nth 4 (nth 6 (fn-bs-scp-program ".stage-checkpoint" '(0)))))
+
+(defun fn-store-sco-segment-header-octets ()
+  (declare (xargs :mode :program))
+  *fn-scc-segment-header-octets*)
+
+; The most octets one range read of the checkpoint takes: one whole segment
+; written with segment size R, the profile's max-record-octets.
+(defun fn-store-sco-segment-read-bound (profile)
+  (declare (xargs :mode :program))
+  (fn-scc-segment-max-octets (fn-bs-profile-max-record-octets profile)))
+
+; The committed record count the open observed: the selected pack's
+; coverage LOWER, or one past the last ACL2-bound transaction sequence.
+(defun fn-store-sco-observed-count (sequences lower)
+  (declare (xargs :mode :program))
+  (let ((last-sequence (car (last sequences))))
+    (if (and (consp sequences) (natp last-sequence) (natp lower))
+        (max lower (+ 1 last-sequence))
+      (nfix lower))))
+
+; The open's choice (fn-sco-select) under the profile's K.
+(defun fn-store-sco-select (status sequence count profile)
+  (declare (xargs :mode :program))
+  (fn-sco-select status sequence count (fn-bs-profile-max-open-suffix profile)))
+
+; How many of the ACL2-bound transaction sequences (ascending, from
+; fn-store-txn-observation-selected) lie below S: the host drops exactly
+; those and reads the rest.  A wrong split cannot open: fn-sco-open runs
+; the history recognizer over the checkpoint's records and the suffix.
+(defun fn-store-sco-covered-count (sequences s)
+  (declare (xargs :mode :program))
+  (if (and (consp sequences) (natp (car sequences)) (natp s) (< (car sequences) s))
+      (+ 1 (fn-store-sco-covered-count (cdr sequences) s))
+    0))
+
+; The open from the decoded checkpoint and the suffix's octets.  It mirrors
+; fn-store-sn-recover line for line; the keystone
+; fn-sn-recover-from-checkpoint-equals-full-recover is about the fn-sco-open
+; call below.
+(defun fn-store-sn-recover-from-checkpoint (octet-records frontier config-octet-records state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((checkpoint (fn-store-sco-current state))
+        (records (fn-store-decode-records octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (null checkpoint) (equal records :bad) (equal config-records :bad)
+            (null config-records))
+        (value :fault)
+      (let ((replayed (fn-sco-replay-result checkpoint config-records records)))
+        (if (not (equal (fn-replay-result-kind replayed) :ok))
+            (value :fault)
+          (let* ((cn (fn-replay-result-node replayed))
+                 (cfg (fn-cnode-config cn))
+                 (opened (fn-sco-open checkpoint config-records frontier records)))
+            (if (and (fn-sn-open-okp opened)
+                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                            :recovering))
+                (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened)
+                                            state))
+                       (state (f-put-global 'fn-store-cfg cfg state)))
+                  (value :recovering))
+              (value :fault))))))))
+
+(defun fn-store-sco-encode-records (records)
+  (declare (xargs :mode :program))
+  (if (consp records)
+      (cons (fn-rcon-store-event-encode (car records))
+            (fn-store-sco-encode-records (cdr records)))
+    nil))
+
+; The covered prefix's record octets, for the callers of the host's open
+; that take the whole record list (pack publication, compaction, the
+; owner).  Each is the canonical encoding of a record the checkpoint holds
+; (fn-rcon-store-event-encode-is-store-event-encode, books/records-concrete).
+(defun fn-store-sco-prefix-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-sco-encode-records (fn-sco-records (fn-store-sco-current state)))))
+
+; The next checkpoint's file octets from the recovered Store: the open's
+; checkpoint extended over the records after it (fn-sco-extend), or, when
+; the open replayed in full, the capture of the whole history.  The answer
+; is (OCTETS S) or :unencodable.
+(defun fn-store-sco-publish-octets (segment-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (f-get-global 'fn-store-sn state))
+         (records (fn-sf-records (fn-sn-files st)))
+         (configs (fn-sn-config-history st))
+         (old (fn-store-sco-current state))
+         ; The open's checkpoint is extended only when it holds exactly the
+         ; recovered history's first S records (a linear comparison);
+         ; otherwise the whole history is captured.
+         (next (if (and old (<= (fn-sco-sequence old) (len records))
+                        (equal (fn-sco-records old)
+                               (take (fn-sco-sequence old) records)))
+                   (fn-sco-extend old configs (nthcdr (fn-sco-sequence old) records))
+                 (fn-sco-capture configs records)))
+         (octets (fn-scc-file-octets next segment-octets)))
+    (if (equal octets :unencodable)
+        (value :unencodable)
+      (value (list octets (fn-sco-sequence next))))))
 
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.
