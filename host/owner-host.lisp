@@ -593,7 +593,11 @@
 ;; (fn-ccar-own-finish-is-own-finish) under the same guard, fn-sn-statep of
 ;; the store, which the owner relation carries from open.  It finds the
 ;; completion record at its sequence position instead of searching the
-;; whole history through fn-record-p, ten times per commit.
+;; whole history through fn-record-p, ten times per commit.  Since
+;; books/records-concrete.lisp the record recognizer it executes is
+;; fn-rcon-record-p (fn-rcon-record-p-is-record-p: equal to fn-record-p on
+;; every input), which reads the record's strings in place instead of
+;; building their octet lists.
 (defun fn-owner-finish-submission (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((oc (fn-owner-ocfg state)))
