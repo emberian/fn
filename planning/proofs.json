@@ -3351,7 +3351,7 @@
     {
       "id": "PRF-081",
       "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
-      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover: for every authority plan0 that is not damaged and whose ordered received-final rows replay :ready, and the checkpoint ck1 of that replay at any generation for which fn-bpnr-checkpoint-octets produces octets, fn-bpnr-recover-auto-event (the event host/native/bp-service.lisp fnn-bps-open passes to fn-bpnp-step) over (fn-bpnr-selection-plan t octets budget) and any later rows equals the event over plan0 and the concatenated rows with field 5 (the row count) set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows equals the old authority's recovery with its row count 0. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19/20, the :quiesce event, cleanup of old generations and the empty new-generation premise are not modelled; the codec runs on octet lists (no D27 concrete twin); a reopened node's epoch is the rotating epoch (finding N16-F1).",
+      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused).",
       "milestone": "M4",
       "requirements": [
         "REP-005",
@@ -3378,14 +3378,20 @@
         "planning/evidence/n16-rotation-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T044200Z-2512543.json",
         "planning/evidence/manifests/certify-20260925T050242Z-2546955.json",
-        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
+        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json",
+        "books/bp-node-retire.lisp",
+        "tests/acl2/bp-node-retire-tests.lisp",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
       ],
-      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2.",
+      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests.",
       "events": [
         "fn-bpnr-recover-from-checkpoint-equals-full-recover",
         "fn-bpnr-rotation-crash-recovers-old-or-new",
         "fn-bpnr-checkpoint-decode-of-octets",
-        "fn-bpnr-family-replay-aux-append"
+        "fn-bpnr-family-replay-aux-append",
+        "fn-bpnp-rotate-step-proposes-only-own-projection",
+        "fn-bpnr-retirement-cut-keeps-open-view",
+        "fn-bpnr-retired-names-never-the-selected-directory"
       ]
     },
     {
