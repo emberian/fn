@@ -22,17 +22,31 @@
   '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault))
 (defconst *fn-nctrl-reply-spec* (list (cons :enum *fn-nctrl-statuses*)))
 
-; Article plus its blob head, Message-ID plus its text head, and the CBOR group
-; count/list.  The final slack is deliberately pessimistic and remains below
-; the generic frame ceiling.
-(defconst *fn-nctrl-max-groups-octets*
-  (+ 5 (* 131 *fn-record-max-groups*)))
+; The FNCT request payload at its field widths (`*fn-nctrl-request-spec*'):
+; the article blob, the Message-ID text and the CBOR group list blob, each
+; with its length head.  These are the FNCT codec's widths, not the article
+; bound: the owner applies the profile's article bound to the decoded article,
+; as every served path does.  The article field is a frame blob, so the
+; control socket carries at most `*fn-frame-max-blob*' octets of article
+; whatever the profile allows (design 2026-09-25-bounds §2.3 row "Frame
+; :blob", open: a per-schema blob width).  This is also the work bound of one
+; control read: the owner reads at most this frame from a client.
 (defconst *fn-nctrl-max-payload*
-  (+ 4 *fn-article-max-octets*
+  (+ 4 *fn-frame-max-blob*
      2 *fn-frame-max-text*
-     4 *fn-nctrl-max-groups-octets*))
+     4 *fn-frame-max-blob*))
 (defconst *fn-nctrl-max-frame*
   (+ *fn-frame-overhead-octets* *fn-nctrl-max-payload*))
+; The article parser's ceiling is the record codec's payload ceiling: an
+; article the parser can accept is a payload the record can carry.
+(defthm fn-nctrl-article-ceiling-is-the-record-payload-ceiling
+  (equal *fn-article-max-octets* *fn-record-max-payload*)
+  :rule-classes nil)
+
+(defthm fn-nctrl-max-frame-within-frame-width
+  (<= *fn-nctrl-max-payload* *fn-frame-max-payload*)
+  :rule-classes nil)
+; Work bound: concurrent control clients the owner serves.
 (defconst *fn-nctrl-max-active-clients* 16)
 (defconst *fn-nctrl-lease-suffix* '(46 108 111 99 107)) ; .lock
 (defconst *fn-nctrl-max-lease-path* (+ *fn-ncfg-max-path* 5))

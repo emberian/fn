@@ -170,7 +170,8 @@
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* '(97) 10 1 9)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* -1 1 9)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 0 9)))
-(assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 17 9)))
+(assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10
+                                           (1+ *fn-record-max-groups*) 9)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 1 0)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 1 4294967296)))
 

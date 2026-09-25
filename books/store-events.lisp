@@ -15,14 +15,26 @@
 (defconst *fn-store-event-version* 0)
 (defconst *fn-store-event-undertake-code* 0)
 (defconst *fn-store-event-release-code* 1)
+; Node-generated: an undertake or release event is built by the node from
+; fixed-width fields (design 2026-09-25-bounds §1.2, kind N).
 (defconst *fn-store-event-max-octets* 4096)
+
+; The pre-reservation figure for an article record (below).  This is NOT the
+; record codec's width, which is now the u32 `*fn-record-max-octets*': an
+; article's worst-case record depends on the profile's article and group
+; bounds, `fn-record-encoded-octets-ceiling' (books/records-shape).  Until the
+; profile carries those bounds (design §2.1, packet P1), the figure stays the
+; one every persisted profile was admitted under, the pre-D27 record width
+; 65 538, so no existing profile's budget moves.  P1 replaces it with
+; (fn-record-encoded-octets-ceiling A G) of the profile.
+(defconst *fn-store-article-publication-figure* 65538)
 
 ; Pre-reservation callers know the event kind before its final bytes exist.
 ; This table is the ACL2-owned conservative payload presented to the persisted
 ; profile gate.  The final publication path separately checks actual bytes.
 (defun fn-store-publication-ceiling (kind)
   (declare (xargs :guard t))
-  (cond ((equal kind :article) *fn-record-max-octets*)
+  (cond ((equal kind :article) *fn-store-article-publication-figure*)
         ((or (equal kind :undertake) (equal kind :release))
          *fn-store-event-max-octets*)
         ((equal kind :statement-verdict) *fn-stxe-max-octets*)

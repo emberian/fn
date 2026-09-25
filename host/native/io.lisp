@@ -1507,7 +1507,10 @@ acknowledged without its marker."
 
 (defun fnn-durable-records (store &optional (selected-lower 0))
   (let ((records nil) (sequences nil) (aggregate 0)
-        (bound (+ (fnn-constant :overhead) (fnn-constant :max-store))))
+        ;; One bounded read per file, at the persisted profile's record
+        ;; ceiling plus the frame overhead (ACL2's figure,
+        ;; host/store-host.lisp `fn-store-profile-read-bound').
+        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
     (multiple-value-bind (files actual-lower)
         (fnn-transaction-files store selected-lower)
       (loop for (sequence . path) in files do
