@@ -810,6 +810,7 @@ round policy."
     (declare (ignore store sequences actual-lower)) records))
 (defvar *fnn-pack-lower-bound-callback*
   (lambda (store) (declare (ignore store)) 0))
+(defvar *fnn-pack-status-callback* nil)
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
@@ -2430,6 +2431,8 @@ retention ledger's reserved charge of its capacity."
          (progn (fnn-out "transactions=~d articles=~d ~a unsigned-legacy-experiment"
                          (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
                 (fnn-out-headroom store)
+                (when *fnn-pack-status-callback*
+                  (fnn-out "~a" (funcall *fnn-pack-status-callback* store)))
                 (fnn-out "~a" (fnn-open-report store))
                 +fnn-exit-ok+)
       (fnn-store-close store))))

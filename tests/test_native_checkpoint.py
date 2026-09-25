@@ -1141,19 +1141,21 @@ class NativeProductionCompactTests(unittest.TestCase):
         before_retention = self.native("store", store, "retention").stdout
         compacted = self.native("operator", config, "store", "compact")
         self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation=0 reclaimed={} retired=0".format(len(files), len(files)),
+                      "generation=0 links=1 reclaimed={} retired=0".format(len(files), len(files)),
                       compacted.stdout)
         self.assertIn("accepted operator compact", compacted.stderr)
         self.assertEqual(self.transaction_bytes(store), {})
         self.assert_view_kept_and_next_number(store, config, port, msgids,
                                               before, before_retention, name)
         # The post after the first compaction is the new suffix: a second
-        # compaction packs all six, reclaims it and retires generation 0.
+        # compaction packs only that suffix into a second link of the chain
+        # (P5), reclaims it and retires nothing: generation 0 is the chain's
+        # first link.
         suffix = len(self.transaction_bytes(store))
         self.assertGreaterEqual(suffix, 1)
         again = self.native("operator", config, "store", "compact")
         self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation=1 reclaimed={} retired=1".format(len(files) + suffix, suffix),
+                      "generation=1 links=1 reclaimed={} retired=0".format(len(files) + suffix, suffix),
                       again.stdout)
         self.assertEqual(self.transaction_bytes(store), {})
         refused = self.native("operator", config, "store", "compact", expected=1)
