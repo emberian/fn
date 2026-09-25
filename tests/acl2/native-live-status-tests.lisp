@@ -221,3 +221,156 @@ obli")))
                             (fn-nls-reply fn-nls-reply-encode fn-nls-reply-decode
                              fn-frame-trailer take nthcdr fn-cbor-encode
                              fn-record-item-encode))))))
+
+; ---------------------------------------------------------------------------
+; The words the operator's values need (PKT-156), the checkpoint file
+; (PKT-150) and the open cost (PKT-105).
+
+(defun nlst-prefixp (x y)
+  (declare (xargs :guard t))
+  (cond ((atom x) t)
+        ((atom y) nil)
+        (t (and (equal (car x) (car y)) (nlst-prefixp (cdr x) (cdr y))))))
+(defun nlst-infixp (x y)
+  (declare (xargs :guard t))
+  (cond ((nlst-prefixp x y) t)
+        ((atom y) nil)
+        (t (nlst-infixp x (cdr y)))))
+
+; 2^40 is thirteen digits; the NNTP field renderer answers 0 for it.
+(assert-event (equal (fn-nls-nat (expt 2 40))
+                     (fn-record-string-octets "1099511627776")))
+(assert-event (equal (fn-nntp-decimal-field (expt 2 40)) '(48)))
+(assert-event (equal (fn-nls-nat 0) '(48)))
+; The profile's history requirement is a word.
+(assert-event (equal (fn-nls-field "history-marker" "unmarked")
+                     (fn-record-string-octets " history-marker=unmarked")))
+(defconst *nlst-big-profile*
+  (update-nth 3 (expt 2 40) (fn-bs-config-for-profile :development)))
+(assert-event (equal (fn-bs-profile-max-history-octets *nlst-big-profile*)
+                     (expt 2 40)))
+(defun nlst-status (profile obs)
+  (declare (xargs :verify-guards nil))
+  (fn-nls-offline-report :status profile *nlst-s* (fn-ocfg-config *nlst-oc*) obs))
+(assert-event
+ (nlst-infixp (fn-record-string-octets " max-history-octets=1099511627776")
+              (nlst-status *nlst-big-profile* *nlst-obs*)))
+(assert-event
+ (nlst-infixp (fn-record-string-octets " history-marker=")
+              (nlst-status *nlst-profile* *nlst-obs*)))
+(assert-event
+ (not (nlst-infixp (fn-record-string-octets " history-marker=0")
+                   (nlst-status *nlst-profile* *nlst-obs*))))
+
+; The checkpoint file the host observed, and its absence.
+(defconst *nlst-file-obs* '(nil nil (:checkpoint 3 2) (4096 1790000000)))
+(assert-event
+ (nlst-infixp (fn-record-string-octets "
+checkpoint-file octets=4096 modified=1790000000
+pins=")
+              (nlst-status *nlst-profile* *nlst-file-obs*)))
+(assert-event
+ (nlst-infixp (fn-record-string-octets "
+checkpoint-file=absent
+pins=")
+              (nlst-status *nlst-profile* *nlst-obs*)))
+; Live equals offline with the file observed (the keystone's instance).
+(assert-event
+ (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-file-obs*)
+        (nlst-status *nlst-profile* *nlst-file-obs*)))
+
+; The pessimistic open cost: every record replayed, 32 octets of list per
+; octet of the history bound.
+(assert-event
+ (nlst-infixp (append (fn-record-string-octets "
+open-cost replay-records=")
+                      (fn-nls-nat (fn-bs-profile-max-transactions *nlst-big-profile*))
+                      (fn-record-string-octets " list-memory-octets=35184372088832
+"))
+              (nlst-status *nlst-big-profile* *nlst-obs*)))
+(assert-event (posp (fn-bs-profile-max-transactions *nlst-big-profile*)))
+
+; ---------------------------------------------------------------------------
+; The buffered page (PKT-145)
+
+; fn-nls-page-of-buffer-is-reply has no hypothesis: witnesses only, a
+; report, a page past the first, and a refused one.
+(assert-event (equal (fn-nls-page (fn-nls-buffer (nlst-report)) 0)
+                     (fn-nls-reply (nlst-report) 0)))
+(assert-event (equal (fn-nls-page (fn-nls-buffer *nlst-long*) *fn-nls-chunk-octets*)
+                     (fn-nls-reply *nlst-long* *fn-nls-chunk-octets*)))
+(assert-event (equal (fn-nls-page (fn-nls-buffer '(256)) 0)
+                     (fn-nls-reply-encode :refused 0 nil nil)))
+; Two pages from one buffer join to the report.
+(assert-event
+ (let* ((buffer (fn-nls-buffer *nlst-long*))
+        (first (fn-nls-client-step nil nil nil (fn-nls-page buffer 0))))
+   (and (equal (car first) :next)
+        (equal (fn-nls-client-step (second first) (third first) (fourth first)
+                                   (fn-nls-page buffer *fn-nls-chunk-octets*))
+               (list :done *nlst-long*)))))
+
+; fn-nls-client-step-of-owner-page, each hypothesis dropped.
+(must-fail
+ (defthm nlst-page-step-without-octets
+   (equal (fn-nls-client-step nil nil nil (fn-nls-page (fn-nls-buffer '(256)) 0))
+          (list :done '(256)))
+   :rule-classes nil))
+(assert-event (equal (fn-nls-client-step '(1) 2 (fn-frame-trailer '(2 3))
+                                         (fn-nls-page (fn-nls-buffer '(2 3)) 1))
+                     '(:done (1 3))))
+(must-fail
+ (defthm nlst-page-step-without-prefix
+   (equal (fn-nls-client-step '(1) 2 (fn-frame-trailer '(2 3))
+                              (fn-nls-page (fn-nls-buffer '(2 3)) 1))
+          (list :done '(2 3)))
+   :rule-classes nil))
+(must-fail
+ (defthm nlst-page-step-without-length
+   (equal (fn-nls-client-step '(2 3 4) 2 (fn-frame-trailer '(2 3))
+                              (fn-nls-page (fn-nls-buffer '(2 3)) 3))
+          (list :done '(2 3)))
+   :rule-classes nil))
+(assert-event
+ (equal (fn-nls-client-step '(2) 5 (fn-frame-trailer '(2 3))
+                            (fn-nls-page (fn-nls-buffer '(2 3)) 1))
+        '(:restart)))
+(must-fail
+ (defthm nlst-page-step-without-same-report
+   (equal (fn-nls-client-step '(2) 5 (fn-frame-trailer '(2 3))
+                              (fn-nls-page (fn-nls-buffer '(2 3)) 1))
+          (list :done '(2 3)))
+   :rule-classes nil))
+(must-fail
+ (defthm nlst-page-step-without-uint32-total
+   (implies (and (fn-cbor-octet-listp report)
+                 (<= (len acc) (len report))
+                 (equal acc (take (len acc) report))
+                 (not (consp acc)))
+            (equal (fn-nls-client-step acc total digest
+                                       (fn-nls-page (fn-nls-buffer report) (len acc)))
+                   (if (<= (len report) (+ (len acc) *fn-nls-chunk-octets*))
+                       (list :done report)
+                     (list :next (take (+ (len acc) *fn-nls-chunk-octets*) report)
+                           (len report) (fn-frame-trailer report)))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-nls-page-of-buffer-is-reply (off (len acc))))
+            :do-not-induct t
+            :in-theory (e/d (fn-nls-client-step fn-nls-page-width fn-record-uint32p)
+                            (fn-nls-page fn-nls-buffer fn-nls-page-of-buffer-is-reply
+                             fn-nls-reply fn-nls-reply-encode fn-nls-reply-decode
+                             fn-frame-trailer take nthcdr fn-cbor-encode
+                             fn-record-item-encode))))))
+
+; fn-nls-cached-buffer-of-put: a later page reads the stored buffer; a
+; request from offset 0 renders anew.
+(assert-event (equal (fn-nls-cached-buffer :status 1
+                                           (fn-nls-cache-put :status (fn-nls-buffer '(2 3))
+                                                             (list (cons :pins :other))))
+                     (fn-nls-buffer '(2 3))))
+(assert-event (equal (fn-nls-cached-buffer :status 0 (fn-nls-cache-put :status :b nil))
+                     nil))
+(must-fail
+ (defthm nlst-cached-buffer-without-positive-offset
+   (equal (fn-nls-cached-buffer :status 0 (fn-nls-cache-put :status :b nil)) :b)
+   :rule-classes nil))
