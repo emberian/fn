@@ -413,7 +413,11 @@ witness written after the commit:
 STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs
 
 Status: decision, tombstone and served projection proved (PRF-088); the
-durable `store reclaim` verb is not implemented.
+host asks the tombstone-aware D25 verdict at every site; OVER, XOVER and
+NEWNEWS drop a reclaimed article; `status` prints the rule and the
+reclaimable, held and reclaimed counts. The durable `store reclaim` verb is
+not implemented: the K0 byte model has no step that replaces a committed
+transaction's content (planning/evidence/reclaim-host-2026-09-25.md).
 
 **The rule** is the operator's, set through the ordinary reconfiguration
 record: `admin retention set keep-forever | released-by-all-holders |
