@@ -3384,7 +3384,11 @@
         "books/native-admin.lisp",
         "tests/acl2/control-authority-tests.lisp",
         "tests/test_native_control_authority.py",
-        "planning/evidence/control-c2c3-2026-09-25.md"
+        "planning/evidence/control-c2c3-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T082521Z-2581698.json",
+        "planning/evidence/manifests/certify-20260925T083017Z-2909342.json",
+        "planning/evidence/manifests/certify-20260925T084055Z-2729130.json",
+        "planning/evidence/manifests/certify-20260925T084210Z-2938760.json"
       ],
       "progress_note": "Lane control-c2c3 (2026-09-25), packets C2 and C3 of planning/design-2026-09-25-control-messages.md under D29. Teeth in tests/acl2/control-authority-tests.lisp: per keystone a reachable witness asserting antecedent and conclusion, and per hypothesis a removal witness (the carried verdict; the cross-post outside the grant; the wrong principal; the revoke before the cancel; the view pinned before the cancel; the early cancel). The two reconfiguration headlines (fn-ocl-no-reader-observes-a-half-change, fn-ocl-crash-at-any-instant-recovers-the-live-generation) are universally quantified over delta lists and were recertified with the new slot and kinds. Open: the served view (K1 restated over fn-ctl-visible-articles at fn-own-refresh), signed control filing, the host's commit-time call, Supersedes."
     }
