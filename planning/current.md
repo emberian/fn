@@ -38,7 +38,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **protected channel.** A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1419, equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:173).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1445, equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:173).
 - Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:520; PRF-031 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix and native modules, production and developer; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -50,7 +50,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **240 after a consumed completion.** After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.
 
-- Host-called subject: `fn-ccar-own-finish` at host/owner-host.lisp:606, equated by `fn-ccar-own-finish-is-own-finish` (books/owner-commit-carried.lisp:303).
+- Host-called subject: `fn-ccar-own-finish` at host/owner-host.lisp:607, equated by `fn-ccar-own-finish-is-own-finish` (books/owner-commit-carried.lisp:303).
 - Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:135; PRF-015 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile developer twin for the cuts, production for the kill run; changed since it: `books/owner-commit-carried.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `books/owner-commit-carried.lisp`, `host/owner-host.lisp`.
@@ -62,7 +62,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **reading resumes.** A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1419, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1445, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
 - Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:279; PRF-002 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix and native modules; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -74,7 +74,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **one owner decides duplicate versus conflict.** A resubmission with the same poster bytes (the octets without Path, Xref, Injection-Date, Injection-Info and a node-generated Date) is answered already stored; different poster bytes under the same Message-ID are a conflict.
 
-- Host-called subject: `fn-pb-existing-action` at host/owner-host.lisp:364, equated by `fn-pb-existing-action-refines-the-byte-identity-decision` (books/poster-bytes-invariants.lisp:227).
+- Host-called subject: `fn-pb-existing-action` at host/owner-host.lisp:365, equated by `fn-pb-existing-action-refines-the-byte-identity-decision` (books/poster-bytes-invariants.lisp:227).
 - Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:266; in no registry row); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: lane image of `9cb82454` ([d25-dup-conflict-2026-09-24](evidence/d25-dup-conflict-2026-09-24.md)), profile the matrix postcycle phase against one owner; not a shared qualification.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -86,7 +86,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **a connection-local fault costs one connection.** A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.
 
-- Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:1452.
+- Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:1478.
 - Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:327; PRF-040 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native modules, image's own tests; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -98,7 +98,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
-- Host-called subject: `fn-ocl-publish` at host/owner-host.lisp:324.
+- Host-called subject: `fn-ocl-publish` at host/owner-host.lisp:325.
 - Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix and native modules; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -110,7 +110,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **two nodes exchange both ways.** An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.
 
-- Host-called subject: `fn-own-submission-intent-records` at host/owner-host.lisp:1017, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
+- Host-called subject: `fn-icar-submission-intent` at host/owner-host.lisp:1036, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
 - Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:63; PRF-029 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile two-node native-operator matrix with INN; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -122,7 +122,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **signature verdict visible.** A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1419, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1445, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
 - Keystone: `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` (books/owner-verdict-read.lisp:416; PRF-026 (planned)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native modules, developer and production; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -134,7 +134,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **keep until release, refuse the unaffordable.** An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.
 
-- Host-called subject: `fn-pcar-sbud-prepare` at host/owner-host.lisp:392, equated by `fn-pcar-sbud-prepare-is-sbud-prepare` (books/owner-prepare-carried.lisp:216).
+- Host-called subject: `fn-pcar-sbud-prepare` at host/owner-host.lisp:393, equated by `fn-pcar-sbud-prepare-is-sbud-prepare` (books/owner-prepare-carried.lisp:216).
 - Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix, operator verbs, kill run; changed since it: `books/owner-prepare-carried.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `books/owner-prepare-carried.lisp`, `host/owner-host.lisp`.
@@ -146,7 +146,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **every cut is a model crash point.** Every recovery cut coordinate, from every crash image of a related state, reopens to a kernel related to the recovered model state.
 
-- Host-called subject: `fn-cpo-open-observed` at host/owner-host.lisp:193, equated by `fn-bs-host-reopened-kernel-is-the-recovered-kernel` (books/byte-store-k0-recovery.lisp:544).
+- Host-called subject: `fn-cpo-open-observed` at host/owner-host.lisp:194, equated by `fn-bs-host-reopened-kernel-is-the-recovered-kernel` (books/byte-store-k0-recovery.lisp:544).
 - Keystone: `fn-bs-recover-program-keeps-relation-at-every-cut` (books/byte-store-k0-recovery.lisp:469; PRF-041 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile developer twin for the cuts, production refuses selectors; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
@@ -194,7 +194,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the human client.** LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1419, equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants.lisp:1492).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1445, equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants.lisp:1492).
 - Keystone: `fn-served-step-list-counts-is-the-archive-counts` (books/owner-list-counts-read.lisp:165; PRF-074 (in-progress)); certified at the current source and closure by `certify-20260925T021807Z-3342179` (earliest archived).
 - Tested: lane image of `lane/m6-list-counts` ([m6-list-counts-2026-09-24](evidence/m6-list-counts-2026-09-24.md)), profile developer image of the lane branch; not a shared qualification.
 - Deployed: no: node image `c3420013`; changed since it: `books/owner-invariants.lisp`, `host/owner-host.lisp`.
@@ -206,7 +206,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the Message-ID index on the served path.** A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1419, equated by `fn-ocfg-read-tls-prefix-is-full-read` (books/owner-tls-prefix.lisp:91).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1445, equated by `fn-ocfg-read-tls-prefix-is-full-read` (books/owner-tls-prefix.lisp:91).
 - Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:29; PRF-067 (in-progress)); certified at the current source and closure by `certify-20260925T004450Z-2510809` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native reader and peering modules; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.

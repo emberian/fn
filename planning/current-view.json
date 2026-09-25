@@ -178,7 +178,7 @@
       "name": "two nodes exchange both ways",
       "contract": "An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.",
       "host": {
-        "function": "fn-own-submission-intent-records",
+        "function": "fn-icar-submission-intent",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-own-submission-targets-are-feed-targets",
