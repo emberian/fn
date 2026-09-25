@@ -812,7 +812,26 @@ event. A carrier-absent article keeps the established legacy Store path.
 NNTP-TRANSIT-P is true only for NNTP transit: ACL2 then also consults the
 delivering boundary's carried-source list (D23) and, on its :carried arm,
 builds the carried kind-4 event, which names no enrollment and claims no
-verification."
+verification.
+
+First, for every ingress, ACL2's filing step (C1, fn-pa-filing-plan through
+fn-owner-control-filing): a control article's groups become exactly its
+control.<verb> filing group, or the attempt is refused with the plan's
+reason before any Store call.  An ordinary article's groups are unchanged."
+  (let ((filing (fnn-owner-core 'fn-owner-control-filing
+                                (fnn-octet-list payload)
+                                (mapcar #'fnn-octet-list groups))))
+    (unless (and (consp filing)
+                 (member (first filing) '(:file :refused))
+                 (consp (rest filing)))
+      (fnn-fault "owner returned malformed control filing ~a" filing))
+    (when (eq (first filing) :refused)
+      (return-from fnn-owner-attempt-transit
+        (fnn-owner-transit-refused filing)))
+    (unless (and (listp (second filing))
+                 (every #'fnn-octet-list-p (second filing)))
+      (fnn-fault "owner returned malformed filed groups"))
+    (setq groups (mapcar #'fnn-octets (second filing))))
   (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
                               (fnn-octet-list payload))))
     (cond
