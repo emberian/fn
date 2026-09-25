@@ -78,6 +78,36 @@
                         '(fn-bpnp-domain-recover-eventp (:e equal))
                         (theory 'minimal-theory))))))
 
+(local
+ (defthm bpbusy-slots-of-next-issued
+   (let ((st2 (fn-bpnp-with-next-issued st issued)))
+     (and (equal (fn-bpnf-held-list st2) (fn-bpnf-held-list st))
+          (equal (fn-bpnf-waits st2) (fn-bpnf-waits st))
+          (equal (fn-bpnf-issued st2) issued)))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-with-next-issued fn-bpnp-with-runtime
+                                 fn-bpnp-with-credit fn-bpnp-with-waits
+                                 fn-bpnf-state-with-arrival fn-bpnf-held-list
+                                 fn-bpnf-waits fn-bpnf-issued bpbusy-nth-is-nth
+                                 nth-update-nth true-listp-update-nth
+                                 car-cons cdr-cons nth true-listp
+                                 (:e natp) (:e equal) (:e nfix) (:e zp)
+                                 (:e fn-bpn-nth) (:e true-listp))
+                               (theory 'minimal-theory))))))
+
+;; A written held list (slot 2) survives the credit and wait writers.
+(local
+ (defthm bpbusy-held-of-persist-writers
+   (equal (fn-bpnf-held-list
+           (fn-bpnp-with-waits (fn-bpnp-with-credit (update-nth 2 h x) u d) w))
+          h)
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-with-credit fn-bpnp-with-waits
+                                 fn-bpnf-held-list bpbusy-nth-is-nth
+                                 nth-update-nth true-listp-update-nth
+                                 (:e natp) (:e equal) (:e nfix))
+                               (theory 'minimal-theory))))))
+
 ;; KEYSTONE (BP-R17, durable count).  The owner's busy answer to the
 ;; delivery the marker names proposes exactly the kind 20 that counts it:
 ;; the row's arrival and primary identity, at the current epoch and next
@@ -116,14 +146,15 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance bpbusy-step-is-busy-step))
-           :in-theory (e/d (fn-bpnp-busy-delivery-step fn-bpnp-with-next-issued
-                            fn-bpnf-answer fn-bpnf-answer-state
-                            fn-bpnf-answer-effects bpbusy-nth-is-nth)
-                           (fn-bpnp-step fn-bpnp-busy-eventp
-                            fn-bpnp-deferral-frame fn-bpnd-admitp
-                            fn-bpnp-deferral-recordp fn-bpnp-busy-wait
-                            fn-bpnf-find-held fn-bpah-held-primary-identity
-                            fn-bpnd-free fn-bpnp-remove-wait)))))
+           :in-theory (union-theories
+                       '(fn-bpnp-busy-delivery-step bpbusy-slots-of-next-issued
+                         bpbusy-slots-of-deferral
+                         fn-bpnf-answer fn-bpnf-answer-state
+                         fn-bpnf-answer-effects fn-bpnp-busy-eventp
+                         car-cons cdr-cons cons-equal bpbusy-nth-is-nth nth
+                         (:e equal) (:e car) (:e cdr) (:e cons)
+                         (:e fn-bpn-nth) (:e natp) (:e zp) (:e nfix))
+                       (theory 'minimal-theory)))))
 
 ;; The durable persist arm applies the kind 20 by fn-bpnp-deferral-apply,
 ;; the function ordered replay calls on the same record.
@@ -146,43 +177,45 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance bpbusy-step-is-deferral-persist
                             (event (list :persist-result e op :durable))))
-           :in-theory (e/d (fn-bpnp-deferral-persist-step
-                            fn-bpnf-answer fn-bpnf-answer-state
-                            fn-bpnf-held-list fn-bpnp-with-waits
-                            fn-bpnp-with-credit bpbusy-nth-is-nth)
-                           (fn-bpnp-step fn-bpnp-deferral-apply
-                            fn-bpnp-with-issued fn-bpnf-find-arrival
-                            fn-bpnp-wait-for fn-bpnp-remove-wait
-                            fn-bpnp-deferral-effects)))))
+           :in-theory (union-theories
+                       '(fn-bpnp-deferral-persist-step
+                         bpbusy-held-of-persist-writers
+                         fn-bpnf-answer fn-bpnf-answer-state
+                         car-cons cdr-cons (:e equal) (:e fn-cbor-ag-car)
+                         (:e car) fn-cbor-ag-car bpbusy-nth-is-nth nth
+                         (:e natp) (:e zp) (:e nfix))
+                       (theory 'minimal-theory)))))
 
-;; Ordered replay over a journal extended by one row is the replay of the
-;; journal continued by that row.
+;; Ordered replay of a journal extended by more rows is the replay of the
+;; journal continued by them.
+(defun bpbusy-replay-continue (r more base)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (equal (car r) :ready)
+      (fn-bpnf-family-replay-rows-aux
+       more base (nth 1 r) (nth 2 r) (nth 3 r) (nth 4 r))
+    r))
+
 (local
- (defthm bpbusy-replay-append-one
-   (implies (and (true-listp rows)
-                 (equal (car (fn-bpnf-family-replay-rows-aux
-                              rows base held handoffs prior next-arrival))
-                        :ready))
+ (defthm bpbusy-replay-append
+   (implies (true-listp rows)
             (equal (fn-bpnf-family-replay-rows-aux
-                    (append rows (list row))
-                    base held handoffs prior next-arrival)
-                   (let ((r (fn-bpnf-family-replay-rows-aux
-                             rows base held handoffs prior next-arrival)))
-                     (fn-bpnf-family-replay-rows-aux
-                      (list row) base (fn-bpn-nth 1 r) (fn-bpn-nth 2 r)
-                      (fn-bpn-nth 3 r) (fn-bpn-nth 4 r)))))
+                    (append rows more) base held handoffs prior next-arrival)
+                   (bpbusy-replay-continue
+                    (fn-bpnf-family-replay-rows-aux
+                     rows base held handoffs prior next-arrival)
+                    more base)))
    :hints (("Goal" :induct (fn-bpnf-family-replay-rows-aux
                             rows base held handoffs prior next-arrival)
-            :in-theory (e/d (bpbusy-nth-is-nth)
-                            (fn-bpnf-family-replay-row-record
-                             fn-bpnf-stored-record-name
-                             fn-bpnf-replay-pair-afterp
-                             fn-bpah-apply-delivery fn-bpnf-family-apply-at
-                             fn-bpn-report-apply-delete fn-bpnp-dispatch-apply
-                             fn-bpnp-attempt-apply fn-bpnp-forward-result-apply
-                             fn-bpnf-conflict-apply fn-bpnp-deferral-apply
-                             fn-bpnf-receive-decision fn-bpnf-held-octets
-                             fn-bpnf-state))))))
+            :expand ((:free (x) (fn-bpnf-family-replay-rows-aux
+                                 (cons x (append (cdr rows) more))
+                                 base held handoffs prior next-arrival))
+                     (append rows more))
+            :in-theory (union-theories
+                        '(fn-bpnf-family-replay-rows-aux bpbusy-replay-continue
+                          car-cons cdr-cons true-listp nth binary-append
+                          (:e equal) (:e car) (:e zp) (:e nfix) (:e fn-bpn-nth)
+                          (:e binary-append))
+                        (theory 'minimal-theory))))))
 
 ;; KEYSTONE (the count survives recovery).  Let ROWS be the durable
 ;; journal the live state's held rows replay from, and ROW the journal row
@@ -222,23 +255,19 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnp-step-deferral-durable-applies-the-replay-function)
-                 (:instance bpbusy-replay-append-one
-                            (held nil) (handoffs nil) (prior nil)
-                            (next-arrival 0)))
-           :expand ((fn-bpnf-family-replay-rows-aux
-                     (list row) base (fn-bpnf-held-list st) handoffs prior
-                     next-arrival)
-                    (fn-bpnf-family-replay-rows-aux
-                     nil base
-                     (fn-bpn-nth 1 (fn-bpnp-deferral-apply
-                                    (fn-bpn-nth 4 (fn-bpnf-issued st))
-                                    (fn-bpnf-held-list st)))
-                     handoffs (cons e op) next-arrival))
-           :in-theory (e/d (fn-bpnf-family-replay-rows bpbusy-nth-is-nth)
-                           (fn-bpnp-step fn-bpnf-family-replay-rows-aux
-                            fn-bpnf-family-replay-row-record
-                            fn-bpnf-stored-record-name fn-bpnf-replay-pair-afterp
-                            fn-bpnp-deferral-apply)))))
+                 (:instance bpbusy-replay-append
+                            (more (list row)) (held nil) (handoffs nil)
+                            (prior nil) (next-arrival 0)))
+           :expand ((:free (h) (fn-bpnf-family-replay-rows-aux
+                                (list row) base h handoffs prior
+                                next-arrival))
+                    (:free (h p) (fn-bpnf-family-replay-rows-aux
+                                  nil base h handoffs p next-arrival)))
+           :in-theory (union-theories
+                       '(fn-bpnf-family-replay-rows bpbusy-replay-continue
+                         bpbusy-nth-is-nth car-cons cdr-cons nth
+                         (:e equal) (:e car) (:e natp) (:e zp) (:e nfix))
+                       (theory 'minimal-theory)))))
 
 ;; The deferral ends.  A row not stranded under the configured budget is
 ;; not held back by its wait at any observation whose monotonic reading
@@ -253,7 +282,8 @@
            (not (fn-bpnp-busy-blockedp h waits obs budget)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bpnp-busy-blockedp bpbusy-nth-is-nth)
+           :in-theory (e/d (fn-bpnp-busy-blockedp bpbusy-nth-is-nth
+                            fn-clock-observationp fn-clock-timep)
                            (fn-bpnp-busy-strandedp)))))
 
 (local
@@ -281,15 +311,39 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance bpbusy-selection-is-not-busy-blocked
                             (selected nil)))
-           :in-theory (e/d (fn-bpnp-busy-blockedp)
-                           (fn-bpnp-busy-strandedp
-                            fn-bpnp-oldest-eligible-with-credit)))))
+           :in-theory (union-theories '(fn-bpnp-busy-blockedp)
+                                      (theory 'minimal-theory)))))
 
 (local
  (defthm bpbusy-first-stranded-is-stranded
    (let ((r (fn-bpnp-first-busy-stranded held budget selected)))
      (implies (and r (not (equal r selected)))
               (fn-bpnp-busy-strandedp r budget)))
+   :hints (("Goal" :induct (fn-bpnp-first-busy-stranded held budget selected)
+            :in-theory (e/d (fn-bpnp-first-busy-stranded)
+                            (fn-bpnp-busy-strandedp))))))
+
+(local
+ (defthm bpbusy-held-of-with-waits
+   (and (equal (fn-bpnf-held-list (fn-bpnp-with-waits st w))
+               (fn-bpnf-held-list st))
+        (equal (fn-bpnp-used (fn-bpnp-with-waits st w)) (fn-bpnp-used st))
+        (equal (fn-bpnp-debt (fn-bpnp-with-waits st w)) (fn-bpnp-debt st)))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-with-waits fn-bpnf-held-list
+                                 fn-bpnp-used fn-bpnp-debt
+                                 bpbusy-nth-is-nth nth-update-nth
+                                 (:e natp) (:e equal) (:e nfix))
+                               (theory 'minimal-theory))))))
+
+(local
+ (defthm bpbusy-nil-is-not-stranded
+   (not (fn-bpnp-busy-strandedp nil budget))
+   :hints (("Goal" :in-theory (enable fn-bpnp-busy-strandedp)))))
+
+(local
+ (defthm bpbusy-first-stranded-keeps-a-selection
+   (implies selected (fn-bpnp-first-busy-stranded held budget selected))
    :hints (("Goal" :induct (fn-bpnp-first-busy-stranded held budget selected)
             :in-theory (e/d (fn-bpnp-first-busy-stranded)
                             (fn-bpnp-busy-strandedp))))))
@@ -342,13 +396,11 @@
                             (held (fn-bpnf-held-list st)) (selected nil))
                  (:instance bpbusy-first-stranded-found
                             (held (fn-bpnf-held-list st)) (selected nil)))
-           :in-theory (e/d (fn-bpnp-progress-step fn-bpnp-busy-stranded-effects
-                            fn-bpnf-answer fn-bpnf-answer-state
-                            fn-bpnf-answer-effects fn-bpnp-with-waits
-                            fn-bpnf-held-list bpbusy-nth-is-nth)
-                           (fn-bpnp-oldest-eligible-with-credit
-                            fn-bpnp-oldest-uncertain-local
-                            fn-bpnp-first-busy-stranded fn-bpnp-busy-strandedp
-                            fn-bpnp-prune-waits fn-bpnd-free
-                            fn-bpnp-routesp fn-bpp-eidp
-                            fn-clock-observationp)))))
+           :in-theory (union-theories
+                       '(fn-bpnp-progress-step fn-bpnp-busy-stranded-effects
+                         bpbusy-held-of-with-waits
+                         fn-bpnf-answer fn-bpnf-answer-state
+                         fn-bpnf-answer-effects car-cons cdr-cons
+                         bpbusy-nth-is-nth nth
+                         (:e equal) (:e natp) (:e zp) (:e nfix) (:e car))
+                       (theory 'minimal-theory)))))
