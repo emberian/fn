@@ -753,6 +753,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
+	books/peer-invite \
+	tests/acl2/peer-invite-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/login-binding \

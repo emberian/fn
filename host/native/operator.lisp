@@ -419,6 +419,7 @@ configuration usage result."
             :rollback-check)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
+          (:peering (fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")

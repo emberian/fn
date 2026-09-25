@@ -40,6 +40,18 @@
            (equal requested (1+ (fn-stxk-keyring-generation current)))
          (equal requested 1))))
 
+;; PRF-098: the next keyring generation is ACL2's, never the operator's
+;; spelling.  The control codec's next-generation requests
+;; (books/native-hybrid-control.lisp, kinds 7 and 8) and the key-statement
+;; executor (books/key-statements.lisp) ask for it; generation 0 means
+;; nothing.
+(defun fn-hl-next-generation (snapshots)
+  (declare (xargs :guard t))
+  (let ((current (fn-hl-current-snapshot snapshots)))
+    (if (fn-stxk-p current)
+        (1+ (nfix (fn-stxk-keyring-generation current)))
+      1)))
+
 (defun fn-hl-enroll-event
     (sequence txid store-generation keyring-generation principal keys snapshots)
   (declare (xargs :guard t))

@@ -139,6 +139,54 @@ it cannot continue with its old group-code table."
         (fnn-indeterminate
          "durable configuration needs owner cache recovery: ~a" e)))))
 
+(defun fnn-owner-live-reconfigure-locked (service stage)
+  "Stage, publish and complete one ACL2-constructed configuration record.
+
+The caller holds the owner mutex.  STAGE is called with a private logical
+connection id and answers the owner's staging word; only :staged continues.
+Answers :accepted once the record is durable and the owner installed it, or
+:refused before any publication."
+  ;; Reuse the model's existing generation pin: a private logical
+  ;; connection is opened and closed under this mutex without acquiring
+  ;; a socket.  Its pin is therefore the current generation checked by
+  ;; fn-ocfg-reconfig-refusal; raw Lisp never supplies that decision.
+  ;; `fn-owner-open' answers the new connection's integer id, or NIL
+  ;; when the model refused the open, as the socket path reads it
+  ;; (host/native/owner.lisp).  It is not an action keyword: through
+  ;; `fnn-owner-action' every live request faulted here and stopped the
+  ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
+  (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
+                (unless (or (null opened) (and (integerp opened) (>= opened 0)))
+                  (fnn-fault "owner returned a malformed connection id"))
+                opened))
+         (staged (and (integerp cid) (funcall stage cid))))
+    (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
+    (unless (eq staged :staged)
+      (return-from fnn-owner-live-reconfigure-locked :refused)))
+  (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
+         (record (progn
+                   (unless (fnn-octet-list-p record-list)
+                     (fnn-fault "owner staged malformed configuration octets"))
+                   (fnn-octets record-list)))
+         (store (fnn-owner-service-store service))
+         (observation (fnn-config-record-observation store))
+         (config-records (fnn-config-records-from-observation observation))
+         (authorization
+           (fnn-admin-authorize store (fnn-durable-records store)
+                                config-records record
+                                (mapcar #'car observation))))
+    (multiple-value-bind (published ignored-name)
+        (fnn-admin-publish store record authorization)
+      (declare (ignore ignored-name))
+      (unless (eq (fnn-owner-action
+                   'fn-owner-reconfigure-complete published)
+                  :durable)
+        (fnn-indeterminate
+         "owner rejected a durably published configuration"))
+      (fnn-owner-refresh-config-cache service published)
+      (fnn-owner-feed-refresh-configuration service)
+      :accepted)))
+
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner."
   (fnn-owner-serialized
@@ -147,48 +195,10 @@ it cannot continue with its old group-code table."
      (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
        (unless (fnn-admin-plan-acceptedp plan)
          (return-from fnn-owner-live-admin-serialized :refused))
-       ;; Reuse the model's existing generation pin: a private logical
-       ;; connection is opened and closed under this mutex without acquiring
-       ;; a socket.  Its pin is therefore the current generation checked by
-       ;; fn-ocfg-reconfig-refusal; raw Lisp never supplies that decision.
-       ;; `fn-owner-open' answers the new connection's integer id, or NIL
-       ;; when the model refused the open, as the socket path reads it
-       ;; (host/native/owner.lisp).  It is not an action keyword: through
-       ;; `fnn-owner-action' every live request faulted here and stopped the
-       ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
-       (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
-                     (unless (or (null opened) (and (integerp opened) (>= opened 0)))
-                       (fnn-fault "owner returned a malformed connection id"))
-                     opened))
-              (staged (and (integerp cid)
-                           (fnn-owner-action
-                            'fn-native-admin-host-owner-reconfigure cid plan))))
-         (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
-         (unless (eq staged :staged)
-           (return-from fnn-owner-live-admin-serialized :refused)))
-       (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
-              (record (progn
-                        (unless (fnn-octet-list-p record-list)
-                          (fnn-fault "owner staged malformed configuration octets"))
-                        (fnn-octets record-list)))
-              (store (fnn-owner-service-store service))
-              (observation (fnn-config-record-observation store))
-              (config-records (fnn-config-records-from-observation observation))
-              (authorization
-                (fnn-admin-authorize store (fnn-durable-records store)
-                                     config-records record
-                                     (mapcar #'car observation))))
-         (multiple-value-bind (published ignored-name)
-             (fnn-admin-publish store record authorization)
-           (declare (ignore ignored-name))
-           (unless (eq (fnn-owner-action
-                        'fn-owner-reconfigure-complete published)
-                       :durable)
-             (fnn-indeterminate
-              "owner rejected a durably published configuration"))
-           (fnn-owner-refresh-config-cache service published)
-           (fnn-owner-feed-refresh-configuration service)
-           :accepted))))))
+       (fnn-owner-live-reconfigure-locked
+        service
+        (lambda (cid)
+          (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))))))
 
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.
