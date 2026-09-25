@@ -968,6 +968,15 @@ which `fn-store-sn-prepare' then refuses."
   (fnn-as-octets (fnn-core 'fn-store-subject-id-of-payload
                            (fnn-octet-list payload))))
 
+(defun fnn-subject-id-buffer ()
+  "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
+host/owner-host.lisp `fn-owner-subject-id-buffer' calls books/sha256-buffer.lisp
+`fn-shb-subject-id': the subject preimage's fixed head is a short list and
+the payload is read from the buffer by index, so no octet list of the
+payload is built for the digest (D27 wave C; the served POST,
+host/native/owner.lisp fnn-owner-attempt)."
+  (fnn-as-octets (fnn-core-buffer-state 'fn-owner-subject-id-buffer)))
+
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
   (fnn-as-octets (fnn-core 'fn-store-obligation-id-of
@@ -2103,6 +2112,20 @@ The obligation binds the CANONICAL subject identity octets; what comes back
 is each identity's text.  `fn-store-prov-post' selects the durable evidence
 from the live ACL2 configuration; the native host does not name a provenance."
   (let* ((subject (handler-case (fnn-subject-id payload)
+                    (fnn-store-indeterminate (e) (error e))
+                    (fnn-store-fault (e) (error e))
+                    (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))
+         (obligation (handler-case (fnn-obligation-id msgid subject)
+                       (fnn-store-indeterminate (e) (error e))
+                       (fnn-store-fault (e) (error e))
+                       (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
+    (values (fnn-identity-text obligation) (fnn-identity-text subject)
+            (fnn-provenance-post))))
+
+(defun fnn-metadata-buffer (msgid)
+  "FNN-METADATA with the payload in the octet buffer (the served POST): the
+subject identity is FNN-SUBJECT-ID-BUFFER, the rest as FNN-METADATA."
+  (let* ((subject (handler-case (fnn-subject-id-buffer)
                     (fnn-store-indeterminate (e) (error e))
                     (fnn-store-fault (e) (error e))
                     (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))

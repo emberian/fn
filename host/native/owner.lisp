@@ -783,8 +783,10 @@ follows is justified only by this line."
           ;; (books/octets-stobj.lisp): filled once here from the byte
           ;; vector, read in place by the existing-article test and the
           ;; prepare (host/owner-host.lisp fn-owner-existing-action-buffer,
-          ;; fn-owner-prepare-buffer).  Nothing between the fill and the
-          ;; prepare touches the buffer; both run under the service mutex.
+          ;; fn-owner-prepare-buffer), and the subject identity is digested
+          ;; from it in place (fnn-metadata-buffer, fn-owner-subject-id-buffer;
+          ;; books/sha256-buffer.lisp).  Nothing between the fill and the
+          ;; prepare writes the buffer; all of it runs under the service mutex.
           (fnn-octets-fill payload)
           (case (fnn-action (fnn-core-buffer-state 'fn-owner-existing-action-buffer
                                                    (fnn-octet-list msgid) codes))
@@ -795,7 +797,7 @@ follows is justified only by this line."
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
             (multiple-value-bind (obligation subject ignored)
-                (fnn-metadata msgid payload)
+                (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
               (let ((prepared
                       (fnn-action
@@ -1242,8 +1244,15 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
               (values cid (fnn-owner-octets-global 'fn-owner-output) t)))
+          ;; The identities here serve the transfer decision only (the
+          ;; obligation and subject fn-owner-transit-decide takes below); a
+          ;; served POST derives them once, from the octet buffer, inside
+          ;; fnn-owner-attempt (fnn-metadata-buffer), so the payload is not
+          ;; converted and digested a second time per POST.
           (multiple-value-bind (obligation subject ignored)
-              (fnn-metadata msgid payload)
+              (if (eq taken :taken-transit)
+                  (fnn-metadata msgid payload)
+                (values nil nil nil))
             (declare (ignore ignored))
             (let* ((transitp (eq taken :taken-transit))
                    (transit-kind
