@@ -177,6 +177,9 @@ fresh certification and native corrupt-history startup evidence remain open.
 
 ### Checkpointing: the Store checkpoint that open reads (P3, 2026-09-25)
 
+STO-011: Open reads the newest verified exact-state checkpoint and replays at
+most K records after it, else replays in full and says so.
+
 The Store checkpoint is the exact state of the open after a committed prefix
 of S records: the record list itself and the accumulator of each fold the
 open runs (`fn-sco-capture`, books/store-checkpoint-open.lisp: the
