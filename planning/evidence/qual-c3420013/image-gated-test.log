@@ -1,0 +1,27 @@
+test_a_changed_body_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_changed_body_is_not) ... ok
+test_a_dropped_or_reordered_payload_field_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_dropped_or_reordered_payload_field_is_not) ... ok
+test_a_field_injected_twice_or_over_the_payloads_own_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_field_injected_twice_or_over_the_payloads_own_is_not) ... ok
+test_a_headless_octet_string_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_headless_octet_string_is_not) ... ok
+test_an_added_field_outside_the_injection_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_an_added_field_outside_the_injection_is_not) ... ok
+test_the_injected_article_is_the_payload_injected (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_the_injected_article_is_the_payload_injected) ... ok
+test_every_developer_selector_is_registered (tests.campaign.test_native_operator_campaign.NativeCutTableTests.test_every_developer_selector_is_registered) ... ok
+test_the_recovery_program_cuts_are_selectable (tests.campaign.test_native_operator_campaign.NativeCutTableTests.test_the_recovery_program_cuts_are_selectable) ... ok
+test_the_table_agrees_with_the_host (tests.campaign.test_native_operator_campaign.NativeCutTableTests.test_the_table_agrees_with_the_host) ... ok
+test_served_owner_cuts_stop_and_production_refusals (tests.campaign.test_native_operator_campaign.NativeOperatorCampaignTests.test_served_owner_cuts_stop_and_production_refusals) ... cut record-attempted
+cut recovery-stage-unlinked
+faults
+FAIL
+
+======================================================================
+FAIL: test_served_owner_cuts_stop_and_production_refusals (tests.campaign.test_native_operator_campaign.NativeOperatorCampaignTests.test_served_owner_cuts_stop_and_production_refusals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/qual-c3420013/ctree/tests/campaign/test_native_operator_campaign.py", line 176, in test_served_owner_cuts_stop_and_production_refusals
+    self.assertEqual(retry["second"]["rc"], 0, retry["second"])
+AssertionError: 1 != 0 : {'argv': ['IMAGE', '--fn', 'operator', '/tmp/fn-native-campaign-xker6myr/work/cross-entry-retry-store-then-operator/fn.toml', 'post', '--message-id', '<candidate@campaign.invalid>', '--payload', '/tmp/fn-native-campaign-xker6myr/work/candidate.art', '--group', 'fn.letters'], 'env': {}, 'rc': 1, 'stdout': '', 'stderr': 'refused operator post REFUSED\n', 'seconds': 0.07}
+
+----------------------------------------------------------------------
+Ran 10 tests in 27.526s
+
+FAILED (failures=1)
+rc=1

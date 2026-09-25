@@ -1,0 +1,8 @@
+2026-09-25T00:41:59Z
+matrix: /Users/ember/dev/fn/build/lanes/qual-c3420013/planning/evidence/v0-runs/20260925T004159.810142Z-e8f4faa-0d8859e35924/matrix.json
+evidence: /Users/ember/dev/fn/build/lanes/qual-c3420013/planning/evidence/v0-runs/20260925T004159.810142Z-e8f4faa-0d8859e35924/report.md
+steps=220 failed=2 not-exercised=32
+  DISAGREES V0-INN-INTEROP (refused expected accepted): the lab's verdict: violated (32 held, 1 violated)
+  DISAGREES V0-INN-OPERATOR-POST (refused expected accepted): operator-post-feeds-inn=violated (IHAVE: 335 Send it / 235 Article transferred OK)
+rc=1
+2026-09-25T00:45:35Z
