@@ -220,6 +220,16 @@
   (member-equal (fn-native-admin-result-kind (fn-native-admin-control-plan words))
                 '(:set-policy :apply-checkgroups nil)))
 
+(defthm fn-native-admin-control-plan-is-not-another-kind
+  (let ((k (fn-native-admin-result-kind (fn-native-admin-control-plan words))))
+    (and (not (equal k :create-group)) (not (equal k :remove-group))
+         (not (equal k :set-peer)) (not (equal k :remove-peer))
+         (not (equal k :set-capacity)) (not (equal k :list-peers))
+         (not (equal k :set-bp-boundary)) (not (equal k :set-bp-route))
+         (not (equal k :remove-bp-route))))
+  :hints (("Goal" :use fn-native-admin-control-plan-kind
+           :in-theory (disable fn-native-admin-control-plan-kind))))
+
 (in-theory (disable fn-native-admin-control-plan))
 
 (defun fn-native-admin-plan (argv)
