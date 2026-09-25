@@ -282,7 +282,10 @@ class NativeConsumerE2Tests(unittest.TestCase):
             self.assertTrue(source_path.is_absolute() and source_path.is_file())
             source = source_path.read_bytes()
         else:
+            # Local injection requires a Date (an undated source is refused
+            # before the owner, as qual-bbf52159's dated-source rerun found).
             source = (b"From: author@example.invalid\r\n"
+                      b"Date: Fri, 25 Sep 2026 12:00:00 +0000\r\n"
                       b"Newsgroups: fn.test\r\nSubject: exact consumer poll\r\n"
                       b"Message-ID: <consumer-poll@example.invalid>\r\n"
                       b"\r\nsigned source body\r\n")
