@@ -402,6 +402,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-route-step \
 	tests/acl2/bp-route-tests \
 	tests/acl2/bp-node-receipt-send-tests \
+	books/bp-route-jobs \
+	tests/acl2/bp-route-jobs-tests \
+	books/bp-node-contact-driver \
+	tests/acl2/bp-node-contact-driver-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
