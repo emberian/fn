@@ -92,13 +92,13 @@
                (fn-bpaj-source-eid "dtn://receiver/")))
 (assert-event (not (fn-bpah-receipt-trustedp *bra-relayed* *bra-carried-cfg*)))
 (assert-event (null (fn-bpah-receipt-release-record
-                     *bra-relayed* *bra-carried-cfg* *bra-wf*)))
+                     *bra-relayed* *bra-carried-cfg* *bra-wf* nil nil)))
 (assert-event (equal (fn-bpah-receipt-release-verdict
-                      *bra-relayed* *bra-carried-cfg* *bra-wf*)
+                      *bra-relayed* *bra-carried-cfg* *bra-wf* nil nil)
                      :carried-not-released))
 ; 2. With the release row, the exact receipt releases work-1, and only it.
 (defconst *bra-record*
-  (fn-bpah-receipt-release-record *bra-relayed* *bra-released-cfg* *bra-wf*))
+  (fn-bpah-receipt-release-record *bra-relayed* *bra-released-cfg* *bra-wf* nil nil))
 (assert-event
  (equal *bra-record*
         '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-bra"
@@ -106,26 +106,26 @@
           "authorization-context-1" "terms-1")))
 (assert-event (car (fn-bprl-apply-journal-record *bra-wf* *bra-record*)))
 (assert-event (equal (fn-bpah-receipt-release-verdict
-                      *bra-relayed* *bra-released-cfg* *bra-wf*)
+                      *bra-relayed* *bra-released-cfg* *bra-wf* nil nil)
                      :listed-issuer))
 ; 3. B's own boundary delivering B's receipt needs no release row.
 (assert-event (fn-bpah-receipt-release-record
-               *bra-direct* *bra-carried-cfg* *bra-wf*))
+               *bra-direct* *bra-carried-cfg* *bra-wf* nil nil))
 (assert-event (equal (fn-bpah-receipt-release-verdict
-                      *bra-direct* *bra-carried-cfg* *bra-wf*)
+                      *bra-direct* *bra-carried-cfg* *bra-wf* nil nil)
                      :self-issued))
 ; 4. A listed issuer naming another work, subject or terms releases nothing.
 (defun bra-other (work subject terms)
   (fn-bpah-receipt-release-record
    (bra-view :receipt (bra-receipt work subject terms) "relay")
-   *bra-released-cfg* *bra-wf*))
+   *bra-released-cfg* *bra-wf* nil nil))
 (assert-event (null (bra-other "work-2" "subject-bra" "terms-1")))
 (assert-event (null (bra-other "work-1" "subject-other" "terms-1")))
 (assert-event (null (bra-other "work-1" "subject-bra" "terms-2")))
 (assert-event (equal (fn-bpah-receipt-release-verdict
                       (bra-view :receipt (bra-receipt "work-1" "subject-other"
                                                       "terms-1") "relay")
-                      *bra-released-cfg* *bra-wf*)
+                      *bra-released-cfg* *bra-wf* nil nil)
                      :obligation-mismatch))
 
 ; -----------------------------------------------------------------------------
@@ -135,16 +135,16 @@
 ; release.
 (must-fail
  (assert-event (null (fn-bpah-receipt-release-record
-                      *bra-relayed* *bra-released-cfg* *bra-wf*))))
+                      *bra-relayed* *bra-released-cfg* *bra-wf* nil nil))))
 ; fn-bpah-carrier-without-release-row-releases-nothing, per hypothesis:
 ; with the carrier's own transport-bp row for the issuer (the direct case),
 ; and with a releases-for row, the receipt releases.
 (must-fail
  (assert-event (null (fn-bpah-receipt-release-record
-                      *bra-direct* *bra-carried-cfg* *bra-wf*))))
+                      *bra-direct* *bra-carried-cfg* *bra-wf* nil nil))))
 (must-fail
  (assert-event (null (fn-bpah-receipt-release-record
-                      *bra-relayed* *bra-released-cfg* *bra-wf*))))
+                      *bra-relayed* *bra-released-cfg* *bra-wf* nil nil))))
 ; fn-bpah-released-receipt-names-exactly-its-obligation: without a record
 ; the issuer need not be authorized.
 (must-fail
@@ -187,3 +187,213 @@
                                        (fn-cfg-peers
                                         (fn-cfg-value *bra-released-cfg*))
                                        nil))))))
+
+; -----------------------------------------------------------------------------
+; Signed receipts (lane signed-receipts).  B's hybrid principal P and its two
+; keys are enrolled in A's keyring; A's own boundary for B
+; ("receiver-peer") names P as its receipt signer.  The signatures and the
+; host's observations are abstract (A-CRYPTO): these witnesses exercise the
+; decision, not Ed25519 or ML-DSA-65.
+(defconst *bra-principal* (make-list 32 :initial-element 7))
+(defconst *bra-ed-key* (make-list 32 :initial-element 1))
+(defconst *bra-ml-key* (make-list 1952 :initial-element 2))
+(defconst *bra-keys* (list (cons :ed25519 *bra-ed-key*)
+                           (cons :ml-dsa-65 *bra-ml-key*)))
+; Attachments (the statement codec) run in make-event, not in defconst.
+(make-event
+ `(defconst *bra-snapshots*
+    ',(list (fn-hsig-keyring-event 1 1 1 1 *bra-principal* *bra-keys*))))
+(assert-event (equal (fn-bpah-receipt-signer-keys *bra-snapshots*
+                                                  *bra-principal*)
+                     *bra-keys*))
+(defconst *bra-ed-sig* (make-list 64 :initial-element 3))
+(defconst *bra-ml-sig* (make-list 3309 :initial-element 4))
+(defun bra-signed (adu)
+  (fn-bpsr-encode (fn-bpsr-make adu *bra-principal* *bra-ed-sig*
+                                *bra-ml-sig*)))
+(defconst *bra-signed-exact* (bra-signed *bra-exact*))
+; The frame round-trips and carries the exact ADU.
+(assert-event (equal (fn-bpsr-decode *bra-signed-exact*)
+                     (fn-bpsr-make *bra-exact* *bra-principal* *bra-ed-sig*
+                                   *bra-ml-sig*)))
+(assert-event (equal (fn-bpsr-adu-octets *bra-signed-exact*) *bra-exact*))
+(assert-event (null (fn-bpsr-decode *bra-exact*)))
+; The preimage is the article scheme's subject body under the receipt tag,
+; and binds the requester.
+(assert-event (consp (fn-bpsr-signed-preimage *bra-principal* *bra-keys*
+                                              "dtn://home/" *bra-exact*)))
+(assert-event (not (equal (fn-bpsr-signed-preimage *bra-principal* *bra-keys*
+                                                   "dtn://home/" *bra-exact*)
+                          (fn-bpsr-signed-preimage *bra-principal* *bra-keys*
+                                                   "dtn://other/" *bra-exact*))))
+
+(defconst *bra-signer-row*
+  (fn-cfg-row-make "receiver-peer" "bp-boundary-receipt-signer"
+                   (fn-record-octets-string (fn-stx-hex-octets *bra-principal*))
+                   0))
+(defconst *bra-require-row*
+  (fn-cfg-row-make "relay" "bp-boundary-require-signed-receipts" "yes" 0))
+; The lab's A: the relay carries B, no release row, require-signed-receipts.
+(defconst *bra-signed-cfg*
+  (bra-cfg (list* *bra-signer-row* *bra-require-row* *bra-carries*)))
+(assert-event (fn-cfgp *bra-signed-cfg*))
+(defconst *bra-signed-view* (bra-view :receipt *bra-signed-exact* "relay"))
+(defconst *bra-good-obs* (list *bra-ml-key* :verified :verified))
+(defconst *bra-bad-obs* (list *bra-ml-key* :refused :refused))
+(make-event
+ `(defconst *bra-plan*
+    ',(fn-bpah-receipt-signature-plan *bra-signed-view* *bra-snapshots*)))
+(assert-event (equal (cdr *bra-plan*)
+                     (list *bra-ed-key* *bra-ml-key*
+                           (list (cons :ed25519 *bra-ed-sig*)
+                                 (cons :ml-dsa-65 *bra-ml-sig*)))))
+(assert-event (equal (car *bra-plan*)
+                     (fn-bpsr-signed-preimage *bra-principal* *bra-keys*
+                                              "dtn://home/" *bra-exact*)))
+
+; 5. The signed receipt releases work-1 through a relay that is neither B
+;    nor lists B, under require-signed-receipts.
+(make-event
+ `(defconst *bra-signed-record*
+    ',(fn-bpah-receipt-release-record *bra-signed-view* *bra-signed-cfg*
+                                      *bra-wf* *bra-snapshots*
+                                      *bra-good-obs*)))
+(assert-event (equal *bra-signed-record* *bra-record*))
+(assert-event (not (fn-bpah-release-issuer-authorizedp
+                    *bra-signed-cfg* (fn-record-string-octets "relay") 7
+                    (fn-bpaj-issuer-eid "dtn://receiver/"))))
+(assert-event (equal (fn-bpah-receipt-release-verdict
+                      *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                      *bra-snapshots* *bra-good-obs*)
+                     :signed-issuer))
+(assert-event (equal (fn-bpah-receipt-release-line
+                      *bra-signed-view* *bra-signed-cfg* *bra-snapshots*
+                      *bra-good-obs*)
+                     "signed-issuer carrier=relay issuer=dtn://receiver/"))
+; 6. Its signature failing (the lab's flipped bytes: both primitives
+;    refuse) releases nothing, even from B itself or a listed relay.
+(assert-event (null (fn-bpah-receipt-release-record
+                     *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                     *bra-snapshots* *bra-bad-obs*)))
+(assert-event (equal (fn-bpah-receipt-release-verdict
+                      *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                      *bra-snapshots* *bra-bad-obs*)
+                     :signature-refused))
+(assert-event (null (fn-bpah-receipt-release-record
+                     (bra-view :receipt *bra-signed-exact* "receiver-peer")
+                     (bra-cfg (list *bra-signer-row*)) *bra-wf*
+                     *bra-snapshots* *bra-bad-obs*)))
+(assert-event (null (fn-bpah-receipt-release-record
+                     *bra-signed-view*
+                     (bra-cfg (list* *bra-signer-row* *bra-releases*))
+                     *bra-wf* *bra-snapshots* *bra-bad-obs*)))
+; 7. Signed fields that differ from the obligation release nothing.
+(defun bra-signed-other (work subject terms)
+  (fn-bpah-receipt-release-record
+   (bra-view :receipt (bra-signed (bra-receipt work subject terms)) "relay")
+   *bra-signed-cfg* *bra-wf* *bra-snapshots* *bra-good-obs*))
+(assert-event (null (bra-signed-other "work-2" "subject-bra" "terms-1")))
+(assert-event (null (bra-signed-other "work-1" "subject-other" "terms-1")))
+(assert-event (null (bra-signed-other "work-1" "subject-bra" "terms-2")))
+; 8. The signer is the issuer's own enrollment, never the carrier's: the
+;    same principal named on the relay's boundary verifies nothing; nor
+;    does a principal this Store has not enrolled.
+(defconst *bra-carrier-signer-cfg*
+  (bra-cfg (list* (fn-cfg-row-make "relay" "bp-boundary-receipt-signer"
+                                   (fn-record-octets-string
+                                    (fn-stx-hex-octets *bra-principal*)) 0)
+                  *bra-require-row* *bra-carries*)))
+(assert-event (null (fn-bpah-receipt-release-record
+                     *bra-signed-view* *bra-carrier-signer-cfg* *bra-wf*
+                     *bra-snapshots* *bra-good-obs*)))
+(assert-event (null (fn-bpah-receipt-release-record
+                     *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                     nil *bra-good-obs*)))
+; 9. The delegation profile: a bare receipt through a listed relay releases
+;    whoever wrote it (witness 2); the same bare receipt under
+;    require-signed-receipts releases nothing, listed or direct.
+(defconst *bra-flagged-released-cfg*
+  (bra-cfg (list* *bra-require-row* (append *bra-carries* *bra-releases*))))
+(assert-event (null (fn-bpah-receipt-release-record
+                     *bra-relayed* *bra-flagged-released-cfg* *bra-wf*
+                     nil nil)))
+(assert-event (equal (fn-bpah-receipt-release-verdict
+                      *bra-relayed* *bra-flagged-released-cfg* *bra-wf*
+                      nil nil)
+                     :signature-required))
+
+; Teeth for the signed-receipt keystones, one per hypothesis.
+; fn-bpah-signed-receipt-releases-through-any-carrier:
+;   signed -- the bare receipt through the same relay does not release what
+;   the signed one does;
+(must-fail
+ (assert-event (equal (fn-bpah-receipt-release-record
+                       *bra-relayed* *bra-signed-cfg* *bra-wf*
+                       *bra-snapshots* *bra-good-obs*)
+                      (fn-bprl-receipt-auto-record *bra-wf* *bra-exact* t))))
+;   verified -- with failing observations the record differs;
+(must-fail
+ (assert-event (equal (fn-bpah-receipt-release-record
+                       *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                       *bra-snapshots* *bra-bad-obs*)
+                      (fn-bprl-receipt-auto-record *bra-wf* *bra-exact* t))))
+;   shape -- a view whose bundle source is not the receipt's issuer.
+(must-fail
+ (assert-event
+  (equal (fn-bpah-receipt-release-record
+          (list :delivery '("k" "b") :receipt *bra-signed-exact*
+                (fn-bpn-nth 4 *bra-signed-view*) nil "dtn://relay/"
+                "dtn://home/")
+          *bra-signed-cfg* *bra-wf* *bra-snapshots* *bra-good-obs*)
+         (fn-bprl-receipt-auto-record *bra-wf* *bra-exact* t))))
+; fn-bpah-unverified-signed-receipt-releases-nothing: verified releases; a
+; bare receipt from B directly releases.
+(must-fail
+ (assert-event (null (fn-bpah-receipt-release-record
+                      *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                      *bra-snapshots* *bra-good-obs*))))
+(must-fail
+ (assert-event (null (fn-bpah-receipt-release-record
+                      *bra-direct* *bra-carried-cfg* *bra-wf*
+                      *bra-snapshots* *bra-bad-obs*))))
+; fn-bpah-receipt-signature-needs-both-observations: refused observations
+; are not verified.
+(must-fail
+ (assert-event (fn-bpah-receipt-signature-verifiedp
+                *bra-signed-cfg* *bra-snapshots* 7
+                (fn-bpaj-issuer-eid "dtn://receiver/") "dtn://home/"
+                (fn-bpsr-decode *bra-signed-exact*)
+                (list *bra-ml-key* :verified :refused))))
+; fn-bpah-trusted-bare-receipt-releases: signed, flagged and untrusted
+; receipts each differ from the bare workflow answer.
+(must-fail
+ (assert-event (equal (fn-bpah-receipt-release-record
+                       *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                       *bra-snapshots* *bra-good-obs*)
+                      (fn-bprl-receipt-auto-record
+                       *bra-wf* *bra-signed-exact* t))))
+(must-fail
+ (assert-event (equal (fn-bpah-receipt-release-record
+                       *bra-relayed* *bra-flagged-released-cfg* *bra-wf*
+                       nil nil)
+                      (fn-bprl-receipt-auto-record *bra-wf* *bra-exact* t))))
+(must-fail
+ (assert-event (equal (fn-bpah-receipt-release-record
+                       *bra-relayed* *bra-carried-cfg* *bra-wf* nil nil)
+                      (fn-bprl-receipt-auto-record *bra-wf* *bra-exact* t))))
+; fn-bpah-required-signature-refuses-bare-receipts: without the flag the
+; listed bare receipt releases; signed under the flag releases.
+(must-fail
+ (assert-event (null (fn-bpah-receipt-release-record
+                      *bra-relayed* *bra-released-cfg* *bra-wf* nil nil))))
+(must-fail
+ (assert-event (null (fn-bpah-receipt-release-record
+                      *bra-signed-view* *bra-signed-cfg* *bra-wf*
+                      *bra-snapshots* *bra-good-obs*))))
+; The unsigned keystones' new hypothesis (not signed): a signed receipt
+; through the relay without any row releases.
+(must-fail
+ (assert-event (null (fn-bpah-receipt-release-record
+                      *bra-signed-view* (bra-cfg (list* *bra-signer-row*
+                                                        *bra-carries*))
+                      *bra-wf* *bra-snapshots* *bra-good-obs*))))

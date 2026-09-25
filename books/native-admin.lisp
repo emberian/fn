@@ -366,7 +366,55 @@ decoded as source-address for durable command compatibility."
    (fn-native-admin-bp-carries-rows name carried)
    (fn-native-admin-bp-releases-rows name releases)))
 
-(defun fn-native-admin-bp-boundary-plan (words)
+; Signed receipts (lane signed-receipts): `receipt-signer HEX' names the
+; 64-lowercase-hex hybrid principal whose signature on a receipt from this
+; boundary's own EID releases (`fn-bpah-receipt-signer-enrolledp'); the flag
+; `require-signed-receipts' makes receipts this boundary delivers release
+; only by their own signature (`fn-bpah-require-signed-receiptsp').  Both
+; come last, in that order.
+(defun fn-native-admin-lower-hex-charsp (chars)
+  (declare (xargs :guard t))
+  (if (consp chars)
+      (and (member (car chars) '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
+                                 #\a #\b #\c #\d #\e #\f))
+           (fn-native-admin-lower-hex-charsp (cdr chars)))
+    (null chars)))
+
+(defun fn-native-admin-principal-hexp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (equal (length word) 64)
+       (fn-native-admin-lower-hex-charsp (coerce word 'list))))
+
+; (mv words signer requirep): the words before the two trailing options.
+(defun fn-native-admin-bp-receipt-options (words)
+  (declare (xargs :guard t))
+  (let* ((words (if (true-listp words) words nil))
+         (requirep (and (consp words)
+                        (equal (car (last words)) "require-signed-receipts")))
+         (w1 (if requirep (butlast words 1) words))
+         (n (len w1))
+         (signerp (and (<= 2 n)
+                       (equal (nth (- n 2) w1) "receipt-signer")
+                       (fn-native-admin-principal-hexp (nth (- n 1) w1)))))
+    (mv (if signerp (butlast w1 2) w1)
+        (if signerp (nth (- n 1) w1) nil)
+        requirep)))
+
+(defun fn-native-admin-bp-receipt-option-rows (name signer requirep)
+  (declare (xargs :guard t))
+  (append (if signer
+              (list (fn-cfg-row-make name "bp-boundary-receipt-signer"
+                                     signer 0))
+            nil)
+          (if requirep
+              (list (fn-cfg-row-make name "bp-boundary-require-signed-receipts"
+                                     "yes" 0))
+            nil)))
+
+(in-theory (disable fn-native-admin-bp-receipt-options))
+
+(defun fn-native-admin-bp-boundary-base-plan (words)
   (declare (xargs :guard t))
   (mv-let (base carried releases) (fn-native-admin-bp-boundary-split words)
   (if (and (true-listp words) (member-equal base '(6 9))
@@ -409,6 +457,29 @@ decoded as source-address for durable command compatibility."
         (fn-native-admin-result :accepted nil :set-bp-boundary
                                 (fn-record-string-octets name) 0 nil rows))
     (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil))))
+
+; The base plan with the signed-receipt option rows appended to an accepted
+; boundary's rows (the boundary name is the base plan's).
+(defun fn-native-admin-bp-with-receipt-options (plan name signer requirep)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (or signer requirep))
+      (fn-native-admin-result :accepted nil :set-bp-boundary
+                              (fn-native-admin-result-name plan) 0 nil
+                              (append (let ((rows (fn-native-admin-result-value
+                                                   plan)))
+                                        (if (true-listp rows) rows nil))
+                                      (fn-native-admin-bp-receipt-option-rows
+                                       name signer requirep)))
+    plan))
+
+(defun fn-native-admin-bp-boundary-plan (all-words)
+  (declare (xargs :guard t))
+  (mv-let (words signer requirep)
+    (fn-native-admin-bp-receipt-options all-words)
+    (fn-native-admin-bp-with-receipt-options
+     (fn-native-admin-bp-boundary-base-plan words)
+     (if (true-listp words) (nth 2 words) nil) signer requirep)))
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is

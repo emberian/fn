@@ -162,10 +162,11 @@
   (declare (xargs :guard t))
   (fn-bpn-nth 5 (fn-bpn-nth 4 view)))
 
-; The receipt ADU of a view, or nil.
+; The receipt ADU of a view, or nil.  A signed receipt
+; (books/bp-signed-receipt.lisp) is read through the ADU it carries.
 (defun fn-bpah-view-receipt (view)
   (declare (xargs :guard t))
-  (let ((decoded (fn-bpa-decode-exact (fn-bpn-nth 3 view))))
+  (let ((decoded (fn-bpa-decode-exact (fn-bpsr-adu-octets (fn-bpn-nth 3 view)))))
     (if (and (fn-bpa-result-okp decoded)
              (fn-bpa-receiptp (fn-bpa-result-message decoded)))
         (fn-bpa-result-message decoded)
@@ -221,12 +222,15 @@
         ((equal verdict :not-a-receipt) "not-a-receipt")
         ((equal verdict :obligation-mismatch) "obligation-mismatch")
         ((equal verdict :workflow-refused) "workflow-refused")
+        ((equal verdict :signed-issuer) "signed-issuer")
+        ((equal verdict :signature-refused) "signature-refused")
+        ((equal verdict :signature-required) "signature-required")
         (t "ingress")))
 
 (defconst *fn-bpah-release-verdicts*
   '(:self-issued :listed-issuer :carried-not-released :issuer-not-released
     :generation :not-a-receipt :obligation-mismatch :workflow-refused
-    :ingress))
+    :signed-issuer :signature-refused :signature-required :ingress))
 
 (defun fn-bpah-release-verdict-of-name (name verdicts)
   (declare (xargs :guard t))
@@ -422,7 +426,11 @@
     (and (equal (fn-bpn-nth 0 view) :outbox)
          (fn-bpn-jobp job)
          (equal (fn-bpn-job-peer job) peer)
-         (equal (fn-bpb-payload (fn-bpn-job-bundle job)) receipt-adu))))
+         ;; The return job carries FNRJ's exact receipt ADU, bare or under
+         ;; the issuer's signature (hedged ML-DSA-65: a re-signed receipt
+         ;; has other signature bytes, the same ADU).
+         (equal (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpn-job-bundle job)))
+                receipt-adu))))
 
 (defthm fn-bpah-no-held-no-delivery
   (equal (fn-bpah-pending-view

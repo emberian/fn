@@ -2252,7 +2252,8 @@ issuer EID and a boundary principal are never one string bag.
 
 **Enrollment.** `operator CONFIG bp-boundary add NAME PATH BP-EID PORT
 [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...]
-[releases-for ISSUER-EID ...]` (`fn-native-admin-bp-boundary-plan`). Each
+[releases-for ISSUER-EID ...] [receipt-signer PRINCIPAL-HEX]
+[require-signed-receipts]` (`fn-native-admin-bp-boundary-plan`). Each
 list is non-empty when present, its words are EIDs listed once, and the
 clauses come in that order. BP-EID and every listed EID must satisfy
 `fn-bp-eid-shapep` (books/bp-eid-shape.lisp), or the command is refused
@@ -2270,6 +2271,12 @@ HTAB, CR or LF (`fn-bp-eid-shapep-is-vchar`). Each accepted EID is one
 `fn-native-admin-peer-extra-decode-lists-exactly-the-rows`). Each EID is one
 row in the boundary's `:set-peer` delta, so the durable configuration record
 carries it and replay recovers it. The release list defaults to empty.
+`receipt-signer` (64 lowercase hex digits) writes `(NAME
+"bp-boundary-receipt-signer" HEX 0)`: the hybrid principal whose signature
+on a receipt issued under this boundary's own EID releases. The flag
+`require-signed-receipts` writes `(NAME "bp-boundary-require-signed-receipts"
+"yes" 0)`: receipts this boundary delivers release only by their own
+signature.
 
 **Requests: carriage and authorship.** The source decision is unchanged:
 `fn-bpaj-carried-source-decision cfg principal generation source` answers
@@ -2303,13 +2310,87 @@ receipt authority (the workflow's own `fn-bp-authorized-receiptp`). The
 requester is this node: the receipt's carrier is addressed to it
 (`fn-bpah-local-pendingp`) and the work is in its own journal.
 
+**Signed receipts: the third way** (lane signed-receipts, 2026-09-25). A
+listed relay is a finite delegation: it can forge a receipt that names the
+exact obligation, and a bare receipt through it releases
+(`fn-bpah-trusted-bare-receipt-releases`, stated so). A signed receipt
+releases by its own signature instead, through any delivering neighbour.
+`fn-bpah-receipt-authorizes-releasep` takes the decoded signed receipt
+(nil for a bare one) and judges it by `fn-bpah-receipt-signature-verifiedp`
+alone: the issuer's OWN enrollment at this node (the unique boundary
+directly enrolled for the issuer EID, the author boundary, never the
+carrier's) names the principal in its `receipt-signer` row, this Store's
+current keyring snapshot for that principal gives the two keys
+(`fn-bpah-receipt-signer-keys`, the enrollment `hybrid-enroll` writes), and
+`fn-hsig-authorize`, the article scheme's conjunction, accepts the host's
+two primitive observations. A signed receipt whose signature fails
+releases nothing, whoever delivered it: a failing signature is evidence of
+tampering, not a reason to fall back to the carrier's word. A bare
+receipt keeps the two existing ways unless its carrier is flagged
+`require-signed-receipts`. The signed fields are the receipt ADU's, so the
+obligation check is the same `fn-bpah-receipt-names-obligationp`.
+
+*The frame* (`books/bp-signed-receipt.lisp`, `fn-bpsr-encode` and
+`fn-bpsr-decode`): six canonical CBOR items and nothing after them --
+bytes `FN-BP-SRCPT`, uint 0, bytes ADU (the exact canonical receipt ADU,
+at most 4096 octets), bytes PRINCIPAL (32), bytes ED25519-SIGNATURE, bytes
+ML-DSA-65-SIGNATURE (each at most 4096 here; the exact widths 64 and 3309
+are `fn-hsig-signatures-p`'s). A bare ADU never decodes as a frame (other
+magic). Every reader of a delivered or queued receipt reads the ADU
+through `fn-bpsr-adu-octets`: the class (`fn-bpah-held-adu-result`,
+`fn-bpnp-local-class`), `fn-bpah-view-receipt`, the workflow record, and
+the return job match (`fn-bpah-outbox-job-matchp`: the job carries FNRJ's
+exact ADU, bare or signed; ML-DSA-65 signing is hedged, so a re-signed
+receipt has other signature bytes and the same ADU).
+
+*The signed receipt bytes* (`fn-bpsr-signed-preimage`, which is
+`fn-digest-tagged-preimage` of `*fn-bpsr-domain-tag*` and
+`fn-hsig-subject-body` over `fn-bpsr-signed-body`), in order:
+
+| Octets | Content | Defined by |
+| --- | --- | --- |
+| 1 | `57`: the CBOR byte-string head for 23 octets | `fn-digest-tagged-preimage` |
+| 23 | ASCII `fn-bp-receipt-hybrid-v1` | `*fn-bpsr-domain-tag*` |
+| 1 | `01`, the profile version | `*fn-hsig-version*` |
+| 1 | `01`, the suite | `*fn-hsig-suite*` |
+| 32 | the issuer's principal (the frame's) | `fn-hsig-subject-body` |
+| 1 | `01`, the Ed25519 algorithm | `*fn-hsig-ed25519-algorithm*` |
+| 32 | the enrolled Ed25519 public key | this Store's keyring |
+| 1 | `02`, the ML-DSA-65 algorithm | `*fn-hsig-ml-dsa-65-algorithm*` |
+| 1952 | the enrolled ML-DSA-65 public key | this Store's keyring |
+| 2 | the body length, unsigned big-endian | `fn-cbor-u16-bytes` |
+| n | the body: CBOR bytes of the requester's EID text, then CBOR bytes of the exact receipt ADU | `fn-bpsr-signed-body` |
+
+The receipt ADU's nine fields bind the receipt id, work id, content
+subject, issuer EID, counterpart, policy, incarnation, authority context
+and terms; the body adds the requester (the EID the receipt is addressed
+to, the view's destination at A and the request's source at B); the
+subject body binds the principal and both keys. The domain tag differs
+from `fn-authored-source-hybrid-v1`, so no receipt signature is an
+article signature or the reverse. Signatures are over the preimage
+itself, as for articles ([identity](identity.md#the-signed-bytes)).
+
+*The host.* B (`fnn-bpnode-signed-receipt`, `host/native/bp-node.lisp`,
+when `bp-node serve` is given a signer directory as its twentieth
+argument) asks ACL2 for the preimage (`fn-bpsr-host-preimage`), signs it
+with the two primitives `fn hybrid-sign` uses, and queues ACL2's frame
+(`fn-bpsr-host-encode`). A (`fnn-bpnode-receipt-observations`) asks ACL2
+for the plan (`fn-bpah-receipt-signature-plan`: preimage, enrolled keys,
+signatures), observes both primitives through `fnn-hsig-observe-raw`, the
+transit path's call, and hands the observations to the gate
+(`fn-bpah-receipt-gatep`), the release line, the record and the verdict.
+The host decides nothing; the primitives are trusted under A-CRYPTO and no
+theorem here is about Ed25519 or ML-DSA-65 themselves.
+
 **The host path.** `fnn-bpnode-receipt-result` (`host/native/bp-node.lisp`)
 prints ACL2's source line and its release line (`BP node release
 <verdict> carrier=<name> issuer=<eid>`), refuses on the gate before opening
 the workflow journal, and after opening it publishes only the record
 `fn-bpah-receipt-release-record view cfg wf` returns (through
 `fn-owner-bp-receipt-release-record`, `host/bp-native-app-host.lisp`); nil
-publishes nothing and the pin stays. Theorems over that function:
+publishes nothing and the pin stays. Theorems over that function (all
+take the keyring and observations; keystones 1 and 1' are about bare
+receipts):
 
 - `fn-bpah-unauthorized-issuer-releases-nothing`: when the issuer is not
   authorized for release at the delivering neighbour, the gate refuses and
@@ -2324,7 +2405,21 @@ publishes nothing and the pin stays. Theorems over that function:
   record carries that work's id, and the workflow image admits the record.
 - `fn-bpah-receipt-naming-other-terms-releases-nothing`: a receipt whose
   work id finds no outstanding work, or whose subject, policy or terms
-  differ from that work's, releases nothing whoever issued it.
+  differ from that work's, releases nothing whoever issued or signed it.
+- `fn-bpah-signed-receipt-releases-through-any-carrier`: a signed receipt
+  of the delivered shape whose signature verifies under the issuer's
+  enrollment gets the workflow's answer for its ADU with the obligation
+  check as the only remaining question; no hypothesis names the carrier's
+  rows or flag.
+- `fn-bpah-unverified-signed-receipt-releases-nothing`: a signed receipt
+  whose signature does not verify releases nothing, whoever delivered it.
+- `fn-bpah-receipt-signature-needs-both-observations`: verification needs
+  both observations `:verified` and the issuer's own signer row.
+- `fn-bpah-trusted-bare-receipt-releases`: the delegation profile, stated
+  honestly: a bare receipt the gate trusts on an unflagged carrier gets the
+  workflow's answer; nothing says the issuer wrote it.
+- `fn-bpah-required-signature-refuses-bare-receipts`: under
+  `require-signed-receipts` a bare receipt releases nothing.
 
 **Provenance.** A reader of the FNBS journal tells the four facts apart
 from the held row alone: `fn-bpah-held-received-from` (the kind-5 ingress:
@@ -2332,7 +2427,8 @@ neighbour principal, its EID, the configuration generation),
 `fn-bpah-held-claimed-source` (the bundle's source, a BP source EID),
 `fn-bpah-held-verdict` (a receipt's kind-7 detail, `release=<verdict>`,
 ACL2's `fn-bpah-receipt-release-verdict`: `self-issued`, `listed-issuer`,
-`carried-not-released`, `issuer-not-released`, `obligation-mismatch`,
+`carried-not-released`, `issuer-not-released`, `signed-issuer`,
+`signature-refused`, `signature-required`, `obligation-mismatch`,
 `workflow-refused`, `generation`, `not-a-receipt` or `ingress`) and
 `fn-bpah-held-policy-row` (the configuration row that verdict rests on). A
 request's kind-7 detail is its receipt id, so its policy and verdict are
