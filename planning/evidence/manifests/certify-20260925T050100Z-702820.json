@@ -1,0 +1,387 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/auth-secret": 0,
+    "books/crypto-attach": 0,
+    "books/frame-trailer": 0,
+    "books/sha256-stobj": 0,
+    "tests/acl2/auth-secret-tests": 0,
+    "tests/acl2/frame-trailer-tests": 0,
+    "tests/acl2/sha256-stobj-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_provenance": {
+    "books/auth-secret": "certified",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/crypto-attach": "certified",
+    "books/crypto-seam": "installed",
+    "books/defrecord": "installed",
+    "books/frame": "installed",
+    "books/frame-fields": "installed",
+    "books/frame-invariants": "installed",
+    "books/frame-journal": "installed",
+    "books/frame-octets": "installed",
+    "books/frame-trailer": "certified",
+    "books/records": "installed",
+    "books/records-invariants": "installed",
+    "books/records-shape": "installed",
+    "books/sha256": "installed",
+    "books/sha256-stobj": "certified",
+    "books/wildmat": "installed",
+    "tests/acl2/auth-secret-tests": "certified",
+    "tests/acl2/frame-trailer-tests": "certified",
+    "tests/acl2/sha256-stobj-tests": "certified",
+    "tests/acl2/sha256-tests": "installed"
+  },
+  "book_results": {
+    "books/auth-secret": "passed",
+    "books/crypto-attach": "passed",
+    "books/frame-trailer": "passed",
+    "books/sha256-stobj": "passed",
+    "tests/acl2/auth-secret-tests": "passed",
+    "tests/acl2/frame-trailer-tests": "passed",
+    "tests/acl2/sha256-stobj-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/auth-secret": 1.668,
+    "books/crypto-attach": 1.168,
+    "books/frame-trailer": 1.417,
+    "books/sha256-stobj": 3.576,
+    "tests/acl2/auth-secret-tests": 1.969,
+    "tests/acl2/frame-trailer-tests": 1.769,
+    "tests/acl2/sha256-stobj-tests": 0.716
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 15,
+    "origins": {
+      "/home/ember/fn-gates/dev-head": 1,
+      "/home/ember/fn-gates/proof-cost-46f2660d": 3,
+      "/home/ember/fn-gates/stale-comments-454868a2": 4,
+      "/home/ember/fn-gates/t8b-owner-union-d6fb3802": 7
+    },
+    "removed": 0,
+    "roots_installed": [
+      "tests/acl2/sha256-tests"
+    ],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 7,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/sha256-stobj",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/sha256-stobj-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/crypto-attach",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-trailer",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/auth-secret",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/frame-trailer-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/auth-secret-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 7,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/auth-secret": "d9f70636514a59aa4c77f2a3b500bf48f93e91d0dd31ec48f83f996c4660337f",
+    "books/crypto-attach": "6423de8ba55e2bdf73b0a01c9e7b8298456d53ae3fa450c1ed5a969a6965fbba",
+    "books/frame-trailer": "8795ab8d9e58c3dea1fb200c6718c98d600bc88770a4a9a811d171d7a7c05255",
+    "books/sha256-stobj": "a2125994d22e84218d38a3a5141688f9424a6b5b71a99a9701dfab140cec8413",
+    "tests/acl2/auth-secret-tests": "2197d4b5298440444c6ae06dd9158559cf645eee2972df2ce6853a52268d158e",
+    "tests/acl2/frame-trailer-tests": "1917d8f5557c60041fb1d04796e318ee60750a697c8485f54f32d7575b618eb0",
+    "tests/acl2/sha256-stobj-tests": "260102bf9d3c70d91d94b815990fb44cf37d2a972f651acebe8da5c6ac0f7cf0"
+  },
+  "certify_wall_seconds": 8.399,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "books/auth-secret": "e653d66d0599c0e8b70b84d3aa6ee350ec50b32078f52a11ad83d0b6df2e8fd5",
+    "books/crypto-attach": "8abbc94daed50df8f8ed4ef140751893b25a4cc6f2f01dc9ba7afef04571a1b8",
+    "books/frame-trailer": "17342445be19f071c09ea0b217d829dfc620bb7041d82f1af5a593fa9edafab3",
+    "books/sha256-stobj": "ea9036bed94491af9742c6acead700e4ab379015bee2df68552b052aed0a78d1",
+    "tests/acl2/auth-secret-tests": "c59414578b3e23742407a05d499aa9f401f7fc7be6aaad2dd3ad18836fc82e5d",
+    "tests/acl2/frame-trailer-tests": "38c10611744140242bcb5c43102ee98f45d534f6b9239052c9008294198801e6",
+    "tests/acl2/sha256-stobj-tests": "01c2048d011419c90c959d11ef95d6b39587d780cca8f3c52d72c4ede7d067d5"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 218f57e52030",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 21aed879aef8",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 76c84983347e",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 5faba6f199f1",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 ece3ce43465c",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 96014d57a864",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 0e5414b07b9b"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-25T05:01:10+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/cbor-invariants": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/crypto-seam": "/home/ember/fn-gates/stale-comments-454868a2",
+    "books/defrecord": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/frame": "/home/ember/fn-gates/proof-cost-46f2660d",
+    "books/frame-fields": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/frame-invariants": "/home/ember/fn-gates/proof-cost-46f2660d",
+    "books/frame-journal": "/home/ember/fn-gates/proof-cost-46f2660d",
+    "books/frame-octets": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/records": "/home/ember/fn-gates/stale-comments-454868a2",
+    "books/records-invariants": "/home/ember/fn-gates/stale-comments-454868a2",
+    "books/records-shape": "/home/ember/fn-gates/stale-comments-454868a2",
+    "books/sha256": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "books/wildmat": "/home/ember/fn-gates/t8b-owner-union-d6fb3802",
+    "tests/acl2/sha256-tests": "/home/ember/fn-gates/dev-head"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 218f57e52030",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 21aed879aef8",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 76c84983347e",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 5faba6f199f1",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 ece3ce43465c",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 96014d57a864",
+    "FN_CERTIFY_SUCCESS 60f372f1471f1de004370fd85ab342d9 0e5414b07b9b"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/sha256-stobj",
+    "tests/acl2/sha256-stobj-tests",
+    "books/crypto-attach",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
+    "tests/acl2/sha256-tests"
+  ],
+  "requested_books": [
+    "books/sha256-stobj",
+    "tests/acl2/sha256-stobj-tests",
+    "books/crypto-attach",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests"
+  ],
+  "roots": [
+    "books/sha256-stobj",
+    "tests/acl2/sha256-stobj-tests",
+    "books/crypto-attach",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
+    "tests/acl2/sha256-tests"
+  ],
+  "run_id": "certify-20260925T050100Z-702820",
+  "runner_sha256": "b6f65954d9cc10199cbbf44b04f3130697a8365ac2b2f2656ef33b1e1c1c5f0a",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 5,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 4.0
+  },
+  "slot_wait_seconds": {
+    "books/auth-secret": 0.0,
+    "books/crypto-attach": 0.0,
+    "books/frame-trailer": 0.0,
+    "books/sha256-stobj": 0.0,
+    "tests/acl2/auth-secret-tests": 0.0,
+    "tests/acl2/frame-trailer-tests": 0.0,
+    "tests/acl2/sha256-stobj-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/auth-secret.lisp": "c5ca1ea9c33ec15ceae5fa9ff6fbb8c8d189498064c99ebcafa4552c9b6c8e92",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-attach.lisp": "571358a1d90cfea68c4176df19acf4b415e048096e7980a216bfd5f9a987902a",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "c1acc66bad74896de17d50be5a5665289bcb16f3983719e9efc00f69ba7e9354",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "8e127b62bc7309d25137c7e7e245d1147e5adaaf240d428f73711d51cb64972b",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-shape.lisp": "7725ac1fb9f461253646a34a176c6f30dc22ad4c75eaed8560582505700d9eed",
+    "books/records.lisp": "04bfe3c4da2fe4cca7968d54f96da2b2a75c323adccc7322bed2a47d28e75e65",
+    "books/sha256-stobj.lisp": "0ce907d5b109a82e3e22cb74645145e36193c8a627361ff7bd62b703e749a779",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/auth-secret-tests.lisp": "19e4e3304bd1100ea30503ba54303b7ac00090f65d3c786bbba9db72fb7a58e4",
+    "tests/acl2/frame-trailer-tests.lisp": "4eef6a5d3d9e050def55ae8f037d15ced5b9f6b37dd44f4f69313b2cf3460c2a",
+    "tests/acl2/sha256-stobj-tests.lisp": "388be65f3e9cd129a099ab242cba1402ba926da9ba056e78e264de15fac5af1e",
+    "tests/acl2/sha256-tests.lisp": "705d7e7088833a93c090dc65644fcff590403b22328c606602f55eb1f11a517a"
+  },
+  "source_digests_sha256_after": {
+    "books/auth-secret.lisp": "c5ca1ea9c33ec15ceae5fa9ff6fbb8c8d189498064c99ebcafa4552c9b6c8e92",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-attach.lisp": "571358a1d90cfea68c4176df19acf4b415e048096e7980a216bfd5f9a987902a",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "c1acc66bad74896de17d50be5a5665289bcb16f3983719e9efc00f69ba7e9354",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "8e127b62bc7309d25137c7e7e245d1147e5adaaf240d428f73711d51cb64972b",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-shape.lisp": "7725ac1fb9f461253646a34a176c6f30dc22ad4c75eaed8560582505700d9eed",
+    "books/records.lisp": "04bfe3c4da2fe4cca7968d54f96da2b2a75c323adccc7322bed2a47d28e75e65",
+    "books/sha256-stobj.lisp": "0ce907d5b109a82e3e22cb74645145e36193c8a627361ff7bd62b703e749a779",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/auth-secret-tests.lisp": "19e4e3304bd1100ea30503ba54303b7ac00090f65d3c786bbba9db72fb7a58e4",
+    "tests/acl2/frame-trailer-tests.lisp": "4eef6a5d3d9e050def55ae8f037d15ced5b9f6b37dd44f4f69313b2cf3460c2a",
+    "tests/acl2/sha256-stobj-tests.lisp": "388be65f3e9cd129a099ab242cba1402ba926da9ba056e78e264de15fac5af1e",
+    "tests/acl2/sha256-tests.lisp": "705d7e7088833a93c090dc65644fcff590403b22328c606602f55eb1f11a517a"
+  },
+  "start_order": [
+    "books/sha256-stobj",
+    "books/crypto-attach",
+    "tests/acl2/sha256-stobj-tests",
+    "books/auth-secret",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
+    "tests/acl2/auth-secret-tests"
+  ],
+  "started_utc": "2026-09-25T05:01:00+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/home/ember/fn-gates/rep-sha256-9f6c28f6"
+}
