@@ -1,4 +1,4 @@
-; Exact pending kind-8/9 FNBS publication authority.  The host only writes
+; Exact pending kind-8/9/20 FNBS publication authority.  The host only writes
 ; the ACL2-selected frame and reports the three-valued persistence result.
 (in-package "ACL2")
 (include-book "bp-node-progress")
@@ -9,6 +9,7 @@
   (declare (xargs :guard t))
   (cond ((equal kind :attempt) (fn-bpnp-attempt-frame record))
         ((equal kind :forward-result) (fn-bpnp-result-frame record))
+        ((equal kind :deferral) (fn-bpnp-deferral-frame record))
         (t :bad)))
 
 (defun fn-bpnp-forward-publication-authorize
@@ -18,7 +19,7 @@
          (kind (fn-bpn-nth 3 issued)))
     (if (and (fn-bpnf-operationp issued)
              (fn-bpnf-operation-matchp issued epoch op)
-             (member-equal kind '(:attempt :forward-result))
+             (member-equal kind '(:attempt :forward-result :deferral))
              (equal (fn-bpn-nth 4 issued) record)
              (equal (fn-bpn-nth 5 issued) :pending)
              (equal (fn-bpnf-epoch st) epoch)
@@ -46,7 +47,9 @@
        (or (equal (fn-bpn-nth 5 operation)
                   (fn-bpnp-attempt-frame (fn-bpn-nth 3 operation)))
            (equal (fn-bpn-nth 5 operation)
-                  (fn-bpnp-result-frame (fn-bpn-nth 3 operation))))
+                  (fn-bpnp-result-frame (fn-bpn-nth 3 operation)))
+           (equal (fn-bpn-nth 5 operation)
+                  (fn-bpnp-deferral-frame (fn-bpn-nth 3 operation))))
        (not (equal (fn-bpn-nth 5 operation) :bad))
        (equal (fn-bpn-nth 6 operation) (fn-jpub-initial t))))
 

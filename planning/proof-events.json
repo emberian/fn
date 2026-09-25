@@ -2221,6 +2221,46 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-rotation-resets-credit-only-on-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-busy-delivery-proposes-its-count",
+          "note": "BP-R17 durable count, over the called fn-bpnp-step (host/native/bp-service.lisp:174 (fnn-bps-foundation-step) calls fn-bpnp-step; the busy :deliver-result is built in host/native/bp-node.lisp fnn-bpnode-dispatch-one): on the busy answer to the delivery the marker names, with the marker's epoch and nothing issued, the held rows are unchanged, the marker is cleared, and the one proposal is the kind-20 record of the row's arrival and primary identity with count one more than the row's durable count (slot 13), issued :pending; without journal credit nothing is issued and the answer is the credit wait. Teeth: tests/acl2/bp-node-counterexamples-tests (BP-R17: a three-answer trace; must-fail for the marker op, an issued operation and another epoch)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-deferral-durable-applies-the-replay-function",
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:174 (fnn-bps-foundation-step) calls fn-bpnp-step): the durable :persist-result of an issued :deferral leaves the held list equal to fn-bpnp-deferral-apply of that record, the function kind-20 replay (fn-bpnf-family-replay-rows-aux) calls. Teeth: tests/acl2/bp-node-counterexamples-tests (a count that is not one more faults the apply)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-busy-count-after-recovery-is-the-live-count",
+          "note": "Subject pair fn-bpnp-step (host/native/bp-service.lisp:174) and fn-bpnf-family-replay-rows: if the journal rows replay to the live held list and the durable row decodes to the live issued kind 20 (name and order hold), the held list after the live durable arm equals the replay of the rows then that row. The host's recovery event is fn-bpnr-recover-auto-event (bp-service.lisp:962), equal to the whole-history replay by fn-bpnr-recover-from-checkpoint-equals-full-recover and fn-bpnr-recover-without-checkpoint-is-family-recover (PRF-081), and fn-bpnp-host-recovery-installs-the-durable-replay installs it: a restart gives a stranded row no fresh tries. Teeth: tests/acl2/bp-node-counterexamples-tests (byte replay of a kind-5 frame and three kind-20 frames; must-fail without the last row and with rows out of order); native: tests/test_bp_node_native.py test_permanently_busy_application_strands_row_until_resume."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-progress-reports-a-stranded-row",
+          "note": "Over fn-bpnp-progress-step, the :progress arm of the called fn-bpnp-step (host/native/bp-node.lisp fnn-bpnode-dispatch-one builds the :progress event and prints the report): with the progress entry conditions, no selectable row, no uncertain local row and some held row stranded under the configured retry budget, the effect is the report of the oldest stranded row with its durable count and the held rows are unchanged, so the report repeats on every such tick until the operator resumes the row. Teeth: tests/acl2/bp-node-counterexamples-tests (two later ticks report; must-fail with the report replaced by a delivery)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-busy-stranded-row-is-not-offered",
+          "note": "A row stranded under the configured budget is never fn-bpnp-oldest-eligible-with-credit's selection, the selection fn-bpnp-progress-step (the :progress arm of the called fn-bpnp-step) delivers, at any observation. Teeth: tests/acl2/bp-node-counterexamples-tests (retry budget 2 strands at 2; budget 5 still defers at 3)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-busy-deferral-ends-at-its-reading",
+          "note": "A row not stranded under the configured budget is not held back by its busy wait at any observation whose monotonic reading reaches the wait's reading (the backoff is the operator's owner-backoff, default 5000 ms). Scope: the selection's blocked predicate, not the full step. Teeth: tests/acl2/bp-node-counterexamples-tests (backoff 100 gives a deferral at 1100; must-fail for the blocked reading at the budget)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-scan-offers-a-candidate",
+          "note": "The forward scan the :session arm of the called fn-bpnp-step runs (fn-bpnp-start-one, fn-bpnp-routed-start; the host's routed :session is built in host/native/bp-node.lisp fnn-bpnode-forward-contact) offers only a candidate under the configured retry budget (fn-bpnp-forward-candidatep). Teeth: tests/acl2/bp-node-forward-retry-tests (a kind 8 at the bound applies at replay while the live proposal refuses it)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-attempted-held-counts-one-more",
+          "note": "Each durable kind 8 applied to a held row sets its slot-13 retry count to one more than the uncertain slot's count, or 0 on a row with no attempt. Teeth: tests/acl2/bp-node-forward-retry-tests."
         }
       ]
     },
@@ -3240,6 +3280,31 @@
         {
           "kind": "theorem",
           "name": "fn-bs-read-ranges-concatenate"
+        }
+      ]
+    },
+    {
+      "id": "PRF-082",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-receipt-contact-offers-the-queued-job",
+          "note": "KEYSTONE. Over the called fn-bpnp-step (host/native/bp-service.lisp:174) on (:base E) with E = fn-bpnp-receipt-contact-event, the event host/native/bp-node.lisp fnn-bpnode-send-receipts (called from bp-node serve and dispatch at :793 and :857) asks for: with a well-formed base, a non-nil event and the journal token below its bound, the event is (:contact PEER t), the first queued job for PEER is :queued and names PEER, the one effect persists that job's :attempting record, and the pending success effect is exactly that job's :cl-send (route, peer, key, wire). Teeth: tests/acl2/bp-node-receipt-send-tests (reachable witness; must-fail without the event and at the token bound)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-receipt-contact-event-needs-a-queued-job",
+          "note": "fn-bpnp-receipt-contact-event, called by fnn-bpnode-send-receipts, is non-nil exactly when the peer is an EID, nothing is issued, no delivery is uncertain, the base is neither fenced nor pending, and a :queued job for that peer exists. Teeth: tests/acl2/bp-node-receipt-send-tests (one separating state per conjunct; after the durable :attempting record the job is no longer :queued and the event is nil)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed",
+          "note": "KEYSTONE (spec 4.3.2). Over the called fn-bpnp-step on (:base (:forward-result KEY :uncertain)), the event fnn-bps-send-effect (host/native/bp-service.lisp:490) reports after the receipt contact's :cl-send: for a well-formed base with nothing issued, no delivery uncertain, the base neither fenced nor pending, an :attempting job at KEY and the token below its bound, the one effect persists (:requeued TOKEN W A G :uncertain :requeued), the jobs are unchanged (the job keeps its durable :attempting record), the base stays unfenced, nothing is issued, no delivery becomes uncertain, the proposal's success effects are exactly the :attempted transport and the (:forward-refused ... :uncertain) retention report, and neither the effects nor the success effects contain :release or :receipt-prepare. Teeth: tests/acl2/bp-node-receipt-send-tests (reachable witness after a durable :attempting; one must-fail per hypothesis, each with a positive assert showing the step answered)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-receipt-reoffer-after-uncertain",
+          "note": "KEYSTONE (spec 4.3.2). Under the lower machine's lifecycle invariant and the same hypotheses, after the uncertain transfer and the durable :requeued record (both through the called fn-bpnp-step), the second step's effects are exactly the :attempted transport and the :uncertain retention report, the job at KEY is fn-bpn-job-with-status of the same job :queued (same work, attempt, generation, peer, route, wire), and fn-bpnp-receipt-contact-event (fnn-bpnode-send-receipts) answers (:contact PEER t) for its peer again, so the next contact offers it by the same identity. Teeth: tests/acl2/bp-node-receipt-send-tests (witness through the re-offered :attempting record; must-fail for a malformed base, issued, uncertain delivery, fenced, and at the token bound)."
         }
       ]
     }

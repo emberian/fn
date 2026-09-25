@@ -4,7 +4,10 @@
 ; The host (host/native/bp-service.lisp `fnn-bps-foundation-step', from
 ; host/native/bp-node.lisp `fnn-bpnode-forward-contact') calls
 ; `fn-bpnp-step' with a routed :session event
-;   (:session PEER SESSION t MRU OBSERVATION (:via HOP ANNOUNCED TABLE))
+;   (:session PEER SESSION t MRU OBSERVATION (:via HOP ANNOUNCED TABLE) . EXTRA)
+; where EXTRA is empty or the operator's budgets (fnn-bpnode-budgeted); the
+; keystones below hold for any EXTRA, the scan running under the retry
+; budget the event carries.
 ; after `fn-bprt-outbound-choice' named HOP and the TCPCL session to HOP's
 ; contact came up announcing ANNOUNCED.  Its :session arm calls
 ; `fn-bpnp-routed-start', which consults `fn-bprt-offer-decision'
@@ -16,14 +19,24 @@
 
 ; The scan the step's start-one calls, over the state's own inputs, and the
 ; destination EID text of a held row.
-(defun fn-bprts-scan (st peer mru observation)
+(defun fn-bprts-scan (st peer mru observation budget)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnp-forward-scan
    (reverse (fn-bpnf-held-list st)) peer mru
    (fn-bpn-config-node-id (fn-bpn-machine-state-config (fn-bpnf-base st)))
    observation (fn-bpnp-waits st)
    (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st) *fn-bpnp-control-margin*)
-   (fn-bpnf-epoch st)))
+   (fn-bpnf-epoch st) budget))
+
+; The retry budget a routed :session event carries (its field after VIA).
+(defun fn-bprts-budget (event)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnp-budget-retries (fn-bpnp-event-budgets event 7)))
+
+(local
+ (defthm fn-bprts-via-is-not-budgets
+   (not (fn-bpnp-budgetsp (cons :via x)))
+   :hints (("Goal" :in-theory (enable fn-bpnp-budgetsp)))))
 
 (defun fn-bprts-dest (h)
   (declare (xargs :guard t :verify-guards nil))
@@ -40,10 +53,10 @@
    :hints (("Goal" :in-theory (enable fn-bpn-nth)))))
 
 (defthm fn-bpnp-routed-start-offers-only-an-offer-decision
-  (let* ((answer (fn-bpnp-routed-start st peer session mru observation via))
+  (let* ((answer (fn-bpnp-routed-start st peer session mru observation via budget))
          (effect (car (fn-bpnf-answer-effects answer)))
          (record (fn-bpn-nth 3 effect))
-         (scan (fn-bprts-scan st peer mru observation))
+         (scan (fn-bprts-scan st peer mru observation budget))
          (h (fn-bpn-nth 1 scan)))
     (implies (equal (car effect) :persist-attempt)
              (and (equal (car scan) :ready)
@@ -71,15 +84,18 @@
 ; and the contact announced the EID HOP is enrolled under.
 (defthm fn-bpnp-step-offers-only-the-routed-hop
   (let* ((answer (fn-bpnp-step
-                  st (list :session peer session t mru observation
-                           (list :via hop announced table))))
+                  st (list* :session peer session t mru observation
+                            (list :via hop announced table) extra)))
+         (budget (fn-bprts-budget
+                  (list* :session peer session t mru observation
+                         (list :via hop announced table) extra)))
          (effect (car (fn-bpnf-answer-effects answer)))
          (record (fn-bpn-nth 3 effect))
-         (h (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation)))
+         (h (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation budget)))
          (dest (fn-bprts-dest h))
          (route (fn-bprt-hop-route dest table (list hop))))
     (implies (equal (car effect) :persist-attempt)
-             (and (equal (car (fn-bprts-scan st peer mru observation)) :ready)
+             (and (equal (car (fn-bprts-scan st peer mru observation budget)) :ready)
                   (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 h))
                   (equal (fn-bpn-nth 4 record) (fn-bpah-held-primary-identity h))
                   (equal (fn-bprt-next-hop dest table (list hop)) hop)
@@ -94,22 +110,41 @@
                                  st (fn-bpnp-open-session
                                      (fn-bpnp-sessions st) peer session mru)
                                  (fn-bpnp-pending-image st)))
-                            (via (list :via hop announced table)))
+                            (via (list :via hop announced table))
+                            (budget (fn-bprts-budget
+                                     (list* :session peer session t mru observation
+                                            (list :via hop announced table) extra))))
                  (:instance fn-bprt-offer-means-routed-hop-and-announced-eid
                             (dest (fn-bprts-dest
-                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation))))
+                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation
+                                                  (fn-bprts-budget
+                                                   (list* :session peer session t mru
+                                                          observation
+                                                          (list :via hop announced table)
+                                                          extra))))))
                             (via (list :via hop announced table)))
                  (:instance fn-bprt-offer-names-a-string-hop
                             (dest (fn-bprts-dest
-                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation))))
+                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation
+                                                  (fn-bprts-budget
+                                                   (list* :session peer session t mru
+                                                          observation
+                                                          (list :via hop announced table)
+                                                          extra))))))
                             (via (list :via hop announced table)))
                  (:instance fn-bprt-next-hop-names-a-live-matching-route
                             (dest (fn-bprts-dest
-                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation))))
+                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation
+                                                  (fn-bprts-budget
+                                                   (list* :session peer session t mru
+                                                          observation
+                                                          (list :via hop announced table)
+                                                          extra))))))
                             (live (list hop))))
            :in-theory (union-theories
                        '(fn-bpnp-step fn-bprts-with-runtime-keeps-selection-inputs
-                         fn-bprts-scan
+                         fn-bprts-scan fn-bprts-budget fn-bprts-via-is-not-budgets
+                         fn-bpnp-session-via fn-bpnp-session-base-length
                          fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
                          fn-cbor-ag-car fn-bpn-nth fn-bprt-nth fix-true-list true-listp
                          fn-bpnf-answer-effects member-equal
@@ -129,9 +164,12 @@
 ; (:forward-no-route ARRIVAL HOP :no-route), and keeps every held row.
 (defthm fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported
   (let* ((answer (fn-bpnp-step
-                  st (list :session peer session t mru observation
-                           (list :via hop announced table))))
-         (scan (fn-bprts-scan st peer mru observation))
+                  st (list* :session peer session t mru observation
+                            (list :via hop announced table) extra)))
+         (budget (fn-bprts-budget
+                  (list* :session peer session t mru observation
+                         (list :via hop announced table) extra)))
+         (scan (fn-bprts-scan st peer mru observation budget))
          (h (fn-bpn-nth 1 scan)))
     (implies (and (not (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain))
                   (equal (car scan) :ready)
@@ -144,12 +182,19 @@
   :hints (("Goal"
            :use ((:instance fn-bprt-offer-decision-without-a-matching-route
                             (dest (fn-bprts-dest
-                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation))))
+                                   (fn-bpn-nth 1 (fn-bprts-scan st peer mru observation
+                                                  (fn-bprts-budget
+                                                   (list* :session peer session t mru
+                                                          observation
+                                                          (list :via hop announced table)
+                                                          extra))))))
                             (via (list :via hop announced table))))
            :in-theory (union-theories
                        '(fn-bpnp-step fn-bpnp-routed-start
                          fn-bprts-with-runtime-keeps-selection-inputs
-                         fn-bprts-scan fn-bprts-dest
+                         fn-bprts-scan fn-bprts-dest fn-bprts-budget
+                         fn-bprts-via-is-not-budgets
+                         fn-bpnp-session-via fn-bpnp-session-base-length
                          fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
                          fn-cbor-ag-car fn-bpn-nth fn-bprt-nth
                          fn-bpnf-answer-effects fn-bpnf-answer fn-bpnf-answer-state
