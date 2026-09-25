@@ -3005,12 +3005,7 @@
         "fn-bpah-carrier-without-release-row-releases-nothing",
         "fn-bpah-released-receipt-names-exactly-its-obligation",
         "fn-bpah-receipt-naming-other-terms-releases-nothing",
-        "fn-bpah-request-trust-ignores-release-rows",
-        "fn-bpah-signed-receipt-releases-through-any-carrier",
-        "fn-bpah-unverified-signed-receipt-releases-nothing",
-        "fn-bpah-receipt-signature-needs-both-observations",
-        "fn-bpah-trusted-bare-receipt-releases",
-        "fn-bpah-required-signature-refuses-bare-receipts"
+        "fn-bpah-request-trust-ignores-release-rows"
       ]
     },
     {

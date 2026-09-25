@@ -27,7 +27,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260925T004450Z-2510809` | yes: c3420013 | yes: c3420013 |
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260925T004450Z-2510809` | yes: c3420013 | yes: c3420013 |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | no: closure moved | no: source changed since c3420013 | no: profile not deployed |
-| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260925T004450Z-2510809` | lab only: `dc27d36d` | no: profile not deployed |
+| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | no: closure moved | lab only: `dc27d36d` | no: profile not deployed |
 | [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-profile-budget` | yes | yes: `certify-20260925T004450Z-2510809` | lab only: `5181e0ea` | yes: c3420013 |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260925T004450Z-2510809` | lab only: `lane/m6-list-counts` | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260925T004450Z-2510809` | yes: c3420013 | yes: c3420013 |
@@ -159,7 +159,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
 - Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:170.
-- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T230640Z-2140288` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-fnbs-forward-codec.lisp`, `books/bp-forward-attempt.lisp` and 11 more changed.
+- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T230640Z-2140288` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-fnbs-forward-codec.lisp`, `books/bp-forward-attempt.lisp` and 12 more changed.
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile DTN developer image, bp_node and bp_app modules; changed since it: `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: bp_node 17/17 with N08 on both developer images, bp_app 5/5, contact_relay 1/1 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -171,7 +171,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **disconnected exchange.** A request carried by a relay listed on the receiver's boundary is judged as its author's own direct request; an unlisted carrier is refused.
 
 - Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:23.
-- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:155; PRF-075 (in-progress)); certified at the current source and closure by `certify-20260925T004450Z-2510809` (earliest archived).
+- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:155; PRF-075 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T231054Z-2148356` passed this source of `books/bp-transit-join.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-node-foundation.lisp`, `books/bp-signed-receipt.lisp` and 8 more changed.
 - Tested: lane image of `dc27d36d` ([d23-bp-carrier-2026-09-24](evidence/d23-bp-carrier-2026-09-24.md)), profile DTN developer image through dtn7-rs 0.21.0, one and two relays; not a shared qualification.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: request accepted under the author's enrollment, receipt authored by B and carried back, A's obligation `receipted pinned=no` ([d23-bp-carrier](evidence/d23-bp-carrier-2026-09-24.md)).
