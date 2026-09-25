@@ -68,6 +68,24 @@
 (defun fnn-open-live-store (root writable &optional fault)
   (note :open root writable fault)
   (throw 'opened fault))
+;; fnn-recovery-test-fault asks ACL2 for the marker program's cut names
+;; (books/store-history-marker.lisp fn-hm-marker-cut-names).  This stub
+;; answers with the certified definition's own quoted table, read from the
+;; book, so the check follows the book and not a copy.
+(defun book-constant-body (path name)
+  (with-open-file (stream path)
+    (loop for form = (read stream nil :eof)
+          until (eq form :eof)
+          when (and (consp form) (eq (car form) 'defun) (eq (cadr form) name))
+            do (return (eval (car (last form))))
+          finally (error "~a: ~a not found" path name))))
+(defparameter *marker-cut-names*
+  (book-constant-body "books/store-history-marker.lisp" 'fn-hm-marker-cut-names))
+(defun fnn-core (name &rest args)
+  (declare (ignore args))
+  (case name
+    (fn-hm-marker-cut-names *marker-cut-names*)
+    (t (error "unexpected core call ~a" name))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The deployed definitions.
@@ -83,6 +101,7 @@
               fnn-developer-selector-gate
               +fnn-init-model-cuts+ +fnn-init-test-controls+ fnn-init-test-fault
               +fnn-recovery-model-cuts+ fnn-recovery-test-fault
+              +fnn-state-checkpoint-model-cuts+ fnn-state-checkpoint-test-fault
               +fnn-cli-faults+ +fnn-post-model-cuts+ fnn-post-test-fault
               fnn-post-entry-fault fnn-command-post fnn-main))
 
@@ -184,6 +203,13 @@
     (check (eq (first (fnn-post-entry-fault nil))
                (intern (string-upcase cut) :keyword))
            (format nil "FN_NATIVE_RECOVERY_FAULT selects ~a" cut)))
+  (check (consp *marker-cut-names*) "the marker program names its cuts")
+  (dolist (cut *marker-cut-names*)
+    (setenv "FN_NATIVE_RECOVERY_FAULT" (format nil "~a:eio" cut))
+    (check (equal (fnn-post-entry-fault nil)
+                  (list (intern (string-upcase cut) :keyword) 'fnn-os-error
+                        "developer-only native recovery fault"))
+           (format nil "FN_NATIVE_RECOVERY_FAULT selects the marker cut ~a" cut)))
   (setenv "FN_NATIVE_RECOVERY_FAULT" "recover-barrier:kill")
   (check (eq :fault (handler-case (fnn-post-entry-fault nil)
                       (fnn-store-fault () :fault)))
@@ -237,6 +263,18 @@
   (setenv "FN_NATIVE_RECOVERY_FAULT" "recovery-stage-unlinked:eio")
   (check (equal (run-normalized) (fnn-post-entry-fault nil))
          "the served owner is armed at a recovery cut")
+  (clear-selectors)
+  ;; Only the served owner reaches fn-bs-scp-program's cuts, and only when no
+  ;; posting-entry fault is selected.
+  (dolist (cut +fnn-state-checkpoint-model-cuts+)
+    (setenv "FN_NATIVE_STATE_CHECKPOINT_FAULT" (format nil "~a:kill" cut))
+    (check (equal (run-normalized)
+                  (list (intern (string-upcase cut) :keyword) :fnn-test-kill
+                        "developer-only native state-checkpoint fault"))
+           (format nil "the served owner is armed at the state-checkpoint cut ~a" cut)))
+  (setenv "FN_NATIVE_POST_FAULT" "finish-durable:kill")
+  (check (eq (first (run-normalized)) :finish-durable)
+         "a posting-entry fault takes the store slot before a state-checkpoint cut")
   (clear-selectors)
   (check (null (run-normalized)) "an unselected developer owner has no fault")
   (setenv "FN_NATIVE_CONTROL_FAULT" "nonesuch")
