@@ -15,8 +15,10 @@ Run: FN_NATIVE_HOST=<launcher> python3 -m unittest tests.test_native_control_fil
 import json
 import os
 from pathlib import Path
+import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -401,8 +403,48 @@ class NativeControlFilingTests(unittest.TestCase):
         restarted = {m: self.article_reply(node, m).decode().strip()
                      for m in (target, late, unsigned)}
         listed_after = self.listgroup(node, b"fn.test")
+        # control-c3e: the served withdrawal answers.  The target was the
+        # first article of fn.test, number 1.
+        by_number = self.session(node, [b"LISTGROUP fn.test\r\n", b"ARTICLE 1\r\n",
+                                        b"STAT 1\r\n"])
+        withdrawn_numbered = [by_number[2].decode().strip(), by_number[3].decode().strip()]
+        withdrawn_msgid = self.article_reply(node, target).decode().strip()
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"HDR :fn-control <c3b-cancel@example.invalid>\r\n")
+            hdr_status = stream.readline().decode().strip()
+            hdr_lines = []
+            if hdr_status.startswith("225"):
+                while True:
+                    line = stream.readline()
+                    if line in (b".\r\n", b""):
+                        break
+                    hdr_lines.append(line.decode().rstrip("\r\n"))
+        keyring = root / "keyring.json"
+        entry = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"),
+                                "keyring-entry", str(principal), str(ed_public),
+                                str(ml_public)], cwd=ROOT, stdout=subprocess.PIPE,
+                               check=True, timeout=60)
+        keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
+                                       "principals": [json.loads(entry.stdout)]}))
+        verify_cmd = [str(ROOT / "tools" / "fn_verify.py"), target,
+                      "--node", "127.0.0.1:" + str(node["port"]), "--plain",
+                      "--keyring", str(keyring),
+                      "--withdrawal", "<c3b-cancel@example.invalid>", "--json"]
+        uv = shutil.which("uv")
+        verify_cmd = ([uv, "run", "--with", "cryptography", "--with", "dilithium-py",
+                       "python3"] + verify_cmd) if uv else [sys.executable] + verify_cmd
+        verified = subprocess.run(verify_cmd, cwd=ROOT, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, timeout=300, check=False)
         self.stop(node)
         witness = {
+            "c3e-withdrawn-by-number": withdrawn_numbered,
+            "c3e-withdrawn-by-msgid": withdrawn_msgid,
+            "c3e-hdr-fn-control": [hdr_status] + hdr_lines,
+            "c3e-fn-verify-exit": verified.returncode,
+            "c3e-fn-verify-out": verified.stdout.decode("utf-8", "replace")[-2000:],
+            "c3e-fn-verify-err": verified.stderr.decode("utf-8", "replace")[-2000:],
             "author-codes": codes, "pinned-before": pinned_before,
             "fresh-after-cancel": fresh, "pinned-after-cancel": pinned_after,
             "cancel-before-target": late_reply, "unsigned-post": posted,
@@ -424,6 +466,12 @@ class NativeControlFilingTests(unittest.TestCase):
         self.assertTrue(restarted[target].startswith("430"), restarted)
         self.assertTrue(restarted[late].startswith("430"), restarted)
         self.assertTrue(restarted[unsigned].startswith("220"), restarted)
+        self.assertEqual(withdrawn_numbered, ["423 withdrawn", "423 withdrawn"])
+        self.assertEqual(withdrawn_msgid, "430 withdrawn")
+        self.assertTrue(hdr_status.startswith("225"), hdr_status)
+        self.assertEqual(hdr_lines,
+                         ["0 executed withdrawal <c3b-target@example.invalid> author"])
+        self.assertEqual(verified.returncode, 0, witness)
 
     @unittest.skipUnless(os.environ.get("FN_RUN_HYBRID_E2E") == "1",
                          "set FN_RUN_HYBRID_E2E=1 (OpenSSL 3.5 with ML-DSA-65)")

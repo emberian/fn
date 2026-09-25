@@ -18,6 +18,7 @@
 (in-package "ACL2")
 (include-book "owner-verdict-read")
 (include-book "nntp-list-counts")
+(include-book "nntp-pinned-msgid")
 
 (defun fn-olc-buckets-okp (conn)
   (declare (xargs :guard t :verify-guards nil))
@@ -286,7 +287,11 @@
                   (consp (cdr tokens)) (null (cddr tokens))
                   (fn-nntp-keyword-tokenp (car tokens))
                   (fn-olc-retrieval-keywordp (car tokens))
-                  (fn-nntp-message-id-tokenp (cadr tokens)))
+                  (fn-nntp-message-id-tokenp (cadr tokens))
+                  ; control-c3e: a Message-ID the pinned view withdrew is
+                  ; answered `430 withdrawn' (books/nntp-control.lisp).
+                  (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-pinned-index conn)
+                                                  (cadr tokens))))
              (and (equal (fn-served-result-effects
                           (fn-served-dispatch conn (list :command line)))
                          (fn-nntp-result-effects
@@ -307,8 +312,11 @@
                                    fn-olc-retrieval-kind
                                    fn-olc-retrieval-keywordp
                                    fn-auth-tls-eventp fn-nntp-keywordp
-                                   fn-nntp-archive-keywordp)
-                                  (fn-nntp-msgid-retrieval-indexed
+                                   fn-nntp-archive-keywordp
+                                   fn-nntp-number-withdrawn-p
+                                   fn-nntp-message-id-token-is-not-a-number-token)
+                                  (fn-nntp-archive-command-pinned-msgid-arms-are-the-scan
+                                   fn-nntp-msgid-retrieval-indexed
                                    fn-nntp-msgid-retrieval
                                    fn-olc-buckets-okp fn-served-conn-pinned-index
                                    fn-midx-correspondencep
@@ -361,6 +369,8 @@
                   (fn-nntp-keyword-tokenp (car tokens))
                   (fn-olc-retrieval-keywordp (car tokens))
                   (fn-nntp-message-id-tokenp (cadr tokens))
+                  (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-pinned-index conn)
+                                                  (cadr tokens)))
                   (consp article))
              (equal (fn-served-result-effects
                      (fn-served-step conn (append prefix (list byte))))
@@ -384,6 +394,7 @@
                            (fn-olc-buckets-okp
                             fn-served-step-of-one-framed-event
                             fn-served-dispatch-msgid-retrieval
+                            fn-nntp-msgid-withdrawn-p fn-served-conn-pinned-index
                             fn-served-step fn-served-dispatch
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
                             fn-nntp-article-response fn-find-article

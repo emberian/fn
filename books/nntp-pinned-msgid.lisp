@@ -26,9 +26,14 @@
                                      fn-nntp-number-tokenp
                                      fn-nntp-decimal-tokenp))))
 
+; With a control pin, a number or Message-ID the archive lacks and the
+; withdrawn list holds is answered `423 withdrawn' / `430 withdrawn'
+; (books/nntp-control.lisp); every other retrieval is the scan.
 (defthm fn-nntp-archive-command-pinned-msgid-arms-are-the-scan
   (implies (and (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                          (fn-state-articles archive))
+                (not (fn-nntp-number-withdrawn-p session archive index (car args)))
+                (not (fn-nntp-msgid-withdrawn-p index (car args)))
                 (or (fn-nntp-keywordp keyword "ARTICLE")
                     (fn-nntp-keywordp keyword "HEAD")
                     (fn-nntp-keywordp keyword "BODY")

@@ -51,7 +51,7 @@
                                  (fn-own-conn-observation conn)
                                  (fn-own-conn-verdicts conn)
                                  (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn)))
+                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
          (decision (fn-served-submission effects)))
     (cons effects
           (if (and (fn-scar-conn-boundedp

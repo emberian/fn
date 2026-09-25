@@ -172,6 +172,22 @@
                             fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
                             fn-nntp-single fn-nntp-multi)))))
 
+(defthm fn-auth-fold-control-hdr-response-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-nntp-control-hdr-response session archive index verdicts args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response fn-post-offeredp
+                                   fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi
+                                   fn-ctl-control-item fn-ctl-served-status
+                                   fn-ctl-served-held fn-nntp-string-octets
+                                   fn-nntp-control-cleanp fn-nntp-hdr-line
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-ctl-pin-withdrawn fn-ctl-pin-ws
+                                   fn-nntp-token-string fn-ctl-target-octets
+                                   fn-octet-listp)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
@@ -182,7 +198,8 @@
            (e/d (fn-nntp-archive-command-pinned
                   fn-nntp-msgid-retrieval-indexed
                   fn-nntp-verdict-hdr-response fn-post-offeredp
-                  fn-nntp-reply-effect fn-nntp-article-response)
+                  fn-nntp-reply-effect fn-nntp-article-response
+                  fn-nntp-withdrawn-reply)
                 (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                  fn-nntp-archive-command fn-nntp-keywordp
                  fn-nntp-stuff-lines fn-nntp-crlf)))))
@@ -774,7 +791,7 @@
    (fn-served-conn-injection conn)
    (fn-served-conn-verdicts conn)
    (fn-served-conn-index conn)
-   (fn-served-conn-group-index conn)))
+   (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
 
 (defthm fn-auth-fold-fed-conn-is-a-connection
   (implies (fn-served-connp conn)
