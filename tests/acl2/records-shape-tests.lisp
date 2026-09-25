@@ -7,8 +7,8 @@
 ;   newsgroup-name = component *( "." component )
 ;   component      = 1*component-char
 ;   component-char = ALPHA / DIGIT / "+" / "-" / "_"
-; The octet bound is the NNTP wire's group argument, 460 octets
-; (books/nntp-syntax.lisp; RFC 3977 s3.1); RFC 5536 sets none.  The keystone
+; The octet bound is the configuration label's 256 octets (the narrowest
+; codec that carries a group name; books/records-shape); RFC 5536 sets none.  The keystone
 ; `fn-record-group-namep-is-the-rfc-5536-grammar' equates the one-pass
 ; recognizer with the component-at-a-time grammar; each rejection theorem
 ; below has one `must-fail' per hypothesis and a ground witness showing the

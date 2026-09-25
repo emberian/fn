@@ -39,9 +39,15 @@
 ; (books/records.lisp `fn-record-item-encode') writes byte strings up to this
 ; width with the canonical u32 CBOR head.
 (defconst *fn-record-max-octets* 4294967295)
-; Codec ceiling: a group name is at most the NNTP wire's group argument,
-; 460 octets (books/nntp-syntax.lisp; RFC 3977 §3.1 line length).
-(defconst *fn-record-max-group-name* 460)
+; Codec ceiling: a group name is at most the narrowest codec that carries
+; one, the configuration label (`*fn-cfg-max-label*' 256, books/config.lisp;
+; `group create' stages the name as a label, books/native-admin
+; `fn-native-admin-live-group-delta-is-a-typed-delta').  The NNTP wire's
+; group argument allows 460 (books/nntp-syntax.lisp; RFC 3977 §3.1); raising
+; this to 460 needs the configuration label raised with it (design
+; 2026-09-25-bounds §2.3; config.lisp is packet P1's).  Pre-D27 this was a
+; local 128.
+(defconst *fn-record-max-group-name* 256)
 ; Codec ceiling: the group count.  Chosen with the payload ceiling below so
 ; that the worst-case record fits the record width
 ; (`fn-record-encoded-octets-ceiling-within-record-width').  The profile's
@@ -51,7 +57,7 @@
 ; by the node (books/provenance-codec.lisp), bounded by construction.
 (defconst *fn-record-max-metadata* 256)
 ; Codec ceiling: the record width less 2^25 octets reserved for every other
-; field at its own ceiling (1 083 fixed octets and 465 per group).  The
+; field at its own ceiling (1 083 fixed octets and 261 per group).  The
 ; profile's article bound sits below it.
 (defconst *fn-record-max-payload* 4261412864)
 ; The encoded octets every field other than the payload and the groups can
@@ -155,8 +161,8 @@
 ;; books/native-admin.lisp decides them
 ;; (fn-native-admin-group-name-reservedp,
 ;; fn-native-admin-group-name-special-purposep), not this book.  The octet bound
-;; `*fn-record-max-group-name*' is the NNTP wire's group bound (RFC 3977 §3.1
-;; line length, books/nntp-syntax.lisp); RFC 5536 sets none.
+;; `*fn-record-max-group-name*' is the configuration label's width (see its
+;; definition above); RFC 5536 sets none.
 (defun fn-record-group-component-octetp (x)
   (declare (xargs :guard t))
   (and (integerp x)
@@ -264,7 +270,7 @@
            :expand ((fn-record-group-name-grammarp (cdr xs))))))
 
 ;; Keystone: the recognizer the host calls admits a string exactly when it
-;; is ASCII, 1 to *fn-record-max-group-name* octets long (the wire bound), and
+;; is ASCII, 1 to *fn-record-max-group-name* octets long (the codec bound), and
 ;; its octets are an RFC 5536 s3.1.4 <newsgroup-name>.
 (defthm fn-record-group-namep-is-the-rfc-5536-grammar
   (equal (fn-record-group-namep text)
@@ -318,7 +324,7 @@
                                       fn-record-group-name-octets-aux-when-need
                                       fn-record-group-name-octets-aux-after-component))))
 
-;; The wire octet bound, by definition (RFC 5536 sets none).
+;; The codec octet bound, by definition (RFC 5536 sets none).
 (defthm fn-record-group-namep-bounds-length-by-definition
   (implies (< *fn-record-max-group-name* (len (fn-record-string-octets text)))
            (not (fn-record-group-namep text)))

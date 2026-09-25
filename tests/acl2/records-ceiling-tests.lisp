@@ -15,12 +15,12 @@
 
 ; -----------------------------------------------------------------------------
 ; A reachable witness above the pre-D27 widths: a 70 000-octet payload (above
-; the old 32 768 payload bound and the 65 535 CBOR item cap) and a 460-octet
+; the old 32 768 payload bound and the 65 535 CBOR item cap) and a 256-octet
 ; group name (above the old 128), with every other field distinct.
 
 (defconst *rct-payload* (make-list 70000 :initial-element 65))
 (defconst *rct-long-group*
-  (coerce (make-list 460 :initial-element #\a) 'string))
+  (coerce (make-list *fn-record-max-group-name* :initial-element #\a) 'string))
 (defconst *rct-record*
   (fn-record-make 1 2 3 "<big@example.invalid>" *rct-payload*
                   (list "fn.test" *rct-long-group*)
@@ -58,7 +58,7 @@
  (<= (len (fn-record-encode *rct-record*))
      (fn-record-encoded-octets-ceiling 70000 2)))
 (assert-event
- (< (+ 70000 460 7) (len (fn-record-encode *rct-record*))))
+ (< (+ 70000 256 7) (len (fn-record-encode *rct-record*))))
 (must-fail
  (thm (<= (len (fn-record-encode record))
           (len (fn-record-payload record)))))
