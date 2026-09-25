@@ -265,6 +265,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
 	books/store-reclaim \
+	tests/acl2/store-reclaim-tests \
 	tests/acl2/store-history-marker-tests \
 	books/byte-store-marker-program \
 	books/byte-store-k0-marker \
