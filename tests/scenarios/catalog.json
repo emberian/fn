@@ -1625,12 +1625,12 @@
       ]
     },
     {
-      "id": "SCN-057",
+      "id": "SCN-058",
       "title": "a node behind NAT pulls from a second fn node and from INN by NEWNEWS, and a crash mid-round skips no id",
       "milestone": "M3",
       "status": "specified",
       "requirements": [
-        "NNT-017"
+        "NNT-018"
       ],
       "steps": [
         "B adds peer A (reachable, inbound fn.*) and `peer pull A 30`; A holds two articles in fn.test.",

@@ -2213,7 +2213,7 @@
       "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
     },
     {
-      "id": "NNT-017",
+      "id": "NNT-018",
       "title": "A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node",
       "specification": "specs/peering.md#128-the-newnews-pull-feed",
       "milestone": "M3",

@@ -4096,7 +4096,7 @@
       "statement": "Over the functions host/native/pull-service.lisp calls (fn-pull-begin, fn-pull-step through fn-pull-step-pair, fn-pull-close, fn-pull-replay over fn-pull-journal-scan): closing a round moves the cursor only if the round ran to its end and every Message-ID its NEWNEWS listed has a 235, 435 or 437 answer, the new instant being the peer's DATE less one second (fn-pull-close-advances-only-past-a-fully-answered-round; per id fn-pull-unanswered-id-holds-the-cursor); an answer is recorded only by a local reply and is that reply's own code for the article in hand (fn-pull-step-answers-only-from-the-local-node); no step changes the round's cursor or journals anything (fn-pull-step-keeps-the-cursor-and-journals-nothing) and every NEWNEWS it sends names the round's cursor instant (fn-pull-step-newnews-names-the-cursor); if the FNPL journal replays to the owner's cursor, it replays after the begin, after any events and after the close to that cut's cursor (fn-pull-journal-is-the-cursor-at-every-cut), so the round begun after a crash asks the dead round's instant (fn-pull-recovery-asks-the-dead-rounds-newnews). The schedule starts only a due, idle peer and spaces rounds by the operator's interval (fn-sched-pull-due-is-due-and-idle, fn-sched-pull-started-is-not-due, fn-sched-pull-finished-waits-its-interval). That the peer lists again what it listed for the same instant is RFC 3977 7.4's NEWNEWS semantics, not proved.",
       "milestone": "M3",
       "requirements": [
-        "NNT-017"
+        "NNT-018"
       ],
       "depends_on": [],
       "assumptions": [
