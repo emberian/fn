@@ -426,7 +426,7 @@ class FrameSession:
             int(max_payload), int(max_recovery), int(max_transactions),
             " ".join(str(byte) for byte in frontier))
         value = self.call(
-            "(fn-store-post-boundary {} {} {} {} {})".format(
+            "(fn-sbud-post-boundary {} {} {} {} {})".format(
                 literal, _octets(msgid), int(payload_length), int(group_count),
                 int(charge)))
         if not isinstance(value, Keyword):

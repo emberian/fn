@@ -1145,10 +1145,15 @@ client, which can issue POSITION after reconnecting."
 
 The line is rendered by ACL2 (fn-olog-transit-line) from the owner before the
 outcome consumes the submission, with the same KIND, REASON and WORD; a
-refused or deferred peer transfer is never silent."
+refused or deferred peer transfer is never silent.  The outcome is fed the
+word ACL2 chooses from WORD and the ingress detail (fn-pa-served-word, as
+fnn-owner-attempt-served does for POST), so a relayed reason reaches the
+peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
   (fnn-owner-action 'fn-owner-transit-log-line cid kind reason word
                     *fnn-owner-transit-detail*)
-  (fnn-owner-action 'fn-owner-transit-outcome cid kind reason word)
+  (fnn-owner-action 'fn-owner-transit-outcome cid kind reason
+                    (fnn-owner-core 'fn-owner-served-carried-word word
+                                    *fnn-owner-transit-detail*))
   (fnn-owner-log))
 
 (defun fnn-owner-drain-one (service)
