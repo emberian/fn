@@ -3122,6 +3122,27 @@
           "name": "fn-ctl-cmsg-subject-is-ordinary"
         }
       ]
+    },
+    {
+      "id": "PRF-079",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-offers-only-the-routed-hop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprt-next-hop-deterministic-in-the-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprt-next-hop-names-a-live-matching-route"
+        }
+      ]
     }
   ]
 }
