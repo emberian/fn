@@ -129,6 +129,8 @@
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
 (ld "host/store-host.lisp" :ld-error-action :error)
+;; SPIKE (D28, spike/storage): replay without per-event whole-state checks.
+(ld "host/spike-storage-fast-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
@@ -165,6 +167,9 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+;; SPIKE (D28, spike/storage): the storage-at-scale spike wrappers.
+(ld "host/spike-storage-bp-host.lisp" :ld-error-action :error)
+(ld "host/spike-storage-host.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -251,6 +256,9 @@
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.
         (load "host/native/anchor.lisp")
+        ;; SPIKE (D28, spike/storage): loaded last; redefines fnn-dispatch
+        ;; only to add the FN_SPIKE_SPROF diagnostic.
+        (load "host/native/spike-storage.lisp")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.

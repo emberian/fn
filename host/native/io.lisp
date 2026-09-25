@@ -1732,7 +1732,10 @@ records after it, or captures the whole history after a full replay
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
             (setq records (or (fnn-recover-from-state-checkpoint store config-records)
-                              (fnn-recover-full-replay store config-records))))
+                              (fnn-recover-full-replay store config-records)))
+            ;; SPIKE: stash the opened state so the owner installs it instead
+            ;; of replaying again (host/spike-storage-host.lisp, block A).
+            (when (fboundp 'fn-spk-stash-opened) (fnn-core-state 'fn-spk-stash-opened)))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
