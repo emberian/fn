@@ -123,7 +123,8 @@ def article_stamp(msgid: str) -> str:
     second boundary. An fn node compares a resubmission against the octets it
     already holds (`fn-sn-existing-action`, `books/store-node.lisp`, over
     `fn-article-payload`; since D25 `fn-pb-existing-action`,
-    `books/poster-bytes.lisp`, which drops only the injected fields), so the varying Date made one row -- a second
+    `books/poster-bytes.lisp`, which compares the sources the injection
+    inverse recovers, so a changed authored Date is a different article), so the varying Date made one row -- a second
     submission of one Message-ID -- answer `DUPLICATE` with exit 0 or
     `REFUSED` with exit 1 depending on the clock. That reads as a violation
     of D13 in the node and is a defect of this harness: the two runs of

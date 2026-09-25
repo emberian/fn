@@ -711,7 +711,7 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; step that refused (books/owner.lisp fn-own-refusal-wordp).  fn-owner-prepare
 ;; answers :invalid for inputs outside its domain; its other non-prepared
 ;; answers are fn-pb-existing-action's :duplicate / :conflict (books/poster-bytes.lisp,
-;; keyed on the poster's bytes, D25), :clock-unusable,
+;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
 ;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
 ;; :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)

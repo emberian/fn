@@ -63,11 +63,21 @@
 ; milliseconds since 2000-01-01T00:00:00Z; and a reading a minute later.
 (defconst *opt-obs* (fn-clock-observation 1000000 843427607000 500 t))
 (defconst *opt-later* (fn-clock-observation 1060000 843427667000 500 t))
+; The payload supplies Date and Message-ID, so no Injection-Date is added
+; (RFC 5537 section 3.5 item 11; the lab's run of 2026-09-22 predates that and
+; carried one).
 (defconst *opt-injected*
   (append (opt-lines (list "Path: fnA.hbox.test!not-for-mail"
-                           "Injection-Date: Tue, 22 Sep 2026 21:26:47 +0000"
                            "Injection-Info: fnA.hbox.test"))
           *opt-payload*))
+; The same article without its Date: this one is stamped with the clock.
+(defconst *opt-nodate*
+  (opt-lines (list "From: lab@example.invalid"
+                   "Newsgroups: fn.letters"
+                   "Subject: submitted through operator post"
+                   "Message-ID: <inn-lab-fn-operator-8a5f502-20260922T212621Z@example.invalid>"
+                   ""
+                   "From the fn INN interop lab.")))
 
 ; The owner over a fresh store serving fn.letters, configured and clocked.
 (defconst *opt-bare* (fn-own-start (fn-sn-initial '("fn.letters") 10) 4))
@@ -237,15 +247,17 @@
                      *opt-injected*))
 
 ; The retry, a minute later: the decision is the stored article, so the store
-; answers its duplicate.  A fresh injection would differ in Injection-Date.
+; answers its duplicate.  For a Date-less article a fresh injection would
+; differ in its Injection-Date and generated Date.
 (assert-event
  (equal (fn-own-operator-decision-of *opt-stored* *opt-msgid* *opt-groups*
                                      *opt-payload*)
         (fn-inj-make-decision :injected nil *opt-msgid* *opt-groups* *opt-injected*)))
 (assert-event
  (not (equal (fn-inj-decision-octets
-              (fn-inj-decide *opt-payload* *opt-config* *opt-later*))
-             *opt-injected*)))
+              (fn-inj-decide *opt-nodate* *opt-config* *opt-later*))
+             (fn-inj-decision-octets
+              (fn-inj-decide *opt-nodate* *opt-config* *opt-obs*)))))
 
 ; One tooth per hypothesis, the keystone's hints kept.
 (defmacro opt-retry (name &rest hyps)
@@ -317,10 +329,10 @@
             (fn-clock-observationp later)
             (fn-clock-has-wall later)))
 (assert-event
- (not (equal (fn-own-operator-decision-of *opt-0* *opt-msgid* *opt-groups* *opt-payload*)
+ (not (equal (fn-own-operator-decision-of *opt-0* *opt-msgid* *opt-groups* *opt-nodate*)
              (fn-own-operator-decision *opt-config* *opt-later*
                                        (fn-sn-node (fn-own-store *opt-0*))
-                                       *opt-msgid* *opt-groups* *opt-payload*))))
+                                       *opt-msgid* *opt-groups* *opt-nodate*))))
 ; Without a later reading at all, and without its wall time: refused.
 (must-fail
  (opt-retry opt-retry-without-observation

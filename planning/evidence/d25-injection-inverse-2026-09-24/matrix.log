@@ -1,0 +1,31 @@
+enroll rc 0 
+PASS U1 Date present: original -> 240 article received OK
+PASS U1 Date present: resend 1.2 s later -> 441 posting failed; this article is already stored here
+PASS U2 Date absent: original -> 240 article received OK
+PASS U2 Date absent: resend 1.2 s later -> 441 posting failed; this article is already stored here
+PASS U3 one changed authored byte -> 441 posting failed; a different article with this Message-ID is stored here
+PASS U4 authored Date changed -> 441 posting failed; a different article with this Message-ID is stored here
+PASS U5 authored Date removed -> 441 posting failed; a different article with this Message-ID is stored here
+PASS U6 identical text, new Message-ID -> 240 article received OK
+S2 signed Date-less: 1 store: source is outside the portable FN-Authorship profile
+PASS S1 signed, Date present: original -> 240 article received OK
+PASS S1 signed, Date present: resend -> 441 posting failed; this article is already stored here
+PASS S3 signed, changed byte, same Message-ID -> 441 posting failed; a different article with this Message-ID is stored here
+owner killed -9
+PASS R1 lost reply, restart, retry -> 441 posting failed; this article is already stored here
+PASS R2 Date absent: resend after restart -> 441 posting failed; this article is already stored here
+PASS R3 signed: resend after restart -> 441 posting failed; this article is already stored here
+owner stop 0
+policy set rc 0 configured generation=2 record=00000002.cfg verification=VERIFIED
+ accepted operator policy
+
+PASS I1 another path identity: resend of the Date-present article -> 441 posting failed; a different article with this Message-ID is stored here
+PASS I2 another path identity: resend of the Date-absent article -> 441 posting failed; a different article with this Message-ID is stored here
+owner stop 0
+PASS V0 v1 image: Date present original -> 240 article received OK
+PASS V0 v1 image: Date absent original -> 240 article received OK
+v1 owner stop 0
+PASS V1 v1 record, Date present: resend on this image (read under v1) -> 441 posting failed; this article is already stored here
+PASS V2 v1 record, Date absent: resend on this image (ambiguous, compared exactly) -> 441 posting failed; a different article with this Message-ID is stored here
+owner stop 0
+ROWS 21 PASS 21

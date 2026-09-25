@@ -12,8 +12,33 @@
 ;
 ; RFC 5537 section 3.5 item 2 (reject a proto-article with Injection-Info or
 ; Xref, or one that is not syntactically valid), item 4 (the Newsgroups
-; check), item 5 (add Message-ID and Date when absent) and item 6 (never alter
-; the body, never alter an existing Message-ID) are the clauses implemented.
+; check), item 5 (add Message-ID and Date when absent), item 6 (never alter
+; the body, never alter an existing Message-ID) and item 11 (the
+; Injection-Date) are the clauses implemented.
+;
+; Item 11 has three cases, and each is decided here:
+;
+;   * A proto-article that carries an Injection-Date is refused
+;     (:injection-date-present).  This is a local acceptance policy, not an
+;     RFC requirement.  Item 11 says only that a supplied Injection-Date MUST
+;     NOT be modified or replaced; refusing the article modifies nothing.  fn
+;     refuses rather than keeps it for two reasons: item 3 would have fn judge
+;     how far that date lies in the past or future, and fn has no date-time
+;     parser; and the generated Date below is recognised by its equality with
+;     the Injection-Date fn wrote, which a poster's Injection-Date would not be.
+;   * Both Date and Message-ID supplied: no Injection-Date is added (item 11's
+;     MUST NOT; the proto-article may have been injected more than once by a
+;     posting agent).  The injected article then does not depend on the clock.
+;   * Otherwise the Injection-Date is added, with the current clock reading.
+;
+; The injected block (fn-inj-prefix) is Path, then the generated fields in a
+; fixed order -- Injection-Date, Message-ID, Date -- then Injection-Info,
+; which closes the block: every octet after the Injection-Info line is the
+; poster's.  So the injected octets name which fields were generated, and
+; fn-inj-source-of recovers the source exactly (the injection inverse, D25).
+; Before 2026-09-24 (recipe v1) the block was Path, Injection-Date,
+; Injection-Info, then the generated Message-ID and Date; fn-inj-source-of
+; reads a v1 record only where that recipe is unambiguous.
 ; The mandatory header fields of RFC 5536 section 3 are Date, From,
 ; Message-ID, Newsgroups, Path and Subject; RFC 5537 section 3.4.1 permits a
 ; proto-article to omit Message-ID, Date and Path, so From, Subject and
@@ -595,35 +620,51 @@
   (declare (xargs :guard t))
   (if (equal (fn-inj-nth 0 check) :error) (fn-inj-nth 1 check) nil))
 
+; The injected block of recipe v2.  The Injection-Date is written exactly
+; when a field is generated (RFC 5537 section 3.5 item 11: none when the
+; poster supplied both Date and Message-ID; fn-inj-mandatory-reason has
+; already refused a supplied Injection-Date), and the Injection-Info line
+; comes last.
 (defun fn-inj-prefix (date msgid agent generate-id generate-date)
   (declare (xargs :guard t))
   (fn-inj-append
    (fn-inj-path-line agent)
    (fn-inj-append
-    (fn-inj-injection-date-line date)
+    (if (or generate-id generate-date) (fn-inj-injection-date-line date) nil)
     (fn-inj-append
-     (fn-inj-injection-info-line agent)
+     (if generate-id (fn-inj-message-id-line msgid) nil)
      (fn-inj-append
-      (if generate-id (fn-inj-message-id-line msgid) nil)
-      (if generate-date (fn-inj-date-line date) nil))))))
+      (if generate-date (fn-inj-date-line date) nil)
+      (fn-inj-injection-info-line agent))))))
 
 ; -----------------------------------------------------------------------------
-; A stored article that IS an injection of a source
+; The injection inverse: the poster's source of a stored article
 ;
-; `fn-inj-reinjectionp stored source agent msgid' says: `stored' is exactly
-; the Path line this agent writes, an Injection-Date line with some 31-octet
-; date, the Injection-Info line this agent writes, then optionally the
-; Message-ID line of `msgid' and optionally a Date line with that same date,
-; then `source' octet for octet.  That is the shape of every article
-; fn-inj-decide injects (fn-inj-injected-article-is-a-reinjection-of-its-
-; source, books/injection-invariants.lisp), for every clock reading.
+; `fn-inj-source-of stored agent msgid' is (t . source) when `stored' is
+; exactly an injection of `source' by `agent' under Message-ID `msgid', and
+; nil when the octets do not say which source that was.  It is the D25
+; comparison subject: two submissions under one Message-ID are one article
+; when their sources are one, whatever the clock read at either injection
+; (books/poster-bytes.lisp fn-pb-existing-action).
 ;
-; It is what makes a retry of one proto-article recognisable after the clock
-; has moved: books/owner.lisp `fn-own-operator-decision' offers the stored
-; octets again, and the store answers that Message-ID's duplicate, where a
-; fresh injection would differ in its Injection-Date and be a conflict.  A
-; posting agent that supplies its Message-ID has an exact retry identity
-; (the header of this book); this is the same identity for the octets.
+; Recipe v2 (fn-inj-prefix above): this agent's Path line; then, when a field
+; was generated, an Injection-Date line with some 31-octet date, the
+; generated Message-ID line of `msgid' if the id was generated, a Date line
+; with that same date if the Date was generated; then this agent's
+; Injection-Info line; then the source.  Which fields were generated is read
+; off the block, and nothing after the Injection-Info line is read as
+; injected, so the source is recovered exactly
+; (fn-inj-source-of-inverts-the-injection, books/injection-invariants.lisp).
+;
+; Recipe v1, before 2026-09-24: Path, Injection-Date, Injection-Info, then
+; the generated Message-ID and Date lines, then the source; the
+; Injection-Date was always written.  A v1 record is recognised by its
+; Injection-Info line directly after the Injection-Date line, which v2 never
+; writes.  Its source is read only where v1 is unambiguous: when what follows
+; the Injection-Info line opens with a Message-ID line of `msgid' or a Date
+; line of the injection's date, that line may be the poster's or the
+; injector's, and the answer is nil -- the caller then compares octets
+; exactly, never a guessed source.
 
 (defun fn-inj-strip (prefix x)
   ; x with `prefix' removed from its front, or :no.
@@ -646,25 +687,54 @@
     (if (or (zp n) (atom x)) x
       (fn-inj-drop (- n 1) (cdr x)))))
 
-(defun fn-inj-tail-matchp (r date source)
+; `line' removed from the front of x when x opens with it, else x unchanged.
+(defun fn-inj-strip-optional (line x)
   (declare (xargs :guard t))
-  (or (equal r source)
-      (equal (fn-inj-strip (fn-inj-date-line date) r) source)))
+  (let ((r (fn-inj-strip line x)))
+    (if (equal r :no) x r)))
 
+(defun fn-inj-source-after-stamp (r2 date agent msgid)
+  ; r2 is what follows an Injection-Date line carrying `date'.
+  (declare (xargs :guard t))
+  (let ((v1 (fn-inj-strip (fn-inj-injection-info-line agent) r2)))
+    (if (not (equal v1 :no))
+        (if (or (not (equal (fn-inj-strip (fn-inj-message-id-line msgid) v1) :no))
+                (not (equal (fn-inj-strip (fn-inj-date-line date) v1) :no)))
+            nil
+          (cons t v1))
+      (let ((s (fn-inj-strip
+                (fn-inj-injection-info-line agent)
+                (fn-inj-strip-optional
+                 (fn-inj-date-line date)
+                 (fn-inj-strip-optional (fn-inj-message-id-line msgid) r2)))))
+        (if (equal s :no) nil (cons t s))))))
+
+(defun fn-inj-source-of (stored agent msgid)
+  (declare (xargs :guard t))
+  (let ((r1 (fn-inj-strip (fn-inj-path-line agent) stored)))
+    (cond ((equal r1 :no) nil)
+          ((equal (fn-inj-strip *fn-inj-injection-date-field* r1) :no)
+           (let ((s (fn-inj-strip (fn-inj-injection-info-line agent) r1)))
+             (if (equal s :no) nil (cons t s))))
+          (t
+           (let* ((date (fn-inj-take 31 (fn-inj-drop
+                                         (len *fn-inj-injection-date-field*)
+                                         r1)))
+                  (r2 (fn-inj-strip (fn-inj-injection-date-line date) r1)))
+             (if (equal r2 :no)
+                 nil
+               (fn-inj-source-after-stamp r2 date agent msgid)))))))
+
+; `stored' is an injection of `source' by `agent' under `msgid': the
+; operator's retry test (books/owner.lisp fn-own-operator-decision).  Since
+; 2026-09-24 it is exactly the inverse above; before, it also accepted a
+; source with or without a Date line equal to the injection's, in either
+; direction.
 (defun fn-inj-reinjectionp (stored source agent msgid)
   (declare (xargs :guard t))
-  (let* ((r1 (fn-inj-strip (fn-inj-path-line agent) stored))
-         (date (fn-inj-take 31 (fn-inj-drop (len *fn-inj-injection-date-field*)
-                                            r1)))
-         (r2 (fn-inj-strip (fn-inj-injection-date-line date) r1))
-         (r3 (fn-inj-strip (fn-inj-injection-info-line agent) r2))
-         (r4 (fn-inj-strip (fn-inj-message-id-line msgid) r3)))
+  (let ((r1 (fn-inj-strip (fn-inj-path-line agent) stored)))
     (and (not (equal r1 :no))
-         (not (equal r2 :no))
-         (not (equal r3 :no))
-         (or (fn-inj-tail-matchp r3 date source)
-             (and (not (equal r4 :no))
-                  (fn-inj-tail-matchp r4 date source))))))
+         (equal (fn-inj-source-of stored agent msgid) (cons t source)))))
 
 (defun fn-inj-decide (source config observation)
   (declare (xargs :guard t))
@@ -777,7 +847,9 @@
 (verify-guards fn-inj-strip)
 (verify-guards fn-inj-take)
 (verify-guards fn-inj-drop)
-(verify-guards fn-inj-tail-matchp)
+(verify-guards fn-inj-strip-optional)
+(verify-guards fn-inj-source-after-stamp)
+(verify-guards fn-inj-source-of)
 (verify-guards fn-inj-reinjectionp)
 
 ; ---------------------------------------------------------------------------
@@ -806,7 +878,7 @@
           fn-inj-from-validp
           fn-inj-memberp fn-inj-groups-admissiblep fn-inj-mandatory-reason
           fn-inj-proto-reason fn-inj-prefix fn-inj-decide
-          fn-inj-strip fn-inj-take fn-inj-drop fn-inj-tail-matchp
-          fn-inj-reinjectionp)))
+          fn-inj-strip fn-inj-take fn-inj-drop fn-inj-strip-optional
+          fn-inj-source-after-stamp fn-inj-source-of fn-inj-reinjectionp)))
 
 (in-theory (disable fn-inj-vocabulary))
