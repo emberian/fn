@@ -1367,6 +1367,28 @@
         "tests/acl2/store-checkpoint-open-tests.lisp",
         "planning/evidence/bounds-p3-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-051",
+      "title": "A bound login posts only as its bound principal under the bound-logins policy; an unbound login and a policy-off node post as before",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-013"
+      ],
+      "steps": [
+        "Enrol logins ember and guest with posting and hybrid keys; `principal bind ember EMBER-HEX`; restart; `policy set posting-policy bound-logins`.",
+        "As ember, POST an article signed with ember's key, one signed with guest's key, and one unsigned.",
+        "As guest (unbound), POST an unsigned article; then `policy set posting-policy open` and repeat ember's guest-signed and unsigned POSTs."
+      ],
+      "expected": [
+        "`principal list` prints signing=EMBER-HEX for ember only.",
+        "240 with HDR :fn-verified naming ember's principal; `441 posting failed; the login is not bound to this signing principal`; `441 posting failed; this login posts only articles signed by its bound principal`. The service log names login=ember for each.",
+        "240 for guest; with the policy open, 240 for both of ember's articles (the guest-signed one verified for guest's principal)."
+      ],
+      "evidence": [
+        "tests/acl2/login-binding-tests.lisp"
+      ]
     }
   ]
 }

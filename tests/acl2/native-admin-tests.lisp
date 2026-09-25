@@ -310,6 +310,27 @@
          (fn-native-admin-plan
           (fn-na-test-argv '("policy" "set" "path-identity"))))
         :policy))
+; The served POST posting policy (books/login-binding.lisp): `bound-logins'
+; or `open', nothing else.
+(defconst *fn-na-posting-policy*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "posting-policy" "bound-logins"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-posting-policy*)
+                     :set-policy))
+(assert-event (equal (fn-native-admin-result-name *fn-na-posting-policy*)
+                     (fn-record-string-octets "posting-policy")))
+(assert-event (equal (fn-native-admin-result-value *fn-na-posting-policy*)
+                     (fn-record-string-octets "bound-logins")))
+(assert-event
+ (equal (fn-native-admin-result-kind
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "posting-policy" "open"))))
+        :set-policy))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "posting-policy" "strict"))))
+        :policy))
 ; The other kinds carry no value.
 (assert-event (null (fn-native-admin-result-value *fn-na-create*)))
 (assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))

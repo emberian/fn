@@ -23,3 +23,6 @@
   (declare (xargs :mode :program))
   (fn-native-auth-result-config result))
 
+(defun fn-native-auth-host-load-bindings (octets presentp)
+  (declare (xargs :mode :program))
+  (fn-native-auth-load-bindings octets presentp))

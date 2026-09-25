@@ -3363,6 +3363,24 @@
         "fn-bs-scp-program-crash-is-old-or-new",
         "fn-bs-read-ranges-concatenate"
       ]
+    },
+    {
+      "id": "PRF-091",
+      "title": "A bound login's accepted signed article carries its bound principal; the policy off changes nothing",
+      "statement": "Over fn-lb-owner-gate (books/login-binding.lisp), which host/owner-host.lisp fn-owner-login-gate calls for host/native/owner.lisp fnn-owner-attempt-served before the transit attempt, composed with fn-pa-current-plan, which that attempt calls next: fn-lb-bound-login-accepted-signed-article-carries-its-principal, when the owner's live configuration sets posting-policy bound-logins, the in-flight submission's login is bound to principal P, the gate passes and the plan answers :ok, the plan's principal (the one its verified verdict names) is P. fn-lb-bound-login-unsigned-article-is-refused and fn-lb-bound-login-other-principal-is-refused: under the policy a bound login's article with no FN-Authorship carrier is (:refused :login-unsigned LOGIN), and one whose carrier names another principal is (:refused :login-not-bound LOGIN). fn-lb-policy-off-never-refuses and fn-lb-unbound-login-never-refuses: without the policy, or for a login with no binding (an unauthenticated connection's login is nil), the gate passes and the host continues into the attempt it made before. fn-lb-verdict-names-the-login: every verdict names the in-flight login.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-013"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/login-binding.lisp",
+        "tests/acl2/login-binding-tests.lisp"
+      ],
+      "progress_note": "Admitted in a persvati proof REPL against the cached closure (2026-09-25); certification is the lane's farm run.",
+      "events": []
     }
   ]
 }

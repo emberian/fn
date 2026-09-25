@@ -1924,6 +1924,36 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "NNT-013",
+      "title": "Under the bound-logins posting policy a bound login posts only articles signed by its bound principal",
+      "specification": "specs/identity.md#a-login-bound-to-a-signing-principal-2026-09-25",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-091"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/login-binding.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "books/native-admin.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/login-binding-tests.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/auth.lisp",
+        "host/native/auth-admin.lisp"
+      ],
+      "implementation_note": "Local policy, not an RFC requirement (RFC 4643 relates a login to nothing beyond the server's own authorization). `fn principal bind LOGIN HEX` writes the login's `signing` field into the credential file (fn-native-auth-admin-bind; set-password keeps bindings; a malformed value refuses the profile); `fn policy set posting-policy bound-logins|open` is a durable configuration record applied live. host/native/owner.lisp fnn-owner-attempt-served calls fn-lb-owner-gate (through host/owner-host.lisp fn-owner-login-gate) before the transit attempt: under the policy a bound login's unsigned article is :login-unsigned and one whose carrier names another principal :login-not-bound, each its own 441 line; unbound logins, unauthenticated connections, local and BP submissions and policy-off nodes are unchanged. The verdict and its service-log line name the login; the Store's kind-4 verdict record does not."
     }
   ]
 }
