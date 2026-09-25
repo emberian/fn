@@ -111,6 +111,7 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
        for name in ("fnn-control-admin", "fnn-control-live-status", "fnn-control-owner-run-normalized",
                     "fnn-control-socket-path-p", "fnn-control-submit",
                     "fnn-feed-service-close", "fnn-feed-service-start",
+                    "fnn-pull-service-close", "fnn-pull-service-start", "fnn-pull-service-wake",
                     "fnn-feed-service-wake", "fnn-native-auth-startup-hook")},
     ("host/native/operator.lisp", "fnn-pinv-execute"):
         "operator.lisp's peering executor; fnn-operator-dispatch-plan maps :peering "
