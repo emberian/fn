@@ -1032,6 +1032,9 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The checkpoint layer runs only after authoritative full replay.  It keeps
   ;; its diagnostic outcome here and never replaces the live store-node state.
   (checkpoint-outcome '(:none))
+  ;; P3: how the last open reached the Store state: (:checkpoint S K) or
+  ;; (:full-replay REASON).  `operator status' prints it.
+  (open-mode '(:full-replay :absent))
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
@@ -1542,23 +1545,255 @@ acknowledged without its marker."
       (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil)
       (fnn-indeterminate "ACL2 could not record ~(~a~) observation" operation))))
 
+;;; ---------------------------------------------------------------------------
+;;; P3: open from the state checkpoint (books/store-checkpoint-open.lisp,
+;;; books/store-checkpoint-codec.lisp, the byte program fn-bs-scp-program).
+;;; The file is a sequence of segment frames read range by range on one
+;;; descriptor under the store lock (A-HOST-EXCLUSIVE-READ,
+;;; fn-bs-read-ranges-concatenate).  A missing, refused or unusable
+;;; checkpoint falls back to today's full replay, which stays authoritative;
+;;; the open reports which one it did.
+
+(defun fnn-state-checkpoint-name ()
+  "The rename target of fn-bs-scp-program: ACL2's name, not the host's."
+  (let ((name (fnn-core 'fn-store-sco-file-name)))
+    (unless (and (stringp name) (> (length name) 0) (null (position #\/ name)))
+      (fnn-fault "ACL2 returned an invalid state checkpoint name"))
+    name))
+
+(defun fnn-state-checkpoint-path (store)
+  (fnn-join (fnn-store-root store) (fnn-state-checkpoint-name)))
+
+(defun fnn-read-exact-fd (fd count)
+  "COUNT octets from FD, or NIL when end of file comes first."
+  (let ((data (fnn-make-octets count)) (at 0))
+    (loop while (< at count) do
+      (let* ((buffer (fnn-make-octets (min 65536 (- count at))))
+             (got (fnn-read-fd fd buffer)))
+        (when (zerop got) (return-from fnn-read-exact-fd nil))
+        (replace data buffer :start1 at :end2 got)
+        (incf at got)))
+    data))
+
+(defun fnn-state-checkpoint-segments (store)
+  "(values :absent NIL), (values :ok SEGMENTS) or (values :refused REASON).
+
+One descriptor, consecutive ranges: a segment header, then the rest of that
+segment as `fn-scc-segment-extent' sizes it, until end of file.  Each read is
+at most one segment, which the profile's R bounds (fn-store-sco-segment-read-bound)."
+  (let ((path (fnn-state-checkpoint-path store)))
+    (unless (fnn-check-regular path)
+      (return-from fnn-state-checkpoint-segments (values :absent nil)))
+    (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
+          (bound (fnn-core 'fn-store-sco-segment-read-bound (fnn-store-config store)))
+          (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+          (segments nil))
+      (unless (and (integerp header-octets) (> header-octets 0)
+                   (integerp bound) (>= bound header-octets))
+        (fnn-close fd)
+        (fnn-fault "ACL2 returned an invalid checkpoint segment bound"))
+      (unwind-protect
+           (progn
+             (unless (fnn-regular-p (fnn-fstat fd))
+               (return-from fnn-state-checkpoint-segments (values :refused :not-regular)))
+             (loop
+               (let ((first (make-array 1 :element-type '(unsigned-byte 8))))
+                 (when (zerop (fnn-read-fd fd first)) (return))
+                 (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
+                   (unless rest
+                     (return-from fnn-state-checkpoint-segments (values :refused :truncated)))
+                   (let* ((header (concatenate '(vector (unsigned-byte 8)) first rest))
+                          (extent (fnn-core 'fn-scc-segment-extent (fnn-octet-list header))))
+                     (unless (and (integerp extent) (>= extent header-octets) (<= extent bound))
+                       (return-from fnn-state-checkpoint-segments (values :refused :segment-header)))
+                     (let ((body (fnn-read-exact-fd fd (- extent header-octets))))
+                       (unless body
+                         (return-from fnn-state-checkpoint-segments (values :refused :truncated)))
+                       (push (fnn-octet-list (concatenate '(vector (unsigned-byte 8)) header body))
+                             segments))))))
+             (values :ok (nreverse segments)))
+        (fnn-close fd)))))
+
+(defun fnn-state-checkpoint-load (store)
+  "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
+:absent, :refused or :ok, the vocabulary of fn-sco-select."
+  (multiple-value-bind (status value)
+      (handler-case (fnn-state-checkpoint-segments store)
+        (fnn-os-error () (values :refused :io)))
+    (case status
+      (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
+      (:refused (fnn-core-state 'fn-store-sco-clear) (values :refused 0))
+      (t (let ((answer (fnn-core-state 'fn-store-sco-decode value)))
+           (if (and (consp answer) (eq (first answer) :ok)
+                    (integerp (second answer)) (>= (second answer) 0))
+               (values :ok (second answer))
+               (values :refused 0)))))))
+
+(defun fnn-recover-full-replay (store config-records &optional (reason nil))
+  "Today's open: every durable record, then one full replay."
+  (let ((records nil))
+    (multiple-value-bind (physical-records actual-lower physical-sequences)
+        (fnn-durable-records
+         store (funcall *fnn-pack-lower-bound-callback* store))
+      (setq records (funcall *fnn-pack-recover-callback*
+                             store physical-records physical-sequences
+                             actual-lower)))
+    (fnn-check-history-marker store (length records))
+    (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
+                :recovering)
+      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history"))
+    (when reason
+      (setf (fnn-store-open-mode store) (list :full-replay reason)))
+    records))
+
+(defun fnn-read-suffix-records (store pairs)
+  "Read the transaction files PAIRS ((sequence . path) ...) as fnn-durable-records does."
+  (let ((records nil) (aggregate 0)
+        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
+    (loop for (sequence . path) in pairs do
+      (fnn-check-regular path)
+      (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
+        (incf aggregate (length record))
+        (unless (fnn-core 'fn-store-profile-replay-within-bound
+                          (fnn-store-config store) aggregate)
+          (fnn-fault "transaction recovery input exceeds configured bound"))
+        (unless (= (fnn-bridge-record-sequence record) sequence)
+          (fnn-fault "record sequence does not match immutable filename"))
+        (push record records)))
+    (nreverse records)))
+
+(defun fnn-recover-from-state-checkpoint (store config-records)
+  "The records of the history when the checkpoint opened the Store, else NIL
+after recording why not in open-mode (the caller then replays in full)."
+  (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
+    (let* ((lower (funcall *fnn-pack-lower-bound-callback* store))
+           (pairs (if (eq status :ok) (fnn-transaction-files store lower) nil))
+           (count (if (eq status :ok)
+                      (fnn-core 'fn-store-sco-observed-count (mapcar #'car pairs) lower)
+                      0))
+           (choice (fnn-core 'fn-store-sco-select status sequence count
+                             (fnn-store-config store))))
+      (unless (and (consp choice) (member (first choice) '(:checkpoint :full-replay)))
+        (fnn-fault "ACL2 returned a malformed checkpoint selection"))
+      (when (eq (first choice) :full-replay)
+        (setf (fnn-store-open-mode store) (list :full-replay (second choice)))
+        (return-from fnn-recover-from-state-checkpoint nil))
+      (let* ((s (second choice))
+             (suffix
+               (if (>= s lower)
+                   ;; Only the files at or after S are read.
+                   (let ((drop (fnn-core 'fn-store-sco-covered-count (mapcar #'car pairs) s)))
+                     (fnn-read-suffix-records store (nthcdr drop pairs)))
+                   ;; A selected pack covers names past S: the pack is read
+                   ;; (one file) and the records before S are dropped.
+                   (multiple-value-bind (physical actual-lower sequences)
+                       (fnn-durable-records store lower)
+                     (nthcdr s (funcall *fnn-pack-recover-callback*
+                                        store physical sequences actual-lower))))))
+        (fnn-check-history-marker store (+ s (length suffix)))
+        (unless (eq (fnn-action
+                     (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                                     (mapcar #'fnn-octet-list suffix)
+                                     (fnn-store-frontier store)
+                                     (mapcar #'fnn-octet-list config-records)))
+                    :recovering)
+          ;; Full replay is authoritative and decides; the checkpoint is
+          ;; derived.  Never serve a refused checkpoint open.
+          (fnn-core-state 'fn-store-sco-clear)
+          (fnn-bridge-reset)
+          (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
+          (return-from fnn-recover-from-state-checkpoint nil))
+        (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
+        (append (mapcar #'fnn-as-octets (fnn-core-state 'fn-store-sco-prefix-octets))
+                suffix)))))
+
+(defun fnn-open-report (store)
+  (let ((mode (fnn-store-open-mode store)))
+    (case (first mode)
+      (:checkpoint (format nil "open=checkpoint:~d suffix=~d" (second mode) (third mode)))
+      (t (format nil "open=full-replay reason=~(~a~)" (second mode))))))
+
+(defparameter +fnn-state-checkpoint-model-cuts+
+  '("state-checkpoint-created" "state-checkpoint-written"
+    "state-checkpoint-staged-durable" "state-checkpoint-replaced"
+    "state-checkpoint-durable"))
+
+(defun fnn-state-checkpoint-test-fault ()
+  "Developer-only FN_NATIVE_STATE_CHECKPOINT_FAULT=MODEL-CUT:eio|kill selector
+for fn-bs-scp-program's five cuts."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_STATE_CHECKPOINT_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-state-checkpoint-model-cuts+ :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_STATE_CHECKPOINT_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_FAULT action: ~a" action)))
+                "developer-only native state-checkpoint fault"))))))
+
+(defun fnn-state-checkpoint-write (store octets)
+  "P-STATE-CHECKPOINT, books fn-bs-scp-program: stage, fence, rename onto
+the checkpoint name, fence the root.  Before the rename a failure is known
+(exit 1): the old checkpoint, or none, stays.  At or after it the outcome is
+uncertain (exit 3): the next open reads the old or the new file, never a
+torn one (fn-bs-scp-program-crash-is-old-or-new), and a corrupt or missing
+one falls back to full replay."
+  (let ((stage (fnn-join (fnn-staging store)
+                         (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
+        (attempted nil))
+    (handler-case
+        (progn
+          (fnn-write-staged-at store stage octets
+                               :state-checkpoint-created :state-checkpoint-written)
+          (fnn-at store :state-checkpoint-staged-durable)
+          (setq attempted t)
+          (fnn-replace stage (fnn-state-checkpoint-path store))
+          (fnn-at store :state-checkpoint-replaced)
+          (fnn-fsync-dir (fnn-store-root store))
+          (fnn-at store :state-checkpoint-durable))
+      (fnn-os-error (e)
+        (if attempted
+            (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e)
+            (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))))))
+
+(defun fnn-command-state-checkpoint (root)
+  "Publish the exact-state checkpoint of the recovered Store (P3).
+
+The store opens as `recover' does (the exclusive writer lock, so a running
+owner refuses this).  ACL2 extends the checkpoint the open used over the
+records after it, or captures the whole history after a full replay
+(fn-store-sco-publish-octets), and returns the file; the host writes it."
+  (multiple-value-bind (store records)
+      (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
+    (unwind-protect
+         (let* ((segment (fnn-profile-nat 'fn-store-profile-max-record-octets store))
+                (answer (fnn-core-state 'fn-store-sco-publish-octets segment)))
+           (when (eq answer :unencodable)
+             (fnn-refuse "the recovered Store state is not encodable as a checkpoint"))
+           (unless (and (consp answer) (fnn-octet-list-p (first answer)) (first answer)
+                        (integerp (second answer)) (= (second answer) (length records)))
+             (fnn-fault "ACL2 returned a malformed state checkpoint"))
+           (let ((octets (fnn-octets (first answer))))
+             (fnn-state-checkpoint-write store octets)
+             (fnn-out "checkpoint sequence=~d octets=~d ~a"
+                      (second answer) (length octets) (fnn-open-report store))
+             +fnn-exit-ok+))
+      (fnn-store-close store))))
+
 (defun fnn-recover (store)
-  (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil)
+  (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
+        (fnn-store-open-mode store) '(:full-replay :absent))
   (let ((records nil))
     (handler-case
         (progn
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
-            (multiple-value-bind (physical-records actual-lower physical-sequences)
-                (fnn-durable-records
-                 store (funcall *fnn-pack-lower-bound-callback* store))
-              (setq records (funcall *fnn-pack-recover-callback*
-                                     store physical-records physical-sequences
-                                     actual-lower)))
-            (fnn-check-history-marker store (length records))
-            (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
-                        :recovering)
-              (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
+            (setq records (or (fnn-recover-from-state-checkpoint store config-records)
+                              (fnn-recover-full-replay store config-records))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
@@ -2217,6 +2452,7 @@ this reads only whether there is one."
                     (length records) (fnn-bridge-article-count)
                     (fnn-orphan-report store) report
                     (fnn-checkpoint-report store))
+           (fnn-out "~a" (fnn-open-report store))
            (if (and (= code +fnn-exit-ok+)
                     (eq (first (fnn-store-checkpoint-outcome store)) :corrupt))
                +fnn-exit-fault+
@@ -2255,6 +2491,7 @@ retention ledger's reserved charge of its capacity."
          (progn (fnn-out "transactions=~d articles=~d ~a unsigned-legacy-experiment"
                          (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
                 (fnn-out-headroom store)
+                (fnn-out "~a" (fnn-open-report store))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -2832,7 +3069,7 @@ serialized profile when the saved image later starts."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
-    "FN_NATIVE_PROFILE_FAULT"
+    "FN_NATIVE_PROFILE_FAULT" "FN_NATIVE_STATE_CHECKPOINT_FAULT"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
@@ -2918,6 +3155,7 @@ serialized profile when the saved image later starts."
                   (fnn-command-upgrade-profile
                    root (fnn-core 'fn-store-profile-word
                                   (fnn-octet-list (fnn-string-octets (first rest))))))
+                 ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))

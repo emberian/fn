@@ -382,3 +382,22 @@
 (in-theory (disable fn-bs-torn-variantp))
 
 (in-theory (current-theory :here))
+
+; -----------------------------------------------------------------------------
+; A-HOST-EXCLUSIVE-READ (P3, design 2026-09-25-bounds section 2.4 item 2).
+;
+; Between two range reads of one open, no other process writes the inode:
+; the store lock excludes other writers, and the reader itself runs no
+; transition between its reads.  The host reads the Store checkpoint this way
+; (host/native/io.lisp fnn-state-checkpoint-segments), one segment per read.
+; The theorem that takes it as a hypothesis is fn-bs-read-ranges-concatenate
+; (books/byte-store-range-read.lisp).
+(encapsulate
+  (((fn-assume-host-exclusive-read * * *) => *))
+
+  (local (defun fn-assume-host-exclusive-read (before after ino)
+           (equal (fn-bs-content after ino) (fn-bs-content before ino))))
+
+  (defthm fn-assume-host-exclusive-read-keeps-content
+    (implies (fn-assume-host-exclusive-read before after ino)
+             (equal (fn-bs-content after ino) (fn-bs-content before ino)))))
