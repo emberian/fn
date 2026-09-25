@@ -27,7 +27,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260925T004450Z-2510809` | yes: c3420013 | yes: c3420013 |
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260925T004450Z-2510809` | yes: c3420013 | yes: c3420013 |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260925T013002Z-2343258` | no: source changed since c3420013 | no: profile not deployed |
-| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | no: closure moved | lab only: `dc27d36d` | no: profile not deployed |
+| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | no: closure moved | no: source changed since c3420013 | no: profile not deployed |
 | [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-profile-budget` | yes | yes: `certify-20260925T004450Z-2510809` | lab only: `5181e0ea` | yes: c3420013 |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260925T004450Z-2510809` | lab only: `lane/m6-list-counts` | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260925T004450Z-2510809` | yes: c3420013 | yes: c3420013 |
@@ -160,11 +160,11 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:170.
 - Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); certified at the current source and closure by `certify-20260925T013002Z-2343258` (earliest archived).
-- Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile DTN developer image, bp_node and bp_app modules; changed since it: `host/native/bp-service.lisp`.
+- Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; changed since it: `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
-- Latest positive result: bp_node 17/17 with N08 on both developer images, bp_app 5/5, contact_relay 1/1 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
-- Remaining obstruction: the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; `bp-node serve` forwarding still expects the application peer as its TCPCL neighbour; the retry budget is not yet persisted across restarts (review, retry budget).
-- Next positive gate: a real-BPA contact loss and recovery ending in the receiver's own acceptance, a returned receipt and the exact pin released (review, relayed application workflow).
+- Latest positive result: on the frozen DTN images: bp_node 19/19 (N07, N08, N11), bp_service 16/16, receive_integrity 4/4, bp_app 5/5 and bp_obligation 4/4 on `fn-host-dtn-developer`; on `fn-host-dtn` every failure is a refused developer selector; through dtn7-rs a first hop SIGKILLed mid-transfer leaves A uncertain, resume is accepted, and the carrier-killed interrupted contact delivers once on both DTN images ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
+- Remaining obstruction: the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; the retry budget is not persisted across restarts; `bp-node resume` and busy-delivery deferral (BP-R17) are post-cut, and dev's cases for them fail on c3420013 ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
+- Next positive gate: the same labs on an image carrying `bp-node resume` and BP-R17, with the production DTN image deployed (review, retry budget).
 
 ### M4
 
@@ -172,11 +172,11 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:23.
 - Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:155; PRF-075 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T231054Z-2148356` passed this source of `books/bp-transit-join.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-node-foundation.lisp`, `books/bp-signed-receipt.lisp` and 8 more changed.
-- Tested: lane image of `dc27d36d` ([d23-bp-carrier-2026-09-24](evidence/d23-bp-carrier-2026-09-24.md)), profile DTN developer image through dtn7-rs 0.21.0, one and two relays; not a shared qualification.
+- Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; changed since it: `host/bp-native-app-host.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
-- Latest positive result: request accepted under the author's enrollment, receipt authored by B and carried back, A's obligation `receipted pinned=no` ([d23-bp-carrier](evidence/d23-bp-carrier-2026-09-24.md)).
-- Remaining obstruction: native request authoring from the workflow and `bp-node serve` forwarding through a BPA are open; an anonymous ingress reports `reason=generation`; the images were scratch, not a shared cut.
-- Next positive gate: the same lab on a frozen shared DTN image, with native request authoring and the direct and unauthorized-carrier controls.
+- Latest positive result: on frozen c3420013 through dtn7-rs with 0, 1 and 2 relays and four nodes, Python-bridge and native `bp-obligation request` authoring: B's application decides once apart from transport; the receipt releases exactly the requested pin when B is the neighbour or listed `releases-for`, `receipt-refused` and pinned without it; an unlisted carrier is refused `source-not-carried` ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
+- Remaining obstruction: release still rests on the listed-relay delegation (signed receipts are post-cut; the c3420013 boundary grammar refuses signer rows); a kill at ATTEMPT DURABLE leaves the work pinned with no recovery verb on this image; receipts travel by `bp-contact tick`; the labs need the developer DTN image (`store post`).
+- Next positive gate: the signed-receipt and `bp-obligation recover` labs on a frozen image that carries them, then the DTN profile deployed.
 
 ### M5
 

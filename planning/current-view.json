@@ -260,12 +260,12 @@
       "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
       "tested": {
         "image": "c3420013",
-        "profile": "DTN developer image, bp_node and bp_app modules"
+        "profile": "dtn developer and production images, frozen"
       },
       "profile": "dtn",
-      "latest": "bp_node 17/17 with N08 on both developer images, bp_app 5/5, contact_relay 1/1 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
-      "obstruction": "the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; `bp-node serve` forwarding still expects the application peer as its TCPCL neighbour; the retry budget is not yet persisted across restarts (review, retry budget).",
-      "next": "a real-BPA contact loss and recovery ending in the receiver's own acceptance, a returned receipt and the exact pin released (review, relayed application workflow)."
+      "latest": "on the frozen DTN images: bp_node 19/19 (N07, N08, N11), bp_service 16/16, receive_integrity 4/4, bp_app 5/5 and bp_obligation 4/4 on `fn-host-dtn-developer`; on `fn-host-dtn` every failure is a refused developer selector; through dtn7-rs a first hop SIGKILLed mid-transfer leaves A uncertain, resume is accepted, and the carrier-killed interrupted contact delivers once on both DTN images ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).",
+      "obstruction": "the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; the retry budget is not persisted across restarts; `bp-node resume` and busy-delivery deferral (BP-R17) are post-cut, and dev's cases for them fail on c3420013 ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).",
+      "next": "the same labs on an image carrying `bp-node resume` and BP-R17, with the production DTN image deployed (review, retry budget)."
     },
     {
       "id": "M4",
@@ -277,14 +277,13 @@
       },
       "keystone": "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request",
       "tested": {
-        "record": "planning/evidence/d23-bp-carrier-2026-09-24.md",
-        "source": "dc27d36d",
-        "profile": "DTN developer image through dtn7-rs 0.21.0, one and two relays"
+        "image": "c3420013",
+        "profile": "dtn developer and production images, frozen"
       },
       "profile": "dtn",
-      "latest": "request accepted under the author's enrollment, receipt authored by B and carried back, A's obligation `receipted pinned=no` ([d23-bp-carrier](evidence/d23-bp-carrier-2026-09-24.md)).",
-      "obstruction": "native request authoring from the workflow and `bp-node serve` forwarding through a BPA are open; an anonymous ingress reports `reason=generation`; the images were scratch, not a shared cut.",
-      "next": "the same lab on a frozen shared DTN image, with native request authoring and the direct and unauthorized-carrier controls."
+      "latest": "on frozen c3420013 through dtn7-rs with 0, 1 and 2 relays and four nodes, Python-bridge and native `bp-obligation request` authoring: B's application decides once apart from transport; the receipt releases exactly the requested pin when B is the neighbour or listed `releases-for`, `receipt-refused` and pinned without it; an unlisted carrier is refused `source-not-carried` ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).",
+      "obstruction": "release still rests on the listed-relay delegation (signed receipts are post-cut; the c3420013 boundary grammar refuses signer rows); a kill at ATTEMPT DURABLE leaves the work pinned with no recovery verb on this image; receipts travel by `bp-contact tick`; the labs need the developer DTN image (`store post`).",
+      "next": "the signed-receipt and `bp-obligation recover` labs on a frozen image that carries them, then the DTN profile deployed."
     },
     {
       "id": "M5",
