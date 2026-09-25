@@ -200,10 +200,13 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertIn(line, allowed[cut.candidate])
         if line.startswith("open=checkpoint:3"):
             self.assertEqual(self.digest(), old)
-        self.assertEqual(self.observation(), expected)
+        # A death before the rename leaves a staging orphan, which a
+        # read-only status reports; the writer's recover sweeps it.  The
+        # reconstructed state is compared after that sweep.
         recovered = self.op("recover")
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
         self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertEqual(self.observation(), expected)
         retried = self.checkpoint(entry)
         self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
