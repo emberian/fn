@@ -311,7 +311,13 @@ three parts have three different owners of the *reply*, all of them ACL2.
    `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
    `:unaffordable` (the persisted profile or the transaction capacity),
    `:storage-failed` (a write that failed before publication, whose
-   reservation `fn-owner-known-abort` consumed, so nothing was stored), and
+   reservation `fn-owner-known-abort` consumed, so nothing was stored), the
+   three control-message filing refusals of `fn-pa-filing-plan` (C1,
+   [peering §8](peering.md#8-control-messages-filing-implemented-execution-proposed-not-decided)):
+   `:control-not-filed` "control message not filed: its control group is not
+   configured here", `:control-malformed` "the Control header field is
+   malformed" and `:control-signed` "a signed control message cannot be filed
+   here yet", and
    `:refused` "the article was refused" for a refusal no kind names. RFC 3977
    §6.3.1 permits `441` for all of them; the distinct text is a stronger fn
    guarantee and its exact words are a local policy choice (P2; the
