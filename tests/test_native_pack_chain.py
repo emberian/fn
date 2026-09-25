@@ -33,12 +33,24 @@ def links_for(n):
 
 
 @unittest.skipUnless(IMAGE.exists(), "build/fn-host-developer is required")
-class NativePackChainTests(NativeCheckpointTests):
+class NativePackChainTests(unittest.TestCase):
+    image = IMAGE
+    setUp = NativeCheckpointTests.setUp
+    tearDown = NativeCheckpointTests.tearDown
+    native = NativeCheckpointTests.native
+    owner_config = NativeCheckpointTests.owner_config
+    run_owner = NativeCheckpointTests.run_owner
+    stop_owner = NativeCheckpointTests.stop_owner
+    operator_post = NativeCheckpointTests.operator_post
+    served_view = NativeCheckpointTests.served_view
+    transaction_bytes = NativeCheckpointTests.transaction_bytes
+    stopped_then_killed = NativeCheckpointTests.stopped_then_killed
+    assert_view_kept_and_next_number = NativeCheckpointTests.assert_view_kept_and_next_number
 
     def scale_store(self, name, n):
         store = self.base / name
         config, port = self.owner_config(store, name)
-        init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters")
+        init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters", "fn.test")
         self.assertIn("accepted operator init", init.stderr)
         self.native("store", store, "probe", str(n))
         return store, config, port

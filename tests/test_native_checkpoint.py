@@ -609,7 +609,9 @@ class NativeCheckpointTests(unittest.TestCase):
         store = self.initialized("pack-retire")
         before_first = self.native("store", store, "inspect",
                                    "<checkpoint@example.invalid>").stdout
-        self.native("checkpoint", "pack", store, "select")
+        # An unselected generation is outside every chain (P5), so retire
+        # removes it; a selected chain's links are never retired.
+        self.native("checkpoint", "pack", store)
         older = store / "packs" / "generation-0.fncp"
         old_bytes = older.stat().st_size
         self.native("store", store, "post", "<retired-pack-suffix@example.invalid>",
@@ -657,8 +659,8 @@ class NativeCheckpointTests(unittest.TestCase):
                                   ("pack-retire-directory", 1)):
             with self.subTest(point=point, occurrence=occurrence):
                 store = self.initialized(f"{point}-{occurrence}")
-                self.native("checkpoint", "pack", store, "select")
-                self.native("checkpoint", "pack", store, "select")
+                self.native("checkpoint", "pack", store)
+                self.native("checkpoint", "pack", store)
                 self.native("checkpoint", "pack", store, "select")
                 selected = store / "packs" / "generation-2.fncp"
                 selected_bytes = selected.read_bytes()

@@ -679,19 +679,29 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-compact-steps (store records)
   "Observe, ask ACL2, and carry out its steps.  Returns the report line."
   (fnn-checkpoint-require-mutation-ready store)
-  (multiple-value-bind (raw coverage selected)
+  (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
-    (declare (ignore raw))
     (let* ((lower (if coverage (second coverage) 0))
            (names (sort (fnn-list-directory-bounded
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
            (generations (fnn-pack-generations store))
+           ;; The generations the decision may retire: ACL2's plan outside the
+           ;; selected chain (a chain link is never older-and-retirable), plus
+           ;; the selected head it counts from.
+           (retirable (if chain
+                          (let ((plan (fnn-core 'fn-store-checkpoint-chain-retire-plan
+                                                generations chain
+                                                (fnn-pack-link-bound store))))
+                            (unless (listp plan)
+                              (fnn-fault "ACL2 refused the pack retirement plan"))
+                            (sort (cons selected (copy-list plan)) #'<))
+                        generations))
            (decision (fnn-core 'fn-store-compact-decide
                                (fnn-store-config store)
                                (mapcar #'fnn-octet-list records)
-                               lower names generations selected
+                               lower names retirable selected
                                (fnn-compact-footprint store names generations))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
