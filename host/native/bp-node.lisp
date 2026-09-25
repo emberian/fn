@@ -420,6 +420,35 @@ observations back.  Nil when there is nothing to observe."
             bp (fnn-bps-foundation-step bp (list :operator-resume arrival)))
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
+;;; `bp-node checkpoint JOURNAL NODE-ID [WALL WALL-ERROR]': rotate the FNBS
+;;; journal (spec bp-node-machine 3.6, N16).  Open recovers; ACL2 names the
+;;; next generation (fn-bpnr-next-generation over the selected one and every
+;;; generation directory observed) and the checkpoint of the replay the
+;;; recovery event carried (fn-bpnr-checkpoint-of-event); fn-bpnp-step's
+;;; :rotate arm admits it only when it is the recovered state's own durable
+;;; projection, and resets the record count only on the durable answer of
+;;; the selection publication.  Run it with the node stopped.
+(defun fnn-command-bp-node-checkpoint (journal-root node-id wall wall-error)
+  (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
+                                +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
+         (bp (fnn-bps-open journal-root config wall wall-error)))
+    (unwind-protect
+         (let* ((root (fnn-bps-root bp))
+                (names (fnn-list-directory-bounded
+                        root (fnn-core 'fn-bpnf-namespace-max-entries)
+                        "bp journal root"))
+                (generation (fnn-core 'fn-bpnr-next-generation
+                                      (fnn-core 'fn-bpnr-plan-generation
+                                                (fnn-bps-plan bp))
+                                      names))
+                (ck (fnn-core 'fn-bpnr-checkpoint-of-event
+                              (fnn-bps-recovery-event bp) generation)))
+           (fnn-out "BP journal rotation generation=~d" generation)
+           (fnn-bps-drive-effects
+            bp (fnn-bps-foundation-step bp (list :rotate generation ck)))
+           (fnn-bps-exit-code bp))
+      (fnn-bps-release bp))))
+
 (defvar *fnn-bpnode-receipt-signer* nil
   "Directory of B's receipt-signing material, or nil for bare receipts:
 principal (32 octets), ed25519.public (32), ed25519.secret (64),
@@ -774,6 +803,16 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
        (first args) (second args) (parse-integer (third args))
        (and (fourth args) (parse-integer (fourth args)))
        (if (fifth args) (parse-integer (fifth args)) 0))))
+  (when (string= command "checkpoint")
+    ;; JOURNAL NODE-ID [WALL WALL-ERROR]
+    (when (< (length args) 2)
+      (error 'fnn-usage-error
+             :message "bp-node checkpoint: JOURNAL NODE-ID [WALL WALL-ERROR]"))
+    (return-from fnn-dispatch-bp-node
+      (fnn-command-bp-node-checkpoint
+       (first args) (second args)
+       (and (third args) (parse-integer (third args)))
+       (if (fourth args) (parse-integer (fourth args)) 0))))
   (unless (member command '("serve" "dispatch") :test #'string=)
     (error 'fnn-usage-error :message "bp-node: expected serve, dispatch or resume"))
   (let ((offset (if (string= command "serve") 1 0)))

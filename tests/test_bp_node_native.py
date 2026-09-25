@@ -373,6 +373,123 @@ class NativeBpNodeTests(unittest.TestCase):
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
 
+    def rotate_receiver(self, stop=None):
+        """`bp-node checkpoint` on the stopped receiver; with STOP, the
+        developer cut stops it at that point of the publication program and
+        the test kills it there with SIGKILL."""
+        env = dict(self.env)
+        if stop:
+            env["FN_BP_ROTATION_TEST_STOP"] = stop
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "bp-node", "checkpoint",
+             str(self.receiver_journal), "dtn://receiver/"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        if not stop:
+            out, err = process.communicate(timeout=120)
+            return process.returncode, out, err
+        marker = b"BP journal rotation stopped at=" + stop.encode()
+        seen = b""
+        deadline = time.monotonic() + 120
+        while marker not in seen and time.monotonic() < deadline:
+            ready, _, _ = select.select([process.stdout], [], [], 1)
+            if ready:
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                seen += chunk
+        self.assertIn(marker, seen, (
+            seen, process.poll(),
+            process.stderr.read() if process.poll() is not None else b""))
+        process.kill()
+        process.wait(timeout=15)
+        process.stdout.close()
+        process.stderr.close()
+        return None, seen, b""
+
+    def recovered_held(self):
+        """Reopen through the node's own recovery and return its held count."""
+        reopened = self.dispatch_receiver()
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        for line in reopened.stdout.splitlines():
+            if line.startswith(b"BP FNBS recovered held="):
+                return int(line.split(b"=", 1)[1])
+        self.fail(reopened.stdout)
+
+    def test_rotation_killed_at_each_cut_keeps_held_rows(self):
+        """N16 on the image: the journal rotates to a new generation through
+        `bp-node checkpoint`.  A kill after the generation directory, after
+        the staged selection, or after the rename leaves one recovery
+        authority (the old selection before the rename, either after it);
+        every reopen recovers the held row.  A completed rotation starts a
+        generation with no records; new work lands there, arrival order kept,
+        and a second rotation carries both rows."""
+        receiver, port = self.start_node(True, once=False)
+        sent = self.send_transit(port, self.unrouted_transit_bundle(), "r1")
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+        self.stop_process(receiver)
+        journal = self.receiver_journal
+        old_records = sorted(p.name for p in (journal / "lifecycle").glob("*.fnb"))
+        self.assertTrue(old_records)
+        self.assertEqual(self.recovered_held(), 1)
+        selection = journal / "bp-generation.fnb"
+        for cut in ("directory", "stage"):
+            self.rotate_receiver(cut)
+            self.assertFalse(selection.exists(), cut)
+            self.assertEqual(self.recovered_held(), 1, cut)
+        self.rotate_receiver("replace")
+        self.assertTrue(selection.exists())
+        self.assertEqual(self.recovered_held(), 1)
+        generations = sorted(p.name for p in journal.glob("lifecycle-g*"))
+        # Unselected stagings are never reused: three distinct numbers.
+        self.assertEqual(len(generations), 3, generations)
+        selected = journal / generations[-1]
+        self.assertEqual(sorted(p.name for p in selected.glob("*.fnb")), [])
+        # The old generation stays as evidence, untouched.
+        self.assertEqual(
+            sorted(p.name for p in (journal / "lifecycle").glob("*.fnb")),
+            old_records)
+        # A clean rotation from the selected generation.
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, 0, (out, err))
+        self.assertIn(b"BP journal generation selected generation=4", out)
+        self.assertEqual(self.recovered_held(), 1)
+        # New work lands in the new generation, after the checkpointed row.
+        current = journal / "lifecycle-g00000000000000000004"
+        receiver, port = self.start_node(True, once=False)
+        second = self.send_transit(port, self.conflicting_transit_bundle_free(), "r2")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+        self.stop_process(receiver)
+        self.assertTrue(list(current.glob("*.fnb")))
+        self.assertEqual(self.recovered_held(), 2)
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, 0, (out, err))
+        self.assertEqual(self.recovered_held(), 2)
+
+    def conflicting_transit_bundle_free(self):
+        """A second unrouted transit with its own identity."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
+            form = (
+                "(fn-bpb-encode (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 3600000 2 32 1048576) "
+                f"{unrouted} '(5 6 7 8) 78 "
+                "(fn-clock-observation 0 0 0 nil)))"
+            )
+            path = self.tmp / "unrouted-transit-2.bundle"
+            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            return path
+        finally:
+            bridge.close()
+
     def test_identity_conflict_is_refused_recorded_and_replayed(self):
         """N11 on the image: a second reception whose identity names a held
         bundle with another payload is refused :identity-conflict, a durable
