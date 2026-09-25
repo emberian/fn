@@ -75,8 +75,12 @@
   (implies (fn-octets-p fn-octets)
            (equal (fn-rclb-same-as-tombstonep msgid fn-octets tomb)
                   (fn-rcl-same-as-tombstonep msgid fn-octets tomb)))
-  :hints (("Goal" :in-theory (e/d (fn-pb-subject fn-octets-len)
+  :hints (("Goal" :use (fn-rclb-octets-true-listp
+                        fn-pbb-path-agent-is-pb-path-agent)
+                  :in-theory (e/d (fn-pb-subject fn-octets-len)
                                   (fn-sha256 fn-rcl-tomb-sourcep fn-rcl-tomb-agent
+                                   fn-pb-path-agent fn-inj-source-of fn-octets-p
+                                   fn-pbb-path-agent-is-pb-path-agent
                                    fn-rcl-tomb-source-digest fn-rcl-tomb-octets-digest)))))
 
 ;  KEYSTONE (the buffer twin).  On the buffer's logical value the host's

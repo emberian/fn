@@ -2001,7 +2001,7 @@
       "title": "Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs",
       "specification": "specs/storage.md#content-reclamation-under-d13-sto-014",
       "milestone": "M5",
-      "status": "in-progress",
+      "status": "specified",
       "proof_targets": [
         "PRF-088"
       ],

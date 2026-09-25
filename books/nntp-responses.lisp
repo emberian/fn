@@ -1049,7 +1049,12 @@
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-nntp-available-article group number articles))
-             (over (if (consp article) (fn-nov-overview article) (list :error))))
+             ; D13: a reclaimed article has no overview; it is skipped
+             ; before its tombstone reaches the parser.
+             (over (if (and (consp article)
+                            (not (fn-rcl-tombstonep (fn-article-payload article))))
+                       (fn-nov-overview article)
+                     (list :error))))
         (if (fn-nov-okp over)
             (cons (fn-nov-line number over)
                   (fn-nov-lines-for-numbers group (cdr numbers) articles))
@@ -1072,12 +1077,14 @@
                         group current (fn-state-articles archive))))
           (if (not (consp article))
               (fn-nntp-single session "420 no current article")
+            (if (fn-rcl-tombstonep (fn-article-payload article))
+                (fn-nntp-single session "423 article reclaimed")
             (let ((over (fn-nov-overview article)))
               (if (fn-nov-okp over)
                   (fn-nntp-multi session "224 overview information follows"
                                  (list (fn-nov-line current over)))
                 (fn-nntp-single
-                 session "503 stored article framing unavailable")))))))))
+                 session "503 stored article framing unavailable"))))))))))
 
 (defun fn-nntp-over-range (session archive token)
   (let ((group (fn-nntp-session-group session))
@@ -1100,11 +1107,13 @@
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
+      (if (fn-rcl-tombstonep (fn-article-payload article))
+          (fn-nntp-single session "430 article reclaimed")
       (let ((over (fn-nov-overview article)))
         (if (fn-nov-okp over)
             (fn-nntp-multi session "224 overview information follows"
                            (list (fn-nov-line 0 over)))
-          (fn-nntp-single session "503 stored article framing unavailable"))))))
+          (fn-nntp-single session "503 stored article framing unavailable")))))))
 
 (defun fn-nntp-over-response (session archive args)
   (mbe :logic
@@ -2020,7 +2029,10 @@
            (rest (fn-nntp-newnews-scan
                   groups threshold (fn-ag-cdr articles)
                   (if (natp stamp) stamp horizon))))
+      ; D13: a reclaimed article is not listed.  The test reads at most
+      ; the tombstone's fixed head of the payload, never parses it.
       (if (and (fn-nntp-newnews-candidatep groups article)
+               (not (fn-rcl-tombstonep (fn-article-payload article)))
                (fn-nntp-newnews-newp threshold stamp horizon))
           (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
         rest))))

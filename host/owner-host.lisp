@@ -1608,9 +1608,12 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-pbb-existing-action
-; (books/poster-bytes-buffer.lisp), equal to fn-pb-existing-action on the
-; buffer's logical value (fn-pbb-existing-action-is-pb-existing-action);
+; list for either.  The decision is fn-rclb-existing-action
+; (books/store-reclaim-buffer.lisp), equal to the tombstone-aware
+; fn-rcl-existing-action on the buffer's logical value
+; (fn-rclb-existing-action-is-rcl-existing-action), which is
+; fn-pb-existing-action wherever the held payload is not a tombstone
+; (fn-rcl-existing-action-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
 (defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
