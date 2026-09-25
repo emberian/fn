@@ -522,8 +522,9 @@ def command_keys_process(args):
             words = verdict.split()
             outcome = decide_statement(node, kind, principal, words, fields, msgid)
             state["done"][msgid] = outcome
-            log("{} key-statement {} kind={} principal={} verdict={!r}".format(
-                outcome.split()[0], msgid, kind.split(" ")[0] or "-", principal or "-", verdict))
+            log("{} key-statement {} kind={} principal={} verdict={!r} -> {}".format(
+                outcome.split()[0], msgid, kind.split(" ")[0] or "-", principal or "-", verdict,
+                outcome))
             acted += outcome.startswith("accepted")
     save_json(state_path, state)
     log("accepted keys-process acted={}".format(acted))
@@ -675,9 +676,13 @@ def pull_round(args, state):
     counts = {"listed": 0, "235": 0, "435": 0, "437": 0, "pending": 0}
     with Nntp(fh, fp) as remote:
         started = remote_date(remote)
-        since = dt.datetime.fromtimestamp(state.get("cursor", 0), dt.timezone.utc)
-        status = remote.command("NEWNEWS {} {} GMT".format(args.groups,
-                                                            since.strftime("%Y%m%d %H%M%S")))
+        # A first round asks for one day back (local policy): the epoch is a
+        # date some servers read as "no date" and answer with nothing.
+        since = dt.datetime.fromtimestamp(state.get("cursor") or (started.timestamp() - 86400),
+                                          dt.timezone.utc)
+        request = "NEWNEWS {} {} GMT".format(args.groups, since.strftime("%Y%m%d %H%M%S"))
+        status = remote.command(request)
+        log("pull {} -> {}".format(request, status))
         if not status.startswith("230"):
             raise Outcome(EXIT_UNCERTAIN, "NEWNEWS -> " + status)
         listed = [l.decode("latin-1").strip() for l in remote.block()]

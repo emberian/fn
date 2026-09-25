@@ -180,6 +180,7 @@ hismethod:              hisv6
 ovmethod:               tradindexed
 enableoverview:         true
 allownewnews:           true
+nnrpdloadlimit:         0
 maxartsize:             1000000
 artcutoff:              0
 wanttrash:              false
@@ -206,7 +207,9 @@ READERS_CONF = """auth "localhost" {{
 access "localhost" {{
     users: "<localhost>"
     newsgroups: "*"
-    access: RPA
+    # N: NEWNEWS; with an access string, inn.conf's allownewnews is ignored
+    # (readers.conf(5)).
+    access: RPAN
 }}
 """
 
@@ -237,7 +240,12 @@ def inn_setup(work, src):
     for ext in ("dir", "hash", "index"):
         if (db / "history.n.{}".format(ext)).exists():
             (db / "history.n.{}".format(ext)).rename(db / "history.{}".format(ext))
-    (db / "active").write_text("control 0000000000 0000000001 y\njunk 0000000000 0000000001 n\n")
+    # innd will not start without control.cancel (syslog: "no control.cancel group").
+    (db / "active").write_text("".join(
+        "{} 0000000000 0000000001 {}\n".format(g, f) for g, f in (
+            ("control", "y"), ("control.cancel", "y"), ("control.newgroup", "y"),
+            ("control.rmgroup", "y"), ("control.checkgroups", "y"), ("junk", "n"),
+            ("fn.test", "y"), ("fn.keys", "y"))))
     (db / "active.times").write_text("")
     (db / "newsgroups").write_text("")
     return prefix
@@ -259,10 +267,10 @@ def inn_start(prefix):
         if "Server running" in r.stdout:
             break
         time.sleep(1)
-    for group in ("fn.test", "fn.keys", "control.cancel", "control.newgroup"):
-        run(prefix / "bin/ctlinnd", "newgroup", group, "y", "lab", env=env)
     out2 = open(prefix / "log/nnrpd-stdout.log", "ab")
-    nnrpd = subprocess.Popen([str(prefix / "bin/nnrpd"), "-D", "-p", str(PORTS["nnrpd"])],
+    # -f: stay in the foreground, so the PID this script holds is nnrpd's own
+    # (a bare -D forks away and outlives the lab).
+    nnrpd = subprocess.Popen([str(prefix / "bin/nnrpd"), "-D", "-f", "-p", str(PORTS["nnrpd"])],
                              stdout=out2, stderr=subprocess.STDOUT, env=env)
     STARTED["nnrpd"] = nnrpd
     for _ in range(30):
@@ -273,8 +281,21 @@ def inn_start(prefix):
 
 
 def unsigned(group, msgid, subject, body, extra=""):
-    return ("From: inn-user@inn.spike.test\r\nNewsgroups: {}\r\nSubject: {}\r\n"
+    return ("Path: lab-reader!not-for-mail\r\nFrom: inn-user@inn.spike.test\r\n"
+            "Newsgroups: {}\r\nSubject: {}\r\n"
             "Message-ID: {}\r\n{}\r\n{}\r\n").format(group, subject, msgid, extra, body).encode()
+
+
+def inn_inject(msgid, octets):
+    """Into innd by IHAVE: this INN's nnrpd spools local posts it cannot hand
+    to innd (spool/incoming), so the lab's INN-side articles arrive as transit
+    from a reader-side relay instead; innd still files and executes them."""
+    for attempt in range(10):
+        try:
+            return ihave(PORTS["innd"], "127.0.0.1", msgid, octets)
+        except ConnectionRefusedError:
+            time.sleep(2)
+    return "refused-connection"
 
 
 # ------------------------------------------------------------------ the lab
@@ -293,6 +314,12 @@ def main():
     finally:
         for name in list(STARTED):
             stop(name)
+        # INN daemons record their own PIDs; signal only those under this run.
+        for pidfile in (work / "inn" / "run").glob("*.pid") if (work / "inn" / "run").exists() else ():
+            try:
+                os.kill(int(pidfile.read_text().split()[0]), signal.SIGTERM)
+            except (ValueError, ProcessLookupError, IndexError):
+                pass
         summary = {"checks": CHECKS, "passed": sum(c["ok"] for c in CHECKS),
                    "failed": sum(not c["ok"] for c in CHECKS),
                    "elapsed_seconds": round(time.time() - started, 1),
@@ -435,11 +462,11 @@ def lab(work, args):
     tool("revocation", "--keys", keys["alice"].dir, "--out", rev)
     check("post-A revocation", post(PORTS["A"], rev.read_bytes()).startswith("240"), "")
     r = tool("keys-process", "--node", configs["A"])
-    check("A-revokes", "accepted revoke" in r.stdout or "accepted key-statement" in r.stdout,
+    check("A-revokes", "-> accepted revoke" in r.stdout,
           r.stdout.strip()[-300:])
     pull(work, PORTS["A"], PORTS["B"], "127.0.0.2", "fn.*", "pull-B-from-A.json")
     r = tool("keys-process", "--node", configs["B"])
-    check("B-revokes", "revoke" in r.stdout and "accepted key-statement" in r.stdout,
+    check("B-revokes", "-> accepted revoke" in r.stdout,
           r.stdout.strip()[-300:])
     served = post(PORTS["A"], r1)
     check("A-served-post-after-revocation-refused", not served.startswith("240"), served)
@@ -494,6 +521,8 @@ def lab(work, args):
     try:
         inn_lab(work, args, configs, keys)
     except OSError as error:
+        import traceback
+        traceback.print_exc()
         check("inn-section-completed", False, repr(error))
 
 
@@ -509,23 +538,27 @@ def inn_lab(work, args, configs, keys):
     start_node(work, "A")
     j1 = unsigned("fn.test", "<j1@inn.spike.test>", "from INN", "an INN reader's post",
                   "Date: {}\r\n".format(fp.rfc5322_date()))
-    check("inn-post-j1", post(PORTS["nnrpd"], j1).startswith("240"), "")
-    time.sleep(2)
+    check("inn-post-j1", inn_inject("<j1@inn.spike.test>", j1).startswith("235"), "")
+    time.sleep(5)
     r = pull(work, PORTS["nnrpd"], PORTS["A"], "127.0.0.3", "fn.*,control.*", "pull-A-from-INN.json")
     check("A-pulls-inn-newnews", "<j1@inn.spike.test>" in r.stdout, r.stdout.strip()[-300:])
     cancel = unsigned("fn.test", "<cancel-j1@inn.spike.test>", "cmsg cancel <j1@inn.spike.test>",
                       "cancel", "Control: cancel <j1@inn.spike.test>\r\nDate: {}\r\n".format(
                           fp.rfc5322_date()))
-    check("inn-post-cancel", post(PORTS["nnrpd"], cancel).startswith("240"), "")
+    check("inn-post-cancel", inn_inject("<cancel-j1@inn.spike.test>", cancel).startswith("235"), "")
     newgroup = unsigned("fn.test", "<newgroup@inn.spike.test>", "cmsg newgroup fn.innnew",
                         "newgroup", "Control: newgroup fn.innnew\r\nApproved: lab@inn.spike.test\r\n"
                         "Date: {}\r\n".format(fp.rfc5322_date()))
-    check("inn-post-newgroup", post(PORTS["nnrpd"], newgroup).startswith("240"), "")
-    time.sleep(2)
+    check("inn-post-newgroup", inn_inject("<newgroup@inn.spike.test>", newgroup).startswith("235"), "")
+    time.sleep(5)
     r = pull(work, PORTS["nnrpd"], PORTS["A"], "127.0.0.3", "fn.*,control.*", "pull-A-from-INN.json")
     check("A-pulls-inn-control", "<cancel-j1@inn.spike.test>" in r.stdout, r.stdout.strip()[-400:])
     status, octets = fetch(PORTS["A"], "<j1@inn.spike.test>")
     check("A-cancel-filed-not-executed", octets is not None, status)
+    istatus, ioctets = fetch(PORTS["nnrpd"], "<j1@inn.spike.test>")
+    # An observation of INN, not a claim about fn: whether this INN executed
+    # the cancel it received by transit (lab-11: it did not; j1 stayed on nnrpd).
+    print("OBSERVE inn-cancel-executed={} {}".format(ioctets is None, istatus), flush=True)
     with fp.Nntp("127.0.0.1", PORTS["A"]) as n:
         g = n.command("GROUP control.cancel")
     check("A-control-cancel-group-holds-it", g.startswith("211") and g.split()[1] != "0", g)
