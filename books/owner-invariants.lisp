@@ -232,6 +232,25 @@
                                   (fn-own-prefix-archive fn-ctl-visible-articles
                                    fn-ctl-subseq-diff)))))
 
+; The same, stated over the view-okp conjuncts themselves (no free
+; variables outside them), which is the shape a relation proof sees once
+; fn-own-view-okp has opened.  P is bound by the first hypothesis.
+(defthm fn-own-view-control-okp-of-conjuncts
+  (implies (and (equal (fn-own-view-archive view)
+                       (fn-ctl-visible-state p (fn-own-view-withdrawals view)
+                                             (fn-own-view-verdicts view)))
+                (equal (fn-own-view-raw view) (fn-state-articles p))
+                (equal (fn-own-view-withdrawn view)
+                       (fn-ctl-subseq-diff (fn-own-view-raw view)
+                                           (fn-state-articles
+                                            (fn-own-view-archive view)))))
+           (fn-own-control-okp (fn-own-view-control view)
+                               (fn-own-view-archive view)
+                               (fn-own-view-verdicts view)
+                               (fn-own-view-raw view)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-visible-state fn-own-control-okp)
+                                  (fn-ctl-visible-articles fn-ctl-subseq-diff)))))
+
 (in-theory (disable fn-own-control-okp))
 
 (defun fn-own-ledger-durablep (ledger records)
