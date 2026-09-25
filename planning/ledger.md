@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 866 |
-| Certification roots in the Makefile | 850 |
-| Books inside the root closure | 862 |
-| `defthm` and `defthmd` events | 11889 |
-| `defun` events | 8301 |
+| Books read | 868 |
+| Certification roots in the Makefile | 852 |
+| Books inside the root closure | 864 |
+| `defthm` and `defthmd` events | 11930 |
+| `defun` events | 8324 |
 | Functions with verified guards | 2167 |
 | Functions declared `:verify-guards nil` and never verified | 633 |
-| Functions left at the default with an explicit guard | 4287 |
-| Functions left at the default with no guard | 1214 |
-| `assert-event` checks | 12649 |
-| `must-fail` checks | 1304 |
+| Functions left at the default with an explicit guard | 4303 |
+| Functions left at the default with no guard | 1221 |
+| `assert-event` checks | 12664 |
+| `must-fail` checks | 1320 |
 | `encapsulate` events | 52 |
 | Theorems flagged SUSPECT by shape | 102 |
 | Export-hygiene warnings | 146 |
@@ -321,9 +321,10 @@ that `make certify` requests.
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
-| `books/control-authority.lisp` | root | 26 | 39 | 0/0/39/0 | 0 | 0 | 0 |
+| `books/control-authority.lisp` | root | 27 | 43 | 0/0/43/0 | 0 | 0 | 0 |
 | `books/control-classify.lisp` | root | 6 | 20 | 0/0/20/0 | 1 | 0 | 0 |
-| `books/control-visible.lisp` | root | 38 | 16 | 0/0/16/0 | 0 | 0 | 1 |
+| `books/control-served.lisp` | root | 30 | 10 | 0/0/9/1 | 0 | 0 | 0 |
+| `books/control-visible.lisp` | root | 48 | 20 | 0/0/20/0 | 0 | 0 | 1 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/defrecord.lisp` | root | 0 | 16 | 0/0/0/16 | 0 | 0 | 0 |
@@ -449,7 +450,7 @@ that `make certify` requests.
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-verdict-read.lisp` | root | 20 | 2 | 0/0/1/1 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 82 | 152 | 0/5/147/0 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 82 | 151 | 0/5/146/0 | 0 | 0 | 0 |
 | `books/path-update-tail.lisp` | root | 67 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -761,8 +762,9 @@ that `make certify` requests.
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/control-authority-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 39 | 0 | 0 |
+| `tests/acl2/control-served-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 9 | 12 | 0 |
 | `tests/acl2/control-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 29 | 6 | 0 |
-| `tests/acl2/control-visible-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 7 | 5 | 0 |
+| `tests/acl2/control-visible-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 13 | 9 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 20 | 9/0/11/0 | 39 | 1 | 2 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
@@ -997,7 +999,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 424 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
 | `fn-col-poll-index-get-non-uint-is-nil-by-definition` | `books/consumer-poll-index.lisp` | 113 | branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1319 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
-| `fn-ctl-drop-via-of-atom` | `books/control-visible.lisp` | 119 | branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value |
+| `fn-ctl-drop-via-of-atom` | `books/control-visible.lisp` | 122 | branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 174 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-evc-event-nth-of-atom` | `books/store-events-carried.lisp` | 138 | branch-of-definition: the hypothesis negates a branch test of fn-store-event-nth and the conclusion is that branch's value |
@@ -1019,7 +1021,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 847 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-olc-pin-trie-of-unpinned` | `books/owner-list-counts-read.lisp` | 50 | branch-of-definition: the hypothesis negates a branch test of fn-gidx-pin-trie and the conclusion is that branch's value |
 | `fn-osb-install-refuses-unadmitted-by-definition` | `books/owner-served-bound.lisp` | 94 | branch-of-definition: the hypothesis negates a branch test of fn-osb-install and the conclusion is that branch's value |
-| `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 848 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
+| `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 847 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
 | `fn-own-feed-port-lost-is-port-peer` | `books/owner-feed-port.lisp` | 80 | definition-restated: the conclusion is the body of fn-own-feed-port-lost-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-observe-is-port-peer` | `books/owner-feed-port.lisp` | 75 | definition-restated: the conclusion is the body of fn-own-feed-port-observe-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-restart-is-port-peer` | `books/owner-feed-port.lisp` | 85 | definition-restated: the conclusion is the body of fn-own-feed-port-restart-peer; reflexive-conclusion: a conjunct is (equal X X) |

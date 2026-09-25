@@ -777,6 +777,8 @@
     "tests/acl2/key-statements-tests",
     "books/control-visible",
     "tests/acl2/control-visible-tests",
+    "books/control-served",
+    "tests/acl2/control-served-tests",
     "books/login-binding",
     "tests/acl2/login-binding-tests",
     "books/topic-history-metadata",
@@ -854,19 +856,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 866,
-    "books_in_root_closure": 862,
-    "roots": 850,
-    "theorems": 11889,
-    "functions": 8301,
-    "assert_events": 12649,
-    "must_fails": 1304,
+    "books": 868,
+    "books_in_root_closure": 864,
+    "roots": 852,
+    "theorems": 11930,
+    "functions": 8324,
+    "assert_events": 12664,
+    "must_fails": 1320,
     "encapsulates": 52,
     "guards": {
       "verified": 2167,
       "declared-off": 633,
-      "default-guarded": 4287,
-      "default-unguarded": 1214
+      "default-guarded": 4303,
+      "default-unguarded": 1221
     },
     "suspect_theorems": 102,
     "export_hygiene_warnings": 146,
@@ -7105,12 +7107,12 @@
       "book": "books/control-authority.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 26,
-      "functions": 39,
+      "theorems": 27,
+      "functions": 43,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 39,
+        "default-guarded": 43,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -7155,15 +7157,41 @@
       "read_error": null
     },
     {
-      "book": "books/control-visible.lisp",
+      "book": "books/control-served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 16,
+      "theorems": 30,
+      "functions": 10,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 16,
+        "default-guarded": 9,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "control-visible",
+        "nntp-projection"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/control-visible.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 48,
+      "functions": 20,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 20,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -7173,7 +7201,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "control-authority"
+        "control-authority",
+        "replay"
       ],
       "system_includes": [],
       "suspects": [
@@ -10539,11 +10568,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 82,
-      "functions": 152,
+      "functions": 151,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 147,
+        "default-guarded": 146,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -19033,6 +19062,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/control-served-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 12,
+      "defconsts": 15,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/control-served"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/control-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19064,17 +19120,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
-      "must_fails": 5,
-      "defconsts": 21,
+      "assert_events": 13,
+      "must_fails": 9,
+      "defconsts": 32,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -24487,7 +24543,7 @@
     {
       "theorem": "fn-ctl-drop-via-of-atom",
       "book": "books/control-visible.lisp",
-      "line": 119,
+      "line": 122,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value"
       ]
@@ -24666,7 +24722,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 848,
+      "line": 847,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
@@ -25279,7 +25335,7 @@
       {
         "theorem": "fn-ocl-connection-archive-has-pinned-domain",
         "book": "books/config-owner-live.lisp",
-        "line": 1456,
+        "line": 1462,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

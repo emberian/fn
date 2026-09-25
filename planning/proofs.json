@@ -3528,7 +3528,15 @@
         "fn-ctl-visible-add-is-visible",
         "fn-ctl-visible-extend-is-visible",
         "fn-ctl-refresh-visible-is-visible",
-        "fn-ctl-visible-state-statep"
+        "fn-ctl-visible-state-statep",
+        "fn-ctl-withdrawal-plan-record-is-bound",
+        "fn-ctl-articles-withdrawals-is-the-journal",
+        "fn-ctl-refresh-withdrawals-is-the-journal",
+        "fn-ctl-refresh-withdrawn-is-withdrawn",
+        "fn-ctl-number-withdrawn-is-a-withdrawn-holder",
+        "fn-ctl-msgid-withdrawn-is-a-withdrawn-article",
+        "fn-ctl-executed-status-means-withdrawn",
+        "fn-ctl-owed-status-means-not-held"
       ]
     },
     {
