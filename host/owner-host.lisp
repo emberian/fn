@@ -253,27 +253,6 @@
               (value :fault))))))))
 
 
-;; SPIKE (D28): the pending article record sealed into the octet buffer as
-;; the store frame the host writes (books/records-stobj
-;; fn-rcs-store-seal-record).  The bytes are fn-frame-encode of
-;; fn-record-encode-impl of the record under its SHA-256 trailer
-;; (fn-rcs-store-seal-record-is-sealed-frame, deferred on the spike), the
-;; octets fn-owner-pending-octets and host/native/io.lisp fnn-frame wrote
-;; before.  A pending record of another kind (retention, identity,
-;; consumer, topic) answers nil and the host takes the list path.
-(defun fn-owner-pending-frame (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let ((record (fn-sf-record-candidate (fn-sn-files (fn-owner-store state)))))
-    (if (not record)
-        (mv nil fn-octets state)
-      (mv-let (okp fn-octets)
-        (fn-rcs-store-seal-record record fn-octets)
-        ; The record's octet count (the frame less its header and trailer),
-        ; the length fn-store-publication-admissibility judges; nil when the
-        ; pending record is not an article record.
-        (mv (if okp (- (fn-octets-len fn-octets) *fn-frame-overhead-octets*) nil)
-            fn-octets state)))))
-
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-own-store (fn-owner-core state)))
@@ -672,6 +651,27 @@
   (declare (xargs :stobjs state :mode :program))
   ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
   (value (fn-rcon-sbud-pending-sequence (fn-owner-store state))))
+
+;; SPIKE (D28): the pending article record sealed into the octet buffer as
+;; the store frame the host writes (books/records-stobj
+;; fn-rcs-store-seal-record).  The bytes are fn-frame-encode of
+;; fn-record-encode-impl of the record under its SHA-256 trailer
+;; (fn-rcs-store-seal-record-is-sealed-frame, deferred on the spike), the
+;; octets fn-owner-pending-octets and host/native/io.lisp fnn-frame wrote
+;; before.  A pending record of another kind (retention, identity,
+;; consumer, topic) answers nil and the host takes the list path.
+(defun fn-owner-pending-frame (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((record (fn-sf-record-candidate (fn-sn-files (fn-owner-store state)))))
+    (if (not record)
+        (mv nil fn-octets state)
+      (mv-let (okp fn-octets)
+        (fn-rcs-store-seal-record record fn-octets)
+        ; The record's octet count (the frame less its header and trailer),
+        ; the length fn-store-publication-admissibility judges; nil when the
+        ; pending record is not an article record.
+        (mv (if okp (- (fn-octets-len fn-octets) *fn-frame-overhead-octets*) nil)
+            fn-octets state)))))
 
 ; The POST admission boundary over the profile the owner was handed at open
 ; (`fn-owner-install-profile'); without one the payload bound is 0.
