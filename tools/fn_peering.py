@@ -333,11 +333,15 @@ def enroll_claimed(node, directory, principal, ed_hex, ml_line):
     return node.enroll(work)
 
 
-def peer_add(node, name, path_id, host, port, inbound, outbound, source, carries):
+def peer_add(node, name, path_id, host, port, inbound, outbound, source, carries,
+             budget=("1048576", "64")):
     words = ["peer", "add", name, path_id, host, str(port), inbound, outbound,
              "source-address", source, "false"]
     if carries:
-        words += ["carries", *carries]
+        # The opaque-carriage budget: what this boundary may hold for authors
+        # this node has not enrolled (books/peer-authored-accept.lisp
+        # fn-pa-carried-budget-decision).  Without it the list carries nothing.
+        words += ["carries", *carries, "budget", str(budget[0]), str(budget[1])]
     return node.operator(*words)
 
 
@@ -385,7 +389,7 @@ def command_accept(args):
     carries = [c for c in fields.get("Carries", "").split(",") if c]
     peer_add(node, args.as_name or inviter, inviter, fields["Host"], fields["Port"],
              fields["Groups"], fields["Groups"] if args.feed else "-",
-             args.inbound_source, carries)
+             args.inbound_source, carries, args.carry_budget)
     log("accepted peer add {} inbound={} carries={}".format(inviter, fields["Groups"],
                                                             len(carries)))
     # 4. The signed acceptance: it names the invitation it answers by nonce,
@@ -444,7 +448,7 @@ def command_confirm(args):
     peer_add(node, record["name"], fields["Acceptor-Path"], host, port, record["groups"],
              record["groups"] if reach != "-" else "-",
              args.inbound_source or fields.get("Source-Address", "127.0.0.1"),
-             [c for c in fields.get("Carries", "").split(",") if c])
+             [c for c in fields.get("Carries", "").split(",") if c], args.carry_budget)
     record["state"] = "confirmed"
     record["peer_principal"] = principal
     save_json(pending_path(node), pending)
@@ -751,12 +755,16 @@ def build_parser():
     a.add_argument("--reachable", help="HOST:PORT the inviter may feed; omit behind NAT")
     a.add_argument("--feed", action="store_true", help="feed the inviter (outbound)")
     a.add_argument("--expect-principal")
+    a.add_argument("--carry-budget", nargs=2, default=("1048576", "64"),
+                   metavar=("OCTETS", "COUNT"))
     c = sub.add_parser("confirm")
     c.add_argument("file")
     c.add_argument("--node", required=True)
     c.add_argument("--keys", required=True)
     c.add_argument("--invitation")
     c.add_argument("--inbound-source")
+    c.add_argument("--carry-budget", nargs=2, default=("1048576", "64"),
+                   metavar=("OCTETS", "COUNT"))
     s = sub.add_parser("succession")
     s.add_argument("--old", required=True)
     s.add_argument("--new", required=True)

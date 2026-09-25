@@ -977,7 +977,37 @@ COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
 STATEMENT_WORDS = {0: "verified", 2: "no-verdict", 3: "unverified", 4: "absent"}
 
 
+# SPIKE (spike/peering): `fn peer invite|accept|confirm` and `fn keys
+# succession|revocation|process` and `fn pull` are the peering tool's
+# (tools/fn_peering.py), which drives the native image; `-c CONFIG` becomes
+# its `--node`.  Defers to dev: native operator verbs planned by ACL2.
+PEERING_VERBS = {("peer", "invite"): "invite", ("peer", "accept"): "accept",
+                 ("peer", "confirm"): "confirm", ("keys", "succession"): "succession",
+                 ("keys", "revocation"): "revocation", ("keys", "process"): "keys-process",
+                 ("pull",): "pull"}
+
+
+def peering_argv(argv):
+    words = list(sys.argv[1:] if argv is None else argv)
+    config = None
+    if len(words) >= 2 and words[0] in ("-c", "--config"):
+        config, words = words[1], words[2:]
+    for key, verb in PEERING_VERBS.items():
+        if tuple(words[:len(key)]) == key:
+            rest = words[len(key):]
+            if verb in ("invite",) and rest and not rest[0].startswith("-"):
+                rest = ["--name", rest[0]] + rest[1:]
+            node = ["--node", config or DEFAULT_CONFIG] if verb not in (
+                "succession", "revocation", "pull") else []
+            return [verb] + node + rest
+    return None
+
+
 def main(argv=None):
+    peering = peering_argv(argv)
+    if peering is not None:
+        import fn_peering
+        return fn_peering.main(peering)
     args = build_parser().parse_args(argv)
     try:
         settings = overrides(load_settings(args.config, must_exist=args.command != "init"), args)
