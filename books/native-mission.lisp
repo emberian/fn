@@ -125,6 +125,18 @@
                                       fn-nop-result fn-native-operator-result-command
                                       fn-native-operator-result-status)))))
 
+   ; The shape fact `run' needs of the config-free help branch: a plan whose
+   ; first word is help is named help.  Only the first cond arm is opened.
+   (defthm fn-native-mission-help-command
+     (implies (equal (car words) "help")
+              (equal (fn-native-operator-result-command
+                      (fn-nop-parse-command words config argv))
+                     "help"))
+     :hints (("Goal" :in-theory (e/d (fn-nop-usage)
+                                     (fn-nop-help-subjectp fn-nop-help-text
+                                      fn-nop-result fn-native-operator-result-command))
+              :expand ((fn-nop-parse-command words config argv)))))
+
    ; `run' is the grammar's plan whenever the plan is init.
    (defthm fn-native-mission-run-init
      (implies (and (equal (car (fn-native-config-load config)) :accepted)
@@ -143,8 +155,10 @@
                                       fn-ncfg-ascii-octetsp fn-nop-result
                                       fn-native-operator-result-command
                                       fn-native-operator-result-status
-                                      fn-native-config-operator-availablep))
-              :expand ((fn-nop-parse-command (fn-nop-argument-texts argv) nil argv)))))))
+                                      fn-native-config-operator-availablep
+                                      fn-native-config-unsupported-key
+                                      fn-native-mission-parse-command-init
+                                      fn-nop-parse-init fn-native-mission-request)))))))
 
 ; KEYSTONE.  The subject is `fn-native-operator-run', which
 ; host/native-operator-host.lisp:19 calls.  Under a configuration naming a
