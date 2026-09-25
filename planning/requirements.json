@@ -1961,7 +1961,7 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-091"
+        "PRF-109"
       ],
       "verification": [
         "proof",
