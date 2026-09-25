@@ -850,22 +850,22 @@
     "books": 859,
     "books_in_root_closure": 855,
     "roots": 843,
-    "theorems": 11724,
-    "functions": 8211,
-    "assert_events": 12538,
-    "must_fails": 1275,
+    "theorems": 11757,
+    "functions": 8227,
+    "assert_events": 12544,
+    "must_fails": 1278,
     "encapsulates": 51,
     "guards": {
       "verified": 2167,
-      "declared-off": 618,
-      "default-guarded": 4238,
-      "default-unguarded": 1188
+      "declared-off": 621,
+      "default-guarded": 4250,
+      "default-unguarded": 1189
     },
     "suspect_theorems": 102,
     "export_hygiene_warnings": 145,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 103,
-    "include_hygiene_warnings": 860,
+    "include_hygiene_warnings": 861,
     "host_names_warnings": 918,
     "hand_written_record_warnings": 18
   },
@@ -10873,25 +10873,27 @@
       "book": "books/poster-bytes-buffer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
-      "functions": 8,
+      "theorems": 55,
+      "functions": 21,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 8,
-        "default-unguarded": 0
+        "default-guarded": 20,
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
-      "defmacros": 4,
+      "defmacros": 6,
       "encapsulates": 0,
       "includes": [
         "octets-stobj",
         "poster-bytes"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -20614,24 +20616,25 @@
       "book": "tests/acl2/octets-stobj-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
-      "functions": 6,
+      "theorems": 26,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 4,
         "default-guarded": 1,
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 14,
-      "defconsts": 22,
+      "assert_events": 19,
+      "must_fails": 17,
+      "defconsts": 27,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/octets-stobj",
         "../../books/poster-bytes-buffer",
-        "owner-served-invariants-tests"
+        "owner-served-invariants-tests",
+        "poster-bytes-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -28855,7 +28858,7 @@
       },
       {
         "book": "books/poster-bytes-buffer.lisp",
-        "line": 24,
+        "line": 30,
         "include": "poster-bytes",
         "included": "books/poster-bytes.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -31742,6 +31745,13 @@
         "line": 19,
         "include": "owner-served-invariants-tests",
         "included": "tests/acl2/owner-served-invariants-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/octets-stobj-tests.lisp",
+        "line": 22,
+        "include": "poster-bytes-tests",
+        "included": "tests/acl2/poster-bytes-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
