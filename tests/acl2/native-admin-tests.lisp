@@ -628,7 +628,7 @@
       (not (member-equal (fn-cfg-row-make "relay"
                                           "bp-boundary-require-signed-receipts"
                                           "yes" 0)
-                         (fn-na-test-plan-rows *fn-na-bp-releases*)))))
+                         (fn-na-test-plan-rows *fn-na-bp-signer*)))))
 ; A signer that is not 64 lowercase hex digits, or options out of order,
 ; are refused.
 (assert-event
