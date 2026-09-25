@@ -21,6 +21,12 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-native-admin-peer-report
           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
+(defun fn-native-admin-host-query-report (plan state)
+  ; `peer list' or `control list' over the configuration the store just
+  ; replayed; books/native-admin.lisp selects and renders.
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-native-admin-query-report
+          plan (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
 (defun fn-native-admin-host-owner-reconfigure (id plan state)
   ; The live arm.  The delta list, labels as strings, is ACL2's
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
@@ -33,7 +39,8 @@
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
-    (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route))
+    (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
+                                :grant-control :revoke-control))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ((equal kind :set-peer)

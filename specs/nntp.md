@@ -313,7 +313,7 @@ three parts have three different owners of the *reply*, all of them ACL2.
    `:storage-failed` (a write that failed before publication, whose
    reservation `fn-owner-known-abort` consumed, so nothing was stored), the
    three control-message filing refusals of `fn-pa-filing-plan` (C1,
-   [peering §8](peering.md#8-control-messages-filing-implemented-execution-proposed-not-decided)):
+   [peering §8](peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred)):
    `:control-not-filed` "control message not filed: its control group is not
    configured here", `:control-malformed` "the Control header field is
    malformed" and `:control-signed` "a signed control message cannot be filed

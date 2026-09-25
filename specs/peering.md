@@ -1183,7 +1183,7 @@ delta list) for K3 and for `fn-peer-injection-arguments`. K0 and K1 can
 start now against `ca66782` with the `cfg-gen` argument omitted and added
 when R2 lands.
 
-## 8. Control messages (filing implemented; execution proposed, not decided)
+## 8. Control messages (filing and authority implemented; cancel decided, served withdrawal open; group control deferred)
 
 Status: **the filing rule (packet C1) is implemented**; everything else in
 this section is **proposed, not decided**. It is the spec half of [the control-message design](../planning/design-2026-09-25-control-messages.md),
@@ -1193,26 +1193,100 @@ to C4. If adopted, it supersedes
 "fn implements none of them", and it answers that section's objections
 rather than dropping them.
 
-**Today (C1, implemented 2026-09-25).** A control article is recognized
-and filed, never executed. The filing paragraph below is what the node does;
-the execution rule, the per-verb table, the feed paragraph and the metadata
-item remain proposals.
+**Today (2026-09-25).** D29 decided the three open questions: C2 and C3
+proceed, C4 (group control by article) is **deferred** until group authority
+and succession are decided. What the node does:
 
-**Proposed rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
+- *C1, implemented:* a control article is recognized and filed, never
+  executed (the filing paragraph below).
+- *C2, implemented:* the authority slot, its two delta kinds through the
+  assured live path, the `control grant|revoke|list` verbs, and the
+  authority decision `fn-ctl-authorize` (paragraph "Authority" below).
+- *C3, the decision implemented, the served withdrawal open:* the
+  withdrawal record, its effect on the target and the visible article list
+  are ACL2 definitions with keystones (paragraph "Cancel" below); the
+  served view does not yet apply them, a signed control article is still
+  refused `:control-signed`, and Supersedes is not handled. Until those
+  land, a filed cancel withdraws nothing.
+
+**The rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
 executed only when all of these hold:
 
 1. `fn-pa-current-plan` (`books/peer-authored-accept.lisp:98`) returns `:ok`:
    the carrier verified under this node's current enrollment. `:carried`
    (D23) and unsigned articles never execute.
 2. The verified principal holds a **control-authority row** naming the verb
-   and covering the namespace. This is a new configuration row kind
-   `(namespace principal-hex verbs 0)` in a new `authorities` slot, written
-   by delta kinds `:grant-control` 11 and `:revoke-control` 12, which the
-   operator stages through the assured live path (`fn-ocfg-step`,
-   `fn-ocl-publish`).
-3. For newgroup and rmgroup, the article carries `Approved` (RFC 5537 §5.2)
-   and a signed `FN-Control-Serial` above the recorded high-water for that
-   grant and group.
+   and covering the namespace (implemented, C2): a row
+   `(namespace principal-hex verb 0)` in the `authorities` slot, the eighth
+   of the configuration value, written by delta kinds `:grant-control` 11
+   and `:revoke-control` 12, which the operator stages through the assured
+   live path (`fn-ocfg-step`, `fn-ocl-publish`).
+3. *(C4, deferred by D29.)* For newgroup and rmgroup, the article carries
+   `Approved` (RFC 5537 §5.2) and a signed `FN-Control-Serial` above the
+   recorded high-water for that grant and group.
+
+**Authority (implemented, C2).** `operator CONFIG control grant PRINCIPAL
+VERB NAMESPACE-PATTERN` and `control revoke PRINCIPAL VERB NAMESPACE-PATTERN`
+are planned by `fn-native-admin-control-plan` (`books/native-admin.lisp`)
+and staged live like `group create`; `control list` prints the rows of the
+replayed configuration. PRINCIPAL is the 64 lowercase hex characters HDR
+`:fn-verified` prints; NAMESPACE-PATTERN is a group name or a group name
+followed by `.*` (which covers every group below it, not the name itself);
+the one grantable verb is `cancel`, since C2 carries only the authority C3
+needs. A reserved namespace (RFC 5536 §3.1.4) is refused
+`:reserved-group-name` at the plan; `fn-cfg-delta-reason` refuses a
+malformed pattern `:namespace-pattern`, a principal `:principal`, any other
+verb `:verb-not-grantable` and a revoke of an absent row `:no-such-grant`
+(`fn-cfg-grant-control-admissible-iff`). Rows are keyed on (namespace,
+principal). The decision `fn-ctl-authorize VERDICT VERB GROUPS ROWS`
+(`books/control-authority.lisp`) returns `(:execute VERB PRINCIPAL SCOPE)`
+only for a verdict this node verified (`:verified` with a 32-octet
+principal; `:carried`, unsigned and legacy verdicts decline by name,
+`fn-ctl-authorize-requires-verified-verdict`) and a nonempty GROUPS each
+covered by a grant row of that principal for VERB
+(`fn-ctl-authorize-requires-a-covering-grant`); otherwise `(:decline
+REASON)` with `:no-grant`, `:verb-not-granted`, `:no-groups` or
+`:outside-namespace`. A revoke changes future decisions
+(`fn-ctl-revoked-namespace-leaves-the-scope`) and never a recorded one
+(`fn-ctl-revoke-changes-decisions-not-records`, below).
+
+**Cancel (C3: the decision implemented, the served withdrawal open).** When
+a cancel commits, `fn-ctl-cancel-plan CAUSE VERDICT CLASSIFIED CFG` decides
+once: a verified canceller and exactly one bracketed target give the record
+`(:withdrawal TARGET CAUSE PRINCIPAL SCOPE GENERATION)`, bound to its cause
+(the cancel's Message-ID and verified principal), target, scope (the
+principal's cancel grants in CFG) and CFG's generation
+(`fn-ctl-cancel-plan-record-is-bound`). It never reads the target, which
+may not have arrived. The target enters at `fn-ctl-withdrawal-effect W
+T-GROUPS T-VERDICT`, over the target's *accepted* group bindings and stored
+verdict: `:author` when the target's verdict (verified or carried) names
+the canceller, `:authority` when the scope covers every group the target is
+served in, and otherwise a decline (`fn-ctl-cancel-executes-only-for-author-or-authority`).
+The cancel's own `Newsgroups` never enter, so naming a narrower list gains
+no power; an unsigned target can be withdrawn only by an authority.
+`fn-ctl-visible-articles` serves every article but a target that some record
+whose cause is in the *same* article list withdraws; so a view pinned
+before the cancel keeps its archive (`fn-ctl-pinned-view-keeps-its-archive`),
+a view holding both never serves the target whichever arrived first
+(`fn-ctl-target-is-never-visible-beside-its-cancel`), and T-then-C and
+C-then-T serve the same articles (`fn-ctl-visible-is-arrival-order-independent`).
+Recovery derives the records from the durable journals alone,
+`fn-ctl-journal-withdrawals`, each under the configuration in force at its
+cancel's txid (`fn-ctl-config-at`, the same interleaving as `fn-cpr-loop`);
+a configuration record appended later, a revoke included, changes none of
+them, and the configuration in force after every record is the replay
+(`fn-ctl-config-at-after-every-record-is-the-replay`). Nothing here deletes
+a byte: retention, the duplicate history and the Store are neither inputs
+nor outputs of these functions.
+
+*Open (C3):* (1) the served view: `fn-ctl-visible-articles` applied where the
+committed view is refreshed (`fn-own-refresh`), with K1
+(`fn-own-read-is-served-step-on-pinned-prefix`) restated over it, 430 and
+423 `withdrawn`, the listings, and `HDR :fn-control`; (2) the signed filing
+below (`:control-signed`), without which no cancel is ever verified; (3)
+the host calling `fn-ctl-cancel-plan` at commit and
+`fn-ctl-journal-withdrawals` at recovery; (4) Supersedes as a cancel plus
+the replacement; (5) feed suppression, a later transition by D29.
 
 RFC 5537 §5.1 leaves authentication to "local authorization policy". The
 rule above is fn's policy, and signature verification over the exact
@@ -1222,6 +1296,13 @@ NNT-010: a control article is filed only in its control group
 (`control.<verb>`, or `control` for an obsolete or unknown verb) when the
 operator created that group, and is otherwise refused with a distinct
 reason; it is never stored in the groups its `Newsgroups` field names.
+
+NNT-011: control authority is an operator grant: a control article acts
+only when this node verified its signature and the operator granted its
+principal the verb over a namespace covering every group involved; a cancel
+withdraws its target from newly published reader views only for the
+target's author or an authority whose grant covers every group the target
+is served in, decided once under the configuration it committed under.
 
 **Filing (implemented, C1).** `fn-ctl-classify`
 (`books/control-classify.lisp`) reads only the `Control` field, and the
