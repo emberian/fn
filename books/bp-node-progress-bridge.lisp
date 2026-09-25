@@ -309,12 +309,21 @@
 ;; The routed :session arm (spec 4.6) answers start-one's effects or one
 ;; :forward-no-route report.
 (local
+ (defthm bpnpb-no-route-report-confined
+   (fn-bpnpb-effects-confinedp (list (list :forward-no-route arrival hop decision)))
+   :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnpb-effects-confinedp
+                                fn-bpn-effect-kind-memberp
+                                car-cons cdr-cons
+                                (:executable-counterpart equal)
+                                (:executable-counterpart not)
+                                (:executable-counterpart fn-bpn-effect-kind-memberp))
+                              (theory 'minimal-theory))))))
+
+(local
  (fn-bpnpb-defquiet bpnpb-routed-start
   (fn-bpnp-routed-start st peer session mru observation via)
-  (fn-bpnp-routed-start bpnpb-start-one fn-bpnpb-effects-confinedp
-   fn-bpn-effect-kind-memberp car-cons cdr-cons
-   (:executable-counterpart equal) (:executable-counterpart not)
-   (:executable-counterpart fn-bpn-effect-kind-memberp))))
+  (fn-bpnp-routed-start bpnpb-start-one bpnpb-no-route-report-confined)))
 
 (local
  (fn-bpnpb-defquiet bpnpb-attempt-persist-step
