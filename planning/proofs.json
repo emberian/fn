@@ -2365,7 +2365,8 @@
         "planning/evidence/manifests/certify-20260925T100705Z-3116225.json",
         "planning/evidence/manifests/certify-20260925T102606Z-3884875.json",
         "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
-        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
+        "planning/evidence/manifests/certify-20260925T192046Z-305043.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
@@ -3756,7 +3757,18 @@
         "fn-rcl-existing-action-after-reclaim",
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
-        "fn-nntp-number-retrieval-answers-reclaimed"
+        "fn-nntp-number-retrieval-answers-reclaimed",
+        "fn-rclb-existing-action-is-rcl-existing-action",
+        "fn-nntp-over-by-msgid-answers-reclaimed",
+        "fn-nntp-over-current-answers-reclaimed",
+        "fn-nov-lines-indexed-skip-a-reclaimed-article",
+        "fn-nov-lines-skip-a-reclaimed-article",
+        "fn-nntp-newnews-scan-lists-only-live-articles",
+        "fn-rcl-store-holders-hold-behind-a-lagging-consumer",
+        "fn-rcl-absent-verdict-contributes-nothing",
+        "fn-rcl-tombstone-refused-at-carrier-form",
+        "fn-rca-nul-first-octet-is-not-an-article",
+        "fn-rcl-tombstone-contributes-nothing"
       ]
     },
     {
