@@ -4228,9 +4228,12 @@
         "tests/acl2/peer-pull-tests.lisp",
         "host/native/pull-service.lisp",
         "planning/evidence/peer-pull-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260925T193953Z-487714.json"
+        "planning/evidence/manifests/certify-20260925T193953Z-487714.json",
+        "planning/evidence/manifests/certify-20260925T194417Z-527674.json",
+        "planning/evidence/manifests/certify-20260925T194645Z-3666244.json",
+        "tests/test_native_peer_pull.py"
       ],
-      "progress_note": "Open: no native run yet (hbox, a second fn node and INN); the pull client has no TLS arm (a TLS transport is not pulled); a remote 430 for a listed id holds the cursor until the peer stops listing it; the cursor lives in <store>/pull/*.fnpl (FNFD envelope and phase machine), not a Store transaction record.",
+      "progress_note": "Native (hbox, SCN-058): a second fn node, INN 2.7.4 nnrpd and a SIGKILL mid-round then the same NEWNEWS all pass. Open: the pull client has no TLS arm (a TLS transport is not pulled); a remote 430 for a listed id holds the cursor until the peer stops listing it; the cursor lives in <store>/pull/*.fnpl (FNFD envelope and phase machine), not a Store transaction record.",
       "events": [
         "fn-pull-close-advances-only-past-a-fully-answered-round",
         "fn-pull-unanswered-id-holds-the-cursor",
