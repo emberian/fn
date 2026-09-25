@@ -1438,12 +1438,12 @@
       ]
     },
     {
-      "id": "SCN-050",
+      "id": "SCN-056",
       "title": "The checkpoint open is cheaper than full replay and an automatic publication does not hold served commands",
       "milestone": "M5",
       "status": "implemented",
       "requirements": [
-        "STO-012"
+        "STO-016"
       ],
       "steps": [
         "On scale-profile stores of N = 1000 and N = 4096 records (2 KiB articles), time `status` and the owner's start to LISTENING with no checkpoint and from `operator store checkpoint`'s file, on the image before and after the change.",

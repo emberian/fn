@@ -1,7 +1,7 @@
 # The checkpoint's cost: one open, a count in the file, linear list checks, the publication off the mutex (2026-09-25)
 
-Lane `checkpoint-cost` (Opus 5.5), from dev `534a68d3`. PRF-104, STO-012,
-SCN-050. Backlog PKT-141 and PKT-142. Follows
+Lane `checkpoint-cost` (Opus 5.5), from dev `534a68d3`. PRF-104, STO-016,
+SCN-056. Backlog PKT-141 and PKT-142. Follows
 [owner-checkpoint-open](owner-checkpoint-open-2026-09-25.md) findings 1 to 3
 and [bounds-p3](bounds-p3-2026-09-25.md) findings 3 and 4. D27.
 
