@@ -1414,6 +1414,28 @@
         "tests/acl2/store-history-required-tests.lisp",
         "planning/evidence/marker-required-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-049",
+      "title": "status, pins, obligations and peer list answer from the running owner in the words the offline command prints",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-006"
+      ],
+      "steps": [
+        "Start `operator CONFIG run`; post articles; run `operator CONFIG status`, `pins`, `obligations`, `peer list`, and `status --watch 1` for a few seconds.",
+        "While a POST burst runs against the owner, run `status` repeatedly and time each answer.",
+        "Stop the owner cleanly and run the same four commands offline."
+      ],
+      "expected": [
+        "Each answers 0 from the owner (no `store is already locked`) with the report fn-nls-live-report renders; --watch repeats it.",
+        "Each status answers within its budget and every POST of the burst is accepted as without status.",
+        "The offline words equal the owner's last words for the same committed state (fn-nls-live-report-is-the-offline-report); only the open= line, which names each process's own open, and connection lines may differ."
+      ],
+      "evidence": [
+        "planning/evidence/live-status-2026-09-25.md"
+      ]
     }
   ]
 }

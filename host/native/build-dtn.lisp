@@ -128,6 +128,8 @@
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
+; The status report, offline and from the running owner.
+(ld "host/native-live-status-host.lisp" :ld-error-action :error)
 ; The canonical preimage the transit signature check verifies.
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 ;; The external freshness anchor.  Without it the image cannot answer the
