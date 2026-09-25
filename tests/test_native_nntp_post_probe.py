@@ -2,8 +2,12 @@
 
 Campaign 6c0626c5 finding H1: the probe judged five rows against a hand list
 of pre-publication cuts that predated lane p10-k0's four new cuts.  These
-tests pin the derivation rule of `post_arm`, show each arm separates rows
-the others accept, and re-judge the recorded 6c0626c5 run.
+tests pin the derivation rule of `post_arm` over all 23 post cuts (the five
+marker cuts of lane p10-marker-model included), show each arm separates rows
+the others accept, and re-judge the recorded 6c0626c5 and 47bdb9a4 runs.
+Those runs predate D25 (a present repost is "already stored here"); the
+judge keeps no pre-D25 rule, so `RecordedRunTests` states which rows the
+wording change affects and judges the rest under today's rule.
 """
 import gzip
 import json
@@ -16,8 +20,14 @@ from tests.campaign import native_cuts
 from tests.campaign import native_nntp_post_probe as probe
 
 ROOT = Path(__file__).resolve().parent.parent
-RECORDED = ROOT / "planning/evidence/campaign-6c0626c5/nntp-probe.json.gz"
-RERUN = ROOT / "planning/evidence/probe-tables/nntp-probe.json.gz"
+EVIDENCE = ROOT / "planning/evidence"
+# Recorded pre-D25 runs, and how many of their 40 rows fail today's judge.
+RECORDED_RUNS = {
+    "campaign-6c0626c5/nntp-probe.json.gz": 8,
+    "probe-tables/nntp-probe.json.gz": 7,
+    "campaign-47bdb9a4/nntp-probe.json.gz": 9,
+    "campaign-47bdb9a4/nntp-probe-repeat.json.gz": 5,
+}
 
 EXPECTED_ARMS = {
     "frontier-created": "refused", "frontier-written": "refused",
@@ -79,6 +89,23 @@ class PostArmDerivationTests(unittest.TestCase):
             self.assertEqual(probe.post_arm(cut), "uncertain")
         self.assertEqual(probe.post_arm(cut), "refused")
 
+    def test_the_marker_cuts_are_uncertain_by_program_order(self):
+        # fn-bs-marker-program runs after the record program returned
+        # durable, so a marker cut before the marker's own rename is still
+        # uncertain, never refused.  Put the marker program first and the same
+        # cut becomes pre-publication, which the table's `present' refuses.
+        marker = [c for c in native_cuts.POST_CUTS if c.program == "fn-bs-marker-program"]
+        self.assertEqual([c.name for c in marker],
+                         ["marker-created", "marker-written", "marker-staged-durable",
+                          "marker-replaced", "marker-durable"])
+        self.assertEqual({probe.post_arm(c) for c in marker}, {"uncertain"})
+        moved = ("fn-bs-marker-program", "fn-bs-frontier-program",
+                 "fn-bs-record-program", "fn-bs-finish-program")
+        with mock.patch.object(native_cuts, "POST_PROGRAMS", moved):
+            self.assertEqual(probe.post_arm(marker[0]), "refused")
+            with self.assertRaisesRegex(AssertionError, "marker-created: arm refused"):
+                probe.verify_post_arms()
+
     def test_a_table_disagreeing_with_the_arm_is_refused(self):
         cuts = tuple(replace(c, candidate="either") if c.name == "record-written" else c
                      for c in native_cuts.POST_CUTS)
@@ -105,7 +132,7 @@ class JudgeTeethTests(unittest.TestCase):
 
     def test_swallowed_arm_needs_one_log_line(self):
         good = eio_row("record-stage-unlinked", probe.OK_240, 0, True,
-                       probe.CONFLICT, "accepted post path=served\n" + SWALLOWED_LINE + "\n")
+                       probe.DUPLICATE, "accepted post path=served\n" + SWALLOWED_LINE + "\n")
         self.assertEqual(probe.judge_cut(good), [])
         silent = dict(good, owner={"rc": 0, "stderr": "accepted post path=served\n"})
         self.assertIn("0 times", " ".join(probe.judge_cut(silent)))
@@ -115,7 +142,10 @@ class JudgeTeethTests(unittest.TestCase):
         vague = dict(good, owner={"rc": 0, "stderr": "note cleanup path=staging\n"})
         self.assertTrue(probe.judge_cut(vague))
         for bad in (dict(good, post={"reply": probe.UNCERTAIN}),
-                    dict(good, inspect_candidate={"rc": 1})):
+                    dict(good, inspect_candidate={"rc": 1}),
+                    # D25: the poster's own bytes again are not "a different
+                    # article"; the pre-D25 conflict line now fails.
+                    dict(good, repost={"reply": probe.CONFLICT})):
             self.assertTrue(probe.judge_cut(bad), bad)
 
     def test_consumed_and_uncertain_arms(self):
@@ -128,28 +158,74 @@ class JudgeTeethTests(unittest.TestCase):
         self.assertTrue(probe.judge_cut(eio_row(
             "record-attempted", probe.OK_240, 3, True, probe.DUPLICATE)))
 
+    def test_marker_arm(self):
+        good = eio_row("marker-created", probe.UNCERTAIN, 3, True, probe.DUPLICATE)
+        self.assertEqual(probe.judge_cut(good), [])
+        refused = eio_row("marker-created", probe.STORAGE_FAILED, 0, False, probe.OK_240)
+        self.assertTrue(probe.judge_cut(refused))
+        for bad in (dict(good, post={"reply": probe.OK_240}),
+                    dict(good, owner={"rc": 0, "stderr": ""}),
+                    dict(good, inspect_candidate={"rc": 1}),
+                    dict(good, repost={"reply": probe.CONFLICT})):
+            self.assertTrue(probe.judge_cut(bad), bad)
+
     def test_kill_rows_take_the_table_fate(self):
         row = eio_row("record-durable", "", -9, False, probe.OK_240)
         row["action"] = "kill"
         self.assertIn("candidate present=False != True", " ".join(probe.judge_cut(row)))
 
 
-@unittest.skipUnless(RECORDED.is_file() and RERUN.is_file(),
-                     "recorded 6c0626c5 probe runs absent")
+WORDING = "repost {!r} not in {}".format(probe.CONFLICT, [probe.DUPLICATE])
+
+
+def wording_affected(row) -> bool:
+    """A row whose recorded repost D25 rewords: the article was present and
+    the pre-D25 owner answered the conflict line (its key held
+    Injection-Date, so a later clock second read as a different article;
+    campaign 47bdb9a4, K1).  Pre-D25 the judge accepted it."""
+    return (row.get("inspect_candidate") or {}).get("rc") == 0 and \
+        (row.get("repost") or {}).get("reply") == probe.CONFLICT
+
+
 class RecordedRunTests(unittest.TestCase):
-    def test_the_6c0626c5_runs_fail_only_on_the_silent_swallow(self):
-        for path in (RECORDED, RERUN):
-            with self.subTest(path.parent.name):
+    """The recorded runs predate D25.  Rows whose repost D25 rewords are judged
+    without that one check; every other row, and every other check of those
+    rows, is judged by today's rule, and the only failure left is the silent
+    swallow at record-stage-unlinked eio (probe-tables S1)."""
+
+    def test_pre_d25_runs_fail_only_on_the_silent_swallow_and_the_wording(self):
+        present = [p for p in RECORDED_RUNS if (EVIDENCE / p).is_file()]
+        if not present:
+            self.skipTest("recorded probe runs absent")
+        for path in present:
+            with self.subTest(path):
                 self.check_run(path)
 
     def check_run(self, path):
-        verdict = probe.judge(json.loads(gzip.decompress(path.read_bytes())))
-        failed = {r["row"]: r["failures"] for r in verdict["rows"] if r["failures"]}
-        self.assertEqual(list(failed), ["record-stage-unlinked eio"])
-        self.assertEqual(len(failed["record-stage-unlinked eio"]), 1)
-        self.assertIn("swallowed cleanup error 0 times",
-                      failed["record-stage-unlinked eio"][0])
+        result = json.loads(gzip.decompress((EVIDENCE / path).read_bytes()))
+        verdict = probe.judge(result)
         self.assertEqual(verdict["total"], 40)
+        self.assertEqual(verdict["failed"], RECORDED_RUNS[path])
+        rows = result["cuts"] + result["controls"]
+        affected = {"{} {}".format(r["cut"], r["action"]) if "cut" in r else r["name"]
+                    for r in rows if wording_affected(r)}
+        self.assertIn("record-stage-unlinked eio", affected)
+        residual = {}
+        for row in verdict["rows"]:
+            failures = list(row["failures"])
+            if row["row"] in affected:
+                self.assertIn(WORDING, failures, row["row"])
+                failures.remove(WORDING)
+            else:
+                self.assertNotIn(WORDING, failures, row["row"])
+            if failures:
+                residual[row["row"]] = failures
+        self.assertEqual(list(residual), ["record-stage-unlinked eio"])
+        self.assertEqual(len(residual["record-stage-unlinked eio"]), 1)
+        self.assertIn("swallowed cleanup error 0 times",
+                      residual["record-stage-unlinked eio"][0])
+        # Every failing row today is the swallow or a reworded repost.
+        self.assertEqual(verdict["failed"], len(affected))
 
 
 if __name__ == "__main__":
