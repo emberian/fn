@@ -3580,17 +3580,6 @@
         "A-HOST"
       ],
       "status": "in-progress",
-      "events": [
-        "create-fn-octets{correspondence}",
-        "fn-octets-get{correspondence}",
-        "fn-octets-put{correspondence}",
-        "fn-octets-append-octet{correspondence}",
-        "fn-octets-list{correspondence}",
-        "fn-octets-from-list{correspondence}",
-        "fn-oct-slice-list-is-take-nthcdr",
-        "fn-oct-prefix-equalp-is-list-prefixp",
-        "fn-oct-suffix-equalp-is-equal"
-      ],
       "evidence": [
         "books/octets-stobj.lisp",
         "books/poster-bytes-buffer.lisp",
