@@ -126,7 +126,7 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(
             sock,
             b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
-            b"OVER MSGID\r\nHDR\r\nNEWNEWS\r\n"
+            b"OVER MSGID\r\nHDR\r\nXPAT\r\nNEWNEWS\r\n"
             b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
             b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
 
@@ -615,7 +615,7 @@ class StoreReaderSocketTests(unittest.TestCase):
             reader.assert_bytes(
                 client,
                 b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
-                b"OVER MSGID\r\nHDR\r\nNEWNEWS\r\n"
+                b"OVER MSGID\r\nHDR\r\nXPAT\r\nNEWNEWS\r\n"
                 b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
                 b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
             client.sendall(b"GROUP fn.letters\r\n")

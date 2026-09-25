@@ -3,7 +3,8 @@
 ; This is a deliberately narrow local prototype envelope.  It is not a native
 ; article, signature, batch, journal, or storage ABI, and it makes no
 ; compatibility promise.  Its only wire primitives are the deterministic CBOR
-; uint32 and definite byte-string profile in books/cbor.lisp.  No definition in
+; uint (u32, and u64 for the integer fields) and definite byte-string
+; profile in books/cbor.lisp.  No definition in
 ; this book reads, prints, or evaluates external Lisp data.
 ;
 ; The logical record is the ten-element tuple
@@ -84,6 +85,20 @@
                 (fn-cbor-error :malformed))
        :exec (fn-cbor-decode-prechecked octets *fn-record-max-octets*)))
 
+; The record's uint items (packet P6): the wide CBOR uint, whose head is the
+; narrow one for every value at most 2^32 - 1 (cbor-invariants
+; `fn-cbor-encode-uint-wide-is-narrow') and the eight-octet head above it.
+(defun fn-record-uint-encode (n)
+  (declare (xargs :guard t))
+  (fn-cbor-encode-uint-wide n))
+
+(defun fn-record-uint-decode (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
+  (mbe :logic (if (fn-cbor-octet-listp octets)
+                  (fn-cbor-decode-prechecked-wide octets *fn-record-max-octets*)
+                (fn-cbor-error :malformed))
+       :exec (fn-cbor-decode-prechecked-wide octets *fn-record-max-octets*)))
+
 ; -----------------------------------------------------------------------------
 ; Encoder
 
@@ -106,15 +121,15 @@
     (let ((octets
            (append
             (fn-record-item-encode (cons :bytes *fn-record-magic*))
-            (fn-cbor-encode (cons :uint (fn-record-schema-octet record)))
-            (fn-cbor-encode (cons :uint (fn-record-sequence record)))
-            (fn-cbor-encode (cons :uint (fn-record-txid record)))
-            (fn-cbor-encode (cons :uint (fn-record-generation record)))
+            (fn-record-uint-encode (fn-record-schema-octet record))
+            (fn-record-uint-encode (fn-record-sequence record))
+            (fn-record-uint-encode (fn-record-txid record))
+            (fn-record-uint-encode (fn-record-generation record))
             (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-msgid record))))
             (fn-record-item-encode (cons :bytes (fn-record-payload record)))
-            (fn-cbor-encode (cons :uint (len (fn-record-groups record))))
+            (fn-record-uint-encode (len (fn-record-groups record)))
             (fn-record-encode-groups (fn-record-groups record))
             (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
@@ -125,10 +140,10 @@
             (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
-            (fn-cbor-encode (cons :uint (fn-record-charge record)))
+            (fn-record-uint-encode (fn-record-charge record))
             (if (equal (fn-record-stamp record) :legacy)
                 nil
-              (fn-cbor-encode (cons :uint (fn-record-stamp record)))))))
+              (fn-record-uint-encode (fn-record-stamp record))))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
 
@@ -139,7 +154,7 @@
 (defun fn-record-read-uint (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :verify-guards nil))
-  (let ((decoded (fn-record-item-decode octets)))
+  (let ((decoded (fn-record-uint-decode octets)))
     (if (not (fn-cbor-result-okp decoded))
         (fn-record-parse-error (car (cdr decoded)))
       (let ((value (fn-cbor-result-value decoded)))
@@ -180,10 +195,10 @@
                    (fn-record-parse-rest tail)))))))))))
 
 (defun fn-record-decode-tail (schema sequence txid generation msgid payload octets)
-  (declare (xargs :guard (and (or (equal schema 0) (equal schema 1))
-                              (fn-record-uint32p sequence)
-                              (fn-record-uint32p txid)
-                              (fn-record-uint32p generation)
+  (declare (xargs :guard (and (member-equal schema '(0 1 2))
+                              (fn-record-uint64p sequence)
+                              (fn-record-uint64p txid)
+                              (fn-record-uint64p generation)
                               (fn-record-msgidp msgid)
                               (fn-record-payloadp payload)
                               (fn-cbor-octet-listp octets))
@@ -245,7 +260,7 @@
                                     (fn-record-parse-error :invalid))))))))))))))))))))
 
 (defun fn-record-decode-after-header (schema octets)
-  (declare (xargs :guard (and (or (equal schema 0) (equal schema 1))
+  (declare (xargs :guard (and (member-equal schema '(0 1 2))
                               (fn-cbor-octet-listp octets))
                   :verify-guards nil))
   (let ((sequence-result (fn-record-read-uint octets)))
@@ -300,14 +315,22 @@
               (if (not (fn-record-parse-okp version-result))
                   version-result
                 (if (not (member-equal (fn-record-parse-value version-result)
-                                       '(0 1)))
+                                       '(0 1 2)))
                     (fn-record-parse-error :unknown-version)
                   (let ((parsed
                          (fn-record-decode-after-header
                           (fn-record-parse-value version-result)
                           (fn-record-parse-rest version-result))))
                     (if (fn-record-parse-okp parsed)
-                        (fn-record-result-ok (fn-record-parse-value parsed))
+                        ; The schema octet is a function of the record: a
+                        ; schema-1 header over a u64 field, or a schema-2
+                        ; header over u32 fields, is refused, so every
+                        ; accepted input is the encoding of its record.
+                        (if (equal (fn-record-schema-octet
+                                    (fn-record-parse-value parsed))
+                                   (fn-record-parse-value version-result))
+                            (fn-record-result-ok (fn-record-parse-value parsed))
+                          (fn-record-parse-error :schema))
                       parsed)))))))))))
 
 (verify-guards fn-record-encode-groups)
@@ -491,23 +514,30 @@
                               fn-record-parse-ok fn-record-parse-error))))
 
 
+; The wide uint's domain and rest facts are cbor-invariants' (packet P6).
+(local (include-book "cbor-invariants"))
+
 (defthm fn-record-read-uint-success-domain
   (implies
    (and (fn-cbor-octet-listp octets)
         (fn-record-parse-okp (fn-record-read-uint octets)))
    (and (natp (fn-record-parse-value (fn-record-read-uint octets)))
         (<= (fn-record-parse-value (fn-record-read-uint octets))
-            *fn-cbor-max-uint*)
+            *fn-cbor-max-uint64*)
         (fn-cbor-octet-listp
          (fn-record-parse-rest (fn-record-read-uint octets)))))
   :hints (("Goal"
-           :use ((:instance fn-record-item-decode-success-domain))
-           :in-theory (e/d (fn-record-read-uint
+           :use ((:instance fn-cbor-decode-prechecked-wide-uint-domain
+                  (budget *fn-record-max-octets*))
+                 (:instance fn-cbor-decode-prechecked-wide-rest-octets
+                  (budget *fn-record-max-octets*)))
+           :in-theory (e/d (fn-record-read-uint fn-record-uint-decode
                               fn-record-parse-okp
                               fn-record-parse-value fn-record-parse-rest
-                              fn-record-parse-ok fn-record-parse-error
-                              fn-cbor-valuep-bounded)
-                             (fn-record-item-decode)))))
+                              fn-record-parse-ok fn-record-parse-error)
+                             (fn-cbor-decode-prechecked-wide-uint-domain
+                              fn-cbor-decode-prechecked-wide-rest-octets
+                              fn-cbor-decode-prechecked-wide)))))
 
 (defthm fn-record-read-uint-success-is-rational
   (implies
@@ -521,15 +551,15 @@
                                fn-record-parse-value
                                fn-cbor-octet-listp))))
 
-(defthm fn-record-read-uint-success-is-uint32
+(defthm fn-record-read-uint-success-is-uint64
   (implies
    (and (fn-cbor-octet-listp octets)
         (fn-record-parse-okp (fn-record-read-uint octets)))
-   (fn-record-uint32p
+   (fn-record-uint64p
     (fn-record-parse-value (fn-record-read-uint octets))))
   :hints (("Goal"
            :use ((:instance fn-record-read-uint-success-domain))
-           :in-theory (e/d (fn-record-uint32p)
+           :in-theory (e/d (fn-record-uint64p)
                             (fn-record-read-uint
                              fn-record-parse-okp
                              fn-record-parse-value
@@ -576,8 +606,11 @@
                  fn-record-parse-error)))))
 
 (verify-guards fn-record-read-uint
-  :hints (("Goal" :use fn-record-item-decode-success-domain
-           :in-theory (disable fn-record-item-decode))))
+  :hints (("Goal" :use ((:instance fn-cbor-decode-prechecked-wide-rest-octets
+                         (budget *fn-record-max-octets*)))
+           :in-theory (e/d (fn-record-uint-decode)
+                           (fn-cbor-decode-prechecked-wide-rest-octets
+                            fn-cbor-decode-prechecked-wide)))))
 (verify-guards fn-record-read-bytes
   :hints (("Goal" :use fn-record-item-decode-success-domain
            :in-theory (disable fn-record-item-decode))))
@@ -589,7 +622,7 @@
                                fn-record-parse-okp
                                fn-record-parse-value
                                fn-record-parse-rest
-                               fn-record-uint32p
+                               fn-record-uint64p
                                fn-record-msgidp
                                fn-record-payloadp
                                fn-cbor-octet-listp
@@ -602,7 +635,7 @@
                                fn-record-parse-okp
                                fn-record-parse-value
                                fn-record-parse-rest
-                               fn-record-uint32p
+                               fn-record-uint64p
                                fn-record-msgidp
                                fn-record-payloadp
                                fn-cbor-octet-listp
@@ -615,7 +648,7 @@
                                fn-record-parse-okp
                                fn-record-parse-value
                                fn-record-parse-rest
-                               fn-record-uint32p
+                               fn-record-uint64p
                                fn-record-msgidp
                                fn-record-payloadp
                                fn-cbor-octet-listp
@@ -671,7 +704,7 @@
 (defthm fn-record-schema0-golden-grammar-refusals
   (and (equal (fn-record-decode-exact-impl '(68 102 110 45 115 0))
               (fn-record-parse-error :magic))
-       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 2))
+       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 3))
               (fn-record-parse-error :unknown-version)))
   :rule-classes nil)
 
@@ -692,8 +725,38 @@
           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
   :rule-classes nil)
 
+; Schema 2 (packet P6): the schema-1 vector with charge 2^32, the first value
+; that needs the eight-octet head h'1b 00000001 00000000'.  Every other byte is
+; the schema-1 vector's.
+(defconst *fn-record-schema2-golden-octets*
+  '(68 102 110 45 114 2 1 2 3 67 60 97 62 66 9 8 1 65 103
+    65 111 65 115 65 101 27 0 0 0 1 0 0 0 0 5))
 
+(defthm fn-record-schema2-golden-octets-are-the-encoding
+  (equal (fn-record-encode-impl
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4294967296 5))
+         *fn-record-schema2-golden-octets*)
+  :rule-classes nil)
 
+(defthm fn-record-schema2-golden-octets-decode
+  (equal (fn-record-decode-exact-impl *fn-record-schema2-golden-octets*)
+         (fn-record-result-ok
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4294967296 5)))
+  :rule-classes nil)
+
+; The schema octet is the record's: a schema-1 header over the u64 charge,
+; and a schema-2 header over the all-u32 schema-1 vector, are both refused,
+; and a u64 field under the legacy schema-0 header is refused too (a legacy
+; record's stamp is absent, so its schema is 0 whatever its widths; the
+; refusal here is the trailing stamp).
+(defthm fn-record-schema2-golden-grammar-refusals
+  (and (equal (fn-record-decode-exact-impl
+               (list* 68 102 110 45 114 1 (nthcdr 6 *fn-record-schema2-golden-octets*)))
+              (fn-record-parse-error :schema))
+       (equal (fn-record-decode-exact-impl
+               (list* 68 102 110 45 114 2 (nthcdr 6 *fn-record-schema1-golden-octets*)))
+              (fn-record-parse-error :schema)))
+  :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; Export theory.
@@ -728,7 +791,7 @@
     fn-record-item-decode-success-domain fn-record-read-uint-is-true-list
     fn-record-read-bytes-is-true-list fn-record-read-uint-success-domain
     fn-record-read-uint-success-is-rational
-    fn-record-read-uint-success-is-uint32 fn-record-read-bytes-success-domain
+    fn-record-read-uint-success-is-uint64 fn-record-read-bytes-success-domain
     fn-record-parse-groups-is-true-list
     fn-record-parse-groups-success-domain))
 
@@ -748,7 +811,7 @@
                     fn-record-read-bytes-is-true-list
                     fn-record-read-uint-success-domain
                     fn-record-read-uint-success-is-rational
-                    fn-record-read-uint-success-is-uint32
+                    fn-record-read-uint-success-is-uint64
                     fn-record-read-bytes-success-domain
                     fn-record-parse-groups-is-true-list
                     fn-record-parse-groups-success-domain))

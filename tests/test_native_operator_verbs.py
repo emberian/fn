@@ -84,7 +84,14 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
     def test_peer_list_is_a_query_and_the_host_asks_acl2_which(self):
         self.assertIn("(defun fn-native-admin-result-queryp (result)", self.admin)
         self.assertIn(":list-peers", self.admin)
-        self.assertIn("(defun fn-native-admin-peer-report (peers)", self.admin)
+        # The peer report moved to books/native-admin-peer.lisp; the query
+        # report in native-admin still asks it for a :list-peers plan.
+        admin_peer = (ROOT / "books" / "native-admin-peer.lisp").read_text(encoding="ascii")
+        self.assertIn("(defun fn-native-admin-peer-report (peers)", admin_peer)
+        self.assertIn('(include-book "native-admin-peer")', self.admin)
+        report = self.admin.index("(defun fn-native-admin-query-report (plan value)")
+        self.assertIn("(fn-native-admin-peer-report (fn-cfg-peers value))",
+                      self.admin[report:self.admin.index("\n(", report)])
         self.assertIn("'fn-native-admin-host-queryp plan", self.host)
         self.assertIn("(queryp (fnn-admin-query root plan))", self.host)
         # The read-only executor opens the store non-writable and publishes

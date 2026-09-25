@@ -254,3 +254,102 @@
  (equal (car (fn-native-control-admin-decode
               (fn-nctrl-seal *fn-nctrl-admin-kind* '(1 65))))
         :refused))
+
+; -----------------------------------------------------------------------------
+; D27 (PRF-091): the FNCT article field is the record codec's payload
+; ceiling, and the owner's read bound follows the profile's A and G.
+
+; An article one octet past the old `:blob' width is a request field and
+; round-trips through the request grammar; under the pre-D27 spec it is not.
+(defconst *nct-big* (make-list 131073 :initial-element 65))
+(defconst *nct-groups-octets* (fn-nctrl-groups-encode *fn-nctrl-test-groups*))
+(assert-event
+ (fn-frame-values-okp *fn-nctrl-request-spec*
+                      (list *nct-big* *fn-nctrl-test-msgid* *nct-groups-octets*)))
+(assert-event
+ (not (fn-frame-values-okp '(:blob :text :blob)
+                           (list *nct-big* *fn-nctrl-test-msgid*
+                                 *nct-groups-octets*))))
+(assert-event
+ (equal (fn-frame-fields-parse
+         *fn-nctrl-request-spec*
+         (fn-frame-fields-octets *fn-nctrl-request-spec*
+                                 (list *nct-big* *fn-nctrl-test-msgid*
+                                       *nct-groups-octets*)))
+        (fn-frame-parse-ok (list *nct-big* *fn-nctrl-test-msgid*
+                                 *nct-groups-octets*)
+                           nil)))
+; The request's octets are unchanged for an article within the old width.
+(assert-event
+ (equal (fn-frame-fields-octets *fn-nctrl-request-spec*
+                                (list *fn-nctrl-test-article*
+                                      *fn-nctrl-test-msgid*
+                                      *nct-groups-octets*))
+        (fn-frame-fields-octets '(:blob :text :blob)
+                                (list *fn-nctrl-test-article*
+                                      *fn-nctrl-test-msgid*
+                                      *nct-groups-octets*))))
+(assert-event (<= *fn-nctrl-max-payload* *fn-frame-max-payload*))
+
+; The read bound: the command-frame floor at small A, and the profile's
+; request frame above it.
+(assert-event (equal (fn-nctrl-read-bound-for 32768 2)
+                     *fn-nctrl-max-command-frame*))
+(assert-event (< *fn-nctrl-max-command-frame*
+                 (fn-nctrl-read-bound-for 300000 2)))
+(assert-event (< 300000 (fn-nctrl-read-bound-for 300000 2)))
+
+; Witness for `fn-native-control-request-within-profile-frame': the test
+; request at A its exact article length and G two, within the bound, with
+; the bound less than 1 100 octets above it.
+(defconst *nct-a* (len *fn-nctrl-test-article*))
+(assert-event
+ (let ((n (len (fn-native-control-request-encode
+                *fn-nctrl-test-msgid* *fn-nctrl-test-groups*
+                *fn-nctrl-test-article*))))
+   (and (< 0 n)
+        (<= n (fn-nctrl-max-frame-for *nct-a* 2))
+        (< (fn-nctrl-max-frame-for *nct-a* 2) (+ n 1100)))))
+
+; One counterexample per hypothesis: each request below satisfies every
+; hypothesis but the named one, and its encoding exceeds the bound.
+(defconst *nct-2000* (make-list 2000 :initial-element 65))
+(defun nct-forty-groups (i)
+  (declare (xargs :mode :program))
+  (if (zp i) nil
+    (cons (fn-record-string-octets
+           (concatenate 'string "fn.teeth.group." (coerce (explode-atom (+ 9 i) 10) 'string)))
+          (nct-forty-groups (- i 1)))))
+(defconst *nct-40* (nct-forty-groups 40))
+(assert-event (equal (len *nct-40*) 40))
+(assert-event
+ (fn-cbor-octet-listp
+  (fn-native-control-request-encode *fn-nctrl-test-msgid* *nct-40*
+                                    *fn-nctrl-test-article*)))
+(assert-event
+ (<= (len (fn-nctrl-groups-encode *nct-40*))
+     (+ 5 (* (+ 5 *fn-record-max-group-name*) 40))))
+; Without (<= (len article) a): a 2 000-octet article at A = 0.
+(assert-event
+ (< (fn-nctrl-max-frame-for 0 2)
+    (len (fn-native-control-request-encode *fn-nctrl-test-msgid*
+                                           *fn-nctrl-test-groups*
+                                           *nct-2000*))))
+; Without (<= (len groups) g): forty groups at G = 0.
+(assert-event
+ (< (fn-nctrl-max-frame-for *nct-a* 0)
+    (len (fn-native-control-request-encode *fn-nctrl-test-msgid* *nct-40*
+                                           *fn-nctrl-test-article*))))
+; Without (natp a): A = 4001/2 admits the 2 000-octet article, and reads as 0.
+(assert-event
+ (and (<= 2000 4001/2)
+      (< (fn-nctrl-max-frame-for 4001/2 2)
+         (len (fn-native-control-request-encode *fn-nctrl-test-msgid*
+                                                *fn-nctrl-test-groups*
+                                                *nct-2000*)))))
+; Without (natp g): G = 81/2 admits forty groups, and reads as 0.
+(assert-event
+ (and (<= 40 81/2)
+      (< (fn-nctrl-max-frame-for *nct-a* 81/2)
+         (len (fn-native-control-request-encode *fn-nctrl-test-msgid* *nct-40*
+                                                *fn-nctrl-test-article*)))))

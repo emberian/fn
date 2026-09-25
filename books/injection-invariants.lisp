@@ -54,12 +54,17 @@
                  (fn-inj-decide source config observation))))
   :hints (("Goal" :in-theory (enable fn-inj-decide-theory))))
 
+; With no Path supplied, the source is a verbatim suffix of the injected
+; article.  With one supplied (D32), the injecting agent's identity is
+; inserted where the Path content begins, and the source is what
+; fn-inj-source-of gives back (fn-inj-source-of-inverts-the-injection).
 (defthm fn-inj-injected-article-retains-the-source-octets
-  (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config observation))
+                (not (fn-inj-supplies-pathp source)))
            (fn-inj-suffixp source
                            (fn-inj-decision-octets
                             (fn-inj-decide source config observation))))
-  :hints (("Goal" :in-theory (enable fn-inj-decide-theory))))
+  :hints (("Goal" :in-theory (enable fn-inj-decide-theory fn-inj-supplies-pathp))))
 
 (defthm fn-inj-injected-article-is-within-the-configured-bound
   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
@@ -166,6 +171,19 @@
                                     fn-inj-date-line
                                     fn-inj-injection-date-line))))))
 
+(local
+ (defthm fn-inj-block-carries-the-injection-info-line
+   (fn-inj-infixp (fn-inj-injection-info-line agent)
+                  (fn-inj-append (fn-inj-block date msgid agent
+                                               generate-id generate-date)
+                                 source))
+   :hints (("Goal" :in-theory (e/d (fn-inj-block fn-inj-append-reassociates
+                                    fn-inj-append-of-nil-left)
+                                   (fn-inj-injection-info-line
+                                    fn-inj-path-line fn-inj-message-id-line
+                                    fn-inj-date-line
+                                    fn-inj-injection-date-line))))))
+
 (defthm fn-inj-injected-article-names-the-configured-agent
   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
            (fn-inj-infixp (fn-inj-injection-info-line
@@ -173,7 +191,8 @@
                           (fn-inj-decision-octets
                            (fn-inj-decide source config observation))))
   :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory)
-                                  (fn-inj-prefix fn-inj-injection-info-line)))))
+                                  (fn-inj-prefix fn-inj-block fn-inj-splice
+                                   fn-inj-injection-info-line)))))
 
 ; -----------------------------------------------------------------------------
 ; Retry identity
@@ -593,8 +612,10 @@
              (and (fn-mbx-mailbox-listp value)
                   (member-equal 64 value))))
   :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-mandatory-reason
-                                   fn-inj-from-validp)
-                                  (fn-mbx-mailbox-listp)))))
+                                   fn-inj-other-reason fn-inj-from-validp)
+                                  (fn-mbx-mailbox-listp fn-inj-path-reason
+                                   fn-inj-prefix fn-inj-block fn-inj-splice
+                                   fn-inj-groups-admissiblep fn-inj-configp)))))
 
 ; -----------------------------------------------------------------------------
 ; Every injected article gives back its source (books/injection.lisp
@@ -723,12 +744,22 @@
                     (fn-inj-append (fn-inj-prefix date msgid agent gid gdate) source)
                     agent msgid)
                    (cons t source)))
-   :hints (("Goal" :in-theory (e/d (fn-inj-prefix fn-inj-source-of
+   :hints (("Goal" :in-theory (e/d (fn-inj-prefix fn-inj-source-of fn-inj-source-of-v2
                                     fn-inj-source-after-stamp fn-inj-strip-optional
                                     fn-inj-append-reassociates fn-inj-append-of-nil-left)
                                    (fn-inj-path-line fn-inj-injection-date-line
                                     fn-inj-injection-info-line fn-inj-date-line
                                     fn-inj-message-id-line))))))
+
+; An atom (the Store's :absent) is no injection of anything.
+(defthm fn-inj-source-of-an-atom-is-nil
+  (implies (atom stored)
+           (not (fn-inj-source-of stored agent msgid)))
+  :hints (("Goal" :in-theory (e/d (fn-inj-source-of fn-inj-source-of-v2)
+                                  (fn-inj-path-line fn-inj-injection-info-line
+                                   fn-inj-injection-date-line))
+           :expand ((:free (x) (fn-inj-strip (fn-inj-path-line agent) x))
+                    (:free (p) (fn-inj-strip p stored))))))
 
 (defthm fn-inj-the-atom-no-is-never-injected
   (not (fn-inj-injectedp (fn-inj-decide :no config observation)))
@@ -751,7 +782,7 @@
                                                   source)))
                    agent msgid)
                   (cons t source)))
-  :hints (("Goal" :in-theory (e/d (fn-inj-source-of fn-inj-source-after-stamp)
+  :hints (("Goal" :in-theory (e/d (fn-inj-source-of fn-inj-source-of-v2 fn-inj-source-after-stamp)
                                   (fn-inj-path-line fn-inj-injection-date-line
                                    fn-inj-injection-info-line fn-inj-date-line
                                    fn-inj-message-id-line)))))
@@ -772,7 +803,7 @@
                                                    source))))
                    agent msgid)
                   nil))
-  :hints (("Goal" :in-theory (e/d (fn-inj-source-of fn-inj-source-after-stamp)
+  :hints (("Goal" :in-theory (e/d (fn-inj-source-of fn-inj-source-of-v2 fn-inj-source-after-stamp)
                                   (fn-inj-path-line fn-inj-injection-date-line
                                    fn-inj-injection-info-line fn-inj-date-line
                                    fn-inj-message-id-line)))))
@@ -781,7 +812,8 @@
 ; rendered date, the decision's Message-ID and the configured agent, then the
 ; source unchanged.
 (defthm fn-inj-injected-octets-are-the-block-and-the-source
-  (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config obs))
+                (not (fn-inj-supplies-pathp source)))
            (equal (fn-inj-decision-octets (fn-inj-decide source config obs))
                   (fn-inj-append
                    (fn-inj-prefix
@@ -795,13 +827,124 @@
                                      (fn-article-parse source))
                                     *fn-inj-date-name*))
                    source)))
-  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory)
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-supplies-pathp)
                                   (fn-inj-configp fn-inj-mandatory-reason
                                    fn-inj-groups-admissiblep fn-inj-absentp
                                    fn-inj-prefix fn-inj-date-octets
                                    fn-inj-instant-of fn-inj-generated-message-id
                                    fn-inj-append floor))))
   :rule-classes nil)
+
+; With a supplied Path (recipe v3): the block without its Path line, then the
+; source with AGENT! inserted where its Path content begins.
+(defthm fn-inj-injected-octets-are-the-block-and-the-prefixed-source
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config obs))
+                (fn-inj-supplies-pathp source))
+           (equal (fn-inj-decision-octets (fn-inj-decide source config obs))
+                  (fn-inj-append
+                   (fn-inj-block
+                    (fn-inj-date-octets (fn-inj-instant-of (fn-clock-wall obs)))
+                    (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                    (fn-inj-config-agent config)
+                    (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                        (fn-article-result-article
+                                         (fn-article-parse source)))))
+                    (fn-inj-absentp (fn-article-result-article
+                                     (fn-article-parse source))
+                                    *fn-inj-date-name*))
+                   (fn-inj-splice source (fn-inj-path-offset source)
+                                  (fn-inj-path-insert (fn-inj-config-agent config))))))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-supplies-pathp)
+                                  (fn-inj-configp fn-inj-mandatory-reason
+                                   fn-inj-groups-admissiblep fn-inj-absentp
+                                   fn-inj-block fn-inj-splice fn-inj-path-insert fn-inj-path-offset
+                                   fn-inj-path-reason fn-inj-other-reason
+                                   fn-inj-date-octets
+                                   fn-inj-instant-of fn-inj-generated-message-id
+                                   fn-inj-append floor))))
+  :rule-classes nil)
+
+
+; A supplied Path that was injected has a place for the insertion.
+(defthm fn-inj-an-injected-supplied-path-has-an-offset
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config obs))
+                (fn-inj-supplies-pathp source))
+           (fn-inj-path-offset source))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-supplies-pathp
+                                   fn-inj-path-reason)
+                                  (fn-inj-configp fn-inj-mandatory-reason
+                                   fn-inj-other-reason
+                                   fn-inj-groups-admissiblep fn-inj-absentp
+                                   fn-inj-prefix fn-inj-block fn-inj-date-octets
+                                   fn-inj-instant-of fn-inj-generated-message-id
+                                   fn-inj-path-offset fn-inj-path-valuep
+                                   fn-inj-path-postedp fn-inj-splice
+                                   fn-inj-append floor))))
+  :rule-classes nil)
+
+(local
+ (defthm fn-inj-prefix-is-the-path-line-and-the-block
+   (equal (fn-inj-append (fn-inj-prefix date msgid agent gid gdate) x)
+          (fn-inj-append (fn-inj-path-line agent)
+                         (fn-inj-append (fn-inj-block date msgid agent gid gdate) x)))
+   :hints (("Goal" :in-theory (e/d (fn-inj-prefix fn-inj-block
+                                    fn-inj-append-reassociates)
+                                   (fn-inj-path-line fn-inj-injection-date-line
+                                    fn-inj-injection-info-line fn-inj-date-line
+                                    fn-inj-message-id-line))))))
+
+(local
+ (defthm fn-inj-a-block-is-not-a-path-line
+   (equal (fn-inj-strip (fn-inj-path-line agent)
+                        (fn-inj-append (fn-inj-block date msgid agent2 gid gdate) x))
+          :no)
+   :hints (("Goal" :in-theory (e/d (fn-inj-block fn-inj-append-reassociates)
+                                   (fn-inj-path-line fn-inj-injection-date-line
+                                    fn-inj-injection-info-line fn-inj-date-line
+                                    fn-inj-message-id-line))))))
+
+(local
+ (defthm fn-inj-source-of-v2-of-a-prefix
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (not (equal source :no)))
+            (equal (fn-inj-source-of-v2
+                    (fn-inj-append (fn-inj-prefix date msgid agent gid gdate) source)
+                    agent msgid)
+                   (cons t source)))
+   :hints (("Goal" :in-theory (e/d (fn-inj-prefix fn-inj-source-of-v2
+                                    fn-inj-source-after-stamp fn-inj-strip-optional
+                                    fn-inj-append-reassociates fn-inj-append-of-nil-left)
+                                   (fn-inj-prefix-is-the-path-line-and-the-block
+                                    fn-inj-path-line fn-inj-injection-date-line
+                                    fn-inj-injection-info-line fn-inj-date-line
+                                    fn-inj-message-id-line))))))
+
+; The v3 inverse over any block and any source whose Path content has a
+; place for the insertion.
+(local
+ (defthm fn-inj-source-of-a-v3-record
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (fn-inj-path-offset source))
+            (equal (fn-inj-source-of
+                    (fn-inj-append (fn-inj-block date msgid agent gid gdate)
+                                   (fn-inj-splice source (fn-inj-path-offset source)
+                                                  (fn-inj-path-insert agent)))
+                    agent msgid)
+                   (cons t source)))
+   :hints (("Goal" :in-theory (e/d (fn-inj-source-of)
+                                   (fn-inj-source-of-v2 fn-inj-block fn-inj-prefix
+                                    fn-inj-path-line fn-inj-splice
+                                    fn-inj-path-offset fn-inj-unsplice
+                                    fn-inj-path-insert))
+            :use ((:instance fn-inj-prefix-is-the-path-line-and-the-block
+                             (x (fn-inj-splice source (fn-inj-path-offset source)
+                                               (fn-inj-path-insert agent))))
+                  (:instance fn-inj-source-of-v2-of-a-prefix
+                             (source (fn-inj-splice source (fn-inj-path-offset source)
+                                                    (fn-inj-path-insert agent))))
+                  (:instance fn-inj-a-splice-is-a-cons
+                             (x source) (ins (fn-inj-path-insert agent)))
+                  (:instance fn-inj-unsplice-of-a-splice (x source)))))))
 
 ; KEYSTONE (the injection inverse, D25).  Every injected article gives back
 ; its source exactly: fn-inj-source-of reads which fields were generated off
@@ -815,7 +958,12 @@
                    (fn-inj-config-agent config)
                    (fn-inj-decision-msgid (fn-inj-decide source config observation)))
                   (cons t source)))
-  :hints (("Goal" :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source
+  :hints (("Goal" :cases ((fn-inj-supplies-pathp source))
+                  :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source
+                                   (obs observation))
+                        (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source
+                                   (obs observation))
+                        (:instance fn-inj-an-injected-supplied-path-has-an-offset
                                    (obs observation))
                         fn-inj-the-atom-no-is-never-injected
                         (:instance fn-inj-date-octets-shape
@@ -831,14 +979,20 @@
                                                              (fn-article-parse source))))))
                                    (gdate (fn-inj-absentp (fn-article-result-article
                                                            (fn-article-parse source))
+                                                          *fn-inj-date-name*)))
+                        (:instance fn-inj-source-of-a-v3-record
+                                   (date (fn-inj-date-octets
+                                          (fn-inj-instant-of (fn-clock-wall observation))))
+                                   (msgid (fn-inj-decision-msgid
+                                           (fn-inj-decide source config observation)))
+                                   (agent (fn-inj-config-agent config))
+                                   (gid (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                                            (fn-article-result-article
+                                                             (fn-article-parse source))))))
+                                   (gdate (fn-inj-absentp (fn-article-result-article
+                                                           (fn-article-parse source))
                                                           *fn-inj-date-name*))))
                   :in-theory (theory 'minimal-theory))))
-
-(local
- (defthm fn-inj-a-recovered-source-opens-with-the-path-line
-   (implies (fn-inj-source-of stored agent msgid)
-            (not (equal (fn-inj-strip (fn-inj-path-line agent) stored) :no)))
-   :hints (("Goal" :in-theory (enable fn-inj-source-of)))))
 
 (defthm fn-inj-injected-article-is-a-reinjection-of-its-source
   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
@@ -848,15 +1002,8 @@
             (fn-inj-config-agent config)
             (fn-inj-decision-msgid (fn-inj-decide source config observation))))
   :hints (("Goal" :in-theory (e/d (fn-inj-reinjectionp)
-                                  (fn-inj-decide fn-inj-injectedp fn-inj-source-of
-                                   fn-inj-path-line))
-           :use (fn-inj-source-of-inverts-the-injection
-                 (:instance fn-inj-a-recovered-source-opens-with-the-path-line
-                            (stored (fn-inj-decision-octets
-                                     (fn-inj-decide source config observation)))
-                            (agent (fn-inj-config-agent config))
-                            (msgid (fn-inj-decision-msgid
-                                    (fn-inj-decide source config observation))))))))
+                                  (fn-inj-decide fn-inj-injectedp fn-inj-source-of))
+           :use (fn-inj-source-of-inverts-the-injection))))
 
 ; -----------------------------------------------------------------------------
 ; RFC 5537 section 3.5 item 11, one theorem per case.
@@ -868,8 +1015,8 @@
   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
            (fn-inj-absentp (fn-article-result-article (fn-article-parse source))
                            *fn-inj-injection-date-name*))
-  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-mandatory-reason)
-                                  (fn-inj-configp fn-inj-groups-admissiblep
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-mandatory-reason fn-inj-other-reason)
+                                  (fn-inj-path-reason fn-inj-block fn-inj-splice fn-inj-configp fn-inj-groups-admissiblep
                                    fn-inj-prefix fn-inj-date-octets
                                    fn-inj-instant-of fn-inj-generated-message-id
                                    fn-inj-append fn-inj-single-fieldp
@@ -880,6 +1027,7 @@
 ; at every clock reading.
 (defthm fn-inj-no-injection-date-when-date-and-message-id-are-supplied
   (implies (and (fn-inj-injectedp (fn-inj-decide source config observation))
+                (not (fn-inj-supplies-pathp source))
                 (fn-inj-nth 1 (fn-af-proto-article-check
                                (fn-article-result-article
                                 (fn-article-parse source))))
@@ -901,6 +1049,33 @@
                                    fn-inj-absentp fn-af-proto-article-check
                                    fn-article-parse fn-article-result-article)))))
 
+; The same with a supplied Path (recipe v3): the Injection-Info line, then the
+; source with AGENT! inserted in its Path, at every clock reading.
+(defthm fn-inj-no-injection-date-when-date-and-message-id-are-supplied-with-a-path
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config observation))
+                (fn-inj-supplies-pathp source)
+                (fn-inj-nth 1 (fn-af-proto-article-check
+                               (fn-article-result-article
+                                (fn-article-parse source))))
+                (not (fn-inj-absentp (fn-article-result-article
+                                      (fn-article-parse source))
+                                     *fn-inj-date-name*)))
+           (equal (fn-inj-decision-octets (fn-inj-decide source config observation))
+                  (fn-inj-append (fn-inj-injection-info-line
+                                  (fn-inj-config-agent config))
+                                 (fn-inj-splice source (fn-inj-path-offset source)
+                                                (fn-inj-path-insert
+                                                 (fn-inj-config-agent config))))))
+  :hints (("Goal" :use ((:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source
+                                   (obs observation)))
+                  :in-theory (e/d (fn-inj-block fn-inj-append-of-nil-left
+                                   fn-inj-append-reassociates)
+                                  (fn-inj-decide fn-inj-injectedp fn-inj-splice
+                                   fn-inj-path-offset fn-inj-path-insert
+                                   fn-inj-path-line fn-inj-injection-info-line
+                                   fn-inj-absentp fn-af-proto-article-check
+                                   fn-article-parse fn-article-result-article)))))
+
 (local
  (defthm fn-inj-prefixp-of-a-common-head
    (implies (fn-inj-prefixp b c)
@@ -911,6 +1086,7 @@
 ; directly after the Path line.
 (defthm fn-inj-injection-date-is-the-clock-otherwise
   (implies (and (fn-inj-injectedp (fn-inj-decide source config observation))
+                (not (fn-inj-supplies-pathp source))
                 (or (not (fn-inj-nth 1 (fn-af-proto-article-check
                                         (fn-article-result-article
                                          (fn-article-parse source)))))
@@ -927,6 +1103,33 @@
                                    (obs observation)))
                   :in-theory (e/d (fn-inj-prefix fn-inj-append-reassociates)
                                   (fn-inj-decide fn-inj-injectedp
+                                   fn-inj-path-line fn-inj-injection-date-line
+                                   fn-inj-injection-info-line fn-inj-message-id-line
+                                   fn-inj-date-line fn-inj-date-octets
+                                   fn-inj-instant-of
+                                   fn-inj-absentp fn-af-proto-article-check
+                                   fn-article-parse fn-article-result-article)))))
+
+; With a supplied Path the Injection-Date line opens the article.
+(defthm fn-inj-injection-date-is-the-clock-otherwise-with-a-path
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config observation))
+                (fn-inj-supplies-pathp source)
+                (or (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                        (fn-article-result-article
+                                         (fn-article-parse source)))))
+                    (fn-inj-absentp (fn-article-result-article
+                                     (fn-article-parse source))
+                                    *fn-inj-date-name*)))
+           (fn-inj-prefixp
+            (fn-inj-injection-date-line
+             (fn-inj-date-octets
+              (fn-inj-instant-of (fn-clock-wall observation))))
+            (fn-inj-decision-octets (fn-inj-decide source config observation))))
+  :hints (("Goal" :use ((:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source
+                                   (obs observation)))
+                  :in-theory (e/d (fn-inj-block fn-inj-append-reassociates)
+                                  (fn-inj-decide fn-inj-injectedp fn-inj-splice
+                                   fn-inj-path-offset fn-inj-path-insert
                                    fn-inj-path-line fn-inj-injection-date-line
                                    fn-inj-injection-info-line fn-inj-message-id-line
                                    fn-inj-date-line fn-inj-date-octets

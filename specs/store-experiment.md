@@ -191,13 +191,15 @@ caller, and the charge is `books/identity`'s `fn-charge-for-payload`.
 A transaction file is one frame of the grammar in
 [`books/frame.lisp`](../books/frame.lisp), shared with both journals:
 magic `FNST`, version, record kind, a four-octet big-endian payload length,
-the encoded record, and a 32-octet integrity trailer. Store format
-`fn-store-experiment-6` is the current one, and it is owned by
-[`books/store-config.lisp`](../books/store-config.lisp)
-(`*fn-store-format-id*`) rather than by a Python constant: the host reads it
-from the bridge and refuses a store whose configuration names another format.
-A format-6 `config.json` is an ACL2-sealed `FNSM` metadata frame containing
-the exact bounded profile fields; `allocation-frontier.json` is a separate
+the encoded record, and a 32-octet integrity trailer. The store format is
+the profile's (format 8, D27; a format-7 store opens under its translation),
+and it is owned by [`books/byte-store-frame.lisp`](../books/byte-store-frame.lisp)
+rather than by a host constant: both hosts refuse a store whose decoded
+profile `fn-bs-profile-admittedp` does not admit (the native owner at install,
+the Python store at open), and the Python `init --profile WORD` takes the
+preset word the native operator's `fn-nop-profile-preset-word` reads.
+`config.json` is an ACL2-sealed `FNSM` metadata frame containing the
+operator's profile fields; `allocation-frontier.json` is a separate
 `FNSM` frame whose payload is the deterministic CBOR uint frontier. The
 allocator's accepted domain is CBOR uint32: the maximum value is readable but
 has no successor, so ACL2 refuses another reservation before any replacement

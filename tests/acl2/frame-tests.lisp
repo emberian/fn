@@ -431,3 +431,48 @@
                                52 *fn-frame-test-digest*
                                *fn-frame-test-digest*)
         (fn-frame-error :field-length)))
+
+; -----------------------------------------------------------------------------
+; D27 (PRF-091): a blob of a schema-chosen width, `(:blob . W)'.  A value one
+; octet past the `:blob' width is a field of a wider spec and round-trips; it
+; is not a `:blob' field, and a declared length past W is refused before the
+; split.
+(defconst *fn-frame-test-wide* (make-list 131073 :initial-element 65))
+(assert-event (fn-frame-specp '(:blob . 200000)))
+(assert-event (fn-frame-specp (cons :blob 4294967295)))
+(assert-event (not (fn-frame-specp '(:blob . 0))))
+(assert-event (not (fn-frame-specp (cons :blob 4294967296))))
+(assert-event (fn-frame-field-okp '(:blob . 200000) *fn-frame-test-wide*))
+(assert-event (not (fn-frame-field-okp :blob *fn-frame-test-wide*)))
+(assert-event (not (fn-frame-field-okp '(:blob . 131072) *fn-frame-test-wide*)))
+(assert-event
+ (equal (fn-frame-fields-parse
+         '((:blob . 200000) :nat)
+         (fn-frame-fields-octets '((:blob . 200000) :nat)
+                                 (list *fn-frame-test-wide* 7)))
+        (fn-frame-parse-ok (list *fn-frame-test-wide* 7) nil)))
+; Same octets as `:blob' for a value within both widths.
+(assert-event
+ (equal (fn-frame-field-octets '(:blob . 200000) '(1 2 3))
+        (fn-frame-field-octets :blob '(1 2 3))))
+(assert-event
+ (equal (fn-frame-field-parse '(:blob . 3) '(0 0 0 4 1 2 3 4))
+        (fn-frame-parse-error :field-length)))
+(assert-event
+ (equal (fn-frame-field-parse '(:blob . 4) '(0 0 0 4 1 2 3 4))
+        (fn-frame-parse-ok '(1 2 3 4) nil)))
+; A schema's width is the sum of its fields' widths, and a record encodes
+; within it (`fn-frame-fields-octets-within-width').
+(assert-event (equal (fn-frame-field-width '(:blob . 200000)) 200004))
+(assert-event
+ (equal (fn-frame-specs-width '(:text :blob :nat (:blob . 9) (:enum :a)))
+        (+ 514 131076 8 13 1)))
+(assert-event
+ (equal (len (fn-frame-fields-octets '((:blob . 9) :nat)
+                                     (list '(1 2 3 4 5 6 7 8 9) 3)))
+        (fn-frame-specs-width '((:blob . 9) :nat))))
+; The two journal payload caps are at least their tables' widths.
+(assert-event (<= (fn-frame-table-width *fn-frame-workflow-specs*)
+                  *fn-frame-max-workflow-payload*))
+(assert-event (<= (fn-frame-table-width *fn-frame-receipt-specs*)
+                  *fn-frame-max-receipt-payload*))

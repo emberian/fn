@@ -102,6 +102,27 @@ than as a second implementation:
   one, and advertising it is a promise about `LIST HEADERS` too (§3.3.2),
   which is why `LIST HEADERS` stopped answering 503 in the same change.
 
+NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step
+
+- `XPAT` is RFC 2980 §2.9 and has no RFC 3977 spelling a client could
+  discover instead, so fn lists it as a private-extension label (RFC 3977
+  §3.3.3: such a label begins with "X"). `XOVER` and `XHDR` stay unlisted.
+  `fn-auth-capability-lines-advertise-xpat` (`books/nntp-xpat.lisp`) is over
+  the block the served CAPABILITIES arm renders.
+- The pattern rule is §2.9's: "If there are additional arguments the are
+  joined together separated by a single space to form one complete pattern."
+  A second argument is therefore part of one pattern, not an alternative,
+  as in INN's nnrpd. The alternative is the wildmat comma (RFC 3977 §4.2):
+  `fn-nntp-xpat-alternation-is-or` shows non-negated alternatives OR at the
+  matcher the XPAT arm calls. Matching is case-sensitive: RFC 3977 §4.2, "A
+  <wildmat-exact> matches the same character".
+- The subject is the served step: `fn-nntp-step-pinned-xpat-is-the-xpat-
+  response` equates the XPAT arm of `fn-nntp-step-pinned` (reached from
+  `fn-served-step` through `fn-auth-step-pinned` and
+  `fn-nntp-post-step-pinned`) with `fn-nntp-xpat-response`.
+- The web reader (`tools/fn_web.py` `/search`) sends the reader's own
+  wildmat in one bounded `XPAT` window; it builds no pattern.
+
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
 reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record
@@ -316,8 +337,8 @@ three parts have three different owners of the *reply*, all of them ACL2.
    [peering §8](peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred)):
    `:control-not-filed` "control message not filed: its control group is not
    configured here", `:control-malformed` "the Control header field is
-   malformed" and `:control-signed` "a signed control message cannot be filed
-   here yet", and
+   malformed" (`:control-signed` is no longer produced: a signed control
+   article is filed like an unsigned one), and
    `:refused` "the article was refused" for a refusal no kind names. RFC 3977
    §6.3.1 permits `441` for all of them; the distinct text is a stronger fn
    guarantee and its exact words are a local policy choice (P2; the
@@ -392,11 +413,13 @@ The injecting agent generates `Path`, `Injection-Info`, and `Message-ID` and
 `Date` when the proto-article omits them (RFC 5537 §3.4.1 permits exactly
 those three omissions), and `Injection-Date` as RFC 5537 §3.5 item 11
 directs. `From`, `Subject` and `Newsgroups` must be supplied. The generated
-lines are *prepended*: the supplied source is a verbatim suffix of the
-injected article, which is proved
+lines are *prepended*: with no Path supplied, the supplied source is a
+verbatim suffix of the injected article, which is proved
 (`fn-inj-injected-article-retains-the-source-octets`), and is what makes the
 "MUST NOT alter the body" clause of §3.5 item 6 hold structurally rather than
-by inspection.
+by inspection. With a supplied Path (D32, below) the one change is `AGENT!`
+inserted at the start of the Path content; the body and every other octet
+are the poster's, and the inverse recovers the source exactly.
 
 **Injection-Date (RFC 5537 §3.5 item 11), one theorem per case in
 `books/injection-invariants.lisp`.** The RFC requirement: a supplied
@@ -432,13 +455,51 @@ with a Date line of the injection's date or with its own Message-ID line gives
 back nothing (`fn-inj-source-of-an-ambiguous-v1-record`), so it is compared
 octet for octet.
 
-Two further choices here are local policy, not RFC requirements, and are
+#### A supplied Path (D32, 2026-09-25)
+
+NNT-012: a served POST whose proto-article carries one Path field that is
+RFC 5536 §3.1.5 syntax is injected with the node's identity and "!"
+prefixed to that Path in place, and the injection inverse gives back the
+poster's source, supplied Path included, octet for octet; a malformed,
+duplicated or POSTED-carrying Path is refused by name.
+
+(PRF-090, SCN-050.) RFC 5537
+§3.4.1 lets a proto-article carry Path (without a POSTED diag-keyword) and
+§3.2.1 has the injecting agent prepend its path-identity and "!". fn does
+exactly that, in place: the injected Path is `AGENT!` followed by the
+supplied content, inserted at the octet where that content begins
+(`books/injection-path.lisp` `fn-inj-splice`), and the injected block is
+recipe v2's without its Path line (**recipe v3**, `fn-inj-block`), so the
+article has one Path, where the poster put it. The supplied Path is part of
+the poster's source under D25: `fn-inj-source-of` removes the insertion and
+gives the source back octet for octet
+(`fn-inj-source-of-inverts-the-injection`, now over v2 and v3;
+`fn-inj-unsplice-of-a-splice`), so a resend at any clock is "already stored
+here" and a changed supplied Path is the conflict line
+(`fn-pb-one-source-at-two-clocks-is-one-article`,
+`fn-pb-two-sources-are-two-articles`, whose agent is read from a v3 block's
+Injection-Info line). The verbatim-suffix theorem now carries the hypothesis
+that no Path was supplied; with one supplied the octets are stated exactly by
+`fn-inj-injected-octets-are-the-block-and-the-prefixed-source`, and each
+Injection-Date case has its twin (`...-with-a-path`). What stays refused, each
+with its own 441 line: a Path that is not RFC 5536 §3.1.5 syntax
+(`:path-malformed`, "Path is not a valid path"; fn also requires the content
+to begin one SP after the colon, since `AGENT!` before extra WSP would not be
+a path), a second Path field (`:path-duplicate`), a Path carrying the POSTED
+diag-keyword (`:path-posted`, local policy: it claims an injection this node
+did not make), and Xref (`:xref`, the server's). fn writes no `!.POSTED`
+diagnostic (RFC 5537 §3.2.1 item 2 is a SHOULD), for a supplied Path as for
+its own `AGENT!not-for-mail`. The hybrid carrier route
+(`fn-hsig-injected-carrier-plan`, the operator's signed submission) still
+refuses a carrier that supplies Path (`:path-present`), so its exact signed
+source stays a suffix; a served POST of a signed carrier with a Path is
+accepted, and the authored-source projection (`fn-hc-authored-source`, which
+drops the Path the poster wrote) is unchanged by the prefix
+(`tests/acl2/hybrid-store-tests.lisp`).
+
+One further choice here is local policy, not an RFC requirement, and is
 recorded as such:
 
-- A proto-article that already carries `Path` is refused rather than
-  rewritten. §3.2.1 would have an injecting agent prepend its identity to an
-  existing `Path`; rewriting a supplied field would break the verbatim-suffix
-  property, so fn refuses. fn is the origin injecting agent for a POST.
 - The wall clock must be present and inside the 400-year Gregorian cycle from
   2000-01-01. Outside it there is no Injection-Date this model renders, and
   the outcome is a refusal, not a guess.
@@ -572,6 +633,13 @@ when such a pair is configured. The authentication profile receives TLS
 availability from the successfully loaded context; configured path text alone
 does not establish it. Credentials and the TLS context are startup-pinned;
 live reload/generation switching remains open.
+
+**Login binding 2026-09-25**: `principal bind LOGIN PRINCIPAL-HEX` and
+`principal unbind LOGIN` write or remove the login's `signing` field through
+the same replacement machine; `policy set posting-policy bound-logins` turns
+on the served POST gate that refuses a bound login's article unless it is
+signed by the bound principal (`:login-unsigned`, `:login-not-bound`, each its
+own 441 line). specs/identity.md, "A login bound to a signing principal".
 
 **Native administration component 2026-09-21**:
 `books/native-auth-admin.lisp` owns the bounded `principal list` and

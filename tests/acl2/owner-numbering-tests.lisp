@@ -21,10 +21,21 @@
       (fn-next-number group (fn-state-nexts
                              (onb-archive (osi-after-post oc events sub-id word))))))
 
+; The served conclusion: the visible holder after is the one before or none.
 (defun onb-holder-conclusion (oc events sub-id word group number)
-  (equal (fn-own-number-holder
-          group number (fn-state-articles (onb-archive (osi-after-post oc events sub-id word))))
-         (fn-own-number-holder group number (fn-state-articles (onb-archive oc)))))
+  (let ((after (fn-own-number-holder
+                group number (fn-state-articles (onb-archive (osi-after-post oc events sub-id word))))))
+    (or (null after)
+        (equal after
+               (fn-own-number-holder group number (fn-state-articles (onb-archive oc)))))))
+
+(defun onb-raw (oc)
+  (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
+
+; The raw conclusion (fn-own-raw-local-number-is-never-reassigned).
+(defun onb-raw-holder-conclusion (oc events sub-id word group number)
+  (equal (fn-own-number-holder group number (onb-raw (osi-after-post oc events sub-id word)))
+         (fn-own-number-holder group number (onb-raw oc))))
 
 ; -----------------------------------------------------------------------------
 ; Witness: two POSTs in fn.letters across a completion.  Connection 4's
@@ -58,6 +69,14 @@
 (assert-event (equal (fn-own-number-holder "fn.letters" 2 (fn-state-articles (onb-archive *osi-q*)))
                      "<two@example>"))
 (assert-event (onb-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 2))
+; The same on the raw list, which in this fixture (no cancel) is the visible one.
+(assert-event (equal (fn-own-number-holder "fn.letters" 1 (onb-raw *osi-q*)) "<one@example>"))
+(assert-event (onb-raw-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 1))
+(assert-event (onb-raw-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 2))
+; The served conclusion holds here by its equality arm, not by the null one.
+(assert-event (equal (fn-own-number-holder
+                      "fn.letters" 1 (fn-state-articles (onb-archive *onb-after*)))
+                     "<one@example>"))
 (assert-event (equal (fn-own-number-holder "fn.letters" 3 (fn-state-articles (onb-archive *onb-after*)))
                      *onb-injected-id*))
 (assert-event (equal (fn-own-number-holder "fn.letters" 4 (fn-state-articles (onb-archive *onb-after*)))
@@ -122,13 +141,20 @@
 (assert-event (not (onb-holder-conclusion *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
 (must-fail (assert-event
             (onb-holder-conclusion *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
+(assert-event (equal (fn-own-number-holder "fn.letters" 1 (onb-raw *onb-wound*)) "<one@example>"))
+(assert-event (not (onb-raw-holder-conclusion *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
+(must-fail (assert-event
+            (onb-raw-holder-conclusion *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
 
-; Hypothesis (the number is held before), fn-own-served-local-number-is-never-reassigned.
+; Hypothesis (the number is held before), both holder keystones.
 ; fn.letters 3 names nothing before the witness events and the injected
 ; article after.  A number is fixed once it is given, not before.
 (assert-event (null (fn-own-number-holder "fn.letters" 3 (fn-state-articles (onb-archive *osi-q*)))))
 (assert-event (not (onb-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
 (must-fail (assert-event (onb-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
+(assert-event (null (fn-own-number-holder "fn.letters" 3 (onb-raw *osi-q*))))
+(assert-event (not (onb-raw-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
+(must-fail (assert-event (onb-raw-holder-conclusion *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
 
 ; Hypothesis (fn-ocfg-writer-eventsp events): NO TOOTH.  No violating value
 ; was found.  Every other arm of fn-ocfg-step leaves the committed view

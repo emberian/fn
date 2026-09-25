@@ -687,6 +687,30 @@ PLAN = (
       ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "node"),
     S("V0-CLIENT-SLRN", "F-CLIENT", "slrn reads a group and an article",
       ("NNT-002",), ("SCN-014",), ACCEPTED),
+    # The "client" phase: tin 2.6.2 in a tmux pane, its wire recorded by
+    # tools/nntp_wire_log.py; each verdict is the node's reply line to the
+    # command tin sent (planning/evidence/spike-reader-2026-09-25.md, D32).
+)
+
+# The tin client rows (reader-surface, PKT-111).  They enter PLAN with the first
+# matrix run that publishes them: planning/v0-matrix.json is written only by a
+# run, and `--check` refuses a planned row the file lacks.  Move them into PLAN
+# in the commit that archives that run.
+PENDING_TIN_PLAN = (
+    S("V0-CLIENT-TIN-READ", "F-CLIENT",
+      "tin opens a group and reads an article",
+      ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "single",
+      "tin's own OVER, HDR and ARTICLE use; one node, one group"),
+    S("V0-CLIENT-TIN-REPLY", "F-CLIENT", "tin posts a followup (References set by tin)",
+      ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single",
+      "tin always sends Path: not-for-mail; D32 accepts a supplied Path"),
+    S("V0-CLIENT-TIN-POST", "F-CLIENT", "tin posts a new article",
+      ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single"),
+    S("V0-CLIENT-TIN-CANCEL", "F-CLIENT",
+      "the node accepts tin's cancel of its own article (cmsg cancel)",
+      ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single",
+      "the 240 is the node filing the control article; whether it withdraws the "
+      "target is the control work's (PKT-109), not this row's"),
 )
 
 PLAN_BY_KEY = {spec.key: spec for spec in PLAN}
@@ -834,6 +858,38 @@ class Row:
             "blocker": self.blocker,
             "owner": self.owner,
         }
+
+
+def tin_wire_outcomes(text: str) -> dict:
+    """From a tools/nntp_wire_log.py log: what the node answered tin, in order.
+
+    `read` is the node's first reply to ARTICLE; `posts` lists, for each POST
+    tin sent, the reply line after its terminating dot and the article's
+    Subject.  Nothing here judges an article; it only reads reply lines.
+    """
+    out = {"read": None, "posts": []}
+    lines = [line.split(" ", 2)[2] if line.count(" ") >= 2 else "" for line in
+             text.splitlines()]
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if line.startswith("C: ARTICLE") and out["read"] is None and index + 1 < len(lines):
+            out["read"] = lines[index + 1][3:]
+        if line == "C: POST":
+            subject, cursor, answer = "", index + 1, None
+            while cursor < len(lines):
+                one = lines[cursor]
+                if one.startswith("C: Subject: ") and not subject:
+                    subject = one[len("C: Subject: "):]
+                if one == "C: .":
+                    answer = next((x[3:] for x in lines[cursor + 1:] if x.startswith("S: ")),
+                                  None)
+                    break
+                cursor += 1
+            out["posts"].append({"subject": subject, "reply": answer})
+            index = cursor
+        index += 1
+    return out
 
 
 def reply_verdict(status: str) -> str:
@@ -1118,9 +1174,11 @@ def labels(caps):
 
 # RFC 3977 section 5.2.2: the capability is advertised exactly when the
 # command is available.  Only labels the RFCs define as capabilities are
-# audited in the reverse direction: XOVER, XHDR, XPAT and LISTGROUP are not
+# audited in the reverse direction: XOVER, XHDR and LISTGROUP are not
 # capability labels of their own (LISTGROUP is READER's), so dispatching them
-# without a label of their own is not a defect.
+# without a label of their own is not a defect.  XPAT is audited too: fn lists
+# it as a private-extension label (RFC 3977 section 3.3.3, PKT-110), so a node
+# that answers XPAT without the label has dropped a promise.
 # AUTHINFO and STARTTLS are deliberately NOT here: both are advertised
 # exactly while they are still usable (RFC 4643 section 2.3, RFC 4642
 # section 2.2.2), so a connection that has authenticated sees the command
@@ -1129,7 +1187,7 @@ def labels(caps):
 # is advertised by a MODE-SWITCHING server (RFC 3977 section 5.3), and a
 # server that is always in reader mode answering MODE READER is not one.
 RFC_LABELS = ("READER", "POST", "IHAVE", "STREAMING", "OVER", "HDR", "LIST",
-              "NEWNEWS")
+              "NEWNEWS", "XPAT")
 # The verb is absent, or present and closed to this caller.  Either way the
 # command is not available and the capability must not be advertised.
 UNAVAILABLE = ("500", "501", "502", "440", "480", "483")
@@ -3800,6 +3858,66 @@ else echo NONE; fi
                   step.first_line or "(no output)", exit_code=step.rc,
                   client="slrn", limit="one newsreader against node A only")
 
+    TIN_KEYS = ("V0-CLIENT-TIN-READ", "V0-CLIENT-TIN-REPLY", "V0-CLIENT-TIN-POST",
+                "V0-CLIENT-TIN-CANCEL")
+    TIN_SUBJECT = "tin in the v0 matrix"
+
+    def tin_client(self):
+        """The "client" phase: stock tin against node A, every reply line recorded.
+
+        tin is driven in a tmux pane by tools/tin_drive.sh through
+        tools/nntp_wire_log.py, which forwards to node A and logs both
+        directions with AUTHINFO PASS redacted.  A login, when the backend has
+        one, goes to tin's ~/.newsauth file, never to a command line.  tin
+        reads the first article, follows it up, posts a new article, finds
+        that article again and cancels it; each row is the node's reply line.
+        """
+        if not self.has_client("tin") or not self.a.port:
+            self.blocked(self.TIN_KEYS, "tin is not on PATH on {} (build it without "
+                         "root: planning/evidence/spike-reader-2026-09-25.md) or node A has "
+                         "no listener".format(self.host.label))
+            return
+        tin = getattr(self, "clients", {}).get("tin", "tin")
+        user, secret = self.credential()
+        home = "{}/tin-home".format(self.run)
+        if user:
+            self.push_file("{} {} {}\n".format("127.0.0.1", secret, user),
+                           "{}/.newsauth".format(home), mode="600")
+        self.push_file("{}:\n".format(self.served_group()), "{}/.newsrc".format(home))
+        self.push_file("#!/bin/sh\nsleep 1.2\nfor a; do f=$a; done\n"
+                       "echo 'a line from tin in the v0 matrix' >> \"$f\"\n",
+                       "{}/editor.sh".format(home), mode="755")
+        wire, port = "{}/tin-wire.log".format(self.run), self.a.port + 7
+        steps = ("'ENTER|3|group' 'ENTER|3|article' 'f|5|followup' 'p|6|followup-posted' "
+                 "'q|3|index' 'w|3|subject' 'TEXT:{s}|1|typed' 'ENTER|5|check' "
+                 "'p|6|posted' 'q|3|groups' 'ENTER|3|group-again' '/|2|search' "
+                 "'TEXT:{s}|1|search-typed' 'ENTER|3|found' 'ENTER|3|own-article' "
+                 "'D|3|cancel-prompt' 'd|3|cancel-d' 'd|5|cancel-posted' "
+                 "'ENTER|3|cancel-enter'").format(s=self.TIN_SUBJECT)
+        step = self.sh("tin client", self.cd(
+            "python3 tools/nntp_wire_log.py {port} {target} {wire} & relay=$!; sleep 1; "
+            "TIN_FLAGS='{flags}' sh tools/tin_drive.sh {tin} {port} {home} "
+            "{run}/tin-screens {steps}; tmux kill-session -t spiketin; "
+            "kill $relay; cat {wire}".format(port=port, target=self.a.port, wire=wire,
+                                             flags="-r -A" if user else "-r",
+                                             tin=shlex.quote(tin), home=home, run=self.run,
+                                             steps=steps)),
+            timeout=600, expect=None)
+        seen = tin_wire_outcomes(step.output)
+        self.emit("V0-CLIENT-TIN-READ", reply_verdict(seen["read"]), step.command,
+                  "ARTICLE -> {}".format(seen["read"]), client="tin")
+        posts = seen["posts"]
+        for key, position in (("V0-CLIENT-TIN-REPLY", 0), ("V0-CLIENT-TIN-POST", 1),
+                              ("V0-CLIENT-TIN-CANCEL", 2)):
+            if position < len(posts):
+                self.emit(key, reply_verdict(posts[position]["reply"]), step.command,
+                          "POST {!r} -> {}".format(posts[position]["subject"],
+                                                   posts[position]["reply"]),
+                          client="tin")
+            else:
+                self.emit(key, NOT_EXERCISED, step.command, "tin sent no such POST",
+                          client="tin", blocker="the pane never reached that POST")
+
     # -- the server entry point --------------------------------------------
     def server_candidates(self, node: NodeSpec):
         """Every entry point this commit might serve from, best first.
@@ -5535,6 +5653,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         live = [n for n in self.nodes if n.port and self.alive(n)]
         if len(live) == 2:
             self.phase("independent clients", self.independent_clients)
+            self.phase("client", self.tin_client)
             for source, target, way in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
                 if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
                     self.phase("transit {}".format(way.upper()),
@@ -5654,6 +5773,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
 
         if all(n.port and self.alive(n) for n in self.nodes):
             self.phase("independent clients", self.independent_clients)
+            self.phase("client", self.tin_client)
         else:
             self.blocked(("V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN"),
                          "a node had no live listener when the independent client "

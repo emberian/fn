@@ -1,0 +1,31 @@
+profile default articles 120 payload 2048 load_s 1.203 last_q_median_ms 1.472 rss_kib 391212 slope_kib 200.5 counts_per_post {'fn-octets$c-list': 1.0, 'fn-owner-chunk': 6.0, 'fn-owner-existing-action-buffer': 1.0, 'fn-owner-prepare-buffer': 1.0, 'fn-pbb-existing-action': 2.0, 'fn-sha256-of-prefixed-buffer': 1.0, 'fn-sha256-stobj': 6.0, 'fn-shb-subject-id': 1.0, 'fnn-frame': 1.0, 'fnn-metadata-buffer': 1.0, 'fnn-obligation-id': 1.0, 'fnn-octet-list': 24.0, 'fnn-octets-fill': 1.0, 'fnn-owner-attempt': 1.0, 'fnn-owner-handle-chunk': 6.0, 'fnn-subject-id-buffer': 1.0, 'fnn-trailer': 1.0} error None
+profile default articles 120 payload 32768 load_s 3.198 last_q_median_ms 17.059 rss_kib 470056 slope_kib 706.8 counts_per_post None error None
+profile default articles 120 payload 2048 load_s 0.205 last_q_median_ms 1.48 rss_kib 391048 slope_kib 213.3 counts_per_post None error None
+Traceback (most recent call last):
+  File "/tank/fn/scratch/rep-wave-c/load_prof.py", line 81, in <module>
+    post(i)
+  File "/tank/fn/scratch/rep-wave-c/load_prof.py", line 76, in post
+    r = c.readline()
+        ^^^^^^^^^^^^
+  File "/tank/fn/scratch/rep-wave-c/base-tree/tools/msgid_measure.py", line 85, in readline
+    return self.stream.readline()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 720, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+profile default articles 120 payload 32768 load_s 2.182 last_q_median_ms 17.222 rss_kib 469388 slope_kib 704.0 counts_per_post None error None
+Traceback (most recent call last):
+  File "/tank/fn/scratch/rep-wave-c/load_prof.py", line 81, in <module>
+    post(i)
+  File "/tank/fn/scratch/rep-wave-c/load_prof.py", line 76, in post
+    r = c.readline()
+        ^^^^^^^^^^^^
+  File "/tank/fn/scratch/rep-wave-c/base-tree/tools/msgid_measure.py", line 85, in readline
+    return self.stream.readline()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 720, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+ 07:41:55 up 71 days, 13:26, 57 users,  load average: 3.28, 3.37, 3.98

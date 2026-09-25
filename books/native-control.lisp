@@ -17,7 +17,20 @@
 (defconst *fn-nctrl-request-kind* 1)
 (defconst *fn-nctrl-reply-kind* 2)
 (defconst *fn-nctrl-admin-kind* 3)
-(defconst *fn-nctrl-request-spec* '(:blob :text :blob))
+; The FNCT request's field widths are codec ceilings (D27): the article
+; field is the record codec's payload ceiling and the group-list field the
+; encoded list at the record's group ceiling, each name at the group-name
+; ceiling with a five-octet head, after a five-octet count.  The operator's
+; bounds are the store profile's A and G; the owner reads at most the frame
+; they allow (`fn-nctrl-read-bound-for') and its injection decision refuses
+; an article past A by name.  A value within the old `:blob' width encodes to
+; the same octets under either spec.
+(defconst *fn-nctrl-max-groups-octets*
+  (+ 5 (* (+ 5 *fn-record-max-group-name*) *fn-record-max-groups*)))
+(defconst *fn-nctrl-request-spec*
+  (list (cons :blob *fn-record-max-payload*)
+        :text
+        (cons :blob *fn-nctrl-max-groups-octets*)))
 ; `:article-exceeds-profile-bound' is a refusal that names its reason: the
 ; owner's injection decision refused the operator's article `:oversize', past
 ; the carried profile's article field A (`fn-native-control-refusal-status').
@@ -27,21 +40,36 @@
     :article-exceeds-profile-bound))
 (defconst *fn-nctrl-reply-spec* (list (cons :enum *fn-nctrl-statuses*)))
 
-; The FNCT request payload at its field widths (`*fn-nctrl-request-spec*'):
-; the article blob, the Message-ID text and the CBOR group list blob, each
-; with its length head.  These are the FNCT codec's widths, not the article
-; bound: the owner applies the profile's article bound to the decoded article,
-; as every served path does.  The article field is a frame blob, so the
-; control socket carries at most `*fn-frame-max-blob*' octets of article
-; whatever the profile allows (design 2026-09-25-bounds §2.3 row "Frame
-; :blob", open: a per-schema blob width).  This is also the work bound of one
-; control read: the owner reads at most this frame from a client.
+; The FNCT payload width: the request spec's width, the widest FNCT payload
+; of any kind.  A codec width, not a read bound: the owner reads a request
+; under `fn-nctrl-read-bound-for' of its carried profile, and a client reads
+; a reply under `*fn-nctrl-max-command-frame*'.
 (defconst *fn-nctrl-max-payload*
-  (+ 4 *fn-frame-max-blob*
-     2 *fn-frame-max-text*
-     4 *fn-frame-max-blob*))
+  (fn-frame-specs-width *fn-nctrl-request-spec*))
 (defconst *fn-nctrl-max-frame*
   (+ *fn-frame-overhead-octets* *fn-nctrl-max-payload*))
+
+; Work bound: the read bound of a control frame that carries no article (an
+; administrative argv of at most sixteen 512-octet words, a topic or consumer
+; request, a hybrid enrolment, every reply).  It is the pre-D27 request frame,
+; far above each of those encoders' payloads.
+(defconst *fn-nctrl-max-command-frame* 262708)
+
+; The request frame at the profile's article bound A and group bound G:
+; header and trailer, the article at A, the widest Message-ID text, and the
+; group list at G names.  `fn-native-control-request-within-profile-frame'
+; proves every request the profile admits encodes within it.
+(defun fn-nctrl-max-frame-for (a g)
+  (declare (xargs :guard t))
+  (+ *fn-frame-overhead-octets*
+     4 (nfix a)
+     2 *fn-frame-max-text*
+     4 5 (* (+ 5 *fn-record-max-group-name*) (nfix g))))
+
+; The owner's read bound for one control connection under that profile.
+(defun fn-nctrl-read-bound-for (a g)
+  (declare (xargs :guard t))
+  (max *fn-nctrl-max-command-frame* (fn-nctrl-max-frame-for a g)))
 ; The article parser's ceiling is the record codec's payload ceiling: an
 ; article the parser can accept is a payload the record can carry.
 (defthm fn-nctrl-article-ceiling-is-the-record-payload-ceiling
@@ -401,6 +429,107 @@ distinguish an unobserved refusal from a durable acceptance."
   :hints (("Goal" :in-theory (disable fn-nctrl-seal)))
   :rule-classes :linear)
 
+;  KEYSTONE (the owner's read bound admits every request its profile admits).
+; Under a profile whose article field is A and group field G, every request
+; encoding whose article is at most A octets and whose group list has at most
+; G names is at most `fn-nctrl-max-frame-for A G' octets, so the owner's read
+; under `fn-nctrl-read-bound-for A G' (host/native/control.lisp
+; `fnn-control-handle-client', bound computed at `fnn-control-start') takes
+; it whole, and the owner's injection decision is what refuses an article
+; past A.  Encoder: `fn-native-control-host-request-encode', called by
+; `fnn-control-submit'.
+(local
+ (defthm fn-nctrl-group-strings-len
+   (equal (len (fn-nctrl-group-strings groups)) (len groups))))
+
+(defthm fn-nctrl-groups-encode-length-bound
+  (<= (len (fn-nctrl-groups-encode groups))
+      (+ 5 (* (+ 5 *fn-record-max-group-name*) (len groups))))
+  :rule-classes :linear
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nctrl-groups-encode fn-record-groupsp
+                            fn-frame-len-of-append)
+                           (fn-cbor-encode fn-record-encode-groups
+                            fn-record-group-listp fn-nctrl-group-strings))
+           :use ((:instance fn-record-cbor-uint-encoding-bound
+                            (n (len (fn-nctrl-group-strings groups))))
+                 (:instance fn-record-group-encoding-bound
+                            (groups (fn-nctrl-group-strings groups)))
+                 (:instance fn-nctrl-group-strings-len)))))
+
+;; These two are the FNCT payload's length at its three fields and the
+;; Message-ID's text width; the keystone below `:use's them.
+(local
+ (defthm fn-nctrl-request-fields-length
+   (implies (fn-frame-values-okp *fn-nctrl-request-spec* (list x y z))
+            (equal (len (fn-frame-fields-octets *fn-nctrl-request-spec*
+                                                (list x y z)))
+                   (+ 4 (len x) 2 (len y) 4 (len z))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-frame-fields-octets fn-frame-field-octets
+                             fn-frame-values-okp fn-frame-field-okp
+                             fn-frame-wide-blob-specp fn-frame-len-of-append
+                             fn-frame-u32-bytes-len fn-frame-u16-bytes-len)
+                            (fn-cbor-u32-bytes fn-cbor-u16-bytes
+                             fn-frame-textp fn-frame-blob-withinp))))))
+
+(local
+ (defthm fn-nctrl-request-msgid-bound
+   (implies (fn-frame-values-okp *fn-nctrl-request-spec* (list x y z))
+            (<= (len y) *fn-frame-max-text*))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-frame-textp-len-bound (value y)))
+            :in-theory (e/d (fn-frame-values-okp fn-frame-field-okp)
+                            (fn-frame-textp fn-frame-blob-withinp))))))
+
+(defthm fn-native-control-request-within-profile-frame
+  (implies (and (natp a) (natp g)
+                (<= (len article) a)
+                (<= (len groups) g))
+           (<= (len (fn-native-control-request-encode msgid groups article))
+               (fn-nctrl-max-frame-for a g)))
+  :rule-classes :linear
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-frame-values-okp
+                    *fn-nctrl-request-spec*
+                    (list article msgid (fn-nctrl-groups-encode groups))))
+           :in-theory (e/d (fn-native-control-request-encode)
+                           (fn-nctrl-seal fn-frame-fields-octets
+                            fn-nctrl-groups-encode fn-frame-values-okp
+                            fn-nctrl-requestp))
+           :use ((:instance fn-nctrl-seal-length
+                            (kind *fn-nctrl-request-kind*)
+                            (payload (fn-frame-fields-octets
+                                      *fn-nctrl-request-spec*
+                                      (list article msgid
+                                            (fn-nctrl-groups-encode groups)))))
+                 (:instance fn-nctrl-request-fields-length
+                            (x article) (y msgid)
+                            (z (fn-nctrl-groups-encode groups)))
+                 (:instance fn-nctrl-request-msgid-bound
+                            (x article) (y msgid)
+                            (z (fn-nctrl-groups-encode groups)))
+                 (:instance fn-nctrl-groups-encode-length-bound)
+                 (:instance fn-frame-fields-octets-are-octets
+                            (specs *fn-nctrl-request-spec*)
+                            (values (list article msgid
+                                          (fn-nctrl-groups-encode groups))))
+                 (:instance fn-frame-fields-octets-within-width
+                            (specs *fn-nctrl-request-spec*)
+                            (values (list article msgid
+                                          (fn-nctrl-groups-encode groups))))))))
+
+(defthm fn-native-control-request-within-read-bound
+  (implies (and (natp a) (natp g)
+                (<= (len article) a)
+                (<= (len groups) g))
+           (<= (len (fn-native-control-request-encode msgid groups article))
+               (fn-nctrl-read-bound-for a g)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-native-control-request-encode
+                                      fn-nctrl-max-frame-for))))
+
 (defthm fn-native-control-lease-path-is-bounded
   (implies (not (equal (fn-native-control-lease-path control-path) :bad))
            (and (fn-cbor-octet-listp
@@ -430,4 +559,6 @@ distinguish an unobserved refusal from a durable acceptance."
                     (:d fn-native-control-request-encode)
                     (:d fn-native-control-request-decode)
                     (:d fn-native-control-reply-encode)
-                    (:d fn-native-control-reply-decode)))
+                    (:d fn-native-control-reply-decode)
+                    (:d fn-nctrl-max-frame-for)
+                    (:d fn-nctrl-read-bound-for)))
