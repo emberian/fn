@@ -73,7 +73,7 @@ generated-field cases, and a Path either supplied or not. It rests on:
   byte decision would say `:conflict`; a changed Path is `:conflict`; a
   Path-less resend is `:conflict`.
 
-## 2. Login binding (NNT-013, PRF-091, SCN-051)
+## 2. Login binding (NNT-013, PRF-109, SCN-051)
 
 The design and theorems are in `books/login-binding.lisp`, specs/identity.md
 and the commit `4d848b4d`:
