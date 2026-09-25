@@ -762,16 +762,16 @@
     "books": 767,
     "books_in_root_closure": 765,
     "roots": 755,
-    "theorems": 10211,
-    "functions": 7221,
-    "assert_events": 11204,
-    "must_fails": 1000,
-    "encapsulates": 38,
+    "theorems": 10231,
+    "functions": 7233,
+    "assert_events": 11207,
+    "must_fails": 1002,
+    "encapsulates": 39,
     "guards": {
       "verified": 2093,
-      "declared-off": 521,
+      "declared-off": 526,
       "default-guarded": 3576,
-      "default-unguarded": 1031
+      "default-unguarded": 1038
     },
     "suspect_theorems": 91,
     "export_hygiene_warnings": 127,
@@ -4737,11 +4737,11 @@
       "book": "books/byte-store-k0-marker.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
-      "functions": 4,
+      "theorems": 54,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 4,
+        "declared-off": 9,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -4750,7 +4750,7 @@
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 1,
+      "encapsulates": 2,
       "includes": [
         "byte-store-k0-staging",
         "byte-store-marker-program"
@@ -15465,16 +15465,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 12,
+      "functions": 19,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 12
+        "default-unguarded": 19
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
-      "must_fails": 7,
+      "assert_events": 11,
+      "must_fails": 9,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
@@ -22319,7 +22319,7 @@
       {
         "theorem": "fn-bs-k0m-drop-of-root-quiet",
         "book": "books/byte-store-k0-marker.lisp",
-        "line": 284,
+        "line": 289,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -24821,7 +24821,7 @@
       },
       {
         "book": "books/byte-store-k0-marker.lisp",
-        "line": 26,
+        "line": 31,
         "include": "byte-store-k0-staging",
         "included": "books/byte-store-k0-staging.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
