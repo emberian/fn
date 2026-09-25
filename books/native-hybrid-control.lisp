@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "native-control")
 (include-book "hybrid-lifecycle")
-(include-book "native-admin")
+(include-book "native-admin-shape")
 
 (defconst *fn-nhctrl-enroll-kind* 4)
 (defconst *fn-nhctrl-author-kind* 5)

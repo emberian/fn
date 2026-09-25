@@ -115,6 +115,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-auth-admin-host-tests \
 	books/journal-publish \
 	books/bp-eid-shape \
+	books/native-admin-shape \
+	books/native-admin-peer \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
 	books/native-config-observation \
@@ -529,6 +531,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-pinned-index-tests \
 	tests/acl2/nntp-teeth-tests \
 	books/mailbox \
+	books/injection-shape \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \
@@ -561,6 +564,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-prepare-carried \
 	books/records-concrete \
 	books/owner-advance-carried \
+	books/owner-intent-carried \
 	books/owner-commit-ocl \
 	books/owner-recover-ocl \
 	tests/acl2/owner-tls-pin-tests \
@@ -594,6 +598,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-carried-tests \
 	tests/acl2/records-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \
+	tests/acl2/owner-intent-carried-tests \
 	tests/acl2/owner-recover-ocl-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
@@ -685,6 +690,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-signature-tests \
 	books/hybrid-carrier \
 	tests/acl2/hybrid-carrier-tests \
+	books/hybrid-store-injected \
 	books/hybrid-store-invariants \
 	books/peer-authored-accept \
 	tests/acl2/peer-authored-accept-tests \

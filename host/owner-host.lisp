@@ -38,6 +38,7 @@
 (include-book "../books/owner-commit-carried")
 (include-book "../books/owner-prepare-carried")
 (include-book "../books/owner-advance-carried")
+(include-book "../books/owner-intent-carried")
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
@@ -673,7 +674,14 @@
              ; over the live node, never here and never in Python.
              (state (f-put-global 'fn-owner-submit-groups
                                   (if transitp nil (fn-inj-decision-groups decision))
-                                  state)))
+                                  state))
+             ; The submission's intent identity, digested once here and
+             ; carried to the intent and the resolution below
+             ; (books/owner-intent-carried.lisp).  This is the only writer of
+             ; the global, so its value always satisfies fn-icar-carryp
+             ; (fn-icar-carryp-of-carry-of; nil before the first take).
+             (state (f-put-global 'fn-owner-submit-intent
+                                  (fn-icar-carry-of sub) state)))
         (value (cond (transitp :taken-transit)
                      ((fn-own-control-submissionp sub) :taken-control)
                      (t :taken)))))))
@@ -1024,11 +1032,25 @@
 ; acceptance-time targets and queue-capacity verdict from the in-flight owner
 ; submission.  No owner state moves until the frames have reached their
 ; per-peer journals.
+;; The call is fn-icar-submission-intent (books/owner-intent-carried.lisp),
+;; which returns (result . records) and equals
+;; (cons fn-own-submission-intent-result fn-own-submission-intent-records)
+;; under fn-icar-carryp of the carry fn-owner-take installed
+;; (fn-icar-submission-intent-is-reference): the identity is the one digested
+;; at take, not three new digests of the payload.
+(defun fn-owner-intent-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-submit-intent state)
+      (f-get-global 'fn-owner-submit-intent state)
+    nil))
+
 (defun fn-owner-submission-intent (evidence generation txid state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (result (fn-own-submission-intent-result owner evidence generation txid))
-         (records (fn-own-submission-intent-records owner evidence generation txid))
+         (intent (fn-icar-submission-intent owner (fn-owner-intent-carry state)
+                                            evidence generation txid))
+         (result (car intent))
+         (records (cdr intent))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value result)))
@@ -1037,11 +1059,15 @@
 ; caller durably appends these records before invoking fn-owner-outcome (or
 ; its control/transit counterpart), so the in-memory feed can never get ahead
 ; of the obligation journal.  Uncertain produces no resolution record.
+;; The call is fn-icar-submission-resolution-records, equal to
+;; fn-own-submission-resolution-records under the same carry
+;; (fn-icar-submission-resolution-records-is-reference).
 (defun fn-owner-submission-resolution (word evidence generation txid state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (records (fn-own-submission-resolution-records
-                   owner word evidence generation txid))
+         (records (fn-icar-submission-resolution-records
+                   owner (fn-owner-intent-carry state)
+                   word evidence generation txid))
          (sub (fn-own-inflight owner))
          (state (f-put-global 'fn-owner-shared-resolution-id
                               (and sub (fn-own-sub-id sub)) state))
