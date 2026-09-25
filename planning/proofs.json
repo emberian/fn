@@ -706,9 +706,7 @@
         "fn-rcon-store-event-encode-is-store-event-encode",
         "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "fn-rcon-sn-io-is-sn-io",
-        "fn-rcon-ocfg-io-is-ocfg-step",
-        "fn-frame-split-acc-is-split",
-        "fn-ag-append-exec-is-append"
+        "fn-rcon-ocfg-io-is-ocfg-step"
       ],
       "evidence": [
         "books/cbor.lisp",
