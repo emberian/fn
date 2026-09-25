@@ -115,6 +115,10 @@
 (defun fnn-control-reply-octets (status)
   (let ((reply
           (cond
+            ;; The owner's FNLS page, already sealed by ACL2
+            ;; (`fn-native-live-status-host-reply').
+            ((and (consp status) (eq (first status) :live-status-reply))
+             (second status))
             ((and (consp status) (eq (first status) :topic-reply))
              (fnn-core 'fn-native-control-host-topic-reply-encode
                        (second status)))
@@ -261,6 +265,25 @@ joins it before the process exits."
     (setf (fnn-control-state-clients control)
           (delete socket (fnn-control-state-clients control) :test #'eq))))
 
+(defun fnn-control-live-status-answer (service request)
+  "The running owner's page of its status report, under the owner mutex.
+
+ACL2 decodes the request and renders the report from the Store, the
+configuration and the connection pins the owner carries
+(`fn-native-live-status-host-reply'); the wrapper returns no `state', so
+answering changes nothing the owner holds.  The mutex only keeps a page from
+observing a half-applied transition."
+  (fnn-with-owner (service)
+    (when (fnn-owner-service-stopping service)
+      (fnn-refuse "owner service is stopping"))
+    (let ((reply (fnn-core 'fn-native-live-status-host-reply request
+                           (fnn-store-observation
+                            (fnn-owner-service-store service))
+                           *the-live-state*)))
+      (unless (fnn-octet-list-p reply)
+        (fnn-fault "ACL2 returned a malformed live status page"))
+      reply)))
+
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))
          (maximum (if (fboundp 'fn-native-hybrid-control-host-max-frame)
@@ -285,8 +308,16 @@ joins it before the process exits."
                       (consumer
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-consumer-request-decode
+                                       (fnn-octet-list frame))))
+                      (live
+                        (and (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-live-status-host-requestp
                                        (fnn-octet-list frame)))))
                  (cond
+                   (live
+                    (list :live-status-reply
+                          (fnn-control-live-status-answer
+                           service (fnn-octet-list frame))))
                    ((and *fnn-hybrid-control-handler*
                          (funcall *fnn-hybrid-control-handler* service frame)))
                    ((and (consp topic) (eq (first topic) :topic))
@@ -341,11 +372,13 @@ joins it before the process exits."
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
     (fnn-control-test-after-submit
+     (if (and (consp status) (eq (first status) :live-status-reply))
+         nil
      (if (and (consp status)
               (member (first status)
                       '(:topic-reply :consumer-reply :consumer-poll-reply
                         :consumer-status-reply)))
-         (second status) status))
+         (second status) status)))
     (fnn-control-send-reply socket status)))
 
 (defun fnn-control-client-done (control socket)
@@ -720,3 +753,58 @@ joins it before the process exits."
                        (fnn-control-transport-outcome stage)))))
              (error () (fnn-control-transport-outcome stage)))
         (when socket (fnn-socket-shut socket))))))
+
+(defun fnn-control-live-status-page (path-octets kind offset)
+  "Ask the owner for one page of report KIND from OFFSET.
+
+The reply octets, or the stage at which the exchange failed
+(:before-submission, :after-submission), or :refused when the owner answered
+an ordinary refusal (it is stopping)."
+  (let ((request (fnn-core 'fn-native-live-status-host-request-encode kind offset))
+        (socket nil) (stage :before-submission))
+    (unless (fnn-octet-list-p request)
+      (fnn-fault "ACL2 refused a live status request"))
+    (unwind-protect
+         (handler-case
+             (progn
+               (setq socket (fnn-control-connect (fnn-octets-string path-octets)))
+               (let ((fd (fnn-socket-fd socket)))
+                 (setq stage :after-submission)
+                 (fnn-send-all fd (fnn-octets request) +fnn-control-io-seconds+)
+                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (let ((frame (fnn-control-read-frame
+                               socket (fnn-core 'fn-native-live-status-host-max-frame))))
+                   (if (typep frame 'fnn-octets)
+                       (let ((octets (fnn-octet-list frame)))
+                         (if (member (fnn-core 'fn-native-control-host-reply-decode octets)
+                                     '(:refused :busy))
+                             :refused
+                           octets))
+                     stage))))
+           (error () stage))
+      (when socket (fnn-socket-shut socket)))))
+
+(defun fnn-control-live-status (path-octets kind)
+  "Join the owner's pages of report KIND through `fn-nls-client-step'.
+
+(:done OCTETS), or an outcome keyword for `fn-nls-route'.  A page that fails
+after the first was answered is :after-submission: the owner was there."
+  (let ((acc nil) (total nil) (digest nil) (restarts 0)
+        (limit (fnn-core 'fn-native-live-status-host-max-restarts)))
+    (loop
+      (let ((page (fnn-control-live-status-page path-octets kind (length acc))))
+        (when (keywordp page)
+          (return (if (and (eq page :before-submission)
+                           (or acc (plusp restarts)))
+                      :after-submission
+                    page)))
+        (let ((step (fnn-core 'fn-native-live-status-host-client-step
+                              acc total digest page)))
+          (case (first step)
+            (:done (return step))
+            (:next (setq acc (second step) total (third step) digest (fourth step)))
+            (:restart
+             (when (>= (incf restarts) limit) (return :after-submission))
+             (setq acc nil total nil digest nil))
+            (:refused (return :refused))
+            (t (return :after-submission))))))))

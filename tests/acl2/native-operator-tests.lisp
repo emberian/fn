@@ -816,3 +816,44 @@
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))
+
+; The status report's grammar (books/native-live-status.lisp renders it):
+; `status --watch N' carries N, `pins' and `obligations' are status actions
+; of their own kind, and each carries the control socket the owner answers on.
+(defconst *fn-nop-watch*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("status" "--watch" "5"))))
+(assert-event (equal (fn-native-operator-result-arguments *fn-nop-watch*)
+                     '(:status :watch 5)))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-watch*) :status))
+(assert-event (equal (fn-native-operator-result-status-watch *fn-nop-watch*) 5))
+(assert-event (equal (fn-native-operator-result-status-kind *fn-nop-watch*) :status))
+(assert-event (consp (fn-native-operator-result-status-control-path-octets *fn-nop-watch*)))
+(assert-event (null (fn-native-operator-result-status-watch
+                     (fn-native-operator-run *fn-nop-minimal-config*
+                                             (fn-nop-test-argv '("status"))))))
+(defconst *fn-nop-pins*
+  (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("pins"))))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-pins*) :status))
+(assert-event (equal (fn-native-operator-result-status-kind *fn-nop-pins*) :pins))
+(assert-event (equal (fn-native-operator-result-status-kind
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("obligations"))))
+                     :obligations))
+; A zero, a day and a second, and a word that is no number are usage (5).
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("status" "--watch" "0"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("status" "--watch" "86401"))))
+                     5))
+(assert-event (equal (fn-native-operator-result-status-watch
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("status" "--watch" "86400"))))
+                     86400))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("pins" "x"))))
+                     5))

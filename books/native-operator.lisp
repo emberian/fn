@@ -257,9 +257,18 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
 
+;; `status --watch N': the seconds between two asks.  A work bound on the
+;; interval (one day), not a bound on any data.
+(defconst *fn-nop-max-watch-seconds* 86400)
+
+(defun fn-nop-watch-seconds (text)
+  (declare (xargs :guard t))
+  (let ((n (fn-nop-profile-decimal text)))
+    (if (and (posp n) (<= n *fn-nop-max-watch-seconds*)) n nil)))
+
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -269,7 +278,12 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
-        ((equal subject "status") "usage: fn operator CONFIG status")
+        ((equal subject "status")
+         "usage: fn operator CONFIG status [--watch SECONDS] (asks the running owner over its control socket; offline, reads the store)")
+        ((equal subject "pins")
+         "usage: fn operator CONFIG pins (retention pins and each open connection's configuration pin)")
+        ((equal subject "obligations")
+         "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
          "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] | compact | checkpoint} (offline; refused while an owner runs; no field may shrink)")
@@ -286,7 +300,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -337,9 +351,21 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "init") (fn-nop-parse-init rest config))
             ((equal command "post") (fn-nop-parse-post rest config))
             ((equal command "status")
+             (cond ((null rest)
+                    (fn-nop-result :accepted :plan "status" config (list :status)))
+                   ((and (equal (fn-ncfg-first rest) "--watch")
+                         (null (fn-ncfg-rest (fn-ncfg-rest rest)))
+                         (fn-nop-watch-seconds (fn-ncfg-second rest)))
+                    (fn-nop-result :accepted :plan "status" config
+                                   (list :status :watch
+                                         (fn-nop-watch-seconds
+                                          (fn-ncfg-second rest)))))
+                   (t (fn-nop-usage :unexpected-arguments "status" config rest))))
+            ((or (equal command "pins") (equal command "obligations"))
              (if (null rest)
-                 (fn-nop-result :accepted :plan "status" config (list :status))
-               (fn-nop-usage :unexpected-arguments "status" config rest)))
+                 (fn-nop-result :accepted :plan command config
+                                (list (if (equal command "pins") :pins :obligations)))
+               (fn-nop-usage :unexpected-arguments command config rest)))
             ((equal command "recover")
              (if (null rest)
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
@@ -697,6 +723,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "run") :run)
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
+          ((equal (fn-native-operator-result-command result) "pins") :status)
+          ((equal (fn-native-operator-result-command result) "obligations") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((equal (fn-native-operator-result-command result) "store")
            (cond ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1033,3 +1061,36 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (:instance fn-nop-parse-command-checkpoint-action-words
                             (words (fn-nop-argument-texts argv))
                             (config nil) (argv argv))))))
+
+; The status report the operator asked for (books/native-live-status.lisp
+; renders it), the watch interval, and the control socket the running owner
+; answers on.  `peer list' is the fourth kind, reached through its
+; administrative query plan (`fn-native-operator-result-admin-plan').
+(defun fn-native-operator-result-status-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (member-equal (fn-native-operator-result-command result)
+                     '("status" "pins" "obligations"))
+       t))
+
+(defun fn-native-operator-result-status-kind (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-status-planp result)
+      (fn-ncfg-first (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-status-watch (result)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-status-planp result)
+           (equal (fn-ncfg-second (fn-native-operator-result-arguments result))
+                  :watch))
+      (fn-ncfg-third (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-status-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (or (fn-native-operator-result-status-planp result)
+          (fn-native-operator-result-admin-planp result))
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
