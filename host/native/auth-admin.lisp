@@ -437,7 +437,7 @@ production image, which refuses to start with the variable set."
 
 (defun fnn-native-auth-admin-execute (plan-result auth-path max-credentials)
   "Execute one ACL2-produced principal plan against AUTH-PATH.
-MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102).
+MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
   (unless (eq (fnn-native-auth-admin-core
                'fn-native-auth-admin-host-plan-status plan-result)
               :accepted)
