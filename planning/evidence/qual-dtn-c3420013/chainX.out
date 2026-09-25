@@ -1,0 +1,8 @@
+chainX pid 2353762 start 2026-09-25T01:51:20Z
+test_bp_node_native.NativeBpNodeTests.test_busy_application_defers_and_redelivers_after_backoff.dev-tests rc=1 FAILED (failures=1)
+test_bp_node_native.NativeBpNodeTests.test_permanently_busy_application_strands_row_until_recovery.dev-tests rc=1 FAILED (failures=1)
+test_bp_node_native.NativeBpNodeTests.test_uncertain_transfer_is_connection_local_and_resume_rearms.dev-tests rc=1 FAILED (failures=1)
+test_bp_obligation_native.NativeBpObligationTests.test_kill_between_attempt_and_outcome_then_recover_committed.dev-tests rc=1 FAILED (failures=1)
+test_bp_contact_relay_native.dev-tests rc=0 OK
+relay1-signed rc=0
+chainX end 2026-09-25T01:57:37Z
