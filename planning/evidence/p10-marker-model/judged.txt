@@ -1,0 +1,99 @@
+PASS frontier-created served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-created cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS frontier-written served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-written cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS frontier-staged-durable served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-staged-durable cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS frontier-replaced served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-replaced cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS frontier-attempted served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-attempted cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS frontier-durable served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-durable cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS frontier-reserved served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS frontier-reserved cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS record-created served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS record-created cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS record-written served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS record-written cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS record-staged-durable served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=
+PASS record-staged-durable cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS record-linked served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS record-linked cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS record-attempted served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS record-attempted cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS record-durable served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS record-durable cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS record-completing served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS record-completing cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS record-stage-unlinked served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS record-stage-unlinked cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS record-staging-cleaned served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS record-staging-cleaned cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS marker-created served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS marker-created cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS marker-written served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS marker-written cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS marker-staged-durable served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS marker-staged-durable cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS marker-replaced served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS marker-replaced cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS marker-durable served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS marker-durable cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS finish-consumed served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS finish-consumed cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS finish-durable served recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=
+PASS finish-durable cut_run recover=0 present=True prior=True cand_ident=True resubmit_rc=0 out=duplicate
+
+PASS recover-replayed served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-replayed cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-1 served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-1 cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-2 served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-2 cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-3 served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-3 cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-4 served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-4 cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-5 served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recover-barrier-5 cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recovery-stage-unlinked served recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+PASS recovery-stage-unlinked cut_run recover=0 present=False prior=True cand_ident=None resubmit_rc=0 out=committed sequence=1 charge=2
+
+passed 60 of 60
+
