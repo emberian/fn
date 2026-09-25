@@ -194,7 +194,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the human client.** LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1919, equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants.lisp:1590).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1919, equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants.lisp:1589).
 - Keystone: `fn-served-step-list-counts-is-the-archive-counts` (books/owner-list-counts-read.lisp:165; PRF-074 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T214755Z-939221` passed this source of `books/owner-list-counts-read.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/article-fields.lisp` and 47 more changed.
 - Tested: lane image of `lane/m6-list-counts` ([m6-list-counts-2026-09-24](evidence/m6-list-counts-2026-09-24.md)), profile developer image of the lane branch; not a shared qualification.
 - Deployed: no: node image `c3420013`; changed since it: `books/owner-invariants.lisp`, `host/owner-host.lisp`.

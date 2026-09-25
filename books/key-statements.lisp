@@ -1,6 +1,6 @@
 ; fn: key statements -- succession and revocation executed by the owner at
 ; acceptance (PRF-098; planning/evidence/spike-peering-2026-09-25.md,
-; theorems 2 and 3; the spike's reader-side poller tools/fn_peering.py
+; theorems 2 and 3; the spike's reader-side poller, spike/mega's tools/fn_peering.py (it does not exist on dev)
 ; keys-process is what this replaces).
 ;
 ; A key statement is an ordinary signed article in a group the operator's
