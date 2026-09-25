@@ -4233,6 +4233,18 @@
         "planning/evidence/manifests/certify-20260925T105118Z-4150165.json",
         "planning/evidence/manifests/certify-20260925T183424Z-3570225.json",
         "tests/test_native_peer_invite.py"
+      ],
+      "events": [
+        "fn-pinv-accept-step-enrols-only-a-bound-invitation",
+        "fn-pinv-issue-plan-records-the-signed-invitation",
+        "fn-pinv-confirm-consumes-only-a-pending-named-invitation",
+        "fn-pinv-confirm-step-enrols-only-the-consuming-acceptance",
+        "fn-pinv-consumed-stays-consumed-across-replay",
+        "fn-pinv-consumed-refuses-consumption",
+        "fn-pinv-consumption-consumes",
+        "fn-pinv-confirm-after-its-consumption-enrols",
+        "fn-pinv-confirm-step-never-enrols-twice",
+        "fn-pinv-field-is-a-body-line"
       ]
     }
   ]
