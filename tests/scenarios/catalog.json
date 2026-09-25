@@ -1512,12 +1512,12 @@
       ]
     },
     {
-      "id": "SCN-052",
+      "id": "SCN-055",
       "title": "XPAT is listed, joins its pattern arguments, ORs comma alternatives and matches case-sensitively on the served node",
       "milestone": "M6",
       "status": "implemented",
       "requirements": [
-        "NNT-014"
+        "NNT-016"
       ],
       "steps": [
         "CAPABILITIES on a served connection.",

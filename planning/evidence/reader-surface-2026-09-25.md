@@ -1,7 +1,7 @@
 # Reader surface from the spike, as proved packets — 2026-09-25
 
 Lane `reader-surface` (branch `lane/reader-surface`, from dev `00b0a846`),
-PRF-110, requirement NNT-014, scenario SCN-052. Brief:
+PRF-110, requirement NNT-016, scenario SCN-055. Brief:
 `build/coordinator/queue/reader-surface.txt`. The spike record
 (`spike/mega:planning/evidence/spike-reader-2026-09-25.md`) was the
 specification; nothing was merged from the spike branch except the two test

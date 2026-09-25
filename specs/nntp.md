@@ -102,7 +102,7 @@ than as a second implementation:
   one, and advertising it is a promise about `LIST HEADERS` too (§3.3.2),
   which is why `LIST HEADERS` stopped answering 503 in the same change.
 
-NNT-014: XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step
+NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step
 
 - `XPAT` is RFC 2980 §2.9 and has no RFC 3977 spelling a client could
   discover instead, so fn lists it as a private-extension label (RFC 3977
