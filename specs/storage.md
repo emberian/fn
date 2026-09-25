@@ -174,6 +174,44 @@ opening the seed's empty node. The negative composed trace in
 `tests/acl2/store-identity-traces-tests.lisp` exercises this separation;
 fresh certification and native corrupt-history startup evidence remain open.
 
+
+### Checkpointing: the Store checkpoint that open reads (P3, 2026-09-25)
+
+The Store checkpoint is the exact state of the open after a committed prefix
+of S records: the record list itself and the accumulator of each fold the
+open runs (`fn-sco-capture`, books/store-checkpoint-open.lisp: the
+configuration and node fold paused at the prefix end, identity, consumer
+projection, topic prefix, event index). It removes no record, so it is
+packing plus a cache and D13 is not a precondition. It is derived: replay
+stays authoritative, and the file may be deleted at any time.
+
+- **Bytes.** One file, `store-checkpoint.fnsc` in the store root: FNSC
+  segment frames (header 37 octets: magic, schema 2, index, count, length,
+  sequence S as u64; the chunk; a trailer `fn-frame-trailer` over the
+  previous trailer, the header and the chunk). Each segment is at most the
+  profile's max-record-octets R plus 69 octets, so each is one bounded read.
+  The payload is a postfix program for a stack machine
+  (books/store-checkpoint-codec.lisp); the decoder is a loop with an
+  explicit stack and never calls the Lisp reader.
+- **Publish.** `fn-bs-scp-program`: stage, write, fsync, rename over the
+  name, root fsync, with cuts `state-checkpoint-created`, `-written`,
+  `-staged-durable`, `-replaced`, `-durable`. At every cut the name is the
+  old file, absent, or the new octets (`fn-bs-scp-program-crash-is-old-or-new`).
+  The verb is `operator store checkpoint` (store lock held); it extends the
+  checkpoint the open used over the suffix (`fn-sco-extend-of-capture`).
+- **Open.** The host reads the file segment by segment (range reads, under
+  A-HOST-EXCLUSIVE-READ), decodes it, and `fn-sco-select` serves it only
+  when the chain verified, S is at most the committed count, and the suffix
+  is at most K (max-open-suffix). It then reads only the transaction files
+  with sequence at least S and calls `fn-sco-open`, which equals the full
+  open of the whole history (`fn-sn-recover-from-checkpoint-equals-full-recover`).
+  Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
+  or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
+  suffix-exceeds-k).
+- **Not yet.** The owner's serve path (`fnn-owner-install`) still replays
+  the whole history; the owner does not yet publish at K/2; K0 coverage of
+  the publish program's root rename is open.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
