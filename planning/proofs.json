@@ -3262,7 +3262,7 @@
     {
       "id": "PRF-079",
       "title": "A held bundle is offered only to the routed hop, over the step the host calls; unrouted bundles stay held and are reported; the decision is deterministic in the table",
-      "statement": "fn-bpnp-step-offers-only-the-routed-hop: for a routed :session event (:session PEER S t MRU OBS (:via HOP ANNOUNCED TABLE)) to fn-bpnp-step (host/native/bp-service.lisp fnn-bps-foundation-step, from host/native/bp-node.lisp fnn-bpnode-forward-session), a :persist-attempt effect is for the row the arrival-order scan chose, and fn-bprt-next-hop of that row's own destination EID text over TABLE and live set (HOP) is HOP, the route fn-bprt-hop-route is a member of TABLE whose pattern matches the destination and whose boundary is HOP, and ANNOUNCED is the octets of that route's enrolled EID. fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported: if the issued operation is not uncertain, the scan is ready and no route in TABLE matches the chosen row's destination, the step's only effect is (:forward-no-route ARRIVAL HOP :no-route) and the held list is unchanged. fn-bprt-next-hop-deterministic-in-the-table: two tables whose routes matching DEST are the same set give DEST the same answer. fn-bprt-next-hop-names-a-live-matching-route: a boundary answer is the boundary of a live matching route in the table. Covered scope: the 7-field routed :session arm; the 6-field form and :resume are not gated and are not sent open by the host; LIVE is the single session's hop.",
+      "statement": "fn-bpnp-step-offers-only-the-routed-hop: for a routed :session event (:session PEER S t MRU OBS (:via HOP ANNOUNCED TABLE)) to fn-bpnp-step (host/native/bp-service.lisp fnn-bps-foundation-step, from host/native/bp-node.lisp fnn-bpnode-forward-session), a :persist-attempt effect is for the row the arrival-order scan chose, and fn-bprt-next-hop of that row's own destination EID text over TABLE and live set (HOP) is HOP, the route fn-bprt-hop-route is a member of TABLE whose pattern matches the destination and whose boundary is HOP, and ANNOUNCED is the octets of that route's enrolled EID. fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported: if the issued operation is not uncertain, no row the table routes to HOP is ready, the scan over every held row is ready and no route in TABLE matches that row's destination, the step's only effect is (:forward-no-route ARRIVAL HOP :no-route) and the held list is unchanged. fn-bprt-next-hop-deterministic-in-the-table: two tables whose routes matching DEST are the same set give DEST the same answer. fn-bprt-next-hop-names-a-live-matching-route: a boundary answer is the boundary of a live matching route in the table. Covered scope: the 7-field routed :session arm and the :resume arm with VIA scan only the rows the table routes to HOP (PRF-103); a :session open or :resume without VIA offers nothing; LIVE is the single session's hop.",
       "milestone": "M4",
       "requirements": [
         "REP-007"
@@ -3558,6 +3558,52 @@
         "fn-ccar-seek-finds-a-store-event",
         "fn-icar-path-is-path-of",
         "fn-icar-submission-targets-is-submission-targets"
+      ]
+    },
+    {
+      "id": "PRF-103",
+      "title": "Queued base jobs are offered only to their routed hop, each at most once per contact; the routed session scans only routed rows and the ungated forms offer nothing",
+      "statement": "fn-bpnp-contact-offer-is-the-routed-hop: when fn-bpnp-contact-next (asked by host/native/bp-service.lisp fnn-bpc-drive-contact before every offer of a base contact, for bp-service run/resume, bp-obligation request, bp-contact tick and bp-node serve) answers an offer with routing (:table TABLE) in force, fn-bpnp-step on its event (host/native/bp-service.lisp fnn-bps-foundation-step), for a well-formed base and a journal token below its bound, persists exactly the :attempting record of the peer's first queued job, the :cl-send it owes carries that job's durable route, and that route is the one fn-bprt-send-decision names over TABLE: the contact port of the boundary fn-bprt-next-hop chooses for the destination among the boundaries with a contact; the EID the host passes as the expected TCPCL peer is the decision's. fn-bpnp-contact-holds-an-unrouted-job: with no route matching the destination the driver never offers. fn-bpnp-contact-offers-each-job-at-most-once: along any sequence of states the host consults it at, threading OFFERED, the keys one contact offers are distinct and none was offered before. fn-bpnp-contact-closes-only-when-nothing-owed-remains: with the peer an EID, nothing issued, no delivery uncertain, the base neither fenced nor pending and a queued job for the peer, a close means that job's key is in OFFERED; fn-bpn-apply-record-keeps-forwarded: no lifecycle record returns a :forwarded job to :queued, so a job queued again after its offer had a transfer that was not accepted. fn-bpnp-step-session-offer-is-the-scan-choice (restated) and fn-bpnp-routed-rows-skip-an-unrouted-row: a routed :session proposes the row the arrival-order scan chooses among the held rows the table routes to its hop, so an unrouted older row never blocks a younger routed one; a :session open or :resume without VIA offers nothing. Covered scope: queue-time routing is host-driven through fn-bprt-job-route and a job is not queued without a route; a table change after queueing holds the job (:route-changed) and a durable re-route record is open; verbs without a Store keep the queued address; the contact host is loopback.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-007",
+        "RET-003"
+      ],
+      "depends_on": [
+        "PRF-079",
+        "PRF-082"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-route-jobs.lisp",
+        "books/bp-node-contact-driver.lisp",
+        "tests/acl2/bp-node-contact-driver-tests.lisp",
+        "tests/acl2/bp-route-jobs-tests.lisp",
+        "books/bp-node-progress.lisp",
+        "books/bp-route-step.lisp",
+        "books/bp-node-forward-retry.lisp",
+        "tests/acl2/bp-route-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "host/native/bp-obligation.lisp",
+        "host/native/bp-contact.lisp",
+        "specs/bp-node-machine.md",
+        "tests/test_bp_node_native.py",
+        "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
+        "planning/evidence/bp-routing-2-2026-09-25.md"
+      ],
+      "events": [
+        "fn-bpnp-contact-offer-is-the-routed-hop",
+        "fn-bpnp-contact-holds-an-unrouted-job",
+        "fn-bpnp-contact-offers-each-job-at-most-once",
+        "fn-bpnp-contact-closes-only-when-nothing-owed-remains",
+        "fn-bpn-apply-record-keeps-forwarded",
+        "fn-bpnp-routed-rows-skip-an-unrouted-row",
+        "fn-bpnp-step-session-offer-is-the-scan-choice"
       ]
     }
   ]
