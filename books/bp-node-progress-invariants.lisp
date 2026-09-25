@@ -38,7 +38,13 @@
                          (:instance fn-bpnp-held-primary-true-listp))
            :in-theory (e/d (fn-bpnp-held-expiry fn-bpah-held-expiry)
                            (fn-bpnf-heldp fn-bpb-bundlep
-                            fn-bpnp-primary))))
+                            fn-bpnp-primary
+                            fn-bpf-fragment-listp-is-a-true-list
+                            fn-cp-idp-true-listp
+                            fn-nntp-response-text-true-listp
+                            fn-bpn-report-bounded-append-suffix
+                            fn-bpf-fragment-listp-car-and-cdr
+                            fn-bpf-fragmentp-fields))))
   :rule-classes nil)
 
 (defthm fn-bpnp-local-class-refines-a3
@@ -49,5 +55,11 @@
            :in-theory (e/d (fn-bpnp-local-class fn-bpah-held-class
                             fn-bpah-held-adu-result)
                            (fn-bpnf-heldp fn-bpb-bundlep
-                            fn-bpnp-payload fn-bpa-decode-exact))))
+                            fn-bpnp-payload fn-bpa-decode-exact
+                            fn-bpf-fragment-listp-is-a-true-list
+                            fn-cp-idp-true-listp
+                            fn-nntp-response-text-true-listp
+                            fn-bpn-report-bounded-append-suffix
+                            fn-bpf-fragment-listp-car-and-cdr
+                            fn-bpf-fragmentp-fields))))
   :rule-classes nil)

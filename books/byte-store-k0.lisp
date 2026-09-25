@@ -242,7 +242,17 @@
                             fn-bs-replay-visiblep)
                            (fn-bs-run fn-bs-store-relation fn-bs-record-inputp
                             fn-sf-record-link-result fn-sf-record-file-result fn-sf-record-dir-result
-                            fn-bs-durable-records fn-bs-pending-matches-phase fn-bs-apply-ops)))))
+                            fn-bs-durable-records fn-bs-pending-matches-phase fn-bs-apply-ops
+                            ;; The :use instances name every (nth k run) this
+                            ;; proof reads; opening nth, and the NNTP and wire
+                            ;; rules that fire on any consp goal, only searched
+                            ;; (2.4 s -> 1.6 s, persvati REPL).
+                            nth member-equal fn-bs-ops-not-for-dir
+                            fn-nntp-article-idp-is-consp
+                            fn-snrt-new-success-is-actual-matching-durable-completion
+                            fn-wire-next-loop-event-needs-input fn-wire-next-event-needs-input
+                            fn-nntp-newnews-candidate-is-projectable
+                            fn-nntp-available-number-article-is-projectable)))))
 (defun fn-bs-finish-inputp (ks sequence txid)
   (declare (xargs :guard t :verify-guards nil))
   (and (equal (fn-sf-phase ks) :completing)
@@ -539,4 +549,10 @@
                             fn-bs-writes-knownp fn-bs-writes-nonemptyp fn-bs-opp fn-bs-op-listp fn-bs-entry-valuep fn-bs-namep fn-bs-fencedp)
                            (fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep
                             fn-bs-contiguous-namesp fn-bs-inode-list-knownp
-                            fn-bs-all-fencedp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
+                            fn-bs-all-fencedp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
+                            fn-bs-k8-name-absent-from-list-has-no-entry
+                            fn-nntp-article-idp-is-consp
+                            fn-snrt-new-success-is-actual-matching-durable-completion
+                            fn-wire-next-loop-event-needs-input fn-wire-next-event-needs-input
+                            fn-nntp-newnews-candidate-is-projectable
+                            fn-nntp-available-number-article-is-projectable)))))
