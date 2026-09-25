@@ -355,7 +355,10 @@
                                                  fn-bpnp-session)
                             (fn-bpp-eidp fn-bpnp-session-idp
                              fn-clock-observationp fn-bpnf-host-eventp
-                             fn-bpnp-routesp fn-bpnp-forward-outcomep))))))
+                             fn-bpnp-routesp fn-bpnp-forward-outcomep
+                             fn-bpnp-budgeted-lengthp fn-bpnp-session-via
+                             fn-bpnp-session-base-length fn-bprt-viap
+                             fn-bpnp-budgetsp))))))
 
 ;; The host event supplies the delegated arms' own premises.
 (local
