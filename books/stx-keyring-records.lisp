@@ -204,7 +204,8 @@
       (cond
        ((not snapshot)
         (fn-stxk-fault ctx :missing-keyring-generation))
-       ((not (equal (fn-stxe-profile e) (fn-stxk-profile snapshot)))
+       ((not (equal (fn-stxe-keyring-profile (fn-stxe-profile e))
+                    (fn-stxk-profile snapshot)))
         (fn-stxk-fault ctx :keyring-profile-mismatch))
        (t
         (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
