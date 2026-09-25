@@ -640,9 +640,8 @@
                             (old-raw (fn-own-view-raw (fn-own-view o)))
                             (new-p (fn-node-acceptance (fn-sn-node (fn-own-store o))))
                             (verdicts (fn-sn-verdicts (fn-own-store o)))
-                            (cfg (fn-own-refresh-config
-                                  (fn-own-store o)
-                                  (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))
+                            (configs (fn-sn-config-history (fn-own-store o)))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
                             fn-gidx-build)
                            (fn-own-conns-okp fn-own-view-make-group-indexed
