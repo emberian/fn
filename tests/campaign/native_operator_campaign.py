@@ -299,9 +299,9 @@ def reread(node: Node, candidate: bytes, out: dict, injected: bool):
     The candidate is resubmitted through the entry that first submitted it:
     `operator CFG post` to the restarted owner when the owner injected it,
     `store ROOT post` after the owner stops otherwise.  The two entries store
-    different octets for one payload; under D25 the Store compares the
-    poster's bytes, so a retry through the other entry is still the
-    duplicate (the `cross-entry-retry` fault row).
+    different octets for one payload, and a raw record carries no injection
+    block to read a poster's source back from, so a retry through the other
+    entry is the conflict (the `cross-entry-retry` fault row).
     """
     checks = (("prior", PRIOR_ID, node.prior_stored, False),
               ("candidate", CANDIDATE_ID, candidate, injected))
@@ -589,12 +589,16 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         rows.append(row)
 
     # Since a0b6d41f the owner injects what `operator CFG post` hands it and
-    # `store ROOT post` stores the payload as read.  Under D25 the Store
-    # compares the poster's bytes, not the stored copy, so one payload
-    # through the two entries is one article: the second submission is the
-    # duplicate.  A third submission, through the second entry, changes one
-    # authored byte (the Subject) under the same Message-ID: the conflict.
-    # Each order, with no fault.
+    # `store ROOT post` stores the payload as read, with no injection block.
+    # The D25 inverse (books/poster-bytes.lisp fn-pb-same-articlep) compares
+    # poster sources only when both copies give one back under the
+    # submission's own injecting agent; a raw record gives none, so the two
+    # copies are compared octet for octet and never widened across profiles.
+    # So, each order, with no fault: the same payload again through the same
+    # entry is the duplicate; the same payload through the other entry is the
+    # conflict; one changed authored byte (the Subject) under the same
+    # Message-ID through the first entry is the conflict.  Neither conflict
+    # writes anything.
     changed = candidate.with_name("candidate-changed.art")
     changed.write_bytes(article(CANDIDATE_ID, "candidatf", "candidate content"))
     for first, second in (("store", "operator"), ("operator", "store")):
@@ -602,8 +606,9 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         try:
             owner = None
             for entry, label, payload in ((first, "first", candidate),
+                                          (first, "again", candidate),
                                           (second, "second", candidate),
-                                          (second, "changed", changed)):
+                                          (first, "changed", changed)):
                 if entry == "operator":
                     owner = node.start_owner()
                     row[label] = public(node.post(CANDIDATE_ID, payload))
