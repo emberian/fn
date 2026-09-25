@@ -395,6 +395,9 @@ class Acl2Store:
             # The store bridge's record dispatchers call the concrete twins.
             self.call('(include-book "books/records-concrete")')
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            # SPIKE (D28, spike/storage): the fast fold and stub-aware D25
+            # that host/store-node-host.lisp now calls.
+            self.call('(ld "host/spike-storage-fast-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/checkpoint-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/anchor-host.lisp" :ld-error-action :return :ld-error-triples t)')

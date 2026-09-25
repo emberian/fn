@@ -437,6 +437,10 @@
 (defun fn-store-profile-max-article-octets (values)
   (fn-bs-profile-max-article-octets values))
 
+;; R, the segment size of the state checkpoint (P3).
+(defun fn-store-profile-max-record-octets (values)
+  (fn-bs-profile-max-record-octets values))
+
 (defun fn-store-profile-report (values)
   (fn-bs-profile-report values))
 
