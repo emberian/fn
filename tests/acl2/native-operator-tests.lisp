@@ -394,7 +394,9 @@
                                               (fn-nop-test-argv '("init"))))
                      5))
 ; `fn-record-group-namep` bounds a name at *fn-record-max-group-name* octets.
-(defconst *fn-nop-overlong-group* "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
+(defconst *fn-nop-overlong-group*
+  (coerce (make-list (+ 1 *fn-record-max-group-name*) :initial-element #\g)
+          'string))
 (assert-event (equal (length *fn-nop-overlong-group*)
                      (+ 1 *fn-record-max-group-name*)))
 (assert-event (not (fn-record-group-namep *fn-nop-overlong-group*)))
