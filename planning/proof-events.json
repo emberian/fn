@@ -4105,6 +4105,163 @@
           "name": "fn-node-binding-listp-is-shape-and-distinct"
         }
       ]
+    },
+    {
+      "id": "PRF-098",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-item-separates-the-five-tokens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-item-first-octet-names-the-token"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-item-is-verified-only-for-verified"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verdict-is-never-revoked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stxe-code-token-of-token-code"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stxe-token-code-of-code-token"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-article-event-revoked-bindsp-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-article-event-revoked-is-not-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-article-event-revoked-binds-no-snapshot"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-keyring-snapshot-value-of-keyring-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hl-next-generation-is-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hl-revoke-event-is-the-principals-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hl-enroll-event-enrolls-its-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-current-plan-outcomes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-current-plan-off-the-transit-arms-is-the-d02-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-current-plan-off-transit-never-revoked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-no-ok-plan-for-a-revoked-principal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revocation-leaves-no-ok-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revoked-event-binds-the-arm-and-both-observations"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-replay-records-a-revoked-composite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-carried-composite-keeps-the-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-revoked-composite-keeps-the-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-plan-acts-only-on-a-verified-granted-statement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-carried-or-revoked-statement-never-changes-a-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-plan-old-key-was-the-current-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-plan-pop-binds-the-new-keys-to-the-statement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-succession-selects-the-new-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-succession-refuses-other-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-succession-refuses-the-old-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-revocation-leaves-no-ok-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-hybrid-control-enroll-next-event-is-at-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-hybrid-control-revoke-next-event-is-at-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-execute-is-idempotent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recover-completes-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
+        }
+      ]
     }
   ]
 }
