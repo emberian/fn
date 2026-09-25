@@ -74,7 +74,8 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
                "image names :nntp-service and :control in *fnn-image-omitted-surfaces*, "
                "so the operator refuses `post` (exit 5) and never takes the live arm"
          for name in ("fn-native-control-host-status-class",
-                      "fn-native-control-host-status-exit-code")}),
+                      "fn-native-control-host-status-exit-code",
+                      "fn-native-control-host-refusal-status")}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
     "host/topic-history-metadata-host.lisp": (

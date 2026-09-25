@@ -1,0 +1,47 @@
+# tree /tank/fn/scratch/bounds-p4/gate-e2b17943 label p4only-large large=large start 2026-09-25T03:50:15Z
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_NATIVE_HOST=/tank/fn/scratch/bounds-p4/gate-e2b17943/build/fn-host-developer
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_VERIFY_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/qual-4eca4148/bin/test-openssl
+# env FN_VERIFY_LARGE=1
+# env FN_VERIFY_OLD_HOST=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host-developer
+# env PATH=/tank/fn/scratch/qual-4eca4148/bin:/home/hbox/.local/share/solana/install/active_release/bin:/home/hbox/.elan/bin:/home/hbox/.cargo/bin:/home/hbox/src/HOL/bin:/home/hbox/r05/cake-x64-64:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+test_a_carried_article_is_undecided_3_never_0_or_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_carried_article_is_undecided_3_never_0_or_1) ... ok
+test_a_lying_node_is_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2) ... ok
+test_agreement_on_a_valid_signature_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0) ... ok
+test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1) ... ok
+test_carrier_v1_now_carries_up_to_65535_octets (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v1_now_carries_up_to_65535_octets) ... ok
+test_carrier_v2_tampered_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_tampered_is_1) ... ok
+test_carrier_v2_valid_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_valid_is_0) ... ok
+test_carrier_wrong_version_byte_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_wrong_version_byte_is_refused) ... ok
+test_noncanonical_carrier_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused) ... ok
+test_the_versions_sign_disjoint_preimages (tests.test_fn_verify.FakeNodeVerifyTests.test_the_versions_sign_disjoint_preimages) ... ok
+test_usage_error_never_reads_as_disagreement (tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement) ... ok
+test_what_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3) ... ok
+setUpClass (tests.test_fn_verify.NativeVerifyTests) ... ERROR
+test_a_changed_v2_tag_or_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught) ... ok
+test_a_changed_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_width_is_caught) ... ok
+test_a_field_the_spec_forgets_to_drop_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_field_the_spec_forgets_to_drop_is_caught) ... ok
+test_a_renamed_function_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_renamed_function_is_caught) ... ok
+test_the_spec_the_books_and_the_verifier_agree (tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree) ... ok
+
+======================================================================
+ERROR: setUpClass (tests.test_fn_verify.NativeVerifyTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-p4/gate-e2b17943/tests/test_fn_verify.py", line 631, in setUpClass
+    octets = cls.sign(stem, source) if signed else source
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-p4/gate-e2b17943/tests/test_fn_verify.py", line 641, in sign
+    cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public, cls.ed_secret,
+  File "/tank/fn/scratch/bounds-p4/gate-e2b17943/tests/test_fn_verify.py", line 540, in invoke
+    raise AssertionError("{} -> {}: {}".format(args[:2], result.returncode,
+AssertionError: ('hybrid-sign-carrier', PosixPath('/tmp/fn-verify-native-hph15yq6/principal.bin')) -> 4: store: internal error: native crypto: hybrid signed preimage is not bounded to 34820 octets
+
+
+----------------------------------------------------------------------
+Ran 17 tests in 4.412s
+
+FAILED (errors=1)
+# end 2026-09-25T03:50:20Z

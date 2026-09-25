@@ -223,9 +223,16 @@
                  (fn-post-single
                   ps (fn-post-refusal-line (fn-inj-decision-reason decision)))
                  nil)))
+          ; The wire closed the article at the served body limit (the
+          ; profile's article bound, `fn-own-body-limit'; books/wire.lisp
+          ; `fn-wire-close' :body-overlimit): the refusal names the size, the
+          ; same line an injection :oversize gives.  Any other event is an
+          ; article that was not received.
           (fn-post-make-result
            (fn-post-make-session (fn-post-session-base ps) nil)
-           (fn-post-single ps "441 posting failed; the article was not received")
+           (fn-post-single ps (if (equal wire-event '(:reject :body-overlimit))
+                                  (fn-post-refusal-line :oversize)
+                                "441 posting failed; the article was not received"))
            nil))
       ; The reader environment is built here, where the dispatcher is called:
       ; the connection's pinned clock observation and the persisted
@@ -293,36 +300,44 @@
                        :control-not-filed :control-malformed :control-signed))
        t))
 
-(defun fn-post-store-refusal-line (kind)
+; The reason text of a Store refusal, one per kind: the one table.  POST's
+; 441 line (below) and IHAVE's 437 line (books/peer-inbound.lisp
+; fn-peer-transit-refusal-line) both render it after their own code, so a
+; poster and a relaying peer read the same reason for the same word.
+(defun fn-post-store-refusal-text (kind)
   (declare (xargs :guard t))
   (cond
    ((equal kind :duplicate)
-    "441 posting failed; this article is already stored here")
+    "this article is already stored here")
    ((equal kind :conflict)
-    "441 posting failed; a different article with this Message-ID is stored here")
+    "a different article with this Message-ID is stored here")
    ((equal kind :malformed)
-    "441 posting failed; the store refused the article as malformed")
+    "the store refused the article as malformed")
    ((equal kind :unaffordable)
-    "441 posting failed; the store has no capacity for this article")
+    "the store has no capacity for this article")
    ((equal kind :storage-failed)
-    "441 posting failed; the store could not write the article, nothing was stored")
+    "the store could not write the article, nothing was stored")
    ((equal kind :article)
-    "441 posting failed; the article carrying FN-Authorship does not parse")
+    "the article carrying FN-Authorship does not parse")
    ((equal kind :carrier)
-    "441 posting failed; the FN-Authorship carrier is malformed")
+    "the FN-Authorship carrier is malformed")
    ((equal kind :carrier-shape)
-    "441 posting failed; the FN-Authorship carrier has the wrong shape")
+    "the FN-Authorship carrier has the wrong shape")
    ((equal kind :local-enrollment)
-    "441 posting failed; the signer has no current enrollment here (local-enrollment)")
+    "the signer has no current enrollment here (local-enrollment)")
    ((equal kind :signature)
-    "441 posting failed; the author signature does not verify")
+    "the author signature does not verify")
    ((equal kind :control-not-filed)
-    "441 posting failed; control message not filed: its control group is not configured here (control-not-filed)")
+    "control message not filed: its control group is not configured here (control-not-filed)")
    ((equal kind :control-malformed)
-    "441 posting failed; the Control header field is malformed (control-malformed)")
+    "the Control header field is malformed (control-malformed)")
    ((equal kind :control-signed)
-    "441 posting failed; a signed control message cannot be filed here yet (control-signed)")
-   (t "441 posting failed; the article was refused")))
+    "a signed control message cannot be filed here yet (control-signed)")
+   (t "the article was refused")))
+
+(defun fn-post-store-refusal-line (kind)
+  (declare (xargs :guard t))
+  (string-append "441 posting failed; " (fn-post-store-refusal-text kind)))
 
 (defconst *fn-post-malformed-session-line*
   "403 internal fault; the posting session is malformed")
@@ -353,6 +368,7 @@
 (verify-guards fn-post-offeredp)
 (verify-guards fn-post-refusal-line)
 (verify-guards fn-post-store-refusalp)
+(verify-guards fn-post-store-refusal-text)
 (verify-guards fn-post-store-refusal-line)
 (verify-guards fn-post-body-octets)
 (verify-guards fn-post-single)
@@ -674,7 +690,7 @@
 (deftheory fn-nntp-post-vocabulary
   (quote (fn-post-sessionp fn-post-open-session fn-post-session-consistentp
           fn-post-offeredp fn-post-refusal-line fn-post-single
-          fn-post-store-refusalp fn-post-store-refusal-line
+          fn-post-store-refusalp fn-post-store-refusal-text fn-post-store-refusal-line
           fn-post-body-octets
           fn-nntp-post-step fn-nntp-post-outcome)))
 

@@ -140,6 +140,12 @@
            :in-theory (disable fn-bpnp-forward-scan fn-bpnp-stranded-effects
                                fn-bpn-machine-statep
                                fn-bpb-bundlep fn-bpnf-heldp))))
+(verify-guards fn-bpnp-routed-start
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpnp-forward-scan fn-bpnp-start-one
+                               fn-bprt-offer-decision fn-bpaj-eid-text
+                               fn-bpnp-primary fn-bpn-machine-statep
+                               fn-bpb-bundlep fn-bpnf-heldp))))
 (verify-guards fn-bpnp-attempt-persist-step)
 (verify-guards fn-bpnp-find-attempt)
 (verify-guards fn-bpnp-forward-result-propose-step)
@@ -168,6 +174,10 @@
                                fn-bpnp-deferral-effects fn-bpnp-wait-key
                                fn-bpnf-operation-matchp fn-bpnf-operation))))
 (verify-guards fn-bpnp-busy-resume-step)
+(verify-guards fn-bpnr-checkpoint-of-statep)
+(verify-guards fn-bpnp-rotation-quiescentp)
+(verify-guards fn-bpnp-rotate-step)
+(verify-guards fn-bpnp-rotation-persist-step)
 (verify-guards fn-bpnp-host-eventp)
 (verify-guards fn-bpnp-preserve-runtime-answer)
 ;; The proposal state keeps the base it was given whenever it carries an
@@ -380,7 +390,8 @@
            :in-theory (disable fn-bpnp-host-eventp fn-bpnf-host-eventp
                                fn-bpn-machine-eventp fn-bpn-machine-statep
                                fn-bpnp-session-listp fn-bpnp-find-session
-                               fn-bpnp-start-one fn-bpnp-delegate-with-credit
+                               fn-bpnp-start-one fn-bpnp-routed-start
+                               fn-bpnp-delegate-with-credit
                                fn-bpn-nth-is-nth-on-true-lists
                                fn-bpf-fragment-listp-is-a-true-list
                                fn-bpf-fragment-listp fn-bpf-fragmentp fn-cp-idp

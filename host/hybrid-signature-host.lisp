@@ -13,15 +13,34 @@
   (fn-hc-render-at-most *fn-article-max-octets*
                         source principal keys signatures))
 
+; The carrier version is ACL2's (`fn-hsig-source-version'): v1 up to the
+; u16's 65535 source octets, v2 above.  A received carrier was decoded at
+; that same version (`fn-hc-received-plan'), so the host never classifies.
 (defun fn-hsig-host-preimage (principal keys source)
   (declare (xargs :mode :program))
-  (if (fn-hsig-subject-p principal keys source)
-      (fn-hsig-signed-preimage principal keys source)
-    nil))
+  (let ((version (fn-hsig-source-version source)))
+    (if (fn-hsig-subject-at-p version principal keys source)
+        (fn-hsig-signed-preimage-at version principal keys source)
+      nil)))
 
+; The widest authored source a signer or author request may hand ACL2: the
+; v2 carrier's u32 length (a codec width, D27).  Whether a node accepts the
+; article is the store profile's article bound, decided at injection.
 (defun fn-hsig-host-max-source-octets ()
   (declare (xargs :mode :program))
-  *fn-article-max-octets*)
+  *fn-hsig-v2-max-source*)
+
+;; The widest preimage ACL2 hands the primitives: the v2 layout of
+;; specs/identity.md "The signed bytes" (CBOR head 2, tag, version, suite,
+;; principal 32, algorithm, Ed25519 key, algorithm, ML-DSA-65 key, u32 length
+;; 4) over the widest v2 source.  A v1 preimage is two octets shorter than
+;; the v2 one over the same source.  host/native/signatures.lisp enforces it.
+(defun fn-hsig-host-max-preimage-octets ()
+  (declare (xargs :mode :program))
+  (+ 2 (len *fn-hsig-v2-domain-tag*) 1 1 32
+     1 *fn-hsig-ed25519-public-key-octets*
+     1 *fn-hsig-ml-dsa-65-public-key-octets*
+     4 *fn-hsig-v2-max-source*))
 
 (defun fn-hsig-host-max-received-octets ()
   (declare (xargs :mode :program))
@@ -34,7 +53,8 @@
 (defun fn-hsig-host-authorize
     (principal keys source signatures observed-ml-key ed ml)
   (declare (xargs :mode :program))
-  (fn-hsig-authorize principal keys source signatures observed-ml-key ed ml))
+  (fn-hsig-authorize-at (fn-hsig-source-version source)
+                        principal keys source signatures observed-ml-key ed ml))
 
 (defun fn-hsig-host-keyring-event
     (sequence txid generation keyring-generation principal keys)

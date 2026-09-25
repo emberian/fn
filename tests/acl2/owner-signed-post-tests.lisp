@@ -362,3 +362,93 @@
   (equal (ospt-reader-verdict *ospt-carried-completing*)
          (fn-stx-reader-item
           (fn-stx-make-verdict :verified *tha-principal* 0)))))
+
+; ---------------------------------------------------------------------------
+; fn-osp-transit-refusal-renders-its-reason, on a transit in flight.  The
+; owner is *ospt-taken* with its in-flight submission replaced by an IHAVE
+; transit on the same connection, id, version and mark, exactly as
+; tests/acl2/owner-tests.lisp own-fed-transit-on-connection builds one.
+(defun ospt-with-transit (o kind)
+  (let ((sub (fn-own-inflight o)))
+    (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                 (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                 (fn-own-config o) (fn-own-queue o)
+                 (fn-own-sub-make (fn-own-sub-id sub) (fn-own-sub-version sub)
+                                  (fn-own-sub-mark sub)
+                                  (fn-peer-make-submission
+                                   "p" kind (fn-nntp-string-octets *ospt-msgid*)
+                                   *tha-received*))
+                 (fn-own-feeds o))))
+(defconst *ospt-transit* (ospt-with-transit *ospt-taken* :ihave))
+(assert-event (fn-own-transit-subp (fn-own-inflight *ospt-transit*)))
+(assert-event (not (fn-own-completion-consumedp *ospt-transit*)))
+(defun ospt-transit-conclusion (o id kind detail)
+  (let* ((word (fn-pa-served-word :refused detail))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (r (fn-own-transit-outcome o id kind nil word)))
+    (and (equal word detail)
+         (equal (car r)
+                (fn-peer-single
+                 (fn-auth-session-base (fn-own-conn-session conn))
+                 (string-append "437 transfer rejected; "
+                                (fn-post-store-refusal-text detail))))
+         (equal (fn-own-store (cdr r)) (fn-own-store o))
+         (equal (fn-own-ledger (cdr r)) (fn-own-ledger o))
+         (equal (fn-own-feeds (cdr r)) (fn-own-feeds o)))))
+(assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster* :want
+                                       :control-not-filed))
+(assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster* :want
+                                       :local-enrollment))
+; On the wire: the reason POST's 441 names, after 437.
+(assert-event
+ (equal (fn-served-reply-octets
+         (car (fn-own-transit-outcome
+               *ospt-transit* *ospt-poster* :want nil
+               (fn-pa-served-word :refused :control-not-filed))))
+        (append (fn-nntp-string-octets
+                 "437 transfer rejected; control message not filed: its control group is not configured here (control-not-filed)")
+                '(13 10))))
+(assert-event
+ (equal (fn-post-store-refusal-line :control-not-filed)
+        "441 posting failed; control message not filed: its control group is not configured here (control-not-filed)"))
+; The word with no detail keeps its own line.
+(assert-event
+ (equal (fn-served-reply-octets
+         (car (fn-own-transit-outcome *ospt-transit* *ospt-poster* :want nil
+                                      (fn-pa-served-word :refused nil))))
+        (append (fn-nntp-string-octets
+                 "437 transfer rejected; refused by acceptance")
+                '(13 10))))
+; Without the reason in the relayed set: the word stays :refused.
+(must-fail (assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster*
+                                                  :want :duplicate)))
+; Without the in-flight submission being this connection's: reader A.
+(must-fail (assert-event (ospt-transit-conclusion *ospt-transit* 0 :want
+                                                  :control-not-filed)))
+; Without a transit submission: the POST in flight is fn-own-outcome's.
+(must-fail (assert-event (ospt-transit-conclusion *ospt-taken* *ospt-poster*
+                                                  :want :control-not-filed)))
+; Without IHAVE: TAKETHIS answers 439 with the Message-ID (RFC 4644 2.5).
+(must-fail (assert-event (ospt-transit-conclusion
+                          (ospt-with-transit *ospt-taken* :takethis)
+                          *ospt-poster* :want :control-not-filed)))
+; Without the :want decision: no attempt ran and the decision is rendered.
+(must-fail (assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster*
+                                                  :refuse :control-not-filed)))
+; Without a completion unconsumed: after the finish the word is :uncertain.
+(must-fail (assert-event (ospt-transit-conclusion
+                          (ospt-with-transit *ospt-finished* :ihave)
+                          *ospt-poster* :want :control-not-filed)))
+; Without the connection: the in-flight submission's connection is gone.
+(must-fail
+ (assert-event
+  (ospt-transit-conclusion
+   (fn-own-make (fn-own-store *ospt-transit*) (fn-own-view *ospt-transit*)
+                (fn-own-remove-conn *ospt-poster* (fn-own-conns *ospt-transit*))
+                (fn-own-next-id *ospt-transit*) (fn-own-max-conns *ospt-transit*)
+                (fn-own-pending *ospt-transit*) (fn-own-ledger *ospt-transit*)
+                (fn-own-clock *ospt-transit*) (fn-own-facts *ospt-transit*)
+                (fn-own-config *ospt-transit*) (fn-own-queue *ospt-transit*)
+                (fn-own-inflight *ospt-transit*) (fn-own-feeds *ospt-transit*))
+   *ospt-poster* :want :control-not-filed)))

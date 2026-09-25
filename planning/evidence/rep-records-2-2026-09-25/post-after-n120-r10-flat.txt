@@ -1,0 +1,54 @@
+
+Number of samples:   147
+Sample interval:     0.001 seconds
+Total sampling time: 0.147 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2415645 "fn-sprof" RUNNING {120F5D05C3}> (528/1048576 bytes, 4 hash buckets)
+   #<THREAD tid=2415648 "fn owner client" RUNNING {120FB9D163}> (33368/1048576 bytes, 126 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     14   9.5     14   9.5     14   9.5        -  foreign function fsync
+   4     10   6.8     10   6.8     24  16.3        -  FN-SHA256-W32
+   6      9   6.1      9   6.1     33  22.4        -  ASH
+   8      7   4.8      7   4.8     40  27.2        -  foreign function __write
+  10      6   4.1     30  20.4     46  31.3        -  FN-SHA256-ROUNDS
+  12      6   4.1     16  10.9     52  35.4        -  FN-SHA256-ROTR32
+  14      6   4.1      6   4.1     58  39.5        -  FN-SHA256-NTHX
+  16      5   3.4      5   3.4     63  42.9        -  foreign function __open64
+  18      4   2.7      4   2.7     67  45.6        -  foreign function clock_nanosleep
+  20      3   2.0      6   4.1     70  47.6        -  FN-SHA256-FIX-OCTETS
+  22      2   1.4     20  13.6     72  49.0        -  FN-SHA256-SCHEDULE-AUX
+  24      2   1.4      7   4.8     74  50.3        -  FN-SHA256-WORDS16
+  26      2   1.4      5   3.4     76  51.7        -  FN-SHA256-MAJ
+  28      2   1.4      4   2.7     78  53.1        -  FN-SHA256-APPX
+  30      2   1.4      3   2.0     80  54.4        -  FN-CBOR-OCTET-LISTP
+  32      2   1.4      2   1.4     82  55.8        -  SB-IMPL::MAYBE-MAKE-PATTERN
+  34      2   1.4      2   1.4     84  57.1        -  FN-SHA256-BYTE
+  36      2   1.4      2   1.4     86  58.5        -  FN-RECORD-STRING-OCTETS
+  38      2   1.4      2   1.4     88  59.9        -  SB-KERNEL:TWO-ARG-IOR
+  40      2   1.4      2   1.4     90  61.2        -  foreign function rename
+  42      2   1.4      2   1.4     92  62.6        -  SB-IMPL::APPEND2
+  44      2   1.4      2   1.4     94  63.9        -  (LAMBDA (FD OCTETS OFFSET COUNT) :IN "/tank/fn/scratch/rep-records-2/after-tree/host/native/io.lisp")
+  46      2   1.4      2   1.4     96  65.3        -  FN-GIDX-PUT
+  48      2   1.4      2   1.4     98  66.7        -  SB-KERNEL:TWO-ARG-XOR
+  50      2   1.4      2   1.4    100  68.0        -  SB-IMPL::LIST-REVERSE
+  52      2   1.4      2   1.4    102  69.4        -  GENERIC--
+  54      2   1.4      2   1.4    104  70.7        -  foreign function link
+  56      1   0.7    130  88.4    105  71.4        -  FNN-OWNER-DRAIN-ONE
+  58      1   0.7      7   4.8    106  72.1        -  FN-SHA256-SSIG0
+  60      1   0.7      2   1.4    107  72.8        -  FN-SHA256-SHR32
+  62      1   0.7      2   1.4    108  73.5        -  FN-RECORD-SHAPEP
+  64      1   0.7      2   1.4    109  74.1        -  FN-SHA256-FIRSTN
+  66      1   0.7      2   1.4    110  74.8        -  FN-RECORD-OCTETS-CHARS
+  68      1   0.7      2   1.4    111  75.5        -  FN-ARTICLE-ASCII-DOWNCASE
+  70      1   0.7      2   1.4    112  76.2        -  FN-RECORD-STRING-OCTETS-AUX
+  72      1   0.7      2   1.4    113  76.9        -  FN-AG-APPEND
+  74      1   0.7      1   0.7    114  77.6        -  foreign function memmove
+  76      1   0.7      1   0.7    115  78.2        -  foreign function __close
+  78      1   0.7      1   0.7    116  78.9        -  SB-KERNEL:TWO-ARG-<=
+  80      1   0.7      1   0.7    117  79.6        -  SYMBOL-PLIST
+------------------------------------------------------------------------
+          1   0.7                                     elsewhere

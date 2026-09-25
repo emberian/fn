@@ -1,6 +1,6 @@
 ;; fn: K0 at the campaign's cut coordinates (P10, lane p10-k0).
 ;;
-;; The general `fn-bs-program-step-preserves-relation' is NOT proved here and
+;; The general `fn-bs-step-preserves-k0-coverage' is NOT proved here and
 ;; is not claimed.  What this book proves is K0 restricted to cut
 ;; coordinates, from an ARBITRARY related state (retained history allowed),
 ;; under each program's typed input contract and an absent staging name:

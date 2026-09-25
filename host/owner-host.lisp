@@ -135,22 +135,6 @@
   (let ((oc (f-get-global 'fn-owner state)))
     (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
 
-; Native operator startup supplies the one posting-policy bit after recovery.
-; Preserve the agent, served groups and payload ceiling ACL2 already installed;
-; this changes the same fn-own-config value read by served POST and control.
-(defun fn-owner-posting-configure (allow state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (fn-owner-core state))
-         (cfg (fn-own-config owner))
-         (next (fn-inj-make-config (and allow t)
-                                   (fn-inj-config-agent cfg)
-                                   (fn-inj-config-groups cfg)
-                                   (fn-inj-config-max-octets cfg))))
-    (if (not (fn-inj-configp next))
-        (value :refused)
-      (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
-        (value :configured)))))
-
 (defun fn-owner-state (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-core state)))
@@ -232,8 +216,9 @@
 ; books/store-budget.lisp says why it is fixed at init.
 (defun fn-owner-install-profile (values state)
   (declare (xargs :stobjs state :mode :program))
-  (if (fn-bs-meta-config-valuesp values)
-      (let ((state (f-put-global 'fn-owner-store-profile values state)))
+  (if (fn-bs-profile-admittedp values)
+      (let* ((state (f-put-global 'fn-owner-store-profile values state))
+             (state (f-put-global 'fn-owner-record-octets nil state)))
         (value :installed))
     (value :refused)))
 
@@ -243,19 +228,74 @@
       (f-get-global 'fn-owner-store-profile state)
     nil))
 
-; The owner's verdict on one more record of KIND: its budget from the carried
-; profile against the count of the Store it carries.
+(defun fn-owner-served-post-bound (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
+    (if (posp bound) bound *fn-record-max-payload*)))
+
+; The served POST bound (D27): the carried Store profile's payload bound
+; (`fn-sbud-payload-bound', books/store-budget-naming, which never exceeds the
+; record codec's payload ceiling: `fn-sbud-payload-bound-within-record-codec'),
+; so the wire reads at most what the operator's profile admits.  Before a
+; profile is installed (recovery, where nothing is served and the budget is 0)
+; it is the codec ceiling `*fn-record-max-payload*'.
+;
+; Native operator startup supplies the one posting-policy bit after recovery
+; and after `fn-owner-install-profile'.  Preserve the agent and served groups
+; ACL2 already installed and set the served bound from the profile; this
+; changes the same fn-own-config value read by served POST and control.
+(defun fn-owner-posting-configure (allow state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (cfg (fn-own-config owner))
+         (next (fn-inj-make-config (and allow t)
+                                   (fn-inj-config-agent cfg)
+                                   (fn-inj-config-groups cfg)
+                                   (fn-owner-served-post-bound state))))
+    (if (not (fn-inj-configp next))
+        (value :refused)
+      (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
+        (value :configured)))))
+
+; The committed record octets of the carried Store, from the carried
+; (K . SUM) of the first K records extended by the records committed since
+; (books/store-budget.lisp `fn-sbud-bytes-extend'; equal to
+; `fn-sbud-bytes-used' when the cache is valid,
+; `fn-sbud-bytes-used-is-kernel-sum').  Committed records only grow while one
+; owner runs, and the cache is reset when a profile is installed at open, so
+; each record is encoded once per owner process, not once per POST.
+(defun fn-owner-record-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+         (cache (if (boundp-global 'fn-owner-record-octets state)
+                    (f-get-global 'fn-owner-record-octets state)
+                  nil))
+         (bytes (fn-sbud-bytes-extend cache records))
+         (state (f-put-global 'fn-owner-record-octets
+                              (cons (len records) bytes) state)))
+    (mv bytes state)))
+
+; The owner's verdict on one more record of KIND: the carried profile's count
+; and history gates against the Store it carries.
 (defun fn-owner-publication-verdict (kind state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-verdict (fn-owner-store-profile state) kind
-                          (fn-owner-store state))))
+  (mv-let (bytes state) (fn-owner-record-octets state)
+    (let ((s (fn-owner-store state)))
+      (value (fn-sbud-verdict-at (fn-owner-store-profile state) kind
+                                 (fn-sbud-used s) bytes)))))
 
-; (used budget reserved-charge charge-capacity), all read from the carried
-; state; the host prints it and computes none of it.
+; (used budget bytes-used history-bound reserved-charge charge-capacity), all
+; read from the carried state; the host prints it and computes none of it.
 (defun fn-owner-headroom (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-headroom (fn-owner-store-profile state)
-                           (fn-owner-store state))))
+  (mv-let (bytes state) (fn-owner-record-octets state)
+    (value (fn-sbud-headroom-at (fn-owner-store-profile state)
+                                (fn-owner-store state) bytes))))
+
+; The carried profile as the operator reads it (field names and values).
+(defun fn-owner-profile-report (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bs-profile-report (fn-owner-store-profile state))))
 
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))
@@ -322,7 +362,8 @@
   ; installed now, so the host installs it unconditionally and decides nothing.
   (declare (xargs :stobjs state :mode :program))
   (mv-let (verdict next)
-    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-record-max-payload*)
+    (fn-ocl-publish (fn-owner-ocfg state) generation
+                    (fn-owner-served-post-bound state))
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 
@@ -339,9 +380,15 @@
 ; The transaction path: the same observations run_store.py reports, each one
 ; a (:store ...) owner event.
 
+;; The call is fn-rcon-ocfg-io (books/records-concrete-owner.lisp), equal to
+;; fn-ocfg-step of (:store (:io operation result)) for every configured owner
+;; (fn-rcon-ocfg-io-is-ocfg-step, no hypothesis): its :record-directory arm
+;; pairs the staged record's sequence and transaction id through the
+;; concrete record dispatchers instead of fn-record-p's octet lists.
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :store (list :io operation result)) state)))
+  (let ((state (fn-owner-install-ocfg
+                (fn-rcon-ocfg-io (fn-owner-ocfg state) operation result) state)))
     (value (fn-sf-phase (fn-sn-files (fn-owner-store state))))))
 
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
@@ -511,7 +558,9 @@
                (if (caddr decision)
                    (if (fn-stxa-p (caddr decision))
                        (fn-stxa-encode (caddr decision))
-                     (fn-record-encode-impl (caddr decision)))
+                     ; fn-rcon-record-encode-impl-is-record-encode-impl
+                     ; (books/records-codec-concrete, no hypothesis).
+                     (fn-rcon-record-encode-impl (caddr decision)))
                  nil))
        decision))))
 
@@ -541,7 +590,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (fn-owner-store state)))))
-    (value (if record (fn-store-event-encode record) nil))))
+    ; fn-rcon-store-event-encode-is-store-event-encode: the encoder's
+    ; dispatch, with the concrete record recognizer (books/records-concrete).
+    (value (if record (fn-rcon-store-event-encode record) nil))))
 
 ; The staged record's sequence, the one the host names its transaction file
 ; from (host/native/owner.lisp fnn-owner-publish-prepared); the host holds no
@@ -549,7 +600,8 @@
 ; (books/store-budget-naming.lisp `fn-sbud-pending-sequence-is-used').
 (defun fn-owner-pending-sequence (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-pending-sequence (fn-owner-store state))))
+  ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
+  (value (fn-rcon-sbud-pending-sequence (fn-owner-store state))))
 
 ; The POST admission boundary over the profile the owner was handed at open
 ; (`fn-owner-install-profile'); without one the payload bound is 0.
@@ -723,6 +775,21 @@
                                      group-octets payload)
                                state)))
     (value result)))
+
+; Why the owner refused the operator's article: the injection decision's
+; reason under the owner's current configuration and clock (the decision
+; `fn-owner-operator-submit' just refused), NIL when that decision injects.
+; The native control path maps it to the control word
+; (`fn-native-control-refusal-status'), so an article past the profile's A
+; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
+(defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((decision (fn-own-operator-decision-of (fn-owner-core state)
+                                               msgid-octets group-octets
+                                               payload)))
+    (value (if (fn-inj-injectedp decision)
+               nil
+             (fn-inj-decision-reason decision)))))
 
 ; -----------------------------------------------------------------------------
 ; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per

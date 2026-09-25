@@ -263,9 +263,11 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
             raise BpIngressError("staged bundle identity does not match the bundle")
         if not isinstance(adu, bytes):
             raise BpIngressError("workflow journal returned non-byte ADU")
-        if len(adu) > run_store.DEFAULT_CONFIG["max_payload_bytes"]:
-            raise BpIngressError("staged ADU exceeds certified article/Store bound")
         store, bridge, records = open_live_bp_store(Path(store_root), writable=True)
+        if len(adu) > store.config["max_payload_bytes"]:
+            bridge.close()
+            store.close()
+            raise BpIngressError("staged ADU exceeds certified article/Store bound")
         # The ACL2 wrapper alone extracts Message-ID.  Metadata remains the
         # existing Store host's domain-separated payload hash construction.
         msgid = bridge.extract_message_id(adu)
@@ -282,7 +284,7 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
                 raise BpDeletePending("exact durable ADU awaits BPA delete",
                                       "duplicate", bid, staged_path) from error
             return IngressResult("duplicate", bid, staged_path)
-        if len(records) >= store.config["max_transactions"]:
+        if not run_store.publication_admissible(store, bridge):
             raise BpIngressError("Store transaction capacity reached")
         store.advance_frontier(bridge, bridge.next_txid())
         action = bridge.ingress_prepare(destination_bytes, source_bytes, bid_bytes, lifetime,

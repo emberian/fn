@@ -1,0 +1,348 @@
+Running as unit: run-u36.service
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:17:41.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "sha256" ...):  Unable
+to load compiled file for book
+  /tank/fn/scratch/rep-sha256/after-tree/books/sha256.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /tank/fn/scratch/rep-sha256/after-tree/books/sha256-stobj.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK 
+"/tank/fn/scratch/rep-sha256/after-tree/books/sha256-stobj" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.49 seconds (prove: 0.00, print: 0.00, other: 0.49)
+ "/tank/fn/scratch/rep-sha256/after-tree/books/sha256-stobj.lisp"
+ACL2 !>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "crypto-seam" ...):
+Unable to load compiled file for book
+  /tank/fn/scratch/rep-sha256/after-tree/books/crypto-seam.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /tank/fn/scratch/rep-sha256/after-tree/books/crypto-attach.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK 
+"/tank/fn/scratch/rep-sha256/after-tree/books/crypto-attach" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  1.58 seconds (prove: 0.00, print: 0.00, other: 1.58)
+ "/tank/fn/scratch/rep-sha256/after-tree/books/crypto-attach.lisp"
+ACL2 !>
+For the admission of BENCH-REPEAT we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX N).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (NOT (ZP (NFIX N)))
+              (O< (NFIX (+ -1 (NFIX N))) (NFIX N)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for BENCH-REPEAT. 
+Thus, we admit this function under the principle of definition.  We
+observe that the type of BENCH-REPEAT is described by the theorem 
+(TRUE-LISTP (BENCH-REPEAT N X)).  We used primitive type reasoning.
+
+Computing the guard conjecture for BENCH-REPEAT....
+
+The guard conjecture for BENCH-REPEAT is trivial to prove, given the
+:compound-recognizer rule ZP-COMPOUND-RECOGNIZER, primitive type reasoning
+and the :type-prescription rule NFIX.  BENCH-REPEAT is compliant with
+Common Lisp.
+
+Summary
+Form:  ( DEFUN BENCH-REPEAT ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE ZP-OPEN)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  161
+ BENCH-REPEAT
+ACL2 !>
+Summary
+Form:  ( DEFCONST *M32K* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *M32K*
+ACL2 !>
+Summary
+Form:  ( DEFCONST *S32K* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *S32K*
+ACL2 !>
+For the admission of BENCH-LIST-MODEL we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX N).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (AND (NOT (ZP (NFIX N))) (FN-SHA256 M))
+              (O< (NFIX (+ -1 (NFIX N))) (NFIX N)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for BENCH-LIST-MODEL.
+Thus, we admit this function under the principle of definition.  We
+observe that the type of BENCH-LIST-MODEL is described by the theorem
+(OR (AND (SYMBOLP (BENCH-LIST-MODEL N M))
+         (NOT (EQUAL (BENCH-LIST-MODEL N M) T))
+         (NOT (EQUAL (BENCH-LIST-MODEL N M) NIL)))
+    (EQUAL (BENCH-LIST-MODEL N M) NIL)).
+
+Computing the guard conjecture for BENCH-LIST-MODEL....
+
+The guard conjecture for BENCH-LIST-MODEL is trivial to prove, given
+the :compound-recognizer rule ZP-COMPOUND-RECOGNIZER, primitive type
+reasoning and the :type-prescription rule NFIX.  BENCH-LIST-MODEL is
+compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN BENCH-LIST-MODEL ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE ZP-OPEN)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  193
+ BENCH-LIST-MODEL
+ACL2 !>
+For the admission of BENCH-STOBJ we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX N).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (AND (NOT (ZP (NFIX N)))
+                   (FN-SHA256-STOBJ M))
+              (O< (NFIX (+ -1 (NFIX N))) (NFIX N)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for BENCH-STOBJ.  Thus,
+we admit this function under the principle of definition.  We observe
+that the type of BENCH-STOBJ is described by the theorem 
+(OR (AND (SYMBOLP (BENCH-STOBJ N M))
+         (NOT (EQUAL (BENCH-STOBJ N M) T))
+         (NOT (EQUAL (BENCH-STOBJ N M) NIL)))
+    (EQUAL (BENCH-STOBJ N M) NIL)).
+
+Computing the guard conjecture for BENCH-STOBJ....
+
+The guard conjecture for BENCH-STOBJ is trivial to prove, given the
+:compound-recognizer rule ZP-COMPOUND-RECOGNIZER, primitive type reasoning
+and the :type-prescription rule NFIX.  BENCH-STOBJ is compliant with
+Common Lisp.
+
+Summary
+Form:  ( DEFUN BENCH-STOBJ ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-SHA256-STOBJ-IS-SHA256)
+        (:REWRITE ZP-OPEN)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  195
+ BENCH-STOBJ
+ACL2 !>
+For the admission of BENCH-STRING we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX N).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (AND (NOT (ZP (NFIX N)))
+                   (FN-SHA256-OF-STRING S))
+              (O< (NFIX (+ -1 (NFIX N))) (NFIX N)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for BENCH-STRING. 
+Thus, we admit this function under the principle of definition.  We
+observe that the type of BENCH-STRING is described by the theorem 
+(OR (AND (SYMBOLP (BENCH-STRING N S))
+         (NOT (EQUAL (BENCH-STRING N S) T))
+         (NOT (EQUAL (BENCH-STRING N S) NIL)))
+    (EQUAL (BENCH-STRING N S) NIL)).
+
+Computing the guard conjecture for BENCH-STRING....
+
+The guard conjecture for BENCH-STRING is trivial to prove, given the
+:compound-recognizer rule ZP-COMPOUND-RECOGNIZER, primitive type reasoning
+and the :type-prescription rule NFIX.  BENCH-STRING is compliant with
+Common Lisp.
+
+Summary
+Form:  ( DEFUN BENCH-STRING ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE ZP-OPEN)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  193
+ BENCH-STRING
+ACL2 !>
+For the admission of BENCH-ATTACHED we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX N).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (AND (NOT (ZP (NFIX N))) (FN-DIGEST M))
+              (O< (NFIX (+ -1 (NFIX N))) (NFIX N)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for BENCH-ATTACHED.
+Thus, we admit this function under the principle of definition.  We
+observe that the type of BENCH-ATTACHED is described by the theorem
+(OR (AND (SYMBOLP (BENCH-ATTACHED N M))
+         (NOT (EQUAL (BENCH-ATTACHED N M) T))
+         (NOT (EQUAL (BENCH-ATTACHED N M) NIL)))
+    (EQUAL (BENCH-ATTACHED N M) NIL)).
+
+Computing the guard conjecture for BENCH-ATTACHED....
+
+The guard conjecture for BENCH-ATTACHED is trivial to prove, given
+the :compound-recognizer rule ZP-COMPOUND-RECOGNIZER, primitive type
+reasoning and the :type-prescription rule NFIX.  BENCH-ATTACHED is
+compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN BENCH-ATTACHED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE ZP-OPEN)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  193
+ BENCH-ATTACHED
+ACL2 !> :PASSED
+ACL2 !> :PASSED
+ACL2 !> :PASSED
+ACL2 !>NIL
+ACL2 !>NIL
+ACL2 !>
+BENCH list-model 200 x 32KiB
+NIL
+ACL2 !>list-model: 3.01 s real, 3.01 s cpu, 578,000,432 bytes
+NIL
+ACL2 !>
+BENCH stobj 200 x 32KiB
+NIL
+ACL2 !>stobj: 0.17 s real, 0.17 s cpu, 13,285,008 bytes
+NIL
+ACL2 !>
+BENCH string 200 x 32KiB
+NIL
+ACL2 !>string: 0.17 s real, 0.17 s cpu, 13,317,840 bytes
+NIL
+ACL2 !>
+BENCH attached fn-digest 200 x 32KiB
+NIL
+ACL2 !>attached: 0.17 s real, 0.17 s cpu, 13,285,120 bytes
+NIL
+ACL2 !>list-model: 3.56 s real, 3.56 s cpu, 577,949,824 bytes
+NIL
+ACL2 !>stobj: 0.17 s real, 0.17 s cpu, 13,317,584 bytes
+NIL
+ACL2 !>string: 0.16 s real, 0.16 s cpu, 13,285,104 bytes
+NIL
+ACL2 !>
+BENCH-DONE
+NIL
+ACL2 !>Bye.
+Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+Service runtime: 9.836s
+CPU time consumed: 9.818s
+Memory peak: 251M (swap: 0B)

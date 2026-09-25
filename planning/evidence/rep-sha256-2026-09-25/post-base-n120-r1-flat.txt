@@ -1,0 +1,55 @@
+
+Number of samples:   165
+Sample interval:     0.001 seconds
+Total sampling time: 0.165 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2556676 "fn-sprof" RUNNING {120F5685B3}> (1056/1048576 bytes, 9 hash buckets)
+   #<THREAD tid=2556679 "fn owner client" RUNNING {120FB34F13}> (29360/1048576 bytes, 108 hash buckets)
+   #<THREAD tid=2556677 "fn outbound feed" RUNNING {120F9CB303}> (144/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     19  11.5     19  11.5     19  11.5        -  foreign function __open64
+   4     18  10.9     18  10.9     37  22.4        -  foreign function fsync
+   6     10   6.1     10   6.1     47  28.5        -  foreign function rename
+   8      8   4.8      8   4.8     55  33.3        -  FN-SHA256-W32
+  10      7   4.2     10   6.1     62  37.6        -  FN-SHA256-ROTR32
+  12      7   4.2      7   4.2     69  41.8        -  foreign function __write
+  14      6   3.6      6   3.6     75  45.5        -  foreign function fstatat
+  16      4   2.4      4   2.4     79  47.9        -  foreign function clock_nanosleep
+  18      3   1.8      3   1.8     82  49.7        -  ASH
+  20      3   1.8      3   1.8     85  51.5        -  foreign function __close
+  22      3   1.8      3   1.8     88  53.3        -  foreign function unlink
+  24      2   1.2      8   4.8     90  54.5        -  FN-SHA256-BSIG1
+  26      2   1.2      4   2.4     92  55.8        -  (FLET F :IN FN-NATIVE-ENTRY)
+  28      2   1.2      4   2.4     94  57.0        -  FN-RETAIN-OBLIGATION-IDS
+  30      2   1.2      4   2.4     96  58.2        -  FN-SHA256-FIX-OCTETS
+  32      2   1.2      2   1.2     98  59.4        -  (LAMBDA (SB-PCL::.ARG0. SB-PCL::.ARG1.) :IN "SYS:SRC;PCL;DLISP3.LISP")
+  34      2   1.2      2   1.2    100  60.6        -  FN-INDEX-MEMBERSHIP-ENTRIES
+  36      2   1.2      2   1.2    102  61.8        -  FN-WIRE-AG-CDR
+  38      2   1.2      2   1.2    104  63.0        -  foreign function poll
+  40      2   1.2      2   1.2    106  64.2        -  SB-KERNEL:TWO-ARG-XOR
+  42      2   1.2      2   1.2    108  65.5        -  FN-AG-CDR
+  44      2   1.2      2   1.2    110  66.7        -  FN-OCFG-STEP
+  46      1   0.6     19  11.5    111  67.3        -  FN-SHA256-ROUNDS
+  48      1   0.6      6   3.6    112  67.9        -  FN-OWNER-TAKE
+  50      1   0.6      5   3.0    113  68.5        -  FN-INDEX-BUILD
+  52      1   0.6      4   2.4    114  69.1        -  FN-SHA256-SSIG0
+  54      1   0.6      4   2.4    115  69.7        -  FN-RECORD-P
+  56      1   0.6      3   1.8    116  70.3        -  SB-IMPL::%FIND-SYMBOL
+  58      1   0.6      3   1.8    117  70.9        -  FN-SCAR-FINISH-READ
+  60      1   0.6      3   1.8    118  71.5        -  FN-SHA256-SSIG1
+  62      1   0.6      2   1.2    119  72.1        -  FN-AG-APPEND
+  64      1   0.6      2   1.2    120  72.7        -  FN-RECORD-UINT32P
+  66      1   0.6      2   1.2    121  73.3        -  SB-KERNEL:%CONCATENATE-TO-STRING
+  68      1   0.6      2   1.2    122  73.9        -  FN-RECORD-STRING-OCTETS-AUX
+  70      1   0.6      2   1.2    123  74.5        -  FN-SHA256-ADD8
+  72      1   0.6      2   1.2    124  75.2        -  FN-SHA256-APPX
+  74      1   0.6      1   0.6    125  75.8        -  foreign function memmove
+  76      1   0.6      1   0.6    126  76.4        -  SB-IMPL::%PARSE-NAMESTRING
+  78      1   0.6      1   0.6    127  77.0        -  ACL2_*1*_COMMON-LISP::<
+  80      1   0.6      1   0.6    128  77.6        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+------------------------------------------------------------------------
+          3   1.8                                     elsewhere

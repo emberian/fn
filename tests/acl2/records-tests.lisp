@@ -51,8 +51,11 @@
                      '(:error :magic)))
 (assert-event (equal (fn-record-decode-exact '(68 102 110 45 114 2))
                      '(:error :unknown-version)))
+; A group count one past the codec ceiling `*fn-record-max-groups*' (65 535),
+; as the canonical four-octet uint head 26 0 1 0 0.
+(assert-event (equal *fn-record-max-groups* 65535))
 (assert-event (equal (fn-record-decode-exact
-                      '(68 102 110 45 114 0 1 2 3 65 97 64 17))
+                      '(68 102 110 45 114 0 1 2 3 65 97 64 26 0 1 0 0))
                      '(:error :groups-limit)))
 (assert-event (equal (fn-record-decode-exact
                       '(68 102 110 45 114 0 65 97))

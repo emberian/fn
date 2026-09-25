@@ -14,6 +14,13 @@
           (fn-owner-config state) fnbs-state channel announced-uri
           session-counter xfer-id)))
 
+; Spec bp-node-machine 4.6: the route table of the current configuration,
+; which the host passes back to fn-bprt-outbound-choice and to the routed
+; :session event.  ACL2 builds it (fn-bprt-table); the host keeps no copy.
+(defun fn-owner-bp-route-table (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bprt-table (fn-owner-config state))))
+
 (defun fn-owner-bp-receipt-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-receipt-trustedp view (fn-owner-config state))))

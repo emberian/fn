@@ -55,11 +55,41 @@
                           fn-record-len-of-take-within-list)))
 
 ; -----------------------------------------------------------------------------
+; The record's byte-string item codec (D27, design 2026-09-25-bounds §2.3).
+;
+; Every byte-string field is encoded and read through the CBOR bounded API at
+; the record's own width, `*fn-record-max-octets*' (the FNST LENGTH field's
+; u32), not through the generic entry, whose 65 535-octet item and
+; 65 538-octet input caps would cap the record's data.  The decoder is the
+; prechecked one-item parser: `fn-record-decode-exact-impl' checks the whole
+; input's bound and octet domain once, so no field re-walks the remaining
+; record (per-field work is the field's own length; the logical octet check
+; below is `mbe' :logic only).  For an item of at most
+; 65 535 octets the bytes are exactly the generic encoder's
+; (`fn-record-item-encode-is-cbor-encode' in records-invariants), so every
+; record written before this change keeps its bytes.  Uints are unaffected:
+; their head does not depend on the byte-string bound.
+
+(defun fn-record-item-encode (value)
+  (declare (xargs :guard t))
+  (fn-cbor-encode-bounded value *fn-record-max-octets*))
+
+; The logical definition refuses a non-octet input; the executable one does
+; not look, because the guard (discharged once, by the whole-record check in
+; `fn-record-decode-exact-impl') already says so.
+(defun fn-record-item-decode (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
+  (mbe :logic (if (fn-cbor-octet-listp octets)
+                  (fn-cbor-decode-prechecked octets *fn-record-max-octets*)
+                (fn-cbor-error :malformed))
+       :exec (fn-cbor-decode-prechecked octets *fn-record-max-octets*)))
+
+; -----------------------------------------------------------------------------
 ; Encoder
 
 (defun fn-record-encode-groups (groups)
   (if (consp groups)
-      (append (fn-cbor-encode
+      (append (fn-record-item-encode
                (cons :bytes (fn-record-string-octets (car groups))))
               (fn-record-encode-groups (cdr groups)))
     nil))
@@ -75,24 +105,24 @@
       nil
     (let ((octets
            (append
-            (fn-cbor-encode (cons :bytes *fn-record-magic*))
+            (fn-record-item-encode (cons :bytes *fn-record-magic*))
             (fn-cbor-encode (cons :uint (fn-record-schema-octet record)))
             (fn-cbor-encode (cons :uint (fn-record-sequence record)))
             (fn-cbor-encode (cons :uint (fn-record-txid record)))
             (fn-cbor-encode (cons :uint (fn-record-generation record)))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-msgid record))))
-            (fn-cbor-encode (cons :bytes (fn-record-payload record)))
+            (fn-record-item-encode (cons :bytes (fn-record-payload record)))
             (fn-cbor-encode (cons :uint (len (fn-record-groups record))))
             (fn-record-encode-groups (fn-record-groups record))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-obligation-id record))))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-content-subject record))))
-            (fn-cbor-encode (cons :bytes
+            (fn-record-item-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
             (fn-cbor-encode (cons :uint (fn-record-charge record)))
@@ -109,7 +139,7 @@
 (defun fn-record-read-uint (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :verify-guards nil))
-  (let ((decoded (fn-cbor-decode octets)))
+  (let ((decoded (fn-record-item-decode octets)))
     (if (not (fn-cbor-result-okp decoded))
         (fn-record-parse-error (car (cdr decoded)))
       (let ((value (fn-cbor-result-value decoded)))
@@ -120,7 +150,7 @@
 (defun fn-record-read-bytes (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :verify-guards nil))
-  (let ((decoded (fn-cbor-decode octets)))
+  (let ((decoded (fn-record-item-decode octets)))
     (if (not (fn-cbor-result-okp decoded))
         (fn-record-parse-error (car (cdr decoded)))
       (let ((value (fn-cbor-result-value decoded)))
@@ -385,6 +415,69 @@
                              fn-cbor-result-value
                              fn-cbor-result-rest)))))
 
+; The same two facts for the bounded byte-string reader at any budget, and
+; for the record's item decoder: what `fn-record-read-uint' and
+; `fn-record-read-bytes' now call.
+(defthm fn-record-cbor-decode-bytes-bounded-success-domain
+  (implies
+   (and (natp additional)
+        (fn-cbor-octet-listp tail)
+        (natp max-bytes)
+        (fn-cbor-result-okp
+         (fn-cbor-decode-bytes-bounded additional tail max-bytes)))
+   (and (consp (fn-cbor-result-value
+                (fn-cbor-decode-bytes-bounded additional tail max-bytes)))
+        (equal (car (fn-cbor-result-value
+                     (fn-cbor-decode-bytes-bounded additional tail
+                                                   max-bytes)))
+               :bytes)
+        (fn-cbor-octet-listp
+         (cdr (fn-cbor-result-value
+               (fn-cbor-decode-bytes-bounded additional tail max-bytes))))
+        (<= (len (cdr (fn-cbor-result-value
+                       (fn-cbor-decode-bytes-bounded additional tail
+                                                     max-bytes))))
+            max-bytes)
+        (fn-cbor-octet-listp
+         (fn-cbor-result-rest
+          (fn-cbor-decode-bytes-bounded additional tail max-bytes)))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-record-cbor-decode-argument-success-domain
+                  (xs tail)))
+           :in-theory (e/d (fn-cbor-decode-bytes-bounded
+                              fn-cbor-result-okp
+                              fn-cbor-canonical-argumentp)
+                             (fn-cbor-decode-argument
+                              fn-cbor-result-value
+                              fn-cbor-result-rest
+                              fn-cbor-ok fn-cbor-error
+                              take nthcdr)))))
+
+(defthm fn-record-item-decode-success-domain
+  (implies
+   (fn-cbor-result-okp (fn-record-item-decode octets))
+   (and (fn-cbor-valuep-bounded
+         (fn-cbor-result-value (fn-record-item-decode octets))
+         *fn-record-max-octets*)
+        (fn-cbor-octet-listp
+         (fn-cbor-result-rest (fn-record-item-decode octets)))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-record-cbor-decode-unsigned-success-domain
+                  (additional (car octets)) (tail (cdr octets)))
+                 (:instance
+                  fn-record-cbor-decode-bytes-bounded-success-domain
+                  (additional (- (car octets) 64)) (tail (cdr octets))
+                  (max-bytes *fn-record-max-octets*)))
+           :in-theory (e/d (fn-record-item-decode
+                            fn-cbor-decode-prechecked
+                            fn-cbor-valuep-bounded)
+                            (fn-cbor-decode-unsigned
+                             fn-cbor-decode-bytes-bounded
+                             fn-cbor-result-value
+                             fn-cbor-result-rest)))))
+
 (defthm fn-record-read-uint-is-true-list
   (true-listp (fn-record-read-uint octets))
   :hints (("Goal"
@@ -408,13 +501,13 @@
         (fn-cbor-octet-listp
          (fn-record-parse-rest (fn-record-read-uint octets)))))
   :hints (("Goal"
-           :use ((:instance fn-record-cbor-decode-success-domain))
+           :use ((:instance fn-record-item-decode-success-domain))
            :in-theory (e/d (fn-record-read-uint
                               fn-record-parse-okp
                               fn-record-parse-value fn-record-parse-rest
                               fn-record-parse-ok fn-record-parse-error
-                              fn-cbor-valuep)
-                             (fn-cbor-decode)))))
+                              fn-cbor-valuep-bounded)
+                             (fn-record-item-decode)))))
 
 (defthm fn-record-read-uint-success-is-rational
   (implies
@@ -451,13 +544,13 @@
         (fn-cbor-octet-listp
          (fn-record-parse-rest (fn-record-read-bytes octets)))))
   :hints (("Goal"
-           :use ((:instance fn-record-cbor-decode-success-domain))
+           :use ((:instance fn-record-item-decode-success-domain))
            :in-theory (e/d (fn-record-read-bytes
                               fn-record-parse-okp
                               fn-record-parse-value fn-record-parse-rest
                               fn-record-parse-ok fn-record-parse-error
-                              fn-cbor-valuep)
-                             (fn-cbor-decode)))))
+                              fn-cbor-valuep-bounded)
+                             (fn-record-item-decode)))))
 
 (defthm fn-record-parse-groups-is-true-list
   (true-listp (fn-record-parse-groups count octets))
@@ -483,9 +576,11 @@
                  fn-record-parse-error)))))
 
 (verify-guards fn-record-read-uint
-  :hints (("Goal" :use fn-record-cbor-decode-success-domain)))
+  :hints (("Goal" :use fn-record-item-decode-success-domain
+           :in-theory (disable fn-record-item-decode))))
 (verify-guards fn-record-read-bytes
-  :hints (("Goal" :use fn-record-cbor-decode-success-domain)))
+  :hints (("Goal" :use fn-record-item-decode-success-domain
+           :in-theory (disable fn-record-item-decode))))
 (verify-guards fn-record-parse-groups
   :hints (("Goal"
            :in-theory (disable fn-record-read-bytes
@@ -610,6 +705,9 @@
 ; before the seam existed opens the same recognizers now; a book above the
 ; seam opens `fn-record-shape-vocabulary' (records-shape) instead, and
 ; `tools/theory_check.py' counts every top-level opening of this one.
+; The item codec (`fn-record-item-encode', `-decode') is in neither theory:
+; a proof that needs its definition names it in a hint, so a book that opens
+; the codec vocabulary still sees the byte-string item as one closed term.
 
 (deftheory fn-record-codec-vocabulary
   (union-theories
@@ -625,14 +723,17 @@
     fn-record-cbor-decode-argument-success-domain
     fn-record-cbor-decode-unsigned-success-domain
     fn-record-cbor-decode-bytes-success-domain
-    fn-record-cbor-decode-success-domain fn-record-read-uint-is-true-list
+    fn-record-cbor-decode-success-domain
+    fn-record-cbor-decode-bytes-bounded-success-domain
+    fn-record-item-decode-success-domain fn-record-read-uint-is-true-list
     fn-record-read-bytes-is-true-list fn-record-read-uint-success-domain
     fn-record-read-uint-success-is-rational
     fn-record-read-uint-success-is-uint32 fn-record-read-bytes-success-domain
     fn-record-parse-groups-is-true-list
     fn-record-parse-groups-success-domain))
 
-(in-theory (disable (:d fn-record-encode-groups) (:d fn-record-encode-impl)
+(in-theory (disable (:d fn-record-item-encode) (:d fn-record-item-decode)
+                    (:d fn-record-encode-groups) (:d fn-record-encode-impl)
                     (:d fn-record-read-uint) (:d fn-record-read-bytes)
                     (:d fn-record-parse-groups) (:d fn-record-decode-tail)
                     (:d fn-record-decode-after-header)
@@ -641,6 +742,8 @@
                     fn-record-cbor-decode-unsigned-success-domain
                     fn-record-cbor-decode-bytes-success-domain
                     fn-record-cbor-decode-success-domain
+                    fn-record-cbor-decode-bytes-bounded-success-domain
+                    fn-record-item-decode-success-domain
                     fn-record-read-uint-is-true-list
                     fn-record-read-bytes-is-true-list
                     fn-record-read-uint-success-domain

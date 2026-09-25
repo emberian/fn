@@ -22,7 +22,8 @@
            (ml-public (coerce (fnn-hsig-ml-dsa-65-public-key ml-public-path)
                               'list))
            (source (fnn-octet-list
-                    (fnn-read-regular-bounded source-path 32768)))
+                    (fnn-read-regular-bounded
+                     source-path (fnn-core 'fn-hsig-host-max-source-octets))))
            (keys (list (cons :ed25519 ed-public)
                        (cons :ml-dsa-65 ml-public)))
            (preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))

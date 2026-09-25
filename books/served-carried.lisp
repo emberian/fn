@@ -109,9 +109,11 @@
                   :guard-hints (("Goal" :in-theory (disable fn-scar-peer-sessionp)))))
   (cond
    ((not (fn-scar-peer-sessionp ps live)) (fn-post-make-result ps nil nil))
+   ; A reader session: the Message-ID retrieval walks the trie by index
+   ; (fn-pix-peer-delegate-pinned-is-peer-delegate-pinned, no hypothesis).
    ((null (fn-peer-session-peer ps))
-    (fn-peer-delegate-pinned ps archive index verdicts config observation
-                             injection wire-event))
+    (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+                                 injection wire-event))
    (t (fn-pgc-peer-arm ps trie arts archive index verdicts config
                        observation injection wire-event))))
 
@@ -122,9 +124,11 @@
                                             observation injection wire-event)
                   (fn-peer-step-pinned ps archive index verdicts config
                                        observation injection wire-event)))
-  :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned)
+  :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned
+                                   fn-pix-peer-delegate-pinned-is-peer-delegate-pinned)
                                   (fn-midx-correspondencep fn-scar-peer-sessionp fn-peer-sessionp
                                    fn-node-statep fn-peer-delegate-pinned
+                                   fn-pix-peer-delegate-pinned
                                    fn-peer-step fn-peer-command fn-pgc-peer-arm)))))
 
 (defun fn-scar-auth-delegate-pinned

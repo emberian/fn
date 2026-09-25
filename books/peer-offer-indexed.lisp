@@ -22,6 +22,7 @@
 (in-package "ACL2")
 (include-book "peer-inbound")
 (include-book "msgid-index")
+(include-book "msgid-index-concrete")
 
 ; -----------------------------------------------------------------------------
 ; The history test
@@ -33,10 +34,21 @@
 (defun fn-pix-history-hasp (msgid node trie arts)
   (declare (xargs :guard t))
   (if (and (stringp msgid)
-           (consp (fn-midx-key-chars msgid))
+           ; Non-empty, by length: no character list is built
+           ; (fn-pix-nonempty-key-is-positive-length).
+           (< 0 (length msgid))
            (equal (fn-state-articles (fn-node-acceptance node)) arts))
-      (if (fn-midx-lookup msgid trie) t nil)
+      ; The trie walked by index (fn-midx-concrete-lookup-is-lookup: equal
+      ; to fn-midx-lookup for every Message-ID and trie).
+      (if (fn-mxc-lookup msgid trie) t nil)
     (fn-peer-history-hasp msgid node)))
+
+; A string's character list is non-empty exactly when its length is positive.
+(local (defthm fn-pix-nonempty-key-is-positive-length
+  (implies (stringp msgid)
+           (equal (consp (fn-midx-key-chars msgid)) (< 0 (length msgid))))
+  :hints (("Goal" :in-theory (enable fn-midx-key-chars length)
+           :expand ((len (coerce msgid 'list)))))))
 
 (local (defthm fn-pix-binding-found-is-member
   (implies (consp (fn-node-find-binding m bs))
@@ -95,7 +107,9 @@
            (equal (fn-pix-history-hasp msgid node trie arts)
                   (fn-peer-history-hasp msgid node)))
   :hints (("Goal" :in-theory (e/d (fn-pix-history-hasp
-                                   fn-midx-correspondencep)
+                                   fn-midx-correspondencep
+                                   fn-midx-concrete-lookup-is-lookup
+                                   fn-pix-nonempty-key-is-positive-length)
                                   (fn-peer-history-hasp fn-node-statep
                                    fn-midx-lookup fn-midx-build
                                    fn-midx-key-chars))
@@ -293,3 +307,200 @@
 
 (in-theory (disable fn-pix-history-hasp fn-pix-decide-offer
                     fn-pix-peer-command fn-pix-peer-step-pinned))
+
+; -----------------------------------------------------------------------------
+; The Message-ID retrieval by the concrete trie walk (lane/rep-records-2).
+;
+; A reader's ARTICLE, HEAD, BODY or STAT by Message-ID reaches
+; fn-nntp-msgid-retrieval-indexed (books/nntp-responses.lisp) through
+; fn-peer-delegate-pinned, fn-nntp-post-step-pinned, fn-nntp-step-pinned,
+; fn-nntp-command-pinned and fn-nntp-archive-command-pinned.  Each twin
+; below is its reference with its one callee on that chain replaced, and
+; the bottom one looks the Message-ID up with fn-mxc-lookup
+; (books/msgid-index-concrete.lisp) instead of fn-midx-lookup.  Each is
+; EQUAL to its reference on every input, with no hypothesis, and
+; guard-verified.  books/served-carried.lisp fn-scar-peer-step-pinned calls
+; the top one for a reader session.
+
+(defun fn-pix-msgid-retrieval-indexed (session archive index kind token)
+  (if (not (fn-nntp-message-id-tokenp token))
+      (fn-nntp-single session "501 syntax error")
+    ; A raw direct caller can supply a dotted token accepted by the older
+    ; token predicate.  Wire tokenization never does, but retaining the old
+    ; answer on that malformed shape makes this refinement unconditional.
+    (if (not (fn-octet-listp token))
+        (fn-nntp-msgid-retrieval session archive kind token)
+      (let ((article (fn-mxc-lookup (fn-nntp-token-string token) index)))
+        (if (consp article)
+            (fn-nntp-article-response
+             session article (fn-nntp-msgid-local-number session article)
+             kind nil nil)
+          (fn-nntp-single session "430 no article with that message-id"))))))
+
+(defthm fn-pix-msgid-retrieval-indexed-is-msgid-retrieval-indexed
+  (equal (fn-pix-msgid-retrieval-indexed session archive index kind token)
+         (fn-nntp-msgid-retrieval-indexed session archive index kind token))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pix-msgid-retrieval-indexed fn-nntp-msgid-retrieval-indexed
+                                fn-midx-concrete-lookup-is-lookup)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pix-msgid-retrieval-indexed)
+
+(defun fn-pix-archive-command-pinned
+    (session archive index verdicts env keyword args)
+  (cond
+   ((and (fn-nntp-keywordp keyword "LIST")
+         (fn-gidx-pinp index)
+         (consp args)
+         (fn-nntp-keyword-tokenp (car args))
+         (fn-nntp-keywordp (car args) "COUNTS"))
+    (fn-gidx-list-counts-command
+     session archive (fn-gidx-pin-buckets index) (cdr args)))
+   ((and (or (fn-nntp-keywordp keyword "ARTICLE")
+             (fn-nntp-keywordp keyword "HEAD")
+             (fn-nntp-keywordp keyword "BODY")
+             (fn-nntp-keywordp keyword "STAT"))
+         (consp args) (null (cdr args))
+         (fn-nntp-message-id-tokenp (car args)))
+    (fn-pix-msgid-retrieval-indexed
+     session archive (fn-gidx-pin-trie index)
+     (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
+           ((fn-nntp-keywordp keyword "HEAD") :head)
+           ((fn-nntp-keywordp keyword "BODY") :body)
+           (t :stat))
+     (car args)))
+   ((and (fn-nntp-keywordp keyword "LISTGROUP")
+         (fn-gidx-pinp index))
+    (fn-gidx-listgroup-command
+     session archive (fn-gidx-pin-buckets index) args))
+   ((and (or (fn-nntp-keywordp keyword "OVER")
+             (fn-nntp-keywordp keyword "XOVER"))
+         (fn-gidx-pinp index)
+         (consp args) (null (cdr args))
+         (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
+    (fn-nntp-over-range-indexed
+     session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+     (car args) (fn-nntp-keywordp keyword "XOVER")))
+   ((and (fn-nntp-keywordp keyword "HDR")
+         (consp args)
+         (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
+    (fn-nntp-verdict-hdr-response session archive verdicts args))
+   (t (fn-nntp-archive-command session archive env keyword args))))
+
+(defthm fn-pix-archive-command-pinned-is-archive-command-pinned
+  (equal (fn-pix-archive-command-pinned session archive index verdicts env keyword args)
+         (fn-nntp-archive-command-pinned session archive index verdicts env keyword args))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pix-archive-command-pinned fn-nntp-archive-command-pinned
+                                fn-pix-msgid-retrieval-indexed-is-msgid-retrieval-indexed)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pix-archive-command-pinned)
+
+(defun fn-pix-command-pinned (session archive index verdicts env tokens)
+  (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
+        (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
+    (if (not (fn-nntp-keyword-tokenp keyword))
+        (fn-nntp-single session "501 syntax error")
+      (if (not (fn-nntp-archive-keywordp keyword))
+          (fn-nntp-session-command session env keyword args)
+        (if (fn-nntp-session-projected session)
+            (fn-pix-archive-command-pinned
+             session archive index verdicts env keyword args)
+          (fn-nntp-single session "503 archive projection unavailable"))))))
+
+(defthm fn-pix-command-pinned-is-command-pinned
+  (equal (fn-pix-command-pinned session archive index verdicts env tokens)
+         (fn-nntp-command-pinned session archive index verdicts env tokens))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pix-command-pinned fn-nntp-command-pinned
+                                fn-pix-archive-command-pinned-is-archive-command-pinned)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pix-command-pinned)
+
+(defun fn-pix-step-pinned (session archive index verdicts env wire-event)
+  (if (or (not (fn-nntp-sessionp session))
+          (not (equal (fn-nntp-session-openp session) t)))
+      (fn-nntp-make-result session nil)
+    (if (and (consp wire-event)
+             (equal (car wire-event) :command)
+             (consp (cdr wire-event))
+             (null (cdr (cdr wire-event))))
+        (let ((line (car (cdr wire-event))))
+          (if (not (fn-nntp-command-inputp line))
+              (fn-nntp-single session "501 syntax error")
+            (let ((tokens (fn-nntp-tokenize line)))
+              (if (and (consp tokens)
+                       (fn-nntp-command-arguments-at-mostp tokens))
+                  (fn-pix-command-pinned
+                   session archive index verdicts env tokens)
+                (fn-nntp-single session "501 syntax error")))))
+      (fn-nntp-single session "501 syntax error"))))
+
+(defthm fn-pix-step-pinned-is-step-pinned
+  (equal (fn-pix-step-pinned session archive index verdicts env wire-event)
+         (fn-nntp-step-pinned session archive index verdicts env wire-event))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pix-step-pinned fn-nntp-step-pinned
+                                fn-pix-command-pinned-is-command-pinned)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pix-step-pinned)
+
+(defun fn-pix-post-step-pinned
+    (ps archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (or (not (fn-post-sessionp ps)) (fn-post-session-awaiting ps))
+      (fn-nntp-post-step ps archive config observation injection wire-event)
+    (let ((r (fn-pix-step-pinned
+              (fn-post-session-base ps) archive index verdicts
+              (fn-nntp-env observation nil
+                           (and (fn-inj-config-allow config) t))
+              wire-event)))
+      (if (fn-post-offeredp (fn-nntp-result-effects r))
+          (if (fn-inj-config-allow config)
+              (fn-post-make-result
+               (fn-post-make-session (fn-nntp-result-session r) t)
+               (fn-nntp-result-effects r) nil)
+            (fn-post-make-result
+             (fn-post-make-session (fn-nntp-result-session r) nil)
+             (fn-post-single ps "440 posting not permitted") nil))
+        (fn-post-make-result
+         (fn-post-make-session (fn-nntp-result-session r) nil)
+         (fn-nntp-result-effects r) nil)))))
+
+(defthm fn-pix-post-step-pinned-is-post-step-pinned
+  (equal (fn-pix-post-step-pinned ps archive index verdicts config observation injection wire-event)
+         (fn-nntp-post-step-pinned ps archive index verdicts config observation injection wire-event))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pix-post-step-pinned fn-nntp-post-step-pinned
+                                fn-pix-step-pinned-is-step-pinned)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pix-post-step-pinned)
+
+(defun fn-pix-peer-delegate-pinned
+    (ps archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((r (fn-pix-post-step-pinned
+            (fn-peer-session-base ps) archive index verdicts config
+            observation injection wire-event)))
+    (fn-post-make-result (fn-peer-with-base ps (fn-post-result-session r))
+                         (fn-post-result-effects r)
+                         (fn-post-result-submission r))))
+
+(defthm fn-pix-peer-delegate-pinned-is-peer-delegate-pinned
+  (equal (fn-pix-peer-delegate-pinned ps archive index verdicts config observation injection wire-event)
+         (fn-peer-delegate-pinned ps archive index verdicts config observation injection wire-event))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pix-peer-delegate-pinned fn-peer-delegate-pinned
+                                fn-pix-post-step-pinned-is-post-step-pinned)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pix-peer-delegate-pinned)
+
+(in-theory (disable fn-pix-msgid-retrieval-indexed fn-pix-archive-command-pinned
+                    fn-pix-command-pinned fn-pix-step-pinned
+                    fn-pix-post-step-pinned fn-pix-peer-delegate-pinned))

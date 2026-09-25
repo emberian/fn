@@ -317,6 +317,9 @@ def judge_cut(row) -> list:
     return failures
 
 
+OVERSIZE_441 = "441 posting failed; the article exceeds the configured size"
+
+
 def judge_control(row) -> list:
     failures = []
     reply = (row.get("post") or {}).get("reply")
@@ -327,6 +330,13 @@ def judge_control(row) -> list:
     elif name == "prod-sigkill-mid-article":
         if _present(row):
             failures.append("half-sent article is present")
+    elif name.startswith("dev-size-") and not row.get("within_bound"):
+        # D27: a POST past the operator's profile bound is refused at the wire
+        # with the 441 that names the size, and nothing is stored.
+        if (reply or "").rstrip("\r\n") != OVERSIZE_441:
+            failures.append("oversize reply {!r} != {!r}".format(reply, OVERSIZE_441))
+        if _present(row):
+            failures.append("oversize article is present")
     else:
         if reply != OK_240:
             failures.append("reply {!r} != {!r}".format(reply, OK_240))
@@ -364,11 +374,45 @@ def print_judgement(verdict) -> None:
                                       verdict["total"]))
 
 
+def body_of(octets: int) -> str:
+    """A body of about OCTETS octets in lines of 78 letters and CRLF."""
+    lines = max(1, octets // 80)
+    return "\r\n".join("x" * 78 for _ in range(lines))
+
+
+def sized_article(total: int) -> bytes:
+    """The candidate proto-article padded to exactly TOTAL octets."""
+    head = article(CANDIDATE_ID, "candidate", "")
+    need = total - len(head)
+    if need < 1:
+        raise ValueError("size {} is below the header".format(total))
+    body, left = [], need
+    while left > 80:
+        body.append("x" * 78)
+        left -= 80
+    body.append("y" * left)
+    octets = article(CANDIDATE_ID, "candidate", "\r\n".join(body))
+    assert len(octets) == total
+    return octets
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--images", type=Path)
     parser.add_argument("--work", type=Path)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--body-octets", type=int, default=0,
+                        help="candidate body of this many octets in 80-octet lines "
+                        "(D27: the cuts on a large article)")
+    parser.add_argument("--size-controls", default="",
+                        help="comma-separated article sizes in octets, each POSTed "
+                        "once to a developer owner as a control row")
+    parser.add_argument("--profile-bound", type=int, default=32768,
+                        help="the store profile's payload bound the size controls "
+                        "are judged against (fn-sbud-payload-bound)")
+    parser.add_argument("--init-flags", default="",
+                        help="operator fields for every seeded store's init, e.g. "
+                        "'--max-article-octets 4194304' (D27)")
     parser.add_argument("--judge", type=Path,
                         help="re-judge a recorded result (.json or .json.gz) and exit")
     args = parser.parse_args(argv)
@@ -384,16 +428,21 @@ def main(argv=None) -> int:
         parser.error("--images, --work and --out are required to run the probe")
     native_cuts.verify_native_cut_map()
     verify_post_arms()
+    import tests.campaign.native_operator_campaign as campaign
+    campaign.INIT_FLAGS[:] = args.init_flags.split()
     dev, prod = args.images / "fn-host-developer", args.images / "fn-host"
     if args.work.exists():
         shutil.rmtree(args.work)
     args.work.mkdir(parents=True)
     prior = args.work / "prior.art"
     prior.write_bytes(article(PRIOR_ID, "prior", "prior accepted content"))
-    payload = article(CANDIDATE_ID, "candidate", "candidate content")
+    payload = article(CANDIDATE_ID, "candidate",
+                      body_of(args.body_octets) if args.body_octets
+                      else "candidate content")
     (args.work / "candidate.art").write_bytes(payload)
     refused = payload.replace(b"From: campaign@campaign.invalid\r\n", b"")
-    result = {"images": str(args.images), "cuts": [], "controls": []}
+    result = {"images": str(args.images), "init_flags": args.init_flags,
+              "profile_bound": args.profile_bound, "cuts": [], "controls": []}
     for cut in native_cuts.POST_CUTS:
         for action in ("kill", "eio"):
             print("cut", cut.name, action, flush=True)
@@ -406,6 +455,15 @@ def main(argv=None) -> int:
     result["controls"].append(plain(prod, args.work, prior, payload, "prod-accepted-then-sigkill"))
     result["controls"].append(plain(prod, args.work, prior, payload, "prod-sigkill-mid-article",
                                     half=True))
+    for size in [int(x) for x in args.size_controls.split(",") if x]:
+        sized = sized_article(size)
+        print("size control", size, flush=True)
+        row = plain(dev, args.work, prior, sized, "dev-size-{}".format(size),
+                    kill_after=False)
+        row["octets"] = len(sized)
+        row["within_bound"] = len(sized) <= args.profile_bound
+        result["controls"].append(row)
+        args.out.write_text(json.dumps(result, indent=1, default=str))
     result["judgement"] = judge(result)
     args.out.write_text(json.dumps(result, indent=1, default=str))
     print_judgement(result["judgement"])

@@ -98,6 +98,9 @@ the session):**
 | bounds-p4-carrier: carrier v2 | 2 commits ahead; its persvati run (hybrid-* affected-by) was still certifying |
 | control-c1: file control articles, never execute | 5 commits ahead |
 
+Push dev after every merge (ember, 2026-09-25): a merge certification
+still runs and lands its manifest, but never gates the push.
+
 Rule from the crash (cause and cap in
 `planning/evidence/laptop-oom-2026-09-25.md`): ACL2 on the laptop only
 through `tools/acl2` or `tools/proof_repl.py`, which now cap each process at

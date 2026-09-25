@@ -1,0 +1,55 @@
+
+Number of samples:   129
+Sample interval:     0.001 seconds
+Total sampling time: 0.129 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2452054 "fn-sprof" RUNNING {120F5C85D3}> (432/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2452059 "fn owner client" RUNNING {120FB95163}> (29720/1048576 bytes, 109 hash buckets)
+   #<THREAD tid=2452056 "fn outbound feed" RUNNING {120FA2B303}> (408/1048576 bytes, 3 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     12   9.3     12   9.3     12   9.3        -  foreign function fsync
+   4      9   7.0      9   7.0     21  16.3        -  FN-SHA256-W32
+   6      9   7.0      9   7.0     30  23.3        -  foreign function __open64
+   8      8   6.2     15  11.6     38  29.5        -  FN-SHA256-ROTR32
+  10      7   5.4      7   5.4     45  34.9        -  ASH
+  12      4   3.1      4   3.1     49  38.0        -  FN-SHA256-NTHX
+  14      3   2.3      6   4.7     52  40.3        -  FN-SHA256-FIRSTN
+  16      3   2.3      6   4.7     55  42.6        -  FN-SHA256-FIX-OCTETS
+  18      3   2.3      3   2.3     58  45.0        -  foreign function __close
+  20      3   2.3      3   2.3     61  47.3        -  foreign function rename
+  22      2   1.6     27  20.9     63  48.8        -  FN-SHA256-ROUNDS
+  24      2   1.6      6   4.7     65  50.4        -  FN-SHA256-MAJ
+  26      2   1.6      4   3.1     67  51.9        -  FN-ID-HEX-OCTETS
+  28      2   1.6      4   3.1     69  53.5        -  FN-SHA256-SSIG0
+  30      2   1.6      2   1.6     71  55.0        -  foreign function fstatat
+  32      2   1.6      2   1.6     73  56.6        -  SB-KERNEL:TWO-ARG-IOR
+  34      2   1.6      2   1.6     75  58.1        -  FN-SHA256-REVX
+  36      1   0.8    123  95.3     76  58.9        -  SB-THREAD::FAST-CALL-WITH-MUTEX
+  38      1   0.8     55  42.6     77  59.7        -  FNN-CORE-STATE
+  40      1   0.8     52  40.3     78  60.5        -  FNN-OWNER-ACTION
+  42      1   0.8     15  11.6     79  61.2        -  FN-SHA256-SCHEDULE-AUX
+  44      1   0.8     13  10.1     80  62.0        -  FNN-DURABLE-BARRIER
+  46      1   0.8     12   9.3     81  62.8        -  FN-SHA256-BSIG1
+  48      1   0.8      7   5.4     82  63.6        -  FN-SCAR-FEED-COUNTED
+  50      1   0.8      6   4.7     83  64.3        -  FN-SHA256-SSIG1
+  52      1   0.8      3   2.3     84  65.1        -  FN-INDEX-BUILD
+  54      1   0.8      3   2.3     85  65.9        -  FN-ARTICLE-NEXT-LINE-AUX
+  56      1   0.8      2   1.6     86  66.7        -  FNN-COUNTERPART
+  58      1   0.8      2   1.6     87  67.4        -  FN-SHA256-APPX
+  60      1   0.8      2   1.6     88  68.2        -  FN-SHA256-ZEROS
+  62      1   0.8      2   1.6     89  69.0        -  FN-ARTICLE-ASCII-DOWNCASE
+  64      1   0.8      2   1.6     90  69.8        -  REPLACE
+  66      1   0.8      1   0.8     91  70.5        -  foreign function lstat
+  68      1   0.8      1   0.8     92  71.3        -  POSITION
+  70      1   0.8      1   0.8     93  72.1        -  FN-RETAIN-ADMISSIBLEP
+  72      1   0.8      1   0.8     94  72.9        -  GENERIC-+
+  74      1   0.8      1   0.8     95  73.6        -  FN-SERVED-COUNTED-MAKE
+  76      1   0.8      1   0.8     96  74.4        -  foreign function __write
+  78      1   0.8      1   0.8     97  75.2        -  GENERIC--
+  80      1   0.8      1   0.8     98  76.0        -  FN-CCAR-SEEK
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

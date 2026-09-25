@@ -16,6 +16,15 @@
 (defconst *fn-stxa-carried-version* 1)
 (defconst *fn-stxa-kind* 4)
 (defconst *fn-stxa-max-octets* 196608)
+; The kind-4 composite embeds one encoded article record and, for a signed
+; article, its authored source.  Their bounds here are the ones this composite
+; was proved at (65 538 and 32 768), not the record and article codec
+; ceilings, which D27 widened to u32 (books/records-shape, books/article):
+; the composite's own bound, *fn-stxa-max-octets*, is their sum plus the
+; fixed fields.  Packet P1 derives all three from the profile's record bound;
+; packet P4 raises the authored source with the v2 carrier.
+(defconst *fn-stxa-max-article-record* 65538)
+(defconst *fn-stxa-max-authored-source* 32768)
 
 (fn-defrecord fn-stxa
   :constructor (fn-stxa-make-full sequence txid generation keyring-generation
@@ -33,7 +42,7 @@
                                      *fn-record-max-metadata*))
            (fn-stxa-article-record
             (fn-stxe-bounded-octetsp (fn-stxa-article-record x)
-                                     *fn-record-max-octets*))
+                                     *fn-stxa-max-article-record*))
            (fn-stxa-verdict-event
             (fn-stxe-bounded-octetsp (fn-stxa-verdict-event x)
                                      *fn-stxe-max-octets*))
@@ -42,7 +51,7 @@
                 (and (fn-cbor-octet-listp (fn-stxa-authored-source x))
                      (consp (fn-stxa-authored-source x))
                      (<= (len (fn-stxa-authored-source x))
-                         *fn-article-max-octets*))))
+                         *fn-stxa-max-authored-source*))))
            (fn-stxa-authored-id
             (if (equal (fn-stxa-authored-source x) :legacy)
                 (null (fn-stxa-authored-id x))
@@ -122,14 +131,14 @@
                                 *fn-record-max-metadata*)
        (fn-stmt-bytes-item-p (nth 9 items))
        (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 9 items))
-                                *fn-record-max-octets*)
+                                *fn-stxa-max-article-record*)
        (fn-stmt-bytes-item-p (nth 10 items))
        (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 10 items))
                                 *fn-stxe-max-octets*)
        (or (equal (len items) 11)
            (and (fn-stmt-bytes-item-p (nth 11 items))
                 (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 11 items))
-                                         *fn-article-max-octets*)
+                                         *fn-stxa-max-authored-source*)
                 (consp (fn-cbor-ag-cdr (nth 11 items)))
                 (fn-stmt-bytes-item-p (nth 12 items))
                 (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 12 items))

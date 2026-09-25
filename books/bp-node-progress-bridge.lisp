@@ -310,6 +310,19 @@
  (fn-bpnpb-defquiet bpnpb-busy-resume-step
   (fn-bpnp-busy-resume-step st arrival budget)
   (fn-bpnp-busy-resume-step)))
+;; N16's rotation arms answer only their own publication effects
+;; (:persist-checkpoint, :generation-selected, :rotation-refused,
+;; :rotation-uncertain): a journal generation's selection discharges no
+;; application obligation, so they sit inside the confined set.
+(local
+ (fn-bpnpb-defquiet bpnpb-rotate-step
+  (fn-bpnp-rotate-step st generation ck)
+  (fn-bpnp-rotate-step)))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-rotation-persist-step
+  (fn-bpnp-rotation-persist-step st epoch op result)
+  (fn-bpnp-rotation-persist-step)))
 
 ;; The stranded report of the kind-8 retry policy is neither a release nor
 ;; a receipt preparation.
@@ -330,6 +343,25 @@
  (fn-bpnpb-defquiet bpnpb-start-one
   (fn-bpnp-start-one st peer session mru observation budget)
   (fn-bpnp-start-one bpnpb-stranded-effects-confined)))
+
+;; The routed :session arm (spec 4.6) answers start-one's effects or one
+;; :forward-no-route report.
+(local
+ (defthm bpnpb-no-route-report-confined
+   (fn-bpnpb-effects-confinedp (list (list :forward-no-route arrival hop decision)))
+   :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnpb-effects-confinedp
+                                fn-bpn-effect-kind-memberp
+                                car-cons cdr-cons
+                                (:executable-counterpart equal)
+                                (:executable-counterpart not)
+                                (:executable-counterpart fn-bpn-effect-kind-memberp))
+                              (theory 'minimal-theory))))))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-routed-start
+  (fn-bpnp-routed-start st peer session mru observation via budget)
+  (fn-bpnp-routed-start bpnpb-start-one bpnpb-no-route-report-confined)))
 
 (local
  (fn-bpnpb-defquiet bpnpb-attempt-persist-step
@@ -363,7 +395,7 @@
   (fn-bpnpb-effects-confinedp (fn-bpnf-answer-effects (fn-bpnp-step st event)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn-bpnp-step bpnpb-start-one
+                       '(fn-bpnp-step bpnpb-start-one bpnpb-routed-start
                          bpnpb-forward-result-propose-step bpnpb-progress-step
                          bpnpb-operator-resume-step
                          bpnpb-dispatch-persist-step bpnpb-attempt-persist-step
@@ -371,6 +403,7 @@
                          bpnpb-clock-domain-fence bpnpb-conflict-propose-step
                          bpnpb-conflict-persist-step bpnpb-busy-delivery-step
                          bpnpb-deferral-persist-step bpnpb-busy-resume-step
+                         bpnpb-rotate-step bpnpb-rotation-persist-step
                          bpnpb-delegate-with-credit bpnpb-preserve-runtime-answer)
                        (theory 'bpnpb-theory))))
   :rule-classes nil))

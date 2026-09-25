@@ -1,0 +1,561 @@
+F.FFFFFF..FF...FEEEFFF.FF.../tank/fn/scratch/bounds-join/tree/tests/test_store_config.py:168: ResourceWarning: unclosed <socket.socket fd=4, family=2, type=1, proto=6, laddr=('127.0.0.1', 53300), raddr=('127.0.0.1', 36371)>
+  sock = reader.connect()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/unittest/case.py:589: ResourceWarning: unclosed <socket.socket fd=7, family=2, type=1, proto=6, laddr=('127.0.0.1', 45016), raddr=('127.0.0.1', 42715)>
+  if method() is not None:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.F................reader: ACL2 bridge poisoned
+...EEEEEEEEEEEE....FEEE.E
+======================================================================
+ERROR: test_published_post_with_failed_core_reply_stays_fenced_and_recovers (tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers) (failure='rejected')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 335, in test_published_post_with_failed_core_reply_stays_fenced_and_recovers
+    run_store.command_post(args)
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_published_post_with_failed_core_reply_stays_fenced_and_recovers (tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers) (failure='failed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 335, in test_published_post_with_failed_core_reply_stays_fenced_and_recovers
+    run_store.command_post(args)
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_published_post_with_failed_core_reply_stays_fenced_and_recovers (tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers) (failure='lost')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 335, in test_published_post_with_failed_core_reply_stays_fenced_and_recovers
+    run_store.command_post(args)
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_corrupt_marker_is_reported (tests.test_checkpoint.CheckpointTests.test_corrupt_marker_is_reported)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 175, in test_corrupt_marker_is_reported
+    post_many(self.path, 2, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_corrupt_selected_generation_is_reported_not_rolled_back (tests.test_checkpoint.CheckpointTests.test_corrupt_selected_generation_is_reported_not_rolled_back)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 148, in test_corrupt_selected_generation_is_reported_not_rolled_back
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_differential_mismatch_is_corruption_without_a_debug_flag (tests.test_checkpoint.CheckpointTests.test_differential_mismatch_is_corruption_without_a_debug_flag)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 188, in test_differential_mismatch_is_corruption_without_a_debug_flag
+    post_many(self.path, 2, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_no_marker_is_a_distinct_outcome (tests.test_checkpoint.CheckpointTests.test_no_marker_is_a_distinct_outcome)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 126, in test_no_marker_is_a_distinct_outcome
+    post_many(self.path, 2, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) (point='checkpoint:candidate-durable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 277, in test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) (point='checkpoint:candidate-linked')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 277, in test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) (point='checkpoint:candidate-published')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 277, in test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) (point='checkpoint:selection-durable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 277, in test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) (point='checkpoint:selection-replaced')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 277, in test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_process_death_at_every_cut_recovers_old_authority_or_complete_generation (tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation) (point='checkpoint:selection-published')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 277, in test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+    post_many(self.path, 3, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_publish_select_and_suffix_replay_on_128_records (tests.test_checkpoint.CheckpointTests.test_publish_select_and_suffix_replay_on_128_records)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 111, in test_publish_select_and_suffix_replay_on_128_records
+    self.assertEqual(post_many(self.path, 120, "base"), 120)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_select_refuses_unpublished_generation (tests.test_checkpoint.CheckpointTests.test_select_refuses_unpublished_generation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 135, in test_select_refuses_unpublished_generation
+    post_many(self.path, 1, "base")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_checkpoint.py", line 31, in post_many
+    codes = run_store.group_codes(["fn.letters"], store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_lifecycle_uses_allocator_io_then_finish (tests.test_store_node_host.StoreNodeHostTests.test_lifecycle_uses_allocator_io_then_finish)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 73, in test_lifecycle_uses_allocator_io_then_finish
+    self.assertEqual(self.post("<first@example.invalid>", b"first"), 0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 59, in post
+    return run_store.command_post(SimpleNamespace(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_link_failure_fences_then_observed_recovery_reopens (tests.test_store_node_host.StoreNodeHostTests.test_link_failure_fences_then_observed_recovery_reopens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 97, in test_link_failure_fences_then_observed_recovery_reopens
+    self.assertEqual(self.post("<prior@example.invalid>", b"prior"), 0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 59, in post
+    return run_store.command_post(SimpleNamespace(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_lost_bridge_reply_after_namespace_observation_stays_fenced (tests.test_store_node_host.StoreNodeHostTests.test_lost_bridge_reply_after_namespace_observation_stays_fenced)
+The host closes its gate before every post-syscall callback.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 214, in test_lost_bridge_reply_after_namespace_observation_stays_fenced
+    self.assertEqual(self.post("<prior@example.invalid>", b"prior"), 0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 59, in post
+    return run_store.command_post(SimpleNamespace(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+ERROR: test_recovery_barrier_error_fences_until_fresh_observed_replay (tests.test_store_node_host.StoreNodeHostTests.test_recovery_barrier_error_fences_until_fresh_observed_replay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 113, in test_recovery_barrier_error_fences_until_fresh_observed_replay
+    self.assertEqual(self.post("<prior@example.invalid>", b"prior"), 0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 59, in post
+    return run_store.command_post(SimpleNamespace(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1982, in command_post
+    sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1929, in post_article
+    codes = group_codes(groups, store)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tools/run_store.py", line 1594, in group_codes
+    raise StoreFault("store was written under a different store format")
+run_store.StoreFault: store was written under a different store format
+
+======================================================================
+FAIL: test_acl2_transaction_names_continue_after_nonempty_recovery (tests.test_store.StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery)
+The second final name comes from ACL2 after replaying real history.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 82, in test_acl2_transaction_names_continue_after_nonempty_recovery
+    self.post("<name-zero@example.invalid>", b"zero")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_allocator_replace_error_and_frontier_replay_boundaries (tests.test_store.StoreTests.test_allocator_replace_error_and_frontier_replay_boundaries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 409, in test_allocator_replace_error_and_frontier_replay_boundaries
+    self.post("<frontier@example.invalid>", b"frontier")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_checksum_unknown_schema_and_final_symlink_fault (tests.test_store.StoreTests.test_checksum_unknown_schema_and_final_symlink_fault)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 180, in test_checksum_unknown_schema_and_final_symlink_fault
+    self.post("<flip@example.invalid>", b"flip")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery (tests.test_store.StoreTests.test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 160, in test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery
+    self.post("<zero@example.invalid>", b"zero")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_duplicate_is_detected_before_full_transaction_limit (tests.test_store.StoreTests.test_duplicate_is_detected_before_full_transaction_limit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 143, in test_duplicate_is_detected_before_full_transaction_limit
+    self.post("<bound-duplicate@example.invalid>", b"same")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_duplicate_retry_and_conflicting_id_do_not_overwrite (tests.test_store.StoreTests.test_duplicate_retry_and_conflicting_id_do_not_overwrite)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 133, in test_duplicate_retry_and_conflicting_id_do_not_overwrite
+    self.post("<same@example.invalid>", original)
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_empty_payload_is_present_and_orphan_staging_is_ignored (tests.test_store.StoreTests.test_empty_payload_is_present_and_orphan_staging_is_ignored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 94, in test_empty_payload_is_present_and_orphan_staging_is_ignored
+    self.post("<empty@example.invalid>", b"")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_initialize_refuses_missing_frontier_when_history_exists (tests.test_store.StoreTests.test_initialize_refuses_missing_frontier_when_history_exists)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 415, in test_initialize_refuses_missing_frontier_when_history_exists
+    self.post("<history@example.invalid>", b"history")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_known_abort_before_publication_and_indeterminate_after_publication (tests.test_store.StoreTests.test_known_abort_before_publication_and_indeterminate_after_publication)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 202, in test_known_abort_before_publication_and_indeterminate_after_publication
+    aborted = self.post("<abort@example.invalid>", b"abort", ("fn.letters",),
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_post_reopen_replays_and_preserves_literal_lisp_bytes (tests.test_store.StoreTests.test_post_reopen_replays_and_preserves_literal_lisp_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 74, in test_post_reopen_replays_and_preserves_literal_lisp_bytes
+    self.post("<literal@example.invalid>", payload)
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_recovery_limits_and_barrier_failure_fence_until_success (tests.test_store.StoreTests.test_recovery_limits_and_barrier_failure_fence_until_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 286, in test_recovery_limits_and_barrier_failure_fence_until_success
+    self.post("<limit@example.invalid>", b"limit")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_recovery_scan_io_failure_keeps_gate_closed_until_success (tests.test_store.StoreTests.test_recovery_scan_io_failure_keeps_gate_closed_until_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 348, in test_recovery_scan_io_failure_keeps_gate_closed_until_success
+    self.post("<scan@example.invalid>", b"retained")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_two_group_post_replays_both_allocations_and_one_pin (tests.test_store.StoreTests.test_two_group_post_replays_both_allocations_and_one_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 123, in test_two_group_post_replays_both_allocations_and_one_pin
+    self.post("<two@example.invalid>", b"two", ("fn.letters", "fn.test"))
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 47, in post
+    return self.invoke("post", *arguments, expected=expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store.py", line 36, in invoke
+    self.fail("{} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_capacity_is_a_configuration_record_with_three_outcomes (tests.test_store_config.StoreConfigTests.test_capacity_is_a_configuration_record_with_three_outcomes)
+R6.  `capacity <n>` raises, refuses below the reservation total, and
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_config.py", line 133, in test_capacity_is_a_configuration_record_with_three_outcomes
+    self.post("<cap@example.invalid>", "fn.letters")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_config.py", line 38, in post
+    return self.invoke("post", "--message-id", msgid, "--payload", self.payload,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_config.py", line 32, in invoke
+    self.fail("{} {} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post ('--message-id', '<cap@example.invalid>', '--payload', PosixPath('/tmp/fn-store-config-dt1izbyd/payload'), '--group', 'fn.letters') returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_create_retire_and_revive_resume_numbering_across_recovery (tests.test_store_config.StoreConfigTests.test_create_retire_and_revive_resume_numbering_across_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_config.py", line 86, in test_create_retire_and_revive_resume_numbering_across_recovery
+    self.post("<a@example.invalid>", "fn.dtn")
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_config.py", line 38, in post
+    return self.invoke("post", "--message-id", msgid, "--payload", self.payload,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_config.py", line 32, in invoke
+    self.fail("{} {} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: post ('--message-id', '<a@example.invalid>', '--payload', PosixPath('/tmp/fn-store-config-ygwamkjv/payload'), '--group', 'fn.dtn') returned 4
+stdout=
+stderr=store: store was written under a different store format
+
+
+======================================================================
+FAIL: test_an_uncertain_publication_leaves_no_staging_orphan_after_recovery (tests.test_store_lifecycle.StagingSweepTests.test_an_uncertain_publication_leaves_no_staging_orphan_after_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_lifecycle.py", line 125, in test_an_uncertain_publication_leaves_no_staging_orphan_after_recovery
+    self.store_command(store, "post", "--message-id", "<a@fn.example.invalid>",
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_lifecycle.py", line 114, in store_command
+    self.fail("store {} returned {}\nstdout={}\nstderr={}".format(
+AssertionError: store ('post', '--message-id', '<a@fn.example.invalid>', '--payload', '/tmp/fn-sweep-9gobz2mu/payload', '--group', 'fn.letters') returned 4
+stdout=b''
+stderr=b'store: store was written under a different store format\n'
+
+======================================================================
+FAIL: test_known_abort_consumes_frontier_without_a_record (tests.test_store_node_host.StoreNodeHostTests.test_known_abort_consumes_frontier_without_a_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_store_node_host.py", line 90, in test_known_abort_consumes_frontier_without_a_record
+    self.assertEqual(bridge.next_txid(), 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 64 tests in 748.383s
+
+FAILED (failures=17, errors=19)

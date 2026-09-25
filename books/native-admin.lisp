@@ -24,6 +24,8 @@
 ; group-name rules, the plan, its deltas and the publication decision.
 (include-book "native-admin-shape")
 (include-book "native-admin-peer")
+; `bp-route add|remove', the BP route table (books/bp-route.lisp).
+(include-book "bp-route")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -172,6 +174,8 @@
          (t (fn-native-admin-peer-plan words))))
        ((and (consp words) (equal (car words) "bp-boundary"))
         (fn-native-admin-bp-boundary-plan words))
+       ((and (consp words) (equal (car words) "bp-route"))
+        (fn-bprt-admin-plan words))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; The delta list the LIVE owner stages for an accepted plan.
@@ -198,10 +202,10 @@
           (name (fn-record-octets-string (fn-native-admin-result-name plan))))
       (cond ((equal kind :set-peer)
              (list (fn-native-admin-set-peer-delta plan)))
-            ((equal kind :set-bp-boundary)
+            ((member-equal kind '(:set-bp-boundary :set-bp-route))
              (list (fn-cfg-set-peer name
                                     (fn-native-admin-result-value plan))))
-            ((equal kind :remove-peer)
+            ((member-equal kind '(:remove-peer :remove-bp-route))
              (list (fn-cfg-remove-peer-delta name)))
             ((equal kind :create-group)
              (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
@@ -252,8 +256,8 @@
 (encapsulate ()
 (local (defthm group-name-is-label
   (implies (fn-record-group-namep s) (fn-cfg-labelp s))
-  :hints (("Goal" :in-theory (enable fn-record-group-namep fn-cfg-labelp
-                                     fn-record-nonempty-at-mostp)))))
+  :hints (("Goal" :use fn-cfg-labelp-of-record-group-name
+                  :in-theory (disable fn-record-group-namep fn-cfg-labelp)))))
 (local (defthm group-deltas-typed
   (implies (fn-record-group-namep s)
            (and (fn-cfg-delta-listp (list (fn-cfg-create-group s *fn-cfg-default-policy-id*)))

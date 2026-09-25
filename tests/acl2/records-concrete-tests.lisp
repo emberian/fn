@@ -1,6 +1,9 @@
-; Teeth for books/records-concrete.lisp.
+; Teeth for books/records-concrete.lisp, books/records-concrete-owner.lisp,
+; books/records-codec-concrete.lisp and books/records-attach-concrete.lisp.
 (in-package "ACL2")
 (include-book "../../books/records-concrete")
+(include-book "../../books/records-concrete-owner")
+(include-book "../../books/records-attach-concrete")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "owner-served-invariants-tests")
 
@@ -183,3 +186,182 @@
                           (guard 'fn-sn-record-bindsp nil (w state)))
                    (equal (guard 'fn-rcon-store-event-sequence nil (w state))
                           (guard 'fn-store-event-sequence nil (w state)))))
+
+; -----------------------------------------------------------------------------
+; The dispatchers at write (lane/rep-records-2).  Witness: the same POST as
+; *osi-completing*, stopped before its :record-directory observation, so the
+; store is :record-attempted with the article record staged.  The encoder,
+; the staged sequence and the observation each run on it through the twin.
+
+(defconst *rcon-t-attempted*
+  (fn-own-run *own-taken*
+              (osi-drop-last
+               (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*))))))
+(defconst *rcon-t-staged*
+  (fn-sf-record-candidate (fn-sn-files (fn-own-store *rcon-t-attempted*))))
+(assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *rcon-t-attempted*)))
+                     :record-attempted))
+(assert-event (fn-rcon-record-p *rcon-t-staged*))
+(assert-event (equal *rcon-t-staged* *rcon-t-r*))
+
+; The encoder: the staged record's octets, equal to the reference and to the
+; codec's own encoding, and nil on a non-event.  A retention event takes the
+; second arm.
+(assert-event (consp (fn-rcon-store-event-encode *rcon-t-staged*)))
+(assert-event (equal (fn-rcon-store-event-encode *rcon-t-staged*)
+                     (fn-store-event-encode *rcon-t-staged*)))
+(assert-event (equal (fn-rcon-store-event-encode *rcon-t-staged*)
+                     (fn-record-encode *rcon-t-staged*)))
+(assert-event (consp (fn-rcon-store-event-encode *rcon-t-retention*)))
+(assert-event (equal (fn-rcon-store-event-encode *rcon-t-retention*)
+                     (fn-store-event-encode *rcon-t-retention*)))
+(assert-event (and (null (fn-rcon-store-event-encode nil))
+                   (null (fn-rcon-store-event-encode (list 1 2)))
+                   (null (fn-store-event-encode (list 1 2)))))
+; A record the recognizer refuses (a 251-character Message-ID) is not
+; encoded by either.
+(assert-event (null (fn-rcon-store-event-encode (rcon-t-with-msgid *rcon-t-r* *rcon-t-s251*))))
+(assert-event (null (fn-store-event-encode (rcon-t-with-msgid *rcon-t-r* *rcon-t-s251*))))
+
+; The staged sequence: 2, from the twin and the reference; nil with nothing
+; staged.
+(assert-event (equal (fn-rcon-sbud-pending-sequence (fn-own-store *rcon-t-attempted*)) 2))
+(assert-event (equal (fn-sbud-pending-sequence (fn-own-store *rcon-t-attempted*)) 2))
+(assert-event (null (fn-rcon-sbud-pending-sequence (fn-own-store *own-taken*))))
+(assert-event (null (fn-sbud-pending-sequence (fn-own-store *own-taken*))))
+
+; The observation, at the owner the host calls: the :record-directory event
+; moves the store to :completing with the staged pair, and the owner it
+; produces is the reference step's, which is the owner *osi-completing*.
+(defconst *rcon-t-oc* (fn-ocfg-make *rcon-t-attempted* *osi-cfg* nil nil))
+(defconst *rcon-t-io* (fn-rcon-ocfg-io *rcon-t-oc* :record-directory :ok))
+(assert-event (equal *rcon-t-io*
+                     (fn-ocfg-step *rcon-t-oc* '(:store (:io :record-directory :ok)))))
+(assert-event (equal (fn-ocfg-owner *rcon-t-io*) *osi-completing*))
+(assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner *rcon-t-io*))))
+                     :completing))
+(assert-event (equal (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner *rcon-t-io*))))
+                     (cons (fn-record-sequence *rcon-t-r*) (fn-record-txid *rcon-t-r*))))
+; An :error observation fences the record, the same in both.
+(assert-event (equal (fn-rcon-ocfg-io *rcon-t-oc* :record-directory :error)
+                     (fn-ocfg-step *rcon-t-oc* '(:store (:io :record-directory :error)))))
+(assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store
+                                                 (fn-ocfg-owner
+                                                  (fn-rcon-ocfg-io *rcon-t-oc* :record-directory :error)))))
+                     :fenced-record))
+; Another operation, and the same observation in a phase that does not take
+; it, leave the twin and the reference equal.
+(assert-event (equal (fn-rcon-ocfg-io *rcon-t-oc* :record-file :ok)
+                     (fn-ocfg-step *rcon-t-oc* '(:store (:io :record-file :ok)))))
+(assert-event (equal (fn-rcon-sn-io (fn-own-store *own-taken*) :record-directory :ok)
+                     (fn-sn-io (fn-own-store *own-taken*) :record-directory :ok)))
+
+; The keystones have no hypothesis.  The guards are the references': the
+; store-level observation's guard, fn-sn-statep, is needed for its compiled
+; code (the file step reads the files' phase, fn-sf-statep's), so a copy
+; with guard t is refused.
+(must-fail
+ (defun rcon-t-sn-io-unguarded (s operation result)
+   (declare (xargs :guard t :verify-guards t))
+   (let* ((old-files (fn-sn-files s))
+          (files (fn-rcon-sn-file-step old-files operation result)))
+     (fn-sn-update s files (fn-sn-node s)))))
+(assert-event
+ (and (eq (symbol-class 'fn-rcon-store-event-encode (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rcon-sbud-pending-sequence (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rcon-sf-record-dir-result (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rcon-sn-file-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rcon-sn-io (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rcon-own-store-io (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rcon-ocfg-io (w state)) :common-lisp-compliant)))
+(assert-event (and (equal (guard 'fn-rcon-sn-io nil (w state))
+                          (guard 'fn-sn-io nil (w state)))
+                   (equal (guard 'fn-rcon-sf-record-dir-result nil (w state))
+                          (guard 'fn-sf-record-dir-result nil (w state)))
+                   (equal (guard 'fn-rcon-store-event-encode nil (w state))
+                          (guard 'fn-store-event-encode nil (w state)))))
+
+; -----------------------------------------------------------------------------
+; The codec's encoder behind the seam (books/records-codec-concrete.lisp),
+; attached by books/records-attach-concrete.lisp, which this book includes
+; after codec-attach as the host images do.  On the staged record of the POST
+; above it is the implementation's encoding, non-empty, and the encoding
+; every ground fn-record-encode now evaluates through; on a record the
+; recognizer refuses and on non-records it is nil, as the implementation.
+
+(assert-event (consp (fn-rcon-record-encode-impl *rcon-t-staged*)))
+(assert-event (equal (fn-rcon-record-encode-impl *rcon-t-staged*)
+                     (fn-record-encode-impl *rcon-t-staged*)))
+(assert-event (equal (fn-record-encode *rcon-t-staged*)
+                     (fn-rcon-record-encode-impl *rcon-t-staged*)))
+(assert-event (equal (fn-rcon-record-encode-impl *rcon-t-retention*) nil))
+(assert-event (and (null (fn-rcon-record-encode-impl nil))
+                   (null (fn-rcon-record-encode-impl "x"))
+                   (null (fn-rcon-record-encode-impl (list 1 2)))))
+; The recognizer is what refuses: a 251-character Message-ID keeps the
+; record's shape, and neither encoder encodes it; the 250-character one is
+; encoded by both.
+(defconst *rcon-t-msgid-251* (rcon-t-with-msgid *rcon-t-r* *rcon-t-s251*))
+(defconst *rcon-t-msgid-250* (rcon-t-with-msgid *rcon-t-r* *rcon-t-s250*))
+(assert-event (and (fn-record-shapep *rcon-t-msgid-251*)
+                   (null (fn-rcon-record-encode-impl *rcon-t-msgid-251*))
+                   (null (fn-record-encode-impl *rcon-t-msgid-251*))))
+(assert-event (and (consp (fn-rcon-record-encode-impl *rcon-t-msgid-250*))
+                   (equal (fn-rcon-record-encode-impl *rcon-t-msgid-250*)
+                          (fn-record-encode-impl *rcon-t-msgid-250*))))
+; So "the encoder encodes every shaped record" is refuted at that record.
+(must-fail
+ (defthm rcon-t-encode-shaped-251
+   (implies (fn-record-shapep *rcon-t-msgid-251*)
+            (consp (fn-rcon-record-encode-impl *rcon-t-msgid-251*)))))
+; The attachment: fn-record-encode evaluates through the twin.
+(assert-event
+ (eq (cdr (assoc-eq 'fn-record-encode
+                    (getpropc 'fn-record-decode-exact 'attachment nil (w state))))
+     'fn-rcon-record-encode-impl))
+(assert-event
+ (and (eq (symbol-class 'fn-rcon-record-encode-impl (w state)) :common-lisp-compliant)
+      (equal (guard 'fn-rcon-record-encode-impl nil (w state))
+             (guard 'fn-record-encode-impl nil (w state)))))
+
+; -----------------------------------------------------------------------------
+; The codec ceilings (bounds-p2): the twin reads the record's own width.
+; A 65,536-octet payload is above the old record payload bound (32,768) and
+; one octet above the generic CBOR item cap (*fn-cbor-max-bytes*, 65,535),
+; so the generic encoder refuses the item and the record encodes only through
+; the bounded item encoder at *fn-record-max-octets*: the twin encodes it,
+; to the implementation's bytes, and the decoder reads the record back.
+; The witness stays small: the new payload ceiling is 4,261,412,864 octets.
+; Its group is a name of *fn-record-max-group-name* (256) characters; one
+; more is refused by both recognizers.
+(defconst *rcon-t-s256-group* (coerce (make-list 256 :initial-element #\a) 'string))
+(defconst *rcon-t-s257-group* (coerce (make-list 257 :initial-element #\a) 'string))
+(defconst *rcon-t-wide*
+  (fn-record-make 1 2 3 (fn-record-msgid *rcon-t-r*)
+                  (make-list 65536 :initial-element 97)
+                  (list *rcon-t-s256-group*)
+                  (fn-record-obligation-id *rcon-t-r*)
+                  (fn-record-content-subject *rcon-t-r*)
+                  (fn-record-release-evidence *rcon-t-r*) 1 :legacy))
+(defconst *rcon-t-wide-group-257*
+  (fn-record-make 1 2 3 (fn-record-msgid *rcon-t-r*) '(97)
+                  (list *rcon-t-s257-group*)
+                  (fn-record-obligation-id *rcon-t-r*)
+                  (fn-record-content-subject *rcon-t-r*)
+                  (fn-record-release-evidence *rcon-t-r*) 1 :legacy))
+(assert-event (and (equal *fn-record-max-group-name* 256)
+                   (< 32768 (len (fn-record-payload *rcon-t-wide*)))
+                   (< *fn-cbor-max-bytes* (len (fn-record-payload *rcon-t-wide*)))
+                   (<= (len (fn-record-payload *rcon-t-wide*)) *fn-record-max-payload*)))
+(assert-event (and (fn-record-p *rcon-t-wide*) (fn-rcon-record-p *rcon-t-wide*)))
+(assert-event (and (not (fn-record-p *rcon-t-wide-group-257*))
+                   (not (fn-rcon-record-p *rcon-t-wide-group-257*))))
+(assert-event (null (fn-cbor-encode (cons :bytes (fn-record-payload *rcon-t-wide*)))))
+(assert-event (and (consp (fn-rcon-record-encode-impl *rcon-t-wide*))
+                   (< *fn-cbor-max-input* (len (fn-rcon-record-encode-impl *rcon-t-wide*)))
+                   (equal (fn-rcon-record-encode-impl *rcon-t-wide*)
+                          (fn-record-encode-impl *rcon-t-wide*))
+                   (equal (fn-record-decode-exact-impl
+                           (fn-rcon-record-encode-impl *rcon-t-wide*))
+                          (list :ok *rcon-t-wide*))))
+(assert-event (null (fn-rcon-record-encode-impl *rcon-t-wide-group-257*)))

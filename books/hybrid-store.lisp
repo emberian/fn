@@ -138,6 +138,27 @@
              (cons :bytes (cdr (car (cdr signatures))))))
     nil))
 
+; The evidence tag a verdict records: which carrier version, and so which
+; preimage, the two primitive observations were made over.  The keyring
+; snapshot and the kind-4 event keep `*fn-hsig-profile-tag*': the keys are
+; the same D09 pair under either version.
+(defun fn-hsig-evidence-tag (source)
+  (declare (xargs :guard t))
+  (if (equal (fn-hsig-source-version source) *fn-hsig-v2-version*)
+      *fn-stxe-profile-hybrid-v2*
+    *fn-hsig-profile-tag*))
+
+(defthm fn-hsig-keyring-profile-of-evidence-tag
+  (equal (fn-stxe-keyring-profile (fn-hsig-evidence-tag source))
+         *fn-hsig-profile-tag*)
+  :hints (("Goal" :in-theory (enable fn-stxe-keyring-profile))))
+
+(defthm fn-hsig-evidence-tag-is-supported
+  (fn-stxe-profile-supportedp (fn-hsig-evidence-tag source))
+  :hints (("Goal" :in-theory (enable fn-stxe-profile-supportedp))))
+
+; Schema-0 (legacy record) events stay carrier v1: replay's schema-0 binding
+; admits only `fn-hybrid-v1'.  A v2 source is signed on the carried path.
 (defun fn-hsig-authorized-article-event
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid content-subject
@@ -268,15 +289,17 @@
              (fn-hsig-carried-record-metadatap source received record)
              (equal enrolled-snapshot
                     (fn-hsig-keyring-snapshot principal keys))
-             (fn-hsig-authorize principal keys source signatures
-                                observed-ml-key ed25519-observation
-                                ml-dsa-65-observation))
+             (fn-hsig-authorize-at (fn-hsig-source-version source)
+                                   principal keys source signatures
+                                   observed-ml-key ed25519-observation
+                                   ml-dsa-65-observation))
         (let* ((verdict (fn-stxe-make sequence txid generation msgid :verified
                                       principal keyring-generation
-                                      *fn-hsig-profile-tag*))
+                                      (fn-hsig-evidence-tag source)))
                (event
                 (fn-stxa-make-carried sequence txid generation
-                                      keyring-generation *fn-hsig-profile-tag*
+                                      keyring-generation
+                                      (fn-hsig-evidence-tag source)
                                       (fn-record-string-octets content-subject)
                                       (fn-record-encode record)
                                       (fn-stxe-encode verdict)
@@ -366,7 +389,8 @@
                 (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
                 (equal (fn-stxa-keyring-generation event)
                        (fn-stxk-keyring-generation snapshot))
-                (equal (fn-stxa-profile event) *fn-hsig-profile-tag*)
+                (equal (fn-stxa-profile event)
+                       (fn-hsig-evidence-tag (fn-stxa-authored-source event)))
                 (equal (fn-stxk-profile snapshot) *fn-hsig-profile-tag*)))
       nil
     (let* ((enrolled (fn-hsig-keyring-snapshot-value snapshot))
@@ -419,7 +443,8 @@
   (if (not (and (fn-stxa-p event)
                 (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
                 (equal (fn-stxa-keyring-generation event) 0)
-                (equal (fn-stxa-profile event) *fn-hsig-profile-tag*)))
+                (equal (fn-stxa-profile event)
+                       (fn-hsig-evidence-tag (fn-stxa-authored-source event)))))
       nil
     (let* ((article (fn-record-decode-exact (fn-stxa-article-record event)))
            (verdict (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
@@ -466,6 +491,7 @@
                                    fn-hsig-authored-source-id)))))
 
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
+                    (:d fn-hsig-evidence-tag)
                     (:d fn-hsig-octet-fields-to-strings)
                     (:d fn-hsig-authored-source-fields)
                     (:d fn-hsig-keyring-event)

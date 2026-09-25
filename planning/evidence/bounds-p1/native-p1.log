@@ -1,0 +1,33 @@
+Running as unit: run-r3474d67f062147d7bff07a713540a608.scope; invocation ID: ef7e74efbb5141e69a6912962ccd5e7e
+test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) ... ok
+test_a_step_that_shrinks_is_refused (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_a_step_that_shrinks_is_refused) ... ok
+test_the_developer_entry_steps_to_the_scale_preset (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_the_developer_entry_steps_to_the_scale_preset) ... ok
+test_the_step_keeps_every_bound_and_writes_the_scale_frame (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_the_step_keeps_every_bound_and_writes_the_scale_frame) ... ok
+test_a_raise_of_any_field_and_a_shrink_refused_by_name (tests.test_native_profile_upgrade.OperatorFieldsTests.test_a_raise_of_any_field_and_a_shrink_refused_by_name) ... ok
+test_the_payload_bound_is_the_operators_field (tests.test_native_profile_upgrade.OperatorFieldsTests.test_the_payload_bound_is_the_operators_field) ... ok
+test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) ... ok
+test_the_verb_is_acl2s_and_the_host_writes_the_program (tests.test_native_profile_upgrade.ProfileUpgradeSourceTests.test_the_verb_is_acl2s_and_the_host_writes_the_program) ... ok
+test_a_running_owner_refuses_the_upgrade (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_a_running_owner_refuses_the_upgrade) ... ok
+test_same_profile_and_downgrade_write_nothing (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_same_profile_and_downgrade_write_nothing) ... ok
+test_three_articles_then_scale_then_the_next_post (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_three_articles_then_scale_then_the_next_post) ... ok
+test_a_locked_store_is_refused_without_the_lock_being_touched (tests.test_native_operator_verbs.NativeOperatorInitTests.test_a_locked_store_is_refused_without_the_lock_being_touched) ... ok
+test_help_names_init (tests.test_native_operator_verbs.NativeOperatorInitTests.test_help_names_init) ... ok
+test_init_creates_the_configured_store_and_then_refuses_it (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_creates_the_configured_store_and_then_refuses_it) ... ok
+test_init_without_a_group_is_usage_and_writes_nothing (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_without_a_group_is_usage_and_writes_nothing) ... ok
+test_bare_init_is_the_default_profile (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_bare_init_is_the_default_profile) ... ok
+test_init_refuses_a_profile_by_the_relation_it_breaks (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_refuses_a_profile_by_the_relation_it_breaks) ... ok
+test_init_writes_the_operators_fields_and_status_prints_them (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them) ... ok
+test_the_development_profile_budget_is_reported_and_refused_by_name (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_development_profile_budget_is_reported_and_refused_by_name) ... ok
+test_the_scale_profile_is_reachable_from_init (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_scale_profile_is_reachable_from_init) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 22.514s
+
+OK
+format 7 to 8 cuts: [(('profile-created', 'eio', 'operator'), 'format-7'), (('profile-created', 'eio', 'store'), 'format-7'), (('profile-created', 'kill', 'operator'), 'format-7'), (('profile-created', 'kill', 'store'), 'format-7'), (('profile-durable', 'eio', 'operator'), 'format-8'), (('profile-durable', 'eio', 'store'), 'format-8'), (('profile-durable', 'kill', 'operator'), 'format-8'), (('profile-durable', 'kill', 'store'), 'format-8'), (('profile-replaced', 'eio', 'operator'), 'format-8'), (('profile-replaced', 'eio', 'store'), 'format-8'), (('profile-replaced', 'kill', 'operator'), 'format-8'), (('profile-replaced', 'kill', 'store'), 'format-8'), (('profile-staged-durable', 'eio', 'operator'), 'format-7'), (('profile-staged-durable', 'eio', 'store'), 'format-7'), (('profile-staged-durable', 'kill', 'operator'), 'format-7'), (('profile-staged-durable', 'kill', 'store'), 'format-7'), (('profile-written', 'eio', 'operator'), 'format-7'), (('profile-written', 'eio', 'store'), 'format-7'), (('profile-written', 'kill', 'operator'), 'format-7'), (('profile-written', 'kill', 'store'), 'format-7')]
+store post 19999 0 committed sequence=0 charge=6 
+store post 20000 0 committed sequence=1 charge=6 
+store post 20001 1  store: payload exceeds the modelled bound
+operator post 1000 0  accepted operator post ACCEPTED
+operator post 20001 1  refused operator post REFUSED
+profile cuts: [(('profile-created', 'eio', 'operator'), 128), (('profile-created', 'eio', 'store'), 128), (('profile-created', 'kill', 'operator'), 128), (('profile-created', 'kill', 'store'), 128), (('profile-durable', 'eio', 'operator'), 4096), (('profile-durable', 'eio', 'store'), 4096), (('profile-durable', 'kill', 'operator'), 4096), (('profile-durable', 'kill', 'store'), 4096), (('profile-replaced', 'eio', 'operator'), 4096), (('profile-replaced', 'eio', 'store'), 4096), (('profile-replaced', 'kill', 'operator'), 4096), (('profile-replaced', 'kill', 'store'), 4096), (('profile-staged-durable', 'eio', 'operator'), 128), (('profile-staged-durable', 'eio', 'store'), 128), (('profile-staged-durable', 'kill', 'operator'), 128), (('profile-staged-durable', 'kill', 'store'), 128), (('profile-written', 'eio', 'operator'), 128), (('profile-written', 'eio', 'store'), 128), (('profile-written', 'kill', 'operator'), 128), (('profile-written', 'kill', 'store'), 128)]

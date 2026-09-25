@@ -14,6 +14,10 @@
 ; the seams call the constrained encoders and decoders, and this is what makes
 ; them evaluate here.  It changes no theorem.
 (include-book "books/codec-attach")
+;; The record encoder's attachment over the concrete recognizer
+;; (books/records-attach-concrete.lisp): fn-rcon-record-encode-impl, equal to
+;; fn-record-encode-impl on every input.
+(include-book "books/records-attach-concrete")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
@@ -42,6 +46,8 @@
 (include-book "books/owner-served-carried")
 (include-book "books/owner-commit-carried")
 (include-book "books/owner-prepare-carried")
+;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
+(include-book "books/records-concrete-owner")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
@@ -110,6 +116,9 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+;; N16: the generation selection, recovery from a checkpoint and the
+;; publication driver fnn-bps-open and `bp-node checkpoint' call.
+(include-book "books/bp-node-rotation")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-handoff-status")

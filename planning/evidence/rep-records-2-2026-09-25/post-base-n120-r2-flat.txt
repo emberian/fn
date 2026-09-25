@@ -1,0 +1,54 @@
+
+Number of samples:   134
+Sample interval:     0.001 seconds
+Total sampling time: 0.134 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2413234 "fn-sprof" RUNNING {120F5785C3}> (256/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2413237 "fn owner client" RUNNING {120FB45163}> (33624/1048576 bytes, 123 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     14  10.4     21  15.7     14  10.4        -  FN-SHA256-ROTR32
+   4      8   6.0      8   6.0     22  16.4        -  FN-SHA256-NTHX
+   6      6   4.5      6   4.5     28  20.9        -  ASH
+   8      6   4.5      6   4.5     34  25.4        -  foreign function fsync
+  10      5   3.7      5   3.7     39  29.1        -  foreign function __close
+  12      4   3.0     22  16.4     43  32.1        -  FN-SHA256-ROUNDS
+  14      4   3.0      4   3.0     47  35.1        -  FN-AG-CDR
+  16      4   3.0      4   3.0     51  38.1        -  FN-SHA256-W32
+  18      4   3.0      4   3.0     55  41.0        -  foreign function rename
+  20      3   2.2     28  20.9     58  43.3        -  FN-SHA256-SCHEDULE-AUX
+  22      3   2.2      6   4.5     61  45.5        -  FN-SHA256-FIRSTN
+  24      3   2.2      3   2.2     64  47.8        -  foreign function clock_nanosleep
+  26      3   2.2      3   2.2     67  50.0        -  GENERIC--
+  28      3   2.2      3   2.2     70  52.2        -  foreign function __open64
+  30      2   1.5      4   3.0     72  53.7        -  FN-SHA256-MAJ
+  32      2   1.5      3   2.2     74  55.2        -  FN-SHA256-PAD
+  34      2   1.5      2   1.5     76  56.7        -  FN-CBOR-OCTETP
+  36      2   1.5      2   1.5     78  58.2        -  SB-KERNEL:TWO-ARG-XOR
+  38      2   1.5      2   1.5     80  59.7        -  SB-KERNEL:TWO-ARG-IOR
+  40      2   1.5      2   1.5     82  61.2        -  EQUAL
+  42      2   1.5      2   1.5     84  62.7        -  foreign function __write
+  44      1   0.7     65  48.5     85  63.4        -  FNN-CORE-STATE
+  46      1   0.7     64  47.8     86  64.2        -  FNN-OWNER-ACTION
+  48      1   0.7     56  41.8     87  64.9        -  FN-SHA256-COMPRESS
+  50      1   0.7      8   6.0     88  65.7        -  FN-SHA256-BSIG1
+  52      1   0.7      7   5.2     89  66.4        -  FNN-CLOSE
+  54      1   0.7      5   3.7     90  67.2        -  FN-SHA256-WORDS16
+  56      1   0.7      3   2.2     91  67.9        -  FN-CBOR-OCTET-LISTP
+  58      1   0.7      3   2.2     92  68.7        -  FN-INDEX-BUILD
+  60      1   0.7      3   2.2     93  69.4        -  FN-SHA256-BSIG0
+  62      1   0.7      2   1.5     94  70.1        -  FN-RECORD-PAYLOADP
+  64      1   0.7      2   1.5     95  70.9        -  FN-SHA256-ZEROS
+  66      1   0.7      2   1.5     96  71.6        -  FN-RECORD-STRING-OCTETS-AUX
+  68      1   0.7      2   1.5     97  72.4        -  FN-RECORD-OCTETS-CHARS
+  70      1   0.7      1   0.7     98  73.1        -  FLOOR
+  72      1   0.7      1   0.7     99  73.9        -  FN-RECORD-STRING-OCTETS
+  74      1   0.7      1   0.7    100  74.6        -  GENERIC-<
+  76      1   0.7      1   0.7    101  75.4        -  foreign function unlink
+  78      1   0.7      1   0.7    102  76.1        -  FN-SERVED-SUBMISSION
+  80      1   0.7      1   0.7    103  76.9        -  FN-OWN-CONN-GROUP-INDEX
+------------------------------------------------------------------------
+          2   1.5                                     elsewhere

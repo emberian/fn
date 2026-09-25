@@ -91,6 +91,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	tests/acl2/records-ceiling-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
 	tests/acl2/provenance-tests \
@@ -258,6 +259,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-marker-program \
 	books/byte-store-k0-marker \
 	tests/acl2/byte-store-k0-marker-tests \
+	books/byte-store-k0-step-lemmas \
+	books/byte-store-k0-step \
+	tests/acl2/byte-store-k0-step-tests \
+	books/byte-store-k0-step-bridge-marker \
+	books/byte-store-k0-step-bridge \
+	tests/acl2/byte-store-k0-step-bridge-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -362,11 +369,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-machine-gaps \
 	books/bp-node-busy-delivery \
 	books/bp-node-receipt-send \
+	books/bp-fnbs-replay-append \
+	books/bp-node-rotation-codec \
+	books/bp-node-rotation \
+	books/bp-node-rotation-step \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \
 	tests/acl2/bp-node-forward-retry-tests \
+	books/bp-route \
+	books/bp-route-step \
+	tests/acl2/bp-route-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
@@ -563,6 +577,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \
 	books/records-concrete \
+	books/records-concrete-owner \
+	books/records-attach-concrete \
+	books/msgid-index-concrete \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -597,6 +614,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
 	tests/acl2/records-concrete-tests \
+	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \
 	tests/acl2/owner-intent-carried-tests \
 	tests/acl2/owner-recover-ocl-tests \

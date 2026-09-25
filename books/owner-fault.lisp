@@ -186,6 +186,7 @@
   :hints (("Goal" :in-theory (e/d (fn-nntp-post-outcome fn-post-make-result
                                    fn-post-store-refusalp
                                    fn-post-store-refusal-line
+                                   fn-post-store-refusal-text
                                    fn-post-result-effects fn-post-single
                                    fn-nntp-single fn-nntp-make-result
                                    fn-nntp-result-effects fn-nntp-reply-effect

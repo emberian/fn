@@ -221,14 +221,19 @@ each suffix. Canonical keyring snapshots larger than the generic ceiling and
 kind-4 composites round-trip through the actual Store-event dispatcher.
 
 FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
-frame header and trailer. A persisted format-7 Store profile derives the same
-per-record payload ceiling from `max_recovery_record_bytes / max_transactions`.
-Format-6 metadata remains readable and derives its original 65,538-octet
-ceiling. The profile proves that transaction count times this per-record bound
-fits its aggregate bound. Admission therefore checks only the canonical
-committed count and prospective payload before allocation or publication; no
-host-maintained aggregate becomes a second capacity authority. A legacy store refuses a larger record rather than
-accepting history it cannot reopen.
+frame header and trailer. The store profile (FNSM kind 1, format
+`fn-store-8`, books/byte-store-frame.lisp) is two texts (the format and the
+frontier format) and twelve eight-octet frame naturals, the operator's fields
+in the order of `*fn-bs-profile-field-names*`; `fn-bs-profile-validp` states
+the relations between them and the codec ceilings (the per-record field R is
+at most this FNST ceiling and at least every Store event kind's worst case).
+A format-7 profile (six fields, two fixed tuples) is still decoded and runs
+under its translation (R = aggregate / transactions, the other fields at the
+codec widths); format 6 is not decoded. Admission is ACL2's own count and sum:
+fewer than T committed records, the prospective record within R, and the
+committed record octets plus it within H (`fn-sbud-verdict-at`). The former
+relation `T x R <= H` is dropped; the octet sum it stood in for is now
+counted (`fn-sbud-bytes-used`), so no host aggregate is an authority.
 
 See [RFC 8949 §4.2](https://www.rfc-editor.org/rfc/rfc8949.html#section-4.2) for
 deterministic CBOR requirements. COSE is a candidate for signatures, not an

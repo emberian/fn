@@ -696,9 +696,22 @@
     (cond ((equal completion :durable) (if (equal kind :ihave) 235 239))
           ((equal completion :uncertain) 436)
           ((equal completion :clock-unusable) 436)
-          ((equal completion :refused) (if (equal kind :ihave) 437 439))
+          ((fn-post-store-refusalp completion) (if (equal kind :ihave) 437 439))
           ((equal dk :defer) 436)
           (t (if (equal kind :ihave) 437 439)))))
+
+; The IHAVE refusal after the bytes (RFC 3977 section 6.3.2: 437, with text
+; after the code).  A COMPLETION that is a Store refusal word carries its
+; reason on the wire exactly as POST's 441 does: the same word, the same
+; text, rendered by fn-post-store-refusal-text (books/nntp-post.lisp).  The
+; bare :refused names no reason and keeps its own text.  TAKETHIS's 439
+; echoes the Message-ID (RFC 4644 section 2.5) and carries no text.
+(defun fn-peer-transit-refusal-line (completion)
+  (declare (xargs :guard t))
+  (if (equal completion :refused)
+      "437 transfer rejected; refused by acceptance"
+    (string-append "437 transfer rejected; "
+                   (fn-post-store-refusal-text completion))))
 
 (defun fn-peer-transit-outcome-effects (ps submission d completion)
   (declare (xargs :guard t))
@@ -713,8 +726,8 @@
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
                (fn-peer-single ps "436 retry later; no usable clock reading"))
-              ((equal completion :refused)
-               (fn-peer-single ps "437 transfer rejected; refused by acceptance"))
+              ((fn-post-store-refusalp completion)
+               (fn-peer-single ps (fn-peer-transit-refusal-line completion)))
               ((equal code 436)
                (fn-peer-single ps (string-append "436 retry later; " reason)))
               (t (fn-peer-single ps (string-append "437 transfer rejected; " reason))))
@@ -1023,6 +1036,9 @@
             (fn-peer-transit-outcome-effects ps submission d completion)))
   :hints (("Goal" :in-theory (e/d (fn-peer-transit-outcome-effects
                                    fn-peer-transit-code
+                                   fn-peer-transit-refusal-line
+                                   fn-post-store-refusalp
+                                   fn-post-store-refusal-text
                                    fn-peer-reason-text fn-peer-submissionp)
                                   (fn-peer-single fn-peer-echo-reply
                                    fn-nntp-effectsp fn-nntp-response-textp
@@ -1486,6 +1502,7 @@
     (:d fn-peer-with-node)
     (:d fn-peer-single) (:d fn-peer-echo-reply) (:d fn-peer-ihave-offer-line)
     (:d fn-peer-check-code) (:d fn-peer-transit-code) (:d fn-peer-offer-code)
+    (:d fn-peer-transit-refusal-line)
     (:d fn-peer-transit-outcome-effects)
     (:d fn-peer-transit-outcome) (:d fn-peer-capability-lines)
     (:d fn-peer-delegate) (:d fn-peer-msgid-argp) (:d fn-peer-command)

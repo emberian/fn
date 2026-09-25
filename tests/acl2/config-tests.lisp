@@ -254,11 +254,12 @@
         :fault))
 
 ; A limit above its format ceiling is refused, so no configuration can name a
-; bound the codec cannot represent.
+; bound the codec cannot represent.  The ceiling is the record codec's payload
+; width (D27), no longer the pre-D27 32 768.
 (assert-event
  (equal (fn-cfg-admissible-reason
          (fn-cfg-value *cfg-t-g3*) 4 *cfg-t-stamp* 0 510
-         (list (fn-cfg-set-limit "max-payload" 32769)))
+         (list (fn-cfg-set-limit "max-payload" (1+ *fn-record-max-payload*))))
         :limit-above-ceiling))
 
 ; -----------------------------------------------------------------------------
@@ -494,3 +495,16 @@
                      '("fn.test" "fn.letters")))
 (assert-event (equal (fn-store-codes-from-groups '(nil) '(nil)) '(0)))
 (assert-event (equal (fn-store-groups-from-codes '(0) '(nil)) :bad))
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-cfg-labelp-of-record-group-name.  Tight witness: a group name
+; at the record's ceiling (256 octets) is a label at the label's width.
+; Without the hypothesis the conclusion fails: a 257-octet ASCII string is
+; not a label.
+(defconst *cfgt-name-256*
+  (coerce (make-list *fn-record-max-group-name* :initial-element #\a) 'string))
+(assert-event (and (fn-record-group-namep *cfgt-name-256*)
+                   (fn-cfg-labelp *cfgt-name-256*)
+                   (equal (length *cfgt-name-256*) *fn-cfg-max-label*)))
+(assert-event (not (fn-cfg-labelp
+                    (coerce (make-list 257 :initial-element #\a) 'string))))

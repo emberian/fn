@@ -2187,7 +2187,12 @@
                                        (fn-own-conn-verdicts conn)
                                        (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn))
-                  (fn-own-sub-decision sub) d completion))
+                  (fn-own-sub-decision sub) d
+                  ; A refusal is rendered with the word the host relayed,
+                  ; as fn-own-outcome renders POST's: the 437 names the
+                  ; reason (fn-peer-transit-refusal-line).  Which outcome
+                  ; it is stays COMPLETION's.
+                  (if (equal kind :want) (fn-own-outcome-rendering o word) nil)))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
                   next)))

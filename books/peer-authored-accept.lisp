@@ -171,9 +171,10 @@
                  (fn-hsig-carried-record-metadatap source received record))
             (let* ((verdict (fn-stxe-make sequence txid generation msgid
                                           :carried principal 0
-                                          *fn-hsig-profile-tag*))
+                                          (fn-hsig-evidence-tag source)))
                    (event (fn-stxa-make-carried
-                           sequence txid generation 0 *fn-hsig-profile-tag*
+                           sequence txid generation 0
+                           (fn-hsig-evidence-tag source)
                            (fn-record-string-octets content-subject)
                            (fn-record-encode record)
                            (fn-stxe-encode verdict)
