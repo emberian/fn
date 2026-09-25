@@ -68,7 +68,7 @@ def acl2_environment() -> dict[str, str]:
     environment["ACL2_CUSTOMIZATION"] = "NONE"
     environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
     environment.pop("ACL2_SYSTEM_BOOKS", None)
-    return environment
+    return acl2_slots.apply_heap_cap(environment)
 
 
 def run(executable: Path, arguments: list[str], timeout: float | None) -> int:

@@ -46,6 +46,7 @@ FAKE_ACL2 = r"""#!/bin/sh
   printf 'ACL2_CUSTOMIZATION=%s\n' "${ACL2_CUSTOMIZATION-unset}"
   printf 'ACL2_BOOK_HASH_ALISTP=%s\n' "${ACL2_BOOK_HASH_ALISTP-unset}"
   printf 'ACL2_SYSTEM_BOOKS=%s\n' "${ACL2_SYSTEM_BOOKS-unset}"
+  printf 'SBCL_USER_ARGS=%s\n' "${SBCL_USER_ARGS-unset}"
   printf 'args=%s\n' "$*"
 } >> "$FAKE_EVENTS"
 # `exec` so a terminate reaches the sleep itself rather than this shell.
@@ -152,6 +153,23 @@ class PassThroughTests(unittest.TestCase):
             self.assertIn("ACL2_CUSTOMIZATION=NONE", recorded)
             self.assertIn("ACL2_BOOK_HASH_ALISTP=NIL", recorded)
             self.assertIn("ACL2_SYSTEM_BOOKS=unset", recorded)
+
+    def test_the_child_heap_is_capped_on_the_laptop(self):
+        """Every ACL2 the wrapper starts gets a bounded dynamic space (the
+        2026-09-25 hard-crash: 32 GB per process, eight pooled, no swap)."""
+        with tempfile.TemporaryDirectory() as directory:
+            harness = Harness(directory)
+            result = harness.run([], FN_ACL2_DYNAMIC_SPACE_MB="4000")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("SBCL_USER_ARGS=--dynamic-space-size 4000", harness.recorded())
+            # An explicit setting in the caller's shell is respected.
+            harness = Harness(directory)
+            result = harness.run([], SBCL_USER_ARGS="--dynamic-space-size 2000")
+            self.assertIn("SBCL_USER_ARGS=--dynamic-space-size 2000", harness.recorded())
+            if sys.platform == "darwin":
+                harness = Harness(directory)
+                harness.run([])
+                self.assertIn("SBCL_USER_ARGS=--dynamic-space-size 8000", harness.recorded())
 
     def test_acl2s_exit_code_is_the_wrappers_exit_code(self):
         with tempfile.TemporaryDirectory() as directory:

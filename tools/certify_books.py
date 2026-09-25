@@ -567,6 +567,7 @@ def run_acl2(
     environment["ACL2_CUSTOMIZATION"] = "NONE"
     environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
     environment.pop("ACL2_SYSTEM_BOOKS", None)
+    acl2_slots.apply_heap_cap(environment)  # a runaway proof exhausts its own heap, never the machine
     command = [str(executable)]
     if log_path is None:
         # The short version probe has no book to attribute and retains its
@@ -987,7 +988,8 @@ def main() -> int:
         "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         **git_facts(),
         "command": [configured],
-        "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL", "ACL2_SYSTEM_BOOKS": None},
+        "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL", "ACL2_SYSTEM_BOOKS": None,
+                        "SBCL_USER_ARGS": os.environ.get("SBCL_USER_ARGS") or acl2_slots.heap_cap_user_args()},
         "platform": platform.platform(),
         "python": platform.python_version(),
         "requested_books": args.books,

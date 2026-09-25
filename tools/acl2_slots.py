@@ -12,7 +12,9 @@ for any reason, including a kill: a crashed run leaks no slot.  The pool is
 per-machine, not per-worktree, so lanes running in different worktrees and
 different shells still share one cap.
 
-``FN_ACL2_SLOTS`` sets the pool size (default 8 on darwin, 16 elsewhere);
+``FN_ACL2_SLOTS`` sets the pool size (default 6 on darwin, 16 elsewhere);
+``FN_ACL2_DYNAMIC_SPACE_MB`` sets the heap cap every pooled ACL2 gets (default
+8,000 on darwin, none elsewhere: the farm launchers carry their own);
 ``FN_ACL2_SLOT_DIR`` relocates the lock files, which tests use to get a private
 pool.  Waiting is the point: a tool blocks until a slot frees rather than
 starting an ACL2 the machine cannot afford, and logs that it is waiting once a
@@ -33,8 +35,44 @@ from typing import Callable, Iterator
 
 # 2026-09-23: this Mac has 12 cores and 96 GB, and six lanes' sessions
 # starved on four slots (an eleven-minute wait to start one); seven live
-# sessions used 5.2 GB between them.  Eight leaves four cores for the rest.
-DEFAULT_SLOTS = {"darwin": 8}
+# sessions used 5.2 GB between them.  Eight left four cores for the rest.
+# On 2026-09-25 the laptop hard-crashed: every ACL2 here gets SBCL's 32,000 MB
+# dynamic space from the Homebrew launcher, the machine has 96 GB and no swap,
+# and three lanes' local sessions (one reloading a bit-vector guard proof every
+# thirty seconds) exhausted it.  The pool now caps the heap of every ACL2 it
+# starts (`heap_cap_user_args`), and six slots of 8,000 MB is 48 GB, half the
+# machine, with the other half for bare `acl2 <` invocations nobody pooled.
+DEFAULT_SLOTS = {"darwin": 6}
+DEFAULT_HEAP_MB = {"darwin": 8000}
+
+
+def heap_cap_user_args() -> str | None:
+    """SBCL runtime arguments that bound one ACL2's dynamic space.
+
+    The Homebrew `saved_acl2` script splices `$SBCL_USER_ARGS` after its own
+    `--dynamic-space-size 32000`, and SBCL takes the last such option, so
+    exporting a smaller size caps the heap without editing the launcher.  A
+    runaway proof then dies with "heap exhausted" inside its own process
+    instead of hanging the machine.  `FN_ACL2_DYNAMIC_SPACE_MB` overrides;
+    on the farm boxes the launchers carry their own sizes and nothing is added.
+    """
+    configured = os.environ.get("FN_ACL2_DYNAMIC_SPACE_MB")
+    if configured:
+        try:
+            megabytes = int(configured)
+        except ValueError:
+            megabytes = 0
+    else:
+        megabytes = DEFAULT_HEAP_MB.get(sys.platform, 0)
+    return f"--dynamic-space-size {megabytes}" if megabytes > 0 else None
+
+
+def apply_heap_cap(environment: dict) -> dict:
+    """Add the heap cap to an ACL2 child's environment unless one is set."""
+    cap = heap_cap_user_args()
+    if cap and "SBCL_USER_ARGS" not in environment:
+        environment["SBCL_USER_ARGS"] = cap
+    return environment
 FALLBACK_SLOTS = 16
 DEFAULT_SLOT_DIR = "~/.cache/fn-acl2-slots"
 REPORT_SECONDS = 60.0
