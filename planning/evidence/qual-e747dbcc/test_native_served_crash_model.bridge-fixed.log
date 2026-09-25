@@ -1,0 +1,48 @@
+# target tests.test_native_served_crash_model  start 2026-09-25T20:29:58Z  cwd /tank/fn/scratch/qual-e747dbcc/treefix
+# cmd: python3 -m unittest -v tests.test_native_served_crash_model
+# sbcl on PATH: /tank/fn/scratch/qual-e747dbcc/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_D23_VERIFY=1
+# env FN_FORMAT7_IMAGE=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-dtn
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=0c96e554fae5ed7345b6ac2be89a9975430e879afae0ba5ccb072720dbd38d08
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=5889c6fb30c2589e05c2b293769bb1a11734e7ae5710cb49dc2d1a0dc78fc109
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=e747dbcc
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/qual-e747dbcc/treefix
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/qual-e747dbcc/diag
+# env FN_OLD_NATIVE_HOST=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env FN_RUN_VERIFY_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/qual-e747dbcc/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6/runtime/sbcl-home/
+test_five_served_recovery_barriers_are_distinct_model_cuts (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_five_served_recovery_barriers_are_distinct_model_cuts) ... ok
+test_served_prepare_publish_finish_cuts (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_served_prepare_publish_finish_cuts) ... ok
+test_the_served_frame_is_the_injected_articles_not_anothers (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_the_served_frame_is_the_injected_articles_not_anothers) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 205.376s
+
+OK
+# rc=0 wall=205.4 end 2026-09-25T20:33:23Z

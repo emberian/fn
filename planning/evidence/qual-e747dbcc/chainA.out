@@ -1,0 +1,18 @@
+test_bp_service_native rc=1 FAILED (failures=16)
+test_bp_contact_native rc=1 FAILED (failures=1)
+test_bp_contact_relay_native rc=0 OK
+test_bp_receive_integrity_native rc=1 FAILED (failures=2)
+test_bp_service_native.dtn-developer rc=1 FAILED (failures=12)
+test_bp_receive_integrity_native.dtn-developer rc=0 OK
+test_native_app_journal rc=0 OK
+test_native_image_profiles rc=0 OK
+test_bp_obligation_native rc=1 FAILED (failures=1)
+test_bp_node_native rc=0 OK
+test_bp_app_native rc=0 OK
+test_bp_fragment_node_native rc=0 OK
+test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy.developer rc=0 OK
+control rc=0
+dtn7-carried-1 rc=0
+dtn7-carried-2 rc=0
+dtn7-unauthorized rc=0
+LABS-DONE
