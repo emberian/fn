@@ -3551,6 +3551,19 @@
           "name": "fn-oct-suffix-equalp-is-equal"
         }
       ]
+    },
+    {
+      "id": "PRF-106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sha256-of-prefixed-buffer-is-sha256"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        }
+      ]
     }
   ]
 }
