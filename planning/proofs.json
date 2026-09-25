@@ -771,6 +771,10 @@
         "tests/acl2/records-concrete-tests.lisp",
         "planning/design-2026-09-25-representation.md",
         "planning/evidence/representation-2026-09-25.md",
+        "books/owner-intent-carried.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "planning/evidence/rep-intent-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T023933Z-3540691.json",
         "books/records-concrete-owner.lisp",
         "books/msgid-index-concrete.lisp",
         "tests/acl2/msgid-index-concrete-tests.lisp",
@@ -781,7 +785,7 @@
         "planning/evidence/manifests/certify-20260925T034524Z-4177436.json",
         "planning/evidence/manifests/certify-20260925T034925Z-22558.json"
       ],
-      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, boundaries 4 and 5 (2026-09-25, lane/rep-records-2): the staged record's encoder (fn-rcon-store-event-encode, called by host/owner-host.lisp fn-owner-pending-octets and host/store-node-host.lisp fn-store-sn-pending-octets), its sequence (fn-rcon-sbud-pending-sequence, fn-owner-pending-sequence and fn-store-sn-pending-sequence), the transaction observation (fn-rcon-sn-io, fn-store-sn-io; fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)), fn-owner-io) and the store bridge's record wrappers (host/store-host.lisp) dispatch through the concrete record recognizer; each twin equals its reference on every input with no hypothesis and is guard-verified at the reference's guard. The Message-ID trie is walked by string index (fn-midx-concrete-lookup-is-lookup: fn-mxc-lookup equals fn-midx-lookup for every Message-ID and trie), reached by the IHAVE/CHECK history test (fn-pix-history-hasp) and by the reader retrieval chain fn-pix-peer-delegate-pinned, which books/served-carried.lisp fn-scar-peer-step-pinned calls. The record codec's encoder: fn-rcon-record-encode-impl (books/records-codec-concrete, where the recognizer now lives) equals fn-record-encode-impl on every input with no hypothesis (fn-rcon-record-encode-impl-is-record-encode-impl) and books/records-attach-concrete attaches it to fn-record-encode in the host images after codec-attach (records-attach and its closure unchanged); fn-owner-consumer-local-poll calls it directly. The prepare the host installs (fn-pcar-sbud-prepare) reads the last txid through fn-rcon-store-event-txid and recognises, projects and binds the record through fn-rcon-record-p, fn-rcon-cpe-projection-step and fn-rcon-sn-record-bindsp. Still on octet lists: the payload walk, the group-name grammar, the encoder's output. Certified on persvati: run-20260925T033915Z-8ae6, manifest certify-20260925T034017Z-4130348 (2 jobs, 300 s), and run-20260925T034429Z-9535, manifest certify-20260925T034524Z-4177436 (the peer-offer-indexed dependents), and certify-20260925T034925Z-22558 (records-concrete-tests at its current bytes); measurements in planning/evidence/rep-records-2-2026-09-25.md."
+      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged."
     },
     {
       "id": "PRF-015",
@@ -849,7 +853,11 @@
         "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
         "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
         "planning/evidence/commit-path-2-2026-09-24.md",
-        "planning/evidence/advance-projection-2026-09-24.md"
+        "planning/evidence/advance-projection-2026-09-24.md",
+        "books/owner-intent-carried.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "planning/evidence/rep-intent-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T023933Z-3540691.json"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
@@ -1279,7 +1287,8 @@
         "fn-prov-of-wire-of-a-plain-string",
         "fn-prov-of-wire-of-wire",
         "fn-prov-of-wire-of-a-durable-wire"
-      ]
+      ],
+      "evidence": []
     },
     {
       "id": "PRF-031",
@@ -1373,7 +1382,8 @@
         "planning/evidence/manifests/certify-20260924T153508Z-1499013.json",
         "planning/evidence/manifests/certify-20260924T224341Z-2081666.json",
         "planning/evidence/manifests/certify-20260925T001652Z-2229194.json",
-        "planning/evidence/manifests/certify-20260925T004450Z-2510809.json"
+        "planning/evidence/manifests/certify-20260925T004450Z-2510809.json",
+        "planning/evidence/manifests/certify-20260925T021807Z-3342179.json"
       ]
     },
     {
@@ -1393,7 +1403,8 @@
       "events": [
         "fn-own-observe-refusal-names-a-contradiction",
         "fn-post-without-a-clock-refuses-with-the-clock-line"
-      ]
+      ],
+      "evidence": []
     },
     {
       "id": "PRF-034",
@@ -1540,7 +1551,8 @@
       ],
       "assumptions": [],
       "status": "in-progress",
-      "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The native outbound lifecycle now calls fn-bpn-step in books/bp-node-machine.lisp, with source-pinned runtime evidence. This codec target does not cover its persistence, restart or obligation-preservation contracts; PRF-045/046 track those still-open obligations."
+      "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The native outbound lifecycle now calls fn-bpn-step in books/bp-node-machine.lisp, with source-pinned runtime evidence. This codec target does not cover its persistence, restart or obligation-preservation contracts; PRF-045/046 track those still-open obligations.",
+      "evidence": []
     },
     {
       "id": "PRF-039",
@@ -1595,7 +1607,8 @@
         "fn-own-fault-reply-is-not-a-post-outcome",
         "fn-ocfg-fault-keeps-every-other-connection",
         "fn-ocfg-open-at-the-bound-refuses"
-      ]
+      ],
+      "evidence": []
     },
     {
       "id": "PRF-041",
@@ -2643,7 +2656,7 @@
         "fn-midx-concrete-lookup-is-lookup",
         "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned"
       ],
-      "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open. Trie by index (2026-09-25, lane/rep-records-2): the reader's ARTICLE/HEAD/BODY/STAT by Message-ID and the IHAVE/CHECK history test look the Message-ID up with fn-mxc-lookup, which walks the unchanged trie by string index (fn-midx-concrete-lookup-is-lookup, no hypothesis); the retrieval chain twins fn-pix-msgid-retrieval-indexed through fn-pix-peer-delegate-pinned each equal their reference with no hypothesis, so fn-nntp-msgid-retrieval-indexed-refines-scan and fn-midx-correspondencep are unchanged in statement and apply. The OVER/XOVER bucket resolution (books/group-bucket-article.lisp) and the owner's refresh (fn-own-refresh calls fn-midx-refresh) still walk the character list. A peer session's retrieval by Message-ID takes the same delegate (fn-pgc-peer-arm calls fn-pix-peer-delegate-pinned), and the history test checks non-emptiness by length, so no Message-ID character list is built on these paths; the wire token is still converted to a string (fn-nntp-token-string, fn-record-octets-string). Certified on persvati: msgid-index-concrete and its tests in run certify-20260925T030120Z-3766397, the rest in certify-20260925T034017Z-4130348 and certify-20260925T034524Z-4177436."
+      "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
     },
     {
       "id": "PRF-066",
@@ -3097,6 +3110,36 @@
       "progress_note": "Lane m4-native-request (2026-09-24). Certified on hbox, w28 ACL2 8.7, 2 jobs: run-20260924T230759Z-4d2f (manifest certify-20260924T230813Z-2144048, bp-request-plan 7.6 s, tests 1.9 s) at the source of commit 41799aaf; the first run (certify-20260924T230223Z-2118502) certified the plan before the retry-request clause. Teeth: reachable witness over the committed-article image of bp-outbound-tests (the plan's attempt and ADU are the hand trace's exact record and octets); must-fail at the refusal witness for the one hypothesis; refusals for an in-flight attempt, a pending image, a fenced image and a work bound to no article (where the attempt alone would be admitted); a restart-observed work planned with its :retry-request replays through fn-bpiw-replay-journal while the same history without it is refused. Status stays in-progress: the lab evidence is on a scratch DTN developer image, and the recovery of an attempt fenced by a cut between the attempt and its outcome has no native verb.",
       "events": [
         "fn-bprq-plan-is-the-works-request"
+      ]
+    },
+    {
+      "id": "PRF-078",
+      "title": "A control article is filed only in control.<verb>, or refused, over the filing plan every ingress calls",
+      "statement": "fn-ctl-control-article-is-filed-only-in-control: for every received octet string that fn-ctl-classify-octets classifies (:control VERB ARGS), fn-pa-filing-plan RECEIVED GROUPS DOMAIN (books/peer-authored-accept.lisp; host/owner-host.lisp fn-owner-control-filing calls it and host/native/owner.lisp fnn-owner-attempt-transit calls that first, for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path) either files the article in exactly one group, its filing group fn-ctl-filing-group VERB, which is \"control\" or begins \"control.\" and is a member of DOMAIN, or refuses it :control-not-filed or :control-signed; the ingress's own GROUPS (the names its Newsgroups field gave) are never the answer unless they are that group. fn-ctl-classify-reads-only-the-control-field: inserting any field F whose name is neither control nor supersedes anywhere in a field list leaves fn-ctl-classify-fields unchanged. fn-ctl-cmsg-subject-is-ordinary: an article whose parsed fields have no Control field is filed in GROUPS unchanged by fn-pa-filing-plan, whatever its Subject, Newsgroups or Also-Control. Covered scope: the filing decision; the host's use of the filed groups is a transcribed stub test (tests/native_peer_authored_accept_raw.lisp) and the native cases of the evidence file. A signed control article is refused, not filed (open).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/control-classify.lisp",
+        "books/peer-authored-accept.lisp",
+        "tests/acl2/control-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/native_peer_authored_accept_raw.lisp",
+        "planning/evidence/control-c1-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T024843Z-3628885.json",
+        "planning/evidence/manifests/certify-20260925T033259Z-4063610.json",
+        "planning/evidence/manifests/certify-20260925T033411Z-2433640.json"
+      ],
+      "progress_note": "Lane control-c1 (2026-09-25), packet C1 of planning/design-2026-09-25-control-messages.md. Teeth in tests/acl2/control-tests.lisp: reachable witnesses (a cancel naming fn.test with control.cancel configured is filed in control.cancel; without it, refused; a cmsg Subject article and a .ctl/Also-Control article keep fn.test), must-fail per hypothesis (an ordinary article is filed outside control; a Control field or a Supersedes field inserted changes the classification; a signed control article is not filed). In progress: a signed control article is refused :control-signed until the hybrid-store binding names the filing group.",
+      "events": [
+        "fn-ctl-control-article-is-filed-only-in-control",
+        "fn-ctl-classify-reads-only-the-control-field",
+        "fn-ctl-cmsg-subject-is-ordinary"
       ]
     }
   ]
