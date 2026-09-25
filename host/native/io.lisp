@@ -147,81 +147,19 @@
   (apply #'concatenate 'string strings))
 
 ;;; ---------------------------------------------------------------------------
-;;; SHA-256 (FIPS 180-4).  A-CRYPTO: the host supplies digest octets and the
-;;; constrained `fn-frame-digest` consumers in books/frame decide everything
-;;; else.  tools/fn_native.py `sha256-selftest` checks this against hashlib.
+;;; SHA-256 has one owner, and it is ACL2.  `books/sha256-stobj.lisp'
+;;; computes FIPS 180-4 over a word stobj: `fn-sha256-stobj' is what
+;;; books/crypto-attach.lisp attaches to the digest seams, and
+;;; `fn-sha256-of-string' reads a string in place.  This host used to carry
+;;; a SHA-256 of its own for the diagnostic `sha256' verb, a second
+;;; implementation of a decision ACL2 owns; the verb now hands ACL2 the file
+;;; as a string.  tools/fn_native.py `sha256-selftest' checks the verb
+;;; against hashlib, which is now a check of ACL2's digest through the host.
 
-(deftype fnn-u32 () '(unsigned-byte 32))
-
-(declaim (type (simple-array fnn-u32 (64)) +fnn-sha256-k+))
-(defparameter +fnn-sha256-k+
-  (make-array
-   64 :element-type 'fnn-u32 :initial-contents
-   '(#x428a2f98 #x71374491 #xb5c0fbcf #xe9b5dba5 #x3956c25b #x59f111f1 #x923f82a4 #xab1c5ed5
-     #xd807aa98 #x12835b01 #x243185be #x550c7dc3 #x72be5d74 #x80deb1fe #x9bdc06a7 #xc19bf174
-     #xe49b69c1 #xefbe4786 #x0fc19dc6 #x240ca1cc #x2de92c6f #x4a7484aa #x5cb0a9dc #x76f988da
-     #x983e5152 #xa831c66d #xb00327c8 #xbf597fc7 #xc6e00bf3 #xd5a79147 #x06ca6351 #x14292967
-     #x27b70a85 #x2e1b2138 #x4d2c6dfc #x53380d13 #x650a7354 #x766a0abb #x81c2c92e #x92722c85
-     #xa2bfe8a1 #xa81a664b #xc24b8b70 #xc76c51a3 #xd192e819 #xd6990624 #xf40e3585 #x106aa070
-     #x19a4c116 #x1e376c08 #x2748774c #x34b0bcb5 #x391c0cb3 #x4ed8aa4a #x5b9cca4f #x682e6ff3
-     #x748f82ee #x78a5636f #x84c87814 #x8cc70208 #x90befffa #xa4506ceb #xbef9a3f7 #xc67178f2)))
-
-(declaim (inline fnn-rotr))
-(defun fnn-rotr (x n)
-  (declare (type fnn-u32 x) (type (integer 1 31) n))
-  (logior (ash x (- n)) (logand #xffffffff (ash x (- 32 n)))))
-(defmacro fnn-add32 (&rest xs)
-  `(logand #xffffffff (+ ,@xs)))
-
-(defun fnn-sha256 (input)
-  "SHA-256 of INPUT (any octet sequence) as a fresh 32-octet vector."
-  (let* ((data (fnn-octets input))
-         (len (length data))
-         (rest (mod (+ len 1) 64))
-         (pad (if (<= rest 56) (- 56 rest) (- 120 rest)))
-         (total (+ len 1 pad 8))
-         (msg (fnn-make-octets total))
-         (h (make-array 8 :element-type 'fnn-u32
-                          :initial-contents '(#x6a09e667 #xbb67ae85 #x3c6ef372 #xa54ff53a
-                                              #x510e527f #x9b05688c #x1f83d9ab #x5be0cd19)))
-         (w (make-array 64 :element-type 'fnn-u32 :initial-element 0)))
-    (declare (type fnn-octets data msg) (type (simple-array fnn-u32 (8)) h)
-             (type (simple-array fnn-u32 (64)) w))
-    (replace msg data)
-    (setf (aref msg len) #x80)
-    (let ((bits (* 8 len)))
-      (dotimes (i 8)
-        (setf (aref msg (- total 1 i)) (ldb (byte 8 (* 8 i)) bits))))
-    (loop for chunk from 0 below total by 64 do
-      (dotimes (i 16)
-        (let ((p (+ chunk (* 4 i))))
-          (setf (aref w i) (logior (ash (aref msg p) 24) (ash (aref msg (+ p 1)) 16)
-                                   (ash (aref msg (+ p 2)) 8) (aref msg (+ p 3))))))
-      (loop for i from 16 below 64 do
-        (let* ((w15 (aref w (- i 15))) (w2 (aref w (- i 2)))
-               (s0 (logxor (fnn-rotr w15 7) (fnn-rotr w15 18) (ash w15 -3)))
-               (s1 (logxor (fnn-rotr w2 17) (fnn-rotr w2 19) (ash w2 -10))))
-          (setf (aref w i) (fnn-add32 (aref w (- i 16)) s0 (aref w (- i 7)) s1))))
-      (let ((a (aref h 0)) (b (aref h 1)) (c (aref h 2)) (d (aref h 3))
-            (e (aref h 4)) (f (aref h 5)) (g (aref h 6)) (hh (aref h 7)))
-        (declare (type fnn-u32 a b c d e f g hh))
-        (dotimes (i 64)
-          (let* ((s1 (logxor (fnn-rotr e 6) (fnn-rotr e 11) (fnn-rotr e 25)))
-                 (ch (logxor (logand e f) (logand (logxor e #xffffffff) g)))
-                 (t1 (fnn-add32 hh s1 ch (aref +fnn-sha256-k+ i) (aref w i)))
-                 (s0 (logxor (fnn-rotr a 2) (fnn-rotr a 13) (fnn-rotr a 22)))
-                 (maj (logxor (logand a b) (logand a c) (logand b c)))
-                 (t2 (fnn-add32 s0 maj)))
-            (setf hh g g f f e e (fnn-add32 d t1) d c c b b a a (fnn-add32 t1 t2))))
-        (setf (aref h 0) (fnn-add32 (aref h 0) a) (aref h 1) (fnn-add32 (aref h 1) b)
-              (aref h 2) (fnn-add32 (aref h 2) c) (aref h 3) (fnn-add32 (aref h 3) d)
-              (aref h 4) (fnn-add32 (aref h 4) e) (aref h 5) (fnn-add32 (aref h 5) f)
-              (aref h 6) (fnn-add32 (aref h 6) g) (aref h 7) (fnn-add32 (aref h 7) hh))))
-    (let ((out (fnn-make-octets 32)))
-      (dotimes (i 8)
-        (dotimes (j 4)
-          (setf (aref out (+ (* 4 i) j)) (ldb (byte 8 (* 8 (- 3 j))) (aref h i)))))
-      out)))
+(defun fnn-octet-string (octets)
+  "A byte array as an ACL2 string of the same character codes: the concrete
+input the core's string entries read in place, with no list in between."
+  (map '(simple-array character (*)) #'code-char octets))
 
 ;;; ---------------------------------------------------------------------------
 ;;; POSIX.  Every syscall failure becomes fnn-os-error with its errno; the
@@ -666,13 +604,12 @@ execution-boundary fault, never a claim that the core refused an input."
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
+  "ACL2's decoded store profile: a format-8 profile, or a format-7 tuple the
+store runs under by its translation.  The host keeps the value opaque and
+reads every field through an ACL2 accessor."
   (let ((value (fnn-core 'fn-store-metadata-config-decode
                          (fnn-octet-list octets))))
-    (unless (and (listp value) (= (length value) 6)
-                 (fnn-octet-list-p (first value))
-                 (every (lambda (n) (and (integerp n) (>= n 0)))
-                        (subseq value 1 5))
-                 (fnn-octet-list-p (nth 5 value)))
+    (unless (and value (fnn-core 'fn-store-profile-admittedp value))
       (fnn-fault "ACL2 rejected durable configuration frame"))
     value))
 
@@ -946,7 +883,8 @@ realised by `fn-sha256' through `books/crypto-attach.lisp'.  This host used
 to run `fnn-sha256' here, which made three separate SHA-256s the owners of
 one decision -- the other two being `tools/frame_bridge.py' and
 `tools/run_owner.py' -- and that is what AGENTS.md's one-owner rule forbids.
-`fnn-sha256' stays only for the diagnostic `sha256' CLI verb."
+The diagnostic `sha256' verb asks ACL2 too (`fn-sha256-of-string'); this
+host has no SHA-256 of its own."
   (let ((value (fnn-core 'fn-frame-trailer (fnn-octet-list prefix))))
     (when (eq value :bad)
       (fnn-fault "ACL2 refused to trail a protected prefix"))
@@ -992,7 +930,7 @@ which `fn-store-sn-prepare' then refuses."
 
 (defun fnn-post-boundary (profile msgid payload-length group-count charge)
   "ACL2's POST boundary verdict under PROFILE, the values ACL2 decoded at open."
-  (let ((value (fnn-core 'fn-store-post-boundary profile (fnn-octet-list msgid)
+  (let ((value (fnn-core 'fn-sbud-post-boundary profile (fnn-octet-list msgid)
                          payload-length group-count charge)))
     (unless (keywordp value) (fnn-fault "ACL2 returned an unexpected boundary verdict"))
     value))
@@ -1039,9 +977,17 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil))
 
-(defun fnn-config-capacity (store) (second (fnn-store-config store)))
-(defun fnn-config-max-payload (store) (third (fnn-store-config store)))
-(defun fnn-config-max-transactions (store) (nth 4 (fnn-store-config store)))
+(defun fnn-profile-nat (name store)
+  (let ((value (fnn-core name (fnn-store-config store))))
+    (unless (and (integerp value) (> value 0))
+      (fnn-fault "ACL2 returned a malformed profile field from ~(~a~)" name))
+    value))
+;; The operator's article bound A and transaction bound T of the profile the
+;; store runs under (books/byte-store-frame.lisp accessors).
+(defun fnn-config-max-payload (store)
+  (fnn-profile-nat 'fn-store-profile-max-article-octets store))
+(defun fnn-config-max-transactions (store)
+  (fnn-profile-nat 'fn-store-profile-max-transactions store))
 
 (defun make-fnn-store (root &key writable fault)
   (let ((store (%make-fnn-store :root (fnn-absolute root) :writable writable)))
@@ -1507,7 +1453,10 @@ acknowledged without its marker."
 
 (defun fnn-durable-records (store &optional (selected-lower 0))
   (let ((records nil) (sequences nil) (aggregate 0)
-        (bound (+ (fnn-constant :overhead) (fnn-constant :max-store))))
+        ;; One bounded read per file, at the persisted profile's record
+        ;; ceiling plus the frame overhead (ACL2's figure,
+        ;; host/store-host.lisp `fn-store-profile-read-bound').
+        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
     (multiple-value-bind (files actual-lower)
         (fnn-transaction-files store selected-lower)
       (loop for (sequence . path) in files do
@@ -2023,14 +1972,17 @@ write nothing."
            (unless (and (consp verdict) (member (first verdict) '(:upgrade :refused)))
              (fnn-fault "ACL2 returned a malformed profile verdict"))
            (if (eq (first verdict) :refused)
-               (fnn-refuse "store profile upgrade refused: ~(~a~)" (second verdict))
+               (fnn-refuse "store profile upgrade refused: ~(~a~)~@[ ~a~]"
+                           (second verdict) (third verdict))
                (destructuring-bind (octets old-budget new-budget) (rest verdict)
                  (unless (and (fnn-octet-list-p octets) octets
                               (integerp old-budget) (integerp new-budget))
                    (fnn-fault "ACL2 returned a malformed profile frame"))
                  (fnn-upgrade-profile-write store (fnn-octets octets))
                  (fnn-out "upgraded profile=~(~a~) transactions-used=~d transactions-budget=~d previous-budget=~d"
-                          profile (length records) new-budget old-budget)
+                          (if (symbolp profile) profile (first profile))
+                          (length records) new-budget old-budget)
+                 (fnn-out-profile (fnn-metadata-config-decode octets))
                  +fnn-exit-ok+)))
       (fnn-store-close store))))
 
@@ -2131,8 +2083,11 @@ error for the same reason."
          (fault (fnn-post-entry-fault inject)))
     (let ((store (fnn-open-live-store root t fault)))
       (unwind-protect
-           (let* ((payload (fnn-read-regular-bounded payload-path
-                                                     (fnn-config-max-payload store)))
+           (let* ((payload (fnn-read-regular-bounded
+                            ;; One octet past the profile's A, so that a longer
+                            ;; payload reaches ACL2's boundary and is refused
+                            ;; there by name (`:payload-bound'), not by the read.
+                            payload-path (1+ (fnn-config-max-payload store))))
                   (codes (fnn-group-codes-for store groups))
                   (charge (if charge-text (parse-integer charge-text) (fnn-charge (length payload))))
                   (sequence nil))
@@ -2207,16 +2162,31 @@ this reads only whether there is one."
              code))
       (fnn-store-close store))))
 
+(defun fnn-out-profile (values)
+  "Print the store profile ACL2 reports: its persisted format and every
+field by its operator name (books/byte-store-frame.lisp `fn-bs-profile-report')."
+  (let ((report (fnn-core 'fn-store-profile-report values)))
+    (unless (and (consp report)
+                 (every (lambda (entry)
+                          (and (consp entry) (stringp (car entry))
+                               (integerp (cdr entry)) (>= (cdr entry) 0)))
+                        report))
+      (fnn-fault "ACL2 returned a malformed profile report"))
+    (fnn-out "profile~{ ~a=~d~}"
+             (loop for (name . value) in report collect name collect value))))
+
 (defun fnn-out-headroom (store)
   "Print ACL2's headroom for the open Store: transactions used of the
-profile's budget, and the retention ledger's reserved charge of its capacity."
+profile's budget, committed record octets of its history bound, and the
+retention ledger's reserved charge of its capacity."
   (let ((headroom (fnn-core-state 'fn-store-sn-headroom (fnn-store-config store))))
-    (unless (and (listp headroom) (= (length headroom) 4)
+    (unless (and (listp headroom) (= (length headroom) 6)
                  (every (lambda (n) (and (integerp n) (>= n 0))) headroom))
       (fnn-fault "ACL2 returned malformed headroom"))
-    (destructuring-bind (used budget reserved capacity) headroom
-      (fnn-out "headroom transactions-used=~d transactions-budget=~d charge-reserved=~d charge-capacity=~d"
-               used budget reserved capacity))))
+    (destructuring-bind (used budget bytes-used history reserved capacity) headroom
+      (fnn-out-profile (fnn-store-config store))
+      (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
+               used budget bytes-used history reserved capacity))))
 
 (defun fnn-command-status (root)
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
@@ -2816,6 +2786,7 @@ serialized profile when the saved image later starts."
     "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT"
     "FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX"
     "FN_BP_NODE_TEST_PAUSE_AFTER_REPORT_OUTBOX"
+    "FN_BP_ROTATION_TEST_STOP"
     "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"
     "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT"
     "FN_TCPCL_TEST_FAIL_STAGING_UNLINK" "FN_TCPCL_TEST_FAIL_STAGING_BARRIER"
@@ -2915,7 +2886,12 @@ serialized profile when the saved image later starts."
          (funcall (fnn-verb-handler verb) (second args) (cddr args)))
         ((string= verb "sha256")
          (need 2)
-         (fnn-out "~a" (fnn-hex (fnn-sha256 (fnn-read-regular-bounded (second args) (ash 1 26)))))
+         ;; The file reaches ACL2 as a string, read in place by
+         ;; `fn-sha256-of-string' (books/sha256-stobj.lisp): no octet list.
+         (fnn-out "~a" (fnn-hex (fnn-as-octets
+                                 (fnn-core 'fn-sha256-of-string
+                                           (fnn-octet-string
+                                            (fnn-read-regular-bounded (second args) (ash 1 26)))))))
          +fnn-exit-ok+)
         (t (error 'fnn-usage-error :message (format nil "unknown verb ~a" verb)))))))
 

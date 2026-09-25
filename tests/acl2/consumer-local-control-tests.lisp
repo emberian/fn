@@ -159,9 +159,9 @@
    *fn-cbor-max-uint* *fn-cbor-max-uint*
    (make-list *fn-stxk-max-profile* :initial-element 1)
    (make-list *fn-record-max-metadata* :initial-element 2)
-   (make-list *fn-record-max-octets* :initial-element 3)
+   (make-list *fn-stxa-max-article-record* :initial-element 3)
    (make-list *fn-stxe-max-octets* :initial-element 4)
-   (make-list *fn-article-max-octets* :initial-element 5)
+   (make-list *fn-stxa-max-authored-source* :initial-element 5)
    (make-list *fn-record-max-metadata* :initial-element 6)))
 (assert-event (fn-stxa-p *ncl-max-shape-event*))
 (defconst *ncl-max-shape-bytes* (fn-stxa-encode *ncl-max-shape-event*))

@@ -146,3 +146,73 @@
                (fn-own-queue *scar-t-o*) (fn-own-inflight *scar-t-o*)
                (fn-own-feeds *scar-t-o*)))
 (must-fail (assert-event (fn-scar-view-indexedp *pix-t-bad-view-owner*)))
+
+; -----------------------------------------------------------------------------
+; The Message-ID lookup by index (books/msgid-index-concrete.lisp) on the
+; served path (lane/rep-records-2).  fn-pix-history-hasp above now looks up
+; with fn-mxc-lookup; its answers on the witness are unchanged (the asserts
+; above run against the rerouted definition).  The reader retrieval chain:
+; the bottom twin answers STAT for the held Message-ID from the trie (223)
+; and 430 for an absent one, equal to the reference; the top twin, the one
+; books/served-carried.lisp calls, equals its reference on the witness
+; session for the same commands.
+
+(defconst *pix-t-session* (fn-post-session-base (fn-peer-session-base *pt-ps1*)))
+(defconst *pix-t-stat-held*
+  (fn-pix-msgid-retrieval-indexed *pix-t-session* *pix-t-archive* *pix-t-trie*
+                                  :stat *pt-id1*))
+(assert-event (equal *pix-t-stat-held*
+                     (fn-nntp-msgid-retrieval-indexed *pix-t-session* *pix-t-archive*
+                                                      *pix-t-trie* :stat *pt-id1*)))
+(assert-event (equal (take 3 (cadr
+                              (car (fn-nntp-result-effects *pix-t-stat-held*))))
+                     (pt-o "223")))
+(defconst *pix-t-stat-absent*
+  (fn-pix-msgid-retrieval-indexed *pix-t-session* *pix-t-archive* *pix-t-trie*
+                                  :stat (pt-o "<loop@example.invalid>")))
+(assert-event (equal *pix-t-stat-absent*
+                     (fn-nntp-msgid-retrieval-indexed *pix-t-session* *pix-t-archive*
+                                                      *pix-t-trie* :stat
+                                                      (pt-o "<loop@example.invalid>"))))
+(assert-event (equal (take 3 (cadr
+                              (car (fn-nntp-result-effects *pix-t-stat-absent*))))
+                     (pt-o "430")))
+; With the empty trie the held article is not found (430 where the scan
+; finds it): the lookup is what answers.
+(assert-event (equal (take 3 (cadr
+                              (car (fn-nntp-result-effects
+                                    (fn-pix-msgid-retrieval-indexed
+                                     *pix-t-session* *pix-t-archive* nil :stat *pt-id1*)))))
+                     (pt-o "430")))
+
+(defconst *pix-t-pin* (fn-gidx-pin *pix-t-trie* (fn-gidx-build *pix-t-arts*)))
+(defun pix-t-delegate (event)
+  (equal (fn-pix-peer-delegate-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
+                                      *pt-inj* *pt-obs* *pt-obs* event)
+         (fn-peer-delegate-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
+                                  *pt-inj* *pt-obs* *pt-obs* event)))
+(assert-event (and (pix-t-delegate (pt-cmd "STAT <a1@example.invalid>"))
+                   (pix-t-delegate (pt-cmd "STAT <loop@example.invalid>"))
+                   (pix-t-delegate (pt-cmd "ARTICLE <a1@example.invalid>"))
+                   (pix-t-delegate (pt-cmd "HEAD <a1@example.invalid>"))
+                   (pix-t-delegate (pt-cmd "GROUP fn.test"))
+                   (pix-t-delegate (pt-cmd "STAT"))))
+
+(assert-event
+ (and (eq (symbol-class 'fn-pix-msgid-retrieval-indexed (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pix-archive-command-pinned (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pix-command-pinned (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pix-step-pinned (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pix-post-step-pinned (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-pix-peer-delegate-pinned (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-scar-peer-step-pinned (w state)) :common-lisp-compliant)))
+
+; The history test's non-empty test is by length (no character list): the
+; empty Message-ID takes the scan, and both answer nil; the empty trie with
+; the matching list answers nil for the held one (the lookup answers), where
+; the scan answers t.
+(assert-event (equal (fn-pix-history-hasp "" *pt-node1* *pix-t-trie* *pix-t-arts*)
+                     (fn-peer-history-hasp "" *pt-node1*)))
+(assert-event (null (fn-pix-history-hasp "" *pt-node1* *pix-t-trie* *pix-t-arts*)))
+(assert-event (and (null (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*))
+                   (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*)))

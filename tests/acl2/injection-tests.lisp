@@ -154,6 +154,39 @@
 (assert-event (equal (fn-inj-decision-reason
                       (fn-inj-decide *fn-t-good* *fn-t-cfg-small* *fn-t-obs*))
                      :oversize))
+
+; D27 (design 2026-09-25-bounds §2.3): the configuration's max-octets, the
+; operator's profile bound installed by the host, is the parser's input bound.
+; An unparsable source longer than it is refused :oversize before the parse
+; walks it; the same source within a larger bound reaches the parser.
+(defconst *fn-t-noise-65* (make-list 65 :initial-element 1))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide *fn-t-noise-65* *fn-t-cfg-small* *fn-t-obs*))
+                     :oversize))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide *fn-t-noise-65* *fn-t-cfg* *fn-t-obs*))
+                     :unparsable))
+; An article above the pre-D27 32 768-octet constant is accepted under a
+; configuration that allows it (34 000 body octets in 340 lines), and refused
+; :oversize under one that does not.
+(defun fn-t-body-lines (n)
+  (if (zp n) nil
+    (append (make-list 98 :initial-element 120) '(13 10)
+            (fn-t-body-lines (1- n)))))
+(defconst *fn-t-large*
+  (append (take (- (len *fn-t-good*) 16) *fn-t-good*) (list 13 10)
+          (fn-t-body-lines 340)))
+(defconst *fn-t-cfg-large*
+  (fn-inj-make-config t *fn-t-agent* (list '(102 110 46 108 101 116 116 101 114 115))
+                      70000))
+(assert-event (< 32768 (len *fn-t-large*)))
+(assert-event (fn-inj-configp *fn-t-cfg-large*))
+(assert-event (equal (fn-inj-decision-status
+                      (fn-inj-decide *fn-t-large* *fn-t-cfg-large* *fn-t-obs*))
+                     :injected))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide *fn-t-large* *fn-t-cfg* *fn-t-obs*))
+                     :oversize))
 (assert-event (equal (fn-inj-decision-reason
                       (fn-inj-decide *fn-t-good* *fn-t-cfg* *fn-t-obs-blind*))
                      :clock-unusable))

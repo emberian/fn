@@ -11,7 +11,11 @@ about whether fn signs what the specification says.
 
 `NativeVerifyTests` (FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2,
 FN_TEST_OPENSSL) runs a scratch owner from a saved image with STARTTLS and a
-required login.  The article is signed by the image's own
+required login.  FN_VERIFY_LARGE=1 adds a 60 KiB v1 and a 200 KiB v2 signed
+POST and a tampered v2 one (the image's article bound must admit them), and
+FN_VERIFY_OLD_HOST names an image from before carrier v2 that signs, POSTs
+and stores one v1 article in the same Store before the image under test
+opens it.  The article is signed by the image's own
 `hybrid-sign-carrier` (libsodium and OpenSSL) and POSTed over NNTP; the
 verifier checks it with the other libraries.  That is the independent half.
 A proxy that holds a real login and rewrites what the node said is the
@@ -124,12 +128,19 @@ class Signer:
         return {"principal": self.principal.hex(), "ed25519": self.ed_public.hex(),
                 "ml-dsa-65": self.ml_public.hex(), "generation": 1}
 
-    def carried(self, source):
-        preimage = (fn_verify.cbor_bytes_head(len(fn_verify.DOMAIN_TAG))
-                    + fn_verify.DOMAIN_TAG + bytes([1, 1]) + self.principal
+    def carried(self, source, claim_version=None):
+        """Sign SOURCE as fn does: v1 (u16 length) up to 65535 octets, v2
+        (u32 length, the v2 tag) above.  CLAIM_VERSION overrides only the
+        carrier's item 1, after signing."""
+        if len(source) <= 65535:
+            version, tag, width = 1, b"fn-authored-source-hybrid-v1", 2
+        else:
+            version, tag, width = 2, b"fn-authored-source-hybrid-v2", 4
+        preimage = (b"\x58\x1c" + tag + bytes([version, 1]) + self.principal
                     + bytes([1]) + self.ed_public + bytes([2]) + self.ml_public
-                    + len(source).to_bytes(2, "big") + source)
-        items = [bytes([1]), bytes([1]), b"\x58\x20" + self.principal, bytes([1]),
+                    + len(source).to_bytes(width, "big") + source)
+        claimed = version if claim_version is None else claim_version
+        items = [bytes([claimed]), bytes([1]), b"\x58\x20" + self.principal, bytes([1]),
                  b"\x58\x20" + self.ed_public, bytes([2]),
                  b"\x59\x07\xa0" + self.ml_public,
                  b"\x58\x40" + self.ed.sign(preimage),
@@ -137,6 +148,12 @@ class Signer:
         value = base64.b64encode(b"".join(items))
         return (b"Path: node.example.invalid!not-for-mail\r\n"
                 + fold_carrier(value) + source)
+
+
+def big_body(octets):
+    """Numbered 72-octet CRLF lines, at least OCTETS long."""
+    lines = [b"line %05d " % i + b"x" * 60 + b"\r\n" for i in range(octets // 72 + 1)]
+    return b"".join(lines)
 
 
 def source_for(msgid, body=b"exact post source\r\n"):
@@ -178,6 +195,18 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<carried@x.invalid>": cls.author.carried(source_for("<carried@x.invalid>")),
                 "<carried-unpinned@x.invalid>": cls.stranger.carried(
                     source_for("<carried-unpinned@x.invalid>")),
+                "<v1-60k@x.invalid>": cls.author.carried(
+                    source_for("<v1-60k@x.invalid>", body=big_body(60 * 1024))),
+                "<v2-200k@x.invalid>": cls.author.carried(
+                    source_for("<v2-200k@x.invalid>", body=big_body(200 * 1024))),
+                "<v2-tampered@x.invalid>": cls.author.carried(
+                    source_for("<v2-tampered@x.invalid>", body=big_body(200 * 1024))
+                ).replace(b"line 00100 ", b"LINE 00100 "),
+                "<v2-says-v1@x.invalid>": cls.author.carried(
+                    source_for("<v2-says-v1@x.invalid>", body=big_body(200 * 1024)),
+                    claim_version=1),
+                "<v1-says-v2@x.invalid>": cls.author.carried(
+                    source_for("<v1-says-v2@x.invalid>"), claim_version=2),
             },
             verdicts={
                 "<good@x.invalid>": a,
@@ -192,6 +221,11 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<garbled@x.invalid>": "maybe",
                 "<carried@x.invalid>": "carried " + "55" * 32,
                 "<carried-unpinned@x.invalid>": "carried " + "66" * 32,
+                "<v1-60k@x.invalid>": a,
+                "<v2-200k@x.invalid>": a,
+                "<v2-tampered@x.invalid>": "unverified signature keyring 1",
+                "<v2-says-v1@x.invalid>": "unverified carrier keyring 1",
+                "<v1-says-v2@x.invalid>": a,
             })
         cls.principal = p
 
@@ -251,6 +285,42 @@ class FakeNodeVerifyTests(unittest.TestCase):
             if check:
                 self.assertEqual(report["independent"]["outcome"], check)
 
+    def test_carrier_v1_now_carries_up_to_65535_octets(self):
+        # Bounds P4 step one: 60 KiB was over the old 32768 bound; the u16
+        # already carried it, so it is a v1 carrier and verifies.
+        code, report = self.verify("<v1-60k@x.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["independent"]["carrier-version"], 1)
+        self.assertGreater(report["independent"]["source-octets"], 32768)
+
+    def test_carrier_v2_valid_is_0(self):
+        code, report = self.verify("<v2-200k@x.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["independent"]["carrier-version"], 2)
+        self.assertGreater(report["independent"]["source-octets"], 65535)
+
+    def test_carrier_v2_tampered_is_1(self):
+        code, report = self.verify("<v2-tampered@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (1, "signature"), report)
+        self.assertEqual(report["independent"]["carrier-version"], 2)
+
+    def test_carrier_wrong_version_byte_is_refused(self):
+        # A v2 signature whose item 1 says 1: the source is too long for v1.
+        code, report = self.verify("<v2-says-v1@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (1, "carrier"), report)
+        # A v1 signature whose item 1 says 2, under a node that claims
+        # verified: the carrier is not fn's, so the node is contradicted.
+        code, report = self.verify("<v1-says-v2@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (2, "carrier"), report)
+
+    def test_the_versions_sign_disjoint_preimages(self):
+        source = source_for("<disjoint@x.invalid>")
+        v1 = fn_verify.signed_preimage(1, b"p" * 32, b"e" * 32, b"m" * 1952, source)
+        v2 = fn_verify.signed_preimage(2, b"p" * 32, b"e" * 32, b"m" * 1952, source)
+        self.assertEqual(v1[:29], v2[:29])
+        self.assertNotEqual(v1[29], v2[29])
+        self.assertEqual(len(v2) - len(v1), 2)
+
     def test_usage_error_never_reads_as_disagreement(self):
         code, _ = run_verifier("not-a-msgid", "--node", "x", "--plain",
                                "--keyring", self.keyring)
@@ -272,7 +342,10 @@ WIDTHS = {
     "*fn-hsig-ed25519-signature-octets*": fn_verify.ED_SIG,
     "*fn-hsig-ml-dsa-65-public-key-octets*": fn_verify.ML_PK,
     "*fn-hsig-ml-dsa-65-signature-octets*": fn_verify.ML_SIG,
-    "*fn-article-max-octets*": fn_verify.ARTICLE_MAX,
+    "*fn-hsig-v1-max-source*": fn_verify.SOURCE_MAX_V1,
+    "*fn-hsig-v2-max-source*": fn_verify.SOURCE_MAX_V2,
+    "*fn-hsig-version*": 1,
+    "*fn-hsig-v2-version*": 2,
     "*fn-hc-max-field-octets*": fn_verify.CARRIER_FIELD_MAX,
     "*fn-hc-max-binary-octets*": fn_verify.CARRIER_BINARY_MAX,
 }
@@ -315,13 +388,25 @@ def spec_book_problems(section, names, consts):
     problems = []
     cited = set(re.findall(r"`(\*?fn-[a-z0-9-]+\*?)`", section))
     cited.discard(fn_verify.DOMAIN_TAG.decode("ascii"))  # a string, not a name
+    cited.discard(fn_verify.DOMAIN_TAG_V2.decode("ascii"))
+    cited -= {"fn-hybrid-v1", "fn-hybrid-v2"}             # evidence tags, likewise
     for name in sorted(cited - names):
         problems.append("the spec cites `{}`, which no book defines".format(name))
-    tag = const_value(consts, "*fn-hsig-domain-tag*")
-    if tag != fn_verify.DOMAIN_TAG:
-        problems.append("the book's domain tag is not the verifier's")
-    if tag.decode("ascii") not in section:
-        problems.append("the spec does not state the domain tag")
+    for name, restated in (("*fn-hsig-domain-tag*", fn_verify.DOMAIN_TAG),
+                           ("*fn-hsig-v2-domain-tag*", fn_verify.DOMAIN_TAG_V2)):
+        tag = const_value(consts, name)
+        if tag != restated or fn_verify.VERSIONS[
+                1 if name == "*fn-hsig-domain-tag*" else 2][0] != tag:
+            problems.append("the book's {} is not the verifier's".format(name))
+        if tag.decode("ascii") not in section:
+            problems.append("the spec does not state {}".format(name))
+    for name, restated in (("*fn-hsig-profile-tag*", b"fn-hybrid-v1"),
+                           ("*fn-stxe-profile-hybrid-v2*", b"fn-hybrid-v2")):
+        if const_value(consts, name) != restated:
+            problems.append("the book's {} is not {}".format(name, restated))
+        if restated.decode("ascii") not in section:
+            problems.append("the spec does not state the evidence tag {}".format(
+                restated.decode("ascii")))
     for name, restated in WIDTHS.items():
         value = const_value(consts, name)
         if value != restated:
@@ -367,6 +452,17 @@ class SpecBookTieTests(unittest.TestCase):
         problems = spec_book_problems(self.section, self.names, consts)
         self.assertTrue(any("3293 in the book" in p for p in problems), problems)
 
+    def test_a_changed_v2_tag_or_width_is_caught(self):
+        consts = dict(self.consts)
+        consts["*fn-hsig-v2-domain-tag*"] = consts["*fn-hsig-domain-tag*"]
+        consts["*fn-hsig-v2-max-source*"] = "65535)"
+        problems = " ".join(spec_book_problems(self.section, self.names, consts))
+        self.assertIn("*fn-hsig-v2-domain-tag* is not the verifier's", problems)
+        self.assertIn("65535 in the book, 4294967295 in the verifier", problems)
+        drifted = self.section.replace("fn-authored-source-hybrid-v2", "fn-v2")
+        self.assertIn("the spec does not state *fn-hsig-v2-domain-tag*", " ".join(
+            spec_book_problems(drifted, self.names, self.consts)))
+
     def test_a_field_the_spec_forgets_to_drop_is_caught(self):
         drifted = self.section.replace("`Xref`,", "")
         self.assertIn("xref", " ".join(
@@ -381,6 +477,8 @@ OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 # books/auth-secret, so it runs from a tree whose certificates exist (a
 # gate tree, read-only); by default this one.
 AUTH_TREE = Path(os.environ.get("FN_VERIFY_AUTH_TREE", ROOT))
+OLD_IMAGE = os.environ.get("FN_VERIFY_OLD_HOST")
+LARGE = os.environ.get("FN_VERIFY_LARGE") == "1"
 
 
 class LyingProxy:
@@ -434,8 +532,8 @@ class NativeVerifyTests(unittest.TestCase):
     USER, PASSWORD = "verify-reader", "correct-horse-verify"
 
     @classmethod
-    def invoke(cls, *args, timeout=180):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
+    def invoke(cls, *args, timeout=180, image=IMAGE):
+        result = subprocess.run([str(image), "--fn", *map(str, args)], cwd=ROOT,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 timeout=timeout, check=False)
         if result.returncode != 0:
@@ -445,11 +543,15 @@ class NativeVerifyTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from tests.native_process import wait_for_announcement
+        from tests.native_process import stop_and_diagnostics, wait_for_announcement
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
         root = cls.root = Path(cls.temp.name)
         store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
-        cls.invoke("store", store, "init", "fn.test")
+        # D27: the store's profile is the operator's.  FN_VERIFY_INIT_FLAGS
+        # (e.g. "--max-article-octets 4194304") gives the large cases an
+        # article bound that admits them.
+        cls.invoke("store", store, "init",
+                   *os.environ.get("FN_VERIFY_INIT_FLAGS", "").split(), "fn.test")
         cls.cert, key = root / "node-cert.pem", root / "node-key.pem"
         subprocess.run([OPENSSL, "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
                         "-out", str(cls.cert), "-sha256", "-days", "1", "-nodes",
@@ -497,28 +599,65 @@ class NativeVerifyTests(unittest.TestCase):
         cls.keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
                                            "principals": [json.loads(entry.stdout)]}))
 
+        cls.replies = {}
+        if OLD_IMAGE:
+            # A v1 record written by an image from before carrier v2.
+            old = subprocess.Popen([OLD_IMAGE, "--fn", "operator", str(cls.config), "run"],
+                                   cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                line = wait_for_announcement(old, b"LISTENING ")
+                assert line.startswith(b"LISTENING "), line
+                cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public,
+                           cls.ml_public, image=OLD_IMAGE)
+                cls.replies["verify-old-v1"] = cls.post(
+                    cls.sign("verify-old-v1", source_for("<verify-old-v1@example.invalid>"),
+                             image=OLD_IMAGE))
+            finally:
+                stop_and_diagnostics(old, timeout=60)
+
         cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
                                      cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            cls.start(control)
+        except BaseException:
+            # tearDownClass does not run after a failed setUpClass.
+            stop_and_diagnostics(cls.owner, timeout=60)
+            cls.temp.cleanup()
+            raise
+
+    @classmethod
+    def start(cls, control):
+        from tests.native_process import wait_for_announcement
         line = wait_for_announcement(cls.owner, b"LISTENING ")
         assert line.startswith(b"LISTENING "), line
-        cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public, cls.ml_public)
+        if not OLD_IMAGE:
+            cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public,
+                       cls.ml_public)
 
-        cls.replies = {}
-        for stem, tamper, signed in (("verify-signed", False, True),
-                                     ("verify-tampered", True, True),
-                                     ("verify-unsigned", False, False)):
-            source = root / (stem + ".eml")
-            source.write_bytes(source_for("<{}@example.invalid>".format(stem)))
-            if signed:
-                carried = root / (stem + "-carried.eml")
-                cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public,
-                           cls.ed_secret, cls.ml_public, cls.ml_private, source, carried)
-                octets = carried.read_bytes()
-            else:
-                octets = source.read_bytes()
+        cases = [("verify-signed", False, True, b"exact post source\r\n"),
+                 ("verify-tampered", True, True, b"exact post source\r\n"),
+                 ("verify-unsigned", False, False, b"exact post source\r\n")]
+        if LARGE:
+            cases += [("verify-v1-60k", False, True, big_body(60 * 1024)),
+                      ("verify-v2-200k", False, True, big_body(200 * 1024)),
+                      ("verify-v2-tampered", True, True, big_body(200 * 1024))]
+        for stem, tamper, signed, body in cases:
+            source = source_for("<{}@example.invalid>".format(stem), body=body)
+            octets = cls.sign(stem, source) if signed else source
             if tamper:
                 octets = octets.replace(b"exact post source", b"Exact post source", 1)
+                octets = octets.replace(b"line 00100 ", b"LINE 00100 ", 1)
+            print("POST", stem, len(octets), flush=True)
             cls.replies[stem] = cls.post(octets)
+            print("  ->", cls.replies[stem][:80], flush=True)
+
+    @classmethod
+    def sign(cls, stem, source_octets, image=IMAGE):
+        source, carried = cls.root / (stem + ".eml"), cls.root / (stem + "-carried.eml")
+        source.write_bytes(source_octets)
+        cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public, cls.ed_secret,
+                   cls.ml_public, cls.ml_private, source, carried, image=image)
+        return carried.read_bytes()
 
     @classmethod
     def upstream(cls):
@@ -584,6 +723,34 @@ class NativeVerifyTests(unittest.TestCase):
             proxy.close()
         self.assertEqual((code, report["independent"]["reason"]), (2, "signature"), report)
         print("\ntampered-in-flight:", report["node-hdr"], "|", report["detail"])
+
+    @unittest.skipUnless(LARGE, "set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB")
+    def test_large_signed_posts_verify_under_their_version_0(self):
+        for stem, version, low in (("verify-v1-60k", 1, 32768), ("verify-v2-200k", 2, 65535)):
+            self.assertTrue(self.replies[stem].startswith("240"), (stem, self.replies[stem]))
+            code, report = self.verify("<{}@example.invalid>".format(stem))
+            self.assertEqual(code, 0, report)
+            self.assertEqual(report["node"]["outcome"], "verified", report)
+            self.assertEqual(report["independent"]["carrier-version"], version)
+            self.assertGreater(report["independent"]["source-octets"], low)
+            print("\n{}: {} | source-octets {} carrier-version {}".format(
+                stem, report["node-hdr"], report["independent"]["source-octets"], version))
+
+    @unittest.skipUnless(LARGE, "set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB")
+    def test_tampered_v2_post_is_refused_and_not_stored_3(self):
+        self.assertEqual(self.replies["verify-v2-tampered"],
+                         "441 posting failed; the author signature does not verify")
+        code, report = self.verify("<verify-v2-tampered@example.invalid>")
+        self.assertEqual(code, 3, report)
+
+    @unittest.skipUnless(OLD_IMAGE, "set FN_VERIFY_OLD_HOST to an image from before carrier v2")
+    def test_a_v1_record_from_before_v2_is_still_verified_0(self):
+        self.assertTrue(self.replies["verify-old-v1"].startswith("240"), self.replies)
+        code, report = self.verify("<verify-old-v1@example.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["node"]["outcome"], "verified", report)
+        self.assertEqual(report["independent"]["carrier-version"], 1)
+        print("\nold v1 record:", report["node-hdr"])
 
     def test_fabricated_hdr_answers_are_2(self):
         forged = b"0 verified " + b"55" * 32 + b" keyring 1\r\n"

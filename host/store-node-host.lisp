@@ -37,8 +37,8 @@
                              ; specs/reconfiguration.md section 1.6 -- a store
                              ; that has not been configured accepts nothing,
                              ; rather than accepting into a compiled-in
-                             ; default (the last `*fn-store-capacity*' read
-                             ; outside host/checkpoint-host.lisp).
+                             ; default.  The checkpoint host reads the live
+                             ; node's capacity (`fn-store-sn-capacity').
                              (fn-sn-initial nil 0) state)))
     (value :ready)))
 
@@ -140,6 +140,22 @@ reopen predicate, writer-lock observation and observed final namespace."
        records frontier config-records (fn-record-parse-value parsed)
        lock-owned names))))
 
+; The same authorization flattened for a caller that reads one form:
+; (status reason generation name).  The generation and the filename are
+; ACL2's (`fn-native-admin-publication-authorize'); the caller allocates
+; neither.
+(defun fn-store-cfg-publication
+    (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets)
+  (declare (xargs :mode :program))
+  (let ((result (fn-store-cfg-native-admin-authorize
+                 octet-records frontier config-octet-records record-octets
+                 lock-owned observed-name-octets)))
+    (list (fn-native-admin-publication-status result)
+          (fn-native-admin-publication-reason result)
+          (fn-native-admin-publication-generation result)
+          (let ((name (fn-native-admin-publication-name result)))
+            (if (stringp name) (fn-record-string-octets name) nil)))))
+
 ; The physical configuration and Store histories share transaction IDs, but
 ; have independent sequence spaces. ACL2 interleaves them at recovery, with
 ; configuration before a tied Store event, and carries that history in the
@@ -173,6 +189,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   ; The allocation domain the live node carries: every name ever created.
   (declare (xargs :stobjs state :mode :program))
   (fn-state-groups (fn-node-acceptance (fn-sn-node (f-get-global 'fn-store-sn state)))))
+
+(defun fn-store-sn-capacity (state)
+  ; The retention charge capacity the live node carries: the replayed
+  ; configuration's (`operator capacity'), 0 before any configuration is
+  ; replayed.  The checkpoint host captures, decodes and restores under this
+  ; value, the same node `fn-store-sn-domain' reads, so a checkpoint binds
+  ; the capacity the store actually runs under.
+  (declare (xargs :stobjs state :mode :program))
+  (fn-retain-capacity (fn-node-retention (fn-sn-node (f-get-global 'fn-store-sn state)))))
 
 (defun fn-store-cfg-generation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -437,30 +462,39 @@ reopen predicate, writer-lock observation and observed final namespace."
           (fn-cfg-peer-names
            (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))))))
 
-(defun fn-store-cfg-peer-rows-of (name-octets state)
-  (declare (xargs :mode :program :stobjs state))
-  (let ((name (fn-store-octets->string name-octets)))
-    (if (equal name :bad)
-        nil
-      (fn-cfg-rows-with-key (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))
-                            name))))
+(defun fn-store-txn-pairs-octets (pairs)
+  (declare (xargs :mode :program))
+  (if (consp pairs)
+      (cons (list (car (car pairs)) (fn-record-string-octets (nth 1 (car pairs))))
+            (fn-store-txn-pairs-octets (cdr pairs)))
+    nil))
 
-(defun fn-store-cfg-peer-slot-text (name-octets slot-octets state)
-  ; The text half of one row of a peer's group, as octets; nil when absent.
+; The operator's `peer list' report, rendered by books/native-admin-peer's
+; `fn-native-admin-peer-report' over the replayed configuration: the one the
+; native `peer list' prints (host/native-admin-host.lisp).  Python writes the
+; octets out and renders no field.
+(defun fn-store-cfg-peer-report (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((slot (fn-store-octets->string slot-octets))
-         (row (and (not (equal slot :bad))
-                   (fn-cfg-peer-slot (fn-store-cfg-peer-rows-of name-octets state) slot))))
-    (value (if row (fn-record-string-octets (fn-cfg-row-c row)) nil))))
+  (value (fn-native-admin-peer-report
+          (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 
-(defun fn-store-cfg-peer-slot-nat (name-octets slot-octets state)
-  ; The numeric half of one row, or -1 when the row is absent: the CLI never
-  ; substitutes a default for a slot the record does not carry.
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((slot (fn-store-octets->string slot-octets))
-         (row (and (not (equal slot :bad))
-                   (fn-cfg-peer-slot (fn-store-cfg-peer-rows-of name-octets state) slot))))
-    (value (if row (fn-cfg-row-n row) -1))))
+; The fixed-width configuration record filename (`fn-native-admin-config-name',
+; books/native-admin-shape.lisp), nil beyond its width.
+(defun fn-store-cfg-record-name (generation)
+  (declare (xargs :mode :program))
+  (let ((name (fn-native-admin-config-name generation)))
+    (if (stringp name) (fn-record-string-octets name) nil)))
+
+; One bounded observation of the final transaction namespace, as the native
+; host asks it (`fn-store-txn-observation-selected', lower bound 0): :invalid,
+; or each (sequence name-octets) pair in order.  The grammar, the bound and
+; the gap policy are `fn-profile-txn-observation''s.
+(defun fn-store-txn-observation-octets (observed maximum)
+  (declare (xargs :mode :program))
+  (let ((value (fn-store-txn-observation-selected observed maximum 0)))
+    (if (and (consp value) (equal (car value) :ok))
+        (fn-store-txn-pairs-octets (nth 2 value))
+      :invalid)))
 
 (defun fn-store-cfg-last-octets (state)
   (declare (xargs :stobjs state :mode :program))
@@ -472,7 +506,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sn-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((next (fn-sn-io (f-get-global 'fn-store-sn state) operation result)))
+  ; fn-rcon-sn-io-is-sn-io (books/records-concrete): fn-sn-io with the
+  ; concrete record dispatchers.
+  (let ((next (fn-rcon-sn-io (f-get-global 'fn-store-sn state) operation result)))
     (let ((state (f-put-global 'fn-store-sn next state)))
       (value (fn-sf-phase (fn-sn-files next))))))
 
@@ -578,13 +614,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (f-get-global 'fn-store-sn state)))))
-    (value (if record (fn-store-event-encode record) nil))))
+    ; fn-rcon-store-event-encode-is-store-event-encode (books/records-concrete).
+    (value (if record (fn-rcon-store-event-encode record) nil))))
 
 ; The staged record's sequence: the developer `store post' names its
 ; transaction file from it (books/store-budget-naming.lisp).
 (defun fn-store-sn-pending-sequence (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-pending-sequence (f-get-global 'fn-store-sn state))))
+  ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
+  (value (fn-rcon-sbud-pending-sequence (f-get-global 'fn-store-sn state))))
 
 (defun fn-store-sn-finish (state)
   (declare (xargs :stobjs state :mode :program))

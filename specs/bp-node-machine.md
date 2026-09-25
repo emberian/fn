@@ -1444,6 +1444,116 @@ split-input test. This is one bounded compatibility experiment, not a gate
 on every later book. For the machine, the consumer is the record decoder's
 caller in `fn-bpn-restart-step` and the vector is one kind-5 record.
 
+### 4.7 The routing decision: `fn-bprt-next-hop` (2026-09-25, lane bp-routing)
+
+REP-007: A held BP bundle is offered only to the neighbour the operator's route
+table names for its destination; with no route it stays held and is reported.
+
+RFC 9171 §4.3 and §5.4 step 1 leave the forwarding strategy to the node: it
+must determine whether forwarding is possible and to which node. fn runs no
+routing protocol; it decides from an operator's table. Before this section
+the next hop was the command line's CONTACT-HOST:PORT and an outbound
+`bp-node serve` session accepted whatever node ID the contact announced
+(M4 native request, finding 2). ACL2 now owns the decision.
+
+**Rows.** `operator CONFIG bp-route add PATTERN BOUNDARY [PRIORITY]` stages,
+through the same assured live-reconfiguration path as `bp-boundary add`
+(`fn-native-admin-plan` → `fn-native-admin-plan-deltas` → one `:set-peer`
+delta), a peer-table group named `"bp-route PATTERN BOUNDARY"` of two rows:
+`(NAME "bp-route-destination" PATTERN PRIORITY)` and
+`(NAME "bp-route-next-hop" BOUNDARY 0)`. PRIORITY is a uint32, default 100,
+lower preferred. `bp-route remove PATTERN BOUNDARY` removes the group. The
+group has no `path-identity` row, so it is neither an NNTP peer nor a BP
+boundary. A boundary's contact address is the boundary's own row:
+`bp-boundary add ... [contact PORT]` writes
+`(NAME "bp-boundary-contact" "127.0.0.1" PORT)` on the loopback profile, the
+only implemented boundary profile.
+
+**Pattern grammar.** PATTERN is an EID text `fn-bp-eid-shapep` admits. There
+is one wildcard form. A pattern whose last character is `*` (which only a dtn
+demux can end with) is a prefix pattern: it matches every EID whose text
+starts with the pattern minus the `*`. Any other pattern matches only the EID
+with exactly that text. There is no default route.
+
+**Table.** `fn-bprt-table cfg` reads adjacent route-row pairs and builds one
+route per pair whose BOUNDARY is a current BP boundary, meaning it has exactly
+one `bp-trust network` row and one non-wildcard `transport-bp` row. A route is
+`(PRIORITY SPECIFICITY PATTERN BOUNDARY EID PORT)`. SPECIFICITY is 0 for an
+exact pattern and 1 for a prefix pattern. EID is the boundary's enrolled EID.
+PORT is its contact port, or 0 if it has none. A route to anything else routes
+nothing.
+
+**Decision** (`books/bp-route.lisp`, `fn-bprt-next-hop dest table live`):
+- If no pattern matches DEST, the answer is `:no-route`.
+- If some patterns match but none of those routes names a boundary in LIVE,
+  the answer is `:no-live-hop`.
+- Otherwise the answer is the BOUNDARY of the `lexorder`-least live matching
+  route: lower priority first, then exact before prefix, then the pattern,
+  then the name. `lexorder` is total, so the answer does not depend on the
+  order of the table.
+
+**Outbound session.** `fnn-bpnode-forward-contact` works as follows:
+1. It asks `fn-bprt-outbound-choice dest table`, which is the decision over
+   the boundaries that have a contact. The table comes from
+   `fn-owner-bp-route-table`, which is `fn-bprt-table` of the owner's current
+   configuration.
+2. With no route it opens no session. It prints
+   `BP forwarding no-route destination=… decision=…`, and the rows and their
+   obligations stay held.
+3. Otherwise it connects to `127.0.0.1:PORT` of the chosen boundary, passing
+   the boundary's EID as the expected TCPCL peer. `fn-tcl-init-acceptablep`
+   refuses any other SESS_INIT node ID.
+4. It issues the routed event
+   `(:session PEER S t MRU OBS (:via HOP ANNOUNCED TABLE))`, where ANNOUNCED
+   is the negotiated node ID octets.
+
+**Call site.** `fn-bpnp-step`'s `:session` arm, given a `:via` field, calls
+`fn-bpnp-routed-start`. That function runs the arrival-order scan that
+`fn-bpnp-start-one` runs, then asks `fn-bprt-offer-decision` about the chosen
+row's destination (`fn-bpaj-eid-text` of the primary block's destination):
+- `:offer` requires the decision over LIVE = (HOP) to name HOP, and ANNOUNCED
+  to be the octets of that route's EID. Only then is start-one called.
+- Otherwise the answer is `(:forward-no-route ARRIVAL HOP DECISION)` with
+  DECISION one of `:no-route`, `:no-live-hop` or `:announced-mismatch`.
+  Nothing is proposed and no held row changes.
+
+**Theorems.**
+
+Over the decision:
+- `fn-bprt-next-hop-names-a-live-matching-route`: a boundary answer is the
+  boundary of a route in the table that matches DEST and is live.
+- `fn-bprt-next-hop-deterministic-in-the-table`: two tables whose routes for
+  DEST are the same set give the same answer.
+
+Over `fn-bpnp-step`, in `books/bp-route-step.lisp`:
+- `fn-bpnp-step-offers-only-the-routed-hop`: a `:persist-attempt` on a routed
+  session is for the scan's row. That row's destination is routed to HOP by a
+  route in TABLE whose pattern matches and which names HOP. The contact
+  announced HOP's enrolled EID.
+- `fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported`: when no route
+  matches the scan's row, the only effect is
+  `(:forward-no-route ARRIVAL HOP :no-route)` and the held list is unchanged.
+
+The teeth are in `tests/acl2/bp-route-tests.lisp`.
+
+**Covered scope, stated.**
+- The dispatch key is still `fn-bpnp-single-peer-routes PEER-ID`, and the
+  scan still selects by that key. The routing gate reads the row's own
+  destination, so the theorem holds for any key. If an older row under the
+  key has no route to HOP, it blocks younger rows under the same key on that
+  session. With single-peer routes, every row under a key has that key as its
+  destination.
+- The unrouted 6-field `:session` form remains in the machine. The host no
+  longer sends it open. The theorem covers the 7-field form.
+- `:resume` (never sent by the host) reaches start-one without the gate.
+- LIVE is (HOP): the host holds one outbound session at a time. Priority
+  therefore chooses among boundaries with a contact
+  (`fn-bprt-outbound-choice`), not among concurrent sessions.
+- FNBS base jobs are not routed: `bp-obligation request`, the queued receipt
+  outboxes and reports that `bp-contact tick` sends, and `bp-service`. Each
+  still carries the CONTACT-HOST:PORT given when it was queued.
+- Inbound admission is unchanged (`fn-bpaj-session-principal`).
+
 ## 5. The theorems
 
 Notation, fixed for every statement:
@@ -2746,6 +2856,9 @@ success, gap, overlap and conflict.
   change; history never consults it (§3.4); an already forward-pending entry
   whose next hop disappears is rerouted by kind 13 (§4.5, BP-R14).
 - No new delta kind in `books/config` (§12, D-3).
+- Landed 2026-09-25 in a different shape: the operator route table and
+  `fn-bprt-next-hop` of §4.7 (`books/bp-route.lisp`); the `fn-bpn-route`
+  record above remains unbuilt.
 
 ### 7.6 Status reports (§12, D-6)
 
@@ -3607,7 +3720,7 @@ The second review's traces (their labels; not requirement IDs):
 | N13 | identical application request retried in a fresh carrier: same receipt fact, new reply submission, no new article or pin | A3 |
 | N14 | two works, receipt for the first only: exactly the first forwarding pin changes; archive pins and the second work remain | A3, slice-A gate |
 | N15 | network peer address matches, announced EID does not: no admission under the announced identity | A3 |
-| N16 | rotation killed at every publication and selection cut, then new work and a stale completion: one recovery authority, no identifier reuse, arrival order kept | E |
+| N16 | rotation killed at every publication and selection cut, then new work and a stale completion: one recovery authority, no identifier reuse, arrival order kept. **Present** through `fn-bpnp-step` for a single atomically renamed kind-19 checkpoint (not the chunked kinds 19/20 of §3.6): `(:rotate g ck)` and the checkpoint's `:persist-result` are the rotation arms (`fn-bpnp-step-rotate-is-rotate-step`, `fn-bpnp-step-rotation-result-is-rotation-result`, books/bp-node-rotation-step); only the durable answer resets the record count (`fn-bpnp-step-rotation-resets-credit-only-on-durable`); recovery from the selected checkpoint equals recovery over the whole history but the row count (`fn-bpnr-recover-from-checkpoint-equals-full-recover`); at every cut of the publication driver the visible selection is the old or the new one (`fn-bpnr-rotation-crash-recovers-old-or-new`); trace and teeth in tests/acl2/bp-node-counterexamples-tests; natively, `test_rotation_killed_at_each_cut_keeps_held_rows`. **Open**: identifier reuse (finding N16-F1): the checkpoint's operation frontier predates the rotation, so a reopened node's epoch is the rotating epoch and its first operation reuses the rotation's id; the empty new-generation premise is not modelled; old generations are never removed | E |
 | N17 | an attached codec passes the vectors while a theorem needs the exact encoding: the evidence and the conformance obligation stay distinct | T1 (the §4.6 mini-closure), cited by D2 |
 | N18 | the owner answers `:uncertain` repeatedly, never `:busy`: the premise is reported violated, not declared satisfied | B |
 

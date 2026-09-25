@@ -96,12 +96,12 @@ EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
 INSTALLED_SET = re.compile(
     r"artifact-set (\S+) origin (\S+) source (\S+) toolchain (\S+); "
     r"installed (\d+), kept (\d+), missing (\d+), removed (\d+)"
-    r"(?:; origins (\S+))?")
+    r"(?:; origins ([^\s;]+))?")
 # What `certs.py install-partial` prints: the closure size, then the counts.
 INSTALLED_PARTIAL = re.compile(
     r"install-partial: (\d+) books.*\n\s*toolchain (\S+); installed (\d+), "
     r"kept (\d+), missing (\d+), removed (\d+); roots installed (\d+) of (\d+)"
-    r"(?:; origins (\S+))?")
+    r"(?:; origins ([^\s;]+))?")
 
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
@@ -287,7 +287,8 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
                            affected_by: list[str], closure: bool,
                            cache: str | None = None,
                            acl2: str | None = None,
-                           require_origin: str | None = None) -> str:
+                           require_origin: str | None = None,
+                           recertify: list[str] = ()) -> str:
     """Install from the box's cache before ACL2 starts, by the run's plan.
 
     The default, incremental plan (``certs.py install-partial``) installs
@@ -301,7 +302,8 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
     ``--require-origin`` demands one complete dependency set from that one
     origin and refuses otherwise.  ``--closure`` is root's explicit
     recertification plan and keeps the single-origin rule: it purges the
-    closure on a miss and certifies it under ``remote``.
+    closure on a miss and certifies it under ``remote``.  ``recertify``
+    books (incremental plan only) install nothing, as in the runner.
     """
     settings = host_settings(host, cache, acl2)
     select = " ".join(shlex.quote(word) for word in
@@ -313,7 +315,8 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         mode = (f"--require-origin {remote_quote(require_origin)} "
                 "--dependencies-only install-set")
     else:
-        mode = 'install-partial'
+        mode = "".join(f"--recertify {shlex.quote(book)} " for book in recertify)
+        mode += 'install-partial'
     return (
         f"cd {remote_quote(remote)} || exit 9; "
         f"roots=$({select}) || exit 13; "
@@ -332,7 +335,8 @@ def install_from_cache(host: str, remote: Path, books: list[str],
                        affected_by: list[str], closure: bool,
                        cache: str | None = None,
                        acl2: str | None = None,
-                       require_origin: str | None = None) -> dict[str, object]:
+                       require_origin: str | None = None,
+                       recertify: list[str] = ()) -> dict[str, object]:
     """Install what the run's plan takes from the cache, or say why not.
 
     An incremental install refuses only when it did not run (no count line
@@ -340,7 +344,7 @@ def install_from_cache(host: str, remote: Path, books: list[str],
     """
     answer = ssh(host, cache_preflight_script(
         host, remote, books, affected_by, closure, cache, acl2,
-        require_origin), check=False)
+        require_origin, recertify), check=False)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
@@ -433,7 +437,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   closure: bool = False, cache: str | None = None,
                   acl2: str | None = None, no_publish: bool = False,
                   pcert: bool = False, budget_seconds: int | None = None,
-                  require_origin: str | None = None) -> str:
+                  require_origin: str | None = None,
+                  recertify: list[str] = ()) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -460,6 +465,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         runner.append("--pcert")
     if budget_seconds is not None:
         runner.extend(["--budget-seconds", str(budget_seconds)])
+    for book in recertify:
+        runner.extend(["--recertify", book])
     runner.extend(books)
     if settings["wrap"]:
         runner = [settings["wrap"]] + runner
@@ -500,7 +507,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
            no_publish: bool = False,
            prepare: Callable[[str, Path], None] | None = None,
            pcert: bool = False, budget_seconds: int | None = None,
-           require_origin: str | None = None) -> str:
+           require_origin: str | None = None,
+           recertify: list[str] = ()) -> str:
     """Mirror, install from the box's cache, and start the detached runner.
 
     `prepare(host, remote)` runs between the mirror and ACL2, on the box's
@@ -513,6 +521,9 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     against the argument, so a runner invocation that would seed the box's
     cache cannot start under a caller that asked for no publication.
     """
+    if recertify and not incremental(closure, require_origin):
+        raise FarmError("--recertify takes books out of the incremental cache "
+                        "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
@@ -520,7 +531,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     if prepare is not None:
         prepare(host, remote)
     cached = install_from_cache(
-        host, remote, books, affected_by, closure, cache, acl2, require_origin)
+        host, remote, books, affected_by, closure, cache, acl2, require_origin,
+        recertify)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {len(value)}" if name == "origins"
                       else f"{name} {value}" for name, value in cached.items()),
@@ -534,7 +546,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
               file=sys.stderr)
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
-                           no_publish, pcert, budget_seconds, require_origin)
+                           no_publish, pcert, budget_seconds, require_origin,
+                           recertify)
     if no_publish and publishes(script):
         raise FarmError(
             f"{host}: {identifier} was asked not to publish and its runner "
@@ -554,6 +567,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         "closure": closure,
         "incremental": incremental(closure, require_origin),
         "require_origin": require_origin,
+        "recertify": list(recertify),
         "no_publish": no_publish,
         "pcert": pcert,
         "budget_seconds": budget_seconds,
@@ -894,6 +908,10 @@ def main(argv: list[str] | None = None) -> int:
                              "the host) and refuse if it lacks any, instead of "
                              "the default: install what is cached from any "
                              "snapshot origin and certify the rest")
+    parser.add_argument("--recertify", action="append", default=[], metavar="BOOK",
+                        help="certify this book of the closure afresh instead of "
+                             "installing its cached pair (repeatable; passed to "
+                             "the cache preflight and the runner)")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
@@ -922,7 +940,8 @@ def main(argv: list[str] | None = None) -> int:
                                 else None,
                                 arguments.closure, arguments.cache,
                                 arguments.acl2,
-                                require_origin=arguments.require_origin)
+                                require_origin=arguments.require_origin,
+                                recertify=list(arguments.recertify))
             print(identifier)
             return 0
         if arguments.action == "wait":

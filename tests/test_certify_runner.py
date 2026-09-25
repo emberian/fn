@@ -772,6 +772,38 @@ class IncrementalTests(unittest.TestCase):
             self.assertEqual(manifest["installed_over_failed"], [])
             self.assertIn("books/mid", manifest["requested_books"])
 
+    def test_a_recertified_book_is_certified_while_its_dependency_installs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory,
+                                     ["books/base", "books/mid", "books/leaf-a"])
+            code, manifest = repository.certify(
+                ["books/leaf-a"], jobs=2, extra=["--recertify", "books/mid.lisp"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertTrue(manifest["incremental"])
+            self.assertEqual(manifest["recertify"], ["books/mid"])
+            self.assertEqual(manifest["cache_install"]["recertified"], ["books/mid"])
+            # Its cached dependent follows it; its dependency installs.
+            self.assertEqual(manifest["requested_books"], ["books/mid", "books/leaf-a"])
+            self.assertEqual(manifest["installed_books"],
+                             {"books/base": str(repository.root)})
+            self.assertEqual(manifest["book_provenance"], {
+                "books/base": "installed", "books/mid": "certified",
+                "books/leaf-a": "certified"})
+            self.assertEqual(manifest["book_results"]["books/mid"], "passed")
+            self.assertIn("books/mid.lisp", manifest["source_digests_sha256"])
+            self.assertEqual(sorted(set(repository.event_log()) - {"start", "end"}),
+                             ["books/leaf-a", "books/mid"])
+
+    def test_a_recertify_book_outside_the_closure_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            with self.assertRaises(SystemExit):
+                repository.dry_run(["books/leaf-a"], [],
+                                   extra=["--recertify", "books/free-a"])
+            with self.assertRaises(SystemExit):
+                repository.dry_run(["books/leaf-a"], [],
+                                   extra=["--recertify", "books/mid", "--closure"])
+
     def test_incremental_and_closure_are_refused_together(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)

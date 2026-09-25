@@ -7,22 +7,41 @@
 (include-book "../../books/byte-store-profile-program")
 (include-book "std/testing/must-fail" :dir :system)
 
-(defconst *sput-dev* *fn-bs-meta-development-values*)
-(defconst *sput-scale* *fn-bs-meta-scale-values*)
-(defconst *sput-ldev* *fn-bs-meta-legacy-development-values*)
-(defconst *sput-lscale* *fn-bs-meta-legacy-scale-values*)
+(defconst *sput-dev* *fn-bs-profile-development*)
+(defconst *sput-scale* *fn-bs-profile-scale*)
+(defconst *sput-7dev* *fn-bs-meta-format-7-development-values*)
+(defconst *sput-7scale* *fn-bs-meta-format-7-scale-values*)
+; A free-field profile no preset equals: T = 1000, K = 1000, the default's
+; 1 TiB history, 64 MiB records and 16 MiB articles, and G at the codec
+; ceiling 65 535, as development's is (the defaults' 4096 is below it), so
+; that it upgrades from development.
+(defconst *sput-free*
+  (fn-bs-profile-set-fields *fn-bs-profile-defaults*
+                            '((2 . 1000) (8 . 1000) (6 . 65535))))
 
 ; -----------------------------------------------------------------------------
-; The relation over the four named profiles: exactly two pairs.
+; The relation: valid NEW, admitted OLD, different, no field smaller.
 
+(assert-event (fn-bs-profile-validp *sput-free*))
 (assert-event (fn-profile-upgradep *sput-dev* *sput-scale*))
-(assert-event (fn-profile-upgradep *sput-ldev* *sput-lscale*))
+(assert-event (not (fn-profile-upgradep *sput-7dev* *sput-7scale*)))  ; NEW is format 8
+(assert-event (fn-profile-upgradep *sput-7dev* *sput-scale*))
 (assert-event (not (fn-profile-upgradep *sput-dev* *sput-dev*)))       ; no-op
 (assert-event (not (fn-profile-upgradep *sput-scale* *sput-dev*)))     ; downgrade
-(assert-event (not (fn-profile-upgradep *sput-ldev* *sput-scale*)))    ; format
-(assert-event (not (fn-profile-upgradep *sput-dev* *sput-lscale*)))    ; format
-(assert-event (not (fn-profile-upgradep *sput-lscale* *sput-ldev*)))
 (assert-event (not (fn-profile-upgradep '(1 2 3 4 5 6) *sput-scale*)))  ; not a profile
+; The free profile upgrades from development (every field at least), and
+; refuses a shrink: back to development, or its own T lowered.
+(assert-event (fn-profile-upgradep *sput-dev* *sput-free*))
+(assert-event (fn-profile-upgradep *sput-7dev* *sput-free*))
+(assert-event (not (fn-profile-upgradep *sput-free* *sput-dev*)))
+(assert-event (not (fn-profile-upgradep
+                    *sput-free*
+                    (fn-bs-profile-set-fields *sput-free* '((2 . 999) (8 . 999))))))
+(assert-event (equal (fn-profile-shrunk-field *sput-free* *sput-dev*
+                                              *fn-bs-profile-field-names*)
+                     "max-transactions"))
+; Not an upgrade to scale: the free profile's T is below scale's 4096.
+(assert-event (not (fn-profile-upgradep *sput-scale* *sput-free*)))
 
 ; The verdict the verb acts on.
 (assert-event (equal (fn-profile-upgrade-verdict *sput-dev* :development)
@@ -30,9 +49,7 @@
 (assert-event (equal (fn-profile-upgrade-verdict *sput-scale* :scale)
                      '(:refused :same-profile)))
 (assert-event (equal (fn-profile-upgrade-verdict *sput-scale* :development)
-                     '(:refused :not-an-upgrade)))
-(assert-event (equal (fn-profile-upgrade-verdict *sput-ldev* :scale)
-                     '(:refused :not-an-upgrade)))
+                     '(:refused :not-an-upgrade "max-transactions")))
 (assert-event (equal (fn-profile-upgrade-verdict *sput-dev* :huge)
                      '(:refused :unknown-profile)))
 (assert-event (equal (fn-profile-upgrade-verdict nil :scale)
@@ -46,6 +63,52 @@
 (assert-event (equal (fn-bs-config-decode
                       (cadr (fn-profile-upgrade-verdict *sput-dev* :scale)))
                      *sput-scale*))
+; The operator's request, over the store's current profile: raise T and H.
+(assert-event (equal (cddr (fn-profile-upgrade-verdict
+                            *sput-dev* '(:current ((2 . 1000) (3 . 1099511627776)))))
+                     '(128 1000)))
+(assert-event (equal (fn-bs-config-decode
+                      (cadr (fn-profile-upgrade-verdict
+                             *sput-dev* '(:current ((2 . 1000) (3 . 1099511627776))))))
+                     (fn-bs-profile-set-fields *sput-dev*
+                                               '((2 . 1000) (3 . 1099511627776)))))
+; Lowering A below development's is a shrink, refused by its name.
+(assert-event (equal (fn-profile-upgrade-verdict *sput-dev* '(:current ((5 . 20000))))
+                     '(:refused :not-an-upgrade "max-article-octets")))
+; A request that shrinks a field is refused by the field's name; one that
+; breaks a relation by the relation's name; nothing is written for either.
+(assert-event (equal (fn-profile-upgrade-verdict *sput-scale* '(:current ((2 . 1000))))
+                     '(:refused :not-an-upgrade "max-transactions")))
+(assert-event (equal (fn-profile-upgrade-verdict *sput-dev* '(:current ((3 . 1000))))
+                     '(:refused :max-history-octets-below-max-record-octets)))
+(assert-event (equal (fn-profile-upgrade-verdict *sput-dev* '(:current ((99 . 1))))
+                     '(:refused :unknown-profile)))
+
+; The format 7 to 8 step (fn-profile-upgrade-format-7-to-8): a format-7 store
+; with no field named writes its translation, budgets unchanged; with a raise
+; it writes the raised format-8 profile.  A format-8 store asked for the same
+; is the same profile.
+(assert-event (equal (car (fn-profile-upgrade-verdict *sput-7scale* '(:current nil)))
+                     :upgrade))
+(assert-event (equal (fn-bs-config-decode
+                      (cadr (fn-profile-upgrade-verdict *sput-7scale* '(:current nil))))
+                     *sput-scale*))
+(assert-event (equal (cddr (fn-profile-upgrade-verdict *sput-7scale* '(:current nil)))
+                     '(4096 4096)))
+(assert-event (equal (cddr (fn-profile-upgrade-verdict *sput-7scale*
+                                                       '(:current ((2 . 100000)))))
+                     '(4096 100000)))
+(assert-event (equal (fn-profile-upgrade-verdict *sput-scale* '(:current nil))
+                     '(:refused :same-profile)))
+; A 7-to-8 translation that shrinks is refused: format-7 scale to the
+; development preset lowers max_transactions.
+(assert-event (equal (fn-profile-upgrade-verdict *sput-7scale* :development)
+                     '(:refused :not-an-upgrade "max-transactions")))
+; Tooth for fn-profile-upgrade-format-7-to-8: its hypothesis is the format-7
+; tuple; a format-8 profile is not upgraded to itself.
+(must-fail
+ (defthm sput-7-to-8-without-format-7
+   (fn-profile-upgradep *sput-scale* (fn-bs-profile-from-format-7 *sput-scale*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-profile-upgrade-keeps-txn-observation
@@ -68,14 +131,14 @@
 ; Without the upgrade (scale to development) the 129-name observation is lost.
 (must-fail
  (defthm sput-txn-without-upgradep
-   (equal (fn-profile-txn-observation *sput-129* (fn-bs-meta-nth 4 *sput-dev*) 0)
-          (fn-profile-txn-observation *sput-129* (fn-bs-meta-nth 4 *sput-scale*) 0))))
+   (equal (fn-profile-txn-observation *sput-129* (fn-bs-profile-max-transactions *sput-dev*) 0)
+          (fn-profile-txn-observation *sput-129* (fn-bs-profile-max-transactions *sput-scale*) 0))))
 ; Without the old observation being valid: 200 names are invalid under
 ; development and valid under scale, so the two differ.
 (must-fail
  (defthm sput-txn-without-valid-old
-   (equal (fn-profile-txn-observation *sput-200* (fn-bs-meta-nth 4 *sput-scale*) 0)
-          (fn-profile-txn-observation *sput-200* (fn-bs-meta-nth 4 *sput-dev*) 0))))
+   (equal (fn-profile-txn-observation *sput-200* (fn-bs-profile-max-transactions *sput-scale*) 0)
+          (fn-profile-txn-observation *sput-200* (fn-bs-profile-max-transactions *sput-dev*) 0))))
 
 ; -----------------------------------------------------------------------------
 ; fn-profile-upgrade-keeps-replay-bound: 24 MiB under development, 768 MiB

@@ -31,5 +31,6 @@
                           fn-record-impl-accepted-input-is-canonical
                           fn-record-impl-accepted-input-bounds
                           fn-record-impl-accepted-input-magic
-                          fn-record-impl-accepted-schema-is-the-stamp-kind)
+                          fn-record-impl-accepted-schema-is-the-stamp-kind
+                          fn-record-impl-encode-length-bound)
                     :in-theory (theory 'minimal-theory))))

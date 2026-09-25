@@ -857,6 +857,36 @@
           "kind": "theorem",
           "name": "fn-acar-scar-auth-sessionp-of-rebuilt-session",
           "note": "If a session satisfies fn-auth-sessionp, the session rebuilt from it by replacing its innermost post session is recognized by fn-scar-auth-sessionp at the held session's node exactly when fn-auth-sessionp recognizes it. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-record-p-is-record-p",
+          "note": "The record recognizer the host's record paths now evaluate (books/records-codec-concrete.lisp fn-rcon-record-p: stringp for the octet domain, length for the bounds, the ASCII walk by index) equals fn-record-p on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (the bounds at 250/251 and 256/257, a non-ASCII character, non-strings)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-record-encode-impl-is-record-encode-impl",
+          "note": "The record codec's encoder the host evaluates: books/records-attach-concrete.lisp attaches fn-rcon-record-encode-impl to fn-record-encode in the host images (host/native/build.lisp, build-dtn.lisp, tools/run_store.py), and host/owner-host.lisp:521 fn-owner-consumer-local-poll calls it directly; equal to fn-record-encode-impl on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (the staged record encodes non-empty and equal; a shaped record with a 251-character Message-ID encodes to nil in both; the attachment names the twin)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-store-event-encode-is-store-event-encode",
+          "note": "The staged record's encoder at write: host/owner-host.lisp:553 fn-owner-pending-octets and host/store-node-host.lisp:584 fn-store-sn-pending-octets call fn-rcon-store-event-encode, equal to fn-store-event-encode on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
+          "note": "The staged record's sequence: host/owner-host.lisp:562 fn-owner-pending-sequence and host/store-node-host.lisp:591 fn-store-sn-pending-sequence call fn-rcon-sbud-pending-sequence, equal to fn-sbud-pending-sequence on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-sn-io-is-sn-io",
+          "note": "The store transaction observation: host/store-node-host.lisp:477 fn-store-sn-io calls fn-rcon-sn-io, equal to fn-sn-io on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-ocfg-io-is-ocfg-step",
+          "note": "The owner's transaction observation: host/owner-host.lisp:349 fn-owner-io calls fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)) for every configured owner, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (:record-directory :ok reaches the completing owner, :error fences, other operations)."
         }
       ]
     },
@@ -1845,6 +1875,88 @@
           "kind": "theorem",
           "name": "fn-bs-k0-marker-replaced-cut-relation",
           "note": "K0 at marker-replaced: from a related state in the completion window, a free string stage and non-empty octets, at the marker program's pair 7 the state with the rename dropped and the root barrier's state are both related to the pair's kernel, and every crash image of the pair's byte state is a crash image of one of the two."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-step-preserves-k0-coverage",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge (planning/evidence/k0-corollaries-2026-09-25.md)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-covered-crash-image-is-a-related-image",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge (planning/evidence/k0-corollaries-2026-09-25.md)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-record-file-result-ok-preserves-store-relation",
+          "note": "The record program's (:record-file :ok) observation keeps any related byte state related; it is a fn-bs-k0-step-inputp kind, so the keystone covers it.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-record-link-result-ok-preserves-store-relation",
+          "note": "The record program's (:record-link :ok) observation keeps any related byte state related; it is a fn-bs-k0-step-inputp kind, so the keystone covers it.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-marker-cuts-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-marker-cuts-relation, which stays the cited per-cut event. Every marker pair is derived from the entry pair by the keystone alone (fn-bs-k0b-marker-pairs-by-step).",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-marker-replaced-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-marker-replaced-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-step-at-marker-pairs-preserves-k0-coverage",
+          "note": "Marker error arms: from a related state in the completion window with a free string stage and typed non-empty octets, at each of the five marker steps and for every outcome (the file barrier's a well-formed crash selection), the step's result is covered and its kernel is the entry kernel, still :completing, so no :emit-success has been observed and the transaction stays fenced. Keystone fn-bs-step-preserves-k0-coverage.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-replaced-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-replaced-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-attempted-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-attempted-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-reserved-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-reserved-cut-relation, which stays the cited per-cut event. Its predecessor pair's relation is fn-bs-k0-frontier-durable-cut-relation: the root barrier over a pending frontier rename is not a step-input kind.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-attempted-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-attempted-cut-establishes-relation, which stays the cited per-cut event. Its predecessor is fn-bs-k0-record-linked-cut-relation.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-durable-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-durable-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-completing-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-completing-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-cleanup-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-cleanup-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         }
       ]
     },
@@ -2097,6 +2209,18 @@
           "kind": "theorem",
           "name": "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
           "note": "Subject fn-bprq-recovery-plan, called by `bp-obligation recover` (host/native/bp-obligation.lisp:205 through host/workflow-host.lisp:167 fn-workflow-recovery-plan) on the image the journal's open installed (fn-bpiw-replay-journal): when the open succeeded and the plan answers :recover, fn-bpiw-apply (fn-workflow-apply-record) accepts its record, the live image has no pending and no fence, the journal with the record appended replays, and the next open installs the live image after its one restart with ION state unchanged. Teeth: tests/acl2/bp-request-recovery-tests (the 5b cut's journal, committed and absent, every refusal reason, the next request accepted live and after reopen; must-fail per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-rotate-is-rotate-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-rotation-result-is-rotation-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-rotation-resets-credit-only-on-durable"
         }
       ]
     },
@@ -2618,6 +2742,16 @@
           "kind": "theorem",
           "name": "fn-oix-ocfg-step-keeps-view-indexed",
           "note": "Preservation of the trie premise fn-scar-view-indexedp over every fn-ocfg-step event the host drives (open, advance, close, reads, open-peer, fault, reconfigure, complete, begin, take and every fn-own-step writer event); with fn-oix-own-start-is-view-indexed and the lemmas for every owner host/owner-host.lisp installs without fn-ocfg-step (fn-ocfg-observe, the carried read, fn-ocfg-open/-open-peer/-read-step/-fault/-with-owner, fn-pcar-sbud-prepare, fn-ccar-own-finish, fn-acar-own-outcome, fn-own-with-feeds, fn-own-configure, fn-own-transit-outcome, fn-ocl-publish) it holds on every configured owner the host reaches. The work is fn-oix-refresh-keeps-correspondence over fn-midx-refresh-preserves-correspondence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-midx-concrete-lookup-is-lookup",
+          "note": "The Message-ID trie walked by string index: fn-mxc-lookup equals fn-midx-lookup for every Message-ID and trie, no hypothesis. The served path reaches it from host/owner-host.lisp:1430 fn-owner-chunk (fn-scar-ocfg-read-tls-prefix) through fn-scar-peer-step-pinned: a reader session's ARTICLE/HEAD/BODY/STAT by Message-ID (fn-pix-peer-delegate-pinned), a peer session's (fn-pgc-peer-arm delegates to the same), and the IHAVE/CHECK history test (fn-pix-history-hasp). Teeth: tests/acl2/msgid-index-concrete-tests.lisp, tests/acl2/peer-offer-indexed-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned",
+          "note": "The reader delegate with the lookup by index equals fn-peer-delegate-pinned on every input, no hypothesis; books/served-carried.lisp fn-scar-peer-step-pinned (reader sessions) and books/peer-guard-carried.lisp fn-pgc-peer-arm (peer sessions) call it, so fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation holds of the rerouted chain. Teeth: tests/acl2/peer-offer-indexed-tests.lisp, tests/acl2/peer-guard-carried-tests.lisp (223 for the held Message-ID, 430 for an absent one, each the reference's)."
         }
       ]
     },
@@ -2708,6 +2842,11 @@
           "kind": "theorem",
           "name": "fn-osp-served-refusal-renders-its-reason",
           "note": "Keystone, served POST refused arm, over fn-own-outcome (host/owner-host.lisp fn-owner-outcome) with the word fn-pa-served-word gives (fn-owner-served-carried-word): for a relayed reason and no completion consumed after the take, the reply is fn-nntp-post-outcome's line for that reason (its own 441 line, books/nntp-post.lisp fn-post-store-refusal-line) and Store, ledger, feeds and connections are unchanged. With fn-osp-plan-refusal-is-a-served-reason: a refused plan is never carrier-absent and its reason is relayed. Must-fail per hypothesis: a Store word not relayed, completion consumed, another connection, no submission in flight, connection gone."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-transit-refusal-renders-its-reason",
+          "note": "Keystone, NNTP transit refused arm (IHAVE), over fn-own-transit-outcome (host/owner-host.lisp fn-owner-transit-outcome, fed by host/native/owner.lisp fnn-owner-transit-complete with the word fn-owner-served-carried-word gives): for a relayed reason, a :want decision, an IHAVE transit in flight on this connection and no completion consumed, the reply is `437 transfer rejected; ` followed by fn-post-store-refusal-text of that reason, the text POST's 441 carries for the same word (RFC 3977 section 6.3.2 allows text after the code), and Store, ledger and feeds are unchanged. Witness: *ospt-taken* with an IHAVE transit in flight on the poster's connection (constructed as owner-tests own-fed-transit-on-connection builds one), :control-not-filed and :local-enrollment, and the wire octets. Must-fail per hypothesis: a Store word not relayed, another connection, a POST in flight, TAKETHIS (439 echo), a :refuse decision, completion consumed, connection gone."
         },
         {
           "kind": "theorem",
@@ -2993,6 +3132,65 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-cmsg-subject-is-ordinary"
+        }
+      ]
+    },
+    {
+      "id": "PRF-079",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-offers-only-the-routed-hop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprt-next-hop-deterministic-in-the-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprt-next-hop-names-a-live-matching-route"
+        }
+      ]
+    },
+    {
+      "id": "PRF-080",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-admits-every-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-labelp-of-record-group-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-refusal-status-is-a-refusal"
+        }
+      ]
+    },
+    {
+      "id": "PRF-081",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-recover-from-checkpoint-equals-full-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-rotation-crash-recovers-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-checkpoint-decode-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-family-replay-aux-append"
         }
       ]
     }

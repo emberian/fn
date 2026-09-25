@@ -167,8 +167,15 @@ class NativeBpNodeTests(unittest.TestCase):
                 "operator", config, "bp-boundary", "add", admitted_name,
                 remote_path, peer, listen_port,
                 *(["fn.test", "32768", "16"] if inbound else []),
+                "contact", self.relay.port,
             )
             self.assertEqual(installed.returncode, 0, installed.stderr)
+            # Spec 4.6: the node forwards held transit only to a boundary
+            # the route table names; the peer is reached through the relay.
+            routed = self.invoke(
+                "operator", config, "bp-route", "add", peer + "*", admitted_name,
+            )
+            self.assertEqual(routed.returncode, 0, routed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
         workflow = self.tmp / "receiver-fnwf" if receiver else self.sender_workflow
         env = dict(self.env)
@@ -365,6 +372,123 @@ class NativeBpNodeTests(unittest.TestCase):
             "tcpcl", "send", "127.0.0.1", port, path, self.tmp / spool,
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
+
+    def rotate_receiver(self, stop=None):
+        """`bp-node checkpoint` on the stopped receiver; with STOP, the
+        developer cut stops it at that point of the publication program and
+        the test kills it there with SIGKILL."""
+        env = dict(self.env)
+        if stop:
+            env["FN_BP_ROTATION_TEST_STOP"] = stop
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "bp-node", "checkpoint",
+             str(self.receiver_journal), "dtn://receiver/"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        if not stop:
+            out, err = process.communicate(timeout=120)
+            return process.returncode, out, err
+        marker = b"BP journal rotation stopped at=" + stop.encode()
+        seen = b""
+        deadline = time.monotonic() + 120
+        while marker not in seen and time.monotonic() < deadline:
+            ready, _, _ = select.select([process.stdout], [], [], 1)
+            if ready:
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                seen += chunk
+        self.assertIn(marker, seen, (
+            seen, process.poll(),
+            process.stderr.read() if process.poll() is not None else b""))
+        process.kill()
+        process.wait(timeout=15)
+        process.stdout.close()
+        process.stderr.close()
+        return None, seen, b""
+
+    def recovered_held(self):
+        """Reopen through the node's own recovery and return its held count."""
+        reopened = self.dispatch_receiver()
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        for line in reopened.stdout.splitlines():
+            if line.startswith(b"BP FNBS recovered held="):
+                return int(line.split(b"=", 1)[1])
+        self.fail(reopened.stdout)
+
+    def test_rotation_killed_at_each_cut_keeps_held_rows(self):
+        """N16 on the image: the journal rotates to a new generation through
+        `bp-node checkpoint`.  A kill after the generation directory, after
+        the staged selection, or after the rename leaves one recovery
+        authority (the old selection before the rename, either after it);
+        every reopen recovers the held row.  A completed rotation starts a
+        generation with no records; new work lands there, arrival order kept,
+        and a second rotation carries both rows."""
+        receiver, port = self.start_node(True, once=False)
+        sent = self.send_transit(port, self.unrouted_transit_bundle(), "r1")
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+        self.stop_process(receiver)
+        journal = self.receiver_journal
+        old_records = sorted(p.name for p in (journal / "lifecycle").glob("*.fnb"))
+        self.assertTrue(old_records)
+        self.assertEqual(self.recovered_held(), 1)
+        selection = journal / "bp-generation.fnb"
+        for cut in ("directory", "stage"):
+            self.rotate_receiver(cut)
+            self.assertFalse(selection.exists(), cut)
+            self.assertEqual(self.recovered_held(), 1, cut)
+        self.rotate_receiver("replace")
+        self.assertTrue(selection.exists())
+        self.assertEqual(self.recovered_held(), 1)
+        generations = sorted(p.name for p in journal.glob("lifecycle-g*"))
+        # Unselected stagings are never reused: three distinct numbers.
+        self.assertEqual(len(generations), 3, generations)
+        selected = journal / generations[-1]
+        self.assertEqual(sorted(p.name for p in selected.glob("*.fnb")), [])
+        # The old generation stays as evidence, untouched.
+        self.assertEqual(
+            sorted(p.name for p in (journal / "lifecycle").glob("*.fnb")),
+            old_records)
+        # A clean rotation from the selected generation.
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, 0, (out, err))
+        self.assertIn(b"BP journal generation selected generation=4", out)
+        self.assertEqual(self.recovered_held(), 1)
+        # New work lands in the new generation, after the checkpointed row.
+        current = journal / "lifecycle-g00000000000000000004"
+        receiver, port = self.start_node(True, once=False)
+        second = self.send_transit(port, self.conflicting_transit_bundle_free(), "r2")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+        self.stop_process(receiver)
+        self.assertTrue(list(current.glob("*.fnb")))
+        self.assertEqual(self.recovered_held(), 2)
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, 0, (out, err))
+        self.assertEqual(self.recovered_held(), 2)
+
+    def conflicting_transit_bundle_free(self):
+        """A second unrouted transit with its own identity."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
+            form = (
+                "(fn-bpb-encode (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 3600000 2 32 1048576) "
+                f"{unrouted} '(5 6 7 8) 78 "
+                "(fn-clock-observation 0 0 0 nil)))"
+            )
+            path = self.tmp / "unrouted-transit-2.bundle"
+            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            return path
+        finally:
+            bridge.close()
 
     def test_identity_conflict_is_refused_recorded_and_replayed(self):
         """N11 on the image: a second reception whose identity names a held
@@ -598,6 +722,55 @@ class NativeBpNodeTests(unittest.TestCase):
             sorted(p.name for p in (self.receiver_journal / "lifecycle").glob("*.fnb")),
             forwarded_names)
         self.assertEqual(self.acl2_lifecycle_kinds(self.receiver_journal), after_forward)
+
+    def test_removed_route_keeps_transit_held_and_reports_no_route(self):
+        """Spec 4.6: no route, no session; the row and its obligation stay held.
+
+        The receiver holds one transit bundle for dtn://sender/.  With the
+        route removed, dispatch opens no session to the reachable peer and
+        reports ACL2's :no-route; no kind 8 is written.  With the route
+        added back, the same row is forwarded and settles as sent.
+        """
+        receiver, port = self.start_node(True, once=False)
+        _, younger = self.forward_mru_bundles()
+        sent = self.invoke(
+            "tcpcl", "send", "127.0.0.1", port, younger,
+            self.tmp / "noroute-sender-spool", "dtn://sender/",
+            "dtn://receiver/", 0, 65536, 1048576, 0,
+        )
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.stop_process(receiver)
+        config = self.tmp / "receiver-fn.toml"
+        removed = self.invoke("operator", config, "bp-route", "remove",
+                              "dtn://sender/*", "sender-boundary")
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
+        args = self.dispatch_receiver_args()
+        held = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=240, check=False,
+        )
+        self.assertEqual(held.returncode, 0, held.stderr)
+        self.assertIn(b"BP forwarding no-route destination=dtn://sender/ "
+                      b"decision=no-route", held.stdout)
+        self.assertNotIn(b"BP forwarding attempt durable", held.stdout)
+        kinds = self.acl2_lifecycle_kinds(self.receiver_journal)
+        self.assertEqual(kinds[5], 1, kinds)
+        self.assertEqual(kinds[8], 0, kinds)
+
+        added = self.invoke("operator", config, "bp-route", "add",
+                            "dtn://sender/*", "sender-boundary")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        routed = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=240, check=False,
+        )
+        self.assertEqual(routed.returncode, 0, routed.stderr)
+        self.assertIn(b"BP forwarding route hop=sender-boundary", routed.stdout)
+        self.assertIn(b"BP forwarding attempt durable", routed.stdout)
+        self.assertIn(b"status=sent", routed.stdout)
+        self.stop_process(peer)
 
     @staticmethod
     def acl2_lifecycle_kinds(journal):

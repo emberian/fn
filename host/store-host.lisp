@@ -23,8 +23,6 @@
 (include-book "../books/store-profile-upgrade")
 (include-book "../books/article-fields")
 
-(defconst *fn-store-capacity* 1048576)
-
 (defconst *fn-store-max-text* 512)
 
 (defun fn-store-text-octetsp-tail (xs)
@@ -98,12 +96,15 @@
 ; (books/byte-store-compaction-correspondence), whose namespace gate is
 ; `fn-profile-txn-observation'; host/native/checkpoint.lisp calls it directly.
 
+; The record wrappers recognise and dispatch through the concrete twins of
+; books/records-concrete.lisp (fn-rcon-store-event-p-is-store-event-p,
+; -sequence-is-, -txid-is-: each equal to its list reference on every input).
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))
   (if (consp octet-records)
       (let ((decoded (fn-store-event-decode-exact (car octet-records))))
         (if (and (consp decoded) (equal (car decoded) :ok)
-                 (consp (cdr decoded)) (fn-store-event-p (car (cdr decoded))))
+                 (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
             (let ((rest (fn-store-decode-records (cdr octet-records))))
               (if (equal rest :bad) :bad (cons (car (cdr decoded)) rest)))
           :bad))
@@ -113,16 +114,16 @@
   (declare (xargs :mode :program))
   (let ((decoded (fn-store-event-decode-exact octets)))
     (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-store-event-p (car (cdr decoded))))
-        (fn-store-event-sequence (car (cdr decoded)))
+             (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
+        (fn-rcon-store-event-sequence (car (cdr decoded)))
       -1)))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program))
   (let ((decoded (fn-store-event-decode-exact octets)))
     (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-store-event-p (car (cdr decoded))))
-        (fn-store-event-txid (car (cdr decoded)))
+             (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
+        (fn-rcon-store-event-txid (car (cdr decoded)))
       -1)))
 
 ; -----------------------------------------------------------------------------
@@ -375,6 +376,33 @@
 (defun fn-store-metadata-config-decode (octets)
   (fn-bs-config-decode octets))
 
+;; The store profile (D27, format 8): every value the host reads from it is
+;; one of these accessors over the decoded values, never a list position.
+(defun fn-store-profile-admittedp (values)
+  (fn-bs-profile-admittedp values))
+
+(defun fn-store-profile-init-verdict (request)
+  (fn-bs-profile-init-verdict request))
+
+(defun fn-store-profile-max-transactions (values)
+  (fn-bs-profile-max-transactions values))
+
+(defun fn-store-profile-max-article-octets (values)
+  (fn-bs-profile-max-article-octets values))
+
+(defun fn-store-profile-report (values)
+  (fn-bs-profile-report values))
+
+;; The Python store's view (tools/run_store.py): the persisted format (8, or 7
+;; for a store not yet upgraded), then T, H, R and A, every one ACL2's reading.
+(defun fn-store-profile-summary (values)
+  (list (if (fn-bs-profile-validp values) 8
+          (if (fn-bs-profile-admittedp values) 7 0))
+        (fn-bs-profile-max-transactions values)
+        (fn-bs-profile-max-history-octets values)
+        (fn-bs-profile-max-record-octets values)
+        (fn-bs-profile-max-article-octets values)))
+
 (defun fn-store-metadata-frontier-frame (n)
   (fn-bs-frontier-encode n))
 
@@ -406,6 +434,17 @@
 (defun fn-store-publication-kind-ceiling (kind)
   (fn-store-publication-ceiling kind))
 
+;; The open's per-file read bound under the persisted PROFILE: one FNST frame
+;; whose payload is at most the profile's per-record ceiling.  Every committed
+;; transaction file was published under `fn-bs-publication-admissiblep' (its
+;; record at most `fn-bs-profile-record-ceiling', asserted on the actual bytes
+;; by host/native/io.lisp `fnn-publish'), and an upgrade never lowers that
+;; ceiling (`fn-profile-upgradep'), so no committed file exceeds this bound.
+;; A profile that is not valid yields the frame overhead alone, and the open
+;; refuses every file.
+(defun fn-store-profile-read-bound (profile)
+  (+ *fn-frame-overhead-octets* (fn-bs-profile-record-ceiling profile)))
+
 
 (defun fn-store-group-codes (name-octets domain-octets)
   ; Distinct group names, as octet lists, become their codes in the replayed
@@ -417,11 +456,6 @@
         :bad
       (fn-store-codes-from-groups names domain))))
 
-; The whole POST admission boundary in one call, over the persisted PROFILE
-; the caller was handed at open (`fn-bs-config-decode's values): the payload
-; bound is that profile's payload field, the Message-ID grammar is
-; `books/article-fields`, the group count and charge range the record codec's
-; (books/store-budget-naming.lisp `fn-sbud-post-boundary').  No host constant
-; enters it.
-(defun fn-store-post-boundary (profile msgid payload-length group-count charge)
-  (fn-sbud-post-boundary profile msgid payload-length group-count charge))
+; The whole POST admission boundary is `fn-sbud-post-boundary'
+; (books/store-budget-naming.lisp), over the persisted PROFILE the caller was
+; handed at open; both hosts call it by that name.  No host constant enters it.

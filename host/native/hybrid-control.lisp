@@ -144,8 +144,7 @@
                         (status (and (typep reply 'fnn-octets)
                                      (fnn-core 'fn-native-control-host-reply-decode
                                                (fnn-octet-list reply)))))
-                   (if (member status '(:accepted :duplicate :refused :clock-unusable :busy
-                                        :uncertain :fault)) status
+                   (if (member status (fnn-core 'fn-native-control-host-statuses)) status
                      (fnn-control-transport-outcome stage)))))
            (error () (fnn-control-transport-outcome stage)))
       (when socket (fnn-socket-shut socket)))))

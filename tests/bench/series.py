@@ -43,7 +43,7 @@ import time
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 from tools import frame_bridge  # noqa: E402
-from tools.run_store import (Acl2Store, SCALE_CONFIG, Store,  # noqa: E402
+from tools.run_store import (Acl2Store, Store, profile_config,  # noqa: E402
                              StoreError, open_live_store, post_article)
 from tests.bench.generate import article_octets, message_id, rss_kib  # noqa: E402
 
@@ -95,6 +95,11 @@ class CallTimer:
                 self.worst["seconds"] / self.worst["budget_seconds"]
                 if self.worst["budget_seconds"] else None)
         return out
+
+
+def scale_config():
+    """The scale profile's values, as ACL2 frames them."""
+    return dict(profile_config("scale"), profile="scale")
 
 
 def summarize(values):
@@ -206,12 +211,12 @@ def peak_rss(point):
 
 def series(root, payload_bytes, start, top, seed, post_ceiling, recover_ceiling,
            budget_seconds, rss_ceiling_kib):
-    result = {"payload_bytes": payload_bytes, "profile": SCALE_CONFIG["profile"],
+    result = {"payload_bytes": payload_bytes, "profile": scale_config()["profile"],
               "groups": GROUP_NAMES, "seed": seed, "start": start, "max_articles": top,
               "post_ceiling_seconds": post_ceiling,
               "recover_ceiling_seconds": recover_ceiling,
               "rss_ceiling_kib": rss_ceiling_kib,
-              "bound": SCALE_CONFIG["max_transactions"],
+              "bound": scale_config()["max_transactions"],
               "points": [], "stopped_by": None, "committed": 0, "status": "running"}
     started = time.monotonic()
     committed = 0
@@ -280,11 +285,11 @@ def series(root, payload_bytes, start, top, seed, post_ceiling, recover_ceiling,
                                     % (peak_rss(point) / 1048576.0,
                                        rss_ceiling_kib / 1048576.0))
             break
-        if target >= SCALE_CONFIG["max_transactions"]:
+        if target >= scale_config()["max_transactions"]:
             result["stopped_by"] = ("the %s transaction bound of %d, reached with every "
                                     "measured operation still inside its ceiling"
-                                    % (SCALE_CONFIG["profile"],
-                                       SCALE_CONFIG["max_transactions"]))
+                                    % (scale_config()["profile"],
+                                       scale_config()["max_transactions"]))
             break
     result["elapsed_seconds"] = time.monotonic() - started
     # "Passing" is inside both ceilings, not merely returned: the point that
@@ -307,7 +312,7 @@ def main(argv=None):
     parser.add_argument("--root", required=True)
     parser.add_argument("--payload", type=int, default=1024)
     parser.add_argument("--start", type=int, default=16)
-    parser.add_argument("--max", type=int, default=SCALE_CONFIG["max_transactions"])
+    parser.add_argument("--max", type=int, default=scale_config()["max_transactions"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--post-ceiling", type=float, default=20.0,
                         help="tools/run_store.py's ACL2_CALL_BASE_SECONDS")
@@ -320,9 +325,9 @@ def main(argv=None):
                              "attribute the seconds to ACL2 entry points")
     parser.add_argument("--json", default=None)
     args = parser.parse_args(argv)
-    if args.max > SCALE_CONFIG["max_transactions"]:
+    if args.max > scale_config()["max_transactions"]:
         parser.error("%s bounds a store at %d transactions"
-                     % (SCALE_CONFIG["profile"], SCALE_CONFIG["max_transactions"]))
+                     % (scale_config()["profile"], scale_config()["max_transactions"]))
     if args.profile_only:
         profile = {"status": "crashed", "root": args.root}
         try:

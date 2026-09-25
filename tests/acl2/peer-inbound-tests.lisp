@@ -26,7 +26,8 @@
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" ".inn" '(:nntp "h" 1) nil nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:tcp "h" 1) nil nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) '("fn.*" 0 1) nil '(:principal "p")))))
-(assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) '("fn.*" 32769 1) nil '(:principal "p")))))
+; A peer's inbound article bound above the record codec's payload ceiling (D27).
+(assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) (list "fn.*" (1+ *fn-record-max-payload*) 1) nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) nil '("fn.*" 2 1 0) '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) nil nil '(:password "p")))))
 (assert-event
@@ -506,6 +507,17 @@
                      (list (pt-reply "436 retry later; recovery pending"))))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :want nil) :refused)
                      (list (pt-reply "437 transfer rejected; refused by acceptance"))))
+;; A relayed Store refusal word names its reason after the 437, with the
+;; text POST's 441 carries for it (fn-peer-transit-refusal-line); the code
+;; class is the bare :refused's on both commands.
+(assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :want nil) :control-not-filed)
+                     (list (pt-reply "437 transfer rejected; control message not filed: its control group is not configured here (control-not-filed)"))))
+(assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :want nil) :conflict)
+                     (list (pt-reply "437 transfer rejected; a different article with this Message-ID is stored here"))))
+(assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :want nil) :control-not-filed)
+                     (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :want nil) :refused)))
+(assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :want nil) :control-not-filed) 437))
+(assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :signature) 439))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :want nil) :clock-unusable)
                      (list (pt-reply "436 retry later; no usable clock reading"))))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :have :history) nil)

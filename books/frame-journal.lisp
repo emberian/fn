@@ -29,13 +29,18 @@
 (defconst *fn-frame-store-kind* 1)
 (defconst *fn-frame-inbound-kind* 1)
 
-; The largest canonical Store event is the kind-4 acceptance composite.  This
-; is the physical frame ceiling; a persisted Store profile may select a lower
-; per-record ceiling and must apply it before publication.
-(defconst *fn-frame-max-store-payload* 196608)
+; The physical FNST ceiling: the frame LENGTH field's u32 width.  It is not a
+; bound on a record: the persisted Store profile's per-record ceiling
+; (`fn-bs-profile-record-ceiling', books/byte-store-frame) is, applied before
+; publication (`fn-bs-publication-admissiblep') and at open, where the host
+; reads each transaction file in one bounded read of that ceiling plus the
+; frame overhead (host/native/io.lisp `fnn-durable-records').
+(defconst *fn-frame-max-store-payload* 4294967295)
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
-(defconst *fn-frame-max-inbound-payload* 4194304)
+; The BP inbound journal's physical ceiling, the u32 LENGTH width; the
+; bundle's own bound is the BP layer's (books/bp-bundle.lisp).
+(defconst *fn-frame-max-inbound-payload* 4294967295)
 (defconst *fn-frame-max-bundle-store-payload* 8)
 
 (defconst *fn-frame-transport-statuses*

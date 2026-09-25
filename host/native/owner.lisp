@@ -1145,10 +1145,15 @@ client, which can issue POSITION after reconnecting."
 
 The line is rendered by ACL2 (fn-olog-transit-line) from the owner before the
 outcome consumes the submission, with the same KIND, REASON and WORD; a
-refused or deferred peer transfer is never silent."
+refused or deferred peer transfer is never silent.  The outcome is fed the
+word ACL2 chooses from WORD and the ingress detail (fn-pa-served-word, as
+fnn-owner-attempt-served does for POST), so a relayed reason reaches the
+peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
   (fnn-owner-action 'fn-owner-transit-log-line cid kind reason word
                     *fnn-owner-transit-detail*)
-  (fnn-owner-action 'fn-owner-transit-outcome cid kind reason word)
+  (fnn-owner-action 'fn-owner-transit-outcome cid kind reason
+                    (fnn-owner-core 'fn-owner-served-carried-word word
+                                    *fnn-owner-transit-detail*))
   (fnn-owner-log))
 
 (defun fnn-owner-drain-one (service)
@@ -1464,14 +1469,27 @@ refused, not injected under a stale time (D10-a)."
               (if (and (eq (fnn-owner-advance-clock) :observed)
                        (eq (fnn-owner-action 'fn-owner-stamp-status)
                            :usable))
-                  (fnn-owner-complete-bound-submission
-                   service
-                   (lambda ()
-                     (fnn-owner-action 'fn-owner-operator-submit
-                                       (fnn-octet-list msgid)
-                                       (mapcar #'fnn-octet-list groups)
-                                       (fnn-octet-list payload)))
-                   msgid :injected groups evidence generation txid)
+                  (let ((status
+                          (fnn-owner-complete-bound-submission
+                           service
+                           (lambda ()
+                             (fnn-owner-action 'fn-owner-operator-submit
+                                               (fnn-octet-list msgid)
+                                               (mapcar #'fnn-octet-list groups)
+                                               (fnn-octet-list payload)))
+                           msgid :injected groups evidence generation txid)))
+                    ;; A refusal carries ACL2's reason to the operator: the
+                    ;; injection decision's reason, mapped to the control
+                    ;; word by books/native-control.lisp
+                    ;; fn-native-control-refusal-status (an article past
+                    ;; the profile's A is article-exceeds-profile-bound).
+                    (if (eq status :refused)
+                        (fnn-core 'fn-native-control-host-refusal-status
+                                  (fnn-owner-core 'fn-owner-operator-refusal-reason
+                                                  (fnn-octet-list msgid)
+                                                  (mapcar #'fnn-octet-list groups)
+                                                  (fnn-octet-list payload)))
+                      status))
                 :clock-unusable))
          (when armed (fnn-owner-control-disarm-fault store armed)))))))
 

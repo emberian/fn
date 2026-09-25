@@ -405,6 +405,33 @@ class CacheTests(unittest.TestCase):
                             "/home/ember/fn-gates/tool-cache": 38}})
             self.assertEqual(farm.cache_summary(record), "330+8/2")
 
+    def test_recertify_reaches_the_cache_preflight_and_the_runner(self):
+        fake = Fake([], certs=PARTIAL)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("persvati", root, ["books/alpha"], jobs=8,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/home/ember/fn-gates/dev-head"),
+                                         recertify=["books/beta"])
+            preflight = [s for s in fake.scripts() if "install-partial" in s]
+            self.assertEqual(len(preflight), 1)
+            self.assertIn("--recertify books/beta install-partial", preflight[0])
+            self.assertIn("--incremental --recertify books/beta books/alpha",
+                          fake.runner_script())
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            self.assertEqual(record["recertify"], ["books/beta"])
+            # The installer names the recertified books after its origins.
+            parsed = farm.parse_installed(
+                "install-partial: 3 books, cache /c\n  toolchain t; installed 2, "
+                "kept 0, missing 1, removed 1; roots installed 0 of 1; "
+                "origins /o=2; recertify books/beta\n")
+            self.assertEqual(parsed["origins"], {"/o": 2})
+            with self.assertRaises(farm.FarmError):
+                farm.submit("persvati", root, ["books/alpha"], jobs=8,
+                            timeout_seconds=60, affected_by=[], closure=True,
+                            recertify=["books/beta"])
+
     def test_an_incremental_miss_does_not_refuse(self):
         missing = ("install-partial: 3 books, cache /tank/fn/certcache\n"
                    "  toolchain tool-p; installed 0, kept 0, missing 3, removed 0; "

@@ -271,8 +271,14 @@ def public(record):
             if k not in ("proc", "log", "_out")}
 
 
+# Operator fields `init` is given before the group (D27: the store profile is
+# the operator's), e.g. ["--max-article-octets", "4194304"]; empty is the
+# default profile.  The POST probe sets it from --init-flags.
+INIT_FLAGS: list = []
+
+
 def seed(node: Node, prior: Path, out: dict):
-    out["init"] = public(node.operator("init", GROUP))
+    out["init"] = public(node.operator("init", *INIT_FLAGS, GROUP))
     owner = node.start_owner()
     out["seed_owner_ready"] = owner["ready"]
     out["seed_post"] = public(node.post(PRIOR_ID, prior))

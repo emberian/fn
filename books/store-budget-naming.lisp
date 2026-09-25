@@ -17,8 +17,8 @@
 ;
 ; The payload bound.  `fn-sbud-post-boundary' is the POST admission boundary
 ; host/native/io.lisp `fnn-validate-post-boundary' asks, over the persisted
-; profile the host was handed at open: the payload field of that profile,
-; never a host constant.  A payload past it is `:payload-bound'; the served
+; profile the host was handed at open: its max_article_octets field A and
+; max_groups_per_article field G, never a host constant.  A payload past it is `:payload-bound'; the served
 ; owner relays that refusal as the Store word `:refused', whose 441 line is
 ; distinct from every other Store refusal line
 ; (books/nntp-post.lisp `fn-post-outcome-store-refusal-kinds-are-distinct', W3).
@@ -124,11 +124,15 @@
 
 (defun fn-sbud-payload-bound (profile)
   "The payload octets one article may carry under the persisted PROFILE: its
-payload field, or 0 when PROFILE is not one of the named profiles."
+max_article_octets field A, or 0 when PROFILE is not admitted."
   (declare (xargs :guard t))
-  (if (fn-bs-meta-config-valuesp profile)
-      (nfix (fn-bs-meta-nth 2 profile))
-    0))
+  (fn-bs-profile-max-article-octets profile))
+
+(defun fn-sbud-group-bound (profile)
+  "The newsgroups one article may name under PROFILE: its
+max_groups_per_article field G, or 0 when PROFILE is not admitted."
+  (declare (xargs :guard t))
+  (fn-bs-profile-max-groups-per-article profile))
 
 (defun fn-sbud-post-boundary (profile msgid payload-length group-count charge)
   "The whole POST admission boundary under the persisted PROFILE."
@@ -138,39 +142,53 @@ payload field, or 0 when PROFILE is not one of the named profiles."
              (< (fn-sbud-payload-bound profile) payload-length))
          :payload-bound)
         ((or (not (posp group-count))
-             (< *fn-record-max-groups* group-count))
+             (< (fn-sbud-group-bound profile) group-count))
          :group-bound)
         ((or (not (posp charge)) (< *fn-cbor-max-uint* charge))
          :charge-bound)
         (t :ok)))
 
-; Every profile's bound fits the record codec's payload field, so a payload
-; the boundary admits is one `fn-record-make' can carry.
+; Every profile's bounds fit the record codec's payload and group fields
+; (`fn-bs-profile-validp-codecs-accept'), so a payload and group list the
+; boundary admits are ones `fn-record-make' can carry.
 (defthm fn-sbud-payload-bound-within-record-codec
-  (<= (fn-sbud-payload-bound profile) *fn-record-max-payload*)
-  :rule-classes :linear)
+  (and (<= (fn-sbud-payload-bound profile) *fn-record-max-payload*)
+       (<= (fn-sbud-group-bound profile) *fn-record-max-groups*))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-bs-profile-validp-codecs-accept
+                                   (values profile)))
+           :in-theory (disable fn-bs-profile-max-article-octets
+                               fn-bs-profile-max-groups-per-article))))
 
+; The named presets: A is the format-7 payload, and G is the record codec's
+; group ceiling, which the format-7 translation carries by name
+; (`fn-bs-profile-from-format-7'), so it moves with the codec (65,535 since
+; bounds-p2).
 (defthm fn-sbud-named-profile-payload-bounds
   (and (equal (fn-sbud-payload-bound (fn-bs-config-for-profile :development))
               32768)
        (equal (fn-sbud-payload-bound (fn-bs-config-for-profile :scale))
-              32768)))
+              32768)
+       (equal (fn-sbud-group-bound (fn-bs-config-for-profile :scale))
+              *fn-bs-profile-groups-ceiling-codec*)))
 
-; The keystone of the bound: with a well-formed Message-ID, group count and
-; charge, the boundary admits exactly the payloads at or under the profile's
-; bound, and refuses every longer one with `:payload-bound'.
+; The keystone of the bound: with a well-formed Message-ID, a group count
+; within the profile's G and a charge in range, the boundary admits exactly
+; the payloads at or under the profile's A, and refuses every longer one
+; with `:payload-bound'.
 (defthm fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound
   (implies (and (fn-af-message-idp msgid)
                 (natp payload-length)
-                (posp group-count) (<= group-count *fn-record-max-groups*)
+                (posp group-count) (<= group-count (fn-sbud-group-bound profile))
                 (posp charge) (<= charge *fn-cbor-max-uint*))
            (equal (fn-sbud-post-boundary profile msgid payload-length
                                          group-count charge)
                   (if (<= payload-length (fn-sbud-payload-bound profile))
                       :ok
                     :payload-bound)))
-  :hints (("Goal" :in-theory (disable fn-sbud-payload-bound
+  :hints (("Goal" :in-theory (disable fn-sbud-payload-bound fn-sbud-group-bound
                                       fn-af-message-idp))))
 
 (in-theory (disable fn-sbud-pending-sequence fn-sbud-txn-name
-                    fn-sbud-payload-bound fn-sbud-post-boundary))
+                    fn-sbud-payload-bound fn-sbud-group-bound
+                    fn-sbud-post-boundary))

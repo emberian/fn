@@ -153,6 +153,19 @@
 (assert-event (equal (fn-sbud-post-boundary *sbnt-scale* *sbnt-msgid* 32768 16 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-scale* *sbnt-msgid* 32769 16 9)
                      :payload-bound))
+; An operator's profile (`init --max-article-octets 20000'): its A is the
+; bound, P-1 and P admitted and P+1 refused, whatever the codec could carry.
+(defconst *sbnt-operator* (fn-bs-profile-set-fields *sbnt-dev* '((5 . 20000))))
+(assert-event (fn-bs-profile-validp *sbnt-operator*))
+(assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 19999 1 9) :ok))
+(assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 20000 1 9) :ok))
+(assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 20001 1 9)
+                     :payload-bound))
+; Its G: a profile with 4 groups per article refuses a fifth group.
+(defconst *sbnt-four* (fn-bs-profile-set-fields *sbnt-dev* '((6 . 4))))
+(assert-event (equal (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 4 9) :ok))
+(assert-event (equal (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 5 9)
+                     :group-bound))
 ; A value that is not a named profile admits no payload at all.
 (assert-event (equal (fn-sbud-payload-bound '(1 2 3 4 5 6)) 0))
 (assert-event (equal (fn-sbud-post-boundary '(1 2 3 4 5 6) *sbnt-msgid* 1 1 9)
@@ -170,7 +183,8 @@
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* '(97) 10 1 9)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* -1 1 9)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 0 9)))
-(assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 17 9)))
+(assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10
+                                           (1+ *fn-record-max-groups*) 9)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 1 0)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 1 4294967296)))
 

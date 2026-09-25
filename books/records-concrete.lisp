@@ -27,146 +27,32 @@
 ; host/owner-host.lisp fn-owner-finish-submission) and
 ; books/owner-prepare-carried.lisp (the prepare) call the twins.
 ;
+; The recognizer and its keystone fn-rcon-record-p-is-record-p are in
+; books/records-codec-concrete.lisp, beside the codec's encoder twin that
+; books/records-attach.lisp attaches; this book is the store's twins.
+;
+; The second section (lane/rep-records-2) carries the same replacement to
+; the list dispatchers the host still reached at write: the encoder of the
+; staged record (fn-rcon-store-event-encode), the staged record's sequence
+; (fn-rcon-sbud-pending-sequence), and the transaction observation
+; (fn-rcon-sn-io, whose :record-directory arm pairs the record's sequence
+; and transaction id; books/records-concrete-owner.lisp lifts it to the
+; owner event the host issues).  Each equals its reference with no
+; hypothesis and is guard-verified; host/owner-host.lisp, host/store-node-host.lisp
+; and host/store-host.lisp call the twins.
+;
 ; What stays on the octet lists: the payload (fn-record-payloadp walks it,
 ; O(L)) and the group names (fn-record-group-namep converts each name for
 ; the RFC 5536 grammar).  Those are the next boundaries in the design.
 
 (in-package "ACL2")
+(include-book "records-codec-concrete")
 (include-book "store-node")
 (include-book "consumer-store-projection")
 (include-book "topic-history-prefix")
 
-; -----------------------------------------------------------------------------
-; The string domain, read in place.
-
-; Every character of TEXT at index I or beyond has a code at most 127.
-(defun fn-rcon-ascii-from (text i)
-  (declare (xargs :guard (and (stringp text) (natp i) (<= i (length text)))
-                  :measure (nfix (- (length text) (nfix i)))))
-  (if (and (stringp text) (natp i) (< i (length text)))
-      (and (<= (char-code (char text i)) 127)
-           (fn-rcon-ascii-from text (1+ i)))
-    t))
-
-(defun fn-rcon-msgidp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (< 0 (length text))
-       (<= (length text) *fn-record-max-msgid*)
-       (fn-rcon-ascii-from text 0)))
-
-(defun fn-rcon-metadata-bytes-p (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (< 0 (length text))
-       (<= (length text) *fn-record-max-metadata*)))
-
-; fn-record-p's conjuncts in its order, with the three string tests
-; replaced.  The payload and the group names are tested as before.
-(defun fn-rcon-record-p (x)
-  (declare (xargs :guard t))
-  (and (fn-record-shapep x)
-       (fn-record-uint32p (fn-record-sequence x))
-       (fn-record-uint32p (fn-record-txid x))
-       (fn-record-uint32p (fn-record-generation x))
-       (fn-rcon-msgidp (fn-record-msgid x))
-       (fn-record-payloadp (fn-record-payload x))
-       (fn-record-groups-validp (fn-record-groups x))
-       (fn-rcon-metadata-bytes-p (fn-record-obligation-id x))
-       (fn-rcon-metadata-bytes-p (fn-record-content-subject x))
-       (fn-rcon-metadata-bytes-p (fn-record-release-evidence x))
-       (fn-record-uint32p (fn-record-charge x))
-       (fn-record-stampp (fn-record-stamp x))))
-
-; -----------------------------------------------------------------------------
-; The correspondence, field by field.
-
-(local (defthm fn-rcon-string-octets-aux-is-octets
-  (fn-cbor-octet-listp (fn-record-string-octets-aux chars))))
-
-(local (defthm fn-rcon-string-octets-aux-len
-  (equal (len (fn-record-string-octets-aux chars)) (len chars))))
-
-(local (defthm fn-rcon-string-octets-aux-consp
-  (equal (consp (fn-record-string-octets-aux chars)) (consp chars))))
-
-(local (defthm fn-rcon-positive-len-is-consp
-  (equal (< 0 (len x)) (consp x))))
-
-; KEYSTONE (the octet domain).  A string's characters are octets.
-(defthm fn-rcon-octet-stringp-is-stringp
-  (equal (fn-record-octet-stringp text) (stringp text))
-  :hints (("Goal" :in-theory (enable fn-record-octet-stringp))))
-
-(defthm fn-rcon-metadata-bytes-p-is-metadata-bytes-p
-  (equal (fn-rcon-metadata-bytes-p text) (fn-record-metadata-bytes-p text))
-  :hints (("Goal" :in-theory (enable fn-record-metadata-bytes-p
-                                     fn-record-nonempty-at-mostp))))
-
 (local (include-book "arithmetic/top" :dir :system))
 
-(local (defthm fn-rcon-shift-less
-  (implies (and (integerp i) (integerp n))
-           (equal (< (+ -1 i) n) (< i (+ 1 n))))
-  :hints (("Goal" :cases ((< i (+ 1 n)))))))
-
-(local (defthm fn-rcon-consp-of-nthcdr
-  (implies (natp i)
-           (equal (consp (nthcdr i l)) (< i (len l))))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr len)))))
-
-(local (defthm fn-rcon-nthcdr-past-true-list
-  (implies (and (true-listp l) (natp i) (<= (len l) i))
-           (equal (nthcdr i l) nil))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr len)))))
-
-(local (defthm fn-rcon-car-of-nthcdr
-  (equal (car (nthcdr i l)) (nth i l))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr nth)))))
-
-(local (defthm fn-rcon-cdr-of-nthcdr
-  (equal (cdr (nthcdr i l)) (nthcdr i (cdr l)))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
-
-(local (defthm fn-rcon-nthcdr-of-1+
-  (implies (natp i)
-           (equal (nthcdr (+ 1 i) l) (nthcdr i (cdr l))))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
-
-(local (defthm fn-rcon-character-listp-true-listp
-  (implies (character-listp l) (true-listp l))))
-
-(local (defthm fn-rcon-coerce-true-listp
-  (true-listp (coerce text 'list))))
-
-; The index walk is the list walk from index I: char I is nth I of the
-; character list, and the rest of the walk is the rest of the list.
-(local (defthm fn-rcon-ascii-from-is-ascii-octet-listp-of-nthcdr
-  (implies (and (stringp text) (natp i))
-           (equal (fn-rcon-ascii-from text i)
-                  (fn-record-ascii-octet-listp
-                   (fn-record-string-octets-aux (nthcdr i (coerce text 'list))))))
-  :hints (("Goal" :induct (fn-rcon-ascii-from text i)
-           :in-theory (e/d (fn-rcon-ascii-from) (nth fn-rcon-shift-less))
-           :expand ((fn-record-string-octets-aux (nthcdr i (coerce text 'list)))
-                    (fn-record-ascii-octet-listp
-                     (fn-record-string-octets-aux
-                      (nthcdr i (coerce text 'list)))))))))
-
-(defthm fn-rcon-msgidp-is-msgidp
-  (equal (fn-rcon-msgidp text) (fn-record-msgidp text))
-  :hints (("Goal" :in-theory (enable fn-record-msgidp fn-record-ascii-stringp
-                                     fn-record-nonempty-at-mostp))))
-
-; KEYSTONE (the recognizer).  The concrete recognizer is fn-record-p, on
-; every input.  Both are guard-verified with guard t, so the host's compiled
-; code computes this one.
-(defthm fn-rcon-record-p-is-record-p
-  (equal (fn-rcon-record-p x) (fn-record-p x))
-  :hints (("Goal" :in-theory (e/d (fn-record-p) (fn-record-shapep)))))
-
-(in-theory (disable fn-rcon-ascii-from fn-rcon-msgidp fn-rcon-metadata-bytes-p
-                    fn-rcon-record-p))
 
 ; -----------------------------------------------------------------------------
 ; The twins: each reference with fn-record-p replaced, equal to it with no
@@ -390,3 +276,120 @@
 (verify-guards fn-rcon-th-prefix-step)
 
 (in-theory (disable fn-rcon-th-prefix-step))
+
+; -----------------------------------------------------------------------------
+; The dispatchers at write (lane/rep-records-2).  The staged record is
+; encoded and its sequence read by the host once per POST
+; (host/owner-host.lisp fn-owner-pending-octets, fn-owner-pending-sequence);
+; the transaction observation :record-directory pairs its sequence and
+; transaction id (fn-sf-record-dir-result through fn-sn-io).  Each twin is
+; its reference with the list dispatchers replaced by the twins above.
+
+(include-book "store-budget-naming")
+
+; The two references the encoder dispatches to that were admitted with
+; :verify-guards nil; their guards (t) hold, so the twin's can be verified.
+(verify-guards fn-store-event-kind-code)
+(verify-guards fn-store-retention-event-encode)
+
+(defun fn-rcon-store-event-encode (event)
+  (declare (xargs :guard t))
+  (cond ((fn-rcon-record-p event) (fn-record-encode event))
+        ((fn-store-retention-event-p event)
+         (fn-store-retention-event-encode event))
+        ((fn-stxe-p event) (fn-stxe-encode event))
+        ((fn-stxk-p event) (fn-stxk-encode event))
+        ((fn-stxa-p event) (fn-stxa-encode event))
+        ((fn-cpe-eventp event) (fn-cpe-encode event))
+        ((fn-th-topic-eventp event) (fn-th-topic-event-encode event))
+        (t nil)))
+(defthm fn-rcon-store-event-encode-is-store-event-encode
+  (equal (fn-rcon-store-event-encode event) (fn-store-event-encode event))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-store-event-encode fn-store-event-encode
+                                fn-rcon-record-p-is-record-p)
+                              (theory 'minimal-theory)))))
+(defun fn-rcon-sbud-pending-sequence (s)
+  (declare (xargs :guard t))
+  (let ((record (fn-sf-record-candidate (fn-sn-files s))))
+    (if (and record (natp (fn-rcon-store-event-sequence record)))
+        (fn-rcon-store-event-sequence record)
+      nil)))
+(defthm fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence
+  (equal (fn-rcon-sbud-pending-sequence s) (fn-sbud-pending-sequence s))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sbud-pending-sequence fn-sbud-pending-sequence
+                                fn-rcon-store-event-sequence-is-store-event-sequence)
+                              (theory 'minimal-theory)))))
+
+(in-theory (disable fn-rcon-store-event-encode fn-rcon-sbud-pending-sequence))
+
+(defun fn-rcon-sf-record-dir-result (s result)
+  (declare (xargs :guard (fn-sf-statep s)))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
+      (cond
+       ((equal result :ok)
+        (let ((record (fn-sf-record-candidate s)))
+          (fn-sf-make :completing (fn-sf-frontier s) nil
+                      (append (fn-sf-records s) (list record)) nil
+                      (fn-rcon-sf-record-pair record) (fn-sf-successes s)
+                      (fn-sf-barriers s))))
+       ((equal result :error)
+        (fn-sf-make :fenced-record (fn-sf-frontier s) nil
+                    (fn-sf-records s) (fn-sf-record-candidate s) nil
+                    (fn-sf-successes s) (fn-sf-barriers s)))
+       (t s))
+    s))
+(defthm fn-rcon-sf-record-dir-result-is-sf-record-dir-result
+  (equal (fn-rcon-sf-record-dir-result s result) (fn-sf-record-dir-result s result))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sf-record-dir-result fn-sf-record-dir-result
+                                fn-rcon-sf-record-pair-is-sf-record-pair)
+                              (theory 'minimal-theory)))))
+(defun fn-rcon-sn-file-step (files operation result)
+  (declare (xargs :guard (fn-sf-statep files)))
+  (case operation
+    (:start-frontier (fn-sf-start-frontier files))
+    (:frontier-file (fn-sf-frontier-file-result files result))
+    (:frontier-replace (fn-sf-frontier-replace-result files result))
+    (:frontier-directory (fn-sf-frontier-dir-result files result))
+    (:record-file (fn-sf-record-file-result files result))
+    (:record-link (fn-sf-record-link-result files result))
+    (:record-directory (fn-rcon-sf-record-dir-result files result))
+    (:recovery-barrier (fn-sf-recovery-barrier files result))
+    (otherwise files)))
+(defthm fn-rcon-sn-file-step-is-sn-file-step
+  (equal (fn-rcon-sn-file-step files operation result) (fn-sn-file-step files operation result))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sn-file-step fn-sn-file-step
+                                fn-rcon-sf-record-dir-result-is-sf-record-dir-result)
+                              (theory 'minimal-theory)))))
+(defun fn-rcon-sn-io (s operation result)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (mbe :logic (fn-sn-statep s) :exec t)
+      (let* ((old-files (fn-sn-files s))
+             (files (fn-rcon-sn-file-step old-files operation result))
+             (updated (fn-sn-update s files (fn-sn-node s))))
+        (if (and (eq operation :record-directory) (eq result :ok)
+                 (eq (fn-sf-phase old-files) :record-attempted))
+            (let* ((candidate (fn-sf-record-candidate old-files))
+                   (sequence (fn-rcon-store-event-sequence candidate)))
+              (fn-sn-with-event-index
+               updated (fn-cei-put sequence candidate
+                                   (fn-sn-event-index s))))
+          updated))
+    s))
+(defthm fn-rcon-sn-io-is-sn-io
+  (equal (fn-rcon-sn-io s operation result) (fn-sn-io s operation result))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sn-io fn-sn-io
+                                fn-rcon-sn-file-step-is-sn-file-step
+                                fn-rcon-store-event-sequence-is-store-event-sequence)
+                              (theory 'minimal-theory)))))
+(verify-guards fn-rcon-sn-io
+  :hints (("Goal" :use ((:guard-theorem fn-sn-io))
+                  :in-theory (e/d (fn-rcon-sn-file-step-is-sn-file-step
+                                   fn-rcon-store-event-sequence-is-store-event-sequence)
+                                  (fn-sn-statep fn-sf-statep fn-node-statep)))))
+
+(in-theory (disable fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io))

@@ -45,17 +45,17 @@
         ((consp tree) (append (keyword-leaves (car tree)) (keyword-leaves (cdr tree))))
         (t nil)))
 
-;; ACL2's verdict words.  The host's verdict call is fn-sbud-verdict's, and
-;; fn-sbud-verdict answers :admissible below the budget and one other word at
+;; ACL2's verdict words.  The host's verdict call is fn-sbud-verdict-at's, and
+;; fn-sbud-verdict-at answers :admissible below the budget and one other word at
 ;; or over it; that word is the one the owner hands the host at capacity.
 (defparameter *verdict-words*
   (let ((host (read-acl2-defun "host/owner-host.lisp" 'fn-owner-publication-verdict))
-        (book (read-acl2-defun "books/store-budget.lisp" 'fn-sbud-verdict)))
-    (unless (tree-mentions (cdddr host) 'fn-sbud-verdict)
-      (error "fn-owner-publication-verdict no longer answers fn-sbud-verdict's word"))
+        (book (read-acl2-defun "books/store-budget.lisp" 'fn-sbud-verdict-at)))
+    (unless (tree-mentions (cdddr host) 'fn-sbud-verdict-at)
+      (error "fn-owner-publication-verdict no longer answers fn-sbud-verdict-at's word"))
     (let ((words (remove :guard (remove-duplicates (keyword-leaves (car (last book)))))))
       (unless (and (= (length words) 2) (member :admissible words))
-        (error "fn-sbud-verdict's words changed: ~s" words))
+        (error "fn-sbud-verdict-at's words changed: ~s" words))
       words)))
 (defparameter *at-capacity* (car (remove :admissible *verdict-words*)))
 

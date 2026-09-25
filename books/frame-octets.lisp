@@ -23,12 +23,20 @@
 (defconst *fn-frame-header-octets* 10)
 (defconst *fn-frame-overhead-octets* 42)
 
-; A payload ceiling above every schema's own cap.  Callers pass their smaller
-; cap; this constant only keeps the cons preflight a fixed amount of work.
-(defconst *fn-frame-max-payload* 4194304)
+; Codec ceiling: the LENGTH field is a u32, so no FN frame can carry more.
+; Every schema passes its own cap (a profile's record bound, a journal's
+; field widths); the cons preflight walks at most that cap plus one.
+(defconst *fn-frame-max-payload* 4294967295)
 
-; Field-level caps, matching the durable journals they describe.
+; Field-level caps.  A text field is node-generated (names, reasons,
+; Message-IDs), bounded by construction.
 (defconst *fn-frame-max-text* 512)
+; A blob field's length is a u32, but this cap stays: the frame-field length
+; lemmas bound a schema's payload by its field count times this cap, and a
+; journal spec of seven fields at a u32 blob cap no longer fits the u32 frame
+; (verify-guards fn-frame-workflow-encode, books/frame-journal).  Raising it
+; is a per-schema blob width (design 2026-09-25-bounds §2.3, open under P2);
+; until then the control socket carries an article of at most this size.
 (defconst *fn-frame-max-blob* 131072)
 (defconst *fn-frame-max-nat* 18446744073709551615)
 

@@ -366,13 +366,53 @@ decoded as source-address for durable command compatibility."
                                        name signer requirep)))
     plan))
 
+; Routing (spec bp-node-machine 4.6): `contact PORT', before the two receipt
+; options, is where an outbound session to this boundary connects, on the
+; loopback profile's 127.0.0.1.  It is the boundary's own row
+; (NAME "bp-boundary-contact" "127.0.0.1" PORT); a boundary without one is
+; routable but never contacted (`fn-bprt-boundary-port').
+; (mv words port): the words before the option, and PORT or nil.
+(defun fn-native-admin-bp-contact-option (words)
+  (declare (xargs :guard t))
+  (let* ((words (if (true-listp words) words nil))
+         (n (len words)))
+    (if (and (<= 2 n)
+             (equal (nth (- n 2) words) "contact")
+             (fn-native-admin-decimalp (nth (- n 1) words))
+             (<= 1 (fn-native-admin-decimal-value
+                    (coerce (nth (- n 1) words) 'list)))
+             (<= (fn-native-admin-decimal-value
+                  (coerce (nth (- n 1) words) 'list)) 65535))
+        (mv (butlast words 2)
+            (fn-native-admin-decimal-value (coerce (nth (- n 1) words) 'list)))
+      (mv words nil))))
+
+(in-theory (disable fn-native-admin-bp-contact-option))
+
+(defun fn-native-admin-bp-with-contact (plan name port)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted) port)
+      (fn-native-admin-result :accepted nil :set-bp-boundary
+                              (fn-native-admin-result-name plan) 0 nil
+                              (append (let ((rows (fn-native-admin-result-value
+                                                   plan)))
+                                        (if (true-listp rows) rows nil))
+                                      (list (fn-cfg-row-make
+                                             name "bp-boundary-contact"
+                                             "127.0.0.1" port))))
+    plan))
+
 (defun fn-native-admin-bp-boundary-plan (all-words)
   (declare (xargs :guard t))
-  (mv-let (words signer requirep)
+  (mv-let (words0 signer requirep)
     (fn-native-admin-bp-receipt-options all-words)
-    (fn-native-admin-bp-with-receipt-options
-     (fn-native-admin-bp-boundary-base-plan words)
-     (if (true-listp words) (nth 2 words) nil) signer requirep)))
+    (mv-let (words port)
+      (fn-native-admin-bp-contact-option words0)
+      (fn-native-admin-bp-with-contact
+       (fn-native-admin-bp-with-receipt-options
+        (fn-native-admin-bp-boundary-base-plan words)
+        (if (true-listp words) (nth 2 words) nil) signer requirep)
+       (if (true-listp words) (nth 2 words) nil) port))))
 
 (encapsulate ()
 (local (defthm kind-of-result

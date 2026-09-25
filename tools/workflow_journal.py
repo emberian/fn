@@ -31,7 +31,7 @@ MAX_TEXT = 512
 MAX_RECORD = 16_384
 MAX_RECORDS = 4_096
 MAX_AGGREGATE = 16 * 1024 * 1024
-MAX_INBOUND_BUNDLE = 4 * 1024 * 1024
+MAX_INBOUND_BUNDLE = 4294967295  # the model's *fn-frame-max-inbound-payload*, the u32 width (P2, D27); the bridge checks equality at session start
 # `*fn-frame-max-identity*`: the canonical primary-block identity ACL2 derives
 # from a staged bundle.  The inbox is keyed by this, never by the agent's BID.
 MAX_IDENTITY = 1_152

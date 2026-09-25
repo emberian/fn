@@ -210,7 +210,9 @@ published a certification of `dev`'s head since. The rules that follow:
   includes it, never a refusal. `submit` prints "installed N of M books ...
   certifying K" at once; the manifest says `installed` or `certified` per
   book and names the origins drawn from. `--require-origin` is the explicit
-  way to demand one origin.
+  way to demand one origin. `--recertify BOOK` certifies a cached book
+  afresh (its dependents follow it) when no committed manifest records it
+  as certified at its current digest.
 - **A lane does not merge `dev` mid-flight.** It branches from `dev`, works,
   certifies its own change against the digests it branched at, and root
   merges on landing; if root needs the lane on a newer base, root says so

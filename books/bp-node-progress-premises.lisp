@@ -597,6 +597,32 @@
   (fn-bpnp-conflict-propose-step fn-bpnp-with-next-issued
    fn-bpnp-conflict-refusal))
 
+;; The rotation arms write only the issued slot (6), the next operation id
+;; (9) and the record count (12).
+(local
+ (defthm fn-bpnpp-premises-of-rotation-slots
+   (and (equal (fn-bpnp-step-guard-premisesp (update-nth 6 v st))
+               (fn-bpnp-step-guard-premisesp st))
+        (equal (fn-bpnp-step-guard-premisesp (update-nth 9 v st))
+               (fn-bpnp-step-guard-premisesp st))
+        (equal (fn-bpnp-step-guard-premisesp (update-nth 12 v st))
+               (fn-bpnp-step-guard-premisesp st)))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-step-guard-premisesp
+                                 fn-bpnf-base fn-bpnp-sessions
+                                 fn-bpnf-held-list fn-bpnpp-nth-is-nth
+                                 nth-update-nth (:e natp) (:e nfix)
+                                 (:e equal))
+                               (theory 'minimal-theory))))))
+
+(fn-bpnpp-defkeep fn-bpnpp-rotate-step
+  (fn-bpnp-rotate-step st generation ck)
+  (fn-bpnp-rotate-step fn-bpnpp-premises-of-rotation-slots))
+
+(fn-bpnpp-defkeep fn-bpnpp-rotation-persist-step
+  (fn-bpnp-rotation-persist-step st epoch op result)
+  (fn-bpnp-rotation-persist-step fn-bpnpp-premises-of-rotation-slots))
+
 (fn-bpnpp-defkeep fn-bpnpp-busy-delivery-step
   (fn-bpnp-busy-delivery-step st epoch op key observation budgets)
   (fn-bpnp-busy-delivery-step fn-bpnpp-premises-of-next-issued
@@ -618,6 +644,12 @@
 (fn-bpnpp-defkeep fn-bpnpp-start-one
   (fn-bpnp-start-one st peer session mru observation budget)
   (fn-bpnp-start-one))
+
+; The routed :session arm (spec 4.6): start-one's answer, or the state
+; unchanged with a :forward-no-route report.
+(fn-bpnpp-defkeep fn-bpnpp-routed-start
+  (fn-bpnp-routed-start st peer session mru observation via budget)
+  (fn-bpnp-routed-start fn-bpnpp-start-one))
 
 (fn-bpnpp-defkeep fn-bpnpp-attempt-persist-step
   (fn-bpnp-attempt-persist-step st epoch op result)
@@ -652,7 +684,8 @@
                        '(fn-bpnp-step
                          fn-bpnpp-remove-peer-session-listp
                          fn-bpnpp-open-session-listp
-                         fn-bpnpp-start-one fn-bpnpp-forward-result-propose-step
+                         fn-bpnpp-start-one fn-bpnpp-routed-start
+                         fn-bpnpp-forward-result-propose-step
                          fn-bpnpp-operator-resume-step
                          fn-bpnpp-progress-step fn-bpnpp-dispatch-persist-step
                          fn-bpnpp-attempt-persist-step
@@ -663,6 +696,8 @@
                          fn-bpnpp-busy-delivery-step
                          fn-bpnpp-deferral-persist-step
                          fn-bpnpp-busy-resume-step
+                         fn-bpnpp-rotate-step
+                         fn-bpnpp-rotation-persist-step
                          fn-bpnpp-delegate-with-credit
                          fn-bpnpp-preserve-runtime-answer)
                        (theory 'fn-bpnpp-theory)))))

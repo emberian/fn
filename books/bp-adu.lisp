@@ -22,6 +22,13 @@
 (defconst *fn-bpa-field-count* 9)
 (defconst *fn-bpa-max-metadata* 256)
 (defconst *fn-bpa-max-octets* 65538)
+; The article one ADU carries.  D27 widened the record payload ceiling
+; (`fn-record-payloadp', books/records-shape) to the u32 record width; the
+; ADU keeps the article bound it was proved at, which with eight metadata
+; fields fits `*fn-bpa-max-octets*' (`fn-bpa-encoding-bound').  Packet P5
+; bounds the ADU by the profile's record ceiling instead (design
+; 2026-09-25-bounds §2.3 row "BP ADU").
+(defconst *fn-bpa-max-article* 32768)
 
 ; Total selectors preserve malformed-input behavior without a Lisp reader.
 (defun fn-bpa-car (x)
@@ -105,7 +112,8 @@
        (fn-bpa-metadatap (fn-bpa-request-incarnation x))
        (fn-bpa-metadatap (fn-bpa-request-auth-context x))
        (fn-bpa-metadatap (fn-bpa-request-terms-id x))
-       (fn-record-payloadp (fn-bpa-request-article x))))
+       (fn-record-payloadp (fn-bpa-request-article x))
+       (<= (len (fn-bpa-request-article x)) *fn-bpa-max-article*)))
 
 (defun fn-bpa-receiptp (x)
   (declare (xargs :guard t))
@@ -318,6 +326,10 @@
   (declare (xargs :guard t))
   (if (consp fields)
       (and (fn-record-payloadp (car fields))
+           ; The ADU encodes its fields with the generic CBOR entry, whose
+           ; item is at most `*fn-cbor-max-bytes*' (the record payload
+           ; ceiling no longer implies it after D27).
+           (<= (len (car fields)) *fn-cbor-max-bytes*)
            (fn-bpa-byte-field-listp (cdr fields)))
     (null fields)))
 
@@ -460,11 +472,17 @@
           (fn-record-parse-ok request nil)))
   :hints (("Goal"
            :use ((:instance fn-bpa-read-request-fields-encoded)
-                 (:instance fn-bpa-request-fields-reconstruct))
+                 (:instance fn-bpa-request-fields-reconstruct)
+                 (:instance fn-bpa-read-small-uint-prefix
+                            (n *fn-bpa-field-count*)
+                            (rest (fn-bpa-encode-fields
+                                   (fn-bpa-request-fields request)))))
            :in-theory (disable fn-bpa-read-fields
                                fn-bpa-encode-fields
                                fn-bpa-requestp
                                fn-bpa-receiptp
+                               fn-record-read-uint
+                               fn-record-item-decode
                                fn-record-octets-string
                                fn-record-string-octets))))
 
@@ -481,11 +499,17 @@
           (fn-record-parse-ok receipt nil)))
   :hints (("Goal"
            :use ((:instance fn-bpa-read-receipt-fields-encoded)
-                 (:instance fn-bpa-receipt-fields-reconstruct))
+                 (:instance fn-bpa-receipt-fields-reconstruct)
+                 (:instance fn-bpa-read-small-uint-prefix
+                            (n *fn-bpa-field-count*)
+                            (rest (fn-bpa-encode-fields
+                                   (fn-bpa-receipt-fields receipt)))))
            :in-theory (disable fn-bpa-read-fields
                                fn-bpa-encode-fields
                                fn-bpa-requestp
                                fn-bpa-receiptp
+                               fn-record-read-uint
+                               fn-record-item-decode
                                fn-record-octets-string
                                fn-record-string-octets))))
 

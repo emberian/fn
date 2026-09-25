@@ -286,15 +286,18 @@
 
 ; -----------------------------------------------------------------------------
 ; The peer arm: fn-pix-peer-step-pinned past its first two branches, for a
-; peer session, with no session recognizer evaluated.
+; peer session, with no session recognizer evaluated.  What the peer commands
+; do not answer goes to the reader delegate whose Message-ID retrieval walks
+; the trie by index (fn-pix-peer-delegate-pinned, equal to
+; fn-peer-delegate-pinned with no hypothesis: books/peer-offer-indexed.lisp).
 
 (defun fn-pgc-peer-arm
     (ps trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard (fn-pgc-peer-sessionp ps)))
   (cond
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
-    (fn-peer-delegate-pinned ps archive index verdicts config observation
-                             injection wire-event))
+    (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+                                 injection wire-event))
    ((fn-peer-session-transfer ps) (fn-pgc-transfer-step ps wire-event))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
@@ -307,12 +310,12 @@
                (fn-nntp-command-arguments-at-mostp tokens))
           (let ((r (fn-pgc-peer-command ps (car tokens) (cdr tokens) trie arts)))
             (if r r
-              (fn-peer-delegate-pinned ps archive index verdicts config
-                                       observation injection wire-event)))
-        (fn-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event))))
-   (t (fn-peer-delegate-pinned ps archive index verdicts config observation
-                               injection wire-event))))
+              (fn-pix-peer-delegate-pinned ps archive index verdicts config
+                                           observation injection wire-event)))
+        (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+                                     injection wire-event))))
+   (t (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+                                   injection wire-event))))
 
 ; KEYSTONE.  On a peer session, the arm is the reference step: the premise
 ; is fn-peer-sessionp (so fn-node-statep of the session's node) and the
@@ -331,7 +334,7 @@
                                    fn-pgc-transfer-step fn-peer-step
                                    fn-node-statep fn-cfgp fn-post-sessionp
                                    fn-peer-transferp fn-midx-correspondencep
-                                   fn-peer-delegate-pinned
+                                   fn-peer-delegate-pinned fn-pix-peer-delegate-pinned
                                    fn-nntp-tokenize fn-nntp-command-inputp)))))
 
 (in-theory (disable fn-pgc-obligation-ids fn-pgc-release-ids
