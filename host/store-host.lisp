@@ -22,6 +22,7 @@
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-upgrade")
 (include-book "../books/store-profile-namespace")
+(include-book "../books/native-operator")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-max-text* 512)
@@ -363,9 +364,6 @@
   ; workflow journal JSON and the NNTP header value.
   (if (fn-cbor-octet-listp identity) (fn-id-text identity) nil))
 
-(defun fn-store-format-id ()
-  *fn-store-format-id*)
-
 ; Durable store metadata.  `tools/run_store.py' calls only these wrappers for
 ; config.json and allocation-frontier.json.  Their grammar, bounds, profile
 ; table, CBOR frontier encoding, integrity trailer and decoder are all in
@@ -376,6 +374,18 @@
 
 (defun fn-store-metadata-config-decode (octets)
   (fn-bs-config-decode octets))
+
+;; The Python `init --profile WORD': WORD's octets are read by the native
+;; operator's own preset parser (`fn-nop-profile-preset-word',
+;; development|scale|default) and the frame is the one `init' writes for that
+;; preset, or NIL for a word that names none.  With no word, `init' writes
+;; `fn-bs-initial-config-octets', as the native `store init' entry does.
+(defun fn-store-metadata-config-frame-for-word (octets)
+  (let ((preset (fn-nop-profile-preset-word (fn-record-octets-string octets))))
+    (if preset (fn-bs-config-frame-for-profile preset) nil)))
+
+(defun fn-store-metadata-initial-config-frame ()
+  (fn-bs-initial-config-octets))
 
 ;; The store profile (D27, format 8): every value the host reads from it is
 ;; one of these accessors over the decoded values, never a list position.
