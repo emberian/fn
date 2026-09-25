@@ -213,27 +213,31 @@
   (not (fn-bs-profile-invalid-reason values)))
 
 ; The format-7 translation: T = transactions, H = aggregate replay octets,
-; R = H / T (the ceiling format 7 derived), A = payload, K = T, the namespace
-; counts P1's defaults, and G and the group name the record codec's widths
-; every format-7 store was written under: 16 groups of at most 128 octets
-; (pre-D27 `*fn-record-max-groups*' and `*fn-record-max-group-name*').  They
-; are figures of the format, not today's ceilings: at today's 65 535 groups
-; the article record for (A, G) is 17 138 486 octets, above either tuple's R
-; (196 608), so the translation would not be a valid profile.  Both format-7
+; A = payload, K = T, the namespace counts P1's defaults, G and the group name
+; the codec ceilings (a translated store gets the large bounds a fresh init
+; would; the coordinator's decision of 2026-09-25), and R the larger of H / T
+; (the ceiling format 7 derived) and the article record of (A, G), so the
+; translation meets the article relation: at A 32 768 and G 65 535 that record
+; is 17 138 486 octets, within either tuple's H (24 MiB, 768 MiB), and H / T
+; is 196 608.  R only grows, so every kind's budget is unchanged
+; (`fn-profile-upgrade-format-7-to-8').  Both format-7
 ; tuples translate to the format-8 presets of the same name
 ; (`fn-bs-profile-format-7-translates-to-the-presets', in the test book).
 (defconst *fn-bs-profile-default-namespace-count* 1048576)
-(defconst *fn-bs-profile-format-7-groups* 16)
-(defconst *fn-bs-profile-format-7-group-name-octets* 128)
 
 (defun fn-bs-profile-from-format-7 (values)
   (declare (xargs :guard t))
   (let ((h (nfix (fn-bs-meta-nth 3 values)))
         (tx (nfix (fn-bs-meta-nth 4 values))))
     (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
-          tx h (if (zp tx) 0 (floor h tx)) (nfix (fn-bs-meta-nth 2 values))
-          *fn-bs-profile-format-7-groups*
-          *fn-bs-profile-format-7-group-name-octets*
+          tx h
+          (max (if (zp tx) 0 (floor h tx))
+               (fn-record-encoded-octets-ceiling
+                (nfix (fn-bs-meta-nth 2 values))
+                *fn-bs-profile-groups-ceiling-codec*))
+          (nfix (fn-bs-meta-nth 2 values))
+          *fn-bs-profile-groups-ceiling-codec*
+          *fn-bs-profile-group-name-ceiling-codec*
           tx
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*

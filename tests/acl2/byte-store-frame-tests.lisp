@@ -30,14 +30,18 @@
                      1099511627776))
 (assert-event (equal (fn-bs-profile-max-open-suffix *fn-bs-profile-defaults*)
                      65536))
+; The translation's R is the article record of (32 768, 65 535), above the
+; format-7 H / T of 196 608.
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-development*)
-                     196608))
+                     17138486))
+(assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-scale*)
+                     17138486))
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-development*)
                      128))
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-scale*) 4096))
 ; The defaults read P2's ceilings: R 64 MiB, A 16 MiB, G 4096, names 256 (the
-; D27 figure 460 capped at the label width).  The presets keep the format-7
-; figures, 16 groups of 128 octets.
+; D27 figure 460 capped at the label width).  The presets translate format 7
+; with the codec ceilings, 65 535 groups of 256 octets.
 (assert-event (equal (fn-bs-profile-max-record-octets *fn-bs-profile-defaults*)
                      67108864))
 (assert-event (equal (fn-bs-profile-max-article-octets *fn-bs-profile-defaults*)
@@ -48,9 +52,9 @@
                      256))
 (assert-event (equal (fn-record-encoded-octets-ceiling 16777216 4096) 17847355))
 (assert-event (equal (fn-bs-profile-max-groups-per-article *fn-bs-profile-scale*)
-                     16))
+                     65535))
 (assert-event (equal (fn-bs-profile-max-group-name-octets *fn-bs-profile-development*)
-                     128))
+                     256))
 
 ; A free-field profile no preset equals (T = 1000, A = 20000, K = 1000):
 ; valid, admitted, round-trips through the frame, and gates publication at
@@ -221,7 +225,7 @@
 (assert-event (equal (fn-bs-profile-max-transactions
                       *fn-bs-meta-format-7-scale-values*) 4096))
 (assert-event (equal (fn-bs-profile-record-ceiling
-                      *fn-bs-meta-format-7-development-values*) 196608))
+                      *fn-bs-meta-format-7-development-values*) 17138486))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report
                                                  *fn-bs-meta-format-7-scale-values*)))
                      7))
