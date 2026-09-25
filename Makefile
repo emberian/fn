@@ -586,6 +586,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-concrete-owner \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
+	books/octets-stobj \
+	books/poster-bytes-buffer \
+	tests/acl2/octets-stobj-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
