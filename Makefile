@@ -625,6 +625,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/poster-bytes-buffer \
 	tests/acl2/octets-stobj-tests \
+	books/sha256-buffer \
+	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \

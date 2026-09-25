@@ -1,0 +1,400 @@
+
+Number of samples:   68
+Sample interval:     0.001 seconds
+Total sampling time: 0.068 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3574216 "fn-prof" RUNNING {120FE58513}> (5448/1048576 bytes, 41 hash buckets)
+   #<THREAD tid=3574219 "fn owner client" RUNNING {1210424F13}> (912/1048576 bytes, 3 hash buckets)
+
+                               Callers
+                 Total.     Function
+ Count     %  Count     %      Callees
+------------------------------------------------------------------------
+    16  23.5                   SB-UNIX:UNIX-STAT [48]
+    16  23.5     16  23.5   foreign function fstatat [1]
+------------------------------------------------------------------------
+     8  11.8                   foreign function nanosleep [63]
+     8  11.8      8  11.8   foreign function clock_nanosleep [2]
+------------------------------------------------------------------------
+    54  79.4                   PROBE-FILE [44]
+     2   2.9     54  79.4   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     1   1.5                   TRANSLATE-LOGICAL-PATHNAME [28]
+     1   1.5                   SB-INT:SANE-DEFAULT-PATHNAME-DEFAULTS [24]
+     3   4.4                   WILD-PATHNAME-P [22]
+     1   1.5                   MERGE-PATHNAMES [54]
+    31  45.6                   SB-IMPL::%QUERY-FILE-SYSTEM [47]
+    14  20.6                   PATHNAME [45]
+------------------------------------------------------------------------
+    10  14.7                   SB-UNIX:NANOSLEEP [62]
+     2   2.9     10  14.7   foreign function sb_nanosleep [12]
+     8  11.8                   foreign function nanosleep [63]
+------------------------------------------------------------------------
+     1   1.5                   SB-SPROF::UNAVAILABLE-FRAMES [56]
+     5   7.4                   SB-IMPL::INTERN-PATHNAME [17]
+     2   2.9      6   8.8   SB-INT:HASHSET-INSERT-IF-ABSENT [6]
+     4   5.9                   SB-INT:HASHSET-FIND [21]
+------------------------------------------------------------------------
+     4   5.9                   SB-IMPL::%PARSE-NAMESTRING [46]
+     2   2.9      4   5.9   SB-IMPL::PARSE-UNIX-NAMESTRING [4]
+     1   1.5                   GENERIC-+ [30]
+     1   1.5                   SB-IMPL::MAYBE-MAKE-PATTERN [14]
+------------------------------------------------------------------------
+     4   5.9                   SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING [51]
+     2   2.9      4   5.9   GET-OUTPUT-STREAM-STRING [8]
+     2   2.9                   (LAMBDA (SB-IMPL::RESULT SB-IMPL::SOURCE SB-IMPL::START SB-IMPL::DUMMY) :IN GET-OUTPUT-STREAM-STRING) [9]
+------------------------------------------------------------------------
+     2   2.9                   SB-UNIX:UNIX-STAT [48]
+     2   2.9      2   2.9   foreign function os_get_errno [5]
+------------------------------------------------------------------------
+     2   2.9                   SB-INT:HASHSET-FIND [21]
+     2   2.9      2   2.9   SB-IMPL::PN-TABLE-DIR= [7]
+------------------------------------------------------------------------
+     2   2.9                   GET-OUTPUT-STREAM-STRING [8]
+     2   2.9      2   2.9   (LAMBDA (SB-IMPL::RESULT SB-IMPL::SOURCE SB-IMPL::START SB-IMPL::DUMMY) :IN GET-OUTPUT-STREAM-STRING) [9]
+------------------------------------------------------------------------
+     2   2.9                   SB-IMPL::%PARSE-NAMESTRING [46]
+     2   2.9      2   2.9   PATHNAME-HOST [10]
+------------------------------------------------------------------------
+     2   2.9                   WILD-PATHNAME-P [22]
+     2   2.9      2   2.9   (LABELS SB-IMPL::TEST :IN WILD-PATHNAME-P) [11]
+------------------------------------------------------------------------
+    14  20.6                   PATHNAME [45]
+     1   1.5     15  22.1   PARSE-NAMESTRING [13]
+    14  20.6                   SB-IMPL::%PARSE-NAMESTRING [46]
+------------------------------------------------------------------------
+     1   1.5                   MERGE-PATHNAMES [54]
+     6   8.8                   SB-IMPL::%PARSE-NAMESTRING [46]
+     1   1.5      7  10.3   SB-IMPL::INTERN-PATHNAME [17]
+     1   1.5                   SB-IMPL::PATTERN-HASH [57]
+     5   7.4                   SB-INT:HASHSET-INSERT-IF-ABSENT [6]
+------------------------------------------------------------------------
+     4   5.9                   SB-INT:HASHSET-INSERT-IF-ABSENT [6]
+     1   1.5      4   5.9   SB-INT:HASHSET-FIND [21]
+     1   1.5                   SB-IMPL::COMPARE-COMPONENT [31]
+     2   2.9                   SB-IMPL::PN-TABLE-DIR= [7]
+------------------------------------------------------------------------
+     3   4.4                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     1   1.5      3   4.4   WILD-PATHNAME-P [22]
+     2   2.9                   (LABELS SB-IMPL::TEST :IN WILD-PATHNAME-P) [11]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::PARSEABLE-LOGICAL-NAMESTRING-P [55]
+     1   1.5                   SB-IMPL::PARSE-UNIX-NAMESTRING [4]
+     1   1.5      2   2.9   SB-IMPL::MAYBE-MAKE-PATTERN [14]
+     1   1.5                   SB-KERNEL:VECTOR-SUBSEQ [15]
+------------------------------------------------------------------------
+     2   2.9                   SB-INT:GET-EXTERNAL-FORMAT-OR-LOSE [50]
+     1   1.5      2   2.9   SB-INT:GET-EXTERNAL-FORMAT [18]
+     1   1.5                   SB-IMPL::GET3 [61]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::MAYBE-MAKE-PATTERN [14]
+     1   1.5      1   1.5   SB-KERNEL:VECTOR-SUBSEQ [15]
+------------------------------------------------------------------------
+     1   1.5                   SB-UNIX:UNIX-STAT [48]
+     1   1.5      1   1.5   foreign function stat [16]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING [51]
+     1   1.5      1   1.5   SB-IMPL::UNPARSE-NATIVE-PHYSICAL-FILE [19]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::STRING-SOUT [53]
+     1   1.5      1   1.5   (LABELS SB-IMPL::CHAR-STRING-OUT :IN SB-IMPL::%INIT-STRING-OUTPUT-STREAM) [20]
+------------------------------------------------------------------------
+     1   1.5                   SB-UNIX:UNIX-STAT [48]
+     1   1.5      1   1.5   SB-ALIEN:GET-ERRNO [23]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     1   1.5      1   1.5   SB-INT:SANE-DEFAULT-PATHNAME-DEFAULTS [24]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::PATTERN-HASH [57]
+     1   1.5      1   1.5   SB-IMPL::HASH-PATHNAME-PIECE [25]
+------------------------------------------------------------------------
+     1   1.5                   SB-UNIX:UNIX-LSTAT [59]
+     1   1.5      1   1.5   foreign function lstat [26]
+------------------------------------------------------------------------
+     1   1.5                   (FLET F :IN FNP-THREAD) [60]
+     1   1.5      1   1.5   SB-KERNEL:UB32-BASH-COPY [27]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     1   1.5      1   1.5   TRANSLATE-LOGICAL-PATHNAME [28]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::GET3 [61]
+     1   1.5      1   1.5   SYMBOL-PLIST [29]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::PARSE-UNIX-NAMESTRING [4]
+     1   1.5      1   1.5   GENERIC-+ [30]
+------------------------------------------------------------------------
+     1   1.5                   SB-INT:HASHSET-FIND [21]
+     1   1.5      1   1.5   SB-IMPL::COMPARE-COMPONENT [31]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::%QUERY-FILE-SYSTEM [47]
+     1   1.5      1   1.5   foreign function stat_wrapper [32]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING [51]
+     1   1.5      1   1.5   (LABELS SB-IMPL::DEFAULT-OUT :IN SB-IMPL::%INIT-STRING-OUTPUT-STREAM) [33]
+------------------------------------------------------------------------
+     1   1.5                   FN-AUTH-WITH-BASE [78]
+     1   1.5      1   1.5   FN-AUTH-SESSION-TLSP [34]
+------------------------------------------------------------------------
+     1   1.5                   FNN-ADVANCE-FRONTIER [82]
+     1   1.5      1   1.5   foreign function rename [35]
+------------------------------------------------------------------------
+     1   1.5                   FN-WIRE-FEED-BYTE [85]
+     1   1.5      1   1.5   FN-WIRE-STATE-PENDING-CRP [36]
+------------------------------------------------------------------------
+    67  98.5                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [41]
+     0   0.0     67  98.5   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [42]
+     1   1.5                   (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT) [64]
+     1   1.5                   FNP-THREAD [43]
+    67  98.5                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [41]
+------------------------------------------------------------------------
+    67  98.5                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [42]
+    67  98.5                   SB-THREAD::RUN [40]
+     0   0.0     67  98.5   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [41]
+    67  98.5                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [42]
+------------------------------------------------------------------------
+    67  98.5                   foreign function call_into_lisp_ [39]
+     0   0.0     67  98.5   SB-THREAD::RUN [40]
+    67  98.5                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [41]
+------------------------------------------------------------------------
+    67  98.5                   foreign function funcall1 [38]
+     0   0.0     67  98.5   foreign function call_into_lisp_ [39]
+    67  98.5                   SB-THREAD::RUN [40]
+------------------------------------------------------------------------
+    67  98.5                   foreign function new_thread_trampoline [37]
+     0   0.0     67  98.5   foreign function funcall1 [38]
+    67  98.5                   foreign function call_into_lisp_ [39]
+------------------------------------------------------------------------
+     0   0.0     67  98.5   foreign function new_thread_trampoline [37]
+    67  98.5                   foreign function funcall1 [38]
+------------------------------------------------------------------------
+     1   1.5                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [42]
+     0   0.0     65  95.6   FNP-THREAD [43]
+    10  14.7                   SB-UNIX:NANOSLEEP [62]
+     1   1.5                   (FLET F :IN FNP-THREAD) [60]
+    54  79.4                   PROBE-FILE [44]
+------------------------------------------------------------------------
+    54  79.4                   FNP-THREAD [43]
+     0   0.0     54  79.4   PROBE-FILE [44]
+    54  79.4                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+------------------------------------------------------------------------
+    31  45.6                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     0   0.0     31  45.6   SB-IMPL::%QUERY-FILE-SYSTEM [47]
+     1   1.5                   foreign function stat_wrapper [32]
+     1   1.5                   (LABELS SB-IMPL::RESOLVE-PROBLEMATIC-SYMLINK :IN SB-IMPL::%QUERY-FILE-SYSTEM) [58]
+     7  10.3                   SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING [51]
+    22  32.4                   SB-UNIX:UNIX-STAT [48]
+------------------------------------------------------------------------
+    22  32.4                   SB-IMPL::%QUERY-FILE-SYSTEM [47]
+     0   0.0     22  32.4   SB-UNIX:UNIX-STAT [48]
+    16  23.5                   foreign function fstatat [1]
+     1   1.5                   SB-ALIEN:GET-ERRNO [23]
+     2   2.9                   SB-ALIEN::STRING-TO-C-STRING [49]
+     1   1.5                   foreign function stat [16]
+     2   2.9                   foreign function os_get_errno [5]
+------------------------------------------------------------------------
+    14  20.6                   PARSE-NAMESTRING [13]
+     0   0.0     14  20.6   SB-IMPL::%PARSE-NAMESTRING [46]
+     2   2.9                   PATHNAME-HOST [10]
+     1   1.5                   SB-SPROF::UNAVAILABLE-FRAMES [56]
+     1   1.5                   SB-IMPL::PARSEABLE-LOGICAL-NAMESTRING-P [55]
+     6   8.8                   SB-IMPL::INTERN-PATHNAME [17]
+     4   5.9                   SB-IMPL::PARSE-UNIX-NAMESTRING [4]
+------------------------------------------------------------------------
+    14  20.6                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     0   0.0     14  20.6   PATHNAME [45]
+    14  20.6                   PARSE-NAMESTRING [13]
+------------------------------------------------------------------------
+    10  14.7                   FNP-THREAD [43]
+     0   0.0     10  14.7   SB-UNIX:NANOSLEEP [62]
+    10  14.7                   foreign function sb_nanosleep [12]
+------------------------------------------------------------------------
+     8  11.8                   foreign function sb_nanosleep [12]
+     0   0.0      8  11.8   foreign function nanosleep [63]
+     8  11.8                   foreign function clock_nanosleep [2]
+------------------------------------------------------------------------
+     7  10.3                   SB-IMPL::%QUERY-FILE-SYSTEM [47]
+     0   0.0      7  10.3   SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING [51]
+     1   1.5                   (LABELS SB-IMPL::DEFAULT-OUT :IN SB-IMPL::%INIT-STRING-OUTPUT-STREAM) [33]
+     4   5.9                   GET-OUTPUT-STREAM-STRING [8]
+     1   1.5                   SB-IMPL::%WRITE-STRING [52]
+     1   1.5                   SB-IMPL::UNPARSE-NATIVE-PHYSICAL-FILE [19]
+------------------------------------------------------------------------
+     2   2.9                   SB-ALIEN::STRING-TO-C-STRING [49]
+     0   0.0      2   2.9   SB-INT:GET-EXTERNAL-FORMAT-OR-LOSE [50]
+     2   2.9                   SB-INT:GET-EXTERNAL-FORMAT [18]
+------------------------------------------------------------------------
+     2   2.9                   SB-UNIX:UNIX-STAT [48]
+     0   0.0      2   2.9   SB-ALIEN::STRING-TO-C-STRING [49]
+     2   2.9                   SB-INT:GET-EXTERNAL-FORMAT-OR-LOSE [50]
+------------------------------------------------------------------------
+     1   1.5                   FN-SCAR-FEED-COUNTED [83]
+     1   1.5                   SB-IMPL::%PARSE-NAMESTRING [46]
+     0   0.0      2   2.9   SB-SPROF::UNAVAILABLE-FRAMES [56]
+     1   1.5                   FN-SCAR-FEED-COUNTED [83]
+     1   1.5                   SB-INT:HASHSET-INSERT-IF-ABSENT [6]
+------------------------------------------------------------------------
+     2   2.9                   FNN-OWNER-SHARED-ACTION-LOCKED [69]
+     0   0.0      2   2.9   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [70]
+     1   1.5                   FNN-OWNER-DRAIN-ONE [79]
+     1   1.5                   FNN-OWNER-ACTION [71]
+------------------------------------------------------------------------
+     2   2.9                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [68]
+     0   0.0      2   2.9   FNN-OWNER-SHARED-ACTION-LOCKED [69]
+     2   2.9                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [70]
+------------------------------------------------------------------------
+     2   2.9                   SB-THREAD::FAST-CALL-WITH-MUTEX [67]
+     0   0.0      2   2.9   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [68]
+     2   2.9                   FNN-OWNER-SHARED-ACTION-LOCKED [69]
+------------------------------------------------------------------------
+     2   2.9                   FNN-OWNER-SERIALIZED [66]
+     0   0.0      2   2.9   SB-THREAD::FAST-CALL-WITH-MUTEX [67]
+     2   2.9                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [68]
+------------------------------------------------------------------------
+     2   2.9                   FNN-OWNER-SERVE-CLIENT [65]
+     0   0.0      2   2.9   FNN-OWNER-SERIALIZED [66]
+     2   2.9                   SB-THREAD::FAST-CALL-WITH-MUTEX [67]
+------------------------------------------------------------------------
+     2   2.9                   (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT) [64]
+     0   0.0      2   2.9   FNN-OWNER-SERVE-CLIENT [65]
+     2   2.9                   FNN-OWNER-SERIALIZED [66]
+------------------------------------------------------------------------
+     1   1.5                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [42]
+     0   0.0      2   2.9   (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT) [64]
+     2   2.9                   FNN-OWNER-SERVE-CLIENT [65]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::%WRITE-STRING [52]
+     0   0.0      1   1.5   SB-IMPL::STRING-SOUT [53]
+     1   1.5                   (LABELS SB-IMPL::CHAR-STRING-OUT :IN SB-IMPL::%INIT-STRING-OUTPUT-STREAM) [20]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING [51]
+     0   0.0      1   1.5   SB-IMPL::%WRITE-STRING [52]
+     1   1.5                   SB-IMPL::STRING-SOUT [53]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::QUERY-FILE-SYSTEM [3]
+     0   0.0      1   1.5   MERGE-PATHNAMES [54]
+     1   1.5                   SB-IMPL::INTERN-PATHNAME [17]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::%PARSE-NAMESTRING [46]
+     0   0.0      1   1.5   SB-IMPL::PARSEABLE-LOGICAL-NAMESTRING-P [55]
+     1   1.5                   SB-IMPL::MAYBE-MAKE-PATTERN [14]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::INTERN-PATHNAME [17]
+     0   0.0      1   1.5   SB-IMPL::PATTERN-HASH [57]
+     1   1.5                   SB-IMPL::HASH-PATHNAME-PIECE [25]
+------------------------------------------------------------------------
+     1   1.5                   (LABELS SB-IMPL::RESOLVE-PROBLEMATIC-SYMLINK :IN SB-IMPL::%QUERY-FILE-SYSTEM) [58]
+     0   0.0      1   1.5   SB-UNIX:UNIX-LSTAT [59]
+     1   1.5                   foreign function lstat [26]
+------------------------------------------------------------------------
+     1   1.5                   SB-IMPL::%QUERY-FILE-SYSTEM [47]
+     0   0.0      1   1.5   (LABELS SB-IMPL::RESOLVE-PROBLEMATIC-SYMLINK :IN SB-IMPL::%QUERY-FILE-SYSTEM) [58]
+     1   1.5                   SB-UNIX:UNIX-LSTAT [59]
+------------------------------------------------------------------------
+     1   1.5                   FNP-THREAD [43]
+     0   0.0      1   1.5   (FLET F :IN FNP-THREAD) [60]
+     1   1.5                   SB-KERNEL:UB32-BASH-COPY [27]
+------------------------------------------------------------------------
+     1   1.5                   SB-INT:GET-EXTERNAL-FORMAT [18]
+     0   0.0      1   1.5   SB-IMPL::GET3 [61]
+     1   1.5                   SYMBOL-PLIST [29]
+------------------------------------------------------------------------
+     1   1.5                   FN-OWN-TLS-SERVED-CONN [77]
+     0   0.0      1   1.5   FN-AUTH-WITH-BASE [78]
+     1   1.5                   FN-AUTH-SESSION-TLSP [34]
+------------------------------------------------------------------------
+     1   1.5                   FN-SCAR-OWN-READ-TLS-PREFIX [76]
+     0   0.0      1   1.5   FN-OWN-TLS-SERVED-CONN [77]
+     1   1.5                   FN-AUTH-WITH-BASE [78]
+------------------------------------------------------------------------
+     1   1.5                   FN-SCAR-OCFG-READ-TLS-PREFIX [75]
+     0   0.0      1   1.5   FN-SCAR-OWN-READ-TLS-PREFIX [76]
+     1   1.5                   FN-OWN-TLS-SERVED-CONN [77]
+------------------------------------------------------------------------
+     1   1.5                   FN-OWNER-CHUNK [74]
+     0   0.0      1   1.5   FN-SCAR-OCFG-READ-TLS-PREFIX [75]
+     1   1.5                   FN-SCAR-OWN-READ-TLS-PREFIX [76]
+------------------------------------------------------------------------
+     1   1.5                   FNN-CALL [73]
+     0   0.0      1   1.5   FN-OWNER-CHUNK [74]
+     1   1.5                   FN-SCAR-OCFG-READ-TLS-PREFIX [75]
+------------------------------------------------------------------------
+     1   1.5                   FNN-CORE-STATE [72]
+     0   0.0      1   1.5   FNN-CALL [73]
+     1   1.5                   FN-OWNER-CHUNK [74]
+------------------------------------------------------------------------
+     1   1.5                   FNN-OWNER-ACTION [71]
+     0   0.0      1   1.5   FNN-CORE-STATE [72]
+     1   1.5                   FNN-CALL [73]
+------------------------------------------------------------------------
+     1   1.5                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [70]
+     0   0.0      1   1.5   FNN-OWNER-ACTION [71]
+     1   1.5                   FNN-CORE-STATE [72]
+------------------------------------------------------------------------
+     1   1.5                   FNN-OWNER-ATTEMPT [81]
+     0   0.0      1   1.5   FNN-ADVANCE-FRONTIER [82]
+     1   1.5                   foreign function rename [35]
+------------------------------------------------------------------------
+     1   1.5                   FNN-OWNER-ATTEMPT-SERVED [80]
+     0   0.0      1   1.5   FNN-OWNER-ATTEMPT [81]
+     1   1.5                   FNN-ADVANCE-FRONTIER [82]
+------------------------------------------------------------------------
+     1   1.5                   FNN-OWNER-DRAIN-ONE [79]
+     0   0.0      1   1.5   FNN-OWNER-ATTEMPT-SERVED [80]
+     1   1.5                   FNN-OWNER-ATTEMPT [81]
+------------------------------------------------------------------------
+     1   1.5                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [70]
+     0   0.0      1   1.5   FNN-OWNER-DRAIN-ONE [79]
+     1   1.5                   FNN-OWNER-ATTEMPT-SERVED [80]
+------------------------------------------------------------------------
+     1   1.5                   FN-SCAR-FEED-BYTE [84]
+     0   0.0      1   1.5   FN-WIRE-FEED-BYTE [85]
+     1   1.5                   FN-WIRE-STATE-PENDING-CRP [36]
+------------------------------------------------------------------------
+     1   1.5                   FN-SCAR-FEED-COUNTED [83]
+     0   0.0      1   1.5   FN-SCAR-FEED-BYTE [84]
+     1   1.5                   FN-WIRE-FEED-BYTE [85]
+------------------------------------------------------------------------
+     1   1.5                   SB-SPROF::UNAVAILABLE-FRAMES [56]
+     1   1.5                   FN-SCAR-FEED-COUNTED [83]
+     0   0.0      1   1.5   FN-SCAR-FEED-COUNTED [83]
+     1   1.5                   FN-SCAR-FEED-BYTE [84]
+     1   1.5                   SB-SPROF::UNAVAILABLE-FRAMES [56]
+     1   1.5                   FN-SCAR-FEED-COUNTED [83]
+------------------------------------------------------------------------
+
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     16  23.5     16  23.5     16  23.5        -  foreign function fstatat
+   4      8  11.8      8  11.8     24  35.3        -  foreign function clock_nanosleep
+   6      2   2.9     54  79.4     26  38.2        -  SB-IMPL::QUERY-FILE-SYSTEM
+   8      2   2.9     10  14.7     28  41.2        -  foreign function sb_nanosleep
+  10      2   2.9      6   8.8     30  44.1        -  SB-INT:HASHSET-INSERT-IF-ABSENT
+  12      2   2.9      4   5.9     32  47.1        -  SB-IMPL::PARSE-UNIX-NAMESTRING
+  14      2   2.9      4   5.9     34  50.0        -  GET-OUTPUT-STREAM-STRING
+  16      2   2.9      2   2.9     36  52.9        -  foreign function os_get_errno
+  18      2   2.9      2   2.9     38  55.9        -  SB-IMPL::PN-TABLE-DIR=
+  20      2   2.9      2   2.9     40  58.8        -  (LAMBDA (SB-IMPL::RESULT SB-IMPL::SOURCE SB-IMPL::START SB-IMPL::DUMMY) :IN GET-OUTPUT-STREAM-STRING)
+  22      2   2.9      2   2.9     42  61.8        -  PATHNAME-HOST
+  24      2   2.9      2   2.9     44  64.7        -  (LABELS SB-IMPL::TEST :IN WILD-PATHNAME-P)
+  26      1   1.5     15  22.1     45  66.2        -  PARSE-NAMESTRING
+  28      1   1.5      7  10.3     46  67.6        -  SB-IMPL::INTERN-PATHNAME
+  30      1   1.5      4   5.9     47  69.1        -  SB-INT:HASHSET-FIND
+  32      1   1.5      3   4.4     48  70.6        -  WILD-PATHNAME-P
+  34      1   1.5      2   2.9     49  72.1        -  SB-IMPL::MAYBE-MAKE-PATTERN
+  36      1   1.5      2   2.9     50  73.5        -  SB-INT:GET-EXTERNAL-FORMAT
+  38      1   1.5      1   1.5     51  75.0        -  SB-KERNEL:VECTOR-SUBSEQ
+  40      1   1.5      1   1.5     52  76.5        -  foreign function stat
+  42      1   1.5      1   1.5     53  77.9        -  SB-IMPL::UNPARSE-NATIVE-PHYSICAL-FILE
+  44      1   1.5      1   1.5     54  79.4        -  (LABELS SB-IMPL::CHAR-STRING-OUT :IN SB-IMPL::%INIT-STRING-OUTPUT-STREAM)
+  46      1   1.5      1   1.5     55  80.9        -  SB-ALIEN:GET-ERRNO
+  48      1   1.5      1   1.5     56  82.4        -  SB-INT:SANE-DEFAULT-PATHNAME-DEFAULTS
+  50      1   1.5      1   1.5     57  83.8        -  SB-IMPL::HASH-PATHNAME-PIECE
+  52      1   1.5      1   1.5     58  85.3        -  foreign function lstat
+  54      1   1.5      1   1.5     59  86.8        -  SB-KERNEL:UB32-BASH-COPY
+  56      1   1.5      1   1.5     60  88.2        -  TRANSLATE-LOGICAL-PATHNAME
+  58      1   1.5      1   1.5     61  89.7        -  SYMBOL-PLIST
+  60      1   1.5      1   1.5     62  91.2        -  GENERIC-+
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

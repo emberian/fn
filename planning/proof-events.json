@@ -3991,6 +3991,19 @@
           "name": "fn-bs-profile-v1-valid-stays-valid"
         }
       ]
+    },
+    {
+      "id": "PRF-106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sha256-of-prefixed-buffer-is-sha256"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        }
+      ]
     }
   ]
 }
