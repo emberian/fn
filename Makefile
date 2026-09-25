@@ -276,6 +276,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-tests \
 	books/store-reclaim-buffer \
 	tests/acl2/store-reclaim-buffer-tests \
+	books/store-reclaim-holders \
+	tests/acl2/store-reclaim-holders-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \
