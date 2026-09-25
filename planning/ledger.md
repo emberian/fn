@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 890 |
 | Certification roots in the Makefile | 874 |
 | Books inside the root closure | 886 |
-| `defthm` and `defthmd` events | 12340 |
-| `defun` events | 8669 |
+| `defthm` and `defthmd` events | 12344 |
+| `defun` events | 8673 |
 | Functions with verified guards | 2181 |
 | Functions declared `:verify-guards nil` and never verified | 653 |
-| Functions left at the default with an explicit guard | 4569 |
-| Functions left at the default with no guard | 1266 |
-| `assert-event` checks | 12908 |
-| `must-fail` checks | 1388 |
+| Functions left at the default with an explicit guard | 4572 |
+| Functions left at the default with no guard | 1267 |
+| `assert-event` checks | 12922 |
+| `must-fail` checks | 1391 |
 | `encapsulate` events | 61 |
 | Theorems flagged SUSPECT by shape | 107 |
 | Export-hygiene warnings | 148 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 103 |
+| Teeth-form warnings | 104 |
 | Include-hygiene warnings | 891 |
-| Host-names warnings | 1017 |
+| Host-names warnings | 1016 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -384,7 +384,7 @@ that `make certify` requests.
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/native-admin-peer.lisp` | root | 34 | 49 | 0/0/49/0 | 0 | 0 | 1 |
 | `books/native-admin-shape.lisp` | root | 5 | 16 | 1/0/15/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 27 | 31 | 0/0/31/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 7 | 52 | 0/0/52/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 7 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 6 | 17 | 3/0/14/0 | 0 | 0 | 0 |
@@ -392,7 +392,7 @@ that `make certify` requests.
 | `books/native-config.lisp` | root | 2 | 80 | 0/0/80/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 14 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 3 | 16 | 0/0/16/0 | 0 | 0 | 0 |
-| `books/native-live-status.lisp` | root | 55 | 46 | 0/14/32/0 | 0 | 0 | 0 |
+| `books/native-live-status.lisp` | root | 56 | 46 | 0/14/32/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 23 | 94 | 0/0/94/0 | 0 | 0 | 1 |
 | `books/nntp-auth-fold.lisp` | root | 51 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -509,7 +509,7 @@ that `make certify` requests.
 | `books/served-carried.lisp` | root | 17 | 12 | 1/0/11/0 | 0 | 0 | 0 |
 | `books/served-tls-prefix.lisp` | root | 12 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 109 | 51 | 2/4/45/0 | 0 | 0 | 0 |
-| `books/sha256-buffer.lisp` | root | 40 | 9 | 0/0/9/0 | 0 | 0 | 1 |
+| `books/sha256-buffer.lisp` | root | 41 | 10 | 0/0/10/0 | 0 | 0 | 1 |
 | `books/sha256-stobj.lisp` | closure | 153 | 40 | 0/0/26/14 | 0 | 0 | 1 |
 | `books/sha256.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 0 |
@@ -546,7 +546,7 @@ that `make certify` requests.
 | `books/store-open-node-bridge.lisp` | root | 21 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 4 | 2/0/0/2 | 0 | 0 | 0 |
 | `books/store-profile-namespace.lisp` | root | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/store-profile-upgrade.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 0 |
+| `books/store-profile-upgrade.lisp` | root | 25 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/store-reclaim-buffer.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim-holders.lisp` | root | 4 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim.lisp` | root | 38 | 39 | 1/5/33/0 | 0 | 0 | 0 |
@@ -823,7 +823,7 @@ that `make certify` requests.
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 69 | 0 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
-| `tests/acl2/native-live-status-tests.lisp` | root | 0 | 7 | 0/5/2/0 | 44 | 14 | 0 |
+| `tests/acl2/native-live-status-tests.lisp` | root | 0 | 8 | 0/5/2/1 | 51 | 15 | 0 |
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 174 | 10 | 0 |
@@ -937,7 +937,7 @@ that `make certify` requests.
 | `tests/acl2/store-open-node-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 6 | 0 |
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-profile-namespace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
-| `tests/acl2/store-profile-upgrade-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 65 | 16 | 0 |
+| `tests/acl2/store-profile-upgrade-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 72 | 18 | 0 |
 | `tests/acl2/store-reclaim-buffer-tests.lisp` | root | 1 | 3 | 0/3/0/0 | 8 | 1 | 0 |
 | `tests/acl2/store-reclaim-holders-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 20 | 0 |
