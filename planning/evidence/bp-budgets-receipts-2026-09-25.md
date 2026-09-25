@@ -1,8 +1,10 @@
 # bp-budgets-receipts (2026-09-25): durable busy count, operator budgets, the stranded report, receipts from serve
 
-Lane `lane/bp-budgets-receipts` from dev `3a1dcb34`. **Status: not green.**
-The farm budget (three runs) is spent with three books still failing (below).
-No native run was made.
+Lane `lane/bp-budgets-receipts` from dev `3a1dcb34`, merged with dev twice (N16 rotation
+and the routed session; then the ten-second lane). **Status: every root the change
+affects is certified at the merge's bytes** (runs a412 and 9a3f below; `green_check
+--changed-since dev`: 21 changed books, 98 including one, 0 not green). The first
+agent's three runs are kept below as history.
 
 ## What changed
 
@@ -110,8 +112,7 @@ retry and resume tests pass. That is not certification.
 
 ## Native
 
-Not run: no DTN developer image was built from this branch. The lab option
-`tests/bp-dtn7/run_fn_dtn7_app_receipt.py --no-contact-tick` exists but has not been run.
+See "Native (continuation)" below.
 
 ## Findings
 
@@ -126,3 +127,191 @@ Not run: no DTN developer image was built from this branch. The lab option
    job. `bp-contact tick` changes the same way.
 4. n16's rotation checkpoint must carry slot 13 of every held row verbatim; the busy
    count is there now.
+
+
+## Continuation (second agent, 2026-09-25)
+
+### Merges
+
+- `cdd8106e` merges dev (N16 rotation, `(:via HOP ANNOUNCED TABLE)` routing). Both sides'
+  step arms, bridge and premises lemmas are kept. The `:session` event is now
+  `(:session PEER SESSION OPEN MRU OBSERVATION [VIA] [BUDGETS])`. The two optional
+  fields are told apart by tag (`fn-bpnp-session-via`, `fn-bpnp-session-base-length`).
+  `fn-bpnp-routed-start` takes the retry budget. The host sends the routed session
+  through `fnn-bpnode-budgeted`. The routing keystones in `bp-route-step`
+  (`fn-bpnp-step-offers-only-the-routed-hop`,
+  `fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported`) now hold for any tail
+  EXTRA after VIA, with the scan under the budget the event carries (`fn-bprts-budget`).
+  Route tests witness the budgeted routed event.
+- `c686852d` merges dev again (ten-second lane). Both sides' guard hints are kept.
+- **Slot 13 under rotation.** The kind-19 checkpoint holds the replay's held list
+  as one value (`fn-bpnr-checkpoint-of-replay`). `fn-bpnr-checkpoint-decode-of-octets`
+  round-trips any value its codec encodes, and `(:busy n)` encodes because keywords and
+  naturals do. `fn-bpnr-recover-from-checkpoint-equals-full-recover` equates recovery
+  from the checkpoint with whole-history replay, and that replay includes the kind-20
+  arm. So a checkpoint carries slot 13 of every held row unchanged. No separate
+  theorem was needed. `bp-fnbs-replay-append` needed the kind-20 apply closed in
+  its one-row lemma (`9a3a0448`); without that it timed out at 300 s.
+
+### Proof fixes
+
+| book | event | fix |
+| --- | --- | --- |
+| bp-node-progress-premises | `fn-bpnpp-deferral-persist-step` (the Subgoal 4.2' checkpoint) | the `(:ready HELD ROW)` read `fn-bpnpp-nth-1-of-ready` and the keep form of the held write `fn-bpnpp-premises-kept-by-held-write`, in the minimal defkeep theory |
+| bp-node-progress-premises | `fn-bpnpp-session-event-row` (6.8 s) | keep the budget and VIA helpers closed |
+| bp-node-progress-guards | `fn-bpnp-host-eventp` | verify the guards of the session helpers first |
+| bp-node-progress-guards | `fn-bpnp-busy-wait` (3.6 s) | a type fact for the backoff |
+| bp-node-progress-guards | `fn-bpnp-deferral-persist-step` (13.9 s in a clean session) | the minimal theory over `fn-bpnpg-true-listp-of-with-issued` |
+| bp-node-forward-retry | `fn-bpnp-attempt-apply-bounds-retries` | the matched row is a true list (forward chaining from `fn-bpnp-attempt-matches-heldp`) |
+| bp-node-forward-retry | `fn-bpnp-step-session-offer-is-the-scan-choice` | open the session helpers; this theorem covers the unrouted 6-field event, which the host no longer sends |
+
+Book times at 2 jobs on hbox, from the manifests:
+
+| book | time |
+| --- | --- |
+| bp-node-progress-guards | 8.4 s (it was 31.5 s in run 3 and 12.9 s before the lane) |
+| bp-node-progress-premises | 9.0 s |
+| bp-node-forward-retry | 9.3 s |
+| bp-node-busy-delivery | 8.6 s |
+
+Still over 10 s: `bp-node-forward-lower-guards` at 10.5 s. The lane touched it, but its
+cost is the `bp-fnbs-dispatch-codec` include (3.1 s) plus the guards of
+`fn-bpnp-forward-image` (2.4 s) and `fn-bpnp-forward-blocks` (1.7 s). This lane changed none of those.
+
+### Teeth for bp-node-receipt-send (tests/acl2/bp-node-receipt-send-tests.lisp)
+
+**Witness.** A queued and durable base job for the peer. The event is
+`(:contact peer t)`. `fn-bpnp-step` persists exactly that job's `:attempting`
+record, and the pending success effect is the job's `:cl-send` on its route.
+
+**One separating state per conjunct of the iff:**
+- a string peer;
+- an issued operation;
+- the delivery marker `:delivery-uncertain`;
+- the same queued job, fenced;
+- the in-flight state (pending);
+- another peer with no job.
+
+**Once per contact, at the step.** After the durable `:attempting` record the job is
+no longer `:queued`, and the event is nil.
+
+**must-fail cases:**
+- the event-non-nil hypothesis;
+- the token at `*fn-bpn-machine-max-records*` (the event still opens, and the effect
+  is not `:persist`).
+
+### Certification (hbox, w28 `acl2-literal-4g`, cache `/tank/fn/certcache`, 2 jobs, 300 s, `--affected-by books/bp-node-foundation`, 118 roots)
+
+| run | rev | result | manifest |
+| --- | --- | --- | --- |
+| run-20260925T070339Z-a412 | c686852d | 133 passed. Failed: `bp-fnbs-replay-append` (timed out at 300 s: `fn-bpnr-family-replay-aux-cons` opened the kind-20 apply), and `bp-node-rotation` and `bp-node-counterexamples-tests`, which include it | `manifests/certify-20260925T070406Z-2708294.json` |
+| run-20260925T071533Z-9a3f | c996c46a | the 8 remaining roots pass: replay-append 6.6 s, rotation, premises 9.0 s, premises tests, bridge, receipt-send, receipt-send tests, counterexamples tests; the other 110 roots were cached at these bytes from a412 | `manifests/certify-20260925T071636Z-2729359.json` |
+
+### Registry
+
+- `planning/proof-events.json`: PRF-046 gains the durable-count, report, budget and
+  retry events. Each note carries the host line and its teeth.
+- New target PRF-082 (receipts from `serve`) cites
+  `fn-bpnp-receipt-contact-offers-the-queued-job` and
+  `fn-bpnp-receipt-contact-event-needs-a-queued-job`. The row is in `planning/proofs.json`.
+- **Open:** "offered once per contact" as an ACL2 theorem over the host loop. The host's
+  `fnn-bpc-drive-contact` is not an ACL2 driver. The step half (a durable `:attempting`
+  record takes the job out of `:queued`) is witnessed, not proved.
+- `tools/ledger.py --check` reports only staleness of the generated files (no unknown
+  or SUSPECT name). The ledger was not regenerated.
+
+### Host
+
+The `:delivery-stranded` report now names the held row's arrival
+(`fn-bpnf-find-held` of the effect's key, looked up by ACL2). That arrival is the
+number `bp-node resume` takes.
+
+### DTN image certificates
+
+The dtn profile has 119 roots. Its closure was not fully cached at the merged dev
+bytes: 63 books were missing, mostly store/owner books from dev's latest landing.
+`farm.py submit` refused the root list at its cache preflight (no count line) without
+starting ACL2. I therefore ran the runner the farm drives directly on hbox, in the gate
+`/tank/fn/gates/bp-budgets-dtn-d5d558fd` at d5d558fd:
+
+```
+swarm-build python3 tools/certify_books.py --incremental --jobs 2 --timeout-seconds 300 <119 dtn roots>
+```
+
+with `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g` and
+`FN_CERT_CACHE=/tank/fn/certcache`. All 63 passed; the manifest is
+`manifests/certify-20260925T072113Z-2744541.json`. After that,
+`proof_artifacts.py validate --profile dtn` answers `roots=119 result=loaded` in that
+tree. `acquire` into the scratch tree still answered "no complete current artifact
+set" (not diagnosed), so the image was built in the gate tree.
+
+### Native (continuation)
+
+Image: `fn-host-dtn-developer` from d5d558fd, built with
+`host/native/build-dtn.lisp` under `swarm-build`. The build log has 0 undefined lines.
+
+| file | SHA-256 |
+| --- | --- |
+| launcher | `21b0024535a88431e93d532065316ed8af91fe93c72ede77ecb8922029c4d33f` |
+| core | `d32cb163409264909e8bd248ee6732672766913b0a2a9273293660bd61a9897f` |
+
+The script is [`native.sh`](bp-budgets-receipts-2026-09-25/native.sh). Tests and labs ran
+under `systemd-run --user --scope -p MemoryMax=24G`.
+
+**dtn7 app-receipt lab, `--no-contact-tick`.** rc 0 with `--relays 1` (fn A, dtn7 relay,
+fn B) and rc 0 with `--relays 0` (control). No `bp-contact tick` ran. B's `serve`
+printed `BP node receipt contact peer=dtn://sender/`, and A answered
+`BP node delivery receipt-accepted` (outcome `receipt-accepted`). Logs:
+`lab-dtn7-no-tick.out`, `lab-control-no-tick.out`.
+
+**`tests.test_bp_node_native`: FAILED.** 13 ok, 11 failures, 537 s
+(`test_bp_node_native.log`). All 11 failures are the same new behaviour: exit 3
+(uncertain) from a `bp-node dispatch` or `serve` pass that owes a receipt. For example:
+
+```
+BP node receipt contact peer=dtn://sender/
+TCPCL bp-service aux (:SEND :CONTACT 6)
+BP transport work=bp-receipt:receipt:work-bp-node:0 status=attempted
+BP forwarding retained reason=uncertain
+```
+
+The harness's contact neighbour is a `ByteRelay` with no target. It accepts the TCP
+connection and drops it. A socket existed, so the lower machine reads the transfer as
+`:uncertain` and the process exits 3. That is the model's answer, not a harness fault.
+
+Affected tests:
+- `test_absent_bp_trust_refuses_receipt_release`
+- `test_ambiguous_fnrj_decision_fences_until_cold_replay`
+- `test_ambiguous_outbox_publication_is_uncertain_not_refused`
+- `test_death_after_durable_outbox_does_not_allocate_second_sequence`
+- `test_death_after_fnrj_receipt_decision_replays_one_article`
+- `test_death_after_kind_seven_replays_owed_outbox`
+- `test_deletion_report_intent_recovers_and_observation_does_not_release`
+- `test_identity_conflict_is_refused_recorded_and_replayed`
+- `test_older_unrouted_transit_does_not_block_younger_local_request`
+- `test_request_retry_queues_distinct_receipt_carriers_and_releases_pin`
+- `test_permanently_busy_application_strands_row_until_resume`
+
+The last is the new case. It fails only at its final dispatch: the resumed row is
+delivered, a receipt becomes owed, and that pass exits 3. Before that point its new
+assertions passed:
+- the busy count strands at 3;
+- two restarts each report `stranded busy=3 arrival=N` once and never redeliver;
+- `bp-node resume N` answers `BP node delivery resumed`.
+
+`test_busy_application_defers_and_redelivers_after_backoff`,
+`test_rotation_killed_at_each_cut_keeps_held_rows` and
+`test_uncertain_transfer_is_connection_local_and_resume_rearms` pass.
+
+## Findings (continuation)
+
+5. **Receipts from `serve` make the neighbour's transport uncertainty the whole node's.**
+   `fnn-bpnode-send-receipts` runs in both `serve` and `dispatch`. When the lower machine's
+   base transfer is `:uncertain`, the process answers exit 3. Forwarding is different: an
+   uncertain transfer is connection-local by spec 4.3.1 (the kind 9 keeps the count and the
+   node keeps serving). The base contact has no such rule. The honest repair is in the
+   model: give the base receipt transfer a connection-local uncertain outcome, with its
+   theorem, the way 4.3.1 does for forwarding. Changing the tests' expectations or
+   dropping `dispatch` from the send would hide the defect. This lane stops here with
+   the native module red for this one reason.
+6. The stranded report did not name the arrival that `bp-node resume` needs. It does now.
