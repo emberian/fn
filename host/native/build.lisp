@@ -111,6 +111,8 @@
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
 (include-book "books/bp-node-receipt-send")
+;; Routed queued jobs, offered once per contact (PRF-103).
+(include-book "books/bp-node-contact-driver")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
