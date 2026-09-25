@@ -61,6 +61,9 @@ class NativePackChainTests(unittest.TestCase):
     native_timeout = int(os.environ.get("FN_P5_TIMEOUT", "1800"))
     # A stop hook is reached after the open and the capture of the store.
     stop_deadline = native_timeout
+    # The owner's greeting waits for its open-time checkpoint (49.5 s over a
+    # 20,000-record suffix on hbox), and its stop for the close.
+    served_timeout = native_timeout
     setUp = NativeCheckpointTests.setUp
     tearDown = NativeCheckpointTests.tearDown
     native = NativeCheckpointTests.native

@@ -971,7 +971,8 @@ class NativeCheckpointTests(unittest.TestCase):
         return process
 
     def stop_owner(self, process):
-        diagnostic = stop_and_diagnostics(process, timeout=60)
+        diagnostic = stop_and_diagnostics(process,
+                                          timeout=getattr(self, "served_timeout", 60))
         self.assertEqual(process.returncode, 0, diagnostic)
 
     def operator_post(self, config, msgid, subject):
@@ -992,7 +993,7 @@ class NativeCheckpointTests(unittest.TestCase):
         owner = self.run_owner(config)
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-                sock.settimeout(10)
+                sock.settimeout(getattr(self, "served_timeout", 10))
                 with sock.makefile("rwb", buffering=0) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
 
