@@ -1,5 +1,5 @@
 ; Witnesses and teeth for the general per-step K0
-; (books/byte-store-k0-step.lisp, fn-bs-program-step-preserves-relation).
+; (books/byte-store-k0-step.lisp, fn-bs-step-preserves-k0-coverage).
 ; The witnesses are reachable: the K5 fixture's second publication at its
 ; completing pair (two retained records, kernel :completing 1 1) and the
 ; committed-history marker program run from it, and the same fixture's record

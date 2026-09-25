@@ -4,7 +4,7 @@ Lane `k0-general-step`, branch `lane/k0-general-step` from dev `3a1dcb34`.
 
 ## What is proved
 
-`books/byte-store-k0-step.lisp`, keystone `fn-bs-program-step-preserves-relation`:
+`books/byte-store-k0-step.lisp`, keystone `fn-bs-step-preserves-k0-coverage`:
 for every byte state `bs`, kernel `ks`, step and outcome, if
 `(fn-bs-k0-coveredp bs ks)` and `(fn-bs-k0-step-inputp bs ks step outcome)`,
 then after `fn-bs-step` the pair is covered, and the kernel is unchanged unless
