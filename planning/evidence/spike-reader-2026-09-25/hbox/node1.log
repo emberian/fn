@@ -1,0 +1,5 @@
+CONTROL /tank/fn/scratch/spike-reader/node1/control.sock
+
+
+{"pid": 2803183, "port": 11919, "config": "/tank/fn/scratch/spike-reader/node1/fn.toml", "store": "/tank/fn/scratch/spike-reader/node1/store", "cert": "/tank/fn/scratch/spike-reader/node1/cert.pem", "control": "/tank/fn/scratch/spike-reader/node1/control.sock", "logins": {"ember": {"password": "reader-spike-ember", "keys": "/tank/fn/scratch/spike-reader/node1/keys/ember", "principal": "9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403"}, "guest": {"password": "reader-spike-guest", "keys": "/tank/fn/scratch/spike-reader/node1/keys/guest", "principal": "bdfb1bc167a6683e06029af900593e9fac830f4ac0a9e3effb56cbc1c4b9beeb"}}}
+LISTENING 11919

@@ -1,0 +1,43 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed hello from the reader spike · fn</title><style>
+:root { color-scheme: light; font-family: system-ui, sans-serif; background:#f5f3eb; color:#172725 }
+body { max-width: 940px; margin: 0 auto; padding: 1.5rem 1rem 5rem; line-height:1.5 }
+header { display:flex; align-items:baseline; justify-content:space-between; border-bottom:2px solid #214e43; margin-bottom:1.5rem }
+h1,h2 { line-height:1.2; letter-spacing:-.03em } h1 { font-size:2rem; margin:.5rem 0 } h2 { font-size:1.45rem }
+a { color:#145f50; text-decoration-thickness:1px; text-underline-offset:.17em }
+a:hover { color:#922e24 } nav a { margin-right:1rem }
+.card, article { background:#fffefa; border:1px solid #cbd5cd; border-radius:12px; padding:1rem 1.2rem; margin:.7rem 0; box-shadow:0 2px 5px #193d2b0d }
+.meta { color:#52645d; font-size:.88rem; overflow-wrap:anywhere }
+.badge { display:inline-block; border-radius:100px; padding:.15rem .6rem; font-size:.8rem; background:#e2efe7; color:#144d3d }
+.accepted { background:#daf1df } .refused { background:#fae0d9 } .uncertain { background:#fff0be }
+.thread { border-left:3px solid #b7d5c6 } pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:ui-monospace, monospace }
+details { margin-top:1rem; border-top:1px solid #d9e1d9; padding-top:.6rem } summary { cursor:pointer; font-weight:650 }
+.hint { border-left:3px solid #d1a24b; padding:.5rem .8rem; background:#fff9e8 }
+input,textarea { box-sizing:border-box; width:100%; padding:.7rem; margin:.2rem 0 .9rem; border:1px solid #9cad9e; border-radius:6px; font:inherit; background:#fff }
+textarea { min-height:12rem } label { display:block; font-weight:650 }
+button,.button { display:inline-block; border:0; border-radius:6px; padding:.65rem 1rem; background:#145f50; color:white; font:inherit; cursor:pointer; text-decoration:none }
+button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
+.verified { background:#daf1df; color:#0f4a2a } .unverified { background:#fae0d9; color:#7a2217 }
+.absent,.unavailable { background:#ecebe4; color:#4a4a42 } .unread { font-weight:700 }
+.unread-dot { color:#922e24 } .reason { font-family:ui-monospace, monospace; background:#fdf1ee; padding:.5rem .8rem; border-radius:6px; overflow-wrap:anywhere }
+.identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
+form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
+.row label { flex:1 1 12rem }
+.carried { background:#e3e9f7; color:#1f3a73 } .revoked,.withdrawn { background:#f3dff0; color:#6b1f5e }
+.depth-1 { margin-left:18px } .depth-2 { margin-left:36px } .depth-3 { margin-left:54px }
+.depth-4,.depth-5,.depth-6,.depth-7,.depth-8 { margin-left:72px }
+.search { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end } .search label { flex:1 1 10rem }
+.search select { padding:.6rem; margin:.2rem 0 .9rem } table.ops { border-collapse:collapse; width:100% }
+table.ops td,table.ops th { text-align:left; padding:.3rem .5rem; border-bottom:1px solid #d9e1d9; overflow-wrap:anywhere }
+.signing { border-left:3px solid #1f3a73; padding:.4rem .8rem; background:#eef2fb }
+.check { display:flex; gap:.5rem; align-items:center; font-weight:400 } .check input { width:auto; margin:0 }
+@media (max-width: 600px) {
+  body { padding: .8rem .75rem 4rem } h1 { font-size:1.4rem } h2 { font-size:1.15rem }
+  header { flex-wrap:wrap; gap:.3rem } .identity { flex-basis:100% }
+  .card, article { padding:.75rem .8rem; border-radius:8px }
+  .depth-1 { margin-left:8px } .depth-2 { margin-left:16px } .depth-3 { margin-left:24px }
+  .depth-4,.depth-5,.depth-6,.depth-7,.depth-8 { margin-left:32px }
+  nav a { display:inline-block; margin:.2rem .8rem .2rem 0 } button,.button { width:100%; margin:.2rem 0 }
+  form.inline button { width:auto } textarea { min-height:9rem }
+}
+</style></head><body><header><h1><a href="/">fn / news</a></h1><span class="identity muted">ember at 127.0.0.1:11919 · TLSv1.3, certificate verified</span><a href="/outbox">Local outbox</a></header><nav class="top"><a href="/">Groups</a><a href="/operator">Node</a></nav><nav><a href="/g?name=fn.test">fn.test</a><a href="/compose?group=fn.test&amp;reply=3">Reply</a></nav><article><h2>Signed hello from the reader spike</h2><p class="meta">&lt;fn-client.20260925T081131Z.beec9760@ember.invalid&gt; · local #3</p><p><span class="badge verified">node verdict: verified</span></p><p class="hint"><strong>Who wrote this?</strong> The displayed From name is a claim in the article. This reader has not verified the writer's identity.</p><p class="meta">No FN-Statement recorded in this article<br>FN-Authorship carrier present; not verified here</p><p class="meta">Server report of historical verification verdict: verified by principal 9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403 under keyring generation 1. This reports what this node recorded; it is not an independent cryptographic check or current authorization.</p><details><summary>Recorded handling details</summary><p class="meta">From (claimed): ember &lt;ember@spike.invalid&gt;<br>Path: fn.example.invalid!not-for-mail<br>Injection-Info: fn.example.invalid<br>Injection-Date: not supplied<br>References: none</p></details><p class="muted">Viewing does not acknowledge application processing.</p><pre>This article is signed on the author's machine.
+.a dot-led line</pre><details class="resume"><summary>Resume from here</summary><p class="meta">Group <code>fn.test</code>, local #3, Message-ID <code>&lt;fn-client.20260925T081131Z.beec9760@ember.invalid&gt;</code>. Local numbers belong to this node; the Message-ID is what the resume checks the number against.</p><p><a href="/resume?group=fn.test&amp;number=3&amp;id=%3Cfn-client.20260925T081131Z.beec9760%40ember.invalid%3E">Open the articles after this one</a></p><p class="meta">Command line: <code>fn_client.py read fn.test --since 3</code></p></details></article></body></html>

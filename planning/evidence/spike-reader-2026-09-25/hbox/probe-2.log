@@ -1,0 +1,67 @@
+201 fn-nntp experimental reader ready
+> CAPABILITIES
+< 101 capability list follows
+   VERSION 2
+   READER
+   OVER MSGID
+   HDR
+   NEWNEWS
+   LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT
+   IMPLEMENTATION fn-nntp-lab
+   STARTTLS
+   AUTHINFO USER
+> AUTHINFO USER ember
+< 381 password required
+> AUTHINFO PASS reader-spike-ember
+< 281 authentication accepted
+> LIST HEADERS
+< 215 field list follows
+   :
+   :bytes
+   :lines
+> POST
+< 340 send article to be posted
+< 240 article received OK
+> POST
+< 340 send article to be posted
+< 240 article received OK
+> GROUP fn.test
+< 211 2 1 2 fn.test
+> HDR Subject 1-10
+< 225 headers follow
+   1 probe root
+   2 Re: probe root
+> HDR From 1-
+< 225 headers follow
+   1 ember <ember@x.invalid>
+   2 guest <guest@x.invalid>
+> HDR In-Reply-To 1-10
+< 225 headers follow
+   1 
+   2 <probe-root@x.invalid>
+> XHDR subject 1-10
+< 221 header follows
+   1 probe root
+   2 Re: probe root
+> XPAT Subject 1-10 *probe*
+< 221 header follows
+   1 probe root
+   2 Re: probe root
+> OVER 1-10
+< 224 overview information follows
+   1	probe root	ember <ember@x.invalid>	Fri, 25 Sep 2026 07:58:47 +0000	<probe-root@x.invalid>		280	1
+   2	Re: probe root	guest <guest@x.invalid>	Fri, 25 Sep 2026 07:58:47 +0000	<probe-irt@x.invalid>		324	1
+> HDR :fn-verified 1-10
+< 225 headers follow
+   1 absent no-field
+   2 absent no-field
+> LIST COUNTS
+< 215 list of newsgroups follows
+   fn.agents 0 1 0 y
+   fn.test 2 1 2 y
+> NEWNEWS fn.* 20200101 000000 GMT
+< 230 list of new articles by message-id follows
+   <probe-irt@x.invalid>
+   <probe-root@x.invalid>
+> QUIT
+< 205 closing connection
