@@ -282,6 +282,11 @@ class NativeControlFilingTests(unittest.TestCase):
         fn_test = self.listgroup(node, b"fn.test")
         present = self.article_reply(node, cancel)
         self.stop(node)
+        # Restart: replay's schema-1 binding (fn-hsig-carried-record-
+        # metadatap) must admit the signed cancel's record in control.cancel.
+        self.start(node)
+        replayed = self.listgroup(node, b"control.cancel")
+        self.stop(node)
         witness = {
             "hybrid-author-signed-cancel": [filed.returncode,
                                             filed.stdout.decode().strip(),
@@ -293,6 +298,9 @@ class NativeControlFilingTests(unittest.TestCase):
             "listgroup-fn.test": [x.decode() if isinstance(x, bytes) else
                                   [y.decode() for y in x] for x in fn_test],
             "article-signed-cancel": present.decode().strip(),
+            "listgroup-control.cancel-after-restart": [
+                x.decode() if isinstance(x, bytes) else [y.decode() for y in x]
+                for x in replayed],
         }
         print("NATIVE-CONTROL-WITNESS " + json.dumps(witness, sort_keys=True))
         self.assertEqual(filed.returncode, 0, filed)
@@ -300,6 +308,7 @@ class NativeControlFilingTests(unittest.TestCase):
         self.assertTrue(in_control[0].startswith(b"211 1 "), in_control)
         self.assertTrue(fn_test[0].startswith(b"211 1 "), fn_test)
         self.assertTrue(present.startswith(b"220"), present)
+        self.assertTrue(replayed[0].startswith(b"211 1 "), replayed)
 
 
 if __name__ == "__main__":
