@@ -38758,21 +38758,21 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 103,
+        "line": 104,
         "name": "fn-rcon-store-event-p",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-host.lisp",
-        "line": 114,
+        "line": 115,
         "name": "fn-rcon-store-event-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-host.lisp",
-        "line": 122,
+        "line": 123,
         "name": "fn-rcon-store-event-txid",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
