@@ -190,6 +190,73 @@ it cannot continue with its old group-code table."
            (fnn-owner-feed-refresh-configuration service)
            :accepted))))))
 
+;;; spike/control: control-message execution (books/control-exec.lisp).
+;;; SPIKE: defers the host's execution trigger to ACL2 (dev: the owed set
+;;; re-staged by fn-owner-recover and the composite with the acceptance);
+;;; here raw Lisp asks ACL2 for the owed decision after every semantic action
+;;; whose (view version, generation) key moved, and publishes it through the
+;;; same live path an operator's verb takes.
+
+(defun fnn-owner-live-deltas-locked (service deltas)
+  "Stage and publish ACL2's DELTAS through the live owner; the caller holds
+the owner mutex.  The sequence is fnn-owner-live-admin-serialized's."
+  (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
+                (unless (or (null opened) (and (integerp opened) (>= opened 0)))
+                  (fnn-fault "owner returned a malformed connection id"))
+                opened))
+         (staged (and (integerp cid)
+                      (fnn-owner-action 'fn-owner-reconfigure-deltas cid deltas))))
+    (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
+    (unless (eq staged :staged)
+      (return-from fnn-owner-live-deltas-locked :refused))
+    (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
+           (record (progn
+                     (unless (fnn-octet-list-p record-list)
+                       (fnn-fault "owner staged malformed configuration octets"))
+                     (fnn-octets record-list)))
+           (store (fnn-owner-service-store service))
+           (observation (fnn-config-record-observation store))
+           (config-records (fnn-config-records-from-observation observation))
+           (authorization
+             (fnn-admin-authorize store (fnn-durable-records store)
+                                  config-records record
+                                  (mapcar #'car observation))))
+      (multiple-value-bind (published ignored-name)
+          (fnn-admin-publish store record authorization)
+        (declare (ignore ignored-name))
+        (unless (eq (fnn-owner-action 'fn-owner-reconfigure-complete published)
+                    :durable)
+          (fnn-indeterminate "owner rejected a durably published configuration"))
+        (fnn-owner-refresh-config-cache service published)
+        (fnn-owner-feed-refresh-configuration service)
+        :accepted))))
+
+(defvar *fnn-ctl-last-key* nil)
+
+(defun fnn-owner-ctl-after-action (service)
+  (let ((key (fnn-owner-core 'fn-owner-ctl-key)))
+    (unless (equal key *fnn-ctl-last-key*)
+      (fnn-owner-shared-action-locked
+       service nil
+       (lambda ()
+         (loop repeat 64
+               for deltas = (fnn-owner-core 'fn-owner-ctl-owed-deltas)
+               do (cond ((null deltas)
+                         (setq *fnn-ctl-last-key*
+                               (fnn-owner-core 'fn-owner-ctl-key))
+                         (return))
+                        ((eq (fnn-owner-live-deltas-locked service deltas)
+                             :accepted)
+                         (fnn-err "control executed ~s" deltas))
+                        (t
+                         (fnn-err "control decision refused by configuration: ~a"
+                                  (fnn-global 'fn-owner-config-reason))
+                         (setq *fnn-ctl-last-key*
+                               (fnn-owner-core 'fn-owner-ctl-key))
+                         (return)))))))))
+
+(setq *fnn-owner-after-action-hook* #'fnn-owner-ctl-after-action)
+
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.
 

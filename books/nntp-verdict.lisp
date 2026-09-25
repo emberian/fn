@@ -113,3 +113,78 @@
                                       fn-nntp-verdict-hdr-current
                                       fn-nntp-verdict-hdr-range
                                       fn-nntp-verdict-hdr-msgid))))
+
+; ---------------------------------------------------------------------------
+; HDR :fn-control (control-message design 2026-09-25 section 4), spike.
+; SPIKE: defers the dev owner of the control items (a Store record family
+; read at refresh, books/owner.lisp fn-own-refresh); on the spike the host
+; places each item in the pinned verdict list under the key
+; (:fn-control . MSGID), which no Message-ID string equals, so HDR
+; :fn-verified never sees it (host/owner-host.lisp fn-owner-ctl-filter).
+; Like :fn-verified the item is the node's historical claim.
+(defconst *fn-nntp-control-none* '(110 111 110 101))  ; "none"
+
+(defun fn-nntp-control-item (msgid verdicts)
+  (declare (xargs :guard t))
+  (let ((item (fn-stx-reader-lookup (cons :fn-control msgid) verdicts)))
+    (if (and (consp item) (fn-stx-printablep item)) item
+      *fn-nntp-control-none*)))
+
+(defun fn-nntp-control-hdr-lines (group numbers articles verdicts)
+  (declare (xargs :guard t))
+  (if (consp numbers)
+      (let* ((number (car numbers))
+             (article (fn-nntp-available-article group number articles)))
+        (if (consp article)
+            (cons (fn-nntp-hdr-line
+                   (fn-nntp-decimal-field number)
+                   (fn-nntp-control-item (fn-article-msgid article) verdicts))
+                  (fn-nntp-control-hdr-lines group (cdr numbers)
+                                             articles verdicts))
+          (fn-nntp-control-hdr-lines group (cdr numbers) articles verdicts)))
+    nil))
+
+(defun fn-nntp-control-hdr-response (session archive verdicts args)
+  (declare (xargs :guard t))
+  (let ((rest (if (consp args) (cdr args) nil)))
+    (if (not (and (consp rest) (null (cdr rest))))
+        (fn-nntp-single session "501 syntax error")
+      (let ((token (car rest)))
+        (cond
+         ((fn-nntp-range-okp (fn-nntp-parse-range token))
+          (let ((group (fn-nntp-session-group session))
+                (range (fn-nntp-parse-range token)))
+            (if (null group)
+                (fn-nntp-single session "412 no newsgroup selected")
+              (let* ((numbers (fn-nntp-group-range-numbers
+                               group (fn-nntp-range-low range)
+                               (fn-nntp-range-high range)
+                               (fn-state-articles archive)))
+                     (lines (fn-nntp-control-hdr-lines
+                             group numbers (fn-state-articles archive)
+                             verdicts)))
+                (if (consp lines)
+                    (fn-nntp-multi session (fn-nntp-hdr-initial nil) lines)
+                  (fn-nntp-single session "423 no articles in that range"))))))
+         ((fn-nntp-message-id-tokenp token)
+          (let ((article (fn-find-article (fn-nntp-token-string token)
+                                          (fn-state-articles archive))))
+            (if (not (consp article))
+                (fn-nntp-single session "430 no article with that message-id")
+              (fn-nntp-multi
+               session (fn-nntp-hdr-initial nil)
+               (list (fn-nntp-hdr-line
+                      (fn-nntp-decimal-field 0)
+                      (fn-nntp-control-item (fn-article-msgid article)
+                                            verdicts)))))))
+         (t (fn-nntp-single session "501 syntax error")))))))
+
+;; SPIKE: defers the proof (a restatement of the :fn-verified arm's session
+;; lemma; proof owner books/nntp-verdict.lisp).
+(skip-proofs
+ (defthm fn-nntp-control-hdr-response-keeps-session
+   (equal (fn-nntp-result-session
+           (fn-nntp-control-hdr-response session archive verdicts args))
+          session)))
+
+(in-theory (disable fn-nntp-control-hdr-response))

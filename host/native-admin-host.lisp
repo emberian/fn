@@ -26,10 +26,20 @@
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
   ; only hands it to the owner's staging step.
   (declare (xargs :stobjs state :mode :program))
-  (let ((deltas (fn-native-admin-plan-deltas plan)))
-    (if deltas
-        (fn-owner-reconfigure-deltas id deltas state)
-      (value :refused))))
+  (if (equal (fn-native-admin-result-kind plan) :apply-checkgroups)
+      ;; spike/control: `control apply-checkgroups MSGID', the report's
+      ;; deltas against the live configuration (books/control-exec.lisp
+      ;; fn-ctl-checkgroups-apply-deltas), staged like any operator change.
+      (mv-let (erp applied state)
+        (fn-owner-ctl-apply-checkgroups (fn-native-admin-result-name plan) state)
+        (declare (ignore erp))
+        (if (and (consp applied) (eq (car applied) :ok) (consp (cadr applied)))
+            (fn-owner-reconfigure-deltas id (cadr applied) state)
+          (value :refused)))
+    (let ((deltas (fn-native-admin-plan-deltas plan)))
+      (if deltas
+          (fn-owner-reconfigure-deltas id deltas state)
+        (value :refused)))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
@@ -43,6 +53,9 @@
           ((equal kind :remove-peer)
            (fn-store-cfg-remove-peer (fn-native-admin-result-name plan)
                                      monotonic wall state))
+          ((equal kind :apply-checkgroups)
+           ;; SPIKE: defers the offline apply (live owner only on the spike).
+           (value nil))
           ((equal kind :set-policy)
            (fn-store-cfg-set-policy (fn-native-admin-result-name plan)
                                     (fn-native-admin-result-value plan)
