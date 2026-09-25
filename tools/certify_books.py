@@ -284,6 +284,7 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
         "source_digests_sha256_after": {
             f"{book}.lisp": digest(book_source(book))},
         "certificate_digests_sha256": {book: digest(certificate)},
+        "compiled_digests_sha256": compiled_digests([book]),
         "evidence": str(run_dir),
         # A killed run has no final sweep.  Its already-passing books still
         # need the exact toolchain identity now required by set installation;
@@ -305,6 +306,24 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
         event["why"] = "; ".join(report.unverified + report.uncached
                                  + report.unreadable) or "no pair offered"
     return event
+
+
+def compiled_digests(books: list[str]) -> dict[str, str]:
+    """The compiled file each book's certification wrote, by digest.
+
+    ACL2 on SBCL writes `<book>.fasl` after the certificate (Step 5 of
+    certify-book) and include-book loads it only when its write date is not
+    older than the certificate's.  A `.fasl` older than its `.cert` is left
+    from an earlier certification, which ACL2 itself would refuse, so it is
+    not recorded and `certs.publish` does not cache it.
+    """
+    found = {}
+    for book in books:
+        cert, fasl = ROOT / f"{book}.cert", ROOT / f"{book}.fasl"
+        if (cert.is_file() and fasl.is_file()
+                and fasl.stat().st_mtime >= cert.stat().st_mtime):
+            found[book] = digest(fasl)
+    return found
 
 
 def digest(path: Path) -> str:
@@ -1113,6 +1132,10 @@ def main() -> int:
             "origins": dict(installed.origins),
             "roots_installed": installed.roots_installed,
             "recertified": installed.recertified,
+            # Installed or kept pairs whose cache entry carried the compiled
+            # file, and those that did not (ACL2 then loads them uncompiled).
+            "fasl_installed": installed.fasl_installed,
+            "fasl_missing": installed.fasl_missing,
         }
         manifest["installed_books"] = dict(sorted(installed.installed_from.items()))
         manifest["book_provenance"] = {
@@ -1363,6 +1386,7 @@ def main() -> int:
             "failure_markers": found_failures,
             "driver_digests_sha256": driver_digests,
             "certificate_digests_sha256": certificates,
+            "compiled_digests_sha256": compiled_digests(sorted(certificates)),
             "source_digests_sha256_after": source_digests_after,
             "runner_unchanged": runner_unchanged,
             "slot_wait_seconds": {key: round(value, 3)
