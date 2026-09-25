@@ -8,6 +8,10 @@
 (include-book "clock")
 ; D13: a reclaimed article's payload is a tombstone (STO-014).
 (include-book "reclaim-tombstone")
+; Closed here: its recognizer walks 89 conses, and opened inside every
+; proof about a retrieval it multiplied nntp-responses' own proof time
+; thirty-fold (1.7 s to 56.6 s at 2 jobs, persvati).
+(local (in-theory (disable fn-rcl-tombstonep)))
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
