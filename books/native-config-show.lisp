@@ -966,16 +966,6 @@
      :hints (("Goal" :in-theory (enable fn-ncfg-decimal)))))
 
   (local
-   (defthm fn-ncfg-parse-value-parsed
-     (implies (not (equal (fn-ncfg-parse-value xs) :bad))
-              (fn-ncfg-parsed-valuep (fn-ncfg-parse-value xs)))
-     :hints (("Goal" :in-theory (e/d (fn-ncfg-parse-value fn-ncfg-quoted-value)
-                                     (fn-ncfg-decimal fn-ncfg-printable-octet-listp
-                                      fn-record-octets-string fn-record-string-octets))
-              :use ((:instance fn-ncfg-string-octets-of-printable
-                     (xs (fn-ncfg-reverse (fn-ncfg-rest (fn-ncfg-reverse (cdr xs)))))))))))
-
-  (local
    (defthm fn-ncfg-octets-chars-character-listp
      (character-listp (fn-record-octets-chars xs))
      :hints (("Goal" :in-theory (enable fn-record-octets-chars)))))
@@ -998,6 +988,16 @@
   (local
    (defthm fn-ncfg-printablep-of-list-fix
      (equal (fn-ncfg-printablep (list-fix xs)) (fn-ncfg-printablep xs))))
+
+  (local
+   (defthm fn-ncfg-parse-value-parsed
+     (implies (not (equal (fn-ncfg-parse-value xs) :bad))
+              (fn-ncfg-parsed-valuep (fn-ncfg-parse-value xs)))
+     :hints (("Goal" :in-theory (e/d (fn-ncfg-parse-value fn-ncfg-quoted-value)
+                                     (fn-ncfg-decimal fn-ncfg-printable-octet-listp
+                                      fn-record-octets-string fn-record-string-octets))
+              :use ((:instance fn-ncfg-string-octets-of-printable
+                     (xs (fn-ncfg-reverse (fn-ncfg-rest (fn-ncfg-reverse (cdr xs)))))))))))
 
   (local
    (defthm fn-ncfg-parse-lines-parsed
