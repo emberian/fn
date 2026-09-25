@@ -613,11 +613,21 @@
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
+;; The call is fn-ccar-ocfg-complete (books/owner-commit-carried.lisp), equal
+;; to fn-ocfg-step of (:complete) for every configured owner, no hypothesis
+;; (fn-ccar-ocfg-complete-is-ocfg-step-complete).  It is guard-verified under
+;; fn-sn-statep of the store, which fn-ocl-relation carries
+;; (fn-ccar-ocl-relation-carries-sn-statep); the unverified fn-ocfg-step
+;; evaluated that guard over the whole store on every completion, and its
+;; fn-sn-finish searched the whole history and re-recognized the record for
+;; every field it read.  The signed POST's composite, keyring snapshots,
+;; retention, consumer and topic events complete here.
 (defun fn-owner-finish (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
-         (state (fn-owner-step (list :complete) state))
+         (state (fn-owner-install-ocfg
+                 (fn-ccar-ocfg-complete (fn-owner-ocfg state)) state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
