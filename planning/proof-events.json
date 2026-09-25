@@ -592,6 +592,31 @@
         {
           "kind": "theorem",
           "name": "fn-bpr-live-receipt-regenerated-after-restart"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sonb-configured-replay-is-fixed-table-replay",
+          "note": "K4 node correspondence (PKT-087): when every configuration record names txid 0 (fn-sonb-configured-before-eventsp), a successful configured replay fn-cpr-replay is the fixed-table fn-replay under the final configuration's domain and capacity, node for node. Not claimed for a history reconfigured after an event; tests/acl2/store-open-node-bridge-tests separates the hypothesis with a release-then-shrink history."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-has-live-history-relation-of-host-open",
+          "note": "fn-snt-relation of the state fn-cpo-open-observed returns, under fn-sonb-configured-before-eventsp; host/store-node-host.lisp:180 (fn-store-sn-recover) and host/owner-host.lisp:178 (fn-owner-recover) call fn-cpo-open-observed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-exact-history-node-of-host-open",
+          "note": "The node conjunct of fn-sn-open-observed-success-exact-history at the host's open, under fn-sonb-configured-before-eventsp; host/store-node-host.lisp:180 (fn-store-sn-recover) and host/owner-host.lisp:178 (fn-owner-recover) call fn-cpo-open-observed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-configured-node-of-host-open",
+          "note": "The node conjunct at the host's open with no reconfiguration hypothesis: the opened node is fn-cst-replay-node of the configuration and Store journals; host/store-node-host.lisp:180 (fn-store-sn-recover) and host/owner-host.lisp:178 (fn-owner-recover) call fn-cpo-open-observed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-live-receipt-regenerated-after-restart-of-host-open",
+          "note": "The receipt-regeneration theorem with the restart reopening through fn-cpo-open-observed; added hypotheses fn-sob-configured-openp and fn-sonb-configured-before-eventsp. No ground witness (the fixed-table keystone has none either)."
         }
       ]
     },
@@ -2011,6 +2036,40 @@
           "name": "fn-bs-k0-record-linked-cut-relation-by-step",
           "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-linked-cut-relation, which stays the cited per-cut event. Pair 8: the link's inputs at pair 6 are fn-bs-k0p-record-link-inputs.",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-step-preserves-k0-coverage",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge (planning/evidence/k0-corollaries-2026-09-25.md)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-covered-crash-image-is-a-related-image",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge (planning/evidence/k0-corollaries-2026-09-25.md)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-replaced-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-replaced-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-reserved-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-reserved-cut-relation, which stays the cited per-cut event. Its predecessor pair's relation is fn-bs-k0-frontier-durable-cut-relation: the root barrier over a pending frontier rename is not a step-input kind.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-attempted-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-attempted-cut-establishes-relation, which stays the cited per-cut event. Its predecessor is fn-bs-k0-record-linked-cut-relation.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-staging-fsync-error-preserves-relation",
+          "note": "K0 step kind (PKT-086, k0-steps): from any related state outside the recovery window, an fsync of :staging that fails and lands any well-formed crash selection of the staging entry operations keeps the relation; fn-bs-k0-step-inputp admits it and fn-bs-step-preserves-k0-coverage covers it.",
+          "pending_subject": "model-only: the subject is fn-bs-fsync-dir inside fn-bs-step; no host line calls it (the native host is tied to the programs by tools/native_program_check.py only)."
         }
       ]
     },

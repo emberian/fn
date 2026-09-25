@@ -213,11 +213,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
+	books/byte-store-k0-staging-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
 	books/store-open-bridge \
 	tests/acl2/store-open-bridge-tests \
+	books/store-open-node-bridge \
+	tests/acl2/store-open-node-bridge-tests \
 	books/source-projection-bridge \
 	tests/acl2/source-projection-bridge-tests \
 	books/byte-store-retention-publication \
