@@ -1988,7 +1988,7 @@
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
     },
     {
-      "id": "NNT-012",
+      "id": "NNT-014",
       "title": "Key succession and revocation are owner-executed signed statements; a revoked principal is never verified again and its later transit is :revoked evidence",
       "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
       "milestone": "M4",
