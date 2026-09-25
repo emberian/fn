@@ -272,34 +272,54 @@
    (equal (fn-sbud-signed-event-boundary profile event)
           (if (<= (len (fn-store-event-encode event))
                   (fn-bs-profile-max-record-octets profile))
-              :ok :signed-record))))
+              :ok :signed-record))
+   :hints (("Goal" :in-theory (disable fn-store-event-encode fn-stxa-encode
+                                       fn-stxa-p fn-bs-profile-max-record-octets
+                                       fn-bs-profile-max-transactions
+                                       fn-bs-profile-admittedp)))))
 (must-fail
  (defthm sbnt-publishable-without-ok
    (implies (and (fn-bs-profile-admittedp profile) (natp count)
                  (< count (fn-bs-profile-max-transactions profile)))
             (fn-bs-publication-admissiblep
-             profile count (len (fn-store-event-encode event))))))
+             profile count (len (fn-store-event-encode event))))
+   :hints (("Goal" :in-theory (disable fn-store-event-encode fn-stxa-encode
+                                       fn-stxa-p fn-bs-profile-max-record-octets
+                                       fn-bs-profile-max-transactions
+                                       fn-bs-profile-admittedp)))))
 (must-fail
  (defthm sbnt-publishable-without-admitted-profile
    (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
                  (natp count)
                  (< count (fn-bs-profile-max-transactions profile)))
             (fn-bs-publication-admissiblep
-             profile count (len (fn-store-event-encode event))))))
+             profile count (len (fn-store-event-encode event))))
+   :hints (("Goal" :in-theory (disable fn-store-event-encode fn-stxa-encode
+                                       fn-stxa-p fn-bs-profile-max-record-octets
+                                       fn-bs-profile-max-transactions
+                                       fn-bs-profile-admittedp)))))
 (must-fail
  (defthm sbnt-publishable-without-natural-count
    (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
                  (fn-bs-profile-admittedp profile)
                  (< count (fn-bs-profile-max-transactions profile)))
             (fn-bs-publication-admissiblep
-             profile count (len (fn-store-event-encode event))))))
+             profile count (len (fn-store-event-encode event))))
+   :hints (("Goal" :in-theory (disable fn-store-event-encode fn-stxa-encode
+                                       fn-stxa-p fn-bs-profile-max-record-octets
+                                       fn-bs-profile-max-transactions
+                                       fn-bs-profile-admittedp)))))
 (must-fail
  (defthm sbnt-publishable-without-a-transaction-left
    (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
                  (fn-bs-profile-admittedp profile)
                  (natp count))
             (fn-bs-publication-admissiblep
-             profile count (len (fn-store-event-encode event))))))
+             profile count (len (fn-store-event-encode event))))
+   :hints (("Goal" :in-theory (disable fn-store-event-encode fn-stxa-encode
+                                       fn-stxa-p fn-bs-profile-max-record-octets
+                                       fn-bs-profile-max-transactions
+                                       fn-bs-profile-admittedp)))))
 ; Evaluated counterexamples for the same hypotheses.
 (assert-event (not (equal (fn-sbud-signed-event-boundary *sbnt-r-at* nil) :ok)))
 (assert-event (not (fn-bs-publication-admissiblep
