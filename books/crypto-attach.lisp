@@ -7,7 +7,11 @@
 ; credential had to hold its secret in the clear (board note OB-AUTH-DIGEST),
 ; and the host computed the content identity in Python and in host Lisp, which
 ; is the twin AGENTS.md's one-owner rule forbids.  This book attaches
-; `fn-sha256' (books/sha256.lisp) to both seams.
+; SHA-256 to both seams: the realiser is `fn-sha256-stobj'
+; (books/sha256-stobj.lisp), the word-stobj computation, and it is attached
+; under `fn-sha256-stobj-is-sha256', the theorem that it equals `fn-sha256'
+; (books/sha256.lisp), the list model, on every object.  Every statement
+; below is about `fn-sha256'; the executable is the stobj.
 ;
 ; WHAT THE ATTACHMENT CHANGES IN THE LOGIC: nothing.  `defattach' introduces
 ; no axiom.  It obliges ACL2 to prove that the attached function satisfies
@@ -37,6 +41,7 @@
 (include-book "crypto-seam")
 (include-book "frame-octets")
 (include-book "sha256")
+(include-book "sha256-stobj")
 
 (local (in-theory (enable fn-cbor-codec-vocabulary
                           fn-cbor-invariants-vocabulary
@@ -79,11 +84,25 @@
 ; SHA-256 does not provide, that is a finding about the seam to be recorded,
 ; never a constraint to weaken.
 
-; -----------------------------------------------------------------------------
-; The attachments.
+; The same three, for the executable.  `fn-sha256-stobj-is-sha256' is an
+; enabled rewrite, so each is the list model's discharge again; no
+; constraint is restated and nothing about the stobj is assumed.
 
-(defattach fn-digest fn-sha256)
-(defattach fn-frame-digest fn-sha256)
+(defthm fn-sha256-stobj-satisfies-fn-digest-shape
+  (fn-digest-octetsp (fn-sha256-stobj m)))
+
+(defthm fn-sha256-stobj-satisfies-fn-frame-digest-octet-listp
+  (fn-cbor-octet-listp (fn-sha256-stobj octets)))
+
+(defthm fn-sha256-stobj-satisfies-fn-frame-digest-length
+  (equal (len (fn-sha256-stobj octets)) *fn-frame-trailer-octets*))
+
+; -----------------------------------------------------------------------------
+; The attachments: the word-stobj computation, under its correspondence.
+; The switch from `fn-sha256' is these two lines (D27, boundary 3).
+
+(defattach fn-digest fn-sha256-stobj)
+(defattach fn-frame-digest fn-sha256-stobj)
 
 ; -----------------------------------------------------------------------------
 ; The coercion is the identity on the domain fn actually digests.
