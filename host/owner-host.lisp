@@ -487,8 +487,13 @@
   (let ((s (fn-owner-store state)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
-      (let ((state (fn-owner-step
-                    (list :store (list :prepare-identity event)) state)))
+;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
+      ;; fn-ocfg-step of this event for every configured owner, no hypothesis
+      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step), guard-verified under
+      ;; fn-sn-statep of the store, which fn-ocl-relation carries.
+      (let ((state (fn-owner-install-ocfg
+                    (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
+                    state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact

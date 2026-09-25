@@ -115,14 +115,19 @@
                                                      (icar-t-forged-path)
                                                      *own-control-evidence* 1 3)
                           (icar-t-intent))))
+; The same refutations over constants the prover evaluates (the identity
+; slot is 0: the Path readers never read it).
+(defconst *icar-t-forged-path-carry*
+  (list* *icar-t-sub* 0 (fn-nntp-string-octets "out.example!not-for-mail")))
 (must-fail
  (defthm icar-t-path-without-carryp
-   (equal (fn-icar-path sub carry)
-          (fn-own-feed-path-of (fn-own-sub-octets sub)))))
+   (equal (fn-icar-path *icar-t-sub* *icar-t-forged-path-carry*)
+          (fn-own-feed-path-of (fn-own-sub-octets *icar-t-sub*)))))
 (must-fail
  (defthm icar-t-targets-without-carryp
-   (equal (fn-icar-submission-targets o carry)
-          (fn-own-submission-targets o))))
+   (equal (fn-icar-submission-targets *own-control-fed-taken*
+                                      *icar-t-forged-path-carry*)
+          (fn-own-submission-targets *own-control-fed-taken*))))
 (must-fail
  (defthm icar-t-intent-id-without-carryp
    (equal (fn-icar-intent-id sub carry)
