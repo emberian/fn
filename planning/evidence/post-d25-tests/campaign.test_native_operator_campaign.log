@@ -1,0 +1,57 @@
+# target tests.campaign.test_native_operator_campaign  start 2026-09-24T23:56:53Z  cwd /tank/fn/scratch/post-d25/tree
+# cmd: python3 -m unittest -v tests.campaign.test_native_operator_campaign
+# sbcl on PATH: /tank/fn/scratch/qual-4eca4148/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_D23_VERIFY=1
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=3411e52b435ae8c31e68a3d64ab84687a04071885b9840ee2c46a989403375ba
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b94f959e610c1b96559c32467b05400290d13873d813cd2b4fec9c6d14b04445
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=4eca4148
+# env FN_NATIVE_IMAGES=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/post-d25/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/post-d25/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env FN_RUN_VERIFY_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/qual-4eca4148/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/runtime/sbcl-home/
+test_a_changed_body_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_changed_body_is_not) ... ok
+test_a_dropped_or_reordered_payload_field_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_dropped_or_reordered_payload_field_is_not) ... ok
+test_a_field_injected_twice_or_over_the_payloads_own_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_field_injected_twice_or_over_the_payloads_own_is_not) ... ok
+test_a_headless_octet_string_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_a_headless_octet_string_is_not) ... ok
+test_an_added_field_outside_the_injection_is_not (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_an_added_field_outside_the_injection_is_not) ... ok
+test_the_injected_article_is_the_payload_injected (tests.campaign.test_native_operator_campaign.InjectedFormTests.test_the_injected_article_is_the_payload_injected) ... ok
+test_every_developer_selector_is_registered (tests.campaign.test_native_operator_campaign.NativeCutTableTests.test_every_developer_selector_is_registered) ... ok
+test_the_recovery_program_cuts_are_selectable (tests.campaign.test_native_operator_campaign.NativeCutTableTests.test_the_recovery_program_cuts_are_selectable) ... ok
+test_the_table_agrees_with_the_host (tests.campaign.test_native_operator_campaign.NativeCutTableTests.test_the_table_agrees_with_the_host) ... ok
+test_served_owner_cuts_stop_and_production_refusals (tests.campaign.test_native_operator_campaign.NativeOperatorCampaignTests.test_served_owner_cuts_stop_and_production_refusals) ... cut record-attempted
+cut recovery-stage-unlinked
+faults
+ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 23.739s
+
+OK
+# rc=0 wall=23.8 end 2026-09-24T23:57:17Z

@@ -1,0 +1,55 @@
+# target tests.test_native_live_reconfiguration  start 2026-09-24T23:56:52Z  cwd /tank/fn/scratch/post-d25/tree
+# cmd: python3 -m unittest -v tests.test_native_live_reconfiguration
+# sbcl on PATH: /tank/fn/scratch/qual-4eca4148/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_D23_VERIFY=1
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=3411e52b435ae8c31e68a3d64ab84687a04071885b9840ee2c46a989403375ba
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b94f959e610c1b96559c32467b05400290d13873d813cd2b4fec9c6d14b04445
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=4eca4148
+# env FN_NATIVE_IMAGES=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/post-d25/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/post-d25/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env FN_RUN_VERIFY_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/qual-4eca4148/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/runtime/sbcl-home/
+test_a_group_created_live_is_served_before_restart (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart) ... ok
+test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable) ... ok
+test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives) ... ok
+test_the_live_verb_answers_and_the_owner_keeps_serving (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_the_live_verb_answers_and_the_owner_keeps_serving) ... ok
+test_a_request_being_answered_is_not_shut_by_the_stop_it_caused (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_a_request_being_answered_is_not_shut_by_the_stop_it_caused) ... ok
+test_actual_native_open_and_completion_call_the_physical_history_model (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_actual_native_open_and_completion_call_the_physical_history_model) ... ok
+test_completion_publishes_what_recovery_replays (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_completion_publishes_what_recovery_replays) ... ok
+test_publication_is_authorized_on_the_stores_own_lock_observation (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_publication_is_authorized_on_the_stores_own_lock_observation) ... ok
+test_the_live_arm_is_the_event_sequence_the_theorem_names (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_is_the_event_sequence_the_theorem_names) ... ok
+test_the_live_arm_reads_the_open_connection_id_as_an_id (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_reads_the_open_connection_id_as_an_id) ... ok
+test_the_live_arm_stages_acls_delta_list_and_builds_none (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_stages_acls_delta_list_and_builds_none) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.274s
+
+OK
+# rc=0 wall=1.3 end 2026-09-24T23:56:53Z
