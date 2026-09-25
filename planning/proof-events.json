@@ -3106,6 +3106,22 @@
         {
           "kind": "theorem",
           "name": "fn-bs-marker-crash-open-stays-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-open-refuses-below-every-answered-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-required-store-never-admits-an-absent-marker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-requirement-follows-a-covering-marker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-legacy-store-migrates-by-the-two-step"
         }
       ]
     },
