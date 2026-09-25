@@ -37,25 +37,57 @@
 ;                 record candidate, kernel record-present-visible with
 ;                 durable records its own; any outcome.
 ;   :observe      the frontier observations that claim no commit, the record
-;                 link and record directory error arms, core completion and
-;                 emit success; (:record-dir :ok) and (:frontier-dir :ok) with
-;                 their directory-committed premise.
+;                 program's (:record-file :ok) and (:record-link :ok), the
+;                 record link and record directory error arms, core completion
+;                 and emit success; (:record-dir :ok) and (:frontier-dir :ok)
+;                 with their directory-committed premise.
+; The step precondition carries the relation (or, for the root barrier, the
+; marker-pending coverage), so the theorem has no separate coverage
+; hypothesis.
 ; NOT covered, named: :mkdir and :link-eexist (initialization only; the init
-; program has its own theorem), (:record-file :ok) and (:record-link :ok),
-; which have no stand-alone kernel lemma yet, the error outcomes of the
-; :staging and :transactions barriers, and every step in the recovery
-; window.  The per-cut theorems of byte-store-k0*, which the registry cites,
-; are unchanged.
+; program has its own theorem), the error outcomes of the :staging and
+; :transactions barriers, the root barrier over a pending frontier rename,
+; and every step in the recovery window.  The per-cut theorems that follow
+; from this one are in byte-store-k0-step-bridge.
 (in-package "ACL2")
 (include-book "byte-store-k0-step-lemmas")
 
 (defthm fn-bs-k0s-covered-of-relation
   (implies (fn-bs-store-relation bs ks) (fn-bs-k0-coveredp bs ks))
   :hints (("Goal" :in-theory '(fn-bs-k0-coveredp))))
+; The record program's two :ok observations (lane k0-corollaries): each moves
+; the kernel between two phases whose crash images and pending-entry
+; conditions agree, so neither needs a byte-state premise.
+(defthm fn-sf-record-file-result-ok-preserves-store-relation
+  (implies (fn-bs-store-relation bs ks)
+           (fn-bs-store-relation bs (fn-sf-record-file-result ks :ok)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-sf-record-file-result-preserves-state (s ks) (result :ok)))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
+                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
+                             fn-sf-record-file-result)
+                            (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
+                             fn-bs-authority-fencedp fn-bs-authority-knownp
+                             fn-bs-ops-for-dir)))))
+(defthm fn-sf-record-link-result-ok-preserves-store-relation
+  (implies (fn-bs-store-relation bs ks)
+           (fn-bs-store-relation bs (fn-sf-record-link-result ks :ok)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-sf-record-link-result-preserves-state (s ks) (result :ok)))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
+                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
+                             fn-sf-record-link-result)
+                            (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
+                             fn-bs-authority-fencedp fn-bs-authority-knownp
+                             fn-bs-ops-for-dir)))))
 (defun fn-bs-k0-observation-inputp (bs ks event)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-bs-frontier-noncommit-observationp event)
-      (member-equal event '((:record-link :error) (:record-dir :error)))
+      (member-equal event '((:record-file :ok) (:record-link :ok) (:record-link :error) (:record-dir :error)))
       (and (consp event) (member-equal (car event) '(:core-completion :emit-success)))
       (and (equal event '(:record-dir :ok))
            (equal (fn-sf-phase ks) :record-attempted)
@@ -119,13 +151,14 @@
            (fn-bs-store-relation bs (fn-sf-dispatch ks event g c)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-frontier-noncommit-observation-preserves-relation (outcome :ok) (groups g) (capacity c))
+                 fn-sf-record-file-result-ok-preserves-store-relation fn-sf-record-link-result-ok-preserves-store-relation
                  fn-bs-record-link-error-preserves-relation fn-bs-record-dir-error-preserves-relation
                  fn-bs-record-directory-commit-observation-preserves-relation
                  fn-bs-frontier-directory-commit-observation-preserves-relation
                  (:instance fn-bs-core-completion-preserves-relation (sequence (cadr event)) (txid (caddr event)))
                  (:instance fn-bs-emit-success-preserves-relation (sequence (cadr event)) (txid (caddr event))))
            :in-theory (e/d (fn-sf-dispatch) (fn-bs-store-relation fn-sf-start-frontier fn-sf-frontier-file-result
-                            fn-sf-frontier-replace-result fn-sf-frontier-dir-result fn-sf-record-link-result
+                            fn-sf-frontier-replace-result fn-sf-frontier-dir-result fn-sf-record-link-result fn-sf-record-file-result
                             fn-sf-record-dir-result fn-sf-core-completion fn-sf-emit-success
                             fn-bs-record-directory-committedp fn-bs-frontier-directory-committedp)))))
 (defthm fn-bs-k0s-step-create-covered
@@ -227,8 +260,7 @@
                             fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
 (defthm fn-bs-step-preserves-k0-coverage
-  (implies (and (fn-bs-k0-coveredp bs ks)
-                (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (fn-bs-k0-step-inputp bs ks step outcome)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
                  (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
              (and (fn-bs-k0-coveredp bs1 ks1)
