@@ -326,7 +326,7 @@
 
 (defun fn-bpnp-busy-slot (count)
   (declare (xargs :guard t))
-  (if (zp count) nil (list :busy count)))
+  (if (zp (nfix count)) nil (list :busy count)))
 
 (defun fn-bpnp-deferred-held (h count)
   (declare (xargs :guard (true-listp h)))
