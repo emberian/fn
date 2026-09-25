@@ -1,0 +1,47 @@
+accepted group create control.cancel
+group created name=control.cancel generation=2
+exit 0
+fn principal: error: argument action: invalid choice: 'bind' (choose from 'new', 'list', 'set-password')
+exit 5
+fn principal: error: argument action: invalid choice: 'bind' (choose from 'new', 'list', 'set-password')
+exit 5
+fn principal: error: argument action: invalid choice: 'bind' (choose from 'new', 'list', 'set-password')
+exit 5
+accepted principal list registry=/tank/fn/scratch/path-login/node/credentials.toml count=2
+ember principal=172aaffef4c349ec0e2136f5dde6ab6aa6e5b393443ed0942b2d6d8cb15a338d posting=true
+guest principal=45d5ebf23ae82e66c1a1e789d7f52c95af520ca17148467cb6bbb1d44d78915b posting=true
+exit 0
+$ operator principal: principal bind nobody 9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403
+refused operator principal bind unknown-login
+exit 1
+$ operator principal: principal bind ember 07
+usage operator principal (PRINCIPAL PRINCIPAL)
+exit 5
+$ operator principal: principal bind ember 9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403
+ember principal=172aaffef4c349ec0e2136f5dde6ab6aa6e5b393443ed0942b2d6d8cb15a338d posting=true signing=9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403
+accepted operator principal bind restart-required
+exit 0
+$ operator principal: principal list
+ember principal=172aaffef4c349ec0e2136f5dde6ab6aa6e5b393443ed0942b2d6d8cb15a338d posting=true signing=9261767a86396a924c32df476c1c6da99e16d7a8aa446c35ad70eaa328b0f403
+guest principal=45d5ebf23ae82e66c1a1e789d7f52c95af520ca17148467cb6bbb1d44d78915b posting=true
+accepted operator principal list
+exit 0
+$ operator policy set posting-policy bound-logins
+fn-host: error: refused start: native hybrid signature: OpenSSL 3.5 or newer is required for ML-DSA
+exit 5
+$ operator policy get posting-policy
+fn-host: error: refused start: native hybrid signature: OpenSSL 3.5 or newer is required for ML-DSA
+exit 5
+$ operator policy set posting-policy bound-logins
+accepted operator policy
+exit 0
+$ operator policy get posting-policy
+usage operator policy (ADMINISTRATION POLICY)
+exit 5
+$ operator policy set posting-policy open
+accepted operator policy
+exit 0
+$ operator policy set posting-policy bound-logins
+accepted operator policy
+$ operator policy set posting-policy open
+accepted operator policy

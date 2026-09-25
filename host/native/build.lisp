@@ -22,6 +22,7 @@
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
 (include-book "books/peer-authored-accept")
+(include-book "books/login-binding")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -120,6 +121,8 @@
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
 (include-book "books/bp-node-receipt-send")
+;; Routed queued jobs, offered once per contact (PRF-103).
+(include-book "books/bp-node-contact-driver")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")

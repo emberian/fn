@@ -82,6 +82,8 @@
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
 (include-book "books/bp-node-receipt-send")
+;; Routed queued jobs, offered once per contact (PRF-103).
+(include-book "books/bp-node-contact-driver")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -113,6 +115,15 @@
 (include-book "books/records-concrete")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io, as in build.lisp.
 (include-book "books/records-concrete-owner")
+;; The octet buffer (D27 boundary 6) and the existing-article test over it,
+;; as in build.lisp: fn-owner-prepare-buffer and
+;; fn-owner-existing-action-buffer (host/owner-host.lisp, which
+;; host/native-admin-host.lisp `ld`s) take the fn-octets stobj and call
+;; fn-pbb-existing-action.  Without them the DTN image did not build at
+;; 32842f50 (planning/evidence/native-drift-2026-09-25.md, finding 3);
+;; tools/build_lists_check.py `included` checks this now.
+(include-book "books/octets-stobj")
+(include-book "books/poster-bytes-buffer")
 ;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).

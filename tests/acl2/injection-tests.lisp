@@ -116,7 +116,9 @@
 (assert-event (equal (fn-inj-decision-reason
                       (fn-inj-decide '(70 114 111 109 58 32 112 64 101 46 105 110 118 97 108 105 100 13 10 83 117 98 106 101 99 116 58 32 104 101 108 108 111 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 108 101 116 116 101 114 115 13 10 80 97 116 104 58 32 114 101 108 97 121 33 110 111 116 45 102 111 114 45 109 97 105 108 13 10 13 10 72 101 108 108 111 46 13 10)
                                      *fn-t-cfg* *fn-t-obs*))
-                     :path-present))
+                     nil))
+; Since D32 (2026-09-25) a supplied Path is accepted and prefixed; the
+; refusals that remain are at the end of this book.
 (assert-event (equal (fn-inj-decision-reason
                       (fn-inj-decide '(70 114 111 109 58 32 112 64 101 46 105 110 118 97 108 105 100 13 10 83 117 98 106 101 99 116 58 32 104 101 108 108 111 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 108 101 116 116 101 114 115 13 10 73 110 106 101 99 116 105 111 110 45 68 97 116 101 58 32 70 114 105 44 32 49 56 32 83 101 112 32 50 48 50 54 32 48 48 58 48 48 58 48 48 32 43 48 48 48 48 13 10 13 10 72 101 108 108 111 46 13 10)
                                      *fn-t-cfg* *fn-t-obs*))
@@ -540,3 +542,181 @@
           *it-date-proto*))
 (assert-event (null (fn-inj-source-of *it-v1-generated-id* *it-lab-agent*
                                       (it-octets "<g@example.invalid>"))))
+
+; -----------------------------------------------------------------------------
+; D32, a supplied Path (books/injection-path.lisp; recipe v3).  tin 2.6.2
+; sends `Path: not-for-mail' (stock), `Path: example.org!hbox' (-DFORGERY) and
+; `Path: cyberspam!example.org!hbox' on a cancel (the reader spike's wire log,
+; planning/evidence/spike-reader-2026-09-25.md).
+
+(defconst *it-tin-post*                 ; tin's own new post: nothing generated but
+  (it-lines (list "Path: not-for-mail"  ; the Injection-Date is absent only when
+                  "From: ember <ember@example.org>"      ; Date and Message-ID
+                  "Subject: A new post from tin"         ; are both supplied
+                  "Newsgroups: fn.letters"
+                  "User-Agent: tin/2.6.2-20221225"
+                  "" "a followup from tin")))
+(defconst *it-tin-dated*
+  (it-lines (list "From: ember <ember@example.org>"
+                  "Subject: dated"
+                  "Newsgroups: fn.letters"
+                  "Path: example.org!hbox"
+                  "Date: Tue, 22 Sep 2026 21:26:21 +0000"
+                  "Message-ID: <tin.1@example.org>"
+                  "" "body")))
+(defconst *it-tin-post-d* (fn-inj-decide *it-tin-post* *it-lab-cfg* *it-lab-obs*))
+(defconst *it-tin-dated-d* (fn-inj-decide *it-tin-dated* *it-lab-cfg* *it-lab-obs*))
+(assert-event (fn-inj-injectedp *it-tin-post-d*))
+(assert-event (fn-inj-injectedp *it-tin-dated-d*))
+(assert-event (fn-inj-supplies-pathp *it-tin-post*))
+(assert-event (not (fn-inj-supplies-pathp *it-lab-proto*)))
+
+; The whole injected article, exactly: the block without a Path line, then
+; the source with "fnA.hbox.test!" inserted where its Path content begins,
+; the Path line where the poster put it (here the fourth line).
+(assert-event
+ (equal (fn-inj-decision-octets *it-tin-dated-d*)
+        (it-lines (list "Injection-Info: fnA.hbox.test"
+                        "From: ember <ember@example.org>"
+                        "Subject: dated"
+                        "Newsgroups: fn.letters"
+                        "Path: fnA.hbox.test!example.org!hbox"
+                        "Date: Tue, 22 Sep 2026 21:26:21 +0000"
+                        "Message-ID: <tin.1@example.org>"
+                        "" "body"))))
+; Keystone fn-inj-no-injection-date-when-date-and-message-id-are-supplied-with-a-path
+; is that equation at every clock: a second clock gives the same octets.
+(assert-event (equal (fn-inj-decision-octets
+                      (fn-inj-decide *it-tin-dated* *it-lab-cfg* *it-obs-b*))
+                     (fn-inj-decision-octets *it-tin-dated-d*)))
+; With Message-ID and Date generated the block opens with the Injection-Date
+; (fn-inj-injection-date-is-the-clock-otherwise-with-a-path).
+(assert-event (fn-inj-prefixp
+               (fn-inj-injection-date-line
+                (fn-inj-date-octets (fn-inj-instant-of 843427607000)))
+               (fn-inj-decision-octets *it-tin-post-d*)))
+; The injected article parses, has one Path, and its Path value is the
+; agent, "!" and the supplied path (RFC 5537 section 3.2.1).
+(assert-event
+ (let* ((a (fn-article-result-article
+            (fn-article-parse (fn-inj-decision-octets *it-tin-post-d*))))
+        (ps (fn-article-get-headers a *fn-inj-path-name*)))
+   (and (equal (len ps) 1)
+        (equal (fn-article-field-raw-lines (car ps))
+               (list (it-octets "Path: fnA.hbox.test!not-for-mail")))
+        (fn-inj-path-valuep (fn-article-field-unfolded-value (car ps))))))
+; The verbatim-suffix property holds only with no Path supplied: here the
+; source is not a suffix (the tooth of that theorem's new hypothesis).
+(assert-event (not (fn-inj-suffixp *it-tin-post*
+                                   (fn-inj-decision-octets *it-tin-post-d*))))
+(must-fail
+ (defthm it-suffix-without-the-no-path-hypothesis
+   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+            (fn-inj-suffixp source
+                            (fn-inj-decision-octets
+                             (fn-inj-decide source config observation))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide)))))
+
+; KEYSTONE fn-inj-source-of-inverts-the-injection over recipe v3: all four
+; generated-field cases, the Path line first or fourth.
+(defconst *it-tin-date-only*
+  (it-lines (list "Path: not-for-mail" "From: p@example.invalid"
+                  "Newsgroups: fn.letters" "Subject: s"
+                  "Date: Tue, 22 Sep 2026 21:26:21 +0000" "" "body")))
+(defconst *it-tin-id-only*
+  (it-lines (list "From: p@example.invalid" "PATH: a.example!b"
+                  "Newsgroups: fn.letters" "Subject: s"
+                  "Message-ID: <id-only@example.invalid>" "" "body")))
+(assert-event (it-inverts *it-tin-post* *it-lab-cfg* *it-lab-obs*))
+(assert-event (it-inverts *it-tin-dated* *it-lab-cfg* *it-lab-obs*))
+(assert-event (it-inverts *it-tin-date-only* *it-lab-cfg* *it-lab-obs*))
+(assert-event (it-inverts *it-tin-id-only* *it-lab-cfg* *it-lab-obs*))
+(assert-event (fn-inj-reinjectionp (fn-inj-decision-octets *it-tin-dated-d*)
+                                   *it-tin-dated* *it-lab-agent*
+                                   (fn-inj-decision-msgid *it-tin-dated-d*)))
+; The supplied Path is source (D25): a changed Path is a different source,
+; and the v3 record of one is not a reinjection of the other.
+(defconst *it-tin-dated-other-path*
+  (it-lines (list "From: ember <ember@example.org>"
+                  "Subject: dated"
+                  "Newsgroups: fn.letters"
+                  "Path: example.org!elsewhere"
+                  "Date: Tue, 22 Sep 2026 21:26:21 +0000"
+                  "Message-ID: <tin.1@example.org>"
+                  "" "body")))
+(assert-event (it-inverts *it-tin-dated-other-path* *it-lab-cfg* *it-lab-obs*))
+(assert-event (not (fn-inj-reinjectionp
+                    (fn-inj-decision-octets
+                     (fn-inj-decide *it-tin-dated-other-path* *it-lab-cfg* *it-lab-obs*))
+                    *it-tin-dated* *it-lab-agent*
+                    (fn-inj-decision-msgid *it-tin-dated-d*))))
+; Another agent reads nothing back from a v3 record.
+(assert-event (null (fn-inj-source-of (fn-inj-decision-octets *it-tin-dated-d*)
+                                      (it-octets "fnB.hbox.test")
+                                      (fn-inj-decision-msgid *it-tin-dated-d*))))
+
+; KEYSTONE fn-inj-unsplice-of-a-splice and its lemma
+; fn-inj-path-scan-of-a-kept-prefix: witnesses, and one tooth each for the
+; hypothesis that the source has a Path content to insert at.
+(assert-event (equal (fn-inj-path-offset *it-tin-dated*)
+                     (+ (len (it-lines (list "From: ember <ember@example.org>"
+                                             "Subject: dated" "Newsgroups: fn.letters")))
+                        6)))
+(assert-event (equal (fn-inj-unsplice
+                      (fn-inj-splice *it-tin-dated* (fn-inj-path-offset *it-tin-dated*)
+                                     (fn-inj-path-insert *it-lab-agent*))
+                      *it-lab-agent*)
+                     (cons t *it-tin-dated*)))
+(assert-event (null (fn-inj-path-offset *it-lab-proto*)))
+(must-fail
+ (defthm it-unsplice-without-an-offset
+   (equal (fn-inj-unsplice (fn-inj-splice x (fn-inj-path-offset x)
+                                          (fn-inj-path-insert agent))
+                           agent)
+          (cons t x))))
+(must-fail
+ (defthm it-scan-without-a-hit
+   (equal (fn-inj-path-scan (append (fn-inj-take-n (fn-inj-path-scan x bol) x) y) bol)
+          (fn-inj-path-scan x bol))))
+; A "Path: " after the header's empty line is body, not a Path.
+(assert-event (null (fn-inj-path-offset
+                     (it-lines (list "From: a" "" "Path: body")))))
+
+; The grammar (RFC 5536 section 3.1.5), accepted forms: tin's three, the
+; RFC 5537 section 3.2.2 example (less its POSTED), diag-match, diag-other
+; with an IPv6 identity, diag-deprecated and trailing WSP.
+(assert-event (fn-inj-path-valuep (it-octets " not-for-mail")))
+(assert-event (fn-inj-path-valuep (it-octets " example.org!hbox")))
+(assert-event (fn-inj-path-valuep (it-octets " cyberspam!example.org!hbox")))
+(assert-event (fn-inj-path-valuep (it-octets " foo.isp.example!.SEEN.isp.example!foo-news !.MISMATCH.2001:DB8:0:0:8:800:200C:417A!bar.isp.example !!old.site.example!barbaz!!baz.isp.example!not-for-mail")))
+(assert-event (fn-inj-path-valuep (it-octets " a!1.2.3.4!b  ")))
+; Refused forms.
+(assert-event (not (fn-inj-path-valuep (it-octets " "))))
+(assert-event (not (fn-inj-path-valuep (it-octets " a!"))))
+(assert-event (not (fn-inj-path-valuep (it-octets " !a"))))
+(assert-event (not (fn-inj-path-valuep (it-octets " a b"))))
+(assert-event (not (fn-inj-path-valuep (it-octets " a.12!b"))))
+(assert-event (not (fn-inj-path-valuep (it-octets " <x@y>"))))
+(assert-event (not (fn-inj-path-valuep (it-octets " a!!!b"))))
+
+; Each refusal by name, through fn-inj-decide.
+(defun it-path-reason (path-lines)
+  (declare (xargs :mode :program))
+  (fn-inj-decision-reason
+   (fn-inj-decide (it-lines (append path-lines
+                                    (list "From: p@example.invalid"
+                                          "Newsgroups: fn.letters" "Subject: s"
+                                          "" "body")))
+                  *it-lab-cfg* *it-lab-obs*)))
+(assert-event (equal (it-path-reason (list "Path: a b")) :path-malformed))
+(assert-event (equal (it-path-reason (list "Path:  not-for-mail")) :path-malformed))
+(assert-event (equal (it-path-reason (list "Path: <x@y>")) :path-malformed))
+(assert-event (equal (it-path-reason (list "Path: a" "Path: b")) :path-duplicate))
+(assert-event (equal (it-path-reason (list "Path: x.example!.POSTED!not-for-mail"))
+                     :path-posted))
+(assert-event (equal (it-path-reason (list "Path: x.example!.posted.dialup.example!not-for-mail"))
+                     :path-posted))
+(assert-event (equal (it-path-reason (list "Path: not-for-mail")) nil))
+; Xref is still the server's.
+(assert-event (equal (it-path-reason (list "Path: not-for-mail" "Xref: h fn.letters:1"))
+                     :xref))

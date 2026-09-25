@@ -1463,6 +1463,98 @@
         "tests/acl2/store-reclaim-tests.lisp",
         "planning/evidence/reclaim-d13-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-050",
+      "title": "A stock third-party reader (tin) posts, replies and cancels its own post: its supplied Path is accepted and prefixed",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-012"
+      ],
+      "steps": [
+        "Start a developer-image node with a posting login; point tin 2.6.2 (NNTP-only) at it through the wire logger.",
+        "Post a new article from tin, reply to it, and cancel the new post with tin's cancel command.",
+        "Resend one POST's exact octets; resend it with a changed Path."
+      ],
+      "expected": [
+        "Each tin POST is answered 240; ARTICLE shows `Path: IDENTITY!not-for-mail` (the node's identity prefixed to tin's Path) and no other Path.",
+        "The cancel is filed under the control rules in force (C1).",
+        "The exact resend is `441 posting failed; this article is already stored here`; the changed Path is `441 posting failed; a different article with this Message-ID is stored here`."
+      ],
+      "evidence": [
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-051",
+      "title": "A bound login posts only as its bound principal under the bound-logins policy; an unbound login and a policy-off node post as before",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-013"
+      ],
+      "steps": [
+        "Enrol logins ember and guest with posting and hybrid keys; `principal bind ember EMBER-HEX`; restart; `policy set posting-policy bound-logins`.",
+        "As ember, POST an article signed with ember's key, one signed with guest's key, and one unsigned.",
+        "As guest (unbound), POST an unsigned article; then `policy set posting-policy open` and repeat ember's guest-signed and unsigned POSTs."
+      ],
+      "expected": [
+        "`principal list` prints signing=EMBER-HEX for ember only.",
+        "240 with HDR :fn-verified naming ember's principal; `441 posting failed; the login is not bound to this signing principal`; `441 posting failed; this login posts only articles signed by its bound principal`. The service log names login=ember for each.",
+        "240 for guest; with the policy open, 240 for both of ember's articles (the guest-signed one verified for guest's principal)."
+      ],
+      "evidence": [
+        "tests/acl2/login-binding-tests.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-052",
+      "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-015"
+      ],
+      "steps": [
+        "Copy a format-8 store; run `operator CONFIG store upgrade-profile --max-credentials 200 --max-config-generations 9000`, then `status`.",
+        "Write an auth.toml of 129 credentials with `principal set-password` and start the owner.",
+        "Run `store upgrade-profile --max-credentials 150` on the upgraded store."
+      ],
+      "expected": [
+        "The upgrade exits 0; status prints max-credentials=200 and max-config-generations=9000.",
+        "The 129th login is accepted and the owner starts (the pre-D27 cap was 128); under a profile of 128 the 129th set-password is refused too-many-credentials.",
+        "The shrink is refused (exit 1) naming max-credentials."
+      ],
+      "evidence": [
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-054",
+      "title": "a carrying boundary holds articles only within its budget, and a refused present carrier is named by its class",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-015"
+      ],
+      "steps": [
+        "Relay R adds peer A with no carried list, then `peer carries A HEX` and `peer budget A OCTETS 1`; A posts two signed articles by a principal R never enrolled.",
+        "Without `peer budget`, A's signed article reaches R.",
+        "From A's address, offer R by IHAVE an article whose FN-Authorship items name suite 2, and one by a principal R never enrolled and does not carry."
+      ],
+      "expected": [
+        "R stores the first with a carried verdict and refuses the second with detail=carried-count-exhausted.",
+        "R refuses it with detail=carried-budget-unset.",
+        "R answers 437 to each, logging detail=unsupported-profile and detail=no-local-binding."
+      ],
+      "evidence": [
+        "planning/evidence/peer-carriage-2026-09-25.md",
+        "tests/test_native_hybrid_author.py"
+      ]
     }
   ]
 }

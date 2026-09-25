@@ -15,6 +15,8 @@
 (include-book "../books/store-budget")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
+; D27, PRF-102: the operator's namespace counts.
+(include-book "../books/store-profile-namespace")
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
 (include-book "../books/store-checkpoint-codec")
@@ -67,9 +69,11 @@
 ; The bounded observed-image entry validates the decoded record list and
 ; frontier, constructs its own replaying kernel image, and invokes actual
 ; fn-sn-recover.  This wrapper installs only its tagged successful result.
-(defun fn-store-config-observation-limit ()
-  ; The bounded physical scan uses the same ACL2-owned limit as its plan.
-  *fn-nco-max-config-observations*)
+(defun fn-store-config-observation-limit (profile)
+  ; The bounded physical scan uses the same ACL2-owned limit as its plan: the
+  ; operator's `max-config-generations' of the profile the store runs under.
+  (declare (xargs :mode :program))
+  (fn-bs-profile-max-config-generations profile))
 
 (defun fn-store-config-observation-entries (entries)
   "Convert only octet representation; decoding/name policy stays in fn-nco-observe."
@@ -88,21 +92,21 @@
           :bad))
     (if (null entries) nil :bad)))
 
-(defun fn-store-config-observation (entries)
+(defun fn-store-config-observation (entries max-generations)
   "The recovery subject for one bounded physical config directory observation."
   (declare (xargs :mode :program))
   (let ((converted (fn-store-config-observation-entries entries)))
     (if (equal converted :bad)
         (fn-nco-result :fault :input nil)
-      (fn-nco-observe converted))))
+      (fn-nco-observe converted max-generations))))
 
-(defun fn-store-config-initial-observation (entries)
+(defun fn-store-config-initial-observation (entries max-generations)
   "Initialization-only observation; an empty directory may receive genesis."
   (declare (xargs :mode :program))
   (let ((converted (fn-store-config-observation-entries entries)))
     (if (equal converted :bad)
         (fn-nco-result :fault :input nil)
-      (fn-nco-observe-initial converted))))
+      (fn-nco-observe-initial converted max-generations))))
 
 (defun fn-store-cfg-decode-records (octet-records)
   ; Each durable configuration record decodes exactly, or the list is :bad.
@@ -129,7 +133,8 @@ the same configuration replay and observed-node open definitions startup uses."
       (if (fn-native-admin-candidate-openp records frontier config-records) t nil))))
 
 (defun fn-store-cfg-native-admin-authorize
-    (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets)
+    (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets
+                   profile)
   "The existing exact byte decoders feed one logical publication authorization.
 The result binds the core's record generation, the ACL2 filename, candidate
 reopen predicate, writer-lock observation and observed final namespace."
@@ -143,18 +148,22 @@ reopen predicate, writer-lock observation and observed final namespace."
         (fn-native-admin-publication-result :refused :decode nil nil nil)
       (fn-native-admin-publication-authorize
        records frontier config-records (fn-record-parse-value parsed)
-       lock-owned names))))
+       lock-owned names
+       ; D27, PRF-102: the operator's bound, read from the profile the store
+       ; runs under (the host passes the decoded config.json, opaque).
+       (fn-bs-profile-max-config-generations profile)))))
 
 ; The same authorization flattened for a caller that reads one form:
 ; (status reason generation name).  The generation and the filename are
 ; ACL2's (`fn-native-admin-publication-authorize'); the caller allocates
 ; neither.
 (defun fn-store-cfg-publication
-    (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets)
+    (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets
+                   profile)
   (declare (xargs :mode :program))
   (let ((result (fn-store-cfg-native-admin-authorize
                  octet-records frontier config-octet-records record-octets
-                 lock-owned observed-name-octets)))
+                 lock-owned observed-name-octets profile)))
     (list (fn-native-admin-publication-status result)
           (fn-native-admin-publication-reason result)
           (fn-native-admin-publication-generation result)

@@ -858,7 +858,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-012",
-        "PRF-082"
+        "PRF-082",
+        "PRF-103"
       ],
       "verification": [
         "proof",
@@ -1436,7 +1437,8 @@
       "proof_targets": [
         "PRF-014",
         "PRF-092",
-        "PRF-087"
+        "PRF-087",
+        "PRF-095"
       ],
       "verification": [
         "proof",
@@ -1467,7 +1469,8 @@
       "proof_targets": [
         "PRF-015",
         "PRF-016",
-        "PRF-054"
+        "PRF-054",
+        "PRF-095"
       ],
       "verification": [
         "proof",
@@ -1930,7 +1933,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-079"
+        "PRF-079",
+        "PRF-103"
       ],
       "verification": [
         "proof",
@@ -1971,6 +1975,29 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "STO-015",
+      "title": "A namespace the store holds is bounded by the operator's profile, never by a constant; the writer refuses exactly past it and the reader admits everything within it",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-102"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-profile-namespace.lisp",
+        "books/native-config-observation.lisp",
+        "books/native-admin.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ],
+      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9), BP rows (10) and policy members (13) still have constants (256, 4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
     {
       "id": "HST-006",
@@ -2024,6 +2051,91 @@
         "planning/evidence/reclaim-host-2026-09-25.md"
       ],
       "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 at every list site and fn-rclb-existing-action at the buffer sites and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
+    },
+    {
+      "id": "NNT-012",
+      "title": "A served POST accepts a supplied Path, prefixes the node's identity in place, and keeps it as the poster's source",
+      "specification": "specs/nntp.md#a-supplied-path-d32-2026-09-25",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-090"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/injection-path.lisp",
+        "books/injection.lisp",
+        "books/injection-invariants.lisp",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-invariants.lisp",
+        "books/hybrid-store-injected.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "tests/acl2/hybrid-store-tests.lisp",
+        "tools/inn_lab.py",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ],
+      "implementation_note": "D32. RFC 5537 section 3.4.1 permits a proto-article's Path; section 3.2.1 has the injecting agent prepend its identity and '!'. fn-inj-decide accepts one Path field whose unfolded value is RFC 5536 section 3.1.5 syntax (fn-inj-path-valuep) and whose content begins one SP after the colon, inserts AGENT! there (recipe v3: the v2 block without its Path line, then the spliced source), and refuses :path-malformed, :path-duplicate and :path-posted (local policy) by name; Xref stays refused. fn-inj-source-of recovers the source exactly over v2 and v3, so D25 keys on the supplied Path too. The hybrid carrier route keeps refusing a Path (:path-present). No !.POSTED diagnostic is written (a SHOULD)."
+    },
+    {
+      "id": "NNT-013",
+      "title": "Under the bound-logins posting policy a bound login posts only articles signed by its bound principal",
+      "specification": "specs/identity.md#a-login-bound-to-a-signing-principal-2026-09-25",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-109"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/login-binding.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "books/native-admin.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/login-binding-tests.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/auth.lisp",
+        "host/native/auth-admin.lisp",
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ],
+      "implementation_note": "Local policy, not an RFC requirement (RFC 4643 relates a login to nothing beyond the server's own authorization). `fn principal bind LOGIN HEX` writes the login's `signing` field into the credential file (fn-native-auth-admin-bind; set-password keeps bindings; a malformed value refuses the profile); `fn policy set posting-policy bound-logins|open` is a durable configuration record applied live. host/native/owner.lisp fnn-owner-attempt-served calls fn-lb-owner-gate (through host/owner-host.lisp fn-owner-login-gate) before the transit attempt: under the policy a bound login's unsigned article is :login-unsigned and one whose carrier names another principal :login-not-bound, each its own 441 line; unbound logins, unauthenticated connections, local and BP submissions and policy-off nodes are unchanged. The verdict and its service-log line name the login; the Store's kind-4 verdict record does not."
+    },
+    {
+      "id": "NNT-015",
+      "title": "Opaque carriage is admitted only within the boundary's budget, and a present carrier's transit refusal names its class",
+      "specification": "specs/peering.md#123-the-opaque-carriage-budget-and-the-refusal-classes",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-099"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-carriage-rows.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/peer-carriage-2026-09-25.md"
+      ],
+      "implementation_note": "The carried arm's event is built by fn-pcb-carried-event (host/owner-host.lisp fn-owner-peer-carried-relay-event, called from host/native/owner.lisp fnn-owner-attempt-transit) over the boundary's typed budget rows and the owner-carried usage cache (fn-owner-carried-usage); NNTP transit refusals of a present carrier carry fn-pcb-refusal-class as their log detail. The class is not yet recorded in a durable verdict: no present-carrier article is held unverified on dev (see the evidence record)."
     }
   ]
 }

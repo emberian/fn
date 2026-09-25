@@ -44,7 +44,7 @@
         (cons (car x) (fn-pb-line (cdr x))))
     nil))
 
-(defun fn-pb-path-agent (x)
+(defun fn-pb-path-line-agent (x)
   (declare (xargs :guard t))
   (let* ((line (fn-pb-line x))
          (r (fn-inj-strip *fn-inj-path-field* line)))
@@ -52,6 +52,46 @@
         (let ((agent (fn-inj-take (- (len r) *fn-pb-path-tail-length*) r)))
           (if (equal (fn-inj-path-line agent) line) agent nil))
       nil)))
+
+; The agent a recipe v3 record's block names (a supplied Path, D32).  The
+; block is [Injection-Date line, 49 octets] [the Message-ID line of `msgid']
+; [a generated Date line, 39 octets] and the Injection-Info line that closes
+; it; each optional line is recognised by its field name, and the date is
+; always 31 octets (fn-inj-date-octets).
+(defconst *fn-pb-stamp-line-length* 49)  ; "Injection-Date: " date CRLF
+(defconst *fn-pb-date-line-length* 39)   ; "Date: " date CRLF
+
+(defun fn-pb-opensp (field x)
+  (declare (xargs :guard t))
+  (not (equal (fn-inj-strip field x) :no)))
+
+(defun fn-pb-info-line-agent (x)
+  (declare (xargs :guard t))
+  (let* ((line (fn-pb-line x))
+         (r (fn-inj-strip *fn-inj-injection-info-field* line)))
+    (if (and (true-listp r) (< 2 (len r)))
+        (let ((agent (fn-inj-take (- (len r) 2) r)))
+          (if (equal (fn-inj-injection-info-line agent) line) agent nil))
+      nil)))
+
+(defun fn-pb-block-agent (x msgid)
+  (declare (xargs :guard t))
+  (let* ((x1 (if (fn-pb-opensp *fn-inj-injection-date-field* x)
+                 (fn-inj-drop *fn-pb-stamp-line-length* x)
+               x))
+         (x2 (fn-inj-strip-optional (fn-inj-message-id-line msgid) x1))
+         (x3 (if (fn-pb-opensp *fn-inj-date-field* x2)
+                 (fn-inj-drop *fn-pb-date-line-length* x2)
+               x2)))
+    (fn-pb-info-line-agent x3)))
+
+; The injecting agent a submission names: its leading Path line's (recipe v1
+; and v2), else its v3 block's Injection-Info line's.  Whichever it names,
+; the inverse checks the whole block, so a wrong guess gives no source and
+; the octets are compared exactly.
+(defun fn-pb-path-agent (x msgid)
+  (declare (xargs :guard t))
+  (or (fn-pb-path-line-agent x) (fn-pb-block-agent x msgid)))
 
 ; The comparison subject of an article: its source when this agent's recipe
 ; gives one back, else the article's own octets.  The two arms are tagged,
@@ -67,7 +107,7 @@
 ; equal, or when either does not and the octets are equal.
 (defun fn-pb-same-articlep (msgid payload held-payload)
   (declare (xargs :guard t))
-  (let ((agent (fn-pb-path-agent payload)))
+  (let ((agent (fn-pb-path-agent payload msgid)))
     (let ((a (fn-pb-subject payload agent msgid))
           (b (fn-pb-subject held-payload agent msgid)))
       (if (and (equal (car a) :source) (equal (car b) :source))
