@@ -3,7 +3,7 @@
 Status: design, with the two headline theorems of section 8's last update proved (T8). Otherwise this document states proposed theorems only. Every ACL2 form below
 is a proposed definition or a proposed theorem *statement*; none has been
 submitted to ACL2, and nothing here licenses a claim under the
-[assurance rules](../AGENTS.md#assurance-rules-adopted-2026-09-18-after-the-independent-review).
+[assurance rules](../AGENTS.md#what-makes-a-claim).
 The lane that lands each packet earns its own events.
 
 fn today has no configuration. It has *constants*: the carried group list is a
