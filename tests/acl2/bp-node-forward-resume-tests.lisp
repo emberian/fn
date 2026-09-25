@@ -34,7 +34,7 @@
 
 ;; fn-bpnp-step-resume-writes-only-for-a-stranded-row: reachable witness.
 (assert-event
- (and (fn-bpnp-stranded-slotp (bpfr-slot *bpfr-d4*) (fn-bpnf-epoch *bpfr-d4*) *bpfr-dest*)
+ (and (fn-bpnp-stranded-slotp (bpfr-slot *bpfr-d4*) (fn-bpnf-epoch *bpfr-d4*) *bpfr-dest* 3)
       (fn-bpnp-host-eventp (list :operator-resume 0))
       (equal (car *bprs-res-effect*) :persist-forward-result)
       (equal (fn-bpn-nth 8 (fn-bpn-nth 3 *bprs-res-effect*)) :resumed)
@@ -60,7 +60,7 @@
              (fn-bpnf-held-list (fn-bpnf-answer-state *bprs-res-durable*)))
       (equal (len *bprs-rows4*) 7)
       (fn-bpnp-forward-candidatep (car (fn-bpnf-held-list *bprs-d5*)) *bpfr-dest*
-                                  *bpfr-obs* (fn-bpnf-epoch *bprs-d5*))
+                                  *bpfr-obs* (fn-bpnf-epoch *bprs-d5*) 3)
       (equal (car (car (fn-bpnf-answer-effects *bprs-d5-open*))) :persist-attempt)
       (equal (fn-bpn-nth 3 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bprs-d5-open*)))) 0)
       (equal (bprs-identity (car (fn-bpnf-answer-effects *bprs-d5-open*)))
@@ -133,7 +133,7 @@
 (must-fail
  (assert-event
   (fn-bpnp-forward-candidatep (car (fn-bpnf-held-list *bprs-d5*)) *bpfr-dest*
-                              *bprs-late* (fn-bpnf-epoch *bprs-d5*))))
+                              *bprs-late* (fn-bpnf-epoch *bprs-d5*) 3)))
 
 ;; ---------------------------------------------------------------------
 ;; Connection-local :uncertain (fn-bpnp-tcpcl-outcome of a connection that
