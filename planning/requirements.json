@@ -2085,7 +2085,7 @@
       "implementation_note": "Local policy, not an RFC requirement (RFC 4643 relates a login to nothing beyond the server's own authorization). `fn principal bind LOGIN HEX` writes the login's `signing` field into the credential file (fn-native-auth-admin-bind; set-password keeps bindings; a malformed value refuses the profile); `fn policy set posting-policy bound-logins|open` is a durable configuration record applied live. host/native/owner.lisp fnn-owner-attempt-served calls fn-lb-owner-gate (through host/owner-host.lisp fn-owner-login-gate) before the transit attempt: under the policy a bound login's unsigned article is :login-unsigned and one whose carrier names another principal :login-not-bound, each its own 441 line; unbound logins, unauthenticated connections, local and BP submissions and policy-off nodes are unchanged. The verdict and its service-log line name the login; the Store's kind-4 verdict record does not."
     },
     {
-      "id": "NNT-016",
+      "id": "NNT-017",
       "title": "An invitation enrols its inviter only when its carrier verifies under the key set its body names, and a node enrols an acceptor only for an acceptance that consumed, exactly once, a pending invitation this node issued",
       "specification": "specs/peering.md#9-peering-invitations-issue-accept-confirm-prf-097",
       "milestone": "M3",
