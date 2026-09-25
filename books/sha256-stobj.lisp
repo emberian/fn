@@ -248,7 +248,7 @@
   (mbe :logic (if (zp s)
                   (fn-sha256-byte (fn-sha256-w32 w))
                 (fn-sha256-byte (ash (fn-sha256-w32 w) (- s))))
-       :exec (the (unsigned-byte 8) (mod (ash w (- s)) 256))))
+       :exec (the (unsigned-byte 8) (mod (if (= s 0) w (ash w (- s))) 256))))
 
 (defun-inline fn-shs-len-byte (q n)
   ; Octet q (0 = most significant) of the 64-bit big-endian bit length:
@@ -259,7 +259,8 @@
   (mbe :logic (if (= q 7)
                   (fn-sha256-byte (* 8 n))
                 (fn-sha256-byte (ash (* 8 n) (- (* 8 (- 7 q))))))
-       :exec (the (unsigned-byte 8) (mod (ash (* 8 n) (- (* 8 (- 7 q)))) 256))))
+       :exec (the (unsigned-byte 8)
+                  (mod (if (= q 7) (* 8 n) (ash (* 8 n) (- (* 8 (- 7 q))))) 256))))
 
 (defun-inline fn-shs-octet (x)
   ; Any object as an octet: `fn-sha256-fix-octets's per-element coercion.
@@ -291,6 +292,7 @@
            (and (integerp (fn-shs-pad-len n))
                 (<= (+ n 9) (fn-shs-pad-len n))))
   :rule-classes ((:type-prescription :corollary (implies (integerp n) (integerp (fn-shs-pad-len n))))
+                 (:type-prescription :corollary (implies (natp n) (natp (fn-shs-pad-len n))))
                  (:linear :corollary (implies (natp n) (<= (+ n 9) (fn-shs-pad-len n))))))
 
 (defthm fn-shs-pad-len-is-blocks
@@ -305,6 +307,7 @@
            (and (integerp (fn-shs-nblocks n))
                 (<= 1 (fn-shs-nblocks n))))
   :rule-classes ((:type-prescription :corollary (implies (integerp n) (integerp (fn-shs-nblocks n))))
+                 (:type-prescription :corollary (implies (natp n) (natp (fn-shs-nblocks n))))
                  (:linear :corollary (implies (natp n) (<= 1 (fn-shs-nblocks n)))))
   :hints (("Goal" :use ((:instance floor-mod-elim (x (- 55 n)) (y 64)))
            :in-theory (disable floor-mod-elim))))
@@ -319,14 +322,29 @@
         ((< i (- (fn-shs-pad-len n) 8)) 0)
         (t (fn-shs-len-byte (- i (- (fn-shs-pad-len n) 8)) n))))
 
+; The octet facts, in the three forms guard proofs use: `unsigned-byte-p'
+; opens into a type and a bound, so each fact is a type prescription and a
+; linear rule as well as the closed form.
 (defthm fn-shs-u8-of-tail-byte
-  (unsigned-byte-p 8 (fn-shs-tail-byte i n)))
+  (and (integerp (fn-shs-tail-byte i n))
+       (<= 0 (fn-shs-tail-byte i n))
+       (< (fn-shs-tail-byte i n) 256))
+  :rule-classes ((:type-prescription
+                  :corollary (and (integerp (fn-shs-tail-byte i n))
+                                  (<= 0 (fn-shs-tail-byte i n))))
+                 (:linear :corollary (< (fn-shs-tail-byte i n) 256))
+                 (:rewrite :corollary (unsigned-byte-p 8 (fn-shs-tail-byte i n)))))
 
 (defun fn-shs-pb (i n msg)
   ; The padded message's octet at index i, for a message of n octets.  This
   ; is the logical reading both loaders below are proved to agree with.
   (declare (xargs :guard (and (natp i) (natp n) (< i (fn-shs-pad-len n)))))
   (if (< i n) (fn-sha256-nthx i msg) (fn-shs-tail-byte i n)))
+
+; The readers stay closed from here: opened, each read case-splits on the
+; padding, and a loader proof sees sixteen words of it.  The octet facts
+; above are all their callers need.
+(local (in-theory (disable fn-shs-tail-byte)))
 
 ; -----------------------------------------------------------------------------
 ; The stobj: the schedule W[0..63] and the hash state H[0..7].
@@ -358,14 +376,20 @@
 
 (local
  (defthm fn-shs-wp-of-update-nth
-   (implies (and (fn-shs-wp w) (< (nfix i) (len w)) (unsigned-byte-p 32 v))
+   (implies (and (fn-shs-wp w) (natp i) (< i (len w)) (unsigned-byte-p 32 v))
             (fn-shs-wp (update-nth i v w)))
    :hints (("Goal" :in-theory (enable update-nth)))))
 
 (local
  (defthm fn-shs-hp-of-update-nth
-   (implies (and (fn-shs-hp h) (< (nfix i) (len h)) (unsigned-byte-p 32 v))
+   (implies (and (fn-shs-hp h) (natp i) (< i (len h)) (unsigned-byte-p 32 v))
             (fn-shs-hp (update-nth i v h)))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+(local
+ (defthm fn-shs-len-of-update-nth
+   (equal (len (update-nth i v l))
+          (max (+ 1 (nfix i)) (len l)))
    :hints (("Goal" :in-theory (enable update-nth)))))
 
 ; From here on the two list primitives stay closed (see the header).
@@ -375,13 +399,15 @@
 ; preserves `fn-shs-p'; the callers' guards need that stated per function.
 (local
  (defthm fn-shs-p-of-update-w
-   (implies (and (fn-shs-p fn-shs) (< (nfix i) 64) (unsigned-byte-p 32 v))
-            (fn-shs-p (update-nth 0 (update-nth i v (nth 0 fn-shs)) fn-shs)))))
+   (implies (and (fn-shs-p fn-shs) (natp i) (< i 64) (unsigned-byte-p 32 v))
+            (fn-shs-p (update-nth 0 (update-nth i v (nth 0 fn-shs)) fn-shs)))
+   :hints (("Goal" :do-not-induct t))))
 
 (local
  (defthm fn-shs-p-of-update-h
-   (implies (and (fn-shs-p fn-shs) (< (nfix i) 8) (unsigned-byte-p 32 v))
-            (fn-shs-p (update-nth 1 (update-nth i v (nth 1 fn-shs)) fn-shs)))))
+   (implies (and (fn-shs-p fn-shs) (natp i) (< i 8) (unsigned-byte-p 32 v))
+            (fn-shs-p (update-nth 1 (update-nth i v (nth 1 fn-shs)) fn-shs)))
+   :hints (("Goal" :do-not-induct t))))
 
 ; The recognizer's parts, for reads of a stobj a function returned.
 (local
@@ -406,7 +432,14 @@
     (fn-shs-tail-byte i n)))
 
 (defthm fn-shs-u8-of-str-byte
-  (unsigned-byte-p 8 (fn-shs-str-byte i n s)))
+  (and (integerp (fn-shs-str-byte i n s))
+       (<= 0 (fn-shs-str-byte i n s))
+       (< (fn-shs-str-byte i n s) 256))
+  :rule-classes ((:type-prescription
+                  :corollary (and (integerp (fn-shs-str-byte i n s))
+                                  (<= 0 (fn-shs-str-byte i n s))))
+                 (:linear :corollary (< (fn-shs-str-byte i n s) 256))
+                 (:rewrite :corollary (unsigned-byte-p 8 (fn-shs-str-byte i n s)))))
 
 (defun fn-shs-list-byte (i n rest)
   (declare (type (integer 0 *) i n)
@@ -416,7 +449,16 @@
     (mv (fn-shs-tail-byte i n) rest)))
 
 (defthm fn-shs-u8-of-list-byte
-  (unsigned-byte-p 8 (mv-nth 0 (fn-shs-list-byte i n rest))))
+  (and (integerp (car (fn-shs-list-byte i n rest)))
+       (<= 0 (car (fn-shs-list-byte i n rest)))
+       (< (car (fn-shs-list-byte i n rest)) 256))
+  :rule-classes ((:type-prescription
+                  :corollary (and (integerp (car (fn-shs-list-byte i n rest)))
+                                  (<= 0 (car (fn-shs-list-byte i n rest)))))
+                 (:linear :corollary (< (car (fn-shs-list-byte i n rest)) 256))
+                 (:rewrite :corollary (unsigned-byte-p 8 (car (fn-shs-list-byte i n rest))))))
+
+(local (in-theory (disable fn-shs-str-byte fn-shs-list-byte)))
 
 (defun fn-shs-load-str-word (j base n s fn-shs)
   (declare (type (integer 0 15) j) (type (integer 0 *) base n) (type string s)
@@ -430,6 +472,14 @@
                                   (fn-shs-str-byte (+ i 2) n s)
                                   (fn-shs-str-byte (+ i 3) n s))
                   fn-shs)))
+
+(local
+ (defthm fn-shs-p-of-load-str-word
+   (implies (and (fn-shs-p fn-shs) (natp j) (< j 16))
+            (fn-shs-p (fn-shs-load-str-word j base n s fn-shs)))
+   :hints (("Goal" :in-theory (disable fn-shs-p)))))
+
+(local (in-theory (disable fn-shs-load-str-word)))
 
 (defun fn-shs-load-str-block (j base n s fn-shs)
   (declare (type (integer 0 16) j) (type (integer 0 *) base n) (type string s)
@@ -461,6 +511,14 @@
           (mv-let (b3 rest) (fn-shs-list-byte (+ i 3) n rest)
             (let ((fn-shs (fn-shs-w-set j (fn-shs-be-word b0 b1 b2 b3) fn-shs)))
               (mv rest fn-shs))))))))
+
+(local
+ (defthm fn-shs-p-of-load-list-word
+   (implies (and (fn-shs-p fn-shs) (natp j) (< j 16))
+            (fn-shs-p (mv-nth 1 (fn-shs-load-list-word j base n rest fn-shs))))
+   :hints (("Goal" :in-theory (disable fn-shs-p)))))
+
+(local (in-theory (disable fn-shs-load-list-word)))
 
 (defun fn-shs-load-list-block (j base n rest fn-shs)
   (declare (type (integer 0 16) j) (type (integer 0 *) base n)
@@ -716,18 +774,21 @@
 ; =============================================================================
 ; The correspondence.
 
+; The string's octets stay a closed term in this section; one lemma opens it.
+(local (in-theory (disable fn-shs-string-octets)))
+
 ; -----------------------------------------------------------------------------
 ; List primitives of the model: `nthx', `firstn', `nthcdrx', `appx', `revx'.
-
-(local (in-theory (enable fn-sha256-nthx fn-sha256-firstn fn-sha256-nthcdrx
-                          fn-sha256-appx fn-sha256-revx)))
+; Their definitions stay closed (sha256's export theory) and open only in
+; the lemma that inducts on them; below, the stobj proofs see these rules
+; and nothing else, so a symbolic index is never unrolled.
 
 (local
  (defthm fn-shs-nthx-is-nth
    (implies (< (nfix i) (len xs))
             (equal (fn-sha256-nthx i xs) (nth i xs)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable nth)))))
+   :hints (("Goal" :in-theory (enable nth fn-sha256-nthx)))))
 
 ; The bridge: a read of an array field, `(nth i (nth k fn-shs))', is the
 ; model's `nthx' of that array.  Restricted to that shape so that the field
@@ -748,84 +809,162 @@
                          (:instance fn-shs-nthx-is-nth (i i) (xs xs)))))))
 
 (local
- (defthm fn-shs-nthcdrx-consp
-   (equal (consp (fn-sha256-nthcdrx i xs))
-          (< (nfix i) (len xs)))))
+ (defthm fn-shs-nthx-of-cons
+   (equal (fn-sha256-nthx i (cons a b))
+          (if (zp i) a (fn-sha256-nthx (- i 1) b)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthx)))))
+
+(local
+ (defthm fn-shs-nthcdrx-0
+   (implies (zp i)
+            (equal (fn-sha256-nthcdrx i xs) xs))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)))))
+
+(local
+ (defthm fn-shs-firstn-0
+   (implies (zp n)
+            (equal (fn-sha256-firstn n xs) nil))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn)))))
+
+; Over a natural index, so that relieving the bound needs no `nfix'.
+(local
+ (defthm fn-shs-nthcdrx-consp-below
+   (implies (and (natp i) (< i (len xs)))
+            (consp (fn-sha256-nthcdrx i xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-sha256-nthcdrx i xs)))))
+
+(local
+ (defthm fn-shs-nthcdrx-atom-past
+   (implies (and (natp i) (<= (len xs) i))
+            (not (consp (fn-sha256-nthcdrx i xs))))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-sha256-nthcdrx i xs)))))
+
+; The same two facts the other way, for a case split on the remaining list.
+(local
+ (defthm fn-shs-nthcdrx-consp-forward
+   (implies (and (natp i) (consp (fn-sha256-nthcdrx i xs)))
+            (< i (len xs)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :use fn-shs-nthcdrx-atom-past))))
+
+(local
+ (defthm fn-shs-nthcdrx-atom-forward
+   (implies (and (natp i) (not (consp (fn-sha256-nthcdrx i xs))))
+            (<= (len xs) i))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :use fn-shs-nthcdrx-consp-below))))
 
 (local
  (defthm fn-shs-car-of-nthcdrx
    (implies (< (nfix i) (len xs))
-            (equal (car (fn-sha256-nthcdrx i xs)) (fn-sha256-nthx i xs)))))
+            (equal (car (fn-sha256-nthcdrx i xs)) (fn-sha256-nthx i xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx fn-sha256-nthx)
+            :induct (fn-sha256-nthcdrx i xs)))))
 
 (local
  (defthm fn-shs-cdr-of-nthcdrx
    (implies (and (natp i) (< i (len xs)))
             (equal (cdr (fn-sha256-nthcdrx i xs))
-                   (fn-sha256-nthcdrx (+ 1 i) xs)))))
+                   (fn-sha256-nthcdrx (+ 1 i) xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-sha256-nthcdrx i xs)))))
 
 (local
  (defthm fn-shs-nthcdrx-succ-past-end
    (implies (and (natp i) (<= (len xs) i))
             (equal (fn-sha256-nthcdrx (+ 1 i) xs)
-                   (fn-sha256-nthcdrx i xs)))))
+                   (fn-sha256-nthcdrx i xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-sha256-nthcdrx i xs)))))
 
 (local
  (defthm fn-shs-nthcdrx-of-nthcdrx
    (implies (and (natp i) (natp j))
             (equal (fn-sha256-nthcdrx i (fn-sha256-nthcdrx j xs))
-                   (fn-sha256-nthcdrx (+ i j) xs)))))
+                   (fn-sha256-nthcdrx (+ i j) xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-sha256-nthcdrx j xs)))))
 
 (local
  (defthm fn-shs-nthx-of-nthcdrx
    (implies (and (natp i) (natp j))
             (equal (fn-sha256-nthx i (fn-sha256-nthcdrx j xs))
-                   (fn-sha256-nthx (+ i j) xs)))))
+                   (fn-sha256-nthx (+ i j) xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx fn-sha256-nthx)
+            :induct (fn-sha256-nthcdrx j xs)))))
 
 (local
  (defthm fn-shs-len-of-nthcdrx
    (implies (natp i)
             (equal (len (fn-sha256-nthcdrx i xs))
-                   (nfix (- (len xs) i))))))
+                   (nfix (- (len xs) i))))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-sha256-nthcdrx i xs)))))
 
 (local
  (defthm fn-shs-len-of-firstn
    (equal (len (fn-sha256-firstn n xs))
-          (min (nfix n) (len xs)))))
+          (min (nfix n) (len xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn)))))
 
 (local
  (defthm fn-shs-true-listp-of-firstn
-   (true-listp (fn-sha256-firstn n xs))))
+   (true-listp (fn-sha256-firstn n xs))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn)))))
+
+; An induction that steps an index, a count and a list together.
+(local
+ (defun fn-shs-ij-ind (i j xs)
+   (if (or (zp i) (zp j) (atom xs))
+       (list i j xs)
+     (fn-shs-ij-ind (- i 1) (- j 1) (cdr xs)))))
 
 (local
  (defthm fn-shs-nthx-of-firstn
    (implies (< (nfix i) (nfix n))
             (equal (fn-sha256-nthx i (fn-sha256-firstn n xs))
-                   (fn-sha256-nthx i xs)))))
+                   (fn-sha256-nthx i xs)))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn fn-sha256-nthx)
+            :induct (fn-shs-ij-ind i n xs)
+            :expand ((fn-sha256-firstn n xs))))))
 
 (local
  (defthm fn-shs-firstn-of-len
    (implies (and (true-listp xs) (<= (len xs) (nfix n)))
-            (equal (fn-sha256-firstn n xs) xs))))
+            (equal (fn-sha256-firstn n xs) xs))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn)))))
 
+; Not on a constant count: ACL2 unifies (+ 1 j) with 16, and the rule
+; would unroll every (firstn 16 ...) below into sixteen appends.
 (local
  (defthm fn-shs-firstn-snoc
-   (implies (and (natp j) (< j (len xs)))
+   (implies (and (syntaxp (not (quotep j))) (natp j) (< j (len xs)))
             (equal (fn-sha256-firstn (+ 1 j) xs)
-                   (append (fn-sha256-firstn j xs) (list (fn-sha256-nthx j xs)))))))
+                   (append (fn-sha256-firstn j xs) (list (fn-sha256-nthx j xs)))))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn fn-sha256-nthx)
+            :induct (fn-sha256-firstn j xs)))))
 
+; Both need the update in range: past the end `update-nth' extends the list.
+; The induction steps the index, the count and the list together.
 (local
  (defthm fn-shs-firstn-of-update-nth-above
-   (implies (<= (nfix j) (nfix i))
+   (implies (and (<= (nfix j) (nfix i)) (< (nfix i) (len xs)))
             (equal (fn-sha256-firstn j (update-nth i v xs))
                    (fn-sha256-firstn j xs)))
-   :hints (("Goal" :in-theory (enable update-nth)))))
+   :hints (("Goal" :in-theory (enable fn-sha256-firstn)
+            :induct (fn-shs-ij-ind i j xs)
+            :expand ((update-nth i v xs))))))
 
 (local
  (defthm fn-shs-nthcdrx-of-update-nth-above
-   (implies (< (nfix i) (nfix j))
+   (implies (and (< (nfix i) (nfix j)) (< (nfix i) (len xs)))
             (equal (fn-sha256-nthcdrx j (update-nth i v xs))
                    (fn-sha256-nthcdrx j xs)))
-   :hints (("Goal" :in-theory (enable update-nth)))))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthcdrx)
+            :induct (fn-shs-ij-ind i j xs)
+            :expand ((update-nth i v xs))))))
 
 (local
  (defthm fn-shs-append-assoc
@@ -837,50 +976,95 @@
             (equal (append x nil) x))))
 
 (local
+ (defthm fn-shs-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-shs-true-listp-of-append
+   (implies (true-listp b)
+            (true-listp (append a b)))))
+
+(local
  (defthm fn-shs-cons-car-cdr
    (implies (consp x)
             (equal (cons (car x) (cdr x)) x))))
+
+(local
+ (defthm fn-shs-len-0
+   (implies (true-listp x)
+            (equal (equal (len x) 0) (equal x nil)))))
 
 (local
  (defthm fn-shs-nthx-of-append
    (equal (fn-sha256-nthx i (append a b))
           (if (< (nfix i) (len a))
               (fn-sha256-nthx i a)
-            (fn-sha256-nthx (- (nfix i) (len a)) b)))))
+            (fn-sha256-nthx (- (nfix i) (len a)) b)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthx)
+            :induct (fn-sha256-nthx i a)))))
 
 (local
  (defthm fn-shs-nthx-of-appx
    (equal (fn-sha256-nthx i (fn-sha256-appx xs ys))
           (if (< (nfix i) (len xs))
               (fn-sha256-nthx i xs)
-            (fn-sha256-nthx (- (nfix i) (len xs)) ys)))))
+            (fn-sha256-nthx (- (nfix i) (len xs)) ys)))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthx fn-sha256-appx)
+            :induct (fn-sha256-nthx i xs)))))
+
+(local
+ (defun fn-shs-nthx-zeros-ind (i k)
+   (if (or (zp i) (zp k)) (list i k) (fn-shs-nthx-zeros-ind (- i 1) (- k 1)))))
 
 (local
  (defthm fn-shs-nthx-of-zeros
    (equal (fn-sha256-nthx i (fn-sha256-zeros k)) 0)
-   :hints (("Goal" :in-theory (enable fn-sha256-zeros)))))
+   :hints (("Goal" :in-theory (enable fn-sha256-zeros fn-sha256-nthx)
+            :induct (fn-shs-nthx-zeros-ind i k)
+            :expand ((fn-sha256-zeros k))))))
 
 (local
  (defthm fn-shs-revx-of-append
    (equal (fn-sha256-revx (append a b) acc)
-          (fn-sha256-revx b (fn-sha256-revx a acc)))))
+          (fn-sha256-revx b (fn-sha256-revx a acc)))
+   :hints (("Goal" :in-theory (enable fn-sha256-revx)))))
+
+(local
+ (defthm fn-shs-revx-of-cons
+   (equal (fn-sha256-revx (cons a b) acc)
+          (fn-sha256-revx b (cons a acc)))
+   :hints (("Goal" :in-theory (enable fn-sha256-revx)))))
+
+(local
+ (defthm fn-shs-revx-of-atom
+   (implies (not (consp xs))
+            (equal (fn-sha256-revx xs acc) acc))
+   :hints (("Goal" :in-theory (enable fn-sha256-revx)))))
 
 (local
  (defthm fn-shs-nthx-of-fix-octets
    (implies (< (nfix i) (len m))
             (equal (fn-sha256-nthx i (fn-sha256-fix-octets m))
                    (fn-sha256-byte (fn-sha256-nthx i m))))
-   :hints (("Goal" :in-theory (enable fn-sha256-fix-octets)))))
+   :hints (("Goal" :in-theory (enable fn-sha256-fix-octets fn-sha256-nthx)
+            :induct (fn-sha256-nthx i m)))))
 
 (local
  (defthm fn-shs-nthx-of-char-octets
    (implies (< (nfix i) (len cs))
             (equal (fn-sha256-nthx i (fn-shs-char-octets cs))
-                   (char-code (fn-sha256-nthx i cs))))))
+                   (char-code (fn-sha256-nthx i cs))))
+   :hints (("Goal" :in-theory (enable fn-sha256-nthx)
+            :induct (fn-sha256-nthx i cs)))))
 
 (local
  (defthm fn-shs-len-of-char-octets
    (equal (len (fn-shs-char-octets cs)) (len cs))))
+
+(local
+ (defthm fn-shs-len-of-string-octets
+   (equal (len (fn-shs-string-octets s)) (len (coerce s 'list)))
+   :hints (("Goal" :in-theory (enable fn-shs-string-octets)))))
 
 ; -----------------------------------------------------------------------------
 ; The padding.  The padded length, and the octet at every index.
@@ -916,10 +1100,10 @@
    (implies (and (natp i) (< i (fn-shs-pad-len (len msg))))
             (equal (fn-sha256-nthx i (fn-sha256-pad msg))
                    (fn-shs-pb i (len msg) msg)))
-   :hints (("Goal" :in-theory (enable fn-sha256-pad fn-shs-pad-len)
+   :hints (("Goal" :in-theory (enable fn-sha256-pad fn-shs-pad-len fn-shs-pb fn-shs-tail-byte)
             :do-not-induct t))))
 
-(local (in-theory (disable fn-shs-pb fn-shs-tail-byte)))
+(local (in-theory (disable fn-shs-pb)))
 
 ; -----------------------------------------------------------------------------
 ; The two readers agree with `fn-shs-pb'.
@@ -929,19 +1113,18 @@
    (implies (and (stringp s) (natp i) (equal n (length s)))
             (equal (fn-shs-str-byte i n s)
                    (fn-shs-pb i n (fn-shs-string-octets s))))
-   :hints (("Goal" :in-theory (enable fn-shs-pb char)
+   :hints (("Goal" :in-theory (enable fn-shs-pb fn-shs-str-byte fn-shs-string-octets char)
             :use ((:instance fn-shs-nthx-is-nth (i i) (xs (coerce s 'list))))))))
 
 (local
  (defthm fn-shs-list-byte-is-pb
    (implies (and (natp i) (equal n (len m)))
-            (and (equal (mv-nth 0 (fn-shs-list-byte i n (fn-sha256-nthcdrx i m)))
+            (and (equal (car (fn-shs-list-byte i n (fn-sha256-nthcdrx i m)))
                         (fn-shs-pb i n (fn-sha256-fix-octets m)))
                  (equal (mv-nth 1 (fn-shs-list-byte i n (fn-sha256-nthcdrx i m)))
                         (fn-sha256-nthcdrx (+ 1 i) m))))
-   :hints (("Goal" :in-theory (enable fn-shs-pb)))))
-
-(local (in-theory (disable fn-shs-str-byte fn-shs-list-byte)))
+   :hints (("Goal" :in-theory (enable fn-shs-pb fn-shs-list-byte)
+            :do-not-induct t))))
 
 ; -----------------------------------------------------------------------------
 ; The schedule.  W[t] as a function of t (the standard's recurrence), the
@@ -981,10 +1164,16 @@
    (true-listp (fn-shs-Wl m ws16))))
 
 (local
+ (defun fn-shs-im-ind (i m)
+   (if (or (zp i) (zp m)) (list i m) (fn-shs-im-ind (- i 1) (- m 1)))))
+
+(local
  (defthm fn-shs-nthx-of-Wr
    (implies (and (natp i) (natp m) (< i m))
             (equal (fn-sha256-nthx i (fn-shs-Wr m ws16))
-                   (fn-shs-W (- m (+ 1 i)) ws16)))))
+                   (fn-shs-W (- m (+ 1 i)) ws16)))
+   :hints (("Goal" :induct (fn-shs-im-ind i m)
+            :expand ((fn-shs-Wr m ws16))))))
 
 (local
  (defthm fn-shs-nthx-of-Wl
@@ -1009,9 +1198,28 @@
                      (fn-shs-W m ws16))))))
 
 (local
+ (defun fn-shs-revx-Wr-ind (m ws16 acc)
+   ; The accumulator grows as the reversed list is walked.
+   (if (zp m)
+       (list m ws16 acc)
+     (fn-shs-revx-Wr-ind (- m 1) ws16 (cons (fn-shs-W (- m 1) ws16) acc)))))
+
+(local
  (defthm fn-shs-revx-of-Wr
    (equal (fn-sha256-revx (fn-shs-Wr m ws16) acc)
-          (append (fn-shs-Wl m ws16) acc))))
+          (append (fn-shs-Wl m ws16) acc))
+   :hints (("Goal" :induct (fn-shs-revx-Wr-ind m ws16 acc)
+            :expand ((fn-shs-Wr m ws16) (fn-shs-Wl m ws16))))))
+
+; `firstn-snoc' for a symbolic count, so the two inductions below see it
+; at m without a :use (which an :induct hint cannot carry); withdrawn after.
+(local
+ (defthm fn-shs-firstn-snoc-var
+   (implies (and (syntaxp (symbolp m)) (natp m) (< 0 m) (<= m (len xs)))
+            (equal (fn-sha256-firstn m xs)
+                   (append (fn-sha256-firstn (+ -1 m) xs)
+                           (list (fn-sha256-nthx (+ -1 m) xs)))))
+   :hints (("Goal" :use ((:instance fn-shs-firstn-snoc (j (+ -1 m))))))))
 
 (local
  (defthm fn-shs-Wr-is-revx-of-firstn
@@ -1019,23 +1227,28 @@
             (equal (fn-shs-Wr m ws16)
                    (fn-sha256-revx (fn-sha256-firstn m ws16) nil)))
    :hints (("Goal" :induct (fn-shs-Wr m ws16)
-            :expand ((fn-shs-W (+ -1 m) ws16))
-            :use ((:instance fn-shs-firstn-snoc (j (- m 1)) (xs ws16)))))))
+            :expand ((fn-shs-W (+ -1 m) ws16))))))
 
 (local
  (defthm fn-shs-revx-is-Wr-16
    (implies (and (true-listp ws16) (equal (len ws16) 16))
             (equal (fn-sha256-revx ws16 nil) (fn-shs-Wr 16 ws16)))
    :hints (("Goal" :use ((:instance fn-shs-Wr-is-revx-of-firstn (m 16)))
-            :in-theory (disable fn-shs-Wr-is-revx-of-firstn)))))
+            :in-theory (disable fn-shs-Wr-is-revx-of-firstn fn-shs-Wr
+                                fn-shs-firstn-snoc)))))
 
 (local
  (defthm fn-shs-Wl-is-firstn
    (implies (and (natp m) (<= m 16) (<= m (len ws16)))
             (equal (fn-shs-Wl m ws16) (fn-sha256-firstn m ws16)))
    :hints (("Goal" :induct (fn-shs-Wl m ws16)
-            :expand ((fn-shs-W (+ -1 m) ws16))
-            :use ((:instance fn-shs-firstn-snoc (j (- m 1)) (xs ws16)))))))
+            :expand ((fn-shs-W (+ -1 m) ws16))))))
+
+(local (in-theory (disable fn-shs-firstn-snoc-var)))
+
+; Closed from here: on a constant count both unroll (16 and 64 times), and
+; the schedule rule below matches the closed form.
+(local (in-theory (disable (:d fn-shs-Wr) (:d fn-shs-Wl))))
 
 (local
  (defthm fn-shs-schedule-is-Wl
@@ -1144,14 +1357,14 @@
                                                (fn-shs-pb (+ 1 base (* 4 j)) n (fn-shs-string-octets s))
                                                (fn-shs-pb (+ 2 base (* 4 j)) n (fn-shs-string-octets s))
                                                (fn-shs-pb (+ 3 base (* 4 j)) n (fn-shs-string-octets s)))
-                               (nth 0 fn-shs))))))
+                               (nth 0 fn-shs))))
+   :hints (("Goal" :in-theory (enable fn-shs-load-str-word)))))
 
 (local
  (defthm fn-shs-load-str-word-h
    (equal (nth 1 (fn-shs-load-str-word j base n s fn-shs))
-          (nth 1 fn-shs))))
-
-(local (in-theory (disable fn-shs-load-str-word)))
+          (nth 1 fn-shs))
+   :hints (("Goal" :in-theory (enable fn-shs-load-str-word)))))
 
 (local
  (defthm fn-shs-load-str-block-w
@@ -1188,26 +1401,28 @@
    :hints (("Goal" :induct (fn-shs-load-str-block j base n s fn-shs)
             :in-theory (enable fn-shs-load-str-block fn-shs-load-str-word)))))
 
+; The rules about the list loaders carry the remaining list as the explicit
+; term, so that the message is bound by the left-hand side; a hypothesis
+; naming it would be a free variable once the goal has substituted it.
 (local
  (defthm fn-shs-load-list-word-w
-   (implies (and (equal n (len m)) (natp base) (natp j)
-                 (equal rest (fn-sha256-nthcdrx (+ base (* 4 j)) m)))
-            (and (equal (nth 0 (mv-nth 1 (fn-shs-load-list-word j base n rest fn-shs)))
+   (implies (and (equal n (len m)) (natp base) (natp j))
+            (and (equal (nth 0 (mv-nth 1 (fn-shs-load-list-word j base n (fn-sha256-nthcdrx (+ base (* 4 j)) m) fn-shs)))
                         (update-nth j
                                     (fn-shs-be-word (fn-shs-pb (+ base (* 4 j)) n (fn-sha256-fix-octets m))
                                                     (fn-shs-pb (+ 1 base (* 4 j)) n (fn-sha256-fix-octets m))
                                                     (fn-shs-pb (+ 2 base (* 4 j)) n (fn-sha256-fix-octets m))
                                                     (fn-shs-pb (+ 3 base (* 4 j)) n (fn-sha256-fix-octets m)))
                                     (nth 0 fn-shs)))
-                 (equal (mv-nth 0 (fn-shs-load-list-word j base n rest fn-shs))
-                        (fn-sha256-nthcdrx (+ 4 base (* 4 j)) m))))))
+                 (equal (car (fn-shs-load-list-word j base n (fn-sha256-nthcdrx (+ base (* 4 j)) m) fn-shs))
+                        (fn-sha256-nthcdrx (+ 4 base (* 4 j)) m))))
+   :hints (("Goal" :in-theory (enable fn-shs-load-list-word)))))
 
 (local
  (defthm fn-shs-load-list-word-h
    (equal (nth 1 (mv-nth 1 (fn-shs-load-list-word j base n rest fn-shs)))
-          (nth 1 fn-shs))))
-
-(local (in-theory (disable fn-shs-load-list-word)))
+          (nth 1 fn-shs))
+   :hints (("Goal" :in-theory (enable fn-shs-load-list-word)))))
 
 (local
  (defthm fn-shs-load-list-block-w
@@ -1219,7 +1434,7 @@
                  (fn-shs-prefix-ok j (nth 0 fn-shs) (fn-shs-block-words base (fn-sha256-fix-octets m))))
             (and (equal (fn-sha256-firstn 16 (nth 0 (mv-nth 1 (fn-shs-load-list-block j base n rest fn-shs))))
                         (fn-shs-block-words base (fn-sha256-fix-octets m)))
-                 (equal (mv-nth 0 (fn-shs-load-list-block j base n rest fn-shs))
+                 (equal (car (fn-shs-load-list-block j base n rest fn-shs))
                         (fn-sha256-nthcdrx (+ base 64) m))))
    :hints (("Goal" :induct (fn-shs-load-list-block j base n rest fn-shs)
             :in-theory (enable fn-shs-load-list-block)))))
@@ -1228,14 +1443,13 @@
  (defthm fn-shs-load-list-block-loads-words16
    (implies (and (equal n (len m)) (natp base)
                  (<= (+ base 64) (fn-shs-pad-len n))
-                 (equal rest (fn-sha256-nthcdrx base m))
                  (true-listp (nth 0 fn-shs))
                  (equal (len (nth 0 fn-shs)) 64))
-            (and (equal (fn-sha256-firstn 16 (nth 0 (mv-nth 1 (fn-shs-load-list-block 0 base n rest fn-shs))))
+            (and (equal (fn-sha256-firstn 16 (nth 0 (mv-nth 1 (fn-shs-load-list-block 0 base n (fn-sha256-nthcdrx base m) fn-shs))))
                         (fn-shs-block-words base (fn-sha256-fix-octets m)))
-                 (equal (mv-nth 0 (fn-shs-load-list-block 0 base n rest fn-shs))
+                 (equal (car (fn-shs-load-list-block 0 base n (fn-sha256-nthcdrx base m) fn-shs))
                         (fn-sha256-nthcdrx (+ base 64) m))))
-   :hints (("Goal" :use ((:instance fn-shs-load-list-block-w (j 0)))
+   :hints (("Goal" :use ((:instance fn-shs-load-list-block-w (j 0) (rest (fn-sha256-nthcdrx base m))))
             :in-theory (disable fn-shs-load-list-block-w)))))
 
 (local
@@ -1274,8 +1488,7 @@
 (local
  (defthm fn-shs-W-ok-done
    (implies (and (fn-shs-W-ok 64 w ws16) (true-listp w) (equal (len w) 64))
-            (equal w (fn-shs-Wl 64 ws16)))
-   :rule-classes nil))
+            (equal (equal w (fn-shs-Wl 64 ws16)) t))))
 
 (local
  (defthm fn-shs-W-ok-16
@@ -1295,8 +1508,7 @@
                    (fn-shs-Wl 64 ws16)))
    :hints (("Goal" :induct (fn-shs-extend t0 fn-shs)
             :in-theory (enable fn-shs-extend)
-            :expand ((fn-shs-W t0 ws16)))
-           ("Subgoal *1/1" :use ((:instance fn-shs-W-ok-done (w (nth 0 fn-shs))))))))
+            :expand ((fn-shs-W t0 ws16))))))
 
 (local
  (defthm fn-shs-extend-shape
@@ -1336,10 +1548,12 @@
             :expand ((fn-sha256-rounds (fn-sha256-nthcdrx i (nth 0 fn-shs))
                                        ks a b c d e f g h))))))
 
-; H += registers is `fn-sha256-add8'.
+; H += registers is `fn-sha256-add8', given registers for every remaining
+; word: on a short list the stobj keeps the rest of H and `add8' drops it.
 (local
  (defthm fn-shs-h-add-h
    (implies (and (natp i) (<= i 8)
+                 (<= (- 8 i) (len regs))
                  (true-listp (nth 1 fn-shs))
                  (equal (len (nth 1 fn-shs)) 8))
             (equal (nth 1 (fn-shs-h-add i regs fn-shs))
@@ -1415,20 +1629,19 @@
  (defthm fn-shs-compress-list-is-compress
    (implies (and (equal n (len m)) (natp b)
                  (< b (fn-shs-nblocks n))
-                 (equal rest (fn-sha256-nthcdrx (* 64 b) m))
                  (true-listp (nth 0 fn-shs))
                  (equal (len (nth 0 fn-shs)) 64)
                  (true-listp (nth 1 fn-shs))
                  (equal (len (nth 1 fn-shs)) 8))
-            (and (equal (nth 1 (mv-nth 1 (fn-shs-compress-list b n rest fn-shs)))
+            (and (equal (nth 1 (mv-nth 1 (fn-shs-compress-list b n (fn-sha256-nthcdrx (* 64 b) m) fn-shs)))
                         (fn-sha256-compress
                          (fn-sha256-firstn 64 (fn-sha256-nthcdrx (* 64 b) (fn-sha256-pad (fn-sha256-fix-octets m))))
                          (nth 1 fn-shs)))
-                 (equal (mv-nth 0 (fn-shs-compress-list b n rest fn-shs))
+                 (equal (car (fn-shs-compress-list b n (fn-sha256-nthcdrx (* 64 b) m) fn-shs))
                         (fn-sha256-nthcdrx (+ 64 (* 64 b)) m))))
    :hints (("Goal" :in-theory (enable fn-shs-compress-list fn-shs-block-words)
             :use ((:instance fn-shs-compress-loaded-is-compress
-                             (fn-shs (mv-nth 1 (fn-shs-load-list-block 0 (* 64 b) n rest fn-shs)))
+                             (fn-shs (mv-nth 1 (fn-shs-load-list-block 0 (* 64 b) n (fn-sha256-nthcdrx (* 64 b) m) fn-shs)))
                              (blk (fn-sha256-firstn 64 (fn-sha256-nthcdrx (* 64 b) (fn-sha256-pad (fn-sha256-fix-octets m)))))))))))
 
 (local
@@ -1455,6 +1668,41 @@
                  (equal (len (nth 1 (mv-nth 1 (fn-shs-compress-list b n rest fn-shs)))) 8)))
    :hints (("Goal" :in-theory (enable fn-shs-compress-list)))))
 
+; The shape of the model's compressed state (sha256's own version is local).
+(local
+ (defthm fn-shs-true-listp-of-add8
+   (true-listp (fn-sha256-add8 xs ys))
+   :hints (("Goal" :in-theory (enable fn-sha256-add8)))))
+
+(local
+ (defthm fn-shs-len-of-compress
+   (implies (equal (len hs) 8)
+            (equal (len (fn-sha256-compress blk hs)) 8))
+   :hints (("Goal" :in-theory (enable fn-sha256-compress)))))
+
+(local
+ (defthm fn-shs-true-listp-of-compress
+   (true-listp (fn-sha256-compress blk hs))
+   :hints (("Goal" :in-theory (enable fn-sha256-compress)))))
+
+; The model's block loop, opened by rule: a sliced tail that is empty is
+; the state, and one that is not is one block and the rest.  Restricted to
+; a sliced tail so the whole padded message is never unrolled.
+(local
+ (defthm fn-shs-blocks-of-atom
+   (implies (not (consp p))
+            (equal (fn-sha256-blocks p hs) hs))
+   :hints (("Goal" :in-theory (enable fn-sha256-blocks)))))
+
+(local
+ (defthm fn-shs-blocks-of-consp
+   (implies (and (syntaxp (and (consp p) (eq (car p) 'fn-sha256-nthcdrx)))
+                 (consp p))
+            (equal (fn-sha256-blocks p hs)
+                   (fn-sha256-blocks (fn-sha256-nthcdrx 64 p)
+                                     (fn-sha256-compress (fn-sha256-firstn 64 p) hs))))
+   :hints (("Goal" :in-theory (enable fn-sha256-blocks)))))
+
 (local
  (defthm fn-shs-blocks-str-is-blocks
    (implies (and (stringp s) (equal n (length s)) (natp b) (natp nb) (<= b nb)
@@ -1468,13 +1716,10 @@
                     (fn-sha256-nthcdrx (* 64 b) (fn-sha256-pad (fn-shs-string-octets s)))
                     (nth 1 fn-shs))))
    :hints (("Goal" :induct (fn-shs-blocks-str b nb n s fn-shs)
-            :in-theory (enable fn-shs-blocks-str fn-sha256-blocks)
-            :expand ((fn-sha256-blocks
-                      (fn-sha256-nthcdrx (* 64 b) (fn-sha256-pad (fn-shs-string-octets s)))
-                      (nth 1 fn-shs)))))))
+            :in-theory (enable fn-shs-blocks-str)))))
 
 (local
- (defthm fn-shs-blocks-list-is-blocks
+ (defthm fn-shs-blocks-list-is-blocks-aux
    (implies (and (equal n (len m)) (natp b) (natp nb) (<= b nb)
                  (equal nb (fn-shs-nblocks n))
                  (equal rest (fn-sha256-nthcdrx (* 64 b) m))
@@ -1487,10 +1732,21 @@
                     (fn-sha256-nthcdrx (* 64 b) (fn-sha256-pad (fn-sha256-fix-octets m)))
                     (nth 1 fn-shs))))
    :hints (("Goal" :induct (fn-shs-blocks-list b nb n rest fn-shs)
-            :in-theory (enable fn-shs-blocks-list fn-sha256-blocks)
-            :expand ((fn-sha256-blocks
-                      (fn-sha256-nthcdrx (* 64 b) (fn-sha256-pad (fn-sha256-fix-octets m)))
-                      (nth 1 fn-shs)))))))
+            :in-theory (enable fn-shs-blocks-list)))))
+
+; From the start of the message, as the digest calls it.
+(local
+ (defthm fn-shs-blocks-list-is-blocks
+   (implies (and (equal n (len m)) (natp nb)
+                 (equal nb (fn-shs-nblocks n))
+                 (true-listp (nth 0 fn-shs))
+                 (equal (len (nth 0 fn-shs)) 64)
+                 (true-listp (nth 1 fn-shs))
+                 (equal (len (nth 1 fn-shs)) 8))
+            (equal (nth 1 (fn-shs-blocks-list 0 nb n m fn-shs))
+                   (fn-sha256-blocks (fn-sha256-pad (fn-sha256-fix-octets m))
+                                     (nth 1 fn-shs))))
+   :hints (("Goal" :use ((:instance fn-shs-blocks-list-is-blocks-aux (b 0) (rest m)))))))
 
 (local
  (defthm fn-shs-blocks-str-frame
@@ -1571,23 +1827,26 @@
 
 (local
  (defthm fn-shs-digest-list-is-of-octets-of-fix
-   (equal (mv-nth 0 (fn-shs-digest-list m (create-fn-shs)))
+   (equal (car (fn-shs-digest-list m (create-fn-shs)))
           (fn-sha256-of-octets (fn-sha256-fix-octets m)))
    :hints (("Goal" :in-theory (enable fn-sha256-of-octets)))))
 
 (local
  (defthm fn-shs-digest-str-is-of-octets
    (implies (stringp s)
-            (equal (mv-nth 0 (fn-shs-digest-str s (create-fn-shs)))
+            (equal (car (fn-shs-digest-str s (create-fn-shs)))
                    (fn-sha256-of-octets (fn-shs-string-octets s))))
    :hints (("Goal" :in-theory (enable fn-sha256-of-octets)))))
 
 (local (in-theory (disable fn-shs-digest-list fn-shs-digest-str)))
 
+; The creator stays a term in the two proofs below (its executable
+; counterpart would turn it into the concrete arrays before the digest rules,
+; stated over the creator, can match).
 (defthm fn-sha256-stobj-is-sha256
   ; The keystone: the stobj computation is the list model on every object.
   (equal (fn-sha256-stobj m) (fn-sha256 m))
-  :hints (("Goal" :in-theory (enable fn-sha256))))
+  :hints (("Goal" :in-theory (e/d (fn-sha256) ((:e create-fn-shs) (:d create-fn-shs))))))
 
 (defthm fn-sha256-stobj-is-sha256-of-octets
   ; Its instance on the domain fn digests.
@@ -1601,7 +1860,8 @@
   (implies (stringp s)
            (equal (fn-sha256-of-string s)
                   (fn-sha256-of-octets (fn-shs-string-octets s))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable (:e create-fn-shs) (:d create-fn-shs)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  The stobj functions are the
