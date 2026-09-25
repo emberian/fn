@@ -1951,6 +1951,8 @@
         "planning/evidence/bp-a3-live-selection-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T034256Z-3866445.json",
         "planning/evidence/manifests/certify-20260924T034935Z-3925833.json",
+        "books/bp-node-receipt-send.lisp",
+        "planning/evidence/bp-budgets-receipts-2026-09-25.md",
         "books/bp-node-progress.lisp",
         "books/bp-node-progress-invariants.lisp",
         "books/bp-node-progress-guards.lisp",
@@ -2002,7 +2004,17 @@
         "fn-bpnp-resumed-result-clears-only-the-slot",
         "fn-bpnp-resumed-row-is-a-forward-candidate",
         "fn-bpnp-uncertain-result-keeps-the-count",
-        "fn-bprq-recovery-plan-unfences-and-reopens-as-live"
+        "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
+        "fn-bpnp-step-busy-delivery-proposes-its-count",
+        "fn-bpnp-step-deferral-durable-applies-the-replay-function",
+        "fn-bpnp-busy-count-after-recovery-is-the-live-count",
+        "fn-bpnp-progress-reports-a-stranded-row",
+        "fn-bpnp-busy-stranded-row-is-not-offered",
+        "fn-bpnp-busy-deferral-ends-at-its-reading",
+        "fn-bpnp-forward-scan-offers-a-candidate",
+        "fn-bpnp-attempted-held-counts-one-more",
+        "fn-bpnp-receipt-contact-event-needs-a-queued-job",
+        "fn-bpnp-receipt-contact-offers-the-queued-job"
       ]
     },
     {

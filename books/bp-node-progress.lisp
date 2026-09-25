@@ -1298,7 +1298,7 @@
 ; budget its busy event carried, or the deferral with its backoff reading.
 (defun fn-bpnp-deferral-effects (key count wait)
   (declare (xargs :guard t))
-  (cond ((zp count) (list (list :delivery-resumed key)))
+  (cond ((zp (nfix count)) (list (list :delivery-resumed key)))
         ((<= (nfix (fn-bpn-nth 4 wait)) count)
          (list (list :delivery-stranded key count)))
         (t (list (list :delivery-deferred key count (fn-bpn-nth 3 wait))))))
@@ -1333,7 +1333,7 @@
              (update-nth 2 (fn-bpn-nth 1 applied)
                          (fn-bpnp-with-issued st nil))
              (1+ (nfix (fn-bpnp-used st))) (fn-bpnp-debt st))
-            (if (zp count) (fn-bpnp-remove-wait key waits) waits))
+            (if (zp (nfix count)) (fn-bpnp-remove-wait key waits) waits))
            (fn-bpnp-deferral-effects key count wait)))))
      ((equal result :refused)
       (fn-bpnf-answer
