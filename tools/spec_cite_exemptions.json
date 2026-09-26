@@ -1,0 +1,786 @@
+{
+ "_comment": "tools/spec_cite_check.py. exemptions: a name that is not a Lisp definition, with the reason. stale: citations of names no book, test book or host file defines, found when the check landed (tooling-velocity, 2026-09-26, dev 17ff24aa); each is a repair owed under its packet (correct the name, or move it to exemptions with a reason). --strict fails on a new one and on an entry no longer cited.",
+ "exemptions": {},
+ "stale": {
+  "PKT-446": {
+   "fn-ag-car-is-car": [
+    "docs/proof-style.md"
+   ],
+   "fn-arena-seal-buffer": [
+    "docs/prefixes.md"
+   ],
+   "fn-auth-config": [
+    "docs/prefixes.md",
+    "specs/native-config.md",
+    "specs/nntp.md"
+   ],
+   "fn-auth-cred": [
+    "specs/identity.md"
+   ],
+   "fn-bp-adu": [
+    "specs/bp-adu.md",
+    "specs/bp-outbound.md"
+   ],
+   "fn-bp-history-preflight": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bp-profile-1": [
+    "specs/storage.md"
+   ],
+   "fn-bp-profile-2": [
+    "specs/storage.md"
+   ],
+   "fn-bp-receipt-overduep": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bp-replay": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bp-retry-request-adu-is-unchanged": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bp-srcpt": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bp-transport-observation-preserves-receipt-overdue": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpaj-admission": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpaj-session-principal-is-selected-by-the-channel": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpb-accepted-block-has-valid-crc": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpb-accepted-input-is-canonical": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpb-block-numbers-unique": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpb-bundle": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpb-decode-allocates-within-limit": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpb-decode-bundle": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpf-cut-covers": [
+    "specs/bp-design.md",
+    "specs/bp-node-machine.md",
+    "specs/bp-primary.md"
+   ],
+   "fn-bpn-active-set-satisfies-inputsp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-adu-class": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-blocks-supportedp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-checkpoint-replays-to-the-projection": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-clear-inflight": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-constraintp": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-correlation-of-subject": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-debt-paying-record-is-never-refused-for-credit": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-deliver-under-policy-requires-verified-targets": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-durable-projection-is-replay-of-the-confirmed-journal": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-family-conservedp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-family-headers-coherentp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-forward-result": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-generation-authority-is-recoverable": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-held": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-held-octets": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-host-step": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-ids-unique": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-job": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-local-destinationp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-machine-state": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-make-report": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-make-state": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-no-anchors-p": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-obligation-openp": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-owed-handoff-ends-only-by-its-receipt-carrier": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-owedp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-pending-transmit-adu-id": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-pending-transmit-destination": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-physical-cut-is-an-observed-journal": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-plan-child-image-bounded": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-policy": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-policy-reports": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-progress-selects-the-least-arrival-among-eligible": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-progress-serves-every-enabled-class-within-four": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-rec-kind": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-rec-token": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-recordp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-recovered-owed-work-has-a-continuation": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-recovery-is-normalized-replay-of-an-observed-journal": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-refragment-primaries": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-replay-journal-is-trace": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-restart-event": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-restart-reanchors-age": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-resume-step": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-rotation-frontiers-are-monotone": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-rotation-is-affordable": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-rotation-preserves-acknowledged-history": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-route": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-route-listp": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-security-policy": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-session-step": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-statep": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-step-fast": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-step-fast-is-step": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-step-preserves-journal-debt-cover": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-step-preserves-obligations": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-step-preserves-statep": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-trace-preserves-statep": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-transfer-admissiblep": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-transit-never-decrypts": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpn-transmit-step": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-transport-observation-cannot-close-a-work": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpn-unfragment": [
+    "specs/bp-design.md"
+   ],
+   "fn-bpnp-step-busy-delivery-defers": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type": [
+    "specs/bp-primary.md"
+   ],
+   "fn-bpp-adu-key-separates-source-and-timestamp": [
+    "specs/bp-primary.md"
+   ],
+   "fn-bpp-hop-count-round-trip": [
+    "specs/bp-primary.md"
+   ],
+   "fn-bpp-previous-node-round-trip": [
+    "specs/bp-primary.md"
+   ],
+   "fn-bprl-owner-join": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bprl-store-join": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bprv-replay-installs-every-record": [
+    "specs/bp-evolving-store.md"
+   ],
+   "fn-bprx-handoff-adu-is-the-committed-receipt": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bps-completion-releases-only-its-own-operation": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bps-reception-answer-is-the-machines-disposition": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bps-run": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bps-run-preserves-the-loop-and-lifecycle-invariants": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bps-step-preserves-correlation": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-bps-verify": [
+    "specs/bp-design.md"
+   ],
+   "fn-bs-crash-invents-nothing": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-image-admissiblep": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-image-admissiblep-iff-crash-imagep": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-piece-start": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-program-pending-disjoint": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-program-step-preserves-relation": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-replay-window-carries-no-success": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-scan-journal": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-tear-touches-only-its-inode": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-bs-view-is-an-admissible-image": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-cbor-result": [
+    "docs/proof-style.md"
+   ],
+   "fn-cfg-apply-config-is-atomic": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-bindings-of-node": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-bindings-of-records": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-bp-group-map": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-group-created": [
+    "specs/nntp-audit.md"
+   ],
+   "fn-cfg-host-default-octets": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-host-line-ceiling": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-host-replay-octets": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-cfg-max-queue-total": [
+    "specs/peering.md"
+   ],
+   "fn-cfg-peer-delta-preserves-the-node-and-changes-only-decisions": [
+    "specs/peering.md"
+   ],
+   "fn-cfg-peer-of-rows-of-peer-rows": [
+    "specs/peering.md"
+   ],
+   "fn-cfg-peer-only-deltasp": [
+    "specs/peering.md"
+   ],
+   "fn-cfg-transport-only-deltasp": [
+    "specs/peering.md",
+    "specs/reconfiguration.md"
+   ],
+   "fn-codecs-includer-vocabulary": [
+    "docs/proof-style.md"
+   ],
+   "fn-control-serial": [
+    "specs/peering.md"
+   ],
+   "fn-crypto-verify": [
+    "specs/node-functionality.md"
+   ],
+   "fn-dtn-deliverable": [
+    "specs/node-functionality.md"
+   ],
+   "fn-feed-commandp": [
+    "specs/peering.md"
+   ],
+   "fn-feed-done-is-never-reoffered": [
+    "specs/peering.md"
+   ],
+   "fn-feed-journal-okp": [
+    "specs/peering.md"
+   ],
+   "fn-feed-never-offers-a-loop": [
+    "specs/peering.md"
+   ],
+   "fn-feed-offerablep": [
+    "specs/peering.md"
+   ],
+   "fn-feed-parse-response": [
+    "specs/peering.md"
+   ],
+   "fn-feed-peer-idlep": [
+    "specs/peering.md"
+   ],
+   "fn-feed-replay-is-the-live-feed-modulo-inflight": [
+    "specs/peering.md"
+   ],
+   "fn-feed-restart-resolves-by-offer": [
+    "specs/peering.md"
+   ],
+   "fn-frame-journal-decode": [
+    "specs/crash-model-v2.md"
+   ],
+   "fn-guard-closure-compliantp": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-connection-isolation": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-connp": [
+    "specs/peering.md"
+   ],
+   "fn-ideal-cost-bound": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-nntp-run": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-octets-step": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-reply-stream-is-partition-independent": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-restart": [
+    "specs/peering.md"
+   ],
+   "fn-ideal-run": [
+    "specs/node-functionality.md",
+    "specs/peering.md"
+   ],
+   "fn-ideal-serve": [
+    "specs/node-functionality.md"
+   ],
+   "fn-ideal-size-bound": [
+    "specs/node-functionality.md"
+   ],
+   "fn-key-new-ed25519": [
+    "specs/peering.md"
+   ],
+   "fn-key-new-ml-dsa-65": [
+    "specs/peering.md"
+   ],
+   "fn-key-old-ed25519": [
+    "specs/peering.md"
+   ],
+   "fn-key-pop-ed25519": [
+    "specs/peering.md"
+   ],
+   "fn-key-pop-ml-dsa-65": [
+    "specs/peering.md"
+   ],
+   "fn-key-principal": [
+    "specs/peering.md"
+   ],
+   "fn-nntp-decimal-field-is-exact-in-range": [
+    "specs/nntp-audit.md"
+   ],
+   "fn-nntp-dispatch": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-nntp-group-numbers": [
+    "specs/nntp-audit.md"
+   ],
+   "fn-nntp-hdr-labelled-line-is-block-text": [
+    "specs/nntp-audit.md"
+   ],
+   "fn-nntp-newnews-field-value": [
+    "specs/acceptance-stamp.md"
+   ],
+   "fn-nntp-newnews-scan-reports-only-articles-accepted-at-or-after": [
+    "specs/acceptance-stamp.md"
+   ],
+   "fn-nntp-newnews-scan-reports-only-witnessed-lines": [
+    "specs/acceptance-stamp.md"
+   ],
+   "fn-nntp-newnews-stamp": [
+    "specs/acceptance-stamp.md"
+   ],
+   "fn-nntp-session-shapep": [
+    "specs/node-functionality.md"
+   ],
+   "fn-node-apply-config": [
+    "specs/peering.md",
+    "specs/reconfiguration.md"
+   ],
+   "fn-node-article-prepare-never-changes-config": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-node-config": [
+    "specs/peering.md",
+    "specs/reconfiguration.md"
+   ],
+   "fn-node-shapep": [
+    "specs/node-functionality.md"
+   ],
+   "fn-node-state": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-node-state-is-single-generation": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-conn-config-stable-without-advance": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-feed-durable-is-the-target-enqueue": [
+    "specs/peering.md"
+   ],
+   "fn-own-feed-tick-peer-records-the-command-it-emits": [
+    "specs/peering.md"
+   ],
+   "fn-own-group-pinned-by-readerp": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-no-advance-forp": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-reconfig-refusal": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-reconfigure": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-reconfigure-without-clock-is-refused": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-own-view-config": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-owner-submit-octets": [
+    "specs/peering.md"
+   ],
+   "fn-owner-transit-payload": [
+    "specs/peering.md"
+   ],
+   "fn-path-names-p-ignores-the-tail-entry": [
+    "specs/peering.md"
+   ],
+   "fn-peer-accepted-article-is-acceptance-accepted": [
+    "specs/peering.md"
+   ],
+   "fn-peer-decide": [
+    "specs/peering.md"
+   ],
+   "fn-peer-facts": [
+    "specs/peering.md",
+    "specs/substrate-transport.md"
+   ],
+   "fn-peer-history-index": [
+    "specs/peering.md"
+   ],
+   "fn-peer-history-index-agrees-with-history": [
+    "specs/peering.md"
+   ],
+   "fn-peer-history-survives-reopen": [
+    "specs/peering.md"
+   ],
+   "fn-peer-lace": [
+    "specs/peering.md"
+   ],
+   "fn-peer-render-prepends-path": [
+    "specs/peering.md"
+   ],
+   "fn-reader-archive": [
+    "specs/node-functionality.md"
+   ],
+   "fn-reader-closep": [
+    "specs/host.md"
+   ],
+   "fn-reader-drive": [
+    "specs/node-functionality.md"
+   ],
+   "fn-reader-drive-is-ideal-octets-step": [
+    "specs/node-functionality.md"
+   ],
+   "fn-reader-output": [
+    "specs/host.md"
+   ],
+   "fn-reader-session": [
+    "specs/node-functionality.md"
+   ],
+   "fn-reader-submit-octets/-msgid": [
+    "specs/host.md"
+   ],
+   "fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome": [
+    "specs/host.md"
+   ],
+   "fn-reader-wire": [
+    "specs/node-functionality.md"
+   ],
+   "fn-record-accepted-input-header": [
+    "specs/acceptance-stamp.md"
+   ],
+   "fn-record-decode-exact-refuses-another-header": [
+    "specs/acceptance-stamp.md"
+   ],
+   "fn-replay-result": [
+    "docs/proof-style.md"
+   ],
+   "fn-sched-runner-durable-branch-is-drive-attempt": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-sched-runner-refusal-releases-nothing": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-sched-runner-uncertain-fences": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-served-conn": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-served-nntp-run": [
+    "specs/owner.md"
+   ],
+   "fn-sn-state": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-store-8": [
+    "docs/operator.md",
+    "specs/encoding.md",
+    "specs/storage.md"
+   ],
+   "fn-store-cfg-generation/-served/-domain": [
+    "specs/host.md"
+   ],
+   "fn-store-cfg-peer-name-list": [
+    "specs/peering.md"
+   ],
+   "fn-store-cfg-served/-domain/-generation": [
+    "specs/host.md"
+   ],
+   "fn-store-experiment-4": [
+    "specs/encoding.md",
+    "specs/reconfiguration.md"
+   ],
+   "fn-store-experiment-5": [
+    "specs/encoding.md",
+    "specs/reconfiguration.md"
+   ],
+   "fn-store-frame-constants/-store-protected/-store-decode": [
+    "specs/host.md"
+   ],
+   "fn-store-group-code": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-store-group-names": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-store-group-of-name": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-store-groups-1": [
+    "specs/store-experiment.md"
+   ],
+   "fn-store-metadata-config-frame/-decode": [
+    "specs/host.md"
+   ],
+   "fn-store-metadata-frontier-frame/-decode/-next": [
+    "specs/host.md"
+   ],
+   "fn-store-obligation-preimage/-id": [
+    "specs/host.md"
+   ],
+   "fn-store-post-boundary": [
+    "specs/reconfiguration.md"
+   ],
+   "fn-store-record-sequence/-txid": [
+    "specs/host.md"
+   ],
+   "fn-store-sn": [
+    "specs/checkpoint.md"
+   ],
+   "fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp": [
+    "specs/host.md"
+   ],
+   "fn-stx-authored-source-is-octet-list": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-complete-exchangep": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-equivocation-record-agrees-with-lace": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-field-decode": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-index": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-payload-for-is-octet-list": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-reissue-detected-after-peering": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-render-verdict": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-transit-admit-is-fn-pol-admitp": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-stx-transit-verdict-is-fn-stx-verdict": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-sys-duplicate-delivery-is-idempotent": [
+    "specs/node-functionality.md"
+   ],
+   "fn-sys-ideal-authorizedp": [
+    "specs/node-functionality.md"
+   ],
+   "fn-sys-node": [
+    "specs/substrate-transport.md"
+   ],
+   "fn-sys-release-is-grounded-end-to-end": [
+    "specs/node-functionality.md"
+   ],
+   "fn-sys-run": [
+    "specs/peering.md",
+    "specs/substrate-transport.md"
+   ],
+   "fn-tcl-accepted-input-is-canonical": [
+    "specs/bp-design.md"
+   ],
+   "fn-tcl-cheap-rules": [
+    "docs/proof-style.md",
+    "specs/tcpcl.md"
+   ],
+   "fn-tcl-decode-of-encode": [
+    "specs/bp-design.md"
+   ],
+   "fn-tcl-partial-acks-are-not-completion": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-tcl-refuse-held-final": [
+    "specs/bp-node-machine.md"
+   ],
+   "fn-tcl-refuse-only-after-preceding-settled": [
+    "specs/bp-design.md"
+   ],
+   "fn-tcl-session-vocabulary": [
+    "specs/tcpcl.md"
+   ],
+   "fn-tj-refused-record-replays-to-same-state": [
+    "specs/transfer-journal.md"
+   ],
+   "fn-x-closed": [
+    "docs/proof-style.md"
+   ],
+   "fn-x-step": [
+    "docs/proof-style.md"
+   ],
+   "fnn-metadata-config-frame/-decode": [
+    "specs/host.md"
+   ],
+   "fnn-metadata-frontier-frame/-decode/-next": [
+    "specs/host.md"
+   ]
+  }
+ }
+}

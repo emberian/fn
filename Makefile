@@ -1093,6 +1093,13 @@ check:
 # the comment says the file does not exist and what rests on it.  Mechanical,
 # no ACL2; triage in planning/lanes/HANDOFF-w11-phantom-cites.md.
 	$(PYTHON) tools/cite_check.py --summary --strict
+# Every Lisp name a spec or doc cites in backquotes is defined by a book, a
+# test book or a host file (PKT-312: a spec cited a retired theorem whose
+# statement was false at the new widths).  Templates, one-segment prefixes and
+# -vN tags pass by visible rule; tools/spec_cite_exemptions.json names each
+# exemption with its reason and each known-stale citation under its packet
+# (PKT-446), and --strict fails on a new one or an entry no longer cited.
+	$(PYTHON) tools/spec_cite_check.py --summary --strict
 # Every theorem the registry cites whose subject no host line can reach.
 # AGENTS.md's first assurance rule -- "the theorem subject is the function
 # the host calls" -- was prose with nothing behind it, and the defect it
