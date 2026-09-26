@@ -8,13 +8,13 @@ Aim (ember, 2026-09-26): friends bring up their own instances and peer, some pee
 
 | Pile | Packets |
 | --- | ---: |
-| (a) WAVE 4 | 126 |
+| (a) WAVE 4 | 127 |
 | &nbsp;&nbsp;already owned by a lane running or queued now | 20 |
 | &nbsp;&nbsp;in the 17 wave-4 lane candidates | 90 |
-| &nbsp;&nbsp;coordinator chores (not lanes) | 16 |
+| &nbsp;&nbsp;coordinator chores (not lanes) | 17 |
 | (b) AFTER v1 | 125 |
 | (c) WON'T DO / SUPERSEDED | 21 |
-| **Total** | **272** |
+| **Total** | **273** |
 
 Sweep 10 (deputy 3, dev `88ec3ef0..804896a1`): 235 at the triage, 6 retired by merges in the window (PKT-002, 242, 249, 271, 319, 348; struck below with the hash), 38 added: sweep 10's 16 new packets (PKT-353 to 368), 13 reserved ids given their first backlog line (PKT-321, 323, 326, 330, 331, 401, 403 to 406, 409 to 411) and 9 open packets this pass had missed (PKT-168, 324, 332, 408, 412 to 416). Moved between piles: PKT-197 to (c); PKT-164 and PKT-263 to (b); PKT-252 to friend-session; PKT-300 to operator-daily; PKT-301 to served-path-scale. Running now (WAVE-STATE): outcome-algebra, pack-chain-open, signed-history-index-2, and the candidates peer-feeds, keys-and-accounts, community-bounds, reader-2 (their packets stay under their candidate headings).
 
@@ -25,6 +25,8 @@ Sweep 12 (deputy 3, dev `afdcae06..fac2c417`): 258 after sweep 11, less 17 retir
 Sweep 13 (deputy 3, dev `fac2c417..51b4ff48`): 260 after sweep 12, less 6 retired by the merges and rulings in the window (consumer-exchange d38625da: PKT-351, 256, 262; pack-chain-cut 526de380: PKT-459; friends-accounts-2 c7edd89f: PKT-439; the coordinator's ruling with its docs sentence bc774574: PKT-432; struck with the hash), plus 15 added: the lanes' own PKT-457, 460, 466, 467 and PKT-458 (its first backlog line) and sweep 13's PKT-384 to 393. New (a0) block: control-reply-fit (running since 15:00; PKT-467 and PKT-254). Moved: PKT-440 to qual-next, PKT-444 to (b) decisions, PKT-168 to (b) with PKT-460, PKT-454 from (b) decisions to operator-daily (the theorem it still owes). The (a0) and chores rows were 24 and 14 by the script before this sweep (PKT-463 added to (a0) since), not the table's 23 and 15; the table now takes the script's figures. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138, PKT-330's narrowed remainder and keys-and-accounts-2's PKT-463, whose backlog line lands with its merge 02021d18, counted as before).
 
 Sweep 14 (deputy 3, dev `51b4ff48..1770d687`): 269 after sweep 13, less 5 retired in the window (keys-and-accounts-2 02021d18: PKT-221; multi-peer-relay 8041d5b0: PKT-261, 291; served-path-scale c150c506: PKT-189; the cites and gate 2bde18f7, 43b0ad46, dfa810fc: PKT-387; struck with the hash), plus 8 added: the lanes' PKT-455 and PKT-464 (first placed here) and sweep 14's PKT-394 to 399 (PKT-463, already here, got its backlog line). The keys-and-accounts block is now keys-and-accounts-3's (running since 15:50; PKT-399 added there); served-path-scale's (a0) block is merged: PKT-190 and PKT-455 to candidate 4, PKT-324 and PKT-330 to a new (a0) block hot-path-scans-2 (running since 15:50). The other lanes launched at 15:50 and 16:05 (operator-daily-2, service-envelope, ten-second-5, ingress-span) own packets still filed under their candidates here, as before. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
+
+Sweep 15 (deputy 3, dev `1770d687..92fe0753`): 272 after sweep 14, none retired in the window (no message names a packet; PKT-396's items landed at 01e1b3cb, 544c8b1e and 40a73bf0, left for the deputy to tick), plus 1 added: PKT-482 (the next cut carries batches R and S and what lands after 17:00), filed under the coordinator chores (owner: the deputy). marker-sharing stopped unmerged at 17:10: its (a0) block is now marker-sharing-2's; PKT-461 and PKT-462 are on its branch only and are not counted here.
 
 Every open packet appears exactly once below (struck lines are retired and not counted) (checked by script against the backlog's open lines).
 
@@ -89,7 +91,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-211 succession-era invitations refused `genesis`; `peer list` without the budget; no native unsupported-profile/signature-failed row (moved from keys-and-accounts: PKT-433 (b), sweep 11)
 - ~~PKT-221 a login-to-principal binding change needs a restart (moved from keys-and-accounts: PKT-433 (a), sweep 11); DONE on lane/keys-and-accounts-2 (PRF-175), to strike at its merge~~ retired at 02021d18 (PRF-175, the live binding) (sweep 14)
 - PKT-391 WATCH: `account list` and the redemption's admission bound count only mark-1 rows now that binding rows share the `accounts` slot; check at its merge 02021d18 (sweep 13) (sweep 14: the bound holds by reading; `account list` renders a binding row as a pending invitation: keys-and-accounts-3)
-- PKT-399 the redemption bound's USED is `(len creds)` computed on the host; the keystone holds for any USED: derive it in ACL2 (sweep 14)
+- PKT-399 the redemption bound's USED is `(len creds)` computed on the host; the keystone holds for any USED: derive it in ACL2 (sweep 14) (sweep 15: traced by keys-and-accounts-3 to friends-accounts-2's XREDEEM stage, fn-acct-host-owner-redeem-stage; control-reply-fit told)
 
 **friends-accounts (merged 52925ed5); friends-accounts-2 (merged c7edd89f)**
 
@@ -123,7 +125,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-467 the `:oversize` poll branch: RULED by the coordinator (D27): bound R by `*fn-stxa-max-octets*` in profile validation, the branch unreachable; with the sweep of every control reply for the crash-instead-of-refuse class (sweep 13)
 - PKT-254 the oversize-article poll contract (narrowed at d38625da; the ruling closes it) (moved from consumer-exchange, sweep 13)
 
-**marker-sharing (running since 13:35, Fable; PRF-174, SCN-104, PKT-461..462)**
+**marker-sharing (stopped at its budget 17:10, proof open, NOT merged); marker-sharing-2 (running since 17:15, Fable, the same worktree; PRF-174, SCN-104, PKT-461..462 on the branch)**
 
 - PKT-441 the one sound cheaper publication program: the next reservation's frontier under the marker's root barrier before the ack (sweep 12)
 - PKT-079 a cheaper publication program against A <= M <= D (326 to 388 ms per commit on ZFS)
@@ -430,7 +432,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-440 the upgrade rehearsal checks the accounts rollback sentence (decided and witnessed at c7edd89f; from friends-accounts-2, sweep 13)
 - PKT-385 native_operator_campaign's pack-chain-link row, never run (sweep 13)
 - PKT-388 the release-tarball run of the accounts module: friends_tarball.sh takes a module (sweep 13)
-- PKT-395 the current image refuses the 20,000 fixture's checkpoint: bug or format refusal? if a format refusal, the first open after the upgrade is a full replay: the rehearsal records it on the deployed node's copy (sweep 14)
+- PKT-395 the current image refuses the 20,000 fixture's checkpoint: bug or format refusal? if a format refusal, the first open after the upgrade is a full replay: the rehearsal records it on the deployed node's copy (sweep 14) (sweep 15: qual-dfa810fc's item 1 (c) and service-envelope told)
 
 ### Coordinator chores (in wave 4's window, not lanes)
 
@@ -445,15 +447,16 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-365~~ lower the throughput baseline after 735614d6 with a named improvement (sweep 10) — retired at 114af152
 - PKT-408 the gate once per host/books batch; a quiet run to arm the wall-clock figures (sweep 10)
 - PKT-326 owner-invariants and owner-control-read: a quiet re-measure, never a lane (sweep 10)
-- PKT-371 one quiet re-measure of the five books over 10 s under load today, native-operator's growth watched (sweep 11); two more at fac2c417: peer-authored-accept 11.5 s, topic-history-store-invariants 11.4 s (sweep 12)
+- PKT-371 one quiet re-measure of the five books over 10 s under load today, native-operator's growth watched (sweep 11); two more at fac2c417: peer-authored-accept 11.5 s, topic-history-store-invariants 11.4 s (sweep 12) ; the candidate dfa810fc's closure run, at 4 jobs: ten over 10 s, store-checkpoint-reader 13.2 s the top (sweep 15)
 - PKT-373 reap the merged lanes' persvati REPL sessions; identify opv-mirror2 (sweep 11)
 - ~~PKT-380~~ the merge certifications of operator-daily's and peer-feeds' bytes and batches K to N's gate owed at the head (sweep 12) — retired at 4e2625ba
 - PKT-381 the cite step's traps: a grep exit status skipped two `farm.py submit`s; harvest.sh --root (sweep 12)
 - PKT-382 hbox scratch the window's lanes left (never the chain-20000 fixture) (sweep 12)
 - PKT-442 FOR EMBER: seven barriers on a 90-percent-full pool with no SLOG; an SLOG or pool for the node, PKT-441, group commit, or the staging fsync (sweep 12)
 - ~~PKT-387 friends-accounts-2's merge certification over nntp-auth's closure and batch P's gate owed at 51b4ff48; keys-and-accounts-2's over config.lisp's (sweep 13)~~ retired at 2bde18f7, 43b0ad46 and dfa810fc (sweep 14)
-- PKT-396 multi-peer-relay's (hbox, bp-node-progress's closure and the two new books) and served-path-scale's (acceptance, node, owner) merge certifications and batch R+S's gate owed at 1770d687, before the cut takes them (sweep 14)
-- PKT-398 PRF-028 uncertified at the current digest though PRF-175 and the accounts publication cite it: one certification rooted at config-owner-publish, riding PKT-396's run (sweep 14)
+- PKT-396 multi-peer-relay's (hbox, bp-node-progress's closure and the two new books) and served-path-scale's (acceptance, node, owner) merge certifications and batch R+S's gate owed at 1770d687, before the cut takes them (sweep 14) (sweep 15: its items landed at 01e1b3cb, 544c8b1e, 40a73bf0; not ticked)
+- PKT-398 PRF-028 uncertified at the current digest though PRF-175 and the accounts publication cite it: one certification rooted at config-owner-publish, riding PKT-396's run (sweep 14) (sweep 15: certified_claims --explain names certify-20260926T123813Z-1816946 as certifying the current bytes, not cited: a cite closes it)
+- PKT-482 the next cut carries batches R and S (multi-peer-relay, served-path-scale; certified 01e1b3cb, 544c8b1e; gate 40a73bf0) and every lane merged after 17:00: one closure and a qualification reusing qual-dfa810fc's unchanged evidence (sweep 15)
 
 ## (b) AFTER v1: matters, but not for friends peering
 
