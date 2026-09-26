@@ -6356,6 +6356,18 @@
         {
           "kind": "theorem",
           "name": "fn-nls-page-refuses-exactly-past-the-total-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
         }
       ]
     }
