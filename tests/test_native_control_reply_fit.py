@@ -49,6 +49,15 @@ class ControlReplyFitSourceTests(unittest.TestCase):
 
 
 class ControlReplyFitTests(ProfileUpgradeFixture):
+    def profile_line(self):
+        status = self.op("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        for line in status.stdout.decode("ascii").splitlines():
+            if line.startswith("profile "):
+                return {k: int(v) if v.isdigit() else v
+                        for k, v in (w.split("=", 1) for w in line.split()[1:])}
+        self.fail(status.stdout.decode())
+
     def config_frame(self):
         path = self.store / "config.json"
         return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
@@ -66,7 +75,8 @@ class ControlReplyFitTests(ProfileUpgradeFixture):
                           "--max-history-octets", str(PAST), "fn.test")
         print(refused.stderr.decode(errors="replace"), flush=True)
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
-        self.assertIn(NAME, refused.stderr)
+        # The operator's result line prints the reason word upper-cased.
+        self.assertIn(NAME, refused.stderr.lower())
         self.assertIsNone(self.config_frame())
         created = self.op("init", "--max-record-octets", str(CEILING),
                           "--max-history-octets", str(CEILING), "fn.test")
