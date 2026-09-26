@@ -214,3 +214,58 @@
                                                        *ospt-event*)
                           (fn-sn-prepare-identity *evct-regrouped-s*
                                                   *ospt-event*))))
+
+; -----------------------------------------------------------------------------
+; PRF-193 (lane signed-post-linear, 2026-09-26): the identity prepare's
+; candidate test reads the history's last record, not every record
+; (fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
+(defconst *evct-records* (fn-sf-records (fn-sn-files *evct-reserved-s*)))
+(make-event
+ `(defconst *evct-staged-s*
+    ',(fn-ccar-sn-prepare-identity *evct-reserved-s* *ospt-event*)))
+
+; Reachable positive witness (the reserved store reached by fn-own-run, a
+; non-empty history): the antecedent (the prepare moved the store) and every
+; conjunct of the conclusion, the last-record bound included.
+(assert-event (consp *evct-records*))
+(assert-event (not (equal *evct-staged-s* *evct-reserved-s*)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *evct-staged-s*)) :record-staged))
+(assert-event (equal (fn-sf-records (fn-sn-files *evct-staged-s*)) *evct-records*))
+(assert-event (equal (fn-sf-record-candidate (fn-sn-files *evct-staged-s*))
+                     *ospt-event*))
+(assert-event (equal (fn-sn-node *evct-staged-s*) (fn-sn-node *evct-reserved-s*)))
+(assert-event (equal (fn-store-event-sequence *ospt-event*) (len *evct-records*)))
+(assert-event (equal (+ 1 (fn-store-event-txid *ospt-event*))
+                     (fn-sf-frontier (fn-sn-files *evct-reserved-s*))))
+(assert-event (< (fn-store-event-txid (car (last *evct-records*)))
+                 (fn-store-event-txid *ospt-event*)))
+
+; Hypothesis removal (reachable): the owner before its four frontier
+; observations, whose store is not reserved.  The prepare leaves it as it
+; was (the omitted hypothesis fails), and the conclusion fails: nothing is
+; staged.
+(defconst *evct-unreserved-s* (fn-own-store *ospt-taken*))
+(assert-event (not (equal (fn-sf-phase (fn-sn-files *evct-unreserved-s*)) :reserved)))
+(assert-event (equal (fn-ccar-sn-prepare-identity *evct-unreserved-s* *ospt-event*)
+                     *evct-unreserved-s*))
+(assert-event (not (equal (fn-sf-phase
+                           (fn-sn-files
+                            (fn-ccar-sn-prepare-identity *evct-unreserved-s*
+                                                         *ospt-event*)))
+                          :record-staged)))
+(must-fail
+ (defthm evct-prepare-identity-stages-without-the-hypothesis
+   (let* ((records (fn-sf-records (fn-sn-files s)))
+          (r (fn-ccar-sn-prepare-identity s event))
+          (files (fn-sn-files r)))
+     (and (equal (fn-sf-phase files) :record-staged)
+          (equal (fn-sf-records files) records)
+          (equal (fn-sf-record-candidate files) event)
+          (equal (fn-sn-node r) (fn-sn-node s))
+          (equal (fn-store-event-sequence event) (len records))
+          (equal (+ 1 (fn-store-event-txid event))
+                 (fn-sf-frontier (fn-sn-files s)))
+          (implies (consp records)
+                   (< (fn-store-event-txid (car (last records)))
+                      (fn-store-event-txid event)))))))
+
