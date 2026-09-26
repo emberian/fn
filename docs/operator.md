@@ -9,6 +9,14 @@ makes no availability or flight-readiness claim; see
 
 Everything below is one command, `fn`, and one configuration file.
 
+**With only the release tarball** (`fn-REV-linux-x86_64.tar.gz`, made by
+`packaging/release-tarball.sh`), start at
+[From the release tarball](#from-the-release-tarball) and then
+[peering with a friend](peering-with-a-friend.md). The sections
+"Install", "Initialize" and "Require a login" further down describe the
+Python development service (`bin/fn --config ...`), not the tarball's
+`bin/fn`, whose verbs are `fn operator CONFIG VERB ...`.
+
 Status (2026-09-21): `bin/fn` and the workflow below describe the explicit
 **Python development service**. The production package uses the native saved
 image and the separate installation procedure below.
@@ -43,6 +51,9 @@ packaging/fn-native operator /path/to/fn.toml capacity 1048576
 packaging/fn-native operator /path/to/fn.toml peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false
 packaging/fn-native operator /path/to/fn.toml peer remove NAME
 packaging/fn-native operator /path/to/fn.toml peer list
+packaging/fn-native operator /path/to/fn.toml peer invite NAME GROUPS HOST PORT PATH /KEYDIR /OUT MY-HOST MY-PORT
+packaging/fn-native operator /path/to/fn.toml peer accept /INVITATION /KEYDIR PATH REACHABLE /OUT
+packaging/fn-native operator /path/to/fn.toml peer confirm /ACCEPTANCE /INVITATION
 packaging/fn-native operator /path/to/fn.toml policy set path-identity news.example.invalid
 packaging/fn-native operator /path/to/fn.toml run
 ```
@@ -428,6 +439,37 @@ store is opened read-only with the current `fn.toml`'s threshold. The
 first line (`health exit=NN`) is what the command exits with: ACL2 renders
 it and reads it back from the same octets
 (`fn-nh-report-exit-of-render`, books/native-health.lisp).
+
+### From the release tarball
+
+`packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR` packages one
+frozen image as `fn-REV12-linux-x86_64.tar.gz` with its `.sha256`: the
+installed layout below under one directory `fn-REV12/`, carrying the SBCL
+runtime, OpenSSL 3.5 and libsodium beside the image, the operator documents
+under `share/doc/fn/`, and `SHA256SUMS` over every file. The launcher finds
+all of it relative to itself, so the directory runs wherever it is unpacked
+and needs no system OpenSSL. What a stranger runs, in order (each step's
+exact words and what it answers are in
+[peering with a friend](peering-with-a-friend.md), section 1):
+
+1. `sha256sum -c` the tarball's sum, unpack, `sha256sum -c SHA256SUMS`.
+2. `fn operator NODE/fn.toml mission small-community --host IP --port P`
+   writes `fn.toml` (login required, only after STARTTLS; TLS paths under
+   `NODE/tls/`). It does **not** make the TLS pair: make one with `openssl
+   req -x509 ...` whose subjectAltName is the address others dial, into the
+   two paths `fn.toml` names.
+3. `init` (a small community serves `local.general` and `local.test`),
+   `policy set path-identity NAME`, `principal set-password LOGIN
+   --posting` (the password twice, from the terminal or two lines of stdin;
+   it applies at the next start).
+4. For peering, the node's keys: an Ed25519 pair and an ML-DSA-65 pair made
+   with an `openssl` 3.5 command into a key directory, then `peer genesis
+   KEYDIR`.
+5. `fn operator NODE/fn.toml run` under a service manager
+   (`systemd-run --user --unit NAME -p MemoryMax=8G ...` on a box without
+   root).
+
+`fn operator CONFIG help VERB` prints each verb's grammar.
 
 ### Install the native production entry
 

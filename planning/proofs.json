@@ -5705,6 +5705,36 @@
         "fn-cvec-release-never-raises-the-charge",
         "fn-cvec-config-publication-keeps-the-release-generation"
       ]
+    },
+    {
+      "id": "PRF-160",
+      "title": "A friend's invitation configures the inviter at the invitee: the accept's one configuration record sets the inviter peer from the invitation's signed address before the enrolment, and a crash between the two resumes as the enrolment without a second record",
+      "statement": "fn-pinv-accept-record-configures-the-verified-inviter: a (:configure DELTAS) from fn-pinv-accept-record-plan RECEIVED OBS ED ML SNAPSHOTS PEERS (books/peer-invite.lisp; host/native/peer-invite.lisp fnn-pinv-owner-accept calls it through host/peer-invite-host.lisp fn-pinv-host-accept-record-plan) has the invitation bound (fn-pinv-bound-document-p: the carrier verifies under the key set its body names and the inviter is its genesis principal), the inviter not enrolled with those keys in SNAPSHOTS, an Inviter-Port that is a port, the peer fn-pinv-inviter-peer (named and path-identified by Inviter-Path, transport (:nntp 1 Inviter-Host Inviter-Port (:clear)), inbound Groups, no outbound half) fn-cfg-peerp with auth (:principal INVITER-HEX), no row of PEERS under its name, and DELTAS = (fn-cfg-set-peer-delta peer). fn-pinv-accept-record-fold-configures-the-inviter: over fn-cfg-apply V GEN STAMP DELTAS (the fold fn-cfg-apply-record runs when the owner completes the publication) the peers table holds exactly the peer's rows under its name, and the accept record plan over the folded peers table is the accept plan, which is :enrol (the crash point after the record resumes as the enrolment, never a second record). Not covered: TLS words and the outbound half (the operator's peer add of the same name), the signature primitives (A-CRYPTO), that the address the inviter signed is reachable.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-030"
+      ],
+      "depends_on": [
+        "PRF-097",
+        "PRF-124"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "books/native-operator.lisp",
+        "tests/test_native_peer_invite.py",
+        "planning/evidence/friends-peer-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T071830Z-739340.json",
+        "planning/evidence/manifests/certify-20260926T073947Z-853113.json"
+      ],
+      "events": [
+        "fn-pinv-accept-record-configures-the-verified-inviter",
+        "fn-pinv-accept-record-fold-configures-the-inviter"
+      ]
     }
   ]
 }

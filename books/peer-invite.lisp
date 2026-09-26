@@ -353,8 +353,13 @@
 ; :issue-invitation row: the nonce, the principal that signed it, and its
 ; authored-source identity.
 
+; PRF-160: the last two lines are the inviter's own reachable address, so the
+; accepting node can configure the inviter as a peer; `-' in both says the
+; inviter gave none (the accept then enrols and configures nothing, as
+; before).  They are signed body lines like the rest: the address is the
+; inviter principal's statement, not the carrier's.
 (defun fn-pinv-invitation-fields (nonce principal token keys name path groups
-                                        host port)
+                                        host port inviter-host inviter-port)
   (declare (xargs :guard t))
   (list (cons "FN-Peering" (fn-pinv-text *fn-pinv-invitation-kind*))
         (cons "Nonce" (fn-pinv-hex nonce))
@@ -366,17 +371,21 @@
         (cons "Inviter-Path" path)
         (cons "Groups" groups)
         (cons "Host" host)
-        (cons "Port" port)))
+        (cons "Port" port)
+        (cons "Inviter-Host" inviter-host)
+        (cons "Inviter-Port" inviter-port)))
 
 (defun fn-pinv-invitation-source (date-ms nonce principal token keys name path
-                                          groups host port)
+                                          groups host port inviter-host
+                                          inviter-port)
   (declare (xargs :guard t))
   (fn-pinv-source "fn-invitation"
                   (append (fn-pinv-text "<fn-invite-") (fn-pinv-hex nonce)
                           (fn-pinv-text "@fn-peering.invalid>"))
                   date-ms
                   (fn-pinv-invitation-fields nonce principal token keys name
-                                             path groups host port)))
+                                             path groups host port
+                                             inviter-host inviter-port)))
 
 (defun fn-pinv-source-id (source)
   (declare (xargs :guard t))
@@ -1254,3 +1263,151 @@
                                                received observed-ml ed ml
                                                (fn-cfg-invitations v)
                                                snapshots)))))))))
+
+; -----------------------------------------------------------------------------
+; PRF-160: the accept configures the inviter (specs/peering.md section 10).
+;
+; An invitation whose body names `Inviter-Host' and `Inviter-Port' (the
+; inviter's own reachable address) lets the invitee configure the inviter as
+; a peer in the same step that enrols it.  The peer is the mirror of the one
+; the confirm configures at the inviter: named and path-identified by the
+; invitation's `Inviter-Path', transport `(:nntp 1 Inviter-Host Inviter-Port
+; (:clear))', inbound `Groups' (the inviter may feed them here), no outbound
+; half, and the role binding `(:principal INVITER)' of the principal whose
+; carrier verified.  A protected transport and an outbound feed stay the
+; operator's `peer add' of the same name, which replaces the record.
+;
+; The configuration record comes first and the kind-3 enrolment second, as
+; in the confirm.  A death between the two leaves the peer configured and
+; the inviter not enrolled; the next accept of the same invitation finds the
+; peers table already holding exactly these rows and enrols without writing
+; a second record.
+
+(defun fn-pinv-inviter-peer (invitation inviter)
+  (declare (xargs :guard t))
+  (let ((path (fn-record-octets-string (fn-pinv-field "Inviter-Path"
+                                                      invitation))))
+    (fn-cfg-peer-make
+     path path
+     (list :nntp 1 (fn-record-octets-string (fn-pinv-field "Inviter-Host"
+                                                           invitation))
+           (fn-pinv-port (fn-pinv-field "Inviter-Port" invitation)) '(:clear))
+     (list (fn-record-octets-string (fn-pinv-field "Groups" invitation))
+           *fn-record-max-payload* *fn-pinv-peer-inflight*)
+     nil
+     (list :principal (fn-pinv-hex-string inviter)))))
+
+(defthm fn-pinv-inviter-peer-auth
+  (equal (fn-cfg-peer-auth (fn-pinv-inviter-peer invitation inviter))
+         (list :principal (fn-pinv-hex-string inviter)))
+  :hints (("Goal" :in-theory (e/d (fn-pinv-inviter-peer)
+                                  (fn-pinv-hex-string)))))
+
+; The invitation names an address: an Inviter-Port that is a port.  `-' (or
+; no line, an invitation written before PRF-160) names none.
+(defun fn-pinv-inviter-addressedp (invitation)
+  (declare (xargs :guard t))
+  (and (fn-pinv-port (fn-pinv-field "Inviter-Port" invitation)) t))
+
+; The owner's accept plan (host/native/peer-invite.lisp
+; `fnn-pinv-owner-accept' calls it through `fn-pinv-host-accept-record-plan').
+; (:configure DELTAS) | the accept plan (:enrol ...) | (:refused why).
+(defun fn-pinv-accept-record-plan (received observed-ml ed ml snapshots peers)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml)))
+    (if (not (equal (car plan) :enrol)) plan
+      (let* ((inv (fn-pinv-received-source received))
+             (peer (fn-pinv-inviter-peer inv (fn-pinv-received-principal
+                                              received)))
+             (name (fn-cfg-peer-name peer)))
+        (cond ((fn-pinv-enrolled-withp (fn-pinv-received-principal received)
+                                       (fn-pinv-received-keys received)
+                                       snapshots)
+               (list :refused :already-enrolled))
+              ((not (fn-pinv-inviter-addressedp inv)) plan)
+              ((not (fn-cfg-peerp peer)) (list :refused :peer-record))
+              ((equal (fn-cfg-rows-with-key peers name) (fn-cfg-peer-rows peer))
+               plan)
+              ((consp (fn-cfg-rows-with-key peers name))
+               (list :refused :peer-name-taken))
+              (t (list :configure (list (fn-cfg-set-peer-delta peer)))))))))
+
+(defthm fn-pinv-accept-plan-never-configures
+  (not (equal (car (fn-pinv-accept-plan received observed-ml ed ml))
+              :configure))
+  :hints (("Goal" :in-theory (enable fn-pinv-accept-plan fn-pinv-document))))
+
+(defthm fn-pinv-accept-plan-enrols-only-a-bound-invitation
+  (implies (equal (car (fn-pinv-accept-plan received observed-ml ed ml)) :enrol)
+           (fn-pinv-bound-document-p received observed-ml ed ml
+                                     *fn-pinv-invitation-kind*))
+  :hints (("Goal" :in-theory (enable fn-pinv-accept-plan)
+           :use ((:instance fn-pinv-document-ok-is-bound
+                            (kind *fn-pinv-invitation-kind*))))))
+
+; KEYSTONE (the record the accept publishes).  A (:configure DELTAS) plan
+; exists only when the accept step's own plan enrols (the invitation's
+; carrier verifies under the key set its body names and the inviter is its
+; genesis principal: `fn-pinv-document-ok-is-bound'), the inviter is not yet
+; enrolled here, the invitation names an address, the peer built from it is
+; a well-formed peer record bound to exactly the verified inviter, no
+; configured peer has its name, and DELTAS is that peer's (:set-peer) delta.
+(defthm fn-pinv-accept-record-configures-the-verified-inviter
+  (let* ((rplan (fn-pinv-accept-record-plan received observed-ml ed ml
+                                            snapshots peers))
+         (inv (fn-pinv-received-source received))
+         (inviter (fn-pinv-received-principal received))
+         (peer (fn-pinv-inviter-peer inv inviter)))
+    (implies (equal (car rplan) :configure)
+             (and (fn-pinv-bound-document-p received observed-ml ed ml
+                                            *fn-pinv-invitation-kind*)
+                  (not (fn-pinv-enrolled-withp
+                        inviter (fn-pinv-received-keys received) snapshots))
+                  (fn-pinv-inviter-addressedp inv)
+                  (fn-cfg-peerp peer)
+                  (equal (fn-cfg-peer-auth peer)
+                         (list :principal (fn-pinv-hex-string inviter)))
+                  (not (consp (fn-cfg-rows-with-key peers
+                                                    (fn-cfg-peer-name peer))))
+                  (equal (fn-pinv-at 1 rplan)
+                         (list (fn-cfg-set-peer-delta peer))))))
+  :hints (("Goal" :in-theory (disable fn-pinv-inviter-peer fn-cfg-peerp
+                                      fn-cfg-peer-rows fn-pinv-inviter-addressedp
+                                      fn-record-octets-string
+                                      fn-pinv-body-names-p)
+           :use ((:instance fn-pinv-accept-plan-enrols-only-a-bound-invitation)))))
+
+; KEYSTONE (over the fold the host calls).  Applying the accept's record to
+; the live value V (`fn-cfg-apply', under the record's generation and
+; stamp) leaves the peers table holding exactly the inviter peer's rows
+; under its name, and -- the crash point after the one record -- the same
+; invitation's next accept plan over the folded peers table is the accept
+; step's enrolment plan, never a second record.
+(defthm fn-pinv-accept-record-fold-configures-the-inviter
+  (let* ((rplan (fn-pinv-accept-record-plan received observed-ml ed ml
+                                            snapshots (fn-cfg-peers v)))
+         (peer (fn-pinv-inviter-peer (fn-pinv-received-source received)
+                                     (fn-pinv-received-principal received)))
+         (next (fn-cfg-apply v gen stamp (fn-pinv-at 1 rplan))))
+    (implies (equal (car rplan) :configure)
+             (and (equal (fn-cfg-rows-with-key (fn-cfg-peers next)
+                                               (fn-cfg-peer-name peer))
+                         (fn-cfg-peer-rows peer))
+                  (equal (fn-pinv-accept-record-plan received observed-ml ed ml
+                                                     snapshots
+                                                     (fn-cfg-peers next))
+                         (fn-pinv-accept-plan received observed-ml ed ml))
+                  (equal (car (fn-pinv-accept-plan received observed-ml ed ml))
+                         :enrol))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-cfg-apply)
+                           (fn-pinv-inviter-peer fn-cfg-peerp fn-cfg-peer-rows
+                            fn-cfg-apply-delta fn-pinv-inviter-addressedp
+                            fn-record-octets-string
+                            fn-pinv-accept-record-configures-the-verified-inviter))
+           :use ((:instance fn-pinv-accept-record-configures-the-verified-inviter
+                            (peers (fn-cfg-peers v)))
+                 (:instance fn-cfg-peer-rows-after-set-peer
+                            (p (fn-pinv-inviter-peer
+                                (fn-pinv-received-source received)
+                                (fn-pinv-received-principal received))))))))

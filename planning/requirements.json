@@ -2786,6 +2786,32 @@
       ],
       "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
       "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
+    },
+    {
+      "id": "NNT-030",
+      "title": "A friend's node and this one become peers from one invitation each way of the exchange: the accept configures the inviter at the invitee from the invitation's signed address in one record before the enrolment, the confirm configures the invitee at the inviter, and a crash between record and enrolment is resumed without a second record",
+      "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-160"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "tests/test_native_peer_invite.py",
+        "docs/peering-with-a-friend.md",
+        "packaging/release-tarball.sh",
+        "planning/evidence/friends-peer-2026-09-26.md"
+      ],
+      "implementation_note": "A stronger fn guarantee: RFC 3977 and RFC 5537 say nothing of how two servers agree to peer. The `Inviter-Host`/`Inviter-Port` lines are signed body lines of the invitation (fn-peering-v1, additive); `-` names no address. TLS words, credentials and the outbound half remain the operator's `peer add` of the same name; docs/peering-with-a-friend.md is the two-machine runbook from the release tarball. Account invitation codes (PKT-401) are specified as a packet, not built."
     }
   ]
 }
