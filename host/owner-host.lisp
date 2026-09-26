@@ -295,19 +295,27 @@
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
-               ; PRF-180: the committed record octets are folded once
-               ; here, over the Store this open replayed; every later query
-               ; advances the cache through the derived event index
-               ; (fn-owner-record-octets).
-               (state (let ((s (fn-owner-store state)))
-                        (f-put-global 'fn-owner-record-octets
-                                      (cons (fn-sbud-count s)
-                                            (fn-sbud-bytes-used s))
-                                      state)))
-               (state (f-put-global 'fn-owner-record-debt nil state))
-               ; PRF-099: the carried-usage cache restarts from the Store
-               ; this open replayed (fn-pcb-usage-extend walks it once).
-               (state (f-put-global 'fn-owner-carried-usage nil state)))
+               ; PRF-180: the committed record octets, the completion debt
+               ; and the carried usage are folded once here, over the Store
+               ; this open replayed (valid caches: fn-sbud-full-cache-is-valid,
+               ; fn-cvec-full-debt-cache-is-valid, fn-pcb-full-cache-is-valid);
+               ; every later query advances them through the derived event
+               ; index (fn-owner-record-octets, fn-owner-record-debt,
+               ; fn-owner-carried-usage).
+               (s (fn-owner-store state))
+               (records (fn-sf-records (fn-sn-files s)))
+               (state (f-put-global 'fn-owner-record-octets
+                                    (cons (fn-sbud-count s)
+                                          (fn-sbud-bytes-used s))
+                                    state))
+               (state (f-put-global 'fn-owner-record-debt
+                                    (cons (fn-sbud-count s)
+                                          (fn-cvec-record-debt records))
+                                    state))
+               (state (f-put-global 'fn-owner-carried-usage
+                                    (cons (fn-sbud-count s)
+                                          (fn-pcb-tally-records records nil))
+                                    state)))
           (value :installed))
       (value :refused))))
 
