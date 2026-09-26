@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 942 |
-| Certification roots in the Makefile | 924 |
-| Books inside the root closure | 938 |
-| `defthm` and `defthmd` events | 13215 |
-| `defun` events | 9158 |
+| Books read | 946 |
+| Certification roots in the Makefile | 928 |
+| Books inside the root closure | 942 |
+| `defthm` and `defthmd` events | 13254 |
+| `defun` events | 9179 |
 | Functions with verified guards | 2198 |
-| Functions declared `:verify-guards nil` and never verified | 727 |
-| Functions left at the default with an explicit guard | 4868 |
-| Functions left at the default with no guard | 1365 |
-| `assert-event` checks | 13613 |
-| `must-fail` checks | 1542 |
+| Functions declared `:verify-guards nil` and never verified | 730 |
+| Functions left at the default with an explicit guard | 4883 |
+| Functions left at the default with no guard | 1368 |
+| `assert-event` checks | 13658 |
+| `must-fail` checks | 1543 |
 | `encapsulate` events | 65 |
-| Theorems flagged SUSPECT by shape | 114 |
+| Theorems flagged SUSPECT by shape | 119 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 135 |
-| Include-hygiene warnings | 950 |
+| Include-hygiene warnings | 953 |
 | Host-names warnings | 1071 |
 | Hand-written-record warnings | 18 |
 
@@ -544,6 +544,8 @@ that `make certify` requests.
 | `books/store-budget-article.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-budget-naming.lisp` | root | 15 | 11 | 0/1/10/0 | 0 | 0 | 0 |
 | `books/store-budget.lisp` | root | 9 | 13 | 0/7/6/0 | 0 | 0 | 0 |
+| `books/store-capacity-config.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/store-capacity-vector.lisp` | root | 37 | 16 | 0/3/12/1 | 0 | 0 | 5 |
 | `books/store-checkpoint-buffer.lisp` | root | 37 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 67 | 46 | 14/2/30/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-open.lisp` | root | 42 | 34 | 11/0/23/0 | 0 | 0 | 0 |
@@ -954,6 +956,8 @@ that `make certify` requests.
 | `tests/acl2/store-budget-article-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-budget-naming-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 61 | 17 | 0 |
 | `tests/acl2/store-budget-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 28 | 3 | 0 |
+| `tests/acl2/store-capacity-config-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 0 | 0 |
+| `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 37 | 1 | 0 |
 | `tests/acl2/store-checkpoint-buffer-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 10 | 5 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-reader-tests.lisp` | root | 1 | 8 | 0/0/8/0 | 17 | 5 | 0 |
@@ -1080,6 +1084,11 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-col-poll-index-get-non-uint-is-nil-by-definition` | `books/consumer-poll-index.lisp` | 113 | branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1319 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-ctl-drop-via-of-atom` | `books/control-visible.lisp` | 122 | branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value |
+| `fn-cvec-debt-from-of-atom` | `books/store-capacity-vector.lisp` | 618 | branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
+| `fn-cvec-debt-from-of-cons` | `books/store-capacity-vector.lisp` | 610 | branch-of-definition: the hypothesis is a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
+| `fn-cvec-history-admittedp-of-cons` | `books/store-capacity-vector.lisp` | 575 | branch-of-definition: the hypothesis is a branch test of fn-cvec-history-admittedp and the conclusion is that branch's value |
+| `fn-cvec-record-octets-of-atom` | `books/store-capacity-vector.lisp` | 603 | branch-of-definition: the hypothesis negates a branch test of fn-sbud-record-octets and the conclusion is that branch's value |
+| `fn-cvec-record-octets-of-cons` | `books/store-capacity-vector.lisp` | 594 | branch-of-definition: the hypothesis is a branch test of fn-sbud-record-octets and the conclusion is that branch's value |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 174 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-evc-event-nth-of-atom` | `books/store-events-carried.lisp` | 138 | branch-of-definition: the hypothesis negates a branch test of fn-store-event-nth and the conclusion is that branch's value |
