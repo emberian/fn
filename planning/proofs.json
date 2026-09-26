@@ -4826,6 +4826,38 @@
         "fn-nh-live-report-is-the-store-report",
         "fn-nh-fence-of-route"
       ]
+    },
+    {
+      "id": "PRF-130",
+      "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss, which host/native/io.lisp fnn-command-rollback-snapshot calls: fn-native-operator-snapshot-loss-counts-the-suffix, the verb answers :loses exactly when the snapshot's committed (sequence . length) history is a prefix of the store's, and the count is the number of committed transactions after it.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-008"
+      ],
+      "depends_on": [
+        "PRF-112"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/feed-connection.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/acl2/native-mission-tests.lisp",
+        "host/native/operator.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/operator-walk-2026-09-26.md"
+      ],
+      "progress_note": "Part 2 (the bp-node health verdict over the BP node's report, PKT-174's default) is not done; see planning/evidence/operator-walk-2026-09-26.md, PKT-264.",
+      "events": [
+        "fn-native-operator-absent-store-is-refused",
+        "fn-native-operator-store-outcome-passes-a-present-store",
+        "fn-native-operator-snapshot-loss-counts-the-suffix",
+        "fn-fc-mode-stream-refusal-stops-the-dial",
+        "fn-fc-dial-allowedp-of-put-other"
+      ]
     }
   ]
 }
