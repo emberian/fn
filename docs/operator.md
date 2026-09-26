@@ -1399,6 +1399,16 @@ There are two rollbacks, and they are not the same:
   releases or peer state a restore also brings back; and a store-local
   comparison is not a freshness witness (see `fn anchor` under Back up).
 
+Two auxiliary files also decide what an older release can open, and neither
+is covered by `rollback-check`:
+
+- **The pull journals** (`<store>/pull/*.fnpl`). A release from before
+  2026-09-26 refuses a pull journal that holds the `:pull-unavailable`
+  record (the per-article count that bounds a peer's repeated 430s), so
+  rolling a node back to such a release means deleting its `pull/` journals
+  first; the cursor then restarts one day back, which is bounded duplicate
+  replay with no skipped accepted work (the NEWNEWS pull's own contract).
+
 ## Back up
 
 Stop the service, then copy the store directory.
