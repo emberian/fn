@@ -194,17 +194,26 @@ def init_dir(image, d, env, octets, signed_every):
     return state
 
 
-def load_into(owner, author, d, state, to, deadline):
-    """POST the preload on OWNER until the store holds TO articles or the
-    monotonic DEADLINE passes; the run's row."""
+def load_into(owner, author, d, state, to, deadline, session_posts=None):
+    """POST the preload on OWNER until the store holds TO articles, the
+    monotonic DEADLINE passes or SESSION_POSTS were posted; the run's row."""
     run = {"started_utc": now(), "from": state["count"]}
     if not state["enrolled"]:
         author.enroll(d / "c.sock")
         state["enrolled"] = True
         save_state(d, state)
     c = m.Conn(owner.port)
+    # A resumed load after an owner that died mid-POST: that POST's outcome
+    # was uncertain, and the store (not this file) says whether it is held.
+    i = state["count"]
+    if i and not is_signed(i, state["signed_every"]):
+        if c.line("STAT %s" % m.msgid(i)).startswith(b"223"):
+            run["uncertain_post_was_stored"] = i
+            state["count"] = state["loaded"] = i + 1
     t0, c0 = time.perf_counter(), owner.cpu()
-    while state["count"] < to and time.monotonic() < deadline:
+    posted = 0
+    while state["count"] < to and time.monotonic() < deadline and (session_posts is None or posted < session_posts):
+        posted += 1
         i = state["count"]
         if is_signed(i, state["signed_every"]):
             sc.post_octets(c, author.sign("senv-load-%d" % i, state["octets"]))
@@ -514,7 +523,8 @@ def measure(a):
                                      "owner_cpu_s": round(owner.cpu(), 3), "memory": owner.memory()})
                 write()
             if step == "load":
-                rows.setdefault("load", []).append(load_into(owner, author, d, state, a.load_to, deadline))
+                rows.setdefault("load", []).append(load_into(owner, author, d, state, a.load_to, deadline,
+                                                             a.session_posts))
                 if state["count"] < a.load_to:
                     code = 75
                     break
@@ -592,6 +602,8 @@ def main(argv=None):
     me.add_argument("--octets", type=int, default=2048, help="a fresh DIR only")
     me.add_argument("--signed-every", type=int, default=256, help="a fresh DIR only")
     me.add_argument("--budget", type=int, default=1500, help="seconds the load step may spend")
+    me.add_argument("--session-posts", type=int, default=None,
+                    help="at most this many preload POSTs per owner process (then exit 75: the next unit resumes)")
     me.add_argument("--samples", type=int, default=100)
     me.add_argument("--signed-samples", type=int, default=50)
     me.add_argument("--rate-seconds", type=int, default=60)
