@@ -444,6 +444,11 @@
 ; Every OTHER owner event leaves the table alone, which is the mechanism
 ; behind `fn-ocfg-pin-is-stable-without-advance' below.
 
+; The snapshot is closed for every theorem about an opened connection: the
+; policy argument is free in them, and fn-auth-config-with-accounts-is-a-config
+; carries the one fact they ask of it (books/nntp-auth.lisp).
+(in-theory (disable fn-auth-config-with-accounts))
+
 ; The connection's credential snapshot is taken here, against the
 ; configuration it pins: the operator's credentials, then the accounts that
 ; configuration's redeemed rows name (PRF-164, books/nntp-auth.lisp
