@@ -1,7 +1,12 @@
 ;;; Native TLS transport boundary.
 ;;;
 ;;; TLS protocol, record protection, certificate parsing and cryptography are
-;;; delegated to the OpenSSL 3 libssl C ABI.  This file supplies bounded
+;;; delegated to the system's libssl C ABI: OpenSSL 3.0 or later, or
+;;; LibreSSL 3 or later (HST-016).  Only functions both provide are called,
+;;; and every one is checked to resolve when the facility initializes (at
+;;; image build and at each start), so a library lacking one is refused by
+;;; name rather than failing at first use.  Signatures do not use this
+;;; library (host/native/crypto.lisp, host/native/signatures.lisp).  This file supplies bounded
 ;;; nonblocking transport and diagnostics; it owns no NNTP or authentication
 ;;; decision.  A caller may mark an ACL2 connection protected only after
 ;;; FNN-TLS-ACCEPT returns a live channel.
@@ -52,7 +57,8 @@
   (sb-thread:make-mutex :name "fn native TLS initialization"))
 
 (defun fnn-tls-configured-library-pair ()
-  "Return the operator-selected matched libcrypto/libssl pair, if any."
+  "Return the operator-selected matched libcrypto/libssl pair, if any.
+FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
   (let ((prefix (sb-ext:posix-getenv "FN_OPENSSL_PREFIX")))
     (when prefix
       (when (or (zerop (length prefix)) (find (code-char 0) prefix))
@@ -81,7 +87,39 @@
        ("libcrypto.3.dylib" "libssl.3.dylib")))
               ((member :linux *features*)
                '(("libcrypto.so.3" "libssl.so.3")))
+              ;; LibreSSL in the base system; ld.so resolves an unversioned
+              ;; name to the installed major.
+              ((member :openbsd *features*)
+               '(("libcrypto.so" "libssl.so")))
         (t nil)))))
+
+;;; Every libssl/libcrypto function this file calls.  OpenSSL 3.0 to 3.5 and
+;;; LibreSSL 3+ export all of them; SSL_CTX_set_min_proto_version and
+;;; SSL_set_tlsext_host_name are reached through SSL_CTX_ctrl/SSL_ctrl, which
+;;; both libraries implement for these command numbers.
+(defparameter *fnn-tls-required-symbols*
+  '("OpenSSL_version_num" "OpenSSL_version" "ERR_clear_error" "ERR_get_error"
+    "ERR_reason_error_string" "TLS_server_method" "TLS_client_method"
+    "SSL_CTX_new" "SSL_CTX_free" "SSL_CTX_ctrl"
+    "SSL_CTX_use_certificate_chain_file" "SSL_CTX_use_PrivateKey_file"
+    "SSL_CTX_set_default_passwd_cb" "SSL_CTX_check_private_key"
+    "SSL_CTX_set_verify" "SSL_CTX_load_verify_locations" "SSL_new" "SSL_free"
+    "SSL_set_fd" "SSL_accept" "SSL_connect" "SSL_set1_host" "SSL_ctrl"
+    "SSL_get_verify_result" "SSL_get_error" "SSL_pending" "SSL_read"
+    "SSL_write" "SSL_shutdown"))
+
+(defun fnn-tls-missing-symbols ()
+  (remove-if #'sb-sys:find-foreign-symbol-address *fnn-tls-required-symbols*))
+
+(defun fnn-tls-supported-version-p (number text)
+  "OpenSSL 3.0 or later, or LibreSSL 3 or later (which reports 0x20000000
+through OpenSSL_version_num and names itself in OpenSSL_version)."
+  (or (>= number #x30000000)
+      (and (stringp text)
+           (> (length text) 9)
+           (string= "LibreSSL " text :end2 9)
+           (let ((major (parse-integer text :start 9 :junk-allowed t)))
+             (and major (>= major 3))))))
 
 (sb-alien:define-alien-routine ("OpenSSL_version_num" fnn-%openssl-version-num)
     sb-alien:unsigned-long)
@@ -224,7 +262,7 @@
                                condition))))))
 
 (defun fnn-tls-initialize ()
-  "Load OpenSSL 3 once.  This establishes facility availability, not a
+  "Load the system libssl pair once and check its version and symbols.  This establishes facility availability, not a
 configured server context and never a protected client session."
   (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
     (case *fnn-tls-state*
@@ -236,10 +274,17 @@ configured server context and never a protected client session."
        (handler-case
            (progn
              (setq *fnn-tls-libraries* (fnn-tls-load-libraries))
-             (let ((number (fnn-%openssl-version-num)))
-               (unless (>= number #x30000000)
+             (let ((missing (fnn-tls-missing-symbols)))
+               (when missing
                  (error 'fnn-tls-unavailable
-                        :detail (format nil "OpenSSL 3 required; ABI is 0x~x" number))))
+                        :detail (format nil "the TLS library lacks ~{~a~^, ~}"
+                                        missing))))
+             (let ((number (fnn-%openssl-version-num))
+                   (text (fnn-%openssl-version 0)))
+               (unless (fnn-tls-supported-version-p number text)
+                 (error 'fnn-tls-unavailable
+                        :detail (format nil "OpenSSL 3.0+ or LibreSSL 3+ required; found ~a (0x~x)"
+                                        text number))))
              (setq *fnn-tls-version* (fnn-%openssl-version 0)
                    *fnn-tls-state* :ready)
              t)
