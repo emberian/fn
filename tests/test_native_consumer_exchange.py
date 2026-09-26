@@ -57,8 +57,9 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         result = subprocess.run([str(IMAGE), "--fn", *map(str, words)],
                                 cwd=ROOT, env=self.env, capture_output=True,
                                 timeout=300, check=False)
-        self.assertEqual(result.returncode, expected,
-                         (result.stdout + result.stderr).decode("utf-8", "replace"))
+        if expected is not None:
+            self.assertEqual(result.returncode, expected,
+                             (result.stdout + result.stderr).decode("utf-8", "replace"))
         return result
 
     def start_owner(self, *, stop_after_submit=False):
@@ -141,8 +142,9 @@ class NativeConsumerExchangeTests(unittest.TestCase):
                                 timeout=900, check=False)
         self.log.append((config.parent.name, words, cut, result.returncode,
                          result.stderr.decode("utf-8", "replace")[-2000:]))
-        self.assertEqual(result.returncode, expected,
-                         (result.stdout + result.stderr).decode("utf-8", "replace"))
+        if expected is not None:
+            self.assertEqual(result.returncode, expected,
+                             (result.stdout + result.stderr).decode("utf-8", "replace"))
         if cut:
             self.assertIn(("CONSUMER-CUT " + cut).encode(), result.stderr)
         return result
@@ -282,6 +284,68 @@ class NativeConsumerExchangeTests(unittest.TestCase):
                 "positions": {"agent-a": a_ack, "agent-b": b_ack},
                 "q_settlement": self.settlement},
                 indent=1, sort_keys=True), encoding="utf-8")
+
+    def node(self, *, log=True):
+        """A fresh store and developer owner with a control socket."""
+        base = self.root / "node"
+        base.mkdir()
+        self.store, self.control = base / "store", base / "control.sock"
+        self.config = base / "fn.toml"
+        text = ('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+                'port = {}\n[control]\npath = "{}"\n').format(
+                    self.store, free_port(), self.control)
+        if log:
+            text += '[log]\npath = "{}"\n'.format(base / "service.log")
+        self.config.write_text(text, encoding="ascii")
+        self.native("store", self.store, "init", "fn.test")
+        self.owner = self.start_owner()
+        self.native("consumer", "bootstrap", self.control)
+
+    def stored_message(self, message_id):
+        """fn's Store, read with the owner stopped, then the owner restarted."""
+        self.stop_owner(self.owner)
+        inspected = self.native("store", self.store, "inspect", message_id,
+                                expected=None)
+        self.owner = self.start_owner()
+        return inspected
+
+    def test_death_after_acceptance_then_revocation_is_never_refused(self):
+        """gpt-6's review, section 2: the node accepts R, the consumer dies
+        after the answer arrives and before its result transaction, A's
+        enrolment is revoked, and the restarted consumer's resend is refused.
+        The refusal settles that resend only: R stays uncertain until fn's
+        Store serves the exact artifact back, and is then stored."""
+        self.node()
+        a = self.agent("agent-a", 0xA1, 1)
+        self.register("agent-a")
+        self.consumer(a, "report", "r1", "dregg-receipt-0001", cut="after-post",
+                      expected=97)
+        after_death = self.summary(a)["outbox"]
+        message_id = after_death[0]["message_id"]
+        inspected = self.stored_message(message_id)
+        self.assertEqual(inspected.returncode, 0,
+                         (inspected.stdout + inspected.stderr).decode())
+        self.assertIn(b"kind: report-receipt", inspected.stdout)
+        principal = Path(json.loads(a.read_text())["keys"]["principal"])
+        self.native("hybrid-revoke-next", self.control, principal)
+        woke = self.consumer(a, "wake", expected=None)
+        final = self.summary(a)["outbox"]
+        self.log.append(("trace", after_death, woke.returncode, final))
+        states = [o["state"] for o in final]
+        self.assertNotIn("refused", states,
+                         "an accepted operation recorded refused: %r" % (final,))
+        self.assertEqual([(o["state"], o["settled_by"]) for o in final],
+                         [("stored", "store-observation")], final)
+        self.stop_owner(self.owner)
+        self.write_evidence("death-after-acceptance", {"a": self.summary(a)})
+
+    def write_evidence(self, label, payload):
+        out = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
+        if out:
+            path = Path(out).with_suffix("." + label + ".json")
+            payload = dict(payload, log=self.log)
+            path.write_text(json.dumps(payload, indent=1, sort_keys=True, default=str),
+                            encoding="utf-8")
 
     def test_identical_signed_resend_answers_duplicate(self):
         """D25 on the local control route: a byte-identical resend of an
