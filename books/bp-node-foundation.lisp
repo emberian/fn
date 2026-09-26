@@ -551,7 +551,14 @@
                          (list :restart-ready
                                (len (fn-bpn-machine-state-jobs
                                      (fn-bpn-answer-state base-answer)))))))
-        (fn-bpnf-answer st (list (list :restart-fault :fnbs-or-base)))
+        ;; The profile's named replay verdict reaches the operator
+        ;; (PRF-134): a journal past its profile fences with it, not with
+        ;; the generic reason.
+        (fn-bpnf-answer st (list (list :restart-fault
+                                       (if (equal replay-result
+                                                  '(:fault :held-beyond-profile))
+                                           :held-beyond-profile
+                                         :fnbs-or-base))))
       (fn-bpnf-answer
        (fn-bpnf-state-with-arrival (fn-bpn-answer-state base-answer)
                       (fn-bpn-nth 1 replay-result)

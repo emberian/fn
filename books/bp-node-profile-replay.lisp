@@ -151,3 +151,12 @@
                                fn-bpnpf-kind-five-row-fitsp
                                fn-bpnpf-kind-five-row-image
                                fn-bpnf-held-octets))))
+
+; The restart step fences with the replay's named verdict: a journal past its
+; profile is refused at open with :held-beyond-profile, which the host prints
+; (host/native/bp-service.lisp, the :restart-fault effect).
+(defthm fn-bpnpf-restart-names-held-beyond-profile
+  (equal (fn-bpnf-recover-fnbs-step st new-epoch base-records sequence-ready
+                                    '(:fault :held-beyond-profile))
+         (fn-bpnf-answer st '((:restart-fault :held-beyond-profile))))
+  :hints (("Goal" :in-theory (disable fn-bpn-restart-step fn-bpnf-answer))))

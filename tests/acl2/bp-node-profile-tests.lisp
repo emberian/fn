@@ -238,3 +238,15 @@
                       base held handoffs prior next-arrival)
                      (list :fault :held-beyond-profile))))
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+
+;; fn-bpnpf-restart-names-held-beyond-profile.  Witness: the family-replay
+;; state's restart over the verdict fences with it; another replay fault
+;; keeps the generic reason (the theorem is about this verdict only).
+(assert-event
+ (equal (fn-bpnf-recover-fnbs-step *bpnff-state* 9 nil :ready
+                                   '(:fault :held-beyond-profile))
+        (fn-bpnf-answer *bpnff-state* '((:restart-fault :held-beyond-profile)))))
+(assert-event
+ (equal (fn-bpnf-recover-fnbs-step *bpnff-state* 9 nil :ready
+                                   '(:fault :kind-five-row))
+        (fn-bpnf-answer *bpnff-state* '((:restart-fault :fnbs-or-base)))))
