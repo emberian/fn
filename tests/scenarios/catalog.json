@@ -3111,7 +3111,8 @@
       "evidence": [
         "tests/test_native_control_reply_fit.py",
         "planning/evidence/control-reply-fit-2026-09-26.md",
-        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
+        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log",
+        "planning/evidence/profile-open-refusal/test_native_control_reply_fit.r2-578d43c2.log"
       ],
       "implementation": {
         "test": "tests.test_native_control_reply_fit",
@@ -3122,7 +3123,7 @@
         ],
         "native": true,
         "record": "planning/evidence/control-reply-fit-2026-09-26.md",
-        "log": "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
+        "log": "planning/evidence/profile-open-refusal/test_native_control_reply_fit.r2-578d43c2.log"
       }
     }
   ]

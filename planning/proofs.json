@@ -6680,7 +6680,8 @@
         "books/store-profile-open.lisp",
         "tests/acl2/store-profile-open-tests.lisp",
         "tests/test_native_control_reply_fit.py",
-        "host/native/io.lisp"
+        "host/native/io.lisp",
+        "planning/evidence/manifests/certify-20260926T134557Z-2464906.json"
       ],
       "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair.",
       "events": [
