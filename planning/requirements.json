@@ -3091,6 +3091,28 @@
         "planning/evidence/friends-accounts-2026-09-26.md"
       ],
       "implementation_note": "XREDEEM is an fn extension, not RFC 4643 section 2.3's AUTHINFO; its replies reuse 381/281/482/483 in RFC 3977 section 3.2's classes. Built: the tenth configuration slot, admission, the redeem plan, the once-only theorems and the credential snapshot (PRF-164). Owed (PKT-439): the wire verb, its publication through fnn-owner-live-reconfigure-locked, `operator CONFIG account invite|list`, the native two-node session. PKT-401 narrowed to PKT-439."
+    },
+    {
+      "id": "STO-022",
+      "title": "The durable reply's barrier cost is the publication program's and nothing less: every fence of a served commit fences an object A <= M <= D reads, and a cheaper program is admitted only through the byte model's discipline and crash theorems and the history model's invariant",
+      "specification": "specs/storage.md#the-committed-history-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-169"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/byte-store-marker-candidates.lisp",
+        "tests/acl2/byte-store-marker-candidates-tests.lisp",
+        "planning/evidence/publish-program-2026-09-26.md",
+        "planning/evidence/publish-program-2026-09-26/measure.sh",
+        "planning/evidence/publish-program-2026-09-26/post_n.py"
+      ],
+      "implementation_note": "A served commit makes seven fsyncs (strace over `store probe`: 7.2 per commit with the reopen), two renames, one link and one unlink: the frontier's stage and root, the record's stage, transactions directory and staging directory, the marker's stage and root. On the pool `tank` (ZFS, about 90 percent full, no SLOG) each is one ZIL commit; the marker's two fence its stage inode and the root entry, and neither can be shared with a barrier that precedes the record's or follows the acknowledgement (PRF-169). The measured cost and the sound sharing are in the record; the reservation pulled into the completion window is PKT-441."
     }
   ]
 }

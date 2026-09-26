@@ -2863,6 +2863,42 @@
         "native": true,
         "record": "planning/evidence/friends-accounts-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-099",
+      "title": "The served commit's barrier cost measured on ZFS and tmpfs, and the N = 10,000 POST curve profiled from inside the image without a polling thread",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-022"
+      ],
+      "steps": [
+        "On hbox, the developer image of the revision under test in /tank/fn/scratch/publish-program/native-REV/tree: `store STORE probe 100` under `strace -f -c` on tmpfs and on the pool (syncs.sh), then `probe N` at N = 1,000 and 10,000 on /dev/shm and on /tank/fn/scratch/publish-program timed with /usr/bin/time, then 100 POSTs of 2 KiB on one connection to `operator run` on each (measure.sh, post.py); every row names the pool's used/free and the box load.",
+        "10,000 POSTs of 2 KiB over one connection to an owner started by the launcher's own sbcl line with prof-owner.lisp loaded before ACL2's restart (sb-sprof :cpu, every thread, no poll of the file system); every POST timed, a POST over --timeout seconds treated as a stall (thread states, a 10 s strace, SIGUSR1 to the profiler); at the end SIGUSR1 writes the flat and graph reports (post_n.py)."
+      ],
+      "expected": [
+        "The sync-family counts per commit are the same on both file systems: fsync 7, rename 2, link 1, unlink 1 (plus the reopen's).",
+        "The per-commit wall on the pool is the barrier count times the pool's ZIL commit latency (hundreds of ms under load), on tmpfs about 1 ms; the POST median and p95 on the pool are of the same order as the probe's commit.",
+        "No POST stalls; the per-POST median grows linearly with N (fn-own-refresh's group-index rebuild, PKT-324 item 1); the profile's dominant term is named, and no term is the profiler's own."
+      ],
+      "implementation": {
+        "test": "planning/evidence/publish-program-2026-09-26/step1.sh",
+        "cases": [
+          "measure.sh",
+          "syncs.sh",
+          "post_n.py --prof"
+        ],
+        "native": true,
+        "log": "planning/evidence/publish-program-2026-09-26/post-n10000-p2048.log",
+        "record": "planning/evidence/publish-program-2026-09-26.md"
+      },
+      "evidence": [
+        "planning/evidence/publish-program-2026-09-26.md",
+        "planning/evidence/publish-program-2026-09-26/post-n10000-p2048.log",
+        "planning/evidence/publish-program-2026-09-26/post-n10000-p2048.json",
+        "planning/evidence/publish-program-2026-09-26/prof-post-n10000-p2048.txt",
+        "planning/evidence/publish-program-2026-09-26/syncs-probe-base-zfs-n100.txt"
+      ]
     }
   ]
 }

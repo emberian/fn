@@ -6312,6 +6312,35 @@
         "fn-auth-config-with-accounts-keeps-the-operators-credential",
         "fn-auth-account-creds-find-the-row"
       ]
+    },
+    {
+      "id": "PRF-169",
+      "title": "The cheaper committed-history marker programs PKT-079 and PKT-143 allow are refused by the contract they would refine: the deferred marker leaves A <= M <= D, and an unfenced or in-place marker is refused by the byte model's discipline and its crash images",
+      "statement": "Over the history model of books/store-history-required.lisp (the host-called decisions fn-hmr-open-verdict and fn-hmr-catch-up, host/native/io.lisp fnn-check-history-marker and fnn-recover's catch-up; the marker written by fnn-mark-committed at host/native/owner.lisp fnn-owner-publish-prepared) and the byte programs of books/byte-store-marker-program.lisp (fnn-mark-committed's syscalls): fn-hmr-deferred-commit is the step in which a live process answers success for record COUNT while the marker still counts COUNT (the marker of commit n renamed under commit n+1's reservation, the brief's shared later barrier). fn-hmr-deferred-commit-leaves-the-invariant: from any state satisfying fn-hmr-invp with a live process, the step leaves a state that does not satisfy it (A = COUNT+1 > M = COUNT). fn-hmr-deferred-commit-admits-a-lost-answered-record: from the same state, K = COUNT is below the answered prefix and (fn-hmr-open-verdict profile marker K) is (:admitted :marked K): the negation of fn-hmr-open-refuses-below-every-answered-record's conclusion, so a lost newest record that a client holds a 240 for is admitted by the next open. fn-hmr-deferred-commit-is-not-caught-up: D31 case (2) does not cover it, the catch-up over the shortened history writes nothing. The byte candidates fn-bs-marker-unfenced-program (the stage's fsync folded into the record's staging barrier: a fence drains one inode, so the marker's stage is unfenced) and fn-bs-marker-in-place-program (one overwrite of committed-history.json and one fsync) are refused executably: the model's discipline D1 (fn-bs-links-only-fencedp) rejects the first and D2 (fn-bs-never-overwrites-authorityp) the second, and on the K5 fixture a crash image of each (a garbled unit of the pending write, fn-bs-tear-write) holds a marker that is neither the old nor the new one: the open of a store that lost nothing refuses it, :history-short-of-marker 23 or :marker-damaged, so fn-bs-marker-crash-after-barrier-is-new and fn-bs-marker-crash-open-stays-admitted are false of them. fn-bs-marker-program stays the served program; its cost is seven barriers per commit, measured in the record; the one sound sharing (the next reservation renamed under the marker's root barrier before the acknowledgement) is a file-kernel and K0 change, PKT-441.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-022"
+      ],
+      "depends_on": [
+        "PRF-076"
+      ],
+      "assumptions": [
+        "A-DURABILITY"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/byte-store-marker-candidates.lisp",
+        "tests/acl2/byte-store-marker-candidates-tests.lisp",
+        "planning/evidence/publish-program-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T102932Z-378295.json",
+        "planning/evidence/manifests/certify-20260926T103516Z-444060.json"
+      ],
+      "progress_note": "Lane publish-program (2026-09-26, dev 17ff24aa). Certified on persvati (ACL2 8.7 w25 acl2-literal, 2 jobs, 300 s): run-20260926T102908Z-0df7, manifest certify-20260926T102932Z-378295, the book passed and the test book failed on a wrong witness (one garble selector for an eleven-unit write: the fixture's unit is 4 octets); run-20260926T103449Z-fa4d, manifest certify-20260926T103516Z-444060, the repaired test book passed; no book over 10 s. Teeth: a reachable history (open, one acknowledged commit, the deferred commit) asserting every hypothesis and conclusion of the three theorems, beside the served step at the same point (invariant kept, the open refused); the live hypothesis removed (a state that is not live: the identity step, the invariant kept, K not below A, a marker behind the history caught up); the invariant removed as corrupted-state witnesses (a marker above the history: the deferred step lands on the invariant and the open at K refuses; a marker behind: caught up). The byte refutations are ground images on the K5 fixture (byte-store-k0-marker-tests' pair): admissible choices, the observation neither old nor new, the open's refusal by name, and the served program's image at the same cut for contrast. Not claimed: a general theorem over the unfenced program's crash images (the ground counterexample refutes the universal claims); any program of the served path changed; the sound sharing (PKT-441).",
+      "events": [
+        "fn-hmr-deferred-commit-leaves-the-invariant",
+        "fn-hmr-deferred-commit-admits-a-lost-answered-record",
+        "fn-hmr-deferred-commit-is-not-caught-up"
+      ]
     }
   ]
 }
