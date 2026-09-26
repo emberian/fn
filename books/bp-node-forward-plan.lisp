@@ -100,11 +100,21 @@
             (fn-bpn-nth 1 (fn-bpnp-forward-scan ordered peer mru node obs waits
                                                 free epoch budget))
             peer obs epoch budget))
-  :hints (("Goal" :in-theory (disable fn-bpnp-forward-candidatep
-                                      fn-bpnp-forward-mru-waitp
-                                      fn-bpnp-credit-blockedp
-                                      fn-bpnp-forward-image
-                                      fn-bpb-bundle-age)))))
+  :hints (("Goal" :induct (fn-bpnp-forward-scan ordered peer mru node obs waits
+                                                free epoch budget)
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-bpnp-forward-scan car-cons cdr-cons
+                                        fn-bpn-nth fn-cbor-ag-car
+                                        (:executable-counterpart natp)
+                                        (:executable-counterpart not)
+                                        (:executable-counterpart zp)
+                                        (:executable-counterpart binary-+)
+                                        (:executable-counterpart equal)))))))
+
+(local (defthm candidate-names-its-next-hop
+  (implies (fn-bpnp-forward-candidatep h peer obs epoch budget)
+           (equal (fn-bpn-nth 11 h) peer))
+  :rule-classes :forward-chaining))
 
 ; KEYSTONE.  The sessions of one pass are the plan's entries; a session to
 ; peer P offers the row its scan selects (`fn-bpnp-forward-scan', which the
@@ -123,8 +133,7 @@
              (equal e1 e2)))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bpnp-forward-scan fn-bpnp-forward-plan
-                                      fn-bpnp-retry-eligible-slotp
-                                      fn-bpnp-held-expiry
+                                      fn-bpnp-forward-candidatep
                                       forward-scan-ready-is-a-candidate)
            :use ((:instance forward-scan-ready-is-a-candidate
                   (ordered o1) (peer (fn-bprt-nth 0 e1)) (mru mru1)
@@ -159,9 +168,12 @@
               held node obs routes generation waits free budget selected)))
     (implies (and sel (not (equal sel selected)))
              (member-equal sel held)))
-  :hints (("Goal" :in-theory (disable fn-bpnp-live-pendingp fn-bpnp-blockedp
-                                      fn-bpnp-credit-blockedp
-                                      fn-bpnp-busy-blockedp fn-bpn-nth nfix)))))
+  :hints (("Goal" :induct (fn-bpnp-oldest-eligible-with-credit
+                            held node obs routes generation waits free budget
+                            selected)
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-bpnp-oldest-eligible-with-credit
+                                        member-equal car-cons cdr-cons))))))
 
 (local (defthm with-waits-keeps-held-epoch-op
   (and (equal (fn-bpnf-held-list (fn-bpnp-with-waits st waits))
@@ -173,6 +185,9 @@
   :hints (("Goal" :in-theory (e/d (fn-bpnp-with-waits)
                                   (fn-bpnf-state-with-arrival))))))
 
+(local (defthm answer-effects-of-answer
+  (equal (fn-bpnf-answer-effects (fn-bpnf-answer st effects)) effects)))
+
 (local (defthm busy-stranded-effects-propose-no-dispatch
   (not (equal (car (car (fn-bpnp-busy-stranded-effects held budget)))
               :persist-dispatch))
@@ -183,13 +198,14 @@
   (not (equal (car (car (fn-bpnf-answer-effects
                          (fn-bpah-deliver-step st key node))))
               :persist-dispatch))
-  :hints (("Goal" :in-theory (disable fn-bpnf-state-with-arrival
-                                      fn-bpnf-find-held
-                                      fn-bpah-held-delivery-pendingp
-                                      fn-bpb-bundlep fn-bpp-blockp)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                            '(fn-bpah-deliver-step
+                                              answer-effects-of-answer
+                                              car-cons cdr-cons
+                                              (:executable-counterpart equal)))))))
 
-(local (defthm answer-effects-of-answer
-  (equal (fn-bpnf-answer-effects (fn-bpnf-answer st effects)) effects)))
+(local (defthm fn-bpn-nth-3-of-a-four-list
+  (equal (fn-bpn-nth 3 (list a b c d)) d)))
 
 (local (defthm transit-dispatch-record
   (let ((eff (car (fn-bpnf-answer-effects
@@ -203,16 +219,13 @@
                   (equal (car (fn-bpnp-dispatch-apply
                                (fn-bpn-nth 3 eff) (fn-bpnf-held-list st)))
                          :ready))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-bpnp-transit-dispatch-step)
-                (fn-bpnp-with-waits fn-bpnf-state-with-arrival
-                 fn-bpnf-answer-state fn-bpnf-held-list fn-bpnf-issued
-                 fn-bpnf-operation fn-bpnf-epoch fn-bpnf-next-op
-                 fn-bpnp-dispatch-record fn-bpnp-dispatch-apply
-                 fn-bpnp-dispatch-recordp fn-bpnp-dispatch-frame
-                 fn-bpnd-admitp fn-bpnd-held-delta fn-bpnd-free
-                 fn-bpah-held-primary-identity fn-bpnp-remove-wait
-                 fn-bpnp-wait-key))))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                            '(fn-bpnp-transit-dispatch-step
+                                              answer-effects-of-answer
+                                              fn-bpn-nth-3-of-a-four-list
+                                              car-cons cdr-cons
+                                              (:executable-counterpart not)
+                                              (:executable-counterpart equal)))))))
 
 (local (defthm progress-dispatch-is-the-transit-step
   (let* ((waits (fn-bpnp-prune-waits (fn-bpnp-waits st) (fn-bpnf-held-list st)))
@@ -229,28 +242,16 @@
                   peer
                   (fn-bpnp-routesp routes)
                   (equal ans (fn-bpnp-transit-dispatch-step st2 h peer node)))))
-  :hints (("Goal"
-           :in-theory
-           (e/d (fn-bpnp-progress-step)
-                (fn-bpnp-with-waits fn-bpnp-with-credit fn-bpnp-with-runtime
-                 fn-bpnp-transit-dispatch-step fn-bpnd-free fn-bpnd-remaining
-                 fn-bpnp-wait-key fn-bpnp-used fn-bpnp-debt fn-bpnf-waits
-                 fn-bpnp-waits fn-bpnf-base fn-bpn-machine-state-fenced
-                 fn-clock-observationp fn-frame-natp
-                 fn-bpnf-state-with-arrival fn-bpah-deliver-step
-                 fn-bpnf-answer-state
-                 fn-bpnf-held-list fn-bpnf-issued fn-bpnf-operation
-                 fn-bpnf-epoch fn-bpnf-next-op
-                 fn-bpnp-dispatch-record fn-bpah-held-primary-identity
-                 fn-bpnp-dispatch-apply fn-bpnf-arrival-count
-                 fn-bpnp-oldest-eligible fn-bpnp-oldest-eligible-with-credit
-                 fn-bpnp-oldest-uncertain-local
-                 fn-bpnp-live-pendingp fn-bpnp-blockedp fn-bpnp-prune-waits
-                 fn-bpnp-local-class fn-bpnp-primary fn-bpnp-payload
-                 fn-bpnp-remove-wait fn-bpnp-busy-stranded-effects
-                 fn-bpnf-answer-effects fn-bpnf-answer
-                 fn-bprt-outbound-choice fn-bpaj-eid-text fn-bprt-tablep
-                 fn-bpp-eidp fn-bpb-bundlep fn-bpnf-heldp))))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                            '(fn-bpnp-progress-step
+                                              answer-effects-of-answer
+                                              busy-stranded-effects-propose-no-dispatch
+                                              deliver-step-proposes-no-dispatch
+                                              oldest-eligible-with-credit-is-a-member
+                                              with-waits-keeps-held-epoch-op
+                                              car-cons cdr-cons
+                                              (:executable-counterpart equal)
+                                              (:executable-counterpart car)))))))
 
 (local (defthm dispatch-apply-ready-is-unique
   (implies (equal (car (fn-bpnp-dispatch-apply record held)) :ready)
@@ -291,19 +292,8 @@
                   (equal (car (fn-bpnp-dispatch-apply
                                (fn-bpn-nth 3 eff) (fn-bpnf-held-list st)))
                          :ready))))
-  :hints (("Goal" :in-theory (disable progress-dispatch-is-the-transit-step
-                                      transit-dispatch-record
-                                      fn-bpnp-progress-step
-                                      fn-bpnp-transit-dispatch-step
-                                      fn-bpnp-oldest-eligible-with-credit
-                                      fn-bpnp-prune-waits fn-bpnp-with-waits
-                                      fn-bpnf-held-list fn-bpnp-waits
-                                      fn-bpnp-used fn-bpnp-debt fn-bpnd-free
-                                      fn-bpnf-epoch fn-bpnf-next-op
-                                      fn-bpnf-answer-effects fn-bpnp-primary
-                                      fn-bpnp-route-peer fn-bpnp-dispatch-record
-                                      fn-bpnp-dispatch-apply
-                                      fn-bpah-held-primary-identity)
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                            '(with-waits-keeps-held-epoch-op))
            :use (progress-dispatch-is-the-transit-step
                  (:instance transit-dispatch-record
                   (st (fn-bpnp-with-waits st
