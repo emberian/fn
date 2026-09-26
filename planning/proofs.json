@@ -7238,6 +7238,103 @@
         "fn-cnode-record-acceptablep-is-the-carried-check",
         "fn-cnode-advanced-node-is-configured"
       ]
+    },
+    {
+      "id": "PRF-201",
+      "title": "The committed event catalog abstracts to the list of held records; its cross-field invariants are established by the creator and preserved by every export; alpha of intern is the identity on the wire record",
+      "statement": "fn-cat (books/catalog.lisp) is an attachable abstract stobj whose logical value is the list of held records (books/catalog-record.lisp: the wire tuple's eleven positions with the payload a natp handle into fn-arena, the byte facts, the context, the numbers and the withdrawal), oldest first, and whose executable is the indexed tables (rows by sequence, a Message-ID hash table, a (group . number) hash table, a group table of row count and next number, the octets total). fn-cat$corr states once that the count is the length, the rows below it are the list, every bound Message-ID looks up to its ascending sequences and every row's Message-ID is bound, every bound (group . number) names the first row binding it and every row's numbers are bound, every bound group maps to its row count and one past its high and every row's groups are bound, and the octets cell is the sum. The creator establishes it (create-fn-cat{correspondence}) and every export preserves it (fn-cat-commit{correspondence}: the numbers assigned one past each group's high, every table advanced without a walk; fn-cat-withdraw{correspondence} and fn-cat-redecide{correspondence}: a same-key row replacement keeps every table; fn-cat-clear{correspondence}), as defabsstobj-missing-events prints the obligations. fn-cat-intern-list-materializes: the held record the intern builds from a wire record W, materialized by handle from the arena the intern sealed, is W (alpha of intern is the identity; fn-cat-intern-is-intern-list equates the buffer intern, hypothesis-free). fn-hf-body-lines-of-is-nov-body-line-count-by-definition: the body line count column is fn-nov-body-line-count's value over fn-nntp-split-article and fn-nntp-crlf-lines. Keystones over the opened view: fn-cat-commit-keeps-rows, fn-cat-commit-new-row, fn-cat-commit-binds-fresh-numbers, fn-cat-visible-at-withdrawn (a row withdrawn at version W is visible to a version V exactly when V <= W). NOT in this target: the relation's establishment at open (entry 2 of design 1.5, fn-cat-owner-relation) and at a checkpoint, which the record names as remaining (PKT-585).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013",
+        "REP-011",
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-118"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "create-fn-cat{correspondence}",
+        "fn-cat-commit{correspondence}",
+        "fn-cat-withdraw{correspondence}",
+        "fn-cat-redecide{correspondence}",
+        "fn-cat-clear{correspondence}",
+        "fn-cat-intern-list-materializes",
+        "fn-cat-intern-is-intern-list",
+        "fn-hf-body-lines-of-is-nov-body-line-count-by-definition",
+        "fn-cat-commit-keeps-rows",
+        "fn-cat-commit-new-row",
+        "fn-cat-commit-binds-fresh-numbers",
+        "fn-cat-visible-at-withdrawn"
+      ],
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/catalog-record.lisp",
+        "books/catalog.lisp",
+        "tests/acl2/catalog-record-tests.lisp",
+        "tests/acl2/catalog-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T194426Z-1747941.json"
+      ],
+      "progress_note": "Lane catalog-slice (Fable, 2026-09-26, wave 5 lane 2, D33): steps 2 and 3 of the brief landed and certified; steps 4 to 9 (PreparedCommit, the delta, the relation at open, the served reads, the host, the measurement) are the continuation (PKT-585).",
+      "pending_subject": "No host line calls fn-cat yet: the catalog's exports (fn-cat-commit, fn-cat-withdraw, fn-cat-redecide, fn-cat-visible-at) and the interns are proved over the executable the host WILL call once the continuation (PKT-585, steps 4 to 9 of the catalog-slice brief) moves the prepare, the finish and the served reads to the catalog; until then the keystones' subjects are reached only by the test books (SCN-130). The wire record, the codec and every served path are unchanged by this lane."
+    },
+    {
+      "id": "PRF-202",
+      "title": "The served view's application of a committed delta equals the owner's refresh (fn-view-apply-is-refresh)",
+      "statement": "PLANNED (catalog-slice, not started): under fn-cat-owner-relation and an idle store, fn-view-apply of the owner's view and the delta fn-cat-complete emits equals the view fn-own-refresh computes after fn-sn-finish-held (design 1.4); the view is a version, GROUP and LISTGROUP advance it between commands, C3 within a command.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); the continuation lane takes it (PKT-585)."
+    },
+    {
+      "id": "PRF-203",
+      "title": "Completion by token: fn-cat-complete commits the pending PreparedCommit's row at its expected sequence with no history search, and a stale token is refused by name",
+      "statement": "PLANNED (catalog-slice, not started): the completed row is (nth expected C') = the pending held record with its numbers, the count is expected + 1, and a token from an abandoned attempt cannot complete the next (design 1.3).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); the continuation lane takes it (PKT-585)."
+    },
+    {
+      "id": "PRF-204",
+      "title": "The served ARTICLE, HEAD, BODY and OVER bytes written from the handle equal fn-served-reply-octets of the reference effects",
+      "statement": "PLANNED (catalog-slice, not started): the reads by number and by Message-ID from the catalog's columns and the arena's handle produce the octets the list model's reply produces (egress-span's keystone shape; design 1.5 table, last row).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013",
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); the continuation lane takes it (PKT-585)."
     }
   ]
 }
