@@ -3375,7 +3375,7 @@
       "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-210"
       ],
@@ -3387,7 +3387,7 @@
         "planning/evidence/group-policy-2026-09-26.md",
         "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Half implemented by lane newsreader-cancel (2026-09-26, PRF-210): the decision. An unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it, on every node holding both, in either order, and after restart (tests.test_native_own_cancel with client-supplied lines, as tin writes them). Not yet: the node-written lock keyed by the posting login (books/cancel-lock.lisp fn-cl-served-payload is proved and tested but not called): the owner's completion gate requires the stored payload to be fn-own-sub-stored-octets of the in-flight submission, so the lines must be added in the owner's staged octets with the secret in the owner and the login in the submission (continuation; PKT-576's default, decided). Thunderbird, which writes no Cancel-Lock, therefore still cannot cancel. RFC 5537 section 5.3 leaves cancel authentication to local policy; the login basis is the coordinator's decision P1; Cancel-Lock is RFC 8315."
+      "implementation_note": "Implemented by lanes newsreader-cancel and newsreader-cancel-2 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it, on every node holding both, in either order, and after restart. The node-written lines: the octets the owner stores for a served POST under an authenticated login are fn-own-sub-stored-octets under the owner's node secret (books/owner-served-invariants.lisp), which carry exactly one Cancel-Lock keyed by that login (and on a cancel the login's Cancel-Key for its target), so a client that writes none (Thunderbird) cancels its own post and another login's cancel is filed and withdraws nothing; the completion gate compares with the same function, so the 240 names the locked octets. The node secret: STORE/keys/node-secret.key written by init, carried by the owner (fn-own-node-secret), one HMAC-SHA256 with domain labels (books/node-secret.lisp). RFC 5537 section 5.3 leaves cancel authentication to local policy; the login basis is the coordinator's decision P1; Cancel-Lock is RFC 8315. Open: PKT-618 (the secret across a reinstall), PKT-619 (the login gate reads the recorded login)."
     },
     {
       "id": "REP-012",
