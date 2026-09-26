@@ -3452,7 +3452,8 @@
       "implementation": {
         "test": "tests/test_native_image_floor.py",
         "native": true,
-        "record": "planning/evidence/image-floor-2026-09-26.md"
+        "record": "planning/evidence/image-floor-2026-09-26.md",
+        "log": "planning/evidence/image-floor-2026-09-26/native/test-tests.test_native_image_floor.log"
       }
     }
   ]

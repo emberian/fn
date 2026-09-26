@@ -3346,9 +3346,10 @@
         "tools/build_native_host.sh",
         "tests/test_native_image_floor.py",
         "tools/runtime_image/node_measure.py",
-        "planning/evidence/image-floor-2026-09-26.md"
+        "planning/evidence/image-floor-2026-09-26.md",
+        "host/native/io.lisp"
       ],
-      "implementation_note": "Before save-exec the build replaces the installed world by the current values of the properties execution reads (symbol-class, signatures, guards, stobj and attachment properties, macros, constants, tables, world globals) over a bottom of command 0, event 0 and project-dir-alist; the core's dynamic content falls from 271.4 to 166.4 MiB (hbox). The owner collects every 64 MiB during recovery and a checkpoint publication (PKT-316) and every 8 MiB from LISTENING. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packet."
+      "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.5 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets."
     }
   ]
 }

@@ -15,7 +15,8 @@ stays at its current value.  These witnesses run the saved images:
   replace-project-dir-alist walks the world from event 0 (the strip keeps a
   bottom of command 0, event 0 and the project-dir-alist triple for it);
 * the production image refuses the verb by name (exit 5);
-* the core's dynamic content is under 192 MiB (271 MiB before the strip), and
+* the core's dynamic content is under 128 MiB (271 MiB before the strip and
+  the residue drop), and
   a fresh node started with a 256 MB dynamic space takes a POST and serves
   it back.
 
@@ -39,7 +40,7 @@ MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 EXIT_FAULT, EXIT_USAGE = 4, 5
 GUARD_LINE = (b"store: ACL2 error in fn-sha256-of-string: "
               b"(EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)\n")
-CORE_CEILING_KIB = 192 * 1024
+CORE_CEILING_KIB = 128 * 1024
 
 
 def environment(**extra):

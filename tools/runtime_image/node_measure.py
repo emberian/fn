@@ -48,6 +48,10 @@ def env_for(heap):
     env = dict(os.environ)
     if heap:
         env["SBCL_USER_ARGS"] = "--dynamic-space-size %dMB" % heap
+    # NM_STACK_MB: the control stack of every thread (the launcher's is 64).
+    if os.environ.get("NM_STACK_MB"):
+        env["SBCL_USER_ARGS"] = (env.get("SBCL_USER_ARGS", "") +
+                                 " --control-stack-size %sMB" % os.environ["NM_STACK_MB"])
     return env
 
 
@@ -146,10 +150,14 @@ def run(a):
     finally:
         r.stop_owner(proc, err)
     doc["owner_rc"] = proc.returncode
-    proc, doc["reopen_s"], err = r.start_owner(image, config, env, work / "owner.stderr",
-                                               timeout=600)
     try:
-        doc["reopen_s"] = round(doc["reopen_s"], 3)
+        proc, reopen_s, err = r.start_owner(image, config, env, work / "owner.stderr",
+                                            timeout=600)
+    except BaseException as e:  # the reopen died before LISTENING (a heap too small)
+        doc["reopen"] = "failed: %s" % str(e)[:160]
+        return doc
+    try:
+        doc["reopen_s"] = round(reopen_s, 3)
         time.sleep(1.0)
         doc["after_reopen"] = rss(proc.pid)
     finally:
