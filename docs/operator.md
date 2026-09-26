@@ -149,9 +149,12 @@ values.
 | `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
 | `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
 | `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
-| `max-group-name-octets` | one group name | 128 (the record codec's today) |
+| `max-group-name-octets` | one group name (validated, not yet enforced on `group create`: PKT-435) | 256 (the record codec's and the configuration label's width today) |
 | `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
-| `max-consumers`, `max-bp-rows`, `max-config-generations`, `max-credentials`, `max-policy-members` | namespace counts | 1,048,576 each |
+| `max-consumers` | consumers registered; the next `consumer register` past it is refused | 1,048,576 |
+| `max-config-generations` | configuration generations ever published | 1,048,576 |
+| `max-credentials` | AUTHINFO logins in `auth.toml` | 1,048,576 |
+| `max-bp-rows`, `max-policy-members` | reserved: validated (`1..2^32-1`) and read by nothing; the BP rows are the journal's (PKT-296), and 64 policy members is statement schema v1's grammar limit (PKT-229) | 1,048,576 each |
 
 The D27 defaults are 64 MiB records, 16 MiB articles, 4096 groups and
 460-octet names; each default is capped at the codec ceiling the tree carries

@@ -790,9 +790,15 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-bootstrap (fn-owner-core state) history incarnation)))
 
+;; The consumer count is the carried Store profile's field 9 (D27, PRF-167),
+;; read by ACL2 (host/store-host.lisp `fn-store-profile-max-consumers'); before
+;; a profile is installed it reads 0 and every registration is refused.
 (defun fn-owner-consumer-local-register (consumer group state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-col-register (fn-owner-core state) consumer group)))
+  (value (fn-col-register (fn-owner-core state)
+                          (fn-store-profile-max-consumers
+                           (fn-owner-store-profile state))
+                          consumer group)))
 
 (defun fn-owner-consumer-local-ack (cursor-octets state)
   (declare (xargs :stobjs state :mode :program))

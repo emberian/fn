@@ -2040,7 +2040,7 @@
         "books/native-auth-admin.lisp",
         "planning/evidence/bounds-profile-2026-09-25.md"
       ],
-      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9), BP rows (10) and policy members (13) still have constants (256, 4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
+      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9) are read too since community-bounds (PRF-167, STO-021); BP rows (10) and policy members (13) still have constants (4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
     {
       "id": "HST-006",
@@ -2950,6 +2950,26 @@
         "planning/evidence/keys-and-accounts-2026-09-26.md"
       ],
       "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner)."
+    },
+    {
+      "id": "STO-021",
+      "title": "No hidden constant caps a community count: every constant bounding stored data is governed by a profile field, is a per-record work bound, or is a codec width that admits every valid profile; the consumer count is the profile's",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-167"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-position.lisp",
+        "books/consumer-owner-local.lisp",
+        "planning/evidence/community-bounds-2026-09-26.md"
+      ],
+      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168)."
     }
   ]
 }

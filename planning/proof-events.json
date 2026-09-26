@@ -5779,6 +5779,19 @@
           "name": "fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class"
         }
       ]
+    },
+    {
+      "id": "PRF-167",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cp-register-within-refuses-exactly-past-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cp-apply-preserves-consumer-capacity"
+        }
+      ]
     }
   ]
 }
