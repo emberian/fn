@@ -200,7 +200,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ;; PKT-510 (1): the offline request's authorization from the open's carried
 ;; fold (books/config-carried-candidate.lisp
-;; fn-ccc-cvec-native-admin-authorize-is-the-replayed-authorization: EQUAL to
+;; fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization: EQUAL to
 ;; fn-cvec-native-admin-authorize whenever the carried fold is the replay of
 ;; the same histories).  The records are the extended capture's (the history
 ;; the open replayed, fn-sco-records of E); the fold is E's
@@ -227,7 +227,7 @@ reopen predicate, writer-lock observation and observed final namespace."
           ((or (null config-records) (equal names :bad)
                (not (fn-record-parse-okp parsed)))
            (value (fn-native-admin-publication-result :refused :decode nil nil nil)))
-          (t (value (fn-ccc-cvec-native-admin-authorize
+          (t (value (fn-cfgc-cvec-native-admin-authorize
                      (fn-sco-records (car carried)) frontier config-records
                      (fn-record-parse-value parsed) lock-owned names profile
                      (cadr carried)))))))

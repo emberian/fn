@@ -77,7 +77,7 @@ set, exact record, candidate replay/open result and generated final name."
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
 fn-store-cfg-native-admin-authorize over the history the open replayed
 (books/config-carried-candidate.lisp
-fn-ccc-cvec-native-admin-authorize-is-the-replayed-authorization) without
+fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization) without
 replaying it again.  When ACL2 answers NIL (no carried open, or a
 configuration history that is not the open's) the request authorizes over the
 history it read, as before."
