@@ -5727,6 +5727,14 @@
         {
           "kind": "theorem",
           "name": "fn-rclp-reclaiming-pack-is-a-first-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-chain-link-cut-walks-the-extended-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-chain-link-cut-reopens-to-the-history"
         }
       ]
     },

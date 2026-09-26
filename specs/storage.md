@@ -849,7 +849,15 @@ the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
    program (immutable generation, then the selection marker); at every cut
    the walk from the image's marker reads the old chain or the new link
    followed by the old chain (`fn-ccc-publication-crash-walks-old-or-new-chain`,
-   stated under the two facts the pack program's keystones give).
+   stated under the two facts the pack program's keystones give). Between
+   two links the host has one more process-death cut, `pack-chain-link`
+   (after the link's selection returned durable, before the next link's
+   admit, with no syscall between): it is the chain program's cut
+   (`fn-ccc-chain-program`), where the state is exactly the selection's
+   (`fn-ccc-chain-cut-state-is-previous-state`), the marker names link N and
+   the walk reads links N..1 on the chain selected before
+   (`fn-ccc-chain-link-cut-walks-the-extended-chain`), and the reopen answers
+   the history (`fn-ccc-chain-link-cut-reopens-to-the-history`).
 6. `store compact` extends the chain one link at a time until it covers
    every committed record (`fnn-pack-extend-chain`); it never repacks what
    earlier links cover, and it no longer refuses a history above 4096
