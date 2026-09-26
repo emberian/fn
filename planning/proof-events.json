@@ -5397,6 +5397,51 @@
           "name": "fn-bpnf-family-next-memo-is-aux"
         }
       ]
+    },
+    {
+      "id": "PRF-136",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-select-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-select-plans-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-select-steps-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-without-zero-key-is-not-ready"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-active-fragment-is-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-keys-not-readyp-of-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-zero-family-keys-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-heldp-primary-blockp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-local-pendingp-has-a-nonfragment-header"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-held-needs-an-administrative-header"
+        }
+      ]
     }
   ]
 }
