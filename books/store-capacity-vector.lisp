@@ -597,13 +597,15 @@ vector holds after it at its worst case, its own promise included."
             (equal (fn-sbud-record-octets records)
                    (+ (len (fn-store-event-encode (car records)))
                       (fn-sbud-record-octets (cdr records)))))
-   :hints (("Goal" :in-theory (enable fn-sbud-record-octets)))))
+   :hints (("Goal" :expand ((fn-sbud-record-octets records))
+            :in-theory (disable fn-sbud-record-octets fn-store-event-encode)))))
 
 (local
  (defthm fn-cvec-record-octets-of-atom
    (implies (not (consp records))
             (equal (fn-sbud-record-octets records) 0))
-   :hints (("Goal" :in-theory (enable fn-sbud-record-octets)))))
+   :hints (("Goal" :expand ((fn-sbud-record-octets records))
+            :in-theory (disable fn-sbud-record-octets fn-store-event-encode)))))
 
 (local
  (defthm fn-cvec-debt-from-of-cons

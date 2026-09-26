@@ -75,7 +75,7 @@
                         (:instance fn-cvec-accepted-generation-is-positive
                                    (max-generations (fn-cvec-config-generations
                                                      profile record))))
-           :in-theory (disable fn-native-admin-publication-authorize
-                               fn-cvec-retention-recordp))))
+           :in-theory (union-theories '(fn-cvec-config-generations nfix natp posp)
+                                      (theory 'minimal-theory)))))
 
 (in-theory (disable fn-cvec-config-generations fn-cvec-retention-recordp))
