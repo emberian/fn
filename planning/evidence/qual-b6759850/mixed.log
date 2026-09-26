@@ -1,0 +1,320 @@
+init rc 0 initialized /tank/fn/scratch/qual-b6759850/mixed/store
+accepted operator init
+{
+ "latency": {
+  "reader-group": {
+   "n": 319667,
+   "p50_ms": 0.051433220505714417,
+   "p95_ms": 0.1278640702366829,
+   "p99_ms": 0.37722475826740265,
+   "max_ms": 283908.0355465412
+  },
+  "post": {
+   "n": 1317,
+   "p50_ms": 330.8173157274723,
+   "p95_ms": 950.2503648400307,
+   "p99_ms": 84373.45807254314,
+   "max_ms": 342491.04964453727
+  },
+  "reader-over": {
+   "n": 316043,
+   "p50_ms": 0.2100309357047081,
+   "p95_ms": 0.2766670659184456,
+   "p99_ms": 0.4458008334040642,
+   "max_ms": 284138.9519525692
+  },
+  "reader-article": {
+   "n": 316043,
+   "p50_ms": 1.0889554396271706,
+   "p95_ms": 1.1836234480142593,
+   "p99_ms": 2.0897481590509415,
+   "max_ms": 429273.7918505445
+  },
+  "reader-xpat": {
+   "n": 316043,
+   "p50_ms": 0.12318138033151627,
+   "p95_ms": 0.1970883458852768,
+   "p99_ms": 0.295429490506649,
+   "max_ms": 185512.48571556062
+  },
+  "signed-report": {
+   "n": 136,
+   "p50_ms": 10250.57767983526,
+   "p95_ms": 11412.394863553345,
+   "p99_ms": 20204.254118725657,
+   "max_ms": 20446.82519417256
+  },
+  "status-live": {
+   "n": 90,
+   "p50_ms": 5310.2402705699205,
+   "p95_ms": 10088.750730268657,
+   "p99_ms": 10096.800052560866,
+   "max_ms": 10096.800052560866
+  },
+  "health-live": {
+   "n": 90,
+   "p50_ms": 2657.4124805629253,
+   "p95_ms": 10086.828197352588,
+   "p99_ms": 10107.681596651673,
+   "max_ms": 10107.681596651673
+  },
+  "bp-queue": {
+   "n": 54,
+   "p50_ms": 5503.359032794833,
+   "p95_ms": 10313.13621904701,
+   "p99_ms": 13743.60163975507,
+   "max_ms": 13743.60163975507
+  },
+  "control-group-create": {
+   "n": 26,
+   "p50_ms": 10078.977095894516,
+   "p95_ms": 10085.649393498898,
+   "p99_ms": 10086.445594206452,
+   "max_ms": 10086.445594206452
+  },
+  "control-grant": {
+   "n": 26,
+   "p50_ms": 10079.98320646584,
+   "p95_ms": 10087.215010076761,
+   "p99_ms": 10090.707776136696,
+   "max_ms": 10090.707776136696
+  },
+  "consumer-wake": {
+   "n": 65,
+   "p50_ms": 10196.708608418703,
+   "p95_ms": 108314.61151503026,
+   "p99_ms": 244466.31231158972,
+   "max_ms": 244466.31231158972
+  },
+  "bp-resume": {
+   "n": 11,
+   "p50_ms": 5002.21180729568,
+   "p95_ms": 9129.900578409433,
+   "p99_ms": 9129.900578409433,
+   "max_ms": 9129.900578409433
+  },
+  "consumer-wake:not-ok": {
+   "n": 64,
+   "p50_ms": 10196.708608418703,
+   "p95_ms": 77591.16087295115,
+   "p99_ms": 118179.71850279719,
+   "max_ms": 118179.71850279719
+  },
+  "control-group-create:not-ok": {
+   "n": 23,
+   "p50_ms": 10079.363926313818,
+   "p95_ms": 10085.649393498898,
+   "p99_ms": 10086.445594206452,
+   "max_ms": 10086.445594206452
+  },
+  "control-grant:not-ok": {
+   "n": 23,
+   "p50_ms": 10080.640173517168,
+   "p95_ms": 10087.215010076761,
+   "p99_ms": 10090.707776136696,
+   "max_ms": 10090.707776136696
+  },
+  "signed-report:not-ok": {
+   "n": 65,
+   "p50_ms": 10405.57792596519,
+   "p95_ms": 18665.543919429183,
+   "p99_ms": 20446.82519417256,
+   "max_ms": 20446.82519417256
+  },
+  "status-live:not-ok": {
+   "n": 48,
+   "p50_ms": 10079.38610110432,
+   "p95_ms": 10089.30757921189,
+   "p99_ms": 10096.800052560866,
+   "max_ms": 10096.800052560866
+  },
+  "health-live:not-ok": {
+   "n": 44,
+   "p50_ms": 10079.43763770163,
+   "p95_ms": 10091.99364297092,
+   "p99_ms": 10107.681596651673,
+   "max_ms": 10107.681596651673
+  },
+  "bp-queue:not-ok": {
+   "n": 2,
+   "p50_ms": 99.22526404261589,
+   "p95_ms": 99.22526404261589,
+   "p99_ms": 99.22526404261589,
+   "max_ms": 99.22526404261589
+  },
+  "bp-resume:not-ok": {
+   "n": 1,
+   "p50_ms": 58.98886080831289,
+   "p95_ms": 58.98886080831289,
+   "p99_ms": 58.98886080831289,
+   "max_ms": 58.98886080831289
+  }
+ },
+ "first": {
+  "t": 1.8,
+  "cpu_s": 0.07,
+  "rss_kib": "336492",
+  "hwm_kib": "336492",
+  "store_octets": 4853,
+  "store_inodes": 13,
+  "bp_journal_octets": 0,
+  "owner_alive": true
+ },
+ "last": {
+  "t": 3698.1,
+  "cpu_s": 2829.41,
+  "rss_kib": "914376",
+  "hwm_kib": "1351128",
+  "store_octets": 9082716,
+  "store_inodes": 2402,
+  "bp_journal_octets": 324866,
+  "owner_alive": true
+ },
+ "owner_alive_at_end": true,
+ "owner_exit": 0,
+ "recover_rc": 0,
+ "event_kinds": {
+  "bootstrap": 1,
+  "bp-queue": 54,
+  "bp-resume": 11,
+  "control-grant": 26,
+  "enroll": 2,
+  "group-create": 26,
+  "health": 90,
+  "register": 2,
+  "report": 136,
+  "status": 90,
+  "wake": 65
+ },
+ "nonzero": [
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "mixed\", \"op-9\"], [\"qual-mixed\", \"op-10\"], [\"qual-mixed\", \"op-11\"], [\"qual-mixed\", \"op-12\"]], \"unattributed\": 316}\nconsumer stopped: position: consumer uncertain",
+   "t": 383.9
+  },
+  {
+   "kind": "group-create",
+   "n": 4,
+   "rc": 3,
+   "tail": "uncertain operator group",
+   "t": 522.01
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "-mixed\", \"op-13\"], [\"qual-mixed\", \"op-14\"], [\"qual-mixed\", \"op-15\"]], \"unattributed\": 401}\nconsumer stopped: ack uncertain; position settles it on the next wake",
+   "t": 522.21
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control",
+   "t": 532.09
+  },
+  {
+   "kind": "report",
+   "n": 25,
+   "rc": 3,
+   "tail": "ertain\"}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; re-POST of the same source settles it",
+   "t": 538.46
+  },
+  {
+   "kind": "group-create",
+   "n": 5,
+   "rc": 3,
+   "tail": "uncertain operator group",
+   "t": 662.18
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "-mixed\", \"op-17\"], [\"qual-mixed\", \"op-18\"], [\"qual-mixed\", \"op-19\"]], \"unattributed\": 482}\nconsumer stopped: ack uncertain; position settles it on the next wake",
+   "t": 662.42
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control",
+   "t": 672.27
+  },
+  {
+   "kind": "report",
+   "n": 31,
+   "rc": 3,
+   "tail": "ertain\"}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; re-POST of the same source settles it",
+   "t": 675.37
+  },
+  {
+   "kind": "status",
+   "rc": 3,
+   "lines": [],
+   "t": 689.51
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "ixed\", \"op-16\"], [\"qual-mixed\", \"op-17\"], [\"qual-mixed\", \"op-18\"], [\"qual-mixed\", \"op-19\"]], \"unattributed\": 482}\nconsumer stopped: position: consumer uncertain",
+   "t": 702.57
+  },
+  {
+   "kind": "group-create",
+   "n": 6,
+   "rc": 3,
+   "tail": "uncertain operator group",
+   "t": 802.35
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "ixed\", \"op-18\"], [\"qual-mixed\", \"op-19\"], [\"qual-mixed\", \"op-20\"], [\"qual-mixed\", \"op-21\"]], \"unattributed\": 529}\nconsumer stopped: position: consumer uncertain",
+   "t": 802.79
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control",
+   "t": 812.43
+  },
+  {
+   "kind": "report",
+   "n": 37,
+   "rc": 3,
+   "tail": "ertain\"}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; re-POST of the same source settles it",
+   "t": 819.56
+  },
+  {
+   "kind": "status",
+   "rc": 3,
+   "lines": [],
+   "t": 830.36
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": " \"op-19\"], [\"qual-mixed\", \"op-20\"], [\"qual-mixed\", \"op-21\"]], \"unattributed\": 529}\nconsumer stopped: reply POST uncertain; re-POST of the same source settles it",
+   "t": 842.98
+  },
+  {
+   "kind": "group-create",
+   "n": 7,
+   "rc": 3,
+   "tail": "uncertain operator group",
+   "t": 942.52
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "al-mixed\", \"op-20\"], [\"qual-mixed\", \"op-21\"], [\"qual-mixed\", \"op-22\"], [\"qual-mixed\", \"op-23\"]], \"unattributed\": 579}\nconsumer stopped: poll: consumer uncertain",
+   "t": 942.72
+  },
+  {
+   "kind": "report",
+   "n": 42,
+   "rc": 3,
+   "tail": "ertain\"}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; re-POST of the same source settles it",
+   "t": 943.58
+  }
+ ]
+}
+rc=0

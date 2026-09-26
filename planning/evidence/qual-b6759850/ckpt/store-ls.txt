@@ -1,0 +1,11 @@
+total 5217
+drwx------ 5 hbox hbox        10 Sep 26 01:32 .
+drwxrwxr-x 3 hbox hbox         9 Sep 26 01:33 ..
+-rw------- 1 hbox hbox        45 Sep 26 01:30 allocation-frontier.json
+-rw------- 1 hbox hbox        45 Sep 26 01:30 committed-history.json
+drwx------ 2 hbox hbox         3 Sep 26 01:19 config
+-rw------- 1 hbox hbox       190 Sep 26 01:19 config.json
+drwx------ 2 hbox hbox         2 Sep 26 01:32 staging
+-rw------- 1 hbox hbox 140374050 Sep 26 01:32 store-checkpoint.fnsc
+drwx------ 2 hbox hbox      2114 Sep 26 01:30 transactions
+-rw------- 1 hbox hbox         0 Sep 26 01:19 writer.lock

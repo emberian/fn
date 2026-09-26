@@ -1,0 +1,27 @@
+# build log /tank/fn/gates/qual-b6759850-20260926/build/image-build.log sha256 23a7e4df4c1f832810fcb001c55bf6ada7b37eace8552248a156ecd9c2715345
+# ACL2 error lines (PKT-284 patterns):
+# count 0
+# freeze logs:
+total 326
+drwxrwxr-x 2 hbox hbox     12 Sep 26 01:18 .
+drwxrwxr-x 6 hbox hbox     15 Sep 26 01:18 ..
+-rw-rw-r-- 1 hbox hbox    398 Sep 26 01:16 acquire-default.txt
+-rw-rw-r-- 1 hbox hbox    398 Sep 26 01:16 acquire-dtn.txt
+-rw-rw-r-- 1 hbox hbox   1534 Sep 26 01:18 image-hashes.txt
+-rw-rw-r-- 1 hbox hbox   2309 Sep 26 01:18 image-validation.txt
+-rw-rw-r-- 1 hbox hbox 554664 Sep 26 01:17 native-build-developer.log
+-rw-rw-r-- 1 hbox hbox 415217 Sep 26 01:17 native-build-dtn-developer.log
+-rw-rw-r-- 1 hbox hbox 415207 Sep 26 01:17 native-build-dtn.log
+-rw-rw-r-- 1 hbox hbox 554654 Sep 26 01:16 native-build-production.log
+-rw-rw-r-- 1 hbox hbox     60 Sep 26 01:16 validate-default.txt
+-rw-rw-r-- 1 hbox hbox     60 Sep 26 01:16 validate-dtn.txt
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/native-build-developer.log 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/native-build-dtn-developer.log 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/native-build-dtn.log 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/native-build-production.log 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/acquire-default.txt 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/acquire-dtn.txt 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/image-hashes.txt 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/image-validation.txt 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/validate-default.txt 0
+/tank/fn/gates/qual-b6759850-20260926/build/freeze/validate-dtn.txt 0

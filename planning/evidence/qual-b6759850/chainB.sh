@@ -1,0 +1,7 @@
+#!/bin/sh
+# BP modules on the DTN production image, then the DTN developer image; then the request labs and the four-node missions.
+cd /tank/fn/scratch/qual-b6759850
+NS_TAG=dtn NS_BP_IMAGE=fn-host-dtn NS_BP_NODE_IMAGE=fn-host-dtn sh brun.sh tests.test_bp_service_native tests.test_bp_contact_native tests.test_bp_contact_relay_native tests.test_bp_app_native tests.test_bp_node_native tests.test_bp_receive_integrity_native tests.test_bp_fragment_node_native tests.test_bp_obligation_native tests.test_native_source_corpus_bp tests.test_native_bp_app_clock tests.test_native_bp_channel_admission tests.test_native_bp_node_admission_lock tests.test_native_bp_transit_identity tests.test_native_app_journal tests.test_native_image_profiles
+NS_TAG=dtndev NS_BP_IMAGE=fn-host-dtn-developer NS_BP_NODE_IMAGE=fn-host-dtn-developer sh brun.sh tests.test_bp_service_native tests.test_bp_contact_native tests.test_bp_contact_relay_native tests.test_bp_app_native tests.test_bp_node_native tests.test_bp_receive_integrity_native tests.test_bp_fragment_node_native tests.test_bp_obligation_native tests.test_native_source_corpus_bp tests.test_native_bp_app_clock tests.test_native_bp_channel_admission tests.test_native_bp_node_admission_lock tests.test_native_bp_transit_identity tests.test_native_app_journal tests.test_native_image_profiles
+sh /tank/fn/scratch/qual-b6759850/labs.sh
+touch /tank/fn/scratch/qual-b6759850/done.B

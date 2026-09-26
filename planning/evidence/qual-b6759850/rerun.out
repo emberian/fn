@@ -1,0 +1,4 @@
+checkpoint.dev OK # rc=0 wall=16 end 2026-09-26T06:07:44Z
+served_crash_model.prod FAILED (errors=26) # rc=1 wall=191 end 2026-09-26T06:10:55Z
+fragment.dtn OK # rc=0 wall=33 end 2026-09-26T06:11:28Z
+reloc OK

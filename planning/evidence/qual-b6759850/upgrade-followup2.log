@@ -1,0 +1,26 @@
+# follow-up 2 start 2026-09-26T05:22:28Z
+STEP fork: principal set-password rc=0
+  | qual principal=8c6ce8b1b3dc5154aa5dcc347329c2711891c2a5ff1f0d2ec7bd5347b0757ddb posting=true
+  | Password: Confirm password: accepted operator principal set-password effective-at-next-start
+OWNER b675-a pid=384382 announce='LISTENING 53391'
+  > AUTHINFO USER qual  -> 381 password required
+  > POST  -> 340 send article to be posted
+  > POST <170 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+OWNER b675-a pid=384382 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP fork status rc=0 OK
+  | transactions=14 articles=14 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=14 transactions-budget=4096 bytes-used=11537 history-bound=805306368 charge-reserved=28 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=14 reserved=28 connections=0
+  | accepted operator status
+STEP rollback-check --snapshot FORK (13 shared + 1 different; expected refused snapshot-not-a-prefix) rc=1
+  | rollback snapshot refused snapshot-not-a-prefix (this snapshot is not an earlier state of this store)
+  | refused operator rollback-snapshot
+# follow-up 2 end 2026-09-26T05:22:30Z
+rc=0

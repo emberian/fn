@@ -1,0 +1,97 @@
+# follow-up start 2026-09-26T05:21:34Z
+STEP bbf52159 recover on the store b6759850 wrote rc=0 OK
+  | recovered transactions=19 articles=17 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+OWNER bbf5-on-b675-store pid=381119 announce='LISTENING 48137'
+  > AUTHINFO USER qual  -> 381 password required
+  AUTHINFO -> 281 authentication accepted
+  > GROUP fn.agents  -> 211 14 1 15 fn.agents
+  > STAT <qual-b675-tin@example.invalid>  -> 223 13 <qual-b675-tin@example.invalid> retrieved
+  > STAT <qual-b675-signed@example.invalid>  -> 430 withdrawn
+  > STAT <qual-b675-cancel@example.invalid>  -> 223 0 <qual-b675-cancel@example.invalid> retrieved
+  > STAT <qual-b675-wrong-principal@example.invalid>  -> 223 15 <qual-b675-wrong-principal@example.invalid> retrieved
+  > POST  -> 340 send article to be posted
+  > POST <211 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+OWNER bbf5-on-b675-store pid=381119 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP bbf52159 status after its own commit rc=0 OK
+  | transactions=20 articles=18 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=20 transactions-budget=4096 bytes-used=42309 history-bound=805306368 charge-reserved=39 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=18 reserved=39 connections=0
+  | accepted operator status
+STEP b6759850 recover after bbf52159 wrote (roll forward again) rc=0 OK
+  | recovered transactions=20 articles=18 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+OWNER b675-after-bbf5 pid=381164 announce='LISTENING 48137'
+  > AUTHINFO USER qual  -> 381 password required
+  AUTHINFO -> 281 authentication accepted
+  > GROUP fn.agents  -> 211 15 1 16 fn.agents
+  > STAT <qual-b675-tin@example.invalid>  -> 223 13 <qual-b675-tin@example.invalid> retrieved
+  > STAT <qual-b675-signed@example.invalid>  -> 430 withdrawn
+  > STAT <qual-b675-cancel@example.invalid>  -> 223 0 <qual-b675-cancel@example.invalid> retrieved
+  > STAT <qual-b675-wrong-principal@example.invalid>  -> 223 15 <qual-b675-wrong-principal@example.invalid> retrieved
+  > STAT <qual-b675-by-bbf5@example.invalid>  -> 223 16 <qual-b675-by-bbf5@example.invalid> retrieved
+  > POST  -> 340 send article to be posted
+  > POST <220 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+OWNER b675-after-bbf5 pid=381164 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP b6759850 status (roll forward) rc=0 OK
+  | transactions=21 articles=19 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=21 transactions-budget=4096 bytes-used=42944 history-bound=805306368 charge-reserved=41 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=19 reserved=41 connections=0
+  | accepted operator status
+STEP bbf52159 recover once more rc=0 OK
+  | recovered transactions=21 articles=19 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP bbf52159 recover on the required store b6759850 wrote rc=0 OK
+  | recovered transactions=20 articles=18 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+OWNER bbf5-on-required pid=381243 announce='LISTENING 34569'
+  > AUTHINFO USER qual  -> 381 password required
+  AUTHINFO -> 281 authentication accepted
+  > GROUP fn.agents  -> 211 15 1 16 fn.agents
+  > STAT <qual-b675-required@example.invalid>  -> 223 16 <qual-b675-required@example.invalid> retrieved
+  > POST  -> 340 send article to be posted
+  > POST <227 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+OWNER bbf5-on-required pid=381243 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP b6759850 recover after bbf52159 wrote the required store rc=0 OK
+  | recovered transactions=21 articles=19 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP b6759850 status (required, after bbf52159) rc=0 OK
+  | transactions=21 articles=19 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=21 transactions-budget=4096 bytes-used=42943 history-bound=805306368 charge-reserved=41 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=19 reserved=41 connections=0
+  | accepted operator status
+STEP init an unrelated store rc=0 OK
+  | initialized /tank/fn/scratch/qual-b6759850/upgrade-live/unrelated/store
+  | accepted operator init
+STEP rollback-check --snapshot UNRELATED (expected refused snapshot-not-a-prefix) rc=0
+  | rollback snapshot loses transactions=19 snapshot-transactions=0 store-transactions=19
+  | restoring this snapshot loses every transaction committed after it: 19, the articles accepted since it among them; the snapshot cannot give them back
+  | accepted operator rollback-snapshot
+# follow-up end 2026-09-26T05:21:40Z
+rc=0

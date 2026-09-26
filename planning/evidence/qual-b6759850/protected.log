@@ -1,0 +1,107 @@
+== the real client as guest: post, read, reply, resume
+CLIENT cred-guest groups rc=0
+  | group           articles   first    last
+  | fn.agents              4       1       4
+  | control.cancel         1       1       1
+  | done 127.0.0.1:46703 served 2 group name(s)
+CLIENT cred-guest read fn.agents --all rc=0
+  | 
+  | --- 4 <walk-notes.b675@fn.example.invalid>
+  | Path: fn.example.invalid!not-for-mail
+  | Injection-Info: fn.example.invalid
+  | From: guest <guest@fn.example.invalid>
+  | Newsgroups: fn.agents
+  | Subject: walk notes
+  | Message-ID: <walk-notes.b675@fn.example.invalid>
+  | Date: Sat, 26 Sep 2026 06:32:00 +0000
+  | 
+  | notes for the search
+  | done 127.0.0.1:46703 fn.agents: read through 4
+CLIENT cred-guest post fn.agents --subject protected ordinary rc=0
+  | <prot-1@qual.invalid>
+  | accepted 127.0.0.1:46703 <prot-1@qual.invalid> 240 article received OK
+CLIENT cred-guest show <prot-1@qual.invalid> rc=0
+  | --- <prot-1@qual.invalid>
+  | Path: fn.example.invalid!not-for-mail
+  | Injection-Date: Sat, 26 Sep 2026 05:23:40 +0000
+  | Date: Sat, 26 Sep 2026 05:23:40 +0000
+  | Injection-Info: fn.example.invalid
+  | From: guest <guest@fn.example.invalid>
+  | Newsgroups: fn.agents
+  | Subject: protected ordinary
+  | Message-ID: <prot-1@qual.invalid>
+  | 
+  | posted over STARTTLS as guest
+  | done 127.0.0.1:46703 <prot-1@qual.invalid>
+CLIENT cred-guest post fn.agents --subject Re: protected ordinary rc=0
+  | <prot-2@qual.invalid>
+  | accepted 127.0.0.1:46703 <prot-2@qual.invalid> 240 article received OK
+CLIENT cred-guest read fn.agents --new rc=0
+  | Path: fn.example.invalid!not-for-mail
+  | Injection-Date: Sat, 26 Sep 2026 05:23:41 +0000
+  | Date: Sat, 26 Sep 2026 05:23:41 +0000
+  | Injection-Info: fn.example.invalid
+  | From: guest <guest@fn.example.invalid>
+  | Newsgroups: fn.agents
+  | Subject: Re: protected ordinary
+  | Message-ID: <prot-2@qual.invalid>
+  | References: <prot-1@qual.invalid>
+  | 
+  | a reply
+  | done 127.0.0.1:46703 fn.agents: read through 6
+CLIENT cred-guest post fn.agents --subject after the watermark rc=0
+  | <prot-3@qual.invalid>
+  | accepted 127.0.0.1:46703 <prot-3@qual.invalid> 240 article received OK
+== resume: --new again lists only what came after the watermark
+CLIENT cred-guest read fn.agents --new rc=0
+  | --- 7 <prot-3@qual.invalid>
+  | Path: fn.example.invalid!not-for-mail
+  | Injection-Date: Sat, 26 Sep 2026 05:23:41 +0000
+  | Date: Sat, 26 Sep 2026 05:23:41 +0000
+  | Injection-Info: fn.example.invalid
+  | From: guest <guest@fn.example.invalid>
+  | Newsgroups: fn.agents
+  | Subject: after the watermark
+  | Message-ID: <prot-3@qual.invalid>
+  | 
+  | later
+  | done 127.0.0.1:46703 fn.agents: read through 7
+CLIENT cred-guest read fn.agents --new rc=0
+  | no articles in fn.agents after 7
+  | done 127.0.0.1:46703 fn.agents: read through 7
+== reconcile the first post's frozen draft (already stored, no new number)
+CLIENT cred-guest reconcile /tank/fn/scratch/qual-b6759850/protected/draft-1.json rc=0
+  | <prot-1@qual.invalid>
+  | accepted the original post was accepted; nothing to reconcile
+== wrong channel
+  greeting 201 fn-nntp experimental reader ready
+  (clear) GROUP fn.agents -> 480 authentication required
+  (clear) AUTHINFO USER guest -> 483 a protected channel is required; use STARTTLS
+  (clear) POST -> 480 authentication required
+  (clear) QUIT -> 205 closing connection
+CLIENT cred-guest read fn.agents --all --plain rc=2
+  | usage: fn_client.py [-h] [--node NODE] [--cafile CAFILE] [--plain]
+  |                     [--timeout TIMEOUT] [--credentials CREDENTIALS]
+  |                     [--state STATE] [--json]
+  |                     {groups,read,show,post,reconcile} ...
+  | fn_client.py: error: --plain and --cafile are two different nodes; give one
+== wrong secret (TLS)
+CLIENT cred-wrong read fn.agents --all rc=1
+  | refused 481 authentication failed
+== wrong principal: ember is bound to E (posting-policy bound-logins)
+CLIENT cred-ember post fn.agents --subject ember unsigned rc=1
+  | refused 441 posting failed; this login posts only articles signed by its bound principal
+  ember POSTs a carrier signed by Q (another enrolled principal): 441 posting failed; the login is not bound to this signing principal
+  ember POSTs a carrier signed by E (its bound principal): 240 article received OK
+  guest (unbound) POSTs the carrier signed by Q: 240 article received OK
+== service log decisions
+  log| post login=guest unbound
+  log| post login=guest unbound
+  log| post login=guest unbound
+  log| post login=guest unbound
+  log| post login=guest unbound
+  log| post login=ember refused login-unsigned
+  log| post login=ember refused login-not-bound
+  log| post login=ember bound=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+  log| post login=guest unbound
+rc=0
