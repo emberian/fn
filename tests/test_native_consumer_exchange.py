@@ -333,7 +333,8 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.log.append(("trace", after_death, woke.returncode, final))
         states = [o["state"] for o in final]
         self.assertNotIn("refused", states,
-                         "an accepted operation recorded refused: %r" % (final,))
+                         "an accepted operation recorded refused: after death %r; "
+                         "after revocation and restart %r" % (after_death, final))
         self.assertEqual([(o["state"], o["settled_by"]) for o in final],
                          [("stored", "store-observation")], final)
         self.stop_owner(self.owner)
