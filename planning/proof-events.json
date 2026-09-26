@@ -6206,6 +6206,55 @@
           "name": "fn-native-auth-admin-effect-word-applied-only-when-published"
         }
       ]
+    },
+    {
+      "id": "PRF-180",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cei-count-of-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-count-is-used"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-lookup-of-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-octets-advance-is-the-suffix-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-bytes-carried-is-the-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-octets-cache-valid-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-headroom-carried-is-headroom-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-debt-advance-is-the-suffix-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-debt-carried-is-the-record-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-tally-advance-is-the-suffix-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-usage-carried-is-the-projection"
+        }
+      ]
     }
   ]
 }

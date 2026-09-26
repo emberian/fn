@@ -44,7 +44,7 @@
                           (fn-sbud-used *osi-crashed*))))
 (must-fail
  (defthm scft-count-without-the-relation
-   (equal (fn-sbud-count s) (fn-sbud-used s))))
+   (equal (fn-sbud-count *osi-crashed*) (fn-sbud-used *osi-crashed*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sbud-bytes-carried-is-the-fold, across the commit: the cache taken
@@ -69,8 +69,10 @@
                           (fn-sbud-bytes-used *osi-crashed*))))
 (must-fail
  (defthm scft-octets-without-the-relation
-   (implies (fn-sbud-octets-cache-validp cache (fn-sf-records (fn-sn-files s)))
-            (equal (fn-sbud-bytes-carried cache s) (fn-sbud-bytes-used s)))))
+   (implies (fn-sbud-octets-cache-validp '(0 . 0)
+                                         (fn-sf-records (fn-sn-files *osi-crashed*)))
+            (equal (fn-sbud-bytes-carried '(0 . 0) *osi-crashed*)
+                   (fn-sbud-bytes-used *osi-crashed*)))))
 ; (2) Without a valid cache: a CORRUPTED cache (the right count, a wrong
 ; sum) over the live, indexed Store.
 (assert-event (fn-ceis-indexedp *osi-after*))
@@ -79,8 +81,9 @@
                           (fn-sbud-bytes-used *osi-after*))))
 (must-fail
  (defthm scft-octets-without-a-valid-cache
-   (implies (fn-ceis-indexedp s)
-            (equal (fn-sbud-bytes-carried cache s) (fn-sbud-bytes-used s)))))
+   (implies (fn-ceis-indexedp *osi-after*)
+            (equal (fn-sbud-bytes-carried '(1 . 999) *osi-after*)
+                   (fn-sbud-bytes-used *osi-after*)))))
 
 ; fn-sbud-headroom-carried-is-headroom-at, live and without the relation.
 (defconst *scft-profile* (fn-bs-config-for-profile :development))
@@ -91,8 +94,8 @@
                           (fn-sbud-headroom-at *scft-profile* *osi-crashed* 7))))
 (must-fail
  (defthm scft-headroom-without-the-relation
-   (equal (fn-sbud-headroom-carried profile s bytes)
-          (fn-sbud-headroom-at profile s bytes))))
+   (equal (fn-sbud-headroom-carried *scft-profile* *osi-crashed* 7)
+          (fn-sbud-headroom-at *scft-profile* *osi-crashed* 7))))
 
 ; -----------------------------------------------------------------------------
 ; fn-scf-debt-carried-is-the-record-debt, across the same commit.  This
@@ -110,9 +113,9 @@
                           (fn-cvec-record-debt *scft-after-records*))))
 (must-fail
  (defthm scft-debt-without-a-valid-cache
-   (implies (fn-ceis-indexedp s)
-            (equal (fn-scf-debt-carried cache s)
-                   (fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))))))
+   (implies (fn-ceis-indexedp *osi-after*)
+            (equal (fn-scf-debt-carried '(1 . 7) *osi-after*)
+                   (fn-cvec-record-debt *scft-after-records*)))))
 ; Without the relation, over CONSTRUCTED Stores (a Store-shaped value whose
 ; file kernel holds RECORDS and whose derived index is INDEX; a stale index
 ; is a state no host transition reaches).  With an index built from the
@@ -136,9 +139,9 @@
                           (fn-cvec-record-debt *scft-debt-records*))))
 (must-fail
  (defthm scft-debt-without-the-relation
-   (implies (fn-cvec-debt-cache-validp cache (fn-sf-records (fn-sn-files s)))
-            (equal (fn-scf-debt-carried cache s)
-                   (fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))))))
+   (implies (fn-cvec-debt-cache-validp '(0 . 0) *scft-debt-records*)
+            (equal (fn-scf-debt-carried '(0 . 0) *scft-debt-stale*)
+                   (fn-cvec-record-debt *scft-debt-records*)))))
 
 ; -----------------------------------------------------------------------------
 ; fn-scf-usage-carried-is-the-projection, across the same commit, at the
@@ -182,11 +185,14 @@
                           (fn-pcb-usage *pcb-records* *pcb-evidence*))))
 (must-fail
  (defthm scft-usage-without-a-valid-cache
-   (implies (fn-ceis-indexedp s)
-            (equal (fn-pcb-tally-get evidence (fn-scf-usage-carried cache s))
-                   (fn-pcb-usage (fn-sf-records (fn-sn-files s)) evidence)))))
+   (implies (fn-ceis-indexedp *osi-after*)
+            (equal (fn-pcb-tally-get "r" (fn-scf-usage-carried *scft-bad-tally*
+                                                                *osi-after*))
+                   (fn-pcb-usage *scft-after-records* "r")))))
 (must-fail
  (defthm scft-usage-without-the-relation
-   (implies (fn-pcb-cache-validp cache (fn-sf-records (fn-sn-files s)))
-            (equal (fn-pcb-tally-get evidence (fn-scf-usage-carried cache s))
-                   (fn-pcb-usage (fn-sf-records (fn-sn-files s)) evidence)))))
+   (implies (fn-pcb-cache-validp '(0 . nil) *pcb-records*)
+            (equal (fn-pcb-tally-get *pcb-evidence*
+                                     (fn-scf-usage-carried '(0 . nil)
+                                                           *scft-carried-stale*))
+                   (fn-pcb-usage *pcb-records* *pcb-evidence*)))))

@@ -54,4 +54,4 @@
                           (len *fn-ceit-events*))))
 (must-fail
  (defthm fn-ceit-false-count-without-correspondence
-   (equal (fn-cei-count index) (len events))))
+   (equal (fn-cei-count *fn-ceit-corrupt*) (len *fn-ceit-events*))))
