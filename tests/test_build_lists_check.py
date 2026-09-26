@@ -52,7 +52,13 @@ CHECKPOINT_BUFFER_INCLUDES = (
     ';; The state checkpoint read from the octet buffer (rep-wave-d-3):\n'
     ';; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and\n'
     ';; fn-store-sco-segment-admit calls fn-sccr-admit-segment.\n'
-    '(include-book "books/store-checkpoint-reader")\n')
+    '(include-book "books/store-checkpoint-reader")\n'
+    # ingress-span: the served read over the octet buffer.  The book includes
+    # books/octets-stobj (through books/wire-span), so a fixture that omits the
+    # buffer includes omits this one too, or the buffer is served transitively.
+    ';; The served read over the octet buffer (ingress-span): host/owner-host.lisp\n'
+    ';; fn-owner-chunk-span calls fn-scar-ocfg-read-span.\n'
+    '(include-book "books/served-span")\n')
 # checkpoint-capture-stream (2026-09-26): host/owner-host.lisp now also
 # includes books/owner-checkpoint-stream, whose closure holds octets-stobj,
 # so the bare copy (its three self-includes removed) still reaches fn-octets
@@ -64,7 +70,10 @@ BUFFER_FINDINGS = [
     f"included: host/owner-host.lisp uses {name}, defined in "
     "books/post-identity-index.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"
-    for name in ("fn-pidx-existing-action", "fn-pidx-sbud-prepare")]
+    for name in ("fn-pidx-existing-action", "fn-pidx-sbud-prepare")] + [
+    "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
+    "books/served-span.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/owner-host.lisp"]
 STORE_NODE_HOST_FINDINGS = [
     "included: host/store-node-host.lisp uses fn-octets, defined in "
     "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "

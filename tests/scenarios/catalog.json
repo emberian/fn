@@ -3571,6 +3571,47 @@
         "record": "planning/evidence/egress-span-2026-09-26.md",
         "log": "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
       }
+    },
+    {
+      "id": "SCN-110",
+      "title": "A POST is served byte-identical after the ingress reads the octet buffer instead of a per-read list: an article of 33 KiB, 200 KiB and 3 MiB is accepted (240) and re-reads identical, and a line split across two socket reads and a dot-stuffed line frame the same article",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "REP-012"
+      ],
+      "steps": [
+        "Init a 4 MiB-article profile; run the owner; POST 33,792 / 204,800 / 3,145,728 octets and re-read each with ARTICLE; POST A+1 octets.",
+        "In ACL2: feed a dot-stuffed body line whose CRLF is split across two buffer ranges through fn-wire-feed-span in two reads, and in one read; compare to fn-wire-feed-proper over the octets.",
+        "On hbox, the same POSTs (33,792 / 204,800 / 3,145,728 octets, and 200 dot-led lines written in 7-octet pieces) to the span image and to the base image (per-read list, FN_SPAN_REFERENCE_HOST), each on a fresh 4 MiB-article store; ARTICLE each (tests.test_native_bounds_join.SpanReferenceTests)."
+      ],
+      "expected": [
+        "Each of 33 KiB / 200 KiB / 3 MiB is 240 and re-reads identical; A+1 is refused 441 by size; transactions-used is 3.",
+        "The two-read span and the one-read span leave the same wire state and frame the same (:article ((.hi))) event, equal to the reference; a line over the limit closes :line-overlimit at the same octet.",
+        "Every POST reply, ARTICLE status line and served article octet agrees between the two images (the injected Date and Injection-Date values masked), and each re-reads the posted body."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "tests/acl2/wire-span-tests.lisp",
+        "tests/acl2/served-span-tests.lisp",
+        "planning/evidence/ingress-span-2026-09-26.md",
+        "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.SpanReferenceTests.log",
+        "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.LargeArticleTests.log"
+      ],
+      "execution_scope": [
+        "native",
+        "proof"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_span_read_serves_the_reference_images_bytes_at_33k_200k_3m_and_split_dot_lines",
+          "test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it"
+        ],
+        "native": true,
+        "record": "planning/evidence/ingress-span-2026-09-26.md",
+        "log": "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.SpanReferenceTests.log"
+      }
     }
   ]
 }

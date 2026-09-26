@@ -17,6 +17,9 @@ v2) meet here.  Two things neither lane could run alone:
 
 Run on hbox with FN_NATIVE_HOST naming the image under test.
 """
+import hashlib
+import os
+from pathlib import Path
 import shutil
 import signal
 import socket
@@ -289,6 +292,97 @@ class DeployRehearsalTests(JoinFixture):
 
     profile_line = __import__("tests.test_native_profile_upgrade",
                               fromlist=["OperatorFieldsTests"]).OperatorFieldsTests.profile_line
+
+
+class SpanReferenceTests(JoinFixture):
+    """SCN-110: the span read serves what the per-read-list read served.
+
+    The image under test (FN_NATIVE_HOST) consumes each socket read in place
+    from the octet buffer (host/native/owner.lisp fnn-owner-handle-chunk ->
+    fn-owner-chunk-span); the reference image (FN_SPAN_REFERENCE_HOST, a
+    build of the base whose owner coerced every read to a list and called
+    fn-owner-chunk) is driven with the same POSTs on a fresh store.  Every
+    reply line and every ARTICLE's octets must agree, the values of the
+    injected Date and Injection-Date fields (the wall clock) aside.  The articles are
+    33 KiB, 200 KiB and 3 MiB of 78-octet lines (so body lines straddle the
+    512-octet reads) and one article of dot-led lines written in 7-octet
+    pieces (a dot-stuffed line split across reads).
+    """
+
+    SIZES = (33792, 204800, 3145728)
+
+    def dotted(self, message_id):
+        head = ("From: join@example.invalid\r\nNewsgroups: fn.test\r\n"
+                "Subject: span split\r\nMessage-ID: {}\r\n\r\n").format(message_id)
+        body = "".join(".{} dot-led line {}\r\n".format("." * (i % 3), i) for i in range(200))
+        return (head + body).encode("ascii")
+
+    def masked(self, stored):
+        if stored is None:
+            return None
+        head, sep, body = stored.partition(b"\r\n\r\n")
+        lines = [ln.split(b":", 1)[0] + b": *"
+                 if ln.lower().startswith((b"date:", b"injection-date:")) else ln
+                 for ln in head.split(b"\r\n")]
+        return b"\r\n".join(lines) + sep + body
+
+    def served(self, image, tag):
+        self.image = image
+        base = self.root / tag
+        base.mkdir()
+        self.store, self.config = base / "store", base / "fn.toml"
+        self.control, self.port = base / "control.sock", verbs.free_port()
+        self.config.write_text(
+            '[store]\npath = "{}"\n'
+            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
+            encoding="ascii")
+        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner = self.start_owner(image)
+        rows = []
+        client = NntpClient(self.port)
+        try:
+            for n in self.SIZES:
+                msgid = "<span-{}@example.invalid>".format(n)
+                data = article(msgid, n)
+                reply = client.post(data)
+                status, stored = client.article(msgid)
+                rows.append((n, reply, status, self.masked(stored),
+                             stored is not None and stored.endswith(data.split(b"\r\n\r\n", 1)[1])))
+            msgid = "<span-dotted@example.invalid>"
+            data = dot_stuff(self.dotted(msgid)) + b".\r\n"
+            client.stream.write(b"POST\r\n")
+            client.stream.flush()
+            self.assertTrue(client.stream.readline().startswith(b"340"))
+            for i in range(0, len(data), 7):
+                client.stream.write(data[i:i + 7])
+                client.stream.flush()
+            reply = client.stream.readline().rstrip(b"\r\n").decode("ascii", "replace")
+            status, stored = client.article(msgid)
+            rows.append(("dotted", reply, status, self.masked(stored),
+                         stored is not None and stored.endswith(self.dotted(msgid).split(b"\r\n\r\n", 1)[1])))
+        finally:
+            client.close()
+        self.stop(owner)
+        return rows
+
+    def test_span_read_serves_the_reference_images_bytes_at_33k_200k_3m_and_split_dot_lines(self):
+        reference = os.environ.get("FN_SPAN_REFERENCE_HOST")
+        if not reference or not verbs.executable(Path(reference)):
+            self.skipTest("FN_SPAN_REFERENCE_HOST (the base image) is required")
+        under_test = self.image
+        after = self.served(under_test, "after")
+        before = self.served(Path(reference), "before")
+        for a, b in zip(after, before):
+            print("SPAN", a[0], a[1], a[2].rstrip(), len(a[3] or b""),
+                  hashlib.sha256(a[3] or b"").hexdigest()[:16],
+                  hashlib.sha256(b[3] or b"").hexdigest()[:16], flush=True)
+            self.assertTrue(a[1].startswith("240"), a[:3])
+            self.assertTrue(a[4], "{} did not reread identical".format(a[0]))
+            self.assertEqual(a[1:3], b[1:3], a[0])
+            self.assertEqual(a[3], b[3], "{}: served octets differ from the reference".format(a[0]))
+        self.assertEqual(len(after), len(before))
 
 
 if __name__ == "__main__":
