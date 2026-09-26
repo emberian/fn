@@ -5163,7 +5163,8 @@
         "fn-bpn-limits-compose-at-the-codec-widths",
         "fn-bpa-read-encoded-fields-wide",
         "fn-bpa-round-trip",
-        "fn-bpa-encoding-bound"
+        "fn-bpa-encoding-bound",
+        "fn-bpnpf-restart-names-held-beyond-profile"
       ]
     }
   ]

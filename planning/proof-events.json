@@ -5322,6 +5322,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpa-encoding-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-restart-names-held-beyond-profile"
         }
       ]
     }
