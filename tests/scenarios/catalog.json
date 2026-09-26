@@ -2113,13 +2113,14 @@
       ],
       "expected": [
         "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
-        "Blocked today by per-arrival cost, not by a cap (PRF-134 made the ADU, bundle-decoder and held-image bounds the profile's; the adu-beyond-profile and held-beyond-profile cases pass natively): each arrival costs about 45 ms per held row (0.7 s at 20 held, 6.3 s at 140; the 2,622-fragment family projects to about 43 hours), consistent with the family selector re-validating every held row (fn-bpnf-heldp re-encodes the bundle) on each call. PKT-294."
+        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
         "books/bp-node-profile.lisp",
         "planning/evidence/bp-lifecycle-4-2026-09-26.md",
-        "books/bp-node-profile-admission.lisp"
+        "books/bp-node-profile-admission.lisp",
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md"
       ]
     },
     {
