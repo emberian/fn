@@ -1,0 +1,48 @@
+
+Number of samples:     51857
+Unique traces:         1786
+Alloc interval:        1 regions (approximately 32 kB)
+Total sampling amount: 51857 regions (approximately 1659424 kB)
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2064640 "main thread" RUNNING {1200068003}> (280/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2064645 "fn-alloc" RUNNING {1210D91E73}> (1968/1048576 bytes, 13 hash buckets)
+   #<THREAD tid=2066881 "fn pull feed" RUNNING {1216A7BE93}> (160/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2066883 "fn owner client" RUNNING {1217275D43}> (597344/1048576 bytes, 1747 hash buckets)
+   #<THREAD tid=2066880 "fn outbound feed" RUNNING {1216A7BC43}> (176/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2  51440  99.2  51440  99.2  51440  99.2        -  LIST-ALLOC-TRAMP
+   4    319   0.6    319   0.6  51759  99.8        -  ALLOC-TRAMP
+   6     54   0.1     54   0.1  51813  99.9        -  SYS-LIST-ALLOC-TRAMP
+   8     27   0.1     27   0.1  51840 100.0        -  SYS-ALLOC-TRAMP
+  10     17   0.0     17   0.0  51857 100.0        -  foreign function listify_rest_arg
+  12      0   0.0  40538  78.2  51857 100.0        -  SB-SPROF::UNAVAILABLE-FRAMES
+  14      0   0.0  19878  38.3  51857 100.0        -  FN-INDEX-BUILD
+  16      0   0.0  16395  31.6  51857 100.0        -  (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  18      0   0.0  16384  31.6  51857 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  20      0   0.0  16366  31.6  51857 100.0        -  foreign function call_into_lisp_
+  22      0   0.0  16345  31.5  51857 100.0        -  SB-THREAD::RUN
+  24      0   0.0  16322  31.5  51857 100.0        -  foreign function funcall1
+  26      0   0.0  16292  31.4  51857 100.0        -  foreign function new_thread_trampoline
+  28      0   0.0  16269  31.4  51857 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX)
+  30      0   0.0  16264  31.4  51857 100.0        -  FNN-OWNER-SHARED-ACTION-LOCKED
+  32      0   0.0  16258  31.4  51857 100.0        -  SB-THREAD::FAST-CALL-WITH-MUTEX
+  34      0   0.0  16220  31.3  51857 100.0        -  FNN-OWNER-SERIALIZED
+  36      0   0.0  16202  31.2  51857 100.0        -  (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK)
+  38      0   0.0  16178  31.2  51857 100.0        -  FNN-OWNER-SERVE-CLIENT
+  40      0   0.0  16161  31.2  51857 100.0        -  (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT)
+  42      0   0.0  15899  30.7  51857 100.0        -  FN-INDEX-MEMBERSHIP-ENTRIES
+  44      0   0.0  14962  28.9  51857 100.0        -  FNN-CALL
+  46      0   0.0  11975  23.1  51857 100.0        -  FNN-OWNER-DRAIN-ONE
+  48      0   0.0  11948  23.0  51857 100.0        -  FN-GIDX-BUILD-ENTRIES
+  50      0   0.0  11941  23.0  51857 100.0        -  FN-GIDX-PUT
+  52      0   0.0  10994  21.2  51857 100.0        -  FNN-OWNER-ATTEMPT-SERVED
+  54      0   0.0  10107  19.5  51857 100.0        -  FNN-OWNER-ATTEMPT
+  56      0   0.0   8344  16.1  51857 100.0        -  FNN-CORE-STATE
+  58      0   0.0   7985  15.4  51857 100.0        -  FN-INDEX-ENTRY
+  60      0   0.0   7525  14.5  51857 100.0        -  FNN-OWNER-ACTION
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere
