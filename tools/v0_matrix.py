@@ -713,6 +713,44 @@ PLAN = (
       ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single",
       "the 240 is the node filing the control article; whether it withdraws the "
       "target is the control work's (PKT-109), not this row's"),
+    # pan and Thunderbird over implicit TLS with an invitation-code account
+    # (reader-clients lane): tools/reader_clients_phase.py stands up a scratch
+    # owner (`[auth] required`, `protected_only`, a scratch CA), runs `account
+    # invite`, redeems the code with XREDEEM CODE LOGIN / XREDEEM PASS over
+    # TLS, and the client then logs in with AUTHINFO USER/PASS.  Each verdict
+    # is the node's reply line in the client's wire log.
+    S("V0-CLIENT-THUNDERBIRD-READ", "F-CLIENT",
+      "Thunderbird, logged in over TLS with a redeemed account, opens a group and reads an article",
+      ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single"),
+    S("V0-CLIENT-THUNDERBIRD-REPLY", "F-CLIENT",
+      "Thunderbird posts a followup over TLS (References set by Thunderbird)",
+      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "single"),
+    S("V0-CLIENT-THUNDERBIRD-POST", "F-CLIENT", "Thunderbird posts a new article over TLS",
+      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "single"),
+    S("V0-CLIENT-THUNDERBIRD-CANCEL", "F-CLIENT",
+      "the node files Thunderbird's cancel of its own article (control.cancel configured)",
+      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "single",
+      "the 240 is the node filing the control article; an unsigned cancel carries "
+      "no authority (C2), so the target stays served"),
+    S("V0-CLIENT-PAN-READ", "F-CLIENT",
+      "pan, logged in over TLS with a redeemed account, opens a group and reads an article",
+      ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single"),
+    S("V0-CLIENT-PAN-REPLY", "F-CLIENT",
+      "pan posts a followup over TLS (References set by pan)",
+      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "single"),
+    S("V0-CLIENT-PAN-POST", "F-CLIENT", "pan posts a new article over TLS",
+      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "single"),
+    S("V0-CLIENT-PAN-CANCEL", "F-CLIENT",
+      "the node files pan's cancel of its own article (control.cancel configured)",
+      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "single",
+      "the 240 is the node filing the control article; an unsigned cancel carries "
+      "no authority (C2), so the target stays served"),
 )
 
 PLAN_BY_KEY = {spec.key: spec for spec in PLAN}
@@ -892,6 +930,64 @@ def tin_wire_outcomes(text: str) -> dict:
             out["posts"].append({"subject": subject, "reply": answer})
             index = cursor
         index += 1
+    return out
+
+
+def client_wire_outcomes(text: str) -> dict:
+    """From a client wire log with `--- action NAME` markers: the node's replies.
+
+    tools/reader_clients_phase.py writes the log (its own TLS prelude and
+    check, and the client's transcript between markers).  Per action:
+    `read` is the node's first reply to the client's first ARTICLE (or BODY)
+    in the read action; `reply`, `post` and `cancel` are the reply line that
+    ended the client's first POST in that action (the line after 340, or
+    the refusal of POST itself); `redeem` and `login` are the prelude's
+    replies to XREDEEM and to the prelude's AUTHINFO PASS, `client_login`
+    the node's first 281 inside the client's own actions.  Nothing here
+    judges an article; it only reads reply lines.
+    """
+    segments, name = {}, None
+    for raw in text.splitlines():
+        parts = raw.split(" ", 2)
+        if len(parts) < 3:
+            continue
+        line = parts[2]
+        if line.startswith("--- action "):
+            name = line[len("--- action "):].strip()
+            segments.setdefault(name, [])
+            continue
+        if name is not None and line[:3] in ("C: ", "S: "):
+            segments[name].append(line)
+
+    def after(lines, predicate):
+        for index, line in enumerate(lines):
+            if predicate(line):
+                return next((x[3:] for x in lines[index + 1:] if x.startswith("S: ")), None)
+        return None
+
+    def post_reply(lines):
+        for index, line in enumerate(lines):
+            if line == "C: POST":
+                replies = [x[3:] for x in lines[index + 1:] if x.startswith("S: ")]
+                if not replies:
+                    return None
+                if replies[0].startswith("340"):
+                    return replies[1] if len(replies) > 1 else None
+                return replies[0]
+        return None
+
+    out = {"actions": sorted(segments)}
+    out["read"] = after(segments.get("read", []),
+                        lambda x: x.startswith(("C: ARTICLE", "C: BODY")))
+    for key in ("reply", "post", "cancel"):
+        out[key] = post_reply(segments.get(key, []))
+    redeem = [x[3:] for x in segments.get("redeem", []) if x.startswith("S: ")]
+    out["redeem"] = redeem[1:3]
+    out["login"] = after(segments.get("seed", []),
+                         lambda x: x.startswith("C: AUTHINFO PASS"))
+    out["client_login"] = next(
+        (x[3:] for key in ("read", "reply", "post", "cancel-fetch", "cancel")
+         for x in segments.get(key, []) if x.startswith("S: 281")), None)
     return out
 
 
@@ -3926,6 +4022,129 @@ else echo NONE; fi
                 self.emit(key, NOT_EXERCISED, step.command, "tin sent no such POST",
                           client="tin", blocker="the pane never reached that POST")
 
+    TBIRD_KEYS = ("V0-CLIENT-THUNDERBIRD-READ", "V0-CLIENT-THUNDERBIRD-REPLY",
+                  "V0-CLIENT-THUNDERBIRD-POST", "V0-CLIENT-THUNDERBIRD-CANCEL")
+    PAN_KEYS = ("V0-CLIENT-PAN-READ", "V0-CLIENT-PAN-REPLY", "V0-CLIENT-PAN-POST",
+                "V0-CLIENT-PAN-CANCEL")
+    # Measured on persvati 2026-09-26 (reader-clients lane) with pan 0.162
+    # unpacked without root (apt-get download pan libgspell-1-3
+    # libgmime-3.0-0t64; dpkg -x; LD_LIBRARY_PATH).
+    PAN_BLOCKER = (
+        "unexercised: pan has no scripting interface and no headless read. "
+        "`pan --no-gui news:MID` (the only non-GUI article path besides --nzb) exits 0 "
+        "in 0.1 s without reading PAN_HOME or opening a socket (strace: no connect); "
+        "the GUI under xvfb-run connects over TLS but refuses the node's certificate "
+        "(`The certificate does not have a known issuer`) with the scratch CA in "
+        "PAN_HOME/ssl_certs, trusting it is an interactive dialog (or servers.xml "
+        "<trust>1, which skips verification and is not a protected channel), and "
+        "`--debug --debug` logs no NNTP lines. It would need: a keystroke driver "
+        "(xdotool from `apt-get download xdotool libxdo3`, dpkg -x) with a window-state "
+        "oracle for read, followup (f), post (p) and Article > Cancel, pan's ssl_certs "
+        "trust format for a CA-issued certificate, and a transcript source (a "
+        "TLS-terminating relay or a pan built with protocol logging)")
+
+    def reader_clients(self):
+        """pan and Thunderbird over implicit TLS with an invitation-code account.
+
+        tools/reader_clients_phase.py runs on the execution host from the
+        deployed tree: a scratch owner from the native image (`[auth]
+        required`, `protected_only`, a scratch CA, `control.cancel`), `account
+        invite`, the XREDEEM CODE LOGIN / XREDEEM PASS prelude over TLS, then
+        tools/thunderbird_drive.py (stock Thunderbird, headless, Marionette,
+        the CA imported into its profile as an SSL anchor) reads, follows
+        up, posts and cancels with AUTHINFO USER/PASS as that login.  Each
+        row is the node's reply line in the wire log, read by
+        `client_wire_outcomes`; pan is recorded unexercised with what
+        driving it would need.
+        """
+        for key in self.PAN_KEYS:
+            self.emit(key, NOT_EXERCISED, "pan --no-gui news:MID (PAN_HOME with servers.xml)",
+                      "(pan not driven)", blocker=self.PAN_BLOCKER)
+        if self.backend != NATIVE_BACKEND or not self.native_image:
+            self.blocked(self.TBIRD_KEYS,
+                         "unexercised: the Thunderbird phase stands up its own scratch owner "
+                         "from the native image, and this run has no native image")
+            return
+        probe = self.sh("thunderbird", "for t in /snap/bin/thunderbird thunderbird; do "
+                        "v=$(timeout 180 $t --version 2>/dev/null | grep -m1 Thunderbird) && "
+                        "{ echo \"USE $t $v\"; exit 0; }; done; echo NONE", timeout=400,
+                        expect=None)
+        match = re.search(r"^USE (\S+) (.*)$", probe.output, re.M)
+        if not match:
+            self.blocked(self.TBIRD_KEYS,
+                         "unexercised: Thunderbird is not installed on {} (measured "
+                         "2026-09-26: persvati has the snap, hbox and the laptop do not)"
+                         .format(self.host.label))
+            return
+        tbird, version = match.group(1), match.group(2).strip()
+        work = "{}/reader-clients".format(self.run)
+        scope = ("S=; command -v systemd-run >/dev/null 2>&1 && "
+                 "S='systemd-run --user --scope -q -p MemoryMax=24G'; ")
+        step = self.sh("thunderbird client", self.cd(
+            "{scope}mkdir -p {work} && env {openssl}$S python3 tools/reader_clients_phase.py "
+            "--image {image} --work {work} --group {group} --thunderbird {tb} "
+            "> {work}/phase.json; rc=$?; cat {work}/phase.json; echo '=== wire'; "
+            "cat {work}/thunderbird-wire.log; exit $rc".format(
+                scope=scope, work=work, openssl=self.native_openssl_env(),
+                image=shlex.quote(self.native_image), group=shlex.quote(self.native_group),
+                tb=shlex.quote(tbird))), timeout=1500, expect=None)
+        head, _, wire = step.output.partition("\n=== wire\n")
+        try:
+            report = json.loads(head.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            report = {}
+        entry = report.get("clients", {}).get("thunderbird", {})
+        if not entry or not wire.strip():
+            self.blocked(self.TBIRD_KEYS,
+                         "unexercised: the client phase produced no wire log (exit {}): "
+                         "{}".format(step.rc, report.get("error") or step.first_line))
+            return
+        seen = client_wire_outcomes(wire)
+        prelude = entry.get("prelude", {})
+        driver = entry.get("driver", {}) if isinstance(entry.get("driver"), dict) else {}
+        check = entry.get("check", {})
+        limit = ("{} (headless, Marionette) on a scratch owner over implicit TLS, the node "
+                 "certificate verified against a scratch CA imported into the profile; the "
+                 "login {} was redeemed first (XREDEEM -> {}); the client's own AUTHINFO -> "
+                 "{}; wire log {} sha256 {}").format(
+                     version, entry.get("login"), " / ".join(seen["redeem"]) or "(none)",
+                     seen["client_login"], entry.get("log"), entry.get("sha256"))
+        if not (seen["redeem"] and seen["redeem"][-1].startswith("281")):
+            self.blocked(self.TBIRD_KEYS,
+                         "unexercised: the XREDEEM prelude did not bind the account: {}"
+                         .format(seen["redeem"] or prelude))
+            return
+        client = "Thunderbird"
+        if seen["read"]:
+            self.emit("V0-CLIENT-THUNDERBIRD-READ", reply_verdict(seen["read"]), step.command,
+                      "ARTICLE -> {}".format(seen["read"]), client=client, limit=limit)
+        else:
+            self.emit("V0-CLIENT-THUNDERBIRD-READ", NOT_EXERCISED, step.command,
+                      "Thunderbird sent no ARTICLE", client=client, limit=limit,
+                      blocker="unexercised: Thunderbird sent no ARTICLE: {}".format(
+                          (driver.get("actions") or {}).get("read") or driver.get("error")))
+        extra = {
+            "reply": "; the node serves it with {}".format(
+                (check.get("reply") or {}).get("references") or "(no References read)"),
+            "post": "",
+            "cancel": "; the cancelled article afterwards: HEAD -> {}".format(
+                (check.get("cancelled") or {}).get("status", "(not checked)")),
+        }
+        for key, action in (("V0-CLIENT-THUNDERBIRD-REPLY", "reply"),
+                            ("V0-CLIENT-THUNDERBIRD-POST", "post"),
+                            ("V0-CLIENT-THUNDERBIRD-CANCEL", "cancel")):
+            if seen[action]:
+                self.emit(key, reply_verdict(seen[action]), step.command,
+                          "POST ({}) -> {}{}".format(action, seen[action], extra[action]),
+                          client=client, limit=limit)
+            else:
+                self.emit(key, NOT_EXERCISED, step.command,
+                          "Thunderbird sent no POST in its {} action".format(action),
+                          client=client, limit=limit,
+                          blocker="unexercised: Thunderbird sent no POST in its {} action: "
+                                  "{}".format(action, (driver.get("actions") or {}).get(action)
+                                              or driver.get("error")))
+
     # -- the server entry point --------------------------------------------
     def server_candidates(self, node: NodeSpec):
         """Every entry point this commit might serve from, best first.
@@ -5662,6 +5881,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         if len(live) == 2:
             self.phase("independent clients", self.independent_clients)
             self.phase("client", self.tin_client)
+            self.phase("reader clients", self.reader_clients)
             for source, target, way in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
                 if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
                     self.phase("transit {}".format(way.upper()),
@@ -5782,6 +6002,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         if all(n.port and self.alive(n) for n in self.nodes):
             self.phase("independent clients", self.independent_clients)
             self.phase("client", self.tin_client)
+            self.phase("reader clients", self.reader_clients)
         else:
             self.blocked(("V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN"),
                          "a node had no live listener when the independent client "
