@@ -45,6 +45,13 @@ IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
          next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
                if p.is_file()), None))
 FRIEND_FN = os.environ.get("FN_FRIEND_FN")
+# An installed bin/fn runs under the heap figure of its store's profile
+# (PKT-016, books/heap-figure.lisp): the D27 default profile (H = 1 TiB) is
+# refused by name on every machine, so the friend's node takes the small
+# preset's fields (the preset has no --profile word yet, PKT-581).
+SMALL_PROFILE = ("--max-transactions", "16384", "--max-history-octets", "8388608",
+                 "--max-record-octets", "196608", "--max-article-octets", "32768",
+                 "--max-groups-per-article", "16", "--max-open-suffix", "128")
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 EXIT_OK, EXIT_REFUSED = 0, 1
 
@@ -92,7 +99,8 @@ class Node:
             '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
             encoding="ascii")
         self.process = None
-        self.ok("init", "local.general", "control.cancel")
+        small = SMALL_PROFILE if FRIEND_FN and command and command[0] == FRIEND_FN else ()
+        self.ok("init", *small, "local.general", "control.cancel")
         self.ok("policy", "set", "path-identity", name + ".example")
 
     def run(self, *words):
