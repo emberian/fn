@@ -208,12 +208,41 @@
            :in-theory (disable fn-bpn-machine-statep
                                fn-bpn-machine-recordp
                                fn-bpnf-family-plan))))
+; PRF-136: the served selector reads the rows' primary blocks; it plans a
+; row only when its family holds an offset-zero fragment.
+(local
+ (defthm fn-bpnfg-blockp-true-listp
+   (implies (fn-bpp-blockp b) (true-listp b))
+   :rule-classes :forward-chaining))
+(verify-guards fn-bpnf-fragment-candidatep)
+(local
+ (defthm fn-bpnfg-candidate-primary
+   (implies (fn-bpnf-fragment-candidatep h)
+            (and (fn-bpp-blockp (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+                 (true-listp (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnf-fragment-candidatep
+                                 fn-bpnfg-blockp-true-listp)
+                               (theory 'minimal-theory))))))
+(verify-guards fn-bpnf-fragment-family-key
+  :hints (("Goal" :in-theory (disable fn-bpp-blockp))))
+(verify-guards fn-bpnf-zero-family-keys
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnfg-candidate-primary)
+                              (theory 'minimal-theory)))))
+(verify-guards fn-bpnf-family-select
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnfg-candidate-primary true-listp)
+                       (theory 'minimal-theory)))))
 (verify-guards fn-bpnf-family-next
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnf-family-next-memo-is-aux
-                            (held (fn-bpnf-held-list st)) (tried nil)))
+           :use ((:instance fn-bpnf-family-select-is-aux
+                            (held (fn-bpnf-held-list st)) (tried nil)
+                            (zero (fn-bpnf-zero-family-keys
+                                   (fn-bpnf-held-list st)))))
            :in-theory (union-theories
                        '(fn-bpnf-subsetp-equal-reflexive
-                         fn-bpnf-family-tried-okp)
+                         fn-bpnf-family-keys-not-readyp-of-nil)
                        (theory 'minimal-theory)))))
 (verify-guards fn-bpnf-fragment-step)

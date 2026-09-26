@@ -332,6 +332,334 @@
 (defthm fn-bpnf-subsetp-equal-reflexive
   (subsetp-equal x x))
 
+;; PRF-136: the served selector's work is bounded by the rows' headers.
+;; fn-bpnf-family-next-memo (above) still re-encoded every held row's wire on
+;; each call: fn-bpnf-active-fragmentp checks fn-bpnf-heldp, whose last test
+;; re-encodes the bundle, and the memo asked it of every row and twice more per
+;; row through fn-bpnf-same-fragment-family-p (the arrival profile of
+;; bp-lifecycle-5).  The selector below reads each row's primary block only:
+;; it plans (and so re-encodes) a row only when that row's family holds an
+;; offset-zero fragment, because a family without one is never ready
+;; (fn-bpnf-family-without-offset-zero-is-not-ready).  Which families hold one
+;; is one pass over the headers (fn-bpnf-zero-family-keys); a family planned
+;; and not ready is remembered by its key for the rest of the call.
+
+;; A row that may be an active fragment, read from its primary block alone:
+;; every active fragment is one (fn-bpnf-active-fragment-is-candidate).
+(defun fn-bpnf-fragment-candidatep (h)
+  (declare (xargs :guard t))
+  (let ((primary (fn-bpb-bundle-primary (fn-bpnf-held-bundle h))))
+    (and (true-listp h)
+         (fn-bpp-blockp primary)
+         (fn-bpp-fragmentp (fn-bpp-flags primary))
+         (not (nth 14 h))
+         (not (equal (nth 12 h) :reassembly-consumed)))))
+
+;; The fields fn-bpnf-same-fragment-family-p compares.
+(defun fn-bpnf-fragment-family-key (h)
+  (declare (xargs :guard (fn-bpp-blockp
+                          (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+                  :verify-guards nil))
+  (let ((primary (fn-bpb-bundle-primary (fn-bpnf-held-bundle h))))
+    (list (fn-bpnf-held-principal h)
+          (fn-bpp-adu-key primary)
+          (fn-bpnf-fragment-coherence-key primary))))
+
+(defun fn-bpnf-zero-family-keys (held)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp held)
+      (let ((h (car held)))
+        (if (and (fn-bpnf-fragment-candidatep h)
+                 (equal (fn-bpp-fragment-offset
+                         (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+                        0))
+            (cons (fn-bpnf-fragment-family-key h)
+                  (fn-bpnf-zero-family-keys (cdr held)))
+          (fn-bpnf-zero-family-keys (cdr held))))
+    nil))
+
+(defun fn-bpnf-family-select (st held observation tried zero)
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (true-listp tried) (true-listp zero))
+                  :measure (acl2-count held)
+                  :verify-guards nil))
+  (if (consp held)
+      (let ((h (car held)))
+        (if (not (fn-bpnf-fragment-candidatep h))
+            (fn-bpnf-family-select st (cdr held) observation tried zero)
+          (let ((key (fn-bpnf-fragment-family-key h)))
+            (if (or (not (member-equal key zero))
+                    (member-equal key tried))
+                (fn-bpnf-family-select st (cdr held) observation tried zero)
+              (if (and (fn-bpnf-active-fragmentp h)
+                       (equal (fn-bpnf-arrival-count
+                               (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1))
+                  (if (equal (fn-cbor-ag-car
+                              (fn-bpnf-family-plan-at st h observation))
+                             :ready)
+                      (list :ready (fn-bpn-nth 3 h))
+                    (fn-bpnf-family-select st (cdr held) observation
+                                           (cons key tried) zero))
+                (fn-bpnf-family-select st (cdr held) observation
+                                       tried zero))))))
+    nil))
+
+;; The select's invariant: every active row whose family key is in TRIED has
+;; a plan that is not ready.
+(defun fn-bpnf-family-keys-not-readyp (st rows tried observation)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count rows)))
+  (if (consp rows)
+      (and (or (not (fn-bpnf-active-fragmentp (car rows)))
+               (not (member-equal (fn-bpnf-fragment-family-key (car rows))
+                                  tried))
+               (not (equal (fn-cbor-ag-car
+                            (fn-bpnf-family-plan-at st (car rows) observation))
+                           :ready)))
+           (fn-bpnf-family-keys-not-readyp st (cdr rows) tried observation))
+    t))
+
+(local
+ (defthm fn-bpnf-held-primary-blockp
+   (implies (fn-bpnf-heldp h)
+            (and (true-listp h)
+                 (fn-bpp-blockp (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))))
+   :hints (("Goal" :in-theory (e/d (fn-bpnf-heldp fn-bpb-bundlep)
+                                   (fn-bpp-blockp fn-bpb-encode))))
+   :rule-classes nil))
+
+(defthm fn-bpnf-active-fragment-is-candidate
+  (implies (fn-bpnf-active-fragmentp h)
+           (fn-bpnf-fragment-candidatep h))
+  :hints (("Goal" :in-theory (e/d (fn-bpnf-active-fragmentp
+                                   fn-bpnf-fragment-candidatep)
+                                  (fn-bpnf-heldp fn-bpp-blockp
+                                   fn-bpp-fragmentp fn-bpnf-held-bundle))
+           :use ((:instance fn-bpnf-held-primary-blockp)))))
+
+(defthm fn-bpnf-same-family-is-key-equality
+  (equal (fn-bpnf-same-fragment-family-p a b)
+         (and (fn-bpnf-active-fragmentp a)
+              (fn-bpnf-active-fragmentp b)
+              (equal (fn-bpnf-fragment-family-key a)
+                     (fn-bpnf-fragment-family-key b))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-same-fragment-family-p
+                                fn-bpnf-fragment-family-key
+                                cons-equal)
+                              (theory 'minimal-theory))))
+  :rule-classes nil)
+
+(local
+ (defthm fn-bpnf-zero-key-covers-offset-zero-source
+   (implies (and (fn-bpnf-active-fragmentp h)
+                 (not (member-equal (fn-bpnf-fragment-family-key h)
+                                    (fn-bpnf-zero-family-keys rows))))
+            (not (fn-bpnf-offset-zero-source
+                  (fn-bpnf-active-set-rows rows h))))
+   :hints (("Goal" :induct (fn-bpnf-zero-family-keys rows)
+            :in-theory (union-theories
+                        '(fn-bpnf-active-set-rows fn-bpnf-offset-zero-source
+                          fn-bpnf-zero-family-keys member-equal
+                          car-cons cdr-cons)
+                        (theory 'minimal-theory)))
+           ("Subgoal *1/2" :use ((:instance fn-bpnf-same-family-is-key-equality
+                                            (a (car rows)) (b h))
+                                 (:instance fn-bpnf-active-fragment-is-candidate
+                                            (h (car rows)))))
+           ("Subgoal *1/1" :use ((:instance fn-bpnf-same-family-is-key-equality
+                                            (a (car rows)) (b h))
+                                 (:instance fn-bpnf-active-fragment-is-candidate
+                                            (h (car rows))))))))
+
+;; A held active row whose family holds no offset-zero candidate is not ready.
+(defthm fn-bpnf-family-without-zero-key-is-not-ready
+  (implies (and (fn-bpnf-active-fragmentp h)
+                (member-equal h (fn-bpnf-held-list st))
+                (not (member-equal (fn-bpnf-fragment-family-key h)
+                                   (fn-bpnf-zero-family-keys
+                                    (fn-bpnf-held-list st)))))
+           (not (equal (fn-cbor-ag-car
+                        (fn-bpnf-family-plan-at st h observation))
+                       :ready)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-family-without-offset-zero-is-not-ready)
+                 (:instance fn-bpnf-zero-key-covers-offset-zero-source
+                            (rows (fn-bpnf-held-list st))))
+           :in-theory (union-theories
+                       '(fn-bpnf-active-set fn-bpnf-family-member)
+                       (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-bpnf-family-keys-not-readyp-member
+   (implies (and (fn-bpnf-family-keys-not-readyp st rows tried observation)
+                 (member-equal h rows)
+                 (fn-bpnf-active-fragmentp h)
+                 (member-equal (fn-bpnf-fragment-family-key h) tried))
+            (not (equal (fn-cbor-ag-car
+                         (fn-bpnf-family-plan-at st h observation))
+                        :ready)))
+   :hints (("Goal" :induct (fn-bpnf-family-keys-not-readyp
+                            st rows tried observation)
+            :in-theory (union-theories
+                        '(fn-bpnf-family-keys-not-readyp member-equal)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnf-family-keys-not-readyp-cons
+   (implies (and (fn-bpnf-family-keys-not-readyp st rows tried observation)
+                 (subsetp-equal rows (fn-bpnf-held-list st))
+                 (fn-bpnf-active-fragmentp h)
+                 (member-equal h (fn-bpnf-held-list st))
+                 (not (equal (fn-cbor-ag-car
+                              (fn-bpnf-family-plan-at st h observation))
+                             :ready)))
+            (fn-bpnf-family-keys-not-readyp
+             st rows (cons (fn-bpnf-fragment-family-key h) tried) observation))
+   :hints (("Goal" :induct (fn-bpnf-family-keys-not-readyp
+                            st rows tried observation)
+            :in-theory (union-theories
+                        '(fn-bpnf-family-keys-not-readyp member-equal
+                          subsetp-equal car-cons cdr-cons)
+                        (theory 'minimal-theory)))
+           ("Subgoal *1/1" :use ((:instance fn-bpnf-family-plan-at-of-member
+                                            (a (car rows)) (b h))
+                                 (:instance fn-bpnf-same-family-is-key-equality
+                                            (a (car rows)) (b h)))))))
+
+(defthm fn-bpnf-family-keys-not-readyp-of-nil
+  (fn-bpnf-family-keys-not-readyp st rows nil observation)
+  :hints (("Goal" :induct (fn-bpnf-family-keys-not-readyp
+                           st rows nil observation)
+           :in-theory (union-theories
+                       '(fn-bpnf-family-keys-not-readyp member-equal
+                         (:executable-counterpart member-equal))
+                       (theory 'minimal-theory)))))
+
+;; PRF-136 keystone: the header-bounded selector answers what the reference
+;; selector answers, the anchor included.
+(defthm fn-bpnf-family-select-is-aux
+  (implies (and (subsetp-equal held (fn-bpnf-held-list st))
+                (fn-bpnf-family-keys-not-readyp
+                 st (fn-bpnf-held-list st) tried observation)
+                (equal zero (fn-bpnf-zero-family-keys (fn-bpnf-held-list st))))
+           (equal (fn-bpnf-family-select st held observation tried zero)
+                  (fn-bpnf-family-next-aux st held observation)))
+  :hints (("Goal" :induct (fn-bpnf-family-select st held observation tried zero)
+           :in-theory (union-theories
+                       '(fn-bpnf-family-select fn-bpnf-family-next-aux
+                         fn-bpnf-active-fragment-is-candidate
+                         fn-bpnf-family-without-zero-key-is-not-ready
+                         fn-bpnf-family-keys-not-readyp-member
+                         fn-bpnf-family-keys-not-readyp-cons
+                         fn-bpnf-subsetp-equal-reflexive
+                         subsetp-equal car-cons cdr-cons)
+                       (theory 'minimal-theory)))))
+
+;; The work of one call, counted: STEPS counts a row visit and the key
+;; comparisons its membership tests may make (1 + |zero| + |tried| for a
+;; candidate row, 1 otherwise); PLANS counts the rows the select re-encodes
+;; and plans (fn-bpnf-active-fragmentp, fn-bpnf-arrival-count and
+;; fn-bpnf-family-plan-at, whose work is the family's octets, PRF-121).
+(defun fn-bpnf-family-select-plans (st held observation tried zero)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (if (consp held)
+      (let ((h (car held)))
+        (if (not (fn-bpnf-fragment-candidatep h))
+            (fn-bpnf-family-select-plans st (cdr held) observation tried zero)
+          (let ((key (fn-bpnf-fragment-family-key h)))
+            (if (or (not (member-equal key zero))
+                    (member-equal key tried))
+                (fn-bpnf-family-select-plans st (cdr held) observation
+                                             tried zero)
+              (if (and (fn-bpnf-active-fragmentp h)
+                       (equal (fn-bpnf-arrival-count
+                               (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1))
+                  (if (equal (fn-cbor-ag-car
+                              (fn-bpnf-family-plan-at st h observation))
+                             :ready)
+                      1
+                    (1+ (fn-bpnf-family-select-plans
+                         st (cdr held) observation (cons key tried) zero)))
+                (1+ (fn-bpnf-family-select-plans st (cdr held) observation
+                                                 tried zero)))))))
+    0))
+
+(defun fn-bpnf-family-select-steps (st held observation tried zero)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (if (consp held)
+      (let ((h (car held)))
+        (if (not (fn-bpnf-fragment-candidatep h))
+            (1+ (fn-bpnf-family-select-steps st (cdr held) observation
+                                             tried zero))
+          (let ((key (fn-bpnf-fragment-family-key h))
+                (here (+ 1 (len zero) (len tried))))
+            (if (or (not (member-equal key zero))
+                    (member-equal key tried))
+                (+ here (fn-bpnf-family-select-steps st (cdr held) observation
+                                                     tried zero))
+              (if (and (fn-bpnf-active-fragmentp h)
+                       (equal (fn-bpnf-arrival-count
+                               (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1))
+                  (if (equal (fn-cbor-ag-car
+                              (fn-bpnf-family-plan-at st h observation))
+                             :ready)
+                      here
+                    (+ here (fn-bpnf-family-select-steps
+                             st (cdr held) observation (cons key tried) zero)))
+                (+ here (fn-bpnf-family-select-steps st (cdr held) observation
+                                                     tried zero)))))))
+    0))
+
+;; The rows whose family key is among ZERO.
+(defun fn-bpnf-rows-in-zero-families (held zero)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp held)
+      (+ (if (and (fn-bpnf-fragment-candidatep (car held))
+                  (member-equal (fn-bpnf-fragment-family-key (car held)) zero))
+             1 0)
+         (fn-bpnf-rows-in-zero-families (cdr held) zero))
+    0))
+
+;; PRF-136 keystone: the rows re-encoded and planned are at most the rows
+;; whose family holds its offset-zero fragment; every other row costs its
+;; header.
+(defthm fn-bpnf-family-select-plans-bound
+  (<= (fn-bpnf-family-select-plans st held observation tried zero)
+      (fn-bpnf-rows-in-zero-families held zero))
+  :hints (("Goal" :induct (fn-bpnf-family-select-plans
+                           st held observation tried zero)
+           :in-theory (disable fn-bpnf-fragment-candidatep
+                               fn-bpnf-fragment-family-key
+                               fn-bpnf-active-fragmentp
+                               fn-bpnf-arrival-count
+                               fn-bpnf-family-plan-at)))
+  :rule-classes :linear)
+
+;; PRF-136 keystone: a call that plans no row does header work only, at most
+;; one visit and |zero| + |tried| + 1 key comparisons per row.
+(defthm fn-bpnf-family-select-steps-bound
+  (implies (equal (fn-bpnf-family-select-plans st held observation tried zero)
+                  0)
+           (<= (fn-bpnf-family-select-steps st held observation tried zero)
+               (* (len held) (+ 1 (len zero) (len tried)))))
+  :hints (("Goal" :induct (fn-bpnf-family-select-steps
+                           st held observation tried zero)
+           :in-theory (disable fn-bpnf-fragment-candidatep
+                               fn-bpnf-fragment-family-key
+                               fn-bpnf-active-fragmentp
+                               fn-bpnf-arrival-count
+                               fn-bpnf-family-plan-at)))
+  :rule-classes :linear)
+
+(defthm fn-bpnf-zero-family-keys-bound
+  (<= (len (fn-bpnf-zero-family-keys held)) (len held))
+  :hints (("Goal" :in-theory (disable fn-bpnf-fragment-candidatep
+                                      fn-bpnf-fragment-family-key)))
+  :rule-classes :linear)
+
+(in-theory (disable fn-bpnf-family-without-zero-key-is-not-ready
+                    fn-bpnf-family-select-is-aux))
+
 (defun fn-bpnf-family-next (st observation)
   (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
                   :verify-guards nil))
@@ -339,8 +667,9 @@
           (not (fn-frame-natp (fn-bpnf-next-arrival st))))
       nil
     (mbe :logic (fn-bpnf-family-next-aux st (fn-bpnf-held-list st) observation)
-         :exec (fn-bpnf-family-next-memo st (fn-bpnf-held-list st) observation
-                                         nil))))
+         :exec (fn-bpnf-family-select
+                st (fn-bpnf-held-list st) observation nil
+                (fn-bpnf-zero-family-keys (fn-bpnf-held-list st))))))
 
 (defthm fn-bpnf-fragment-step-delegates-ordinary-events
   (implies (and (not (fn-bpnf-family-issuedp st))
