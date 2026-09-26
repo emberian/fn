@@ -82,11 +82,12 @@
            (if (and (consp octets) (natp (car octets)) (null (cdr octets)))
                (car octets)
              nil)))
-  ; The host allocator and the deterministic CBOR uint profile are uint32.
-  ; The earlier all-natural constraint could not be realized by the bounded
-  ; metadata codec; no scan/crash theorem uses round-trip outside this domain.
+  ; The frontier frame is u64 (frontier format 3, PRF-126; format-2 frames
+  ; decode unchanged); the host allocator stays within u32 (fn-sf-statep).  The earlier
+  ; all-natural constraint could not be realized by the bounded metadata
+  ; codec; no scan/crash theorem uses round-trip outside this domain.
   (defthm fn-bs-frontier-round-trip
-    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+    (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
              (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
   (defthm fn-bs-frontier-decode-nat-or-nil
     (or (natp (fn-bs-frontier-decode octets))

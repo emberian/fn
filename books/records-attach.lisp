@@ -33,5 +33,6 @@
                           fn-record-impl-accepted-input-magic
                           fn-record-impl-accepted-schema-is-the-stamp-kind
                           fn-record-impl-encode-length-bound
-                          fn-record-impl-encode-narrow-length-bound)
+                          fn-record-impl-encode-narrow-length-bound
+                          fn-record-impl-encode-producer-length-bound)
                     :in-theory (theory 'minimal-theory))))
