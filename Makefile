@@ -1198,7 +1198,7 @@ model-test: certify
 	$(PYTHON) tools/run_simulator.py
 
 # The tools' own tests, each module in its own process under tools/test_budget.py's
-# rule (180 s a module, 20 s a test, distinct pass/fail/over-budget exits).
+# rule (180 s a module, 20 s a test, distinct pass/fail/over-budget/all-skipped exits).
 # It was one `unittest` process under a 120 s timeout, which the honest total
 # outgrew: 29 modules take 170 s on the laptop (2026-09-26, tooling-velocity),
 # most of it real-tree reads -- certify_runner 39 s (49 fake-ACL2 runs),
@@ -1223,10 +1223,14 @@ tooling-test:
 # `--order reverse` runs each module's tests last to first, which is how a
 # test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
 # never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
-# chosen set the same way.
+# chosen set the same way.  A module whose every test skipped is reported
+# SKIPPED (N of N) with its reasons and exits 4 (PKT-437 (2)); --discover
+# includes the native modules, which skip on a machine without their image,
+# so `test` passes --allow-skipped (the report and its SKIPPED count stay;
+# native modules run under tools/hbox_native.sh, where a SKIPPED module fails).
 test: check certify
 	$(PYTHON) tools/run_simulator.py
-	$(PYTHON) tools/test_budget.py --discover --logs build/test-budget --json build/test-budget/report.json
+	$(PYTHON) tools/test_budget.py --allow-skipped --discover --logs build/test-budget --json build/test-budget/report.json
 
 test-modules:
 	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget

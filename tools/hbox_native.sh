@@ -23,7 +23,17 @@
 #      default, --mem), with FN_OPENSSL_PREFIX and LD_LIBRARY_PATH set, and
 #      every --env NAME=VALUE exported.  When dtn-developer is built and dtn is
 #      not, FN_NATIVE_BP_HOST defaults to the dtn-developer image (the BP
-#      tests default to build/fn-host-dtn, which that run does not build);
+#      tests default to build/fn-host-dtn, which that run does not build).
+#      Each module's process also gets every variable tools/native_env.py
+#      finds it reading: the image variables for the images built
+#      (FN_NATIVE_HOST is only ever the production image), the opt-in flags
+#      FN_RUN_HYBRID_E2E and FN_RUN_CONSUMER_EXCHANGE, FN_TEST_OPENSSL.  A
+#      module reading an image variable whose image is not built is refused
+#      by name before anything ships (exit 2), and again on the box before
+#      the first test when the image is not in the tree (--no-build).  Each
+#      module runs through tools/test_budget.py --one, and its line in
+#      run.log is OK (N ran, K skipped), FAILED, or SKIPPED (N of N) with
+#      every skip's reason; a SKIPPED module makes the status 4;
 #   5. writes every log to logs/ and SHA256SUMS (images and logs), then
 #      `status` holding the first failing step's exit code, 0 if none.
 #
@@ -34,7 +44,8 @@
 # Options: --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --jobs N (certify, default 8), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
-# --deadline S (default 5400), --dry-run (print the box script).
+# --deadline S (default 5400), --dry-run (print the box script; the refusal
+# and the per-module environment show there).
 #
 # Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
 # (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
@@ -51,7 +62,7 @@ DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
-usage() { sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,51p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -101,6 +112,10 @@ done
 if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
     case " $ENVS" in *" FN_NATIVE_BP_HOST="*) ;; *) ENVS="FN_NATIVE_BP_HOST=\$T/build/fn-host-dtn-developer$ENVS" ;; esac
 fi
+# What each module reads, against what this run builds (PKT-437 (2)).
+ENVARGS=
+for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
+PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS "$@") || exit 2
 if [ "$REV" = . ]; then
     SOURCE="worktree $(git -C "$HERE" rev-parse --short=12 HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')"
     [ -n "$LABEL" ] || LABEL=wt-$(date -u +%Y%m%dT%H%M%SZ)
@@ -141,16 +156,27 @@ step() {
         finish \$rc
     fi
 }
-# A test module runs to the end whatever the others did; its unittest summary
-# line (with any skips: a skipped witness is not evidence) goes in run.log.
+# A test module runs to the end whatever the others did; its verdict goes in
+# run.log: OK (N ran, K skipped), FAILED, or SKIPPED (N of N), with every
+# skip's reason (a skipped witness is not evidence).  SKIPPED is status 4.
 failed=0
+passed=0 skipped=0 broke=0
 tstep() {
     name=\$1; shift
     echo "== \$name \$(date -u +%H:%M:%SZ)"
     "\$@" > \$L/\$name.log 2>&1
     rc=\$?
-    echo "   \$name exit \$rc: \$(grep -E '^(OK|FAILED)' \$L/\$name.log | tail -n 1) (\$L/\$name.log)"
+    verdict=\$(python3 tools/test_budget.py --verdict \$L/\$name.log)
+    vrc=\$?
+    echo "   \$name exit \$rc: \$verdict"
+    echo "   (\$L/\$name.log)"
+    [ \$rc -ne 0 ] || rc=\$vrc
+    case \$rc in 0) passed=\$((passed+1)) ;; 4) skipped=\$((skipped+1)) ;; *) broke=\$((broke+1)) ;; esac
     [ \$rc -eq 0 ] || [ \$failed -ne 0 ] || failed=\$rc
+}
+# A module reads an image variable: the image must be in the tree.
+need() {
+    [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
 }
 finish() {
     (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
@@ -203,11 +229,19 @@ BOX
     for assignment in $ENVS; do
         echo "export $assignment"
     done
-    for module in "$@"; do
+    echo "$PLAN" | while read -r module assignments; do
+        for assignment in $assignments; do
+            case ${assignment#*=} in
+                '$T/build/fn-host'*) echo "need $module ${assignment%%=*} ${assignment#*=}" ;;
+            esac
+        done
+    done
+    echo "$PLAN" | while read -r module assignments; do
         cat <<BOX
-tstep test-$module systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 -m unittest -v $module'
+tstep test-$module env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module'
 BOX
     done
+    echo 'echo "== modules: $passed OK, $skipped SKIPPED (no test executed), $broke FAILED"'
     echo "finish \$failed"
 }
 
