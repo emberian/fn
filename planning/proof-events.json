@@ -5397,6 +5397,15 @@
           "name": "fn-bpnf-family-next-memo-is-aux"
         }
       ]
+    },
+    {
+      "id": "PRF-140",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ks-accepted-statement-finishes-under-its-admission-context"
+        }
+      ]
     }
   ]
 }

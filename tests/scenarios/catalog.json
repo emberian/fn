@@ -2174,6 +2174,23 @@
         "tests/acl2/store-checkpoint-buffer-tests.lisp",
         "planning/evidence/rep-wave-d-2-2026-09-26.md"
       ]
+    },
+    {
+      "id": "SCN-082",
+      "title": "A key statement accepted under a grant, cut before its key change, finishes at the restart under that grant after the grant was revoked; a declined one never acts",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "Node E: enrol P, `control grant P keys fn.keys`; start with FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill; POST a succession signed by the old keys (the owner dies at the cut); offline `control revoke P keys fn.keys`; restart E twice.",
+        "Node D: enrol P, POST a succession with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The cut leaves the history at generation 1; the first restart logs `key-statement enrol-successor committed at-open` and the history shows generation 2 active, 1 retired; the second restart logs nothing new and the history is unchanged.",
+        "Each restart logs `key-statement declined no-grant at-open` and the history is unchanged."
+      ]
     }
   ]
 }
