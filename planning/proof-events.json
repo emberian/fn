@@ -4635,6 +4635,26 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-post-boundary-admits-a-u32-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-under-article-budget-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-admitted-article-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-article-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-figure-bounds-the-record"
         }
       ]
     }

@@ -1,6 +1,8 @@
 ; Packet 1 (profile monotonicity, Fable mandate §5.5 and §12): evaluated
 ; counterexamples.  Two findings, each at a profile the relation admits:
-;   (1) the history gate charges an article at the fixed pre-reservation
+;   (1) (fixed by books/store-budget-article, whose teeth reuse this witness:
+;       tests/acl2/store-budget-article-tests) the history gate charged an
+;       article at the fixed pre-reservation
 ;       figure 65 538 (`*fn-store-article-publication-figure*'), not at the
 ;       record the profile admits, so the gates can admit an article whose
 ;       committed total then exceeds H, and every later open refuses the store
