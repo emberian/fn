@@ -413,6 +413,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
+	books/bp-node-fragment-jobs \
+	tests/acl2/bp-node-fragment-jobs-tests \
 	books/bp-fnbs-conflict-codec \
 	books/bp-fnbs-conflict-invariants \
 	books/bp-fnbs-conflict-publication \
