@@ -3203,7 +3203,6 @@
       ],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "tests/test_native_profile_upgrade.py",
         "tests/campaign/native_cuts.py",
         "planning/evidence/manifests/certify-20260924T180001Z-3124349.json",
         "planning/evidence/manifests/certify-20260924T180112Z-1750504.json",
