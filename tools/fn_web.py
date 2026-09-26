@@ -26,6 +26,7 @@ from pathlib import Path
 import re
 import secrets
 import stat
+import subprocess
 import sys
 import tempfile
 import threading
@@ -35,6 +36,8 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 import fn_client
 from nntp_session import Disconnected, Session
+
+VERIFIER = Path(__file__).resolve().parent / "fn_verify.py"
 
 MAX_LINE = 8192
 MAX_BLOCK = 262144
@@ -437,7 +440,7 @@ class Backend:
 
     def article(self, group: str, number: int):
         def query(client):
-            result = client.show(str(number), group)
+            result = client.show(str(number), group, keep_lines=True)
             if result.word != fn_client.DONE:
                 return result
             report = None
@@ -454,8 +457,36 @@ class Backend:
                 # only makes the server report unavailable.
                 pass
             result.data["fn_verified_report"] = report
+            result.data["fn_enrollment"] = self.enrollment(client, result)
             return result
         return self.using(query)
+
+    def find(self, msgid: str, within: str):
+        """ARTICLE by Message-ID (after GROUP when one is named) and the node's
+        :fn-enrollment for the Message-ID it served, on one connection."""
+        def query(client):
+            result = client.show(msgid, within, keep_lines=True)
+            if result.word == fn_client.DONE:
+                result.data["fn_enrollment"] = self.enrollment(client, result)
+            return result
+        return self.using(query)
+
+    @staticmethod
+    def enrollment(client, result) -> dict:
+        one = result.data["articles"][0]
+        try:
+            return enrollment_query(client, one.get("served_id", ""))
+        except fn_client.Stop as exc:
+            # The article already arrived; a failed optional metadata query
+            # leaves this fact unavailable, never the page.
+            return {"kind": "unavailable",
+                    "text": "not available: the :fn-enrollment query failed (%s)" % exc.detail}
+
+    def own_check(self, one: dict) -> dict:
+        """This reader's independent check of ONE with its own keyring (PKT-253)."""
+        keyring = getattr(self.args, "keyring", None) or ""
+        return independent_check(one.get("lines"), one.get("served_id") or "",
+                                 keyring, keyring)
 
     def prepare(self, group: str, subject: str, sender: str, references: str,
                 body: str):
@@ -1147,30 +1178,166 @@ def e(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
 
+HEX64 = re.compile(r"[0-9a-fA-F]{64}")
+REASONS = {"malformed", "ref-mismatch", "signature", "no-field", "unknown"}
+
+
+def generation_word(word: str) -> bool:
+    return word.isascii() and word.isdecimal() and len(word) <= 10
+
+
 def parse_verdict_hdr(line: str, expected_number: int):
-    """Accept only the bounded three-outcome HDR grammar; never infer a verdict."""
+    """The node's `HDR :fn-verified` item, in the bounded grammar of
+    specs/human-client.md ("Reader metadata lines"); never infer a verdict.
+    Anything outside it is None, which the page shows as unavailable."""
     fields = line.split()
     if len(fields) < 3 or fields[0] != str(expected_number):
         return None
     outcome = fields[1]
     if outcome == "verified":
-        if len(fields) == 5 and re.fullmatch(r"[0-9a-fA-F]{64}", fields[2]) and \
-                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+        if len(fields) == 5 and HEX64.fullmatch(fields[2]) and \
+                fields[3] == "keyring" and generation_word(fields[4]):
             return "verified by principal " + fields[2].lower() + \
                    " under keyring generation " + fields[4]
         if len(fields) == 5 and fields[2] == "legacy" and fields[3] == "keyring" and \
-                fields[4].isascii() and fields[4].isdecimal():
+                generation_word(fields[4]):
             return "verified (legacy recorded detail) under keyring generation " + fields[4]
         return None
+    if outcome == "revoked":
+        if len(fields) == 5 and HEX64.fullmatch(fields[2]) and \
+                fields[3] == "keyring" and generation_word(fields[4]):
+            return "revoked: principal " + fields[2].lower() + " was revoked under " \
+                   "keyring generation " + fields[4] + " when the node checked it"
+        return None
+    if outcome == "carried":
+        if len(fields) == 3 and HEX64.fullmatch(fields[2]):
+            return "carried: authorship evidence naming principal " + fields[2].lower() + \
+                   " was carried here, not verified by this node"
+        return None
     if outcome == "unverified":
-        if len(fields) == 5 and fields[2] in {
-                "malformed", "ref-mismatch", "signature", "unknown"} and \
-                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+        if len(fields) == 5 and fields[2] in REASONS and \
+                fields[3] == "keyring" and generation_word(fields[4]):
             return "unverified: " + fields[2] + ", keyring generation " + fields[4]
         return None
-    if outcome == "absent" and len(fields) == 3 and fields[2] in {"no-field", "no-record"}:
+    if outcome == "absent" and len(fields) == 3 and fields[2] in REASONS | {"no-record"}:
         return "absent: " + fields[2]
     return None
+
+
+ENROLLMENT_NONE = {
+    "no-record": "the node recorded no verdict for this article, so there is no principal "
+                 "whose enrollment to report",
+    "no-principal": "the node's recorded verdict names no principal",
+    "no-keyring-view": "this connection carries no keyring view to answer from",
+}
+
+
+def parse_enrollment_hdr(line: str):
+    """The node's `HDR :fn-enrollment <msgid>` item (specs/human-client.md):
+    (kind, sentence), or None outside the grammar.  The words are the node's;
+    this function only spells them out."""
+    fields = line.split()
+    if len(fields) < 3 or fields[0] != "0":
+        return None
+    word = fields[1]
+    if word in ("active", "retired", "revoked") and len(fields) == 5 and \
+            HEX64.fullmatch(fields[2]) and fields[3] == "keyring" and \
+            generation_word(fields[4]):
+        principal, generation = fields[2].lower(), fields[4]
+        return word, {
+            "active": "principal %s is enrolled now at keyring generation %s, the "
+                      "generation the recorded verdict names" % (principal, generation),
+            "retired": "principal %s has enrolled again since: its current keyring "
+                       "generation is %s, so the key generation the recorded verdict "
+                       "names is retired" % (principal, generation),
+            "revoked": "principal %s is revoked: its newest keyring entry is the "
+                       "revocation at generation %s" % (principal, generation),
+        }[word]
+    if word == "unenrolled" and len(fields) == 3 and HEX64.fullmatch(fields[2]):
+        return word, ("principal %s has no enrollment in the node's keyring view"
+                      % fields[2].lower())
+    if word == "none" and len(fields) == 3 and fields[2] in ENROLLMENT_NONE:
+        return word, ENROLLMENT_NONE[fields[2]]
+    return None
+
+
+def enrollment_query(client, served_id: str) -> dict:
+    """Ask the node `HDR :fn-enrollment` for the Message-ID it said it served.
+
+    The node decides the fact from its pinned keyring view; any answer outside
+    the grammar is reported as the node's non-answer, never as a status."""
+    if not served_id:
+        return {"kind": "unavailable",
+                "text": "not available: the node's retrieval named no Message-ID to ask about"}
+    status, lines = client.cmd("HDR :fn-enrollment " + served_id, multiline=True)
+    if status.startswith("225") and len(lines) == 1:
+        parsed = parse_enrollment_hdr(lines[0])
+        if parsed is not None:
+            return {"kind": parsed[0], "text": parsed[1], "item": lines[0][2:]}
+        return {"kind": "unavailable",
+                "text": "not available: the node answered :fn-enrollment with a line "
+                        "outside the grammar (" + lines[0][:120] + ")"}
+    return {"kind": "unavailable",
+            "text": "not available: the node did not answer :fn-enrollment (" +
+                    status[:120] + ")"}
+
+
+def article_octets(lines) -> Optional[bytes]:
+    """The article's octets as the node sent them, or None when this client's
+    text session cannot reproduce them (a line the UTF-8 decoder replaced)."""
+    if lines is None or any("\ufffd" in line for line in lines):
+        return None
+    return "".join(line + "\r\n" for line in lines).encode("utf-8")
+
+
+def independent_check(lines, msgid: str, keyring: str, label: str) -> dict:
+    """The reader's own check of the article's bytes with the reader's own
+    keyring, through tools/fn_verify.py's offline boundary (`check-article`, a
+    separate process, as tools/fn_consumer.py runs it).  The node decides nothing
+    here and is not asked; the result is this reader's, under KEYRING."""
+    whose = "the reader's keyring " + (label or keyring or "")
+    if not keyring:
+        return {"kind": "not-performed",
+                "text": "not performed: no keyring of this reader's is configured "
+                        "(start the client with --keyring)"}
+    octets = article_octets(lines)
+    if octets is None or not msgid:
+        return {"kind": "not-performed",
+                "text": "not performed: this client does not hold the article's exact "
+                        "octets"}
+    with tempfile.TemporaryDirectory(prefix="fn-web-check-") as scratch:
+        article = Path(scratch) / "article.eml"
+        article.write_bytes(octets)
+        try:
+            result = subprocess.run(
+                [sys.executable, str(VERIFIER), "check-article", str(article), msgid,
+                 "--keyring", keyring],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120, check=False)
+        except (OSError, subprocess.SubprocessError) as exc:
+            return {"kind": "not-performed",
+                    "text": "not performed: the verifier did not run (%s)" % exc}
+    try:
+        check = json.loads(result.stdout.decode("utf-8"))
+    except ValueError:
+        check = {}
+    if result.returncode == 0 and check.get("outcome") == "verified":
+        generations = check.get("generations") or []
+        return {"kind": "verified-here",
+                "text": "verified here: principal %s signed these bytes with the keys %s "
+                        "pins for it%s" % (check.get("principal", "?"), whose,
+                                          (" (generation %s)" % ", ".join(
+                                              str(g) for g in generations))
+                                          if generations else "")}
+    if result.returncode == 1 and check.get("outcome") == "unverified":
+        return {"kind": "failed-here",
+                "text": "failed here: %s%s, checked with %s" % (
+                    check.get("reason", "unverified"),
+                    (" (" + str(check["detail"]) + ")") if check.get("detail") else "",
+                    whose)}
+    reason = check.get("reason") or result.stderr.decode("utf-8", "replace")[-300:]
+    return {"kind": "not-performed",
+            "text": "not performed: the verifier could not decide with %s (%s)"
+                    % (whose, reason)}
 
 
 def href(path: str, **parameters) -> str:
@@ -1230,7 +1397,9 @@ textarea { min-height:12rem } label { display:block; font-weight:650 }
 button,.button { display:inline-block; border:0; border-radius:6px; padding:.65rem 1rem; background:#145f50; color:white; font:inherit; cursor:pointer; text-decoration:none }
 button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
 .verified { background:#daf1df; color:#0f4a2a } .unverified { background:#fae0d9; color:#7a2217 }
-.absent,.unavailable { background:#ecebe4; color:#4a4a42 } .unread { font-weight:700 }
+.absent,.unavailable,.none,.not-performed,.unenrolled,.carried { background:#ecebe4; color:#4a4a42 }
+.active,.verified-here { background:#daf1df; color:#0f4a2a } .revoked,.failed-here { background:#fae0d9; color:#7a2217 }
+.retired { background:#fdf1d6; color:#6b4a0d } .unread { font-weight:700 }
 .unread-dot { color:#922e24 } .reason { font-family:ui-monospace, monospace; background:#fdf1ee; padding:.5rem .8rem; border-radius:6px; overflow-wrap:anywhere }
 .identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
 form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
@@ -1433,7 +1602,8 @@ class Handler(BaseHTTPRequestHandler):
                 "<p class='muted'>This sends the exact text above under the same Message-ID. "
                 "It never creates a second article.</p></div>")
 
-    def article_html(self, group, number, one, verdict, has_verdict_lookup):
+    def article_html(self, group, number, one, verdict, has_verdict_lookup,
+                     enrollment=None, own=None):
         fields = one["headers"]
         first = lambda name: fn_client.first(fields, name) or ""
         statement = bool(first("fn-statement"))
@@ -1451,6 +1621,26 @@ class Handler(BaseHTTPRequestHandler):
             recorded = ("<span class='badge unavailable'>unavailable</span> "
                         "<code>HDR :fn-verified</code> needs a group and local number; this "
                         "view was reached by Message-ID")
+        # The fourth fact: the node's CURRENT keyring view of the recorded
+        # verdict's principal (HDR :fn-enrollment, decided in ACL2), a separate
+        # fact from the historical verdict above; never inferred here.
+        enrollment = enrollment or {
+            "kind": "unavailable",
+            "text": "not available: the node was not asked for :fn-enrollment"}
+        current = ("<span class='badge " + e(enrollment["kind"]) + "'>" +
+                   e(enrollment["kind"]) + "</span> " + e(enrollment["text"]) +
+                   (" <code>" + e(enrollment["item"]) + "</code>"
+                    if enrollment.get("item") else "") +
+                   " <span class='muted'>— the node's current keyring view "
+                   "(<code>HDR :fn-enrollment</code>), not the historical verdict: a "
+                   "retired or revoked key leaves the recorded verdict as it was</span>")
+        # The fifth fact: this reader's own check, with this reader's keyring.
+        own = own or {"kind": "not-performed",
+                      "text": "not performed: this page does not hold the article's bytes"}
+        checked = ("<span class='badge " + e(own["kind"]) + "'>" + e(own["kind"]) +
+                   "</span> " + e(own["text"]) +
+                   " <span class='muted'>— this client's own check "
+                   "(tools/fn_verify.py); the node decides nothing here</span>")
         carried = [name for name, present in (("FN-Statement", statement),
                                               ("FN-Authorship", carrier)) if present]
         provenance = (
@@ -1463,12 +1653,8 @@ class Handler(BaseHTTPRequestHandler):
             (e(" and ".join(carried)) + " present in the article" if carried else
              "none: the article carries no FN-Statement or FN-Authorship") + "</dd>"
             "<dt>The node's historical verdict</dt><dd>" + recorded + "</dd>"
-            "<dt>Current enrollment or authorization</dt><dd>not available: this node "
-            "serves no query for a key's current status, so this page cannot say "
-            "whether the signer is still enrolled</dd>"
-            "<dt>Independent verification here</dt><dd>" +
-            ("not performed: carried but not independently verified here" if carried else
-             "not performed, and nothing is carried to verify") + "</dd></dl>"
+            "<dt>Current enrollment or authorization</dt><dd>" + current + "</dd>"
+            "<dt>Independent verification here</dt><dd>" + checked + "</dd></dl>"
             "<details><summary>Recorded handling details</summary>"
             "<p class='meta'>From (claimed): " + e(first("from")) +
             "<br>Path: " + e(first("path") or "not supplied") +
@@ -1856,7 +2042,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.marks.mark(group, number, one["message_id"] or "")
                 self.page(fn_client.first(one["headers"], "subject") or "Article",
                           self.article_html(group, number, one,
-                                            result.data.get("fn_verified_report"), True))
+                                            result.data.get("fn_verified_report"), True,
+                                            result.data.get("fn_enrollment"),
+                                            self.server.backend.own_check(one)))
             elif path == "/t":
                 self.thread_page(values)
             elif path == "/compose":
@@ -1971,8 +2159,8 @@ class Handler(BaseHTTPRequestHandler):
                 # With a group, the node selects it first and answers the
                 # article's local number there, or 0 when it is not in it
                 # (RFC 3977 section 6.2.1.2): that number is a resume point.
-                result = self.run_backend(lambda: self.server.backend.using(
-                    lambda client: client.show(msgid, within)))
+                result = self.run_backend(
+                    lambda: self.server.backend.find(msgid, within))
                 if result is None:
                     return
                 if result.word != fn_client.DONE:
@@ -2005,7 +2193,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.page(fn_client.first(one["headers"], "subject") or "Article",
                           "<p><span class='badge done'>served</span> The node serves "
                           "<code>" + e(msgid) + "</code>.</p>" + where +
-                          self.article_html(shown, found or None, one, None, False))
+                          self.article_html(shown, found or None, one, None, False,
+                                            result.data.get("fn_enrollment"),
+                                            self.server.backend.own_check(one)))
             elif path == "/resume":
                 group, raw, msgid = (values.get("group", ""), values.get("number", ""),
                                      values.get("id", ""))
@@ -2226,6 +2416,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="local read-marks file (default ~/.fn-web/HOST_PORT_USER.json)")
     parser.add_argument("--no-marks", action="store_true",
                         help="keep read marks in memory only")
+    parser.add_argument("--keyring",
+                        help="this reader's own fn-verify-keyring-v1 file: each article page "
+                             "checks the article's bytes against it (never the node's keyring)")
     parser.add_argument("--timeout", type=float, default=15.0)
     return parser
 
@@ -2241,6 +2434,8 @@ def main(argv=None):
         parser.error("invalid HTTP port or timeout")
     if args.plain and args.user:
         parser.error("--plain sends no login, so --user cannot apply")
+    if args.keyring and not Path(args.keyring).expanduser().is_file():
+        parser.error("--keyring %s is not a readable file" % args.keyring)
     user, password = web_credentials(args, parser)
     backend = Backend(args, user, password, args.sender)
     checked = backend.login_check()
