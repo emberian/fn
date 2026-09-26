@@ -1,0 +1,106 @@
+accepted reader connection=2 time=2026-09-26T07:27:39Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=0 time=2026-09-26T07:27:52Z
+accepted reader connection=1 time=2026-09-26T07:27:52Z
+post login=ember unbound
+accepted post path=served connection=1 message-id=<fn-client.20260926T072752Z.e0f2f711@ember.invalid> agent=hbox-scratch.friends.fn.invalid time=2026-09-26T07:27:52Z
+accepted reader connection=2 time=2026-09-26T07:27:53Z
+accepted reader connection=3 time=2026-09-26T07:27:55Z
+accepted transit connection=3 message-id=<fn-client.20260926T072752Z.2490d91f@ember.invalid> code=239 decision=want reason=none detail=none time=2026-09-26T07:27:56Z
+accepted feed peer=persvati message-id=<fn-client.20260926T072752Z.e0f2f711@ember.invalid> code=239 time=2026-09-26T07:27:56Z
+accepted reader connection=4 time=2026-09-26T07:27:59Z
+accepted peer connection=5 peer=persvati time=2026-09-26T07:28:06Z
+pull peer=persvati round=done cursor=advanced transport=tls
+accepted reader connection=6 time=2026-09-26T07:28:19Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=7 time=2026-09-26T07:28:40Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=8 time=2026-09-26T07:28:56Z
+accepted reader connection=9 time=2026-09-26T07:29:00Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=10 time=2026-09-26T07:29:21Z
+accepted reader connection=11 time=2026-09-26T07:29:27Z
+post login=ember unbound
+accepted post path=served connection=11 message-id=<fn-client.20260926T072927Z.71e693a0@ember.invalid> agent=hbox-scratch.friends.fn.invalid time=2026-09-26T07:29:27Z
+accepted reader connection=12 time=2026-09-26T07:29:28Z
+post login=ember unbound
+accepted post path=served connection=12 message-id=<fn-client.20260926T072928Z.29dd126b@ember.invalid> agent=hbox-scratch.friends.fn.invalid time=2026-09-26T07:29:28Z
+accepted reader connection=13 time=2026-09-26T07:29:29Z
+accepted peer connection=14 peer=persvati time=2026-09-26T07:29:30Z
+pull peer=persvati round=done cursor=advanced transport=tls
+duplicate feed peer=persvati message-id=<fn-client.20260926T072927Z.71e693a0@ember.invalid> code=438 time=2026-09-26T07:29:30Z
+duplicate feed peer=persvati message-id=<fn-client.20260926T072928Z.29dd126b@ember.invalid> code=438 time=2026-09-26T07:29:30Z
+accepted reader connection=15 time=2026-09-26T07:29:36Z
+accepted reader connection=0 time=2026-09-26T07:29:44Z
+accepted reader connection=1 time=2026-09-26T07:29:44Z
+post login=ember unbound
+accepted post path=served connection=0 message-id=<fn-client.20260926T072943Z.d6eb57d5@ember.invalid> agent=hbox-scratch.friends.fn.invalid time=2026-09-26T07:29:44Z
+accepted peer connection=2 peer=persvati time=2026-09-26T07:29:44Z
+accepted transit connection=2 message-id=<fn-client.20260926T072943Z.40e10bb8@ember.invalid> code=235 decision=want reason=none detail=none time=2026-09-26T07:29:44Z
+accepted transit connection=2 message-id=<fn-client.20260926T072935Z.22e3df43@ember.invalid> code=235 decision=want reason=none detail=none time=2026-09-26T07:29:44Z
+pull peer=persvati round=done cursor=advanced transport=tls
+accepted reader connection=3 time=2026-09-26T07:29:45Z
+accepted reader connection=4 time=2026-09-26T07:29:49Z
+accepted reader connection=5 time=2026-09-26T07:30:04Z
+accepted peer connection=6 peer=persvati time=2026-09-26T07:30:05Z
+pull peer=persvati round=done cursor=advanced transport=tls
+accepted reader connection=7 time=2026-09-26T07:30:10Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=8 time=2026-09-26T07:30:32Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=10 time=2026-09-26T07:30:52Z
+accepted transit connection=3 message-id=<friends-t1@persvati.invalid> code=239 decision=want reason=none detail=none time=2026-09-26T07:30:53Z
+accepted reader connection=11 time=2026-09-26T07:30:59Z
+accepted reader connection=12 time=2026-09-26T07:31:00Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=13 time=2026-09-26T07:31:13Z
+duplicate feed peer=persvati message-id=<fn-client.20260926T072943Z.d6eb57d5@ember.invalid> code=438 time=2026-09-26T07:31:14Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=14 time=2026-09-26T07:31:34Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=15 time=2026-09-26T07:31:54Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=16 time=2026-09-26T07:32:14Z
+accepted reader connection=17 time=2026-09-26T07:32:35Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=18 time=2026-09-26T07:33:03Z
+pull peer=persvati round=failed cursor=held at=preamble
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=19 time=2026-09-26T07:33:33Z
+accepted reader connection=20 time=2026-09-26T07:33:54Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=21 time=2026-09-26T07:34:14Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=22 time=2026-09-26T07:34:35Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=23 time=2026-09-26T07:34:56Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=24 time=2026-09-26T07:35:17Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=25 time=2026-09-26T07:35:37Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=26 time=2026-09-26T07:35:58Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=27 time=2026-09-26T07:36:19Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=28 time=2026-09-26T07:36:39Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=29 time=2026-09-26T07:36:58Z
+accepted reader connection=30 time=2026-09-26T07:36:59Z
+pull peer=persvati round=done cursor=held transport=tls
+accepted reader connection=31 time=2026-09-26T07:37:13Z
+accepted peer connection=0 peer=persvati time=2026-09-26T07:37:20Z
+accepted transit connection=0 message-id=<friends-c1@persvati.invalid> code=235 decision=want reason=none detail=none time=2026-09-26T07:37:20Z
+pull peer=persvati round=done cursor=advanced transport=tls
+accepted reader connection=1 time=2026-09-26T07:37:24Z
+accepted reader connection=2 time=2026-09-26T07:37:26Z
+accepted transit connection=2 message-id=<friends-t2@persvati.invalid> code=239 decision=want reason=none detail=none time=2026-09-26T07:37:30Z
+accepted reader connection=3 time=2026-09-26T07:37:33Z
+accepted peer connection=4 peer=persvati time=2026-09-26T07:37:41Z
+pull peer=persvati round=done cursor=advanced transport=tls
+accepted transit connection=2 message-id=<friends-c2@persvati.invalid> code=239 decision=want reason=none detail=none time=2026-09-26T07:37:41Z
+accepted reader connection=5 time=2026-09-26T07:37:54Z
+accepted peer connection=6 peer=persvati time=2026-09-26T07:38:02Z
+pull peer=persvati round=done cursor=advanced transport=tls
+accepted reader connection=7 time=2026-09-26T07:38:02Z
+accepted reader connection=8 time=2026-09-26T07:38:14Z

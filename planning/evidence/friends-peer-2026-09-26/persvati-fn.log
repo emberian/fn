@@ -1,0 +1,104 @@
+pull peer=hbox-scratch.friends.fn.invalid round=failed cursor=held at=preamble
+accepted reader connection=0 time=2026-09-26T07:27:45Z
+accepted reader connection=1 time=2026-09-26T07:27:52Z
+post login=ember unbound
+accepted post path=served connection=1 message-id=<fn-client.20260926T072752Z.2490d91f@ember.invalid> agent=persvati.friends.fn.invalid time=2026-09-26T07:27:52Z
+accepted reader connection=2 time=2026-09-26T07:27:53Z
+accepted reader connection=3 time=2026-09-26T07:27:54Z
+accepted reader connection=4 time=2026-09-26T07:27:56Z
+accepted feed peer=hbox-scratch.friends.fn.invalid message-id=<fn-client.20260926T072752Z.2490d91f@ember.invalid> code=239 time=2026-09-26T07:27:56Z
+accepted reader connection=5 time=2026-09-26T07:27:58Z
+accepted transit connection=5 message-id=<fn-client.20260926T072752Z.e0f2f711@ember.invalid> code=239 decision=want reason=none detail=none time=2026-09-26T07:27:59Z
+accepted peer connection=6 peer=hbox-scratch.friends.fn.invalid time=2026-09-26T07:27:59Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=advanced transport=tls
+accepted reader connection=7 time=2026-09-26T07:28:04Z
+accepted reader connection=8 time=2026-09-26T07:28:05Z
+accepted reader connection=9 time=2026-09-26T07:28:08Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=10 time=2026-09-26T07:28:26Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=11 time=2026-09-26T07:28:47Z
+accepted reader connection=12 time=2026-09-26T07:28:55Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=13 time=2026-09-26T07:29:08Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted peer connection=0 peer=hbox-scratch.friends.fn.invalid time=2026-09-26T07:39:29Z
+accepted transit connection=0 message-id=<fn-client.20260926T072928Z.29dd126b@ember.invalid> code=235 decision=want reason=none detail=none time=2026-09-26T07:39:29Z
+accepted transit connection=0 message-id=<fn-client.20260926T072927Z.71e693a0@ember.invalid> code=235 decision=want reason=none detail=none time=2026-09-26T07:39:29Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=advanced transport=tls
+accepted reader connection=1 time=2026-09-26T07:39:29Z
+accepted reader connection=2 time=2026-09-26T07:39:30Z
+accepted reader connection=3 time=2026-09-26T07:39:35Z
+accepted reader connection=4 time=2026-09-26T07:39:35Z
+post login=ember unbound
+accepted post path=served connection=4 message-id=<fn-client.20260926T072935Z.22e3df43@ember.invalid> agent=persvati.friends.fn.invalid time=2026-09-26T07:39:35Z
+accepted reader connection=5 time=2026-09-26T07:39:43Z
+post login=ember unbound
+accepted post path=served connection=5 message-id=<fn-client.20260926T072943Z.40e10bb8@ember.invalid> agent=persvati.friends.fn.invalid time=2026-09-26T07:39:43Z
+accepted reader connection=6 time=2026-09-26T07:39:44Z
+accepted reader connection=7 time=2026-09-26T07:39:44Z
+duplicate feed peer=hbox-scratch.friends.fn.invalid message-id=<fn-client.20260926T072935Z.22e3df43@ember.invalid> code=438 time=2026-09-26T07:39:44Z
+duplicate feed peer=hbox-scratch.friends.fn.invalid message-id=<fn-client.20260926T072943Z.40e10bb8@ember.invalid> code=438 time=2026-09-26T07:39:44Z
+accepted peer connection=8 peer=hbox-scratch.friends.fn.invalid time=2026-09-26T07:39:49Z
+accepted transit connection=8 message-id=<fn-client.20260926T072943Z.d6eb57d5@ember.invalid> code=235 decision=want reason=none detail=none time=2026-09-26T07:39:49Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=advanced transport=tls
+accepted reader connection=9 time=2026-09-26T07:40:03Z
+accepted reader connection=10 time=2026-09-26T07:40:04Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=11 time=2026-09-26T07:40:26Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=13 time=2026-09-26T07:40:47Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted post path=control message-id=<friends-t1@persvati.invalid> time=2026-09-26T07:40:53Z
+accepted feed peer=hbox-scratch.friends.fn.invalid message-id=<friends-t1@persvati.invalid> code=239 time=2026-09-26T07:40:53Z
+accepted post path=control message-id=<friends-c1@persvati.invalid> time=2026-09-26T07:41:08Z
+accepted reader connection=14 time=2026-09-26T07:41:09Z
+accepted peer connection=15 peer=hbox-scratch.friends.fn.invalid time=2026-09-26T07:41:14Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=advanced transport=tls
+accepted reader connection=16 time=2026-09-26T07:41:30Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=17 time=2026-09-26T07:41:51Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=18 time=2026-09-26T07:42:11Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=19 time=2026-09-26T07:42:32Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=20 time=2026-09-26T07:42:59Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=21 time=2026-09-26T07:43:31Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=22 time=2026-09-26T07:43:52Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=23 time=2026-09-26T07:44:14Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=24 time=2026-09-26T07:44:35Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=25 time=2026-09-26T07:44:56Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=26 time=2026-09-26T07:45:17Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=27 time=2026-09-26T07:45:37Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=28 time=2026-09-26T07:45:58Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=29 time=2026-09-26T07:46:19Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=30 time=2026-09-26T07:46:39Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=31 time=2026-09-26T07:46:56Z
+accepted reader connection=32 time=2026-09-26T07:46:59Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls
+accepted reader connection=0 time=2026-09-26T07:47:19Z
+accepted post path=control message-id=<friends-t2@persvati.invalid> time=2026-09-26T07:47:24Z
+accepted feed peer=hbox-scratch.friends.fn.invalid message-id=<friends-t2@persvati.invalid> code=239 time=2026-09-26T07:47:24Z
+accepted peer connection=1 peer=hbox-scratch.friends.fn.invalid time=2026-09-26T07:47:34Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=advanced transport=tls
+accepted reader connection=2 time=2026-09-26T07:47:41Z
+accepted post path=control message-id=<friends-c2@persvati.invalid> time=2026-09-26T07:47:41Z
+accepted feed peer=hbox-scratch.friends.fn.invalid message-id=<friends-c2@persvati.invalid> code=239 time=2026-09-26T07:47:41Z
+accepted peer connection=3 peer=hbox-scratch.friends.fn.invalid time=2026-09-26T07:47:54Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=advanced transport=tls
+accepted reader connection=4 time=2026-09-26T07:48:01Z
+accepted reader connection=5 time=2026-09-26T07:48:02Z
+pull peer=hbox-scratch.friends.fn.invalid round=done cursor=held transport=tls

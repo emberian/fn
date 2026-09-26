@@ -1,0 +1,94 @@
+{
+ "group": "local.general",
+ "nodes": {
+  "192.168.50.120:11990": [
+   {
+    "number": 1,
+    "message_id": "<fn-client.20260926T072752Z.2490d91f@ember.invalid>",
+    "served_sha256": "0679a288570fa1c6f2324d258bf86b8eb460b88391c41fe9b64a663f04214c6e",
+    "authored_sha256": "6febd736bddf2960219e28de29046c609f8d17a13a66cccce301be18fdc3774f"
+   },
+   {
+    "number": 2,
+    "message_id": "<fn-client.20260926T072752Z.e0f2f711@ember.invalid>",
+    "served_sha256": "afbda9fe5048b8382a5e0d1c7b92b9382cd3977fb669242ff50927ee65becba8",
+    "authored_sha256": "118ae2bd55a7a224f1138735ffb70a29250dbe9ca1feb362fd881237bfecf48a"
+   },
+   {
+    "number": 3,
+    "message_id": "<fn-client.20260926T072928Z.29dd126b@ember.invalid>",
+    "served_sha256": "348293a8b34f98e6de6e03997fac786370f8e71a332db187285820c3c825b48d",
+    "authored_sha256": "696d551ca4906ca9a4074600ffda73717fec2389c93bda3aa98198dce9bb0d72"
+   },
+   {
+    "number": 4,
+    "message_id": "<fn-client.20260926T072927Z.71e693a0@ember.invalid>",
+    "served_sha256": "fdadfccdf73fe5f44ed9d455508b5ab6f3f0585a98316376e475cf4f7a493f00",
+    "authored_sha256": "95d2ac48f95e88b816e956850e5bddc7b799e383b9fbed2c354172eb649764a7"
+   },
+   {
+    "number": 5,
+    "message_id": "<fn-client.20260926T072935Z.22e3df43@ember.invalid>",
+    "served_sha256": "ba51f9b91be94ff98dae912451e018f51d4082510c275074148dac61cc3be675",
+    "authored_sha256": "8ca549ef518f9851bfd1edf3e60d21e8fdab8f26c7a64927869019c0e5d628c6"
+   },
+   {
+    "number": 6,
+    "message_id": "<fn-client.20260926T072943Z.40e10bb8@ember.invalid>",
+    "served_sha256": "08b643086dd8e7eaad68c355c87b5d4cdbf15bb186b10bfcd5e883f93d9068c6",
+    "authored_sha256": "2b55e0341251bb31755bb1bae5dfb9fc87422064029c73e21794995119537c3d"
+   },
+   {
+    "number": 7,
+    "message_id": "<fn-client.20260926T072943Z.d6eb57d5@ember.invalid>",
+    "served_sha256": "9d819d2fbe25c8ab093b8d4c4dd8f8523366662dd4643cb810a623839813fe64",
+    "authored_sha256": "e49ef830be01743d4f27544097437be454784bd1f576e46c26712a99a2b87298"
+   }
+  ],
+  "192.168.50.39:11991": [
+   {
+    "number": 1,
+    "message_id": "<fn-client.20260926T072752Z.e0f2f711@ember.invalid>",
+    "served_sha256": "445195665f91c6579540bbba1ec2426e8c693349a05eb0281ecb28d5dc582e77",
+    "authored_sha256": "118ae2bd55a7a224f1138735ffb70a29250dbe9ca1feb362fd881237bfecf48a"
+   },
+   {
+    "number": 2,
+    "message_id": "<fn-client.20260926T072752Z.2490d91f@ember.invalid>",
+    "served_sha256": "b1332aef3b49faef934e97da8af2c2dd7269c20b6f5680d3419d59ef05555d1c",
+    "authored_sha256": "6febd736bddf2960219e28de29046c609f8d17a13a66cccce301be18fdc3774f"
+   },
+   {
+    "number": 3,
+    "message_id": "<fn-client.20260926T072927Z.71e693a0@ember.invalid>",
+    "served_sha256": "440ab8903723537a0a41221cce429f3470cd937d6e603045abfd58090360a2e6",
+    "authored_sha256": "95d2ac48f95e88b816e956850e5bddc7b799e383b9fbed2c354172eb649764a7"
+   },
+   {
+    "number": 4,
+    "message_id": "<fn-client.20260926T072928Z.29dd126b@ember.invalid>",
+    "served_sha256": "57c466c15ad4f640476b5c39be0f4ce68681b09293e562bf6121d5bc913a7e54",
+    "authored_sha256": "696d551ca4906ca9a4074600ffda73717fec2389c93bda3aa98198dce9bb0d72"
+   },
+   {
+    "number": 5,
+    "message_id": "<fn-client.20260926T072943Z.d6eb57d5@ember.invalid>",
+    "served_sha256": "cb8a176c775636e6c3a024a5ff0ae033878538de18d8ad0398b3fdb79800ff22",
+    "authored_sha256": "e49ef830be01743d4f27544097437be454784bd1f576e46c26712a99a2b87298"
+   },
+   {
+    "number": 6,
+    "message_id": "<fn-client.20260926T072943Z.40e10bb8@ember.invalid>",
+    "served_sha256": "965f4e6c037e141fcb97139d562fab2646f4f97cff2389303c5fa33f88297b35",
+    "authored_sha256": "2b55e0341251bb31755bb1bae5dfb9fc87422064029c73e21794995119537c3d"
+   },
+   {
+    "number": 7,
+    "message_id": "<fn-client.20260926T072935Z.22e3df43@ember.invalid>",
+    "served_sha256": "ff22f5e537d7a86ba925477807250435a01a65c74d3e3f24674d27c559bbbaca",
+    "authored_sha256": "8ca549ef518f9851bfd1edf3e60d21e8fdab8f26c7a64927869019c0e5d628c6"
+   }
+  ]
+ },
+ "every_id_on_every_node_same_authored_digest": true
+}

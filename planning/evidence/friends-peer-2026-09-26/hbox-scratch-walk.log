@@ -1,0 +1,22 @@
+== verify the download
+fn-8fb3768e8439-linux-x86_64.tar.gz: OK
+== unpack
+SHA256SUMS ok
+== mission
+wrote /tank/fn/scratch/friends-peer/hnode/node/fn.toml
+accepted operator mission
+== tls
+== init
+initialized /tank/fn/scratch/friends-peer/hnode/node/store
+accepted operator init
+== path identity
+configured generation=2 record=00000002.cfg verification=VERIFIED
+accepted operator policy
+== operator login
+Password: Confirm password: ember principal=172aaffef4c349ec0e2136f5dde6ab6aa6e5b393443ed0942b2d6d8cb15a338d posting=true
+accepted operator principal set-password effective-at-next-start
+== node keys
+principal 70fc9ddc19170e4d65f8c9c063f56551a6e53c543a810ee79432bbc15a195b49
+accepted operator peer
+== run
+Running as unit: fn-friends-h.service; invocation ID: bcd352e3a4634746980a0616f4705983
