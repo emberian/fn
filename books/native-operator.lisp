@@ -366,6 +366,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; `store reclaim [--dry-run]': content reclamation's durable step (D13,
 ; STO-017, books/store-reclaim-pack.lisp).  What it removes is
 ; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
+; A Message-ID as a command word: "<", printable US-ASCII, ">" (RFC 3977
+; section 3.6), within the store's Message-ID bound (fn-record-msgidp).
+(defun fn-nop-msgid-wordp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (fn-record-msgidp word)
+       (<= 3 (length word))
+       (equal (char word 0) #\<)
+       (equal (char word (1- (length word))) #\>)))
+
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
   (cond ((and (consp words) (equal (car words) "upgrade-profile"))
@@ -405,6 +415,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                         (list :rollback-snapshot (caddr words))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
+        ; NNT-032: the operator's settling lookup.  Whether this store holds
+        ; an article under MESSAGE-ID (fn-native-operator-inspect-report),
+        ; the one privileged answer to a client left unresolved when a
+        ; re-send meets the login or posting gate (PKT-164).
+        ((and (consp words) (equal (car words) "inspect")
+              (consp (cdr words)) (null (cddr words))
+              (fn-nop-msgid-wordp (cadr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :inspect (cadr words))))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
@@ -449,7 +468,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
@@ -782,6 +801,51 @@ is installed into the owner for both served and control submission."
       (fn-ncfg-nth 2 (fn-native-operator-result-arguments result))
     nil))
 
+; The implicit-TLS listener (`[listener] tls_port', PRF-162): the port a
+; served `run' opens beside the plaintext listener, or nil for none.  It is
+; offered only when the host will load the TLS context the handshake needs
+; (both certificate and key octets, which host/native/operator.lisp opens
+; with fnn-tls-open-context), on a port of its own, and not for `run
+; --once', which serves one client on the plaintext listener.  The
+; connections it accepts run the STARTTLS session machine after its
+; handshake (books/served-implicit-tls.lisp).
+(defun fn-native-operator-result-run-implicit-tls-port (result)
+  (declare (xargs :guard t))
+  (let* ((c (fn-native-operator-result-config result))
+         (port (fn-native-config-listener-tls-port c)))
+    (if (and (fn-native-operator-result-run-planp result)
+             (not (fn-native-operator-result-run-oncep result))
+             (natp port) (< 0 port) (<= port 65535)
+             (fn-ncfg-tls-port-okp port (fn-native-config-listener-port c)
+                                   (fn-native-config-tls-cert c))
+             (fn-native-operator-result-run-tls-cert-octets result)
+             (fn-native-operator-result-run-tls-key-octets result))
+        port
+      nil)))
+
+; KEYSTONE.  An implicit-TLS listener is offered only beside a loaded
+; certificate and key, on a valid port that is not the plaintext one, for a
+; served run.  The subject is the accessor host/native/operator.lisp reads
+; (fn-native-operator-host-result-run-implicit-tls-port) to decide whether
+; fnn-owner-run binds the second listener.
+(defthm fn-native-operator-implicit-tls-listener-needs-its-certificate
+  (let ((port (fn-native-operator-result-run-implicit-tls-port result)))
+    (implies port
+             (and (fn-native-operator-result-run-planp result)
+                  (not (fn-native-operator-result-run-oncep result))
+                  (fn-native-operator-result-run-tls-cert-octets result)
+                  (fn-native-operator-result-run-tls-key-octets result)
+                  (natp port) (< 0 port) (<= port 65535)
+                  (not (equal port
+                              (fn-native-operator-result-run-listener-port result))))))
+  :hints (("Goal" :in-theory (e/d (fn-ncfg-tls-port-okp
+                                   fn-native-operator-result-run-listener-port)
+                                  (fn-native-operator-result-run-tls-cert-octets
+                                   fn-native-operator-result-run-tls-key-octets
+                                   fn-native-operator-result-run-oncep
+                                   fn-native-operator-result-run-planp))))
+  :rule-classes nil)
+
 (defun fn-native-operator-result-run-max-connections (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-run-planp result)
@@ -1089,6 +1153,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rollback-snapshot)
                   :rollback-snapshot)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :inspect)
+                  :inspect)
                  (t :upgrade-profile)))
           ((and (equal (fn-native-operator-result-command result) "peer")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1745,7 +1812,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
     :reclaim-dry-run :needs-upgrade :rollback-check :rollback-snapshot
-    :upgrade-profile :admin
+    :upgrade-profile :admin :inspect
     :peering :principal))
 
 (defun fn-native-operator-result-needs-storep (result)
@@ -2014,3 +2081,66 @@ after it; else (:refused :snapshot-not-a-prefix)."
                  "its committed records, compared record by record, are not this store's first records "
                  "(equal transaction counts or file sizes do not make them so); "
                  "restoring it would replace this history, not shorten it")))
+
+; -----------------------------------------------------------------------------
+; `store inspect MESSAGE-ID' (NNT-032, PRF-162): the operator's settling
+; lookup.  The host opens the stopped store (the same exclusive open as
+; `recover'), asks the store node whether it binds MESSAGE-ID
+; (fn-store-sn-lookup-foundp, host/native/io.lisp fnn-bridge-lookup-found-p),
+; and prints this report.  "accepted" means an article is stored under the
+; Message-ID -- committed, whatever its visibility now (a cancel or a reclaim
+; does not unbind it); "absent" means none is.  It does not compare the
+; stored article with the client's copy: that is the re-send's question
+; (D25), which a client that lost its posting right can no longer ask.
+
+(defun fn-native-operator-result-inspect-msgid-octets (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :inspect)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-record-string-octets
+       (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-nop-octets-text (octets)
+  (declare (xargs :guard t))
+  (if (fn-cbor-octet-listp octets) (fn-record-octets-string octets) ""))
+
+; (EXIT-CODE VERDICT LINE).  FOUNDP is the store node's lookup; the line is
+; the verdict word, the Message-ID and the sentence the verdict names.
+(defun fn-nop-inspect-verdict (foundp)
+  (declare (xargs :guard t))
+  (if foundp :accepted :absent))
+
+(defun fn-nop-inspect-line (verdict msgid)
+  (declare (xargs :guard t))
+  (if (equal verdict :accepted)
+      (concatenate 'string "accepted " (if (stringp msgid) msgid "")
+                   " an article is stored here under this Message-ID")
+    (concatenate 'string "absent " (if (stringp msgid) msgid "")
+                 " nothing is stored here under this Message-ID")))
+
+(defun fn-native-operator-inspect-report (msgid-octets foundp)
+  (declare (xargs :guard t))
+  (let ((verdict (fn-nop-inspect-verdict foundp)))
+    (list (if (equal verdict :accepted) 0 1)
+          verdict
+          (fn-nop-inspect-line verdict (fn-nop-octets-text msgid-octets)))))
+
+(in-theory (disable fn-nop-inspect-line))
+
+; KEYSTONE.  The report is the lookup: verdict :accepted and exit 0 exactly
+; when the store binds the Message-ID, :absent and exit 1 exactly when it
+; does not; the printed line is the verdict's.  The subject is the function
+; host/native/io.lisp fnn-command-operator-inspect calls (through
+; fn-native-operator-host-inspect-report) with the boolean
+; fnn-bridge-lookup-found-p returned.
+(defthm fn-native-operator-inspect-report-is-the-lookup
+  (let ((report (fn-native-operator-inspect-report msgid-octets foundp)))
+    (and (equal (car report) (if foundp 0 1))
+         (equal (cadr report) (if foundp :accepted :absent))
+         (equal (caddr report)
+                (fn-nop-inspect-line (if foundp :accepted :absent)
+                                     (fn-nop-octets-text msgid-octets))))))

@@ -214,7 +214,13 @@ order, and the names it found handed straight back."
                         (fnn-octets (fnn-core
                                      'fn-native-operator-host-result-run-control-path-octets result))
                         (fnn-core 'fn-native-operator-host-result-run-posting-enabledp result)
-                        tls-context)))
+                        tls-context
+                        ;; PRF-162: ACL2's implicit-TLS port, offered only
+                        ;; beside the certificate and key loaded above.
+                        (and tls-context
+                             (fnn-core
+                              'fn-native-operator-host-result-run-implicit-tls-port
+                              result)))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "run")
                 code))
@@ -553,6 +559,37 @@ one `init' makes; nothing is opened or locked."
                        (fnn-operator-init-observed (fnn-absolute root)))))
     result))
 
+;;; `store inspect MESSAGE-ID' (NNT-032): the operator's settling lookup.
+;;; The host opens the stopped store exactly as `recover' does (a live
+;;; owner's lock refuses it), asks the store node whether it binds the
+;;; Message-ID, and prints ACL2's report line: accepted (exit 0) or absent
+;;; (exit 1).  The host decides nothing.
+(defun fnn-operator-execute-inspect (result)
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (msgid-list (fnn-core 'fn-native-operator-host-result-inspect-msgid-octets
+                              result)))
+    (unless (and (fnn-octet-list-p msgid-list) (consp msgid-list))
+      (fnn-fault "ACL2 accepted an inspect plan with no Message-ID"))
+    (handler-case
+        (multiple-value-bind (store records) (fnn-open-live-store root nil)
+          (declare (ignore records))
+          (unwind-protect
+               (let* ((found (fnn-bridge-lookup-found-p (fnn-octets msgid-list)))
+                      (report (fnn-core 'fn-native-operator-host-inspect-report
+                                        msgid-list found)))
+                 (unless (and (consp report) (member (first report) '(0 1))
+                              (member (second report) '(:accepted :absent))
+                              (stringp (third report)))
+                   (fnn-fault "ACL2 returned a malformed inspect report"))
+                 (fnn-out "~a" (third report))
+                 (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+))
+            (fnn-store-close store)))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "inspect" condition)
+          code)))))
+
 (defun fnn-operator-dispatch-plan (result0)
   (let* ((result (fnn-operator-store-outcome result0))
          (status (fnn-core 'fn-native-operator-host-result-status result)))
@@ -592,6 +629,7 @@ one `init' makes; nothing is opened or locked."
           ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
             :rollback-check :rollback-snapshot :reclaim :reclaim-dry-run)
            (fnn-operator-execute-store-action result action))
+          (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))
           (:peering (fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))

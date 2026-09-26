@@ -2845,6 +2845,36 @@
         "docs/operator.md"
       ],
       "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign."
+    },
+    {
+      "id": "NNT-032",
+      "title": "Everyday tools over protection: tin over an implicit-TLS listener that is the STARTTLS session, the group view's withdrawn parent, every documented command in the real grammar, and the operator's settling lookup",
+      "specification": "specs/human-client.md#everyday-tools-over-protection",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-162"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-implicit-tls.lisp",
+        "tests/acl2/served-implicit-tls-tests.lisp",
+        "books/native-operator.lisp",
+        "books/native-config.lisp",
+        "tests/test_native_implicit_tls.py",
+        "tools/docs_check.py",
+        "tests/test_docs_check.py",
+        "tests/acl2/docs-operator-grammar-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/sanding-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4642 section 2.2 is STARTTLS; section 1 describes the separate TLS port and discourages it, so the implicit-TLS listener is a local policy for readers (tin 2.6) that speak only that form, and it runs the STARTTLS session machine (PRF-162). The inspect answer is the store node's Message-ID lookup rendered by ACL2; it does not compare article text (D25 is the re-send's).",
+      "note": "store inspect needs the owner stopped (the store lock); a live query through the control socket is PKT-410."
     }
   ]
 }

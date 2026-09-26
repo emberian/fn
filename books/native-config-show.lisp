@@ -98,6 +98,7 @@
    (fn-ncfg-show-entry "port" (list :nat (fn-native-config-listener-port c)))
    (fn-ncfg-show-entry "tls_cert" (fn-ncfg-opt-string (fn-native-config-tls-cert c)))
    (fn-ncfg-show-entry "tls_key" (fn-ncfg-opt-string (fn-native-config-tls-key c)))
+   (fn-ncfg-show-entry "tls_port" (fn-ncfg-opt-nat (fn-native-config-listener-tls-port c)))
    (list (fn-ncfg-show-header "auth"))
    (fn-ncfg-show-entry "required" (list :bool (fn-native-config-auth-requiredp c)))
    (fn-ncfg-show-entry "protected_only" (list :bool (fn-native-config-auth-protected-onlyp c)))
@@ -177,7 +178,8 @@
             (fn-native-config-ops-mission c) (fn-native-config-ops-unit c)
             (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
             (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
-            (fn-native-config-ops-memory-max c))))
+            (fn-native-config-ops-memory-max c)
+            (fn-native-config-listener-tls-port c))))
 
 (defun fn-native-config-show-wfp (c)
   "Every field of C is one the grammar admits, with the relations normalization checks."
@@ -216,7 +218,11 @@
        (fn-ncfg-show-natp (fn-native-config-ops-log-max-bytes c) *fn-ncfg-max-u64*)
        (not (equal (fn-native-config-ops-log-max-bytes c) 0))
        (fn-ncfg-show-natp (fn-native-config-ops-log-keep c) *fn-ncfg-max-u64*)
-       (fn-ncfg-show-opt-textp (fn-native-config-ops-memory-max c) *fn-ncfg-max-text*)))
+       (fn-ncfg-show-opt-textp (fn-native-config-ops-memory-max c) *fn-ncfg-max-text*)
+       (fn-ncfg-show-opt-natp (fn-native-config-listener-tls-port c) 65535)
+       (fn-ncfg-tls-port-okp (fn-native-config-listener-tls-port c)
+                             (fn-native-config-listener-port c)
+                             (fn-native-config-tls-cert c))))
 
 ; -----------------------------------------------------------------------------
 ; Lemmas: lists
@@ -622,12 +628,13 @@
     (fn-ncfg-opt-pair "auth" "path" (list :string (fn-native-config-auth-path c))
     (fn-ncfg-opt-pair "auth" "protected_only" (list :bool (fn-native-config-auth-protected-onlyp c))
     (fn-ncfg-opt-pair "auth" "required" (list :bool (fn-native-config-auth-requiredp c))
+    (fn-ncfg-opt-pair "listener" "tls_port" (fn-ncfg-opt-nat (fn-native-config-listener-tls-port c))
     (fn-ncfg-opt-pair "listener" "tls_key" (fn-ncfg-opt-string (fn-native-config-tls-key c))
     (fn-ncfg-opt-pair "listener" "tls_cert" (fn-ncfg-opt-string (fn-native-config-tls-cert c))
     (fn-ncfg-opt-pair "listener" "port" (list :nat (fn-native-config-listener-port c))
     (fn-ncfg-opt-pair "listener" "host" (list :string (fn-native-config-listener-host c))
     (fn-ncfg-opt-pair "store" "path" (list :string (fn-native-config-store c))
-    nil)))))))))))))))))))))))))))
+    nil))))))))))))))))))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; Normalization gives the fields back.
@@ -761,7 +768,8 @@
                       (fn-native-config-ops-mission c) (fn-native-config-ops-unit c)
                       (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
                       (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
-                      (fn-native-config-ops-memory-max c))
+                      (fn-native-config-ops-memory-max c)
+                      (fn-native-config-listener-tls-port c))
                      c)))))
 
 (local
@@ -815,6 +823,7 @@
                                     fn-native-config-ops-log-max-bytes
                                     fn-native-config-ops-log-keep
                                     fn-native-config-ops-memory-max
+                                    fn-native-config-listener-tls-port fn-ncfg-tls-port-okp
                                     (:e fn-ncfg-show-header)))))))
 
 (local
@@ -847,7 +856,8 @@
                                     fn-native-config-ops-scope fn-native-config-ops-keep-releases
                                     fn-native-config-ops-log-max-bytes
                                     fn-native-config-ops-log-keep
-                                    fn-native-config-ops-memory-max))))))
+                                    fn-native-config-ops-memory-max
+                                    fn-native-config-listener-tls-port fn-ncfg-tls-port-okp))))))
 
 (local
  (defthm fn-ncfg-show-bounds
@@ -883,6 +893,7 @@
                                     fn-native-config-ops-log-max-bytes
                                     fn-native-config-ops-log-keep
                                     fn-native-config-ops-memory-max
+                                    fn-native-config-listener-tls-port fn-ncfg-tls-port-okp
                                     (:e fn-ncfg-show-header)))))))
 
 (local
@@ -1142,18 +1153,20 @@
                   (fn-ncfg-show-natp log-max-bytes *fn-ncfg-max-u64*)
                   (not (equal log-max-bytes 0))
                   (fn-ncfg-show-natp log-keep *fn-ncfg-max-u64*)
-                  (fn-ncfg-show-opt-textp memory-max *fn-ncfg-max-text*))
+                  (fn-ncfg-show-opt-textp memory-max *fn-ncfg-max-text*)
+                  (fn-ncfg-show-opt-natp tls-port 65535)
+                  (fn-ncfg-tls-port-okp tls-port port tls-cert))
              (fn-native-config-show-wfp
               (fn-native-config-make store host port tls-cert tls-key auth-required
                                      auth-protected auth-path posting-enabled
                                      agent anchor log control acl2-path acl2-slots
                                      alert-command headroom refusal-rate cooldown
                                      mission unit scope keep-releases log-max-bytes
-                                     log-keep memory-max)))
+                                     log-keep memory-max tls-port)))
     :hints (("Goal" :in-theory (e/d (fn-native-config-show-wfp fn-ncfg-show-shapep)
                                     (fn-ncfg-show-textp fn-ncfg-show-natp fn-ncfg-show-opt-textp
                                      fn-ncfg-show-opt-natp fn-native-config-listener-hostp
-                                     fn-ncfg-pairedp fn-ncfg-optional-absolutep
+                                     fn-ncfg-pairedp fn-ncfg-tls-port-okp fn-ncfg-optional-absolutep
                                      fn-ncfg-optional-memberp fn-ncfg-memberp)))))
 
   (local
@@ -1167,7 +1180,7 @@
                                       fn-ncfg-show-textp fn-ncfg-show-natp fn-ncfg-show-opt-textp
                                       fn-ncfg-show-opt-natp fn-ncfg-parsed-valuep
                                       fn-ncfg-parsed-pairsp fn-ncfg-under-store
-                                      fn-native-config-listener-hostp fn-ncfg-pairedp
+                                      fn-native-config-listener-hostp fn-ncfg-pairedp fn-ncfg-tls-port-okp
                                       fn-ncfg-optional-absolutep fn-ncfg-optional-memberp
                                       fn-ncfg-memberp fn-record-string-octets fn-ncfg-printablep))))))
 
@@ -1259,7 +1272,7 @@
      (fn-ncfg-join-path node "/store/control.sock") nil nil
      nil (fn-ncfg-nth 3 row) (fn-ncfg-nth 4 row) *fn-ncfg-default-cooldown-seconds*
      name nil *fn-ncfg-default-ops-scope* *fn-ncfg-default-keep-releases*
-     *fn-ncfg-default-log-max-bytes* *fn-ncfg-default-log-keep* nil)))
+     *fn-ncfg-default-log-max-bytes* *fn-ncfg-default-log-keep* nil nil)))
 
 ; The directories the operator's host creates beside fn.toml (the store is
 ; created by `init').
