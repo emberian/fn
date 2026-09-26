@@ -2636,7 +2636,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-130"
+        "PRF-130",
+        "PRF-141"
       ],
       "verification": [
         "proof",
@@ -2648,9 +2649,11 @@
         "packaging/fn",
         "host/native/operator.lisp",
         "docs/operator.md",
-        "planning/evidence/operator-walk-2026-09-26.md"
+        "planning/evidence/operator-walk-2026-09-26.md",
+        "planning/evidence/rollback-history-2026-09-26.md",
+        "tests/test_native_rollback_history.py"
       ],
-      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot counts what restoring a snapshot loses.",
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
     },
     {
