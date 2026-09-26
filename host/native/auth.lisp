@@ -42,8 +42,7 @@ record whose publication was refused (records published before it stand)."
       (unless (eq (fnn-owner-live-reconfigure-locked
                    service
                    (lambda (cid)
-                     (fnn-owner-result 'fn-ores-config-result-p
-                                       'fn-owner-reconfigure-deltas cid deltas)))
+                     (fnn-owner-action 'fn-owner-reconfigure-deltas cid deltas)))
                   :accepted)
         (return-from fnn-native-auth-publish-bindings :refused)))))
 

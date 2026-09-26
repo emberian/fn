@@ -69,12 +69,6 @@ OWNER_WORDS = {b":OBSERVED", b":REFUSED", b":INVALID", b":DECLARED", b":BEGUN",
                b":FAULTED"}
 
 
-# This test bridge's own REPL variables for the last typed result of each
-# kind (books/owner-results.lisp); the native host has no such variable.
-FEED_PUBLICATION = "fn-bridge-feed-publication"
-CONFIG_RESULT = "fn-bridge-config-result"
-
-
 def acl2_owner_symbol(output):
     body = acl2_result(output).upper()
     if body in OWNER_WORDS:
@@ -195,19 +189,16 @@ class Acl2Owner(Acl2Store):
         if kind is None:
             raise StoreError("unknown group reconfiguration action")
         literal = self.literal(name.encode("utf-8", "strict"))
-        # The wrapper returns a ConfigResult (books/owner-results.lisp); this
-        # test bridge keeps it in its own REPL variable and reads its fields.
-        status = self._result_word(
-            "(fn-owner-reconfigure {} {} '{} state)".format(int(cid), kind, literal),
-            CONFIG_RESULT, "fn-ores-config-word")
+        status = self._symbol_any("(fn-owner-reconfigure {} {} '{} state)".format(
+            int(cid), kind, literal))
         if status == "staged":
             record = bytes(acl2_octet_list(self.call(
-                "(fn-ores-config-octets (@ {}))".format(CONFIG_RESULT))))
+                "(fn-owner-reconfigure-octets state)")))
             generation = self._nat("(fn-owner-config-generation state)") + 1
             return "staged", generation, record
         if status == "refused":
             return "refused", acl2_keyword(self.call(
-                "(fn-ores-config-reason (@ {}))".format(CONFIG_RESULT))), None
+                "(fn-owner-reconfigure-reason state)")), None
         raise StoreFault("unexpected owner reconfiguration outcome: {}".format(status))
 
     def complete_reconfigure(self, generation):
@@ -412,30 +403,10 @@ class Acl2Owner(Acl2Store):
 
     def feed_configure(self):
         """Rebuild the feed table from the live configuration; the peers."""
-        return self._name_list("(fn-owner-feed-configure state)")
+        return self._names("(fn-owner-feed-configure state)")
 
     def feed_peers(self):
-        return self._name_list("(fn-owner-feed-peers state)")
-
-    # The typed results (books/owner-results.lisp).  A wrapper returns ONE
-    # value; the native host reads its fields in hand.  This bridge talks to
-    # a REPL one printed form at a time, so it keeps the last value of each
-    # kind in a variable of its OWN (never a variable the host reads) and
-    # reads fields from there.
-    def _result_word(self, form, variable, accessor):
-        return self._symbol_any(
-            "(mv-let (erp result state) {} "
-            "(let ((state (f-put-global '{} result state))) "
-            "(mv erp ({} result) state)))".format(form, variable, accessor))
-
-    def _feed_step(self, form):
-        return self._result_word(form, FEED_PUBLICATION, "fn-ores-feedpub-word")
-
-    def _name_list(self, form):
-        """A wrapper's list of names, joined here for the REPL's printer."""
-        return self._names(
-            "(mv-let (erp names state) {} "
-            "(mv erp (fn-store-cfg-join-names names) state))".format(form))
+        return self._names("(fn-owner-feed-peers state)")
 
     def feed_endpoint(self, peer):
         literal = "'" + self.literal(peer.encode("utf-8"))
@@ -477,7 +448,7 @@ class Acl2Owner(Acl2Store):
         resolve another peer's genuinely in-flight entry and cause the
         second transfer K5 forbids.
         """
-        return self._feed_step(
+        return self._symbol_any(
             "(fn-owner-feed-lost '" + self.literal(peer.encode("utf-8")) +
             " {} state)".format(int(monotonic)))
 
@@ -490,11 +461,11 @@ class Acl2Owner(Acl2Store):
             ":ihave" if form == "ihave" else "nil"))
 
     def feed_tick(self, peer, monotonic):
-        return self._feed_step("(fn-owner-feed-tick '{} {} state)".format(
+        return self._symbol_any("(fn-owner-feed-tick '{} {} state)".format(
             self.literal(peer.encode("utf-8")), monotonic))
 
     def feed_octets(self, peer, line, monotonic):
-        return self._feed_step("(fn-owner-feed-octets '{} '{} {} state)".format(
+        return self._symbol_any("(fn-owner-feed-octets '{} '{} {} state)".format(
             self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
 
     def trailer(self, prefix):
@@ -512,26 +483,21 @@ class Acl2Owner(Acl2Store):
             "(fn-frame-trailer {})".format(octets))))
 
     def feed_frames(self):
-        """ACL2 seals each authorized FNFD record, including prefix choice:
-        the frames of the last publication's sealed frame plan, in order."""
-        plan = "(fn-ores-feedpub-plan (@ {}))".format(FEED_PUBLICATION)
-        count = self._nat("(len {})".format(plan))
+        """ACL2 seals each authorized FNFD record, including prefix choice."""
+        count = self._nat("(len (@ fn-owner-feed-frames))")
         return [bytes(acl2_octet_list(self.call(
-            "(cdr (nth {} {}))".format(index, plan))))
+            "(fn-owner-feed-sealed-frame {} state)".format(index))))
                 for index in range(count)]
 
     def feed_record_peers(self):
-        """The same plan's peers, pair by pair."""
-        return self._names("(fn-store-cfg-join-names (strip-cars "
-                           "(fn-ores-feedpub-plan (@ {}))))".format(FEED_PUBLICATION))
+        return self._names("(fn-owner-feed-record-peers state)")
 
     def feed_command(self):
-        status = self._symbol_any(
-            "(fn-ores-feedpub-status (@ {}))".format(FEED_PUBLICATION))
+        status = self._symbol_any("(fn-owner-feed-command-status state)")
         if status != "ok":
             raise StoreError("ACL2 refused outbound feed framing: {}".format(status))
         return bytes(acl2_octet_list_any(self.call(
-            "(fn-ores-feedpub-command (@ {}))".format(FEED_PUBLICATION))) or b"")
+            "(fn-owner-feed-command state)")) or b"")
 
     def feed_journal_prefix_size(self):
         return self._nat("*fn-feed-journal-prefix-size*")
@@ -586,9 +552,7 @@ class Acl2Owner(Acl2Store):
             phase, event))
 
     def feed_restart(self):
-        if self._feed_step("(fn-owner-feed-restart state)") != "restarted":
-            raise StoreFault("owner refused the feed restart")
-        return self._nat("(len (fn-ores-feedpub-plan (@ {})))".format(FEED_PUBLICATION))
+        return self._nat("(fn-owner-feed-restart state)")
 
     def prov_post(self):
         """The local-post provenance from the OWNER's live configuration.
@@ -603,19 +567,19 @@ class Acl2Owner(Acl2Store):
 
     def submission_intent(self, evidence, generation, txid):
         """ACL2's capacity verdict and exact pre-commit intent frames."""
-        return self._feed_step(
+        return self._symbol_any(
             "(fn-owner-submission-intent '{} {} {} state)".format(
                 self.literal(evidence), generation, txid))
 
     def submission_resolution(self, word, evidence, generation, txid):
         """ACL2's exact commit/abort projection for the in-flight submit."""
-        return self._feed_step(
+        return self._symbol_any(
             "(fn-owner-submission-resolution :{} '{} {} {} state)".format(
                 word, self.literal(evidence), generation, txid))
 
     def feed_reconcile_next(self):
         """Resolve one recovered intent from the authoritative owner node."""
-        return self._feed_step("(fn-owner-feed-reconcile-next state)")
+        return self._symbol_any("(fn-owner-feed-reconcile-next state)")
 
     def feed_reconcile_apply(self):
         return self._symbol_any("(fn-owner-feed-reconcile-apply state)")

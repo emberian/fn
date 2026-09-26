@@ -32,17 +32,12 @@
   (declare (ignore service)) *store*)
 (defun fnn-core (name &rest args)
   (push (cons name args) *calls*)
-  (case name
-    (fn-native-admin-host-plan :plan)
-    ;; The staging step's ConfigResult fields (books/owner-results.lisp).
-    (fn-ores-config-word (second (first args)))
-    (fn-ores-config-octets (third (first args)))
-    (fn-ores-config-reason (fourth (first args)))
-    (otherwise (error "core ~s" name))))
+  (case name (fn-native-admin-host-plan :plan) (otherwise (error "core ~s" name))))
 (defun fnn-owner-core (name &rest args)
   (push (cons name args) *calls*)
   (case name
     (fn-owner-open 7)
+    (fn-owner-reconfigure-octets '(1 2))
     (fn-owner-config-generation 2)
     (fn-owner-config-served '(102 110 46 116 101 115 116 10
                               102 110 46 108 105 118 101))
@@ -50,15 +45,10 @@
                        '(102 110 46 116 101 115 116 10
                          102 110 46 108 105 118 101)))
     (otherwise (error "owner core ~s" name))))
-(defun fnn-owner-result (recognizer name &rest args)
-  (assert (eq recognizer 'fn-ores-config-result-p))
-  (push (cons name args) *calls*)
-  (case name
-    (fn-native-admin-host-owner-reconfigure '(:config-result :staged (1 2) nil))
-    (otherwise (error "owner result ~s" name))))
 (defun fnn-owner-action (name &rest args)
   (push (cons name args) *calls*)
   (case name
+    (fn-native-admin-host-owner-reconfigure :staged)
     (fn-owner-reconfigure-complete :durable)
     (otherwise nil)))
 (defun fnn-admin-plan-acceptedp (x) (eq x :plan))

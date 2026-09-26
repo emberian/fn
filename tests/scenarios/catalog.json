@@ -4090,34 +4090,6 @@
       ]
     },
     {
-      "id": "SCN-139",
-      "title": "An article posted on a node with two configured feed peers is journaled to both peers' FNFD journals, in the plan's order, before the offer; a malformed typed result stops the owner by fault",
-      "milestone": "M5",
-      "status": "specified",
-      "requirements": [
-        "HST-019"
-      ],
-      "steps": [
-        "Start a native owner with two feed peers configured; POST one article.",
-        "Read both peers' FNFD journals; let each feed tick offer the article.",
-        "(Raw harness) hand fnn-owner-feed-flush a publication whose plan names an unconfigured peer; hand the staging step a malformed ConfigResult."
-      ],
-      "expected": [
-        "240; each journal holds the enqueue frame for the article (sealed, trailer verifying) before its peer sees the offer.",
-        "The offer and the reply follow the journal append; nothing on the wire differs from before.",
-        "fnn-fault (exit 4) naming the step; nothing appended for the unknown peer."
-      ],
-      "evidence": [
-        "planning/evidence/adapter-retirement-2026-09-26.md"
-      ],
-      "implementation": {
-        "test": "tests.test_native_owner",
-        "cases": [],
-        "native": true,
-        "record": "planning/evidence/adapter-retirement-2026-09-26.md"
-      }
-    },
-    {
       "id": "SCN-137",
       "title": "A reader reads a cross-posted article's overview: the Xref field names the node's path-identity and the article's local number in every group that holds it, and LIST OVERVIEW.FMT names Xref:full",
       "milestone": "M6",
