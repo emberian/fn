@@ -6669,6 +6669,19 @@
           "name": "fn-sco-thaw-checked-accepts-own-publication"
         }
       ]
+    },
+    {
+      "id": "PRF-190",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpp-crc32c-scan-table-is-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpp-xor-is-masked-logxor"
+        }
+      ]
     }
   ]
 }

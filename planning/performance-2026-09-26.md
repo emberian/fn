@@ -271,6 +271,13 @@ term; its "three scans encode every candidate" multiplies it. 10 MiB
 51.9 s, 39.2 s of it `fn-bpb-encode` and `fn-bpb-decode`. A 1 MiB transfer
 end to end was not run (PKT-554).
 
+**Result (bp-crc-exec, 2026-09-26, PRF-190):** the CRC-32C runs a table and
+`fn-bpp-xor` runs `logxor`, each proved equal to the bitwise definition; on
+hbox back to back a 1 MiB bundle encodes in 0.058 s against 3.68 s and
+decodes in 0.140 s against 7.65 s on the base image (1.5 and 1.8 percent), the
+wire bytes identical. Row 11 narrowed to the allocation and PKT-546
+(planning/evidence/bp-crc-exec-2026-09-26.md).
+
 ### Consumer poll (this lane: `consumer-poll.json`)
 
 tests/perf/native_consumer_poll_cost.py on this image: 127 ms median at ACK 0
