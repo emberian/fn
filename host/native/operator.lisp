@@ -473,7 +473,11 @@ observation into the outcome and this function only carries it out."
             :refused
           (or (fnn-core 'fn-native-health-host-fenced route
                         (fnn-store-owner-observation root)
-                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t))
+                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
+                        ;; Would an owner listen at all: a configured socket
+                        ;; in an image that has one (an observation; ACL2's
+                        ;; fn-nh-fence-of decides :starting from it).
+                        (and control-path (not (fnn-image-omits-p :control)) t))
               (multiple-value-bind (store records) (fnn-open-live-store root nil)
                 (declare (ignore records))
                 (unwind-protect
