@@ -35,6 +35,7 @@
 (include-book "config")
 (include-book "auth-secret")
 (include-book "identity")
+(include-book "native-admin-shape")
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
@@ -441,7 +442,7 @@
 ; -----------------------------------------------------------------------------
 ; The owner's plan and the word the wire answers (PKT-439)
 ;
-; host/accounts-host.lisp `fn-acct-host-owner-redeem-stage' runs this plan
+; host/native-admin-host.lisp `fn-acct-host-owner-redeem-stage' runs this plan
 ; over the LIVE configuration value, under the owner mutex, with the code,
 ; login and password a holding session keeps (books/nntp-auth.lisp
 ; `fn-auth-redeem-request'), the host's CSPRNG salt, TAKENP from the
@@ -642,3 +643,15 @@
   (declare (xargs :guard t))
   (fn-record-string-octets (fn-acct-string-join
                             (fn-acct-list-lines (fn-cfg-accounts v)))))
+
+; The pending row an accepted `account invite DIGEST SECONDS' plan stages at
+; STAMP (the live owner's clock, or the offline record's), or nil.
+(defun fn-acct-admin-deltas (plan stamp)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (equal (fn-native-admin-result-kind plan) :account-invite))
+      (let ((d (fn-acct-invite-delta
+                (fn-record-octets-string (fn-native-admin-result-name plan))
+                (fn-native-admin-result-capacity plan) stamp)))
+        (if d (list d) nil))
+    nil))

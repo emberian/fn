@@ -200,7 +200,8 @@ Answers :accepted once the record is durable and the owner installed it, or
   "Plan, publish, then answer: 281 only after the redeem record is durable.
 
 Returns the ACL2-rendered reply octets for CID."
-  (let* ((salt (fnn-native-auth-admin-csprng-salt))
+  (let* ((salt (fnn-csprng-octets (fnn-core 'fn-acct-host-salt-octets)
+                                  "credential salt"))
          (bound (fnn-profile-nat 'fn-store-profile-max-credentials
                                  (fnn-owner-service-store service)))
          (published

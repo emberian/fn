@@ -37,6 +37,7 @@
 (in-package "ACL2")
 (include-book "native-control")
 (include-book "native-admin")
+(include-book "accounts")
 (include-book "store-budget")
 ; PKT-169: the maintenance reservation `status' prints.
 (include-book "store-capacity-vector")

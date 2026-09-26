@@ -1,6 +1,7 @@
 ; Program bridge for the native administrative plan.
 (in-package "ACL2")
 (include-book "../books/native-admin")
+(include-book "../books/accounts")
 (ld "store-node-host.lisp" :ld-error-action :error)
 (ld "owner-host.lisp" :ld-error-action :error)
 
@@ -37,9 +38,9 @@
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
   ;; PRF-164: an `account invite' plan's pending row expires from the live
-  ;; owner's clock (fn-native-admin-account-deltas).
+  ;; owner's clock (fn-acct-admin-deltas).
   (let ((deltas (if (equal (fn-native-admin-result-kind plan) :account-invite)
-                    (fn-native-admin-account-deltas
+                    (fn-acct-admin-deltas
                      plan (fn-own-clock (fn-owner-core state)))
                   (fn-native-admin-plan-deltas-over
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
@@ -68,7 +69,7 @@
           ;; PRF-164: offline, the pending row expires from the record's
           ;; own stamp (the one fn-store-cfg-peer-delta-record builds).
           ((equal kind :account-invite)
-           (let ((deltas (fn-native-admin-account-deltas
+           (let ((deltas (fn-acct-admin-deltas
                           plan (fn-clock-observation (nfix monotonic) (nfix wall)
                                                      0 t))))
              (if deltas
@@ -121,6 +122,7 @@
 ;; The operator's side: the code's text from the host's CSPRNG octets, its
 ;; digest, and the digest-only admin argv.  The code is never an argument.
 (defun fn-acct-host-entropy-octets () *fn-acct-code-entropy-octets*)
+(defun fn-acct-host-salt-octets () *fn-authsec-salt-octets*)
 (defun fn-acct-host-code-text (entropy) (fn-acct-code-text entropy))
 (defun fn-acct-host-code-digest-text (code-octets)
   (fn-acct-code-digest-text code-octets))
