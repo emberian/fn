@@ -486,7 +486,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; restart to apply)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -573,9 +573,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
       (cond ((equal command "help")
              (if (or (null rest)
                      (and (equal (len rest) 1) (fn-nop-help-subjectp (car rest))))
+                 ; PKT-403: bare `help' (and so bare `fn') answers the
+                 ; command list, not the grammar of `help' itself.
                  (let ((subject (if (consp rest) (car rest) "help")))
                    (fn-nop-result :accepted :plan "help" config
-                                  (list :help subject (fn-nop-help-text subject))))
+                                  (list :help subject
+                                        (fn-nop-help-text
+                                         (if (consp rest) subject nil)))))
                (fn-nop-usage :invalid-help "help" config rest)))
             ((equal command "run")
              (let ((arguments (fn-nop-parse-run rest nil)))

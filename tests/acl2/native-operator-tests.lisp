@@ -1235,3 +1235,9 @@
 (must-fail
  (thm (equal (cadr (fn-native-operator-inspect-report m t))
              (cadr (fn-native-operator-inspect-report m nil)))))
+
+; PKT-403: bare `help' (what bare `fn' runs) answers the command list.
+(assert-event (equal (fn-native-operator-command-preflight (fn-nop-test-argv '("help")))
+                     (list :accepted :plan "help" nil
+                           (list :help "help" (fn-nop-help-text nil)))))
+(assert-event (not (equal (fn-nop-help-text nil) (fn-nop-help-text "help"))))
