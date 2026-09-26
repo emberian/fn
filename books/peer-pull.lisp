@@ -336,6 +336,29 @@
                  (nfix (fn-pull-cursor-advances cursor))
                  nil nil nil nil nil nil))
 
+; The round a session enters once its preamble (the feed-connection
+; machine's greeting, STARTTLS, TLS and AUTHINFO) has reached :ready
+; (books/peer-pull-session.lisp `fn-pull-session-begin').  It differs from
+; `fn-pull-begin' in the phase alone: the DATE is outstanding.  Its cursor
+; fields are `fn-pull-begin''s (`fn-pull-begin-ready-cursor-fields'), so
+; the cut theorem below transfers to it unchanged.
+(defun fn-pull-begin-ready (cursor wildmat now)
+  (declare (xargs :guard t))
+  (fn-pull-with (fn-pull-begin cursor wildmat now) :phase :date))
+
+(defthm fn-pull-begin-ready-cursor-fields
+  (and (equal (fn-pull-r-phase (fn-pull-begin-ready cursor wildmat now)) :date)
+       (equal (fn-pull-r-peer (fn-pull-begin-ready cursor wildmat now))
+              (fn-pull-r-peer (fn-pull-begin cursor wildmat now)))
+       (equal (fn-pull-r-wildmat (fn-pull-begin-ready cursor wildmat now))
+              (fn-pull-r-wildmat (fn-pull-begin cursor wildmat now)))
+       (equal (fn-pull-r-since (fn-pull-begin-ready cursor wildmat now))
+              (fn-pull-r-since (fn-pull-begin cursor wildmat now)))
+       (equal (fn-pull-r-advances (fn-pull-begin-ready cursor wildmat now))
+              (fn-pull-r-advances (fn-pull-begin cursor wildmat now)))
+       (equal (fn-pull-round-cursor (fn-pull-begin-ready cursor wildmat now))
+              (fn-pull-round-cursor (fn-pull-begin cursor wildmat now)))))
+
 ; Effects, in the order the host performs them:
 ;   (:journal . cursor)   append the FNPL record, durably, before anything after it
 ;   (:remote . octets)    write to the peer
@@ -354,6 +377,13 @@
 (defun fn-pull-fail (r)
   (declare (xargs :guard t))
   (mv (fn-pull-with r :phase :failed :buf nil) (list (list :close))))
+
+; The one DATE command a round sends (RFC 3977 section 7.1): after the
+; peer's greeting, or, for a session whose preamble ran first, when the
+; feed-connection machine reports :ready (books/peer-pull-session.lisp).
+(defun fn-pull-date-command ()
+  (declare (xargs :guard t))
+  (fn-pull-command (list (fn-record-string-octets "DATE"))))
 
 (defun fn-pull-quit ()
   (declare (xargs :guard t))
@@ -386,8 +416,7 @@
      ((equal phase :greeting)
       (if (member-equal code '(200 201))
           (mv (fn-pull-with r :phase :date)
-              (list (cons :remote (fn-pull-command
-                                   (list (fn-record-string-octets "DATE")))))
+              (list (cons :remote (fn-pull-date-command)))
               t)
         (mv-let (f e) (fn-pull-fail r) (mv f e nil))))
      ((equal phase :date)
@@ -1126,29 +1155,57 @@
 ;
 ; A peer is pulled when its group has a positive `pull-interval' row
 ; (seconds; `peer pull NAME SECONDS', books/native-admin-peer.lisp), an NNTP
-; transport in the clear, and an inbound record: the NEWNEWS wildmat is the
-; peer's own inbound accept-groups, so a pull asks for exactly what this node
-; would accept from that peer if it pushed.  A TLS transport is not pulled
-; yet (the pull client has no TLS arm); it is refused by omission, and the
-; record says so.
+; transport, and an inbound record: the NEWNEWS wildmat is the peer's own
+; inbound accept-groups, so a pull asks for exactly what this node would
+; accept from that peer if it pushed.
 ;
-; A plan: (peer-octets host-octets port wildmat-octets interval-ms).
+; The plan carries the transport's security and the peer's outbound
+; credential policy as the configuration states them; whether the round may
+; use them is `fn-pull-plan-verdict' (books/peer-pull-session.lisp), decided
+; before any connection.  A TLS transport whose server name or trust anchor
+; row is missing denotes no security and is not planned.
+;
+; A plan: (peer-octets host-octets port wildmat-octets interval-ms
+;          security auth), SECURITY `(:clear)' or `(:tls MODE SERVER-NAME
+; TRUST-ANCHOR)' with MODE :starttls or :implicit, AUTH nil or
+; `(:authinfo PROFILE-PATH ALLOW-CLEAR)'.
+
+(defun fn-pull-security-of-rows (rows)
+  (declare (xargs :guard t))
+  (let ((ts (fn-cfg-peer-slot rows "transport-security"))
+        (sn (fn-cfg-peer-slot rows "transport-server-name"))
+        (ta (fn-cfg-peer-slot rows "transport-trust-anchor")))
+    (cond ((or (null ts) (equal (fn-cfg-row-c ts) "clear")) (list :clear))
+          ((and (member-equal (fn-cfg-row-c ts) '("starttls" "implicit"))
+                sn ta (stringp (fn-cfg-row-c sn)) (stringp (fn-cfg-row-c ta)))
+           (list :tls (if (equal (fn-cfg-row-c ts) "implicit") :implicit :starttls)
+                 (fn-cfg-row-c sn) (fn-cfg-row-c ta)))
+          (t nil))))
+
+(defun fn-pull-auth-of-rows (rows)
+  (declare (xargs :guard t))
+  (let ((oa (fn-cfg-peer-slot rows "outbound-auth-profile")))
+    (if (and oa (stringp (fn-cfg-row-c oa)))
+        (list :authinfo (fn-cfg-row-c oa) (equal (fn-cfg-row-n oa) 1))
+      nil)))
 
 (defun fn-pull-plan-of-rows (name rows)
   (declare (xargs :guard t))
   (let ((tn (fn-cfg-peer-slot rows "transport-nntp"))
-        (ts (fn-cfg-peer-slot rows "transport-security"))
         (ig (fn-cfg-peer-slot rows "inbound-groups"))
-        (seconds (fn-pcb-slot-natural *fn-pcb-pull-interval-slot* rows)))
+        (seconds (fn-pcb-slot-natural *fn-pcb-pull-interval-slot* rows))
+        (security (fn-pull-security-of-rows rows)))
     (if (and (stringp name) tn ig (posp seconds)
              (stringp (fn-cfg-row-c tn)) (posp (fn-cfg-row-n tn))
              (stringp (fn-cfg-row-c ig))
-             (or (null ts) (equal (fn-cfg-row-c ts) "clear")))
+             security)
         (list (fn-record-string-octets name)
               (fn-record-string-octets (fn-cfg-row-c tn))
               (fn-cfg-row-n tn)
               (fn-record-string-octets (fn-cfg-row-c ig))
-              (* 1000 seconds))
+              (* 1000 seconds)
+              security
+              (fn-pull-auth-of-rows rows))
       nil)))
 
 (defun fn-pull-plans-of (names peers)
@@ -1172,6 +1229,8 @@
 (defun fn-pull-plan-port (p) (declare (xargs :guard t)) (fn-pull-at 2 p))
 (defun fn-pull-plan-wildmat (p) (declare (xargs :guard t)) (fn-pull-at 3 p))
 (defun fn-pull-plan-interval (p) (declare (xargs :guard t)) (fn-pull-at 4 p))
+(defun fn-pull-plan-security (p) (declare (xargs :guard t)) (fn-pull-at 5 p))
+(defun fn-pull-plan-auth (p) (declare (xargs :guard t)) (fn-pull-at 6 p))
 
 ; The schedule the owner holds, reconfigured from the live plans at NOW.
 (defun fn-pull-schedule (plans now tbl)
