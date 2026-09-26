@@ -4,17 +4,10 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/bp-node-job-offer": {
-      "seconds": 11.648,
-      "run": "certify-20260926T044558Z-333541",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/owner-invariants": {
-      "seconds": 12.936,
-      "run": "certify-20260926T010233Z-3422722",
-      "host": "persvati",
+      "seconds": 10.291,
+      "run": "certify-20260926T064807Z-632722",
+      "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     }
