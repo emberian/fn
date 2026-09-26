@@ -26,6 +26,7 @@ from tests.native_process import wait_for_announcement, stop_and_diagnostics
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import fn_web  # noqa: E402
+import fn_verify  # noqa: E402
 
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", "/nonexistent/fn-host-developer"))
 ROOT = Path(os.environ.get("FN_NATIVE_TEST_ROOT", Path(__file__).resolve().parents[1]))
@@ -570,6 +571,223 @@ class NativeProtectedWebClientTests(unittest.TestCase):
         self.assertNotIn("class='unread-dot'", marked[2])
         restarted = self.start_web(marks_path)
         self.assertIn("nothing unread", self.http(restarted, "GET", "/")[2])
+
+
+def native_openssl():
+    """OpenSSL 3.5 for ML-DSA-65 keys: FN_TEST_OPENSSL, else the prefix
+    tools/hbox_native.sh exports, else the PATH's."""
+    named = os.environ.get("FN_TEST_OPENSSL")
+    if named:
+        return named
+    prefix = os.environ.get("FN_OPENSSL_PREFIX")
+    if prefix and os.access(Path(prefix) / "bin" / "openssl", os.X_OK):
+        return str(Path(prefix) / "bin" / "openssl")
+    return "openssl"
+
+
+def dot_stuff(octets):
+    return b"".join((b"." + line if line.startswith(b".") else line)
+                    for line in octets.splitlines(keepends=True))
+
+
+@unittest.skipUnless(os.access(IMAGE, os.X_OK), "frozen native developer image required")
+class NativeProvenanceWebTests(unittest.TestCase):
+    """PKT-175 and PKT-253 on the native owner: an article signed by the image's
+    own hybrid-sign-carrier and POSTed over a protected login; the page's
+    fourth fact is the node's HDR :fn-enrollment through an enrollment, a
+    rotation and a revocation, beside the unchanged historical verdict; the
+    fifth is this reader's own check with its own keyring."""
+
+    USER, SECRET = "ember-provenance", "web-provenance-secret-3"
+    ED_PUBLIC = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+    ED_SECRET = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+    ED_PUBLIC_2 = "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
+    PRINCIPAL = bytes([0x55]) * 32
+
+    @classmethod
+    def invoke(cls, *args, timeout=180):
+        done = subprocess.run([str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
+                              env=native_environment(), stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=timeout, check=False)
+        assert done.returncode == 0, "%s -> %d: %s" % (
+            args[:2], done.returncode, done.stderr.decode(errors="replace")[-2000:])
+        return done
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(prefix="fn-web-provenance-")
+        root = cls.root = Path(cls.temporary.name)
+        openssl = native_openssl()
+        cls.control = root / "control.sock"
+        cls.port = free_loopback_port()
+        cls.cert, key = root / "cert.pem", root / "key.pem"
+        subprocess.run([openssl, "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
+                        "-out", str(cls.cert), "-sha256", "-days", "1", "-nodes",
+                        "-subj", "/CN=localhost", "-addext", "subjectAltName=IP:127.0.0.1"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=60, check=True)
+        cls.config = root / "fn.toml"
+        cls.config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
+            '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'.format(
+                root / "store", cls.port, cls.cert, key, cls.control,
+                root / "credentials.toml"), encoding="ascii")
+        cls.invoke("operator", cls.config, "init", "fn.agents")
+        enrolled = subprocess.run(
+            [sys.executable, "bin/fn", "--config", str(cls.config), "principal",
+             "set-password", cls.USER, "--password", cls.SECRET, "--posting"],
+            cwd=ROOT, env=native_environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=900, check=False)
+        assert enrolled.returncode == 0, enrolled.stderr.decode(errors="replace")
+
+        cls.principal = root / "principal.bin"
+        cls.principal.write_bytes(cls.PRINCIPAL)
+        cls.ed_public, cls.ed_secret = root / "ed-public.bin", root / "ed-secret.bin"
+        cls.ed_public.write_bytes(bytes.fromhex(cls.ED_PUBLIC))
+        cls.ed_secret.write_bytes(bytes.fromhex(cls.ED_SECRET + cls.ED_PUBLIC))
+        cls.ed_public_2 = root / "ed-public-2.bin"
+        cls.ed_public_2.write_bytes(bytes.fromhex(cls.ED_PUBLIC_2))
+        for stem in ("ml", "ml-2"):
+            subprocess.run([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                            str(root / (stem + "-private.pem"))], timeout=60, check=True)
+            subprocess.run([openssl, "pkey", "-in", str(root / (stem + "-private.pem")),
+                            "-pubout", "-out", str(root / (stem + "-public.pem"))],
+                           timeout=60, check=True)
+        cls.ml_private, cls.ml_public = root / "ml-private.pem", root / "ml-public.pem"
+        cls.ml_public_2 = root / "ml-2-public.pem"
+        verifier = Path(fn_web.VERIFIER)
+
+        def keyring(path, ed, ml, generation):
+            entry = subprocess.run([sys.executable, str(verifier), "keyring-entry",
+                                    str(cls.principal), str(ed), str(ml),
+                                    "--generation", str(generation)],
+                                   stdout=subprocess.PIPE, timeout=60, check=True)
+            path.write_text(json.dumps({"format": "fn-verify-keyring-v1",
+                                        "principals": [json.loads(entry.stdout)]}))
+            return path
+        # The reader's own keyrings: one pins the signing keys, one pins only
+        # the keys the principal rotated to (a reader who learned of the rotation).
+        cls.reader_keyring = keyring(root / "reader.json", cls.ed_public, cls.ml_public, 1)
+        cls.rotated_keyring = keyring(root / "rotated.json", cls.ed_public_2,
+                                      cls.ml_public_2, 2)
+
+        cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
+                                     cwd=ROOT, env=native_environment(),
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            line = wait_for_announcement(cls.owner, b"LISTENING ")
+            assert line == "LISTENING {}\n".format(cls.port).encode(), line
+            cls.invoke("hybrid-enroll", cls.control, "1", cls.principal, cls.ed_public,
+                       cls.ml_public)
+            source = (b"From: agent@example.invalid\r\nDate: Sat, 26 Sep 2026 12:00:00 +0000"
+                      b"\r\nNewsgroups: fn.agents\r\nSubject: signed provenance\r\n"
+                      b"Message-ID: <provenance-signed@example.invalid>\r\n\r\n"
+                      b"signed body\r\n")
+            (root / "signed.eml").write_bytes(source)
+            cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public, cls.ed_secret,
+                       cls.ml_public, cls.ml_private, root / "signed.eml",
+                       root / "signed-carried.eml")
+            cls.signed_reply = cls.post((root / "signed-carried.eml").read_bytes())
+            cls.plain_reply = cls.post(source.replace(b"provenance-signed", b"provenance-plain")
+                                       .replace(b"signed provenance", b"plain provenance"))
+        except BaseException:
+            print("owner stderr:\n" + stop_and_diagnostics(cls.owner, timeout=60), flush=True)
+            cls.temporary.cleanup()
+            raise
+
+    @classmethod
+    def post(cls, octets):
+        node = fn_verify.Node("127.0.0.1", cls.port, cafile=str(cls.cert),
+                              credentials=(cls.USER, cls.SECRET), timeout=120.0)
+        try:
+            status = node.command("POST")
+            assert status.startswith("340"), status
+            node.sock.sendall(dot_stuff(octets) + b".\r\n")
+            return node.line()
+        finally:
+            node.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_and_diagnostics(cls.owner, timeout=60)
+        cls.owner.stdout.close()
+        cls.owner.stderr.close()
+        cls.temporary.cleanup()
+
+    def page(self, msgid, keyring):
+        args = SimpleNamespace(host="127.0.0.1", port=self.port, timeout=60.0, plain=False,
+                               cafile=str(self.cert), keyring=str(keyring) if keyring else None)
+        server = fn_web.WebServer(0, fn_web.Backend(args, self.USER, self.SECRET))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=120)
+            conn.request("GET", "/find?" + urlencode({"id": msgid, "group": "fn.agents"}))
+            reply = conn.getresponse()
+            answer = reply.status, reply.read().decode("utf-8")
+            conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(5)
+        self.assertEqual(answer[0], 200, answer[1][-2000:])
+        self.assertNotIn(self.SECRET, answer[1])
+        return answer[1]
+
+    def fact(self, page, name):
+        found = re.search("<dt>" + re.escape(name) + "</dt><dd>(.*?)</dd>", page)
+        self.assertIsNotNone(found, name)
+        return found.group(1)
+
+    def test_enrollment_rotation_and_revocation_beside_the_historical_verdict(self):
+        self.assertTrue(self.signed_reply.startswith("240"), self.signed_reply)
+        self.assertTrue(self.plain_reply.startswith("240"), self.plain_reply)
+        p = "55" * 32
+        signed, plain = "<provenance-signed@example.invalid>", "<provenance-plain@example.invalid>"
+
+        def facts(msgid, keyring):
+            page = self.page(msgid, keyring)
+            return (self.fact(page, "The node's historical verdict"),
+                    self.fact(page, "Current enrollment or authorization"),
+                    self.fact(page, "Independent verification here"))
+
+        verdict, current, own = facts(signed, self.reader_keyring)
+        self.assertIn("<span class='badge active'>active</span> principal %s is enrolled "
+                      "now at keyring generation 1" % p, current)
+        self.assertIn("<code>active %s keyring 1</code>" % p, current)
+        self.assertIn("<span class='badge verified-here'>verified-here</span> verified here: "
+                      "principal " + p, own)
+        _, plain_current, plain_own = facts(plain, self.reader_keyring)
+        self.assertIn("<span class='badge none'>none</span> the node&#x27;s recorded verdict "
+                      "names no principal", plain_current)
+        self.assertIn("<span class='badge failed-here'>failed-here</span> failed here: "
+                      "no-carrier", plain_own)
+        _, _, no_keyring = facts(signed, None)
+        self.assertIn("<span class='badge not-performed'>not-performed</span> not performed: "
+                      "no keyring", no_keyring)
+
+        # Rotation: the principal enrolls new keys at generation 2.  The node's
+        # current fact moves; its historical verdict does not.
+        self.invoke("hybrid-enroll", self.control, "2", self.principal, self.ed_public_2,
+                    self.ml_public_2)
+        verdict_2, current_2, _ = facts(signed, self.reader_keyring)
+        self.assertEqual(verdict_2, verdict)
+        self.assertIn("<span class='badge retired'>retired</span> principal %s has enrolled "
+                      "again since: its current keyring generation is 2" % p, current_2)
+        _, _, rotated_own = facts(signed, self.rotated_keyring)
+        self.assertIn("<span class='badge failed-here'>failed-here</span> failed here: "
+                      "key-not-pinned", rotated_own)
+
+        # Revocation at generation 3.
+        self.invoke("hybrid-revoke", self.control, "3", self.principal)
+        verdict_3, current_3, own_3 = facts(signed, self.reader_keyring)
+        self.assertEqual(verdict_3, verdict)
+        self.assertIn("<span class='badge revoked'>revoked</span> principal %s is revoked: "
+                      "its newest keyring entry is the revocation at generation 3" % p,
+                      current_3)
+        # The reader's own check is its own: its keyring still pins the keys.
+        self.assertIn("verified-here", own_3)
 
 
 def fn_client_first(fields, name):

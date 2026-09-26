@@ -55,6 +55,10 @@ Other flags: `--port` picks the local HTTP port (default 8919). `--from 'Name
 is what `fn_client.py` writes; the node checks that it is a mailbox list).
 `--marks FILE` moves the read marks, and `--no-marks` keeps them in memory only.
 `--plain` (no TLS, no login) is accepted only for a loopback development node.
+`--keyring FILE` names your own `fn-verify-keyring-v1` file (the principals
+and keys you pin; `tools/fn_verify.py`'s keyring-entry form writes an entry),
+and each article page then checks the article's bytes against it; the node's
+keyring is never read.
 
 ## The pages
 
@@ -145,9 +149,17 @@ Opening an article marks it read in the client's file.
 author (the From line, which nobody has checked), which authorship carriers
 the article holds (`FN-Statement`, `FN-Authorship`), the node's historical
 verdict (`HDR :fn-verified`, what the node recorded; a key retired later does
-not change it), current enrollment ("not available": the node serves no query
-for a key's current status), and independent verification ("not performed:
-carried but not independently verified here").
+not change it), current enrollment (the node's `HDR :fn-enrollment` for the
+Message-ID it served: `active`, `retired` or `revoked` with the principal's
+current keyring generation, `unenrolled`, or `none` with why; "not available"
+when the node gives no answer in that grammar; it is the node's current
+keyring view, never folded into the historical verdict), and independent
+verification here (this client's own `tools/fn_verify.py check-article` over
+the article's exact bytes with the keyring you gave `--keyring`: "verified
+here" with the principal and whose keyring, "failed here" with the reason, or
+"not performed" with why, for instance no keyring configured). The node
+decides nothing in the fifth fact. The grammar of every line is
+specs/human-client.md, "Reader metadata lines".
 
 **A withdrawn article.** Opening a withdrawn number (or looking up a
 withdrawn Message-ID) gives a 410 page quoting the node's `423 withdrawn` or
