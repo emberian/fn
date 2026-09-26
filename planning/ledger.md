@@ -13,19 +13,19 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 942 |
 | Certification roots in the Makefile | 924 |
 | Books inside the root closure | 938 |
-| `defthm` and `defthmd` events | 13192 |
-| `defun` events | 9146 |
+| `defthm` and `defthmd` events | 13199 |
+| `defun` events | 9152 |
 | Functions with verified guards | 2198 |
 | Functions declared `:verify-guards nil` and never verified | 726 |
-| Functions left at the default with an explicit guard | 4861 |
-| Functions left at the default with no guard | 1361 |
-| `assert-event` checks | 13598 |
-| `must-fail` checks | 1540 |
+| Functions left at the default with an explicit guard | 4865 |
+| Functions left at the default with no guard | 1363 |
+| `assert-event` checks | 13601 |
+| `must-fail` checks | 1542 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 114 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 134 |
+| Teeth-form warnings | 135 |
 | Include-hygiene warnings | 950 |
 | Host-names warnings | 1071 |
 | Hand-written-record warnings | 18 |
@@ -407,7 +407,7 @@ that `make certify` requests.
 | `books/native-hybrid-control.lisp` | root | 3 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/native-live-status.lisp` | root | 56 | 47 | 0/14/33/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 40 | 104 | 0/0/104/0 | 0 | 0 | 1 |
+| `books/native-operator.lisp` | root | 47 | 109 | 0/0/108/1 | 0 | 0 | 1 |
 | `books/nntp-auth-fold.lisp` | root | 52 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 31 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 122 | 60 | 42/3/14/1 | 0 | 0 | 3 |
@@ -864,7 +864,7 @@ that `make certify` requests.
 | `tests/acl2/native-live-status-tests.lisp` | root | 0 | 8 | 0/5/2/1 | 51 | 15 | 0 |
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
-| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 202 | 19 | 0 |
+| `tests/acl2/native-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 205 | 21 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 336 | 83 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
