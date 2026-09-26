@@ -413,7 +413,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-326 owner-invariants and owner-control-read: a quiet re-measure, never a lane (sweep 10)
 - PKT-371 one quiet re-measure of the five books over 10 s under load today, native-operator's growth watched (sweep 11); two more at fac2c417: peer-authored-accept 11.5 s, topic-history-store-invariants 11.4 s (sweep 12)
 - PKT-373 reap the merged lanes' persvati REPL sessions; identify opv-mirror2 (sweep 11)
-- PKT-380 the merge certifications of operator-daily's and peer-feeds' bytes and batches K to N's gate owed at the head (sweep 12)
+- ~~PKT-380~~ the merge certifications of operator-daily's and peer-feeds' bytes and batches K to N's gate owed at the head (sweep 12) — retired at 4e2625ba
 - PKT-381 the cite step's traps: a grep exit status skipped two `farm.py submit`s; harvest.sh --root (sweep 12)
 - PKT-382 hbox scratch the window's lanes left (never the chain-20000 fixture) (sweep 12)
 - PKT-442 FOR EMBER: seven barriers on a 90-percent-full pool with no SLOG; an SLOG or pool for the node, PKT-441, group commit, or the staging fsync (sweep 12)
