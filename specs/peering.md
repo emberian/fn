@@ -1719,7 +1719,7 @@ or the statement's change is already in the keyring at a later generation
 (`already-acted`); a statement that declines again is reported `declined
 REASON`.
 
-SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened
+SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened, and a friend whose keys succeeded since genesis is peered under its current keys, never under a superseded set
 
 **A login's signing binding, live (PKT-221, PRF-175).** The posting policy's
 login-to-principal table (`posting-policy bound-logins`,

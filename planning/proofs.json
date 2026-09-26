@@ -6523,6 +6523,55 @@
         "fn-lb-a-connection-opened-after-a-publication-is-bound-anew",
         "fn-native-auth-admin-effect-word-applied-only-when-published"
       ]
+    },
+    {
+      "id": "PRF-179",
+      "title": "A friend whose keys succeeded since genesis is peered under its current keys: a peering document binds a principal this node's keyring holds only by its current enrolment (the genesis identity otherwise), and the confirm of a current acceptor completes at its consumption; `peer list' shows the carriage budget an older reader still parses past; the transit log names the admission verdict beside the class; `account list' names a binding row",
+      "statement": "Subject fn-pinv-document (books/peer-invite.lisp) under the owner's keyring (fn-owner-hybrid-snapshots), reached through fn-pinv-issue-plan, fn-pinv-accept-record-plan / fn-pinv-accept-step and fn-pinv-confirm-record-plan / fn-pinv-confirm-step, which host/peer-invite-host.lisp wraps for host/native/peer-invite.lisp fnn-pinv-owner-issue, fnn-pinv-owner-accept, fnn-pinv-owner-confirm and fnn-pinv-owner-enrol-confirmed. (1) fn-pinv-document-binds-a-known-principal-only-at-its-current-keys: when the keyring has a generation for P (fn-hl-current-for-principal), a document that passes is signed by exactly P's current enrolment (a superseded key set is refused `not-current-keys`, a revoked P `revoked`). (2) fn-pinv-document-of-a-current-enrolment-is-accepted: every other check passing and P's current enrolment the carrier's key set, the document is (:ok SOURCE P K) with no genesis condition; a never-succeeded principal enrolled at its genesis keys is the instance. (3) fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision: a principal with no generation is decided exactly as under the empty keyring (the genesis identity, `genesis`). (4) fn-pinv-an-enrolling-accept-is-the-clis-plan: whenever the owner's accept step enrols, the accept plan under the empty keyring (the accepting CLI's fn-pinv-acceptance-source) is the owner's. (5) fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor and fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption: the confirm step answers (:current), enrolling nothing, only for a bound acceptance whose row this acceptance consumed and whose principal is current at its keys, and does so right after that consumption. (6) books/native-admin-peer-budget.lisp, the report fn-native-admin-query-report (host/native-admin-host.lisp fn-native-admin-host-query-report, `peer list`) and fn-nls-report (:peers) serve: fn-native-admin-peer-budget-decode-reads-the-configured-budget, fn-native-admin-peer-extra-decode-reads-past-the-budget (over clean rows the older reader reads the same values and leaves the budget words), fn-native-admin-peer-budget-row-octets-extends-the-older-line. (7) fn-pcb-transit-refusal-detail-is-the-class-and-the-verdict (no hypotheses; host/owner-host.lisp fn-owner-transit-refusal-class from host/native/owner.lisp fnn-owner-transit-class) with books/owner-log.lisp fn-olog-detail-fields (by definition, not cited): the transit log's `detail=CLASS verdict=VERDICT`. (8) fn-acct-list-word-is-pending-only-for-a-pending-row (books/account-list.lisp, served by books/native-live-status.lisp for `account list`). Not claimed: that the keyring's succession is honest (a key statement's admission, PRF-098); an invitation from a succession-era inviter unknown to the invitee (it is refused `genesis`: no succession chain travels with the document); the POST reply naming a refused key change (PKT-473).",
+      "milestone": "M3",
+      "requirements": [
+        "SEC-005"
+      ],
+      "depends_on": [
+        "PRF-097",
+        "PRF-098",
+        "PRF-099",
+        "PRF-124",
+        "PRF-160"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "books/native-admin-peer-budget.lisp",
+        "tests/acl2/native-admin-peer-budget-tests.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "books/account-list.lisp",
+        "tests/acl2/account-list-tests.lisp",
+        "host/peer-invite-host.lisp",
+        "host/native/peer-invite.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_peer_invite.py",
+        "tests/test_native_hybrid_author.py"
+      ],
+      "events": [
+        "fn-pinv-document-binds-a-known-principal-only-at-its-current-keys",
+        "fn-pinv-document-of-a-current-enrolment-is-accepted",
+        "fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision",
+        "fn-pinv-an-enrolling-accept-is-the-clis-plan",
+        "fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor",
+        "fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption",
+        "fn-native-admin-peer-budget-decode-reads-the-configured-budget",
+        "fn-native-admin-peer-extra-decode-reads-past-the-budget",
+        "fn-native-admin-peer-budget-row-octets-extends-the-older-line",
+        "fn-pcb-transit-refusal-detail-is-the-class-and-the-verdict",
+        "fn-acct-list-word-is-pending-only-for-a-pending-row"
+      ]
     }
   ]
 }
