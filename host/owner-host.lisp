@@ -89,6 +89,7 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
+(include-book "../books/owner-open-carried")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -2025,8 +2026,14 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (id (fn-own-next-id before))
-         (opened (fn-ocfg-open (fn-owner-ocfg state)
-                               (fn-owner-auth state)))
+         ; fn-ocar-ocfg-open (books/owner-open-carried.lisp) is fn-ocfg-open
+         ; under the configured owner's relation
+         ; (fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation): the greeting
+         ; takes the view archive's fn-statep, the store node's
+         ; fn-node-statep and the configuration's fn-cfgp from the relation
+         ; instead of evaluating them per connection (PKT-455 (1)).
+         (opened (fn-ocar-ocfg-open (fn-owner-ocfg state)
+                                    (fn-owner-auth state)))
          (state (fn-owner-install-ocfg (cdr opened) state))
          (state (fn-owner-install-effects (car opened) state))
          (state (f-put-global 'fn-owner-log-line
@@ -2110,7 +2117,11 @@
          (peer (if (equal peer :bad) nil peer))
          (before (fn-owner-core state))
          (id (fn-own-next-id before))
-         (r (fn-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
+         ; fn-ocar-exp-open is fn-exp-open under the configured owner's
+         ; relation (fn-ocar-exp-open-is-exp-open-under-ocl-relation,
+         ; books/owner-open-carried.lisp): its reader arm opens through
+         ; fn-ocar-ocfg-open, which evaluates no whole-state recognizer.
+         (r (fn-ocar-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
                          (fn-owner-exposure-limits state) (fn-owner-auth state)
                          peer (cons family address)
                          (fn-owner-exposure-now state)))

@@ -28,6 +28,7 @@
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
+(include-book "books/owner-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")

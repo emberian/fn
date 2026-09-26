@@ -46,6 +46,7 @@
 (include-book "records-concrete-owner")
 (include-book "owner-served-bound")
 (include-book "public-exposure")
+(include-book "owner-open-carried")
 (include-book "store-node-resolution")
 (include-book "consumer-event-index-store-invariants")
 (include-book "bp-signed-binding")
@@ -479,6 +480,17 @@
                                 fn-osi-ocfg-open-keeps-store)
                               (theory 'minimal-theory)))))
 
+(defthm fn-osi-ocar-exp-open-keeps-store
+  (equal (fn-own-store (fn-ocfg-owner
+                        (fn-exp-open-ocfg
+                         (fn-ocar-exp-open oc st limits auth peer address now))))
+         (fn-own-store (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ocar-exp-open fn-exp-open-ocfg fn-osi-exp-at-one
+                                fn-osi-ocfg-open-keeps-store
+                                fn-ocar-ocfg-open-keeps-store)
+                              (theory 'minimal-theory)))))
+
 ; -----------------------------------------------------------------------------
 ; The host's owner transitions, one arm per owner host/owner-host.lisp
 ; installs (fn-owner-install-ocfg or fn-owner-replace-core), with the ACL2
@@ -498,8 +510,11 @@
 ;   :outcome         the served POST outcome                  fn-acar-own-outcome
 ;   :open-peer       fn-owner-open-peer                       fn-ocfg-open-peer
 ;   :read-step       fn-owner-tls-established                 fn-ocfg-read-step
-;   :open            fn-owner-open                            fn-ocfg-open
-;   :exposure-open   fn-owner-exposure-open                   fn-exp-open
+;   :open            fn-owner-open                            fn-ocar-ocfg-open
+;   :exposure-open   fn-owner-exposure-open                   fn-ocar-exp-open
+;
+; The two open arms are the carried opens (books/owner-open-carried.lisp),
+; equal to fn-ocfg-open and fn-exp-open under fn-ocl-relation.
 ;   :read            fn-owner-chunk                           fn-scar-ocfg-read-tls-prefix
 ;   :fault           fn-owner-fault                           fn-ocfg-fault
 ;   :observe         fn-owner-observe                         fn-ocfg-observe
@@ -535,9 +550,9 @@
                  oc (cdr (fn-acar-own-outcome (fn-ocfg-owner oc) a b))))
       (:open-peer (cdr (fn-ocfg-open-peer oc a b)))
       (:read-step (cdr (fn-ocfg-read-step oc a b)))
-      (:open (cdr (fn-ocfg-open oc a)))
+      (:open (cdr (fn-ocar-ocfg-open oc a)))
       (:exposure-open
-       (fn-exp-open-ocfg (fn-exp-open oc a b c (car (cddddr ev))
+       (fn-exp-open-ocfg (fn-ocar-exp-open oc a b c (car (cddddr ev))
                                       (cadr (cddddr ev))
                                       (caddr (cddddr ev)))))
       (:read (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc a b)))
@@ -572,7 +587,9 @@
                          fn-osi-ocl-publish-keeps-indexed
                          fn-osi-ocfg-with-owner-store fn-osi-own-keeps-store-outside-step
                          fn-osi-osb-install-keeps-store fn-osi-ocfg-open-keeps-store
-                         fn-osi-exp-open-keeps-store fn-scar-ocfg-read-keeps-store)
+                         fn-osi-exp-open-keeps-store fn-scar-ocfg-read-keeps-store
+                         fn-ocar-ocfg-open-keeps-store
+                         fn-osi-ocar-exp-open-keeps-store)
                        (theory 'minimal-theory)))))
 
 (defthm fn-osi-host-run-keeps-indexed
