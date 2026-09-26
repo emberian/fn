@@ -167,7 +167,53 @@ calling the same function.
 
 ## Native (item 3; hbox, /tank/fn/scratch/bp-lifecycle-5, `native.sh aec4a14a`)
 
-NATIVE_SECTION
+Image at `aec4a14a` (DTN developer `0af8befb…`, core `ce71a2e0…`; build log
+0 undefined, 0 ACL2 errors). `45e63b0e` changes one defun's `:verify-guards`
+placement (the same guard event verifies it two forms later; the executable
+definition is the same), and `71deaa34` only adds the open's profile line;
+neither was rebuilt into this gate. /tank/fn/node was not touched.
+
+| module | result | log SHA-256 |
+| --- | --- | --- |
+| test_bp_service_native | OK 17 | 9fce0a22… |
+| test_bp_contact_native | OK 2 | caae1f2a… |
+| test_bp_contact_relay_native | OK 1 | 6cdd5c48… |
+| test_bp_app_native | OK 5 | 235228cd… |
+| test_bp_node_native | OK 27 | a1058ce6… |
+| test_bp_receive_integrity_native | OK 4 | b60609b5… |
+| test_bp_fragment_node_native | 6 OK, SCN-077 error (below) | 7fc9f6ae… |
+
+The six fragment cases that pass include bp-lifecycle-4's new ones (ADU past
+the profile refused before custody, journal past its profile refused at
+open) and the kill, rotation, 64- and 70-fragment families.
+
+**SCN-077: the arrivals are done; the open is the next obstruction.** The
+10,486,094-octet ADU was authored as 2,622 fragments in 27.3 s, and the first
+half (1,311 fragments, four `tcpcl send` workers) was received in 90.2 s:
+under 70 ms a fragment, where bp-lifecycle-4 measured 6.3 s per arrival at
+140 held rows. The receiver was killed and the journal rotated ("generation
+retired" asserted). The harness's next step, `bp-node dispatch` to count the
+recovered rows (its 120 s timeout), timed out: the error is the harness's
+timeout, the cause is the open's cost (implementation, not a behavioural
+failure; nothing was refused or lost). Measured on `71deaa34` (the same
+first half, `FN_BP_TEST_PROFILE` on the open, profiled):
+
+- `bp-node dispatch` before the rotation: 51.9 s to open 1,311 held rows:
+  `fn-bpb-encode` 3,933 calls (three per row, 23.5 s), `fn-bpb-decode` 1,311
+  calls executed as the unverified executable counterpart (15.7 s, 12 ms per
+  4 KiB bundle), and `fn-bpnf-held-octets` 2,623 calls (10.0 s, quadratic:
+  `fn-bpnf-recovery-heldp` and the replay re-sum the suffix's wire lengths per
+  row). About 40 ms per row plus the quadratic term: at 2,621 rows about two
+  and a half minutes, past both the harness's 120 s dispatch and its 45 s
+  wait for a restarted receiver's LISTENING line.
+- `bp-node checkpoint` (the rotation) at 1,311 rows had run for more than
+  eight minutes when this record was written, and the reopen after it had not
+  started; both land in `/tank/fn/scratch/bp-lifecycle-5/logs-71deaa34/open-table.txt`
+  (driver `open.py`, `run-open.sh 71deaa34`). The same run's rotation inside
+  SCN-077 passed the harness's 120 s at 1,311 rows unprofiled.
+
+Whole-family wall time and bytes copied at 10 MiB: not measured (the family
+did not complete). PKT-308 items 4 and 5.
 
 ## Assurance chain
 
@@ -205,7 +251,17 @@ the plans and steps bounds → observed: the session rows above and SCN-077.
 3. The work bound is a theorem about the selector's executable body and the
    three scans' prefilters; there is no single counting theorem over a whole
    `bp-node serve` session.
-4. PKT-309 to PKT-311 (sender job image, resumable decode, profile edges) and
+4. SCN-077's open: a journal of 1,311 held 4 KiB fragments opens in 51.9 s
+   (three re-encodings per row, the bundle decoder run unverified, and a
+   quadratic sum of held octets in `fn-bpnf-recovery-heldp` and replay), so
+   the restarted receiver misses the harness's 45 s and 120 s waits at the
+   family's second half. Next: guard-verify the replay's bundle decode, carry
+   the running octet sum through `fn-bpnf-recovery-heldp` (a linear twin with
+   an equality theorem), and drop the redundant re-encodings at replay;
+   then rerun SCN-077 (the harness timeouts are the harness's to widen only
+   once the open is linear).
+5. The whole-family wall time and bytes copied at 10 MiB (needs item 4).
+6. PKT-309 to PKT-311 (sender job image, resumable decode, profile edges) and
    tools/run_bp_receive.py's 65,538 are untouched.
 
 ## Also done
