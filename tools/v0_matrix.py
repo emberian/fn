@@ -680,6 +680,13 @@ PLAN = (
       "an article submitted through `operator post` reaches INN through fn's feed, "
       "injected with fn's Path (IHAVE 335/235)",
       ("REP-001",), ("SCN-023",), ACCEPTED),
+    S("V0-INN-SUPPLIED-PATH", "F-INN",
+      "a POST to fn that supplies `Path: not-for-mail`, as tin sends, draws 240 "
+      "and reads back (D32: the injecting agent prefixes its identity, RFC 5537 "
+      "3.4.1 and 3.2.1)",
+      ("NNT-012",), ("SCN-050",), ACCEPTED, "single",
+      "read from inn_lab's fn-post-supplied-path-240, which checks the 240 and the "
+      "ARTICLE 220 of the read-back; the Path prefix itself is the post book's"),
 
     # -- F-CLIENT --------------------------------------------------------
     S("V0-CLIENT-NNTPLIB", "F-CLIENT",
@@ -690,13 +697,8 @@ PLAN = (
     # The "client" phase: tin 2.6.2 in a tmux pane, its wire recorded by
     # tools/nntp_wire_log.py; each verdict is the node's reply line to the
     # command tin sent (planning/evidence/spike-reader-2026-09-25.md, D32).
-)
-
-# The tin client rows (reader-surface, PKT-111).  They enter PLAN with the first
-# matrix run that publishes them: planning/v0-matrix.json is written only by a
-# run, and `--check` refuses a planned row the file lacks.  Move them into PLAN
-# in the commit that archives that run.
-PENDING_TIN_PLAN = (
+    # The tin client rows (reader-surface, PKT-111); tools/tin_drive.sh drives
+    # tin.
     S("V0-CLIENT-TIN-READ", "F-CLIENT",
       "tin opens a group and reads an article",
       ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "single",
@@ -738,6 +740,7 @@ INN_ROWS = (
     ("V0-INN-SERVING-AGENT", ("fn-serves-own-path-identity",
                               "fn-serves-no-sender-xref")),
     ("V0-INN-OPERATOR-POST", ("operator-post-feeds-inn",)),
+    ("V0-INN-SUPPLIED-PATH", ("fn-post-supplied-path-240",)),
 )
 INN_ROW_KEYS = ("V0-INN-INTEROP",) + tuple(key for key, _ in INN_ROWS)
 
