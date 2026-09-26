@@ -3477,11 +3477,15 @@
         "measurement"
       ],
       "evidence": [
-        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/catalog-commit.lisp",
+        "books/catalog-delta.lisp",
+        "books/catalog-record.lisp",
         "books/catalog.lisp",
-        "books/catalog-record.lisp"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "tests/acl2/catalog-commit-tests.lisp",
+        "tests/acl2/catalog-delta-tests.lisp"
       ],
-      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585).",
+      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
     },
     {
@@ -3501,7 +3505,7 @@
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585).",
+      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585). catalog-slice-2 (2026-09-26): the relation between the catalog's columns and the store's history is proved at every entry (fn-cat-load-establishes-relation) and preserved by the completion; the served reads (PRF-204) remain PKT-585.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
     },
     {
@@ -3782,6 +3786,32 @@
         "planning/evidence/release-glibc-floor-2026-09-26.md"
       ],
       "implementation_note": "The floor runtime is SBCL 2.6.8 rebuilt from its signed source with the binary release's build-id in debian:12 (runtime GLIBC_2.34; libsodium and libfn-mldsa65 GLIBC_2.33 unchanged). Rehearsed on the AJ core (088f6de7) repackaged with --frozen, so that tarball is ungated; the next gated Linux release must pass --runtime-from, or its runpath check refuses it."
+    },
+    {
+      "id": "NNT-042",
+      "title": "A reader connection's view is a version that advances at GROUP and LISTGROUP between commands and is fixed within a command; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it advances past it",
+      "specification": "specs/nntp.md#sessions-and-framing",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-203",
+        "PRF-202"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "books/catalog-delta.lisp",
+        "tests/acl2/catalog-delta-tests.lisp",
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "keystones": [
+        "fn-view-cancel-after-target"
+      ],
+      "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
+      "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     }
   ]
 }

@@ -3698,14 +3698,23 @@
       "status": "specified",
       "requirements": [
         "REP-013",
-        "STO-027"
+        "STO-027",
+        "NNT-042"
       ],
       "steps": [
-        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn)."
+        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn).",
+        "ACL2 half (catalog-slice-2): tests/acl2/catalog-delta-tests.lisp cdt-exec: on the live catalog over the live arena, connection A advances to version 2 before the cancel; the cancel's :withdraw delta and its own row commit; connection B advances to version 3; fn-view-sees at A's and B's versions of row 0 and of the cancel's row.",
+        "ACL2 half over the view (catalog-slice-4): tests/acl2/catalog-view-tests.lisp cvt-run: the view at version 2 over the mixed history (two articles, a retention event skipped) built on live stobjs; the machine's own lookups (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build) equal the walks fn-cat-view-find / fn-cat-view-bound-find; a cancel of row 0 committed at count 2 leaves row 0 in the view at version 2 (2 articles) and out of the view at version 3 (1 article)."
       ],
-      "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423.",
-      "evidence": [],
-      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585)."
+      "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423. ACL2 half: A (version 2) sees row 0 and not the cancel's row; B (version 3) does not see row 0 and sees the cancel's row; a delta does not move A's version.",
+      "evidence": [
+        "tests/acl2/catalog-delta-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T212645Z-2809134.json",
+        "tests/acl2/catalog-view-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T222802Z-3457759.json",
+        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json"
+      ],
+      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585); the ACL2 half runs in catalog-delta-tests (catalog-slice-2)."
     },
     {
       "id": "SCN-123",
