@@ -401,6 +401,12 @@ before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
 machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
 with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
 stack=KB KB threads=N`.
+A bare `init` (no preset word, no field flag) writes the largest preset whose
+whole reservation, at the configuration's default max-connections, this
+machine holds: scale, then development, else the small preset
+(`fn-heap-reserve-init-request`, PKT-582); before, it wrote the default
+preset, whose history bound no machine holds, and the launcher refused the
+store it had just made.
 
 ### The served reader path
 

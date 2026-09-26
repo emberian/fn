@@ -255,3 +255,59 @@
   (equal (fn-heap-decision-exit-code
           (list :refused :machine-cannot-hold-threads mb machine-mb))
          1))
+
+; -----------------------------------------------------------------------------
+; What a bare `init' writes (PKT-582).  heap-figure's fn-heap-init-request
+; gives the small preset under 4 GiB and the operator's request otherwise, and
+; the bare request is the default preset, whose H of 1 TiB no machine holds:
+; `init' made a store the launcher then refused.  A bare request now resolves
+; to the largest preset whose whole reservation (fn-heap-reserve-decide, at
+; the configuration's default max-connections) the observed machine holds:
+; scale, then development, else the small preset (which a machine under its
+; figure then refuses by name at start).  Every other request is the
+; operator's, unchanged.
+
+(defconst *fn-heap-init-presets* '((:scale nil) (:development nil)))
+
+(defun fn-heap-reserve-acceptsp (request core nursery observations)
+  (declare (xargs :guard t))
+  (equal (car (fn-heap-reserve-decide (fn-bs-profile-resolve request nil)
+                                      core nursery observations
+                                      *fn-ncfg-default-max-connections*))
+         :heap))
+
+(defun fn-heap-reserve-init-choose (presets core nursery observations)
+  (declare (xargs :guard t))
+  (cond ((atom presets) *fn-heap-small-request*)
+        ((fn-heap-reserve-acceptsp (car presets) core nursery observations)
+         (car presets))
+        (t (fn-heap-reserve-init-choose (cdr presets) core nursery observations))))
+
+(defun fn-heap-reserve-init-request (request core nursery observations)
+  (declare (xargs :guard t))
+  (if (equal request '(:default nil))
+      (fn-heap-reserve-init-choose *fn-heap-init-presets* core nursery observations)
+    request))
+
+; KEYSTONE (PKT-582).  On every machine that holds the small preset's whole
+; reservation, a bare `init' writes a profile whose whole reservation that
+; machine holds: the launcher accepts the store `init' made.
+(defthm fn-heap-reserve-init-request-is-accepted-where-small-is
+  (implies (fn-heap-reserve-acceptsp *fn-heap-small-request* core nursery observations)
+           (fn-heap-reserve-acceptsp
+            (fn-heap-reserve-init-request '(:default nil) core nursery observations)
+            core nursery observations))
+  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp))))
+
+; And the choice is the largest preset the machine holds: scale when it
+; holds scale.
+(defthm fn-heap-reserve-init-request-takes-scale-when-it-fits
+  (implies (fn-heap-reserve-acceptsp '(:scale nil) core nursery observations)
+           (equal (fn-heap-reserve-init-request '(:default nil) core nursery observations)
+                  '(:scale nil)))
+  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp))))
+
+(defthm fn-heap-reserve-init-request-keeps-the-operators-request-by-definition
+  (implies (not (equal request '(:default nil)))
+           (equal (fn-heap-reserve-init-request request core nursery observations)
+                  request)))

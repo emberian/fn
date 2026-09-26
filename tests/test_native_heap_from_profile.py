@@ -85,10 +85,7 @@ def vmhwm(pid):
     return None
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")
-@unittest.skipUnless(SMALL, "run under a memory limit of at most 2 GiB "
-                            "(tools/hbox_native.sh --mem 2G)")
-class HeapFromProfileTests(unittest.TestCase):
+class Harness:
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="fn-heap-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
@@ -210,6 +207,36 @@ class HeapFromProfileTests(unittest.TestCase):
             time.sleep(1)
         self.fail("no {!r} in the owner's log".format(pattern))
 
+
+
+@unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")
+class FreshInitTests(Harness, unittest.TestCase):
+    """PKT-582: a bare `init' on this machine, whatever its memory, writes a
+    profile the launcher then runs (books/heap-reservation.lisp
+    fn-heap-reserve-init-request): run it under --mem 2G and under a limit
+    above the machine."""
+
+    def test_a_bare_init_runs_on_this_machine(self):
+        config, port = self.config("fresh")
+        made = self.run_fn("operator", config, "init", "local.test")
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        status = self.run_fn("operator", config, "status")
+        self.assertEqual(status.returncode, EXIT_OK, text(status))
+        heap = HEAP_LINE.search(status.stdout.decode())
+        self.assertIsNotNone(heap, text(status))
+        self.assertIn(heap.group(2), ("small", "development", "scale"))
+        print("NATIVE-HEAP fresh-init profile={} figure={} MB machine={} MB".format(
+            heap.group(2), heap.group(1), heap.group(3)))
+        ids = ["<fresh-{}@example.invalid>".format(n) for n in range(3)]
+        self.start(config, port, self.tmp / "fresh.log")
+        self.post(port, ids)
+        self.stop()
+
+
+@unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")
+@unittest.skipUnless(SMALL, "run under a memory limit of at most 2 GiB "
+                            "(tools/hbox_native.sh --mem 2G)")
+class HeapFromProfileTests(Harness, unittest.TestCase):
     def test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g(self):
         config, port = self.config("small")
         made = self.run_fn("operator", config, "init", "local.test")

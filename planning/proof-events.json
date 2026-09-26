@@ -7001,6 +7001,14 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-thread-refusal-exits-1"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-init-request-is-accepted-where-small-is"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-init-request-takes-scale-when-it-fits"
         }
       ]
     }

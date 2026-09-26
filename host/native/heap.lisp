@@ -19,7 +19,7 @@
 ;;;
 ;;; `operator CONFIG status' and `health' print the same line after their
 ;;; report; `operator CONFIG init' with a bare request resolves ACL2's
-;;; `fn-heap-init-request' against the observed machine.
+;;; `fn-heap-reserve-init-request' against the observed machine.
 
 (in-package "ACL2")
 
@@ -120,8 +120,11 @@ that)."
     (fnn-out "~a" (fnn-heap-report-line (fnn-heap-store-profile root)))))
 
 (defun fnn-heap-init-request (request)
-  "The request `init' resolves: ACL2's small default on a small machine."
-  (fnn-core 'fn-heap-init-request request (fnn-heap-machine-octets)))
+  "The request `init' resolves: for a bare request, ACL2's largest preset
+whose whole reservation this machine holds (books/heap-reservation.lisp
+fn-heap-reserve-init-request, PKT-582); any other request unchanged."
+  (fnn-core 'fn-heap-reserve-init-request request (fnn-heap-core-octets)
+            +fnn-gc-nursery-octets+ (fnn-heap-observations)))
 
 ;; The profile the command ARGV will run under: the store its operator
 ;; configuration names (the init request's target for `init'), the store a
