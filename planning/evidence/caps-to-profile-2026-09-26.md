@@ -311,10 +311,12 @@ Native, hbox, `tests.test_native_peer_rows_growth` (developer image):
 | --- | --- | --- | --- | --- |
 | predecessor native-b1 | 9755f664 | 1,100 | 8,335.9 | 7.58 s |
 | native-base | a931ed8d (dev) | 300 | 251.7 | 0.84 s |
+| native-base | a931ed8d (dev) | 1,100 | 8,156.8 | 7.42 s |
 | native-after2 | bf00ae29 | 300 | 58.5 | 0.20 s |
 | native-after1 | c5233ed4 | 1,100 | 1,058.3 | 0.96 s |
 
-1,100 requests: 8,336 s -> 1,058 s (7.9x); 300 requests: 251.7 s -> 58.5 s
+1,100 requests on the same day: 8,156.8 s at dev a931ed8d -> 1,058.3 s
+(7.7x; the predecessor's 8,336 s at 9755f664 agrees); 300 requests: 251.7 s -> 58.5 s
 (4.3x). native-after1 ran while native-base's 1,100-request run (below) was
 using the box. NOT linear: 300 requests average 0.20 s and 1,100 average
 0.96 s, so a request still costs O(configuration records), now about 1 ms
@@ -328,6 +330,7 @@ one replay per request instead of five, are PKT-510.
 Logs: planning/evidence/caps-to-profile/native-peer-rows-growth-after.log
 (sha256 431bcc40...; native-after1-SHA256SUMS, developer image core
 91f321b2...), native-peer-rows-growth-base-300.log (20d01251...),
+native-peer-rows-growth-base-1100.log (9c453776...),
 native-peer-rows-live-and-rollback.log (028e3cfd..., the 300-request line
 and C3), native-after2-SHA256SUMS (developer launcher 233d4add..., production
 69ef2eea...).
