@@ -7463,7 +7463,7 @@
         "tests/test_native_own_cancel.py",
         "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "progress_note": "newsreader-cancel (2026-09-26): the decision books certified on hbox in the default-profile closure (native-wt-20260926T221729Z certify-20260926T221820Z, a lane gate, not a batch manifest); teeth REPL-admitted on persvati; tests.test_native_own_cancel OK on hbox (native-wt-20260926T222459Z, image built from 709a2cc18). The node-written lock is proved but not wired (owner completion gate). The generator's theorems (fn-cl-login-key-opens-login-lock, fn-cll-insert-adds-only-the-lines, fn-cl-served-payload-without-a-login-is-the-payload, fn-cl-key-shape, fn-cl-lock-shape) are in books/cancel-lock*.lisp and join this row's events when the owner calls fn-cl-served-payload.",
+      "progress_note": "newsreader-cancel-2 (2026-09-27): the node-written lock is in the stored octets (fn-own-sub-stored-octets under fn-own-node-secret) and the completion gate compares the same function; persvati run-20260926T231408Z-d865 green at 53dc88c1c (manifest planning/evidence/manifests/certify-20260926T231509Z-3976540.json: 175 certified incl. books/node-secret, books/cancel-lock, books/owner-served-invariants and the teeth tests/acl2/{node-secret,cancel-lock,owner-cancel-lock}-tests); tests.test_native_own_cancel OK (3 ran) on both images and test_native_control_across_peers OK on hbox native-n5; V0-CLIENT-THUNDERBIRD-CANCEL accepted on persvati. Earlier: newsreader-cancel (2026-09-26) the decision half.",
       "events": [
         "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
         "fn-ctl-verified-cause-ignores-its-keys",
