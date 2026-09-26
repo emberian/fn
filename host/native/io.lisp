@@ -2538,10 +2538,13 @@ error for the same reason."
                  (return-from fnn-command-post +fnn-exit-ok+))
                (when (eq existing :conflict)
                  (fnn-refuse "conflicting immutable Message-ID")))
-             (unless (eq (fnn-core-state 'fn-store-sn-publication-verdict
-                                         (fnn-store-config store) :article)
+             ;; ACL2's article verdict: the count gate and the history gate
+             ;; at this article's own figure (fn-sbud-article-verdict-at).
+             (unless (eq (fnn-core-state 'fn-store-sn-article-verdict
+                                         (fnn-store-config store) (length payload)
+                                         (length codes))
                          :admissible)
-               (fnn-refuse "transaction count has reached configured bound"))
+               (fnn-refuse "store budget refuses the article (transaction count or history bound)"))
              (fnn-advance-frontier store (fnn-bridge-next-txid))
              (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
                (let ((action (fnn-bridge-prepare msgid payload codes obligation subject evidence charge)))

@@ -95,6 +95,19 @@ translation carry, not one the node produces: a transaction ID past
 2^32 - 1 needs a wider frontier file (frontier-3), a stamp past 2106 and a
 charge past 2^32 - 1 need their producers widened first.
 
+The history bound H is kept by admission, not only checked at open: an
+article is charged the record ceiling of its own payload length and group
+count at the produced widths (`fn-sbud-article-figure`), both by the
+developer `store post` verdict before reservation and by the served prepare's
+budget, so an admitted article never takes the committed history past H
+(`fn-sbud-article-verdict-keeps-history`,
+`fn-sbud-prepare-under-article-budget-keeps-history`) and the next open's
+replay bound holds.  The figure does not read the profile, so a profile
+upgrade keeps every article verdict (`fn-profile-upgrade-keeps-article-verdict`).
+Before this gate an article was charged a fixed 65 538 octets, and an article
+past it could be accepted and leave the store unopenable (packet 1,
+tests/acl2/profile-monotonicity-tests).
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or

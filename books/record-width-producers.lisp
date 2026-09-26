@@ -28,6 +28,7 @@
 (include-book "store-node")
 (include-book "store-budget-naming")
 (include-book "bp-ingress")
+(include-book "store-budget-article")
 
 (local
  (defthm fn-rwp-event-coordinates-are-natural
@@ -238,3 +239,44 @@
            :in-theory (e/d (fn-bpi-record-for fn-bpi-policy-p)
                            (fn-sn-article-record fn-sn-prepare fn-record-widep
                             fn-record-uint32p)))))
+
+; The store-post sequence: the POST boundary admits the article, the article
+; verdict admits it, the producer builds its record and the prepare stages
+; it; then the committed octets plus the record are within H.  The record's
+; narrowness is the keystone above.
+(defthm fn-post-admitted-article-keeps-history
+  (implies (and (equal (fn-sbud-post-boundary profile msgid-octets
+                                              (len payload) (len groups) charge)
+                       :ok)
+                (equal (fn-sbud-article-verdict-at profile used bytes-used
+                                                   (len payload) (len groups))
+                       :admissible)
+                (not (equal (fn-sn-prepare
+                             s (fn-sn-article-record s obs msgid payload groups
+                                                     obligation-id subject
+                                                     evidence charge))
+                            s)))
+           (fn-profile-replay-within-boundp
+            profile
+            (+ bytes-used
+               (len (fn-record-encode
+                     (fn-sn-article-record s obs msgid payload groups
+                                           obligation-id subject evidence
+                                           charge))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-sbud-post-boundary-admits-a-u32-charge
+                                   (payload-length (len payload))
+                                   (group-count (len groups)))
+                        (:instance fn-sn-prepare-stages-a-narrow-article-record)
+                        (:instance fn-sbud-article-verdict-keeps-history
+                                   (payload-length (len payload))
+                                   (group-count (len groups))
+                                   (record (fn-sn-article-record
+                                            s obs msgid payload groups
+                                            obligation-id subject evidence
+                                            charge))))
+           :in-theory (e/d (fn-sn-article-record)
+                           (fn-sbud-article-verdict-at fn-sn-prepare
+                            fn-record-widep fn-sbud-post-boundary
+                            fn-profile-replay-within-boundp
+                            fn-record-stamp-of-observation)))))
