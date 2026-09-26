@@ -1,0 +1,3 @@
+cert rc=0
+built build/fn-host-developer profile=developer (138M core)
+built build/fn-host-developer-prof profile=developer (138M core)

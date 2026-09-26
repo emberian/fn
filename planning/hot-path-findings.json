@@ -6,26 +6,32 @@
   },
   "fn-acceptedp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-all-article-memberships recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-189"
   },
   "fn-article-list-shapep recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-article-msgids recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-articles-below-nextsp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-articles-freshp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-189"
   },
   "fn-bpah-apply-delivery recursion F": {
@@ -274,6 +280,7 @@
   },
   "fn-ccar-seek recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (h)"
   },
   "fn-cei-build-aux recursion N": {
@@ -310,22 +317,27 @@
   },
   "fn-ctl-articles-withdrawals recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-configs-through recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-drop-via recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-has-msgid-p recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-lookup-verdict recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-msgid-withdrawn recursion N": {
@@ -334,18 +346,22 @@
   },
   "fn-ctl-record-txid recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-subseq-diff recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-subseq-diff true-list-fix N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-ctl-visible-filter recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (b)"
   },
   "fn-cvec-debt-extend len N": {
@@ -362,14 +378,17 @@
   },
   "fn-find-article recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-330 (2)"
   },
   "fn-index-build recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (1)"
   },
   "fn-midx-build recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (1)"
   },
   "fn-nh-forward-charge recursion N": {
@@ -394,34 +413,42 @@
   },
   "fn-nntp-available-article recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-find-group-number recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-group-count recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-group-high recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-group-last-number recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-group-low recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-group-next-number recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-group-range-numbers recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-index-config-digest len N": {
@@ -430,6 +457,7 @@
   },
   "fn-nntp-newnews-scan recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
    "packet": "PKT-448 (c)"
   },
   "fn-nntp-projectionp len N": {
@@ -438,26 +466,32 @@
   },
   "fn-node-articles-have-archive-bindingsp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-189"
   },
   "fn-node-binding-ids recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-node-binding-list-shapep recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-node-binding-msgids recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-node-find-binding recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-own-refresh len N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (1)"
   },
   "fn-own-retain-find-id-unguarded recursion N": {
@@ -466,6 +500,7 @@
   },
   "fn-own-take recursion N": {
    "class": "cold",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (h)"
   },
   "fn-owner-article-count len N": {
@@ -494,10 +529,12 @@
   },
   "fn-pcar-candidatep len N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (4)"
   },
   "fn-pcar-next-lower recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (4)"
   },
   "fn-pcb-drop recursion N": {
@@ -546,34 +583,42 @@
   },
   "fn-retain-find-id recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-189"
   },
   "fn-retain-obligation-ids recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-retain-obligation-listp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-retain-release-ids recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-retain-release-listp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-retain-remove-id recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (h)"
   },
   "fn-retain-statep len N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-retain-sum recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-sbud-bytes-extend len N": {
@@ -590,6 +635,7 @@
   },
   "fn-sbud-used len N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (8)"
   },
   "fn-sco-capture true-list-fix N": {
@@ -602,6 +648,7 @@
   },
   "fn-sf-candidatep len N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-330 (2)"
   },
   "fn-sf-crash append N": {
@@ -614,10 +661,12 @@
   },
   "fn-sf-emit-success append N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-324 (3)"
   },
   "fn-sf-next-lower recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-330 (2)"
   },
   "fn-sf-prepare-record append N": {
@@ -630,14 +679,17 @@
   },
   "fn-sf-record-has-pairp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-sf-record-listp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-sf-success-listp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-sim-acceptance-durable-okp len N": {
@@ -650,6 +702,7 @@
   },
   "fn-sn-verdict-listp recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (a)"
   },
   "fn-store-sn-article-count len N": {
@@ -658,6 +711,7 @@
   },
   "fn-store-sn-finish len N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (f)"
   },
   "fn-store-sn-pin-count len N": {
@@ -666,6 +720,7 @@
   },
   "fn-stx-index-of-store recursion N": {
    "class": "unexpected",
+   "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
    "packet": "PKT-448 (d)"
   },
   "fn-stx-reader-lookup recursion N": {

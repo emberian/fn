@@ -288,7 +288,97 @@ The carried finish still walks, per commit:
 
 ## 4. The scaling rows (tools/scale_probe.py, commit 56f94181)
 
-SCALING-PENDING
+One sweep, `python3 tools/scale_probe.py box 56f94181`, ran detached on hbox
+(/tank/fn/scratch/hot-path-checker/results-56f94181, `done` = 0; every point
+rc=0). It ran on the developer image built from 56f94181 (dev 17ff24aa plus
+the tool; launcher `1795902d...`, its heap-hook twin `be36442f...`, core
+`65d26058...`), certified wholly from the cache
+(certify-20260926T102804Z-1396338, 380 of 380 books installed, 0 certified).
+The profile is the default one. The store is on tmpfs, the process is under
+`systemd-run -p MemoryMax`, and each point takes 32 samples with 3 readers.
+The fetched rows and logs are in planning/evidence/hot-path-checker-2026-09-26/rows/
+(SHA256SUMS there; the JSON rows: n1000-2k `c191d679...`, n4000-2k
+`882ac3a5...`, n10000-2k `f0beb52f...`, n1000-16k `3f480913...`, n1000-32k
+`7c0ea642...`).
+
+**These rows are for 56f94181, not dev's current bytes.** Since that commit,
+served-path-scale, hot-path-scans-2 and exposure-reply-size changed the served
+path. A rerun on the merged head is owed; that is PKT-504.
+
+Per-operation figures are the medians of 32. "bytes" is bytes consed per
+operation, which the heap hook brackets over a batch of 32. Each ratio is to
+the first row. OVER has no allocation counter in rep_measure.
+
+Varying N (2 KiB articles):
+
+| point | POST ms | POST bytes | STAT ms | STAT bytes | ARTICLE ms | ARTICLE bytes | OVER ms | greeting ms | load s | reopen s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| n1000-2k | 2.13 | 2,456,178 | 0.09 | 50,092 | 2.69 | 498,478 | 0.88 | 0.32 | 1.99 | 1.18 |
+| n4000-2k | 3.03 (x1.42) | 4,278,654 (x1.74) | 0.09 (x0.96) | 50,092 (x1.00) | 2.41 (x0.90) | 498,357 (x1.00) | 1.76 (x2.00) | 0.36 (x1.12) | 10.06 (x5.06) | 6.26 (x5.31) |
+| n10000-2k | 5.34 (x2.50) | 7,925,383 (x3.23) | 0.10 (x1.09) | 50,111 (x1.00) | 2.44 (x0.91) | 498,419 (x1.00) | 3.43 (x3.89) | 0.34 (x1.07) | 37.99 (x19.12) | 30.31 (x25.74) |
+
+Varying payload (N = 1,000):
+
+| point | POST ms | POST bytes | STAT ms | STAT bytes | ARTICLE ms | ARTICLE bytes | OVER ms | greeting ms | load s | reopen s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| n1000-2k | 2.13 | 2,456,178 | 0.09 | 50,092 | 2.69 | 498,478 | 0.88 | 0.32 | 1.99 | 1.18 |
+| n1000-16k | 10.59 (x4.96) | 11,367,778 (x4.63) | 0.09 (x0.95) | 49,566 (x0.99) | 18.36 (x6.84) | 3,471,669 (x6.96) | 1.15 (x1.31) | 0.34 (x1.06) | 10.85 (x5.46) | 4.28 (x3.63) |
+| n1000-32k | 19.63 (x9.20) | 21,546,029 (x8.77) | 0.09 (x0.94) | 49,923 (x1.00) | 35.04 (x13.05) | 6,866,286 (x13.77) | 1.66 (x1.88) | 0.35 (x1.08) | 20.55 (x10.34) | 8.40 (x7.14) |
+
+The totals for the whole run, taken from the heap figures in the same JSON,
+are bytes consed over the load and over the reopen:
+
+| point | load bytes | per POST | reopen bytes | per article |
+| --- | ---: | ---: | ---: | ---: |
+| n1000-2k | 2.15 GB | 2.15 MB | 1.57 GB | 1.57 MB |
+| n4000-2k | 12.22 GB | 3.06 MB | 6.69 GB | 1.67 MB |
+| n10000-2k | 48.79 GB | 4.88 MB | 23.86 GB | 2.39 MB |
+
+**What the rows confirm.** In each case below, the row confirms growth at an
+entry. It never names the walk; a profile does (`rep_measure --profile`).
+
+- **POST grows in N at a fixed request.** Allocation per POST rises from 2.46
+  MB to 7.93 MB, about 608 bytes per retained article per POST. The medians
+  of the load's first and last quarters at N = 10,000 are 2.07 ms and 5.05
+  ms, so the load is quadratic in total: 48.8 GB over 10,000 POSTs. This
+  confirms retained-state work on the POST entries: `fn-owner-prepare-buffer`
+  (host/native/owner.lisp:818), `fn-owner-finish` / `-finish-submission`
+  (:153/:157) and `fn-store-sn-finish`. The 38 N-finds those entries reach
+  are marked `confirmed` in planning/hot-path-findings.json, with the same
+  "aggregate" caveat. They include PKT-324 (1) (`fn-own-refresh`,
+  `fn-index-build`, `fn-midx-build`), (3), (4) and (8), and PKT-448 (b), (f)
+  and (h). The 608 B/article slope is too small for a decode of every record.
+  It fits a pointer walk plus a rebuild of per-article cells, which is what
+  `fn-index-build`'s full group rebuild does.
+- **Reopen is superlinear in N.** It takes 1.18 s, then 6.26 s, then 30.31 s,
+  and allocation per article rises from 1.57 MB to 2.39 MB. This is
+  consistent with PKT-189's quadratic archive-binding check at open and
+  PKT-223's replay. The 39 N-finds the open entries reach
+  (`fn-owner-recover-from-store-open`, host/native/owner.lisp:490, and
+  `fn-store-sn-open-extended`) are marked.
+- **OVER grows in N; STAT does not.** OVER goes from 0.88 ms to 3.43 ms (x3.89)
+  while STAT stays at about 50 KB and 0.09 ms, flat. Both go through
+  `fn-owner-chunk`, so the growth is in OVER's arm. This is PKT-301's
+  unexplained OVER term. The candidates are PKT-448 (c)'s `fn-nntp-group-*`
+  and `fn-nntp-available-article` walks; the nine `fn-nntp-*` finds are
+  marked as the row's candidates, not as measured individually.
+- **The flat STAT row refutes, for STAT, the chunk-reached recognisers.**
+  `fn-acceptedp`, `fn-node-*` and `fn-retain-*` are listed under
+  `fn-owner-chunk` path-insensitively. If they ran per STAT, STAT's
+  allocation would grow in N, and it does not. This is evidence for PKT-447's
+  path-sensitivity item, not a removal: the listing stays until the tool can
+  show the arm unreached.
+- **ARTICLE and the greeting are flat in N.** ARTICLE grows with payload
+  (x13.8 bytes at x16 octets): that is output-proportional in K, as it
+  should be. The greeting stays at about 0.34 ms. PKT-190's `len N` in the
+  greeting is below this row's resolution at N = 10,000. It is not refuted:
+  a `len` of 10,000 conses takes microseconds.
+- **POST grows with payload as well**: x8.8 bytes at x16 octets. That is
+  per-request work in B, which a find does not predict. It is recorded here
+  and not attributed.
+
+Lock-hold time and primitive visits are absent from these rows, not
+estimated (§6).
 
 ## 5. Wiring
 
