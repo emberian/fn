@@ -6542,6 +6542,35 @@
           "name": "fn-pinv-accepted-step-is-an-enrolling-plan"
         }
       ]
+    },
+    {
+      "id": "PRF-183",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-stream-writes-the-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-stream-refuses-what-the-codec-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-stream-defers-by-the-estimate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockb-file-len-is-len-file-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-blockedp-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-stream-next-is-the-capture"
+        }
+      ]
     }
   ]
 }

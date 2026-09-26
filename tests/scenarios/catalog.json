@@ -3330,6 +3330,40 @@
         "log": "planning/evidence/keys-and-accounts-2026-09-26.md",
         "record": "planning/evidence/keys-and-accounts-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-112",
+      "title": "The owner's automatic checkpoint publication: after K/2 commits the owner publishes on its own thread through the publication buffer, the file decodes and reopens as the full replay, the verb republishes it byte for byte; under a checkpoint budget the file exceeds the publication is deferred by name, nothing is written, serving continues, the retry waits for the budget, and status names the deferral",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-024",
+        "STO-016"
+      ],
+      "steps": [
+        "A development-profile store (K = 128); an owner; 64 POSTs; connections until the owner logs `CHECKPOINT auto sequence=64 suffix=64 octets=N ms=M'; stop.",
+        "`status': open=checkpoint:64 suffix=0 and checkpoint-file octets=N; the observation through four reopening verbs equals the one with the file moved aside (full replay); `store checkpoint' republishes the same bytes.",
+        "A fresh store; an owner started with FN_NATIVE_CHECKPOINT_BUDGET_TEST=1024 (developer image: the profile's budget replaced by 1,024 octets; the comparison is ACL2's); 64 POSTs; the deferral line; two more POSTs; no further CHECKPOINT line; `status' while running; stop; `status' offline; a fresh owner under the profile's budget publishes at 66."
+      ],
+      "expected": [
+        "The file the owner wrote has exactly the N octets the log named; the checkpoint open serves what the full replay serves; the verb's file is byte-identical.",
+        "`CHECKPOINT deferred reason=exceeds-budget estimate=E budget=1024 sequence=64 ms=M' with E > 1024; no checkpoint file; both later POSTs 240; the running `status' prints `checkpoint-file=absent deferred=exceeds-budget estimate=E budget=1024'; offline `status' prints `checkpoint-file=absent' and open=full-replay reason=absent with 66 transactions; the restarted owner logs `CHECKPOINT auto sequence=66 ...' and the next open reads checkpoint:66."
+      ],
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/test_native_checkpoint_auto.py",
+        "cases": [
+          "AutoCheckpointTests.test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay",
+          "AutoCheckpointTests.test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues",
+          "AutoCheckpointSourceTests.test_the_publication_thread_calls_the_stream_entry_over_its_own_buffer"
+        ],
+        "native": true,
+        "log": "planning/evidence/checkpoint-capture-stream-2026-09-26/test-tests.test_native_checkpoint_auto.log",
+        "record": "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
+      }
     }
   ]
 }

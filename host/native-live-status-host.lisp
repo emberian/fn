@@ -63,7 +63,17 @@
                                          (if (boundp-global 'fn-owner-record-octets state)
                                              (f-get-global 'fn-owner-record-octets state)
                                            nil)
-                                         obs min)
+                                         ;; PKT-492: the owner's deferred
+                                         ;; publication is the observation's
+                                         ;; sixth element (books/native-live-
+                                         ;; status.lisp fn-nls-obs-checkpoint-
+                                         ;; deferred); the host's OBS is the
+                                         ;; five-element list of
+                                         ;; host/native/io.lisp
+                                         ;; fnn-store-observation.
+                                         (append (take 5 obs)
+                                                 (list (fn-owner-sco-deferred state)))
+                                         min)
                     (if (equal kind :health)
                         (fn-owner-exposure-health state)
                       nil)))))))

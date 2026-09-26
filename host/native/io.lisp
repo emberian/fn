@@ -213,6 +213,21 @@ input the core's string entries read in place, with no list in between."
   "Empty the buffer (the fill count to 0; the array is kept)."
   (setf (svref (fnn-live-octets) 1) 0))
 
+;;; The PUBLICATION buffer: `fn-octets-pub' (books/owner-checkpoint-stream.lisp),
+;;; a second abstract stobj congruent to `fn-octets' with its own live
+;;; object.  The owner's checkpoint thread (host/native/owner.lisp
+;;; fnn-owner-publish-captured) runs OFF the service mutex and encodes the
+;;; checkpoint into this one; the served attempt's buffer above is never
+;;; touched off the mutex.  One buffer, one thread, per buffer.
+
+(defvar *fnn-octets-pub* nil)
+
+(defun fnn-live-octets-pub ()
+  (or *fnn-octets-pub*
+      (setq *fnn-octets-pub*
+            (or (cdr (assoc 'fn-octets-pub (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the publication buffer stobj is not in this image")))))
+
 (defun fnn-octets-reserve (n)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
   (fn-octets$c-reserve n (fnn-live-octets)))
@@ -396,6 +411,16 @@ every such syscall failure into an OS error."
   (let ((data (fnn-octets octets)) (offset 0))
     (loop while (< offset (length data)) do
       (let ((remaining (- (length data) offset)))
+        (incf offset
+              (fnn-write-progress
+               (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
+               remaining "store"))))))
+
+(defun fnn-write-range (fd data start end)
+  "fnn-write-all of the byte vector DATA's cells START..END, in place."
+  (let ((offset start))
+    (loop while (< offset end) do
+      (let ((remaining (- end offset)))
         (incf offset
               (fnn-write-progress
                (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
@@ -1906,6 +1931,22 @@ when there is none.  The status report (books/native-live-status.lisp
     "state-checkpoint-staged-durable" "state-checkpoint-replaced"
     "state-checkpoint-durable"))
 
+(defun fnn-checkpoint-budget-test-override (budget)
+  "Developer-only FN_NATIVE_CHECKPOINT_BUDGET_TEST=N: the checkpoint budget
+the owner's automatic publication is decided against, in place of the
+profile's (tests.test_native_checkpoint_auto's deferral case), else BUDGET
+(the owner passes nil, and host/owner-host.lisp fn-owner-sco-budget takes
+the profile's when it is not a natural).  The decision stays ACL2's:
+fn-ock-publication-stream compares the file's length with what it is handed
+and names both."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_CHECKPOINT_BUDGET_TEST")))
+    (if raw
+        (let ((value (ignore-errors (parse-integer raw))))
+          (unless (and (integerp value) (>= value 0))
+            (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BUDGET_TEST (expected a natural)"))
+          value)
+      budget)))
+
 (defun fnn-state-checkpoint-test-fault ()
   "Developer-only FN_NATIVE_STATE_CHECKPOINT_FAULT=MODEL-CUT:eio|kill selector
 for fn-bs-scp-program's five cuts."
@@ -1948,11 +1989,12 @@ one falls back to full replay."
             (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e)
             (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))))))
 
-(defun fnn-plan-p (plan)
+(defun fnn-plan-p (plan &optional (st (fnn-live-octets)))
   "A state checkpoint plan (books/store-checkpoint-buffer.lisp fn-sccb-plan):
 a nonempty list of (HEADER A B TRAILER), header and trailer nonempty octet
-lists, 0 <= A <= B <= the live buffer's fill."
-  (let ((fill (svref (fnn-live-octets) 1)))
+lists, 0 <= A <= B <= the fill of the buffer ST (the served buffer, or the
+publication buffer fnn-live-octets-pub)."
+  (let ((fill (svref st 1)))
     (and (consp plan)
          (every (lambda (frame)
                   (and (consp frame) (= (length frame) 4)
@@ -1962,13 +2004,13 @@ lists, 0 <= A <= B <= the live buffer's fill."
                        (fnn-octet-list-p (fourth frame)) (fourth frame)))
                 plan))))
 
-(defun fnn-plan-octets (plan)
+(defun fnn-plan-octets (plan &optional (st (fnn-live-octets)))
   "The plan's octets, fn-sccb-plan-octets transcribed: per frame the header,
-the live buffer's cells A..B and the trailer, into one byte vector of the
+the buffer ST's cells A..B and the trailer, into one byte vector of the
 file's size.  The buffer's array is read in place; no list of the file is
 built.  fn-sccb-plan-is-file-octets says this vector is fn-scc-file-octets
 of the value the plan was made from."
-  (let* ((buffer (the fnn-octets (svref (fnn-live-octets) 0)))
+  (let* ((buffer (the fnn-octets (svref st 0)))
          (total (loop for frame in plan
                       sum (+ (length (first frame))
                              (- (third frame) (second frame))
@@ -1984,6 +2026,22 @@ of the value the plan was made from."
         (incf pos (- b a))
         (replace out trailer :start1 pos)
         (incf pos (length trailer))))))
+
+(defun fnn-plan-write-all (fd plan st)
+  "Write the plan's octets (fn-sccb-plan-octets: per frame the header, the
+buffer ST's cells A..B, the trailer) to FD straight from ST's array: no
+vector of the file is built.  The owner's automatic publication
+(host/native/owner.lisp fnn-owner-publish-captured) hands this to
+fnn-state-checkpoint-write as the staged file's writer;
+fn-ock-publication-stream-writes-the-file (books/owner-checkpoint-stream.lisp)
+says these octets are fn-scc-file-octets of the frozen checkpoint."
+  (let ((buffer (the fnn-octets (svref st 0))))
+    (dolist (frame plan)
+      (let ((header (fnn-octets (first frame))) (a (second frame)) (b (third frame))
+            (trailer (fnn-octets (fourth frame))))
+        (fnn-write-range fd header 0 (length header))
+        (fnn-write-range fd buffer a b)
+        (fnn-write-range fd trailer 0 (length trailer))))))
 
 (defun fnn-command-state-checkpoint (root)
   "Publish the exact-state checkpoint of the recovered Store (P3).
@@ -2107,7 +2165,14 @@ the same arm as a failing write; SIGKILL leaves a staging file the
 recovery sweep owns."
   (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
     (unwind-protect (progn (fnn-at store created)
-                           (fnn-write-all fd contents)
+                           ;; CONTENTS is a byte vector, or a writer the
+                           ;; caller hands in (the owner's checkpoint plan,
+                           ;; fnn-plan-write-all: the file's bytes straight
+                           ;; from the publication buffer, no vector of the
+                           ;; file), written between the same two cuts.
+                           (if (functionp contents)
+                               (funcall contents fd)
+                             (fnn-write-all fd contents))
                            (fnn-at store written)
                            (fnn-fsync-file fd))
       (fnn-close fd))))
@@ -3582,6 +3647,7 @@ serialized profile when the saved image later starts."
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     "FN_NATIVE_PROFILE_FAULT" "FN_NATIVE_STATE_CHECKPOINT_FAULT"
+    "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
