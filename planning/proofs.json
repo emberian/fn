@@ -6747,7 +6747,9 @@
         "books/native-operator.lisp",
         "tests/acl2/store-capacity-config-tests.lisp",
         "tests/acl2/native-operator-tests.lisp",
-        "tests/test_native_group_name_bound.py"
+        "tests/test_native_group_name_bound.py",
+        "planning/evidence/manifests/certify-20260926T153141Z-3460348.json",
+        "planning/evidence/manifests/certify-20260926T154049Z-3549609.json"
       ],
       "progress_note": "Field 7 is read at both intakes (caps-to-profile-2). Open (PKT-510): the record and label widths rising to the wire's 460 (RFC 3977 section 3.1) with the ceiling taking field 7 (community-bounds section 3's design; a records-shape and byte-store-frame freeze).",
       "events": [
@@ -6757,7 +6759,10 @@
         "fn-cfg-apply-adds-at-most-the-work-bound",
         "fn-pcb-extend-deltas-apply-as-the-extend-delta",
         "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity",
-        "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+        "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity",
+        "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound",
+        "fn-cvec-accepted-group-names-are-within-the-profile",
+        "fn-nop-init-plain-groups-are-within-the-profile"
       ]
     },
     {
@@ -6774,14 +6779,17 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
         "tests/acl2/config-physical-replay-tests.lisp",
         "tests/test_native_peer_rows_growth.py",
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T153141Z-3460348.json",
+        "planning/evidence/manifests/certify-20260926T154049Z-3549609.json",
+        "planning/evidence/manifests/certify-20260926T154415Z-3583008.json"
       ],
       "progress_note": "A configuration checkpoint (the open resuming from a durable configuration state) is not built: the replay still reads and folds every configuration record, now at the record's own cost (PKT-510).",
       "events": [
