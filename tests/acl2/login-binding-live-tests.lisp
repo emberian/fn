@@ -355,3 +355,107 @@
 (assert-event (not (fn-lb-pairs-targetp *lblt-pairs-q* (list (cons *lblt-name* *lblt-p*)))))
 (assert-event (not (equal (fn-lb-binding *lblt-name* (fn-lb-conn-bindings *lblt-b* *lblt-new*))
                           (fn-lb-binding *lblt-name* (list (cons *lblt-name* *lblt-p*))))))
+
+; -----------------------------------------------------------------------------
+; PKT-473 (PRF-184): the hypotheses of
+; fn-lb-a-connection-opened-after-a-publication-is-bound-anew beyond the
+; durable one.  Each counter-witness asserts every retained hypothesis, the
+; failure of the omitted one, and the failure of the conclusion (ember is
+; not bound to Q, the file's binding, on the new connection).
+(defmacro lblt-anew-conclusion (opened new)
+  `(equal (fn-lb-binding *lblt-name* (fn-lb-conn-bindings ,opened ,new))
+          (fn-lb-binding *lblt-name* *lblt-file-q*)))
+(assert-event (fn-lb-has *lblt-name* *lblt-pairs-q*))
+(assert-event (lblt-anew-conclusion *lblt-b* *lblt-new*))
+
+; (1) Nothing staged before: OC already stages ember -> P.  The re-binding
+; to Q does not replace it; the durable record binds P.
+(defconst *lblt-p-pairs* (list (cons *lblt-name* *lblt-p*)))
+(defconst *lblt-oc1* (fn-ocfg-step *lblt-admin*
+                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-p-pairs*))))
+(defconst *lblt-st1* (fn-ocfg-step *lblt-oc1*
+                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-pub1*
+  (mv-list 2 (fn-ocl-publish *lblt-st1* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st1*))
+                             *lblt-max*)))
+(defconst *lblt-new1* (fn-own-next-id (fn-ocfg-owner (cadr *lblt-pub1*))))
+(defconst *lblt-b1* (cdr (fn-ocfg-open (cadr *lblt-pub1*) nil)))
+(assert-event (fn-ocfg-staged *lblt-oc1*))
+(assert-event (equal (car *lblt-pub1*) :durable))
+(assert-event (fn-ocl-config-historyp *lblt-st1*))
+(assert-event (not (fn-ocfg-pin-find *lblt-new1* (fn-ocfg-pins (cadr *lblt-pub1*)))))
+(assert-event (fn-own-find-conn *lblt-new1* (fn-own-conns (fn-ocfg-owner *lblt-b1*))))
+(assert-event (not (lblt-anew-conclusion *lblt-b1* *lblt-new1*)))
+(assert-event (equal (fn-lb-binding *lblt-name* (fn-lb-conn-bindings *lblt-b1* *lblt-new1*))
+                     *lblt-p*))
+
+; (4) The fresh pin: a pin already stands for the next identifier (the old
+; table); an open never overwrites a pin, so the new connection keeps it.
+(defconst *lblt-oc4*
+  (fn-ocfg-make (fn-ocfg-owner *lblt-admin*) (fn-ocfg-config *lblt-admin*)
+                (fn-ocfg-pin-add 2 (fn-ocfg-config *lblt-admin*) (fn-ocfg-pins *lblt-admin*))
+                nil))
+(defconst *lblt-st4* (fn-ocfg-step *lblt-oc4*
+                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-pub4*
+  (mv-list 2 (fn-ocl-publish *lblt-st4* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st4*))
+                             *lblt-max*)))
+(defconst *lblt-new4* (fn-own-next-id (fn-ocfg-owner (cadr *lblt-pub4*))))
+(defconst *lblt-b4* (cdr (fn-ocfg-open (cadr *lblt-pub4*) nil)))
+(assert-event (equal *lblt-new4* 2))
+(assert-event (not (fn-ocfg-staged *lblt-oc4*)))
+(assert-event (equal (car *lblt-pub4*) :durable))
+(assert-event (fn-ocl-config-historyp *lblt-st4*))
+(assert-event (fn-ocfg-pin-find *lblt-new4* (fn-ocfg-pins (cadr *lblt-pub4*))))
+(assert-event (fn-own-find-conn *lblt-new4* (fn-own-conns (fn-ocfg-owner *lblt-b4*))))
+(assert-event (not (lblt-anew-conclusion *lblt-b4* *lblt-new4*)))
+
+; (5) The opened connection: the owner is at max-conns (two more readers
+; opened before the re-binding), so the open after the publication admits
+; nothing and no pin is made for the identifier.
+(defconst *lblt-oc5* (cdr (fn-ocfg-open (cdr (fn-ocfg-open *lblt-admin* nil)) nil)))
+(defconst *lblt-st5* (fn-ocfg-step *lblt-oc5*
+                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-pub5*
+  (mv-list 2 (fn-ocl-publish *lblt-st5* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st5*))
+                             *lblt-max*)))
+(defconst *lblt-new5* (fn-own-next-id (fn-ocfg-owner (cadr *lblt-pub5*))))
+(defconst *lblt-b5* (cdr (fn-ocfg-open (cadr *lblt-pub5*) nil)))
+(assert-event (equal (len (fn-own-conns (fn-ocfg-owner *lblt-oc5*)))
+                     (fn-own-max-conns (fn-ocfg-owner *lblt-oc5*))))
+(assert-event (not (fn-ocfg-staged *lblt-oc5*)))
+(assert-event (equal (car *lblt-pub5*) :durable))
+(assert-event (fn-ocl-config-historyp *lblt-st5*))
+(assert-event (not (fn-ocfg-pin-find *lblt-new5* (fn-ocfg-pins (cadr *lblt-pub5*)))))
+(assert-event (not (fn-own-find-conn *lblt-new5* (fn-own-conns (fn-ocfg-owner *lblt-b5*)))))
+(assert-event (not (lblt-anew-conclusion *lblt-b5* *lblt-new5*)))
+
+; (3) the history relation and (6) pairs-okp are not separated by a
+; counter-witness: every violating value tried also made the publication
+; not durable, so the durable hypothesis already fails there.  A store one
+; record ahead of OC's configuration: recovery-required.  A principal of 31
+; octets, or a login that is not bindable: the staging is refused and the
+; publication refused.  Whether either hypothesis is implied by the others
+; is open (PKT-497); no weakened theorem is claimed.
+(defconst *lblt-pubp*
+  (mv-list 2 (fn-ocl-publish *lblt-oc1* (fn-cfg-record-generation (fn-ocfg-staged *lblt-oc1*))
+                             *lblt-max*)))
+(defconst *lblt-oc3*
+  (fn-ocfg-make (fn-ocfg-owner (cadr *lblt-pubp*)) (fn-ocfg-config *lblt-admin*)
+                (fn-ocfg-pins (cadr *lblt-pubp*)) nil))
+(defconst *lblt-st3* (fn-ocfg-step *lblt-oc3*
+                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(assert-event (not (fn-ocl-config-historyp *lblt-st3*)))
+(assert-event (equal (car (mv-list 2 (fn-ocl-publish *lblt-st3*
+                                                     (fn-cfg-record-generation
+                                                      (fn-ocfg-staged *lblt-st3*))
+                                                     *lblt-max*)))
+                     :recovery-required))
+(defconst *lblt-bad-pairs* (list (cons *lblt-name* (make-list 31 :initial-element 9))))
+(defconst *lblt-st6* (fn-ocfg-step *lblt-admin*
+                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-bad-pairs*))))
+(assert-event (not (fn-lb-pairs-okp *lblt-bad-pairs*)))
+(assert-event (fn-lb-pairs-targetp *lblt-bad-pairs* *lblt-bad-pairs*))
+(assert-event (not (fn-ocfg-staged *lblt-st6*)))
+(assert-event (equal (car (mv-list 2 (fn-ocl-publish *lblt-st6* 2 *lblt-max*)))
+                     :refused))
