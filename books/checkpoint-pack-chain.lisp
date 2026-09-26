@@ -1131,10 +1131,380 @@
            :in-theory (disable fn-ccc-walk-generations-agree fn-ccc-entry-step
                                fn-ccc-walk-more-fuel fn-ccc-walk))))
 
+; -----------------------------------------------------------------------------
+; The chain program and its between-links cut (PKT-459)
+;
+; `fnn-pack-extend-chain' (host/native/checkpoint.lisp), the :pack arm of
+; `*fn-cverb-pack-steps*' as `fnn-compact-steps' carries it out, repeats one
+; link: `fnn-pack-publish-generation' (the fn-jpub publication and its
+; candidate-* cuts), `fnn-pack-select' (the marker replacement and its
+; selection-* cuts), then the process-death cut `pack-chain-link', after the
+; selection's directory barrier returned :durable and before the next link's
+; admit.  No syscall lies between selection-directory and pack-chain-link:
+; the host only recomputes the chain's coverage in memory.  Here a link's
+; publication and its selection are one step each; their inner cuts are
+; `fn-ccc-publication-crash-walks-old-or-new-chain''s.
+;
+; The state is (FILES . MARKER): FILES the pack generations as the walk reads
+; them (an alist GENERATION -> (FRAME-OCTETS . DIGEST)), MARKER the selected
+; generation (nil: none).  LINKS are the entries (GENERATION FRAME-OCTETS
+; DIGEST) the host publishes, oldest first; it conses each onto its chain.
+(defun fn-ccc-chain-program (links)
+  (declare (xargs :guard t))
+  (if (consp links)
+      (list* (list :publish (car links))
+             (list :select (fn-ccc-entry-generation (car links)))
+             (list :cut "pack-chain-link")
+             (fn-ccc-chain-program (cdr links)))
+    nil))
+
+(defun fn-ccc-chain-file (e)
+  (declare (xargs :guard t))
+  (cons (fn-ccc-entry-generation e) (cons (fn-cc-nth 1 e) (fn-ccc-entry-digest e))))
+
+; A :cut issues nothing and changes nothing.
+(defun fn-ccc-chain-step (st step)
+  (declare (xargs :guard t))
+  (let ((files (if (consp st) (car st) nil))
+        (marker (if (consp st) (cdr st) nil)))
+    (cond ((and (consp step) (equal (car step) :publish))
+           (cons (cons (fn-ccc-chain-file (fn-cc-nth 1 step)) files) marker))
+          ((and (consp step) (equal (car step) :select))
+           (cons files (fn-cc-nth 1 step)))
+          (t st))))
+
+; The state after each step, in step order: element K is the state a death
+; right after step K leaves.
+(defun fn-ccc-chain-run (st steps)
+  (declare (xargs :guard t))
+  (if (consp steps)
+      (let ((next (fn-ccc-chain-step st (car steps))))
+        (cons next (fn-ccc-chain-run next (cdr steps))))
+    nil))
+
+(local
+ (defun fn-ccc-chain-run-ind (k st steps)
+   (declare (xargs :measure (acl2-count steps) :verify-guards nil))
+   (if (or (zp k) (atom steps)) (list st steps)
+     (fn-ccc-chain-run-ind (1- k) (fn-ccc-chain-step st (car steps))
+                           (cdr steps)))))
+
+; K0 at the chain's cut (the shape of byte-store-k0's
+; `fn-bs-k0c-cut-pair-is-previous-pair'): the state at a :cut step is the
+; state of the step before it, so a death at the cut leaves exactly what the
+; preceding step (the selection's directory barrier) left.
+(defthm fn-ccc-chain-cut-state-is-previous-state
+  (implies (and (natp k) (equal (car (nth (1+ k) steps)) :cut))
+           (equal (nth (1+ k) (fn-ccc-chain-run st steps))
+                  (nth k (fn-ccc-chain-run st steps))))
+  :hints (("Goal" :induct (fn-ccc-chain-run-ind k st steps)
+           :expand ((fn-ccc-chain-run st steps)
+                    (:free (s) (fn-ccc-chain-run s (cdr steps))))
+           :in-theory (enable nth))))
+
+; The files after publishing LINKS, oldest first, onto FILES.
+(defun fn-ccc-chain-files (links files)
+  (declare (xargs :guard t))
+  (if (consp links)
+      (fn-ccc-chain-files (cdr links) (cons (fn-ccc-chain-file (car links)) files))
+    files))
+
+(local
+ (defun fn-ccc-chain-image-ind (j links st)
+   (declare (xargs :measure (acl2-count links) :verify-guards nil))
+   (if (or (zp j) (atom links)) (list links st)
+     (fn-ccc-chain-image-ind
+      (1- j) (cdr links)
+      (cons (cons (fn-ccc-chain-file (car links)) (if (consp st) (car st) nil))
+            (fn-ccc-entry-generation (car links)))))))
+
+; The state at the (J+1)-th pack-chain-link cut: links 1..J+1 published, the
+; marker naming link J+1.
+(local
+ (defthm fn-ccc-chain-run-of-program-cons
+   (let ((f (cons (fn-ccc-chain-file e) (if (consp st) (car st) nil))))
+     (equal (fn-ccc-chain-run st (fn-ccc-chain-program (cons e rest)))
+            (list* (cons f (if (consp st) (cdr st) nil))
+                   (cons f (fn-ccc-entry-generation e))
+                   (cons f (fn-ccc-entry-generation e))
+                   (fn-ccc-chain-run (cons f (fn-ccc-entry-generation e))
+                                     (fn-ccc-chain-program rest)))))
+   :hints (("Goal" :expand ((fn-ccc-chain-program (cons e rest))
+                            (:free (s x y) (fn-ccc-chain-run s (cons x y))))
+            :in-theory (e/d (fn-cc-nth) (fn-ccc-chain-file))))))
+
+(local
+ (defthm fn-ccc-nth-past-three
+   (implies (and (natp j) (< 0 j))
+            (equal (nth (+ 2 (* 3 j)) (list* a b c x))
+                   (nth (+ 2 (* 3 (+ -1 j))) x)))
+   :hints (("Goal" :expand ((nth (+ 2 (* 3 j)) (list* a b c x))
+                            (nth (+ 1 (* 3 j)) (list* b c x))
+                            (nth (* 3 j) (cons c x)))))))
+
+(defthm fn-ccc-chain-run-at-link-cut
+  (implies (and (natp j) (< j (len links)))
+           (equal (nth (+ 2 (* 3 j))
+                       (fn-ccc-chain-run st (fn-ccc-chain-program links)))
+                  (cons (fn-ccc-chain-files (take (+ 1 j) links)
+                                            (if (consp st) (car st) nil))
+                        (fn-ccc-entry-generation (nth j links)))))
+  :hints (("Goal" :induct (fn-ccc-chain-image-ind j links st)
+           :in-theory (e/d (nth) (fn-ccc-chain-run fn-ccc-chain-program
+                                  fn-ccc-chain-file fn-ccc-entry-generation)))
+          ("Subgoal *1/2" :use ((:instance fn-ccc-chain-run-of-program-cons
+                                           (e (car links)) (rest (cdr links))))
+           :expand ((take (+ 1 j) links) (fn-ccc-chain-files links
+                                            (if (consp st) (car st) nil))))
+          ("Subgoal *1/1" :use ((:instance fn-ccc-chain-run-of-program-cons
+                                           (e (car links)) (rest (cdr links))))
+           :expand ((take 1 links)))))
+
+; A chain the host holds, newest first, above the chain the marker named
+; before (OLD; nil when none was selected): each link's walk step decodes and
+; names the next as its predecessor with a nonzero lower bound, and the
+; oldest names OLD (or, with none, has lower 0 and ends the walk).
+(defun fn-ccc-new-links-okp (r old max-octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp r)
+      (let ((step (fn-ccc-entry-step (fn-cc-nth 1 (car r)) (fn-cc-nth 2 (car r))
+                                     max-octets)))
+        (and (equal (car step) :ok)
+             (if (consp (cdr r))
+                 (and (not (zp (cadr step)))
+                      (equal (caddr step) (fn-ccc-entry-generation (cadr r))))
+               (if old
+                   (and (not (zp (cadr step))) (equal (caddr step) old))
+                 (zp (cadr step))))
+             (fn-ccc-new-links-okp (cdr r) old max-octets)))
+    t))
+
+; Each entry is the triple (GENERATION FRAME-OCTETS DIGEST) the host conses.
+(defun fn-ccc-entry-triplesp (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (true-listp (car x)) (equal (len (car x)) 3)
+           (fn-ccc-entry-triplesp (cdr x)))
+    t))
+
+(local
+ (defun fn-ccc-files-of (r)
+   (if (consp r)
+       (cons (fn-ccc-chain-file (car r)) (fn-ccc-files-of (cdr r)))
+     nil)))
+
+(local
+ (defthm fn-ccc-chain-files-is-append
+   (equal (fn-ccc-chain-files links (append (fn-ccc-files-of acc) files))
+          (append (fn-ccc-files-of (revappend links acc)) files))
+   :hints (("Goal" :induct (revappend links acc)))))
+
+(local
+ (defthm fn-ccc-files-agree-past-a-new-name
+   (implies (not (member-equal (car x) gens))
+            (fn-ccc-files-agree files (cons x files) gens))))
+
+(local
+ (defthm fn-ccc-walk-past-a-new-name
+   (implies (and (not (equal (fn-ccc-walk files g k max) :bad))
+                 (not (member-equal x (fn-ccc-entries-generations
+                                       (fn-ccc-walk files g k max)))))
+            (equal (fn-ccc-walk (cons (cons x v) files) g k max)
+                   (fn-ccc-walk files g k max)))
+   :hints (("Goal" :use ((:instance fn-ccc-walk-generations-agree
+                                    (image (cons (cons x v) files)) (fuel k))
+                         (:instance fn-ccc-files-agree-past-a-new-name
+                                    (x (cons x v))
+                                    (gens (fn-ccc-entries-generations
+                                           (fn-ccc-walk files g k max)))))
+            :in-theory (disable fn-ccc-walk-generations-agree
+                                fn-ccc-files-agree-past-a-new-name
+                                fn-ccc-walk fn-ccc-entries-generations)))))
+
+(local
+ (defthm fn-ccc-walk-at-its-own-head
+   (implies (not (zp k))
+            (equal (fn-ccc-walk (cons (cons g v) files) g k max)
+                   (let* ((step (fn-ccc-entry-step (car v) (cdr v) max))
+                          (entry (list g (car v) (cdr v))))
+                     (cond ((not (equal (car step) :ok)) :bad)
+                           ((zp (cadr step)) (list entry))
+                           (t (let ((rest (fn-ccc-walk (cons (cons g v) files)
+                                                       (caddr step) (+ -1 k) max)))
+                                (if (equal rest :bad) :bad (cons entry rest))))))))
+   :hints (("Goal" :expand ((fn-ccc-walk (cons (cons g v) files) g k max))
+            :in-theory (disable fn-ccc-entry-step fn-ccc-walk-past-a-new-name
+                                fn-ccc-walk-generations-agree fn-ccc-walk-more-fuel)))))
+
+(local
+ (defthm fn-ccc-triple-is-its-parts
+   (implies (and (true-listp e) (equal (len e) 3))
+            (equal (list (car e) (fn-cc-nth 1 e) (fn-cc-nth 2 e)) e))
+   :hints (("Goal" :in-theory (enable fn-cc-nth)))))
+
+(local
+ (defthm fn-ccc-nth-0-is-car
+   (equal (fn-cc-nth 0 x) (if (consp x) (car x) nil))
+   :hints (("Goal" :in-theory (enable fn-cc-nth)))))
+
+(local
+ (defthm fn-ccc-walk-new-links
+   (implies (and (consp r)
+                 (natp fuel)
+                 (equal oc (if old (fn-ccc-walk files old fuel max) nil))
+                 (not (equal oc :bad))
+                 (fn-ccc-entry-triplesp r)
+                 (fn-ccc-new-links-okp r old max)
+                 (no-duplicatesp-equal (fn-ccc-entries-generations (append r oc))))
+            (equal (fn-ccc-walk (append (fn-ccc-files-of r) files)
+                                (car (car r))
+                                (+ 1 (len (cdr r)) fuel) max)
+                   (append r oc)))
+   :hints (("Goal" :induct (fn-ccc-files-of r)
+            :in-theory (e/d ()
+                            (fn-cc-nth fn-ccc-entry-step fn-ccc-walk
+                             fn-ccc-walk-generations-agree fn-ccc-walk-more-fuel))))))
+
+(local
+ (defun fn-ccc-take-ind (j l acc)
+   (if (or (zp j) (atom l)) (list l acc)
+     (fn-ccc-take-ind (1- j) (cdr l) (cons (car l) acc)))))
+
+(local
+ (defthm fn-ccc-revappend-take-succ
+   (implies (and (natp j) (< j (len l)))
+            (equal (revappend (take (+ 1 j) l) acc)
+                   (cons (nth j l) (revappend (take j l) acc))))
+   :hints (("Goal" :induct (fn-ccc-take-ind j l acc)
+            :in-theory (enable nth)))))
+
+(local
+ (defthm fn-ccc-append-revappend
+   (equal (append (revappend x acc) y) (revappend x (append acc y)))))
+
+(local
+ (defthm fn-ccc-len-revappend
+   (equal (len (revappend x acc)) (+ (len x) (len acc)))))
+
+(local
+ (defthm fn-ccc-triplesp-revappend
+   (implies (and (fn-ccc-entry-triplesp x) (fn-ccc-entry-triplesp acc))
+            (fn-ccc-entry-triplesp (revappend x acc)))))
+
+(local
+ (defthm fn-ccc-chain-program-cut-at
+   (implies (and (natp j) (< j (len links)))
+            (equal (nth (+ 2 (* 3 j)) (fn-ccc-chain-program links))
+                   (list :cut "pack-chain-link")))
+   :hints (("Goal" :induct (fn-ccc-chain-image-ind j links st)
+            :expand ((fn-ccc-chain-program links))
+            :in-theory (e/d (nth) (fn-ccc-chain-program))))))
+
+; KEYSTONE (the between-links cut).  A death at the Nth `pack-chain-link' cut
+; of the chain program leaves exactly the state its selection left (the K0
+; shape), the marker names link N, and the walk the next open performs from
+; that marker reads the chain the host held at the cut: links N..1, newest
+; first, on the chain selected before (none, or OLD's).  Under exactly:
+; each published entry is the host's triple, the host's chain names each
+; predecessor (the order the host publishes and selects in), and its
+; generations are distinct (`fn-store-checkpoint-pack-next-generation'
+; issues a name the namespace does not hold).
+(defthm fn-ccc-chain-link-cut-walks-the-extended-chain
+  (let* ((run (fn-ccc-chain-run (cons files old) (fn-ccc-chain-program links)))
+         (image (nth (+ -1 (* 3 n)) run))
+         (old-chain (if old (fn-ccc-walk files old fuel max) nil)))
+    (implies (and (posp n) (<= n (len links)) (natp fuel)
+                  (not (equal old-chain :bad))
+                  (fn-ccc-entry-triplesp (take n links))
+                  (fn-ccc-new-links-okp (revappend (take n links) nil) old max)
+                  (no-duplicatesp-equal
+                   (fn-ccc-entries-generations (revappend (take n links) old-chain))))
+             (and (equal image (nth (+ -2 (* 3 n)) run))
+                  (equal (cdr image) (fn-ccc-entry-generation (nth (+ -1 n) links)))
+                  (equal (fn-ccc-walk (car image) (cdr image) (+ n fuel) max)
+                         (revappend (take n links) old-chain)))))
+  :hints (("Goal"
+           :use ((:instance fn-ccc-chain-run-at-link-cut
+                            (st (cons files old)) (j (+ -1 n)))
+                 (:instance fn-ccc-chain-cut-state-is-previous-state
+                            (k (+ -2 (* 3 n))) (st (cons files old))
+                            (steps (fn-ccc-chain-program links)))
+                 (:instance fn-ccc-chain-program-cut-at (j (+ -1 n)))
+                 (:instance fn-ccc-walk-new-links
+                            (r (revappend (take n links) nil))
+                            (oc (if old (fn-ccc-walk files old fuel max) nil)))
+                 (:instance fn-ccc-chain-files-is-append
+                            (links (take n links)) (acc nil))
+                 (:instance fn-ccc-revappend-take-succ
+                            (j (+ -1 n)) (l links) (acc nil)))
+           :in-theory (disable fn-ccc-chain-run-at-link-cut
+                               fn-ccc-chain-cut-state-is-previous-state
+                               fn-ccc-chain-program-cut-at fn-ccc-walk-new-links
+                               fn-ccc-chain-files-is-append fn-ccc-revappend-take-succ
+                               fn-ccc-chain-run fn-ccc-chain-program fn-ccc-walk
+                               fn-ccc-chain-files fn-ccc-new-links-okp
+                               fn-ccc-entries-generations fn-ccc-entry-triplesp
+                               fn-ccc-files-of take nth revappend-removal
+                               fn-ccc-walk-more-fuel fn-ccc-walk-generations-agree
+                               fn-ccc-walk-past-a-new-name))))
+
+; KEYSTONE (a death between two links reopens to the history).  After a
+; death at the Nth `pack-chain-link' cut, the next open (the walk from the
+; image's marker, then `fn-ccc-observe-chain', as `fnn-pack-recover-records'
+; runs them) answers exactly the history H, whenever the chain the host held
+; at the cut (links N..1 on the chain selected before) satisfies
+; `fn-ccc-chain-reconstructs-the-history''s hypotheses for H: the cut costs
+; the history nothing, and a rerun continues from link N.
+(defthm fn-ccc-chain-link-cut-reopens-to-the-history
+  (let* ((run (fn-ccc-chain-run (cons files old) (fn-ccc-chain-program links)))
+         (image (nth (+ -1 (* 3 n)) run))
+         (old-chain (if old (fn-ccc-walk files old fuel max) nil))
+         (chain (revappend (take n links) old-chain))
+         (entries (fn-ccc-decode-entries chain max)))
+    (implies (and (posp n) (<= n (len links)) (natp fuel)
+                  (not (equal old-chain :bad))
+                  (fn-ccc-entry-triplesp (take n links))
+                  (fn-ccc-new-links-okp (revappend (take n links) nil) old max)
+                  (no-duplicatesp-equal (fn-ccc-entries-generations chain))
+                  (not (equal entries :bad))
+                  (fn-ccc-links-okp entries)
+                  (fn-ccc-prefixp (fn-ccc-links-events entries) h)
+                  (true-listp h)
+                  (<= m (len (fn-ccc-links-events entries)))
+                  (fn-ccp-contiguousp observed m)
+                  (fn-ccc-pairs-match observed h)
+                  (equal (+ m (len observed)) (len h))
+                  (fn-cc-valid-suffixp (fn-ccc-chain-summary entries)
+                                       (fn-cc-observation-suffix
+                                        observed (len (fn-ccc-links-events entries)))
+                                       frontier))
+             (equal (fn-ccc-observe-chain
+                     (fn-ccc-walk (car image) (cdr image) (+ n fuel) max)
+                     observed frontier max)
+                    (list :ok h frontier))))
+  :hints (("Goal"
+           :use (fn-ccc-chain-link-cut-walks-the-extended-chain
+                 (:instance fn-ccc-chain-reconstructs-the-history
+                            (framed (revappend (take n links)
+                                               (if old (fn-ccc-walk files old fuel max) nil)))
+                            (n m)))
+           :in-theory (disable fn-ccc-chain-link-cut-walks-the-extended-chain
+                               fn-ccc-chain-reconstructs-the-history
+                               fn-ccc-chain-run fn-ccc-chain-program fn-ccc-walk
+                               fn-ccc-observe-chain fn-ccc-decode-entries
+                               fn-ccc-links-okp fn-ccc-links-events fn-ccc-chain-summary
+                               fn-cc-valid-suffixp fn-ccp-contiguousp fn-ccc-pairs-match
+                               fn-ccc-new-links-okp fn-ccc-entries-generations
+                               fn-ccc-entry-triplesp take nth revappend-removal
+                               fn-ccc-walk-more-fuel fn-ccc-walk-generations-agree
+                               fn-ccc-walk-past-a-new-name)
+           :do-not-induct t)))
+
 (deftheory fn-checkpoint-pack-chain-vocabulary
   '(fn-ccc-linkp fn-ccc-links-okp fn-ccc-links-events fn-ccc-capture-link
     fn-ccc-observe-chain fn-ccc-coverage-chain fn-ccc-chain-boundary
     fn-ccc-decode-entries fn-ccc-framed-link fn-ccc-entry-step
     fn-ccc-retire-plan fn-ccc-walk fn-ccc-fit fn-ccc-fit-aux
-    fn-ccc-pack-effect))
+    fn-ccc-pack-effect fn-ccc-chain-program fn-ccc-chain-step fn-ccc-chain-run
+    fn-ccc-chain-files fn-ccc-new-links-okp))
 (in-theory (disable fn-checkpoint-pack-chain-vocabulary))

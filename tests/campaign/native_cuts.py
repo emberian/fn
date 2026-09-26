@@ -112,6 +112,9 @@ STATE_CHECKPOINT_CUTS = tuple(
                             ("state-checkpoint-replaced", "either"),
                             ("state-checkpoint-durable", "new")))
 
+# The chained-packs program (lane pack-chain-cut, PKT-459).
+CHAIN_BOOK = "checkpoint-pack-chain.lisp"
+
 # Checkpoint publication and selection are driven by their ACL2 phase machines.
 # Reclamation has one repeated unlink boundary per covered name and a final
 # transaction-directory barrier.  Runtime tests select repeated unlink cuts by
@@ -123,6 +126,14 @@ CHECKPOINT_CUTS = (
     NativeCut("selection-file", "fn-cpp-marker-step", "absent"),
     NativeCut("selection-replace", "fn-cpp-marker-step", "present"),
     NativeCut("selection-directory", "fn-cpp-marker-step", "present"),
+    # Between two links of a chain (fnn-pack-extend-chain): after the link's
+    # selection returned :durable, before the next link's admit.  The chain
+    # program's cut (books/checkpoint-pack-chain.lisp fn-ccc-chain-program;
+    # fn-ccc-chain-link-cut-walks-the-extended-chain and
+    # fn-ccc-chain-link-cut-reopens-to-the-history): links 1..N published
+    # and selected, the marker naming link N.
+    NativeCut("pack-chain-link", "fn-ccc-chain-program", "present",
+              book=CHAIN_BOOK),
     NativeCut("pack-reclaim-unlink", "fn-bs-pack-reclaim-program", "either"),
     NativeCut("pack-reclaim-directory", "fn-bs-pack-reclaim-program", "n/a"),
     NativeCut("pack-retire-unlink", "fn-cprt-retire-program", "either",
@@ -144,9 +155,12 @@ COMPACT_ENTRY_STEPS = (
     ("reclaim", "fnn-pack-prefix-reclaim"),
     ("retire", "fnn-pack-retire-older-generations"),
 )
-# The one link of a chain, in fn-cpp-publication-step then fn-cpp-marker-step
-# order: the candidate's publication, then the selection of it.
-COMPACT_CHAIN_LINK = ("fnn-pack-publish-generation", "fnn-pack-select")
+# The one link of a chain, in fn-ccc-chain-program order (:publish, :select,
+# then the pack-chain-link cut): the candidate's publication
+# (fn-cpp-publication-step), the selection of it (fn-cpp-marker-step), then
+# the between-links stop hook.
+COMPACT_CHAIN_LINK = ("fnn-pack-publish-generation", "fnn-pack-select",
+                      '(fnn-checkpoint-test-stop "pack-chain-link")')
 
 
 def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
@@ -518,11 +532,25 @@ def verify_compact_entries(native: str) -> None:
         raise AssertionError("fnn-compact-steps arms are out of step order")
     chain = host_function(native, "fnn-pack-extend-chain")
     found = [re.search(r"\(funcall admit\s", chain)] + [
-        re.search(r"\({}\s".format(f), chain) for f in COMPACT_CHAIN_LINK]
+        re.search(re.escape(f) if f.startswith("(") else r"\({}\s".format(f), chain)
+        for f in COMPACT_CHAIN_LINK]
     order = [m.start() if m else -1 for m in found]
     if min(order) < 0 or order != sorted(order):
-        raise AssertionError("fnn-pack-extend-chain does not admit, publish and select "
-                             "each link in that order")
+        raise AssertionError("fnn-pack-extend-chain does not admit, publish, select and "
+                             "stop at pack-chain-link for each link in that order")
+    # The model's link is :publish, :select, then its one cut, and nothing the
+    # host does between the selection and the hook touches the disk.
+    if model_cut_names("fn-ccc-chain-program", CHAIN_BOOK) != ("pack-chain-link",):
+        raise AssertionError("fn-ccc-chain-program's cuts are not (pack-chain-link)")
+    program = host_function((ROOT / "books" / CHAIN_BOOK).read_text(), "fn-ccc-chain-program")
+    kinds = [program.index(k) for k in ("(list :publish ", "(list :select ",
+                                         '(list :cut "pack-chain-link")')]
+    if kinds != sorted(kinds):
+        raise AssertionError("fn-ccc-chain-program is not :publish, :select, then the cut")
+    between = chain[found[2].end():found[3].start()]
+    if re.search(r"\(fnn-(?!pack-select\b)[a-z0-9-]+", between):
+        raise AssertionError("fnn-pack-extend-chain calls the host between the selection "
+                             "and pack-chain-link: the cut is not the selection's state")
     book = (ROOT / "books/store-compact-verb.lisp").read_text()
     match = re.search(r"\(defconst \*fn-cverb-pack-steps\* '\(([^)]*)\)\)", book)
     if not match or tuple(re.findall(r":([a-z]+)", match.group(1))) != tuple(
