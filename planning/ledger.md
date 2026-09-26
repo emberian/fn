@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 929 |
-| Certification roots in the Makefile | 912 |
-| Books inside the root closure | 925 |
-| `defthm` and `defthmd` events | 12946 |
-| `defun` events | 9043 |
+| Books read | 931 |
+| Certification roots in the Makefile | 914 |
+| Books inside the root closure | 927 |
+| `defthm` and `defthmd` events | 12960 |
+| `defun` events | 9054 |
 | Functions with verified guards | 2191 |
-| Functions declared `:verify-guards nil` and never verified | 714 |
-| Functions left at the default with an explicit guard | 4802 |
-| Functions left at the default with no guard | 1336 |
-| `assert-event` checks | 13445 |
-| `must-fail` checks | 1506 |
+| Functions declared `:verify-guards nil` and never verified | 716 |
+| Functions left at the default with an explicit guard | 4804 |
+| Functions left at the default with no guard | 1343 |
+| `assert-event` checks | 13474 |
+| `must-fail` checks | 1510 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 113 |
 | Export-hygiene warnings | 152 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 121 |
-| Include-hygiene warnings | 933 |
+| Include-hygiene warnings | 935 |
 | Host-names warnings | 1055 |
 | Hand-written-record warnings | 18 |
 
@@ -206,11 +206,11 @@ that `make certify` requests.
 | `books/bp-primary-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-primary.lisp` | root | 15 | 75 | 75/0/0/0 | 0 | 0 | 0 |
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
-| `books/bp-receipt.lisp` | root | 35 | 48 | 0/0/4/44 | 0 | 0 | 0 |
+| `books/bp-receipt.lisp` | root | 35 | 50 | 0/0/6/44 | 0 | 0 | 0 |
 | `books/bp-receive-evidence.lisp` | root | 4 | 25 | 0/6/0/19 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/0/0/4 | 0 | 0 | 0 |
-| `books/bp-receiver-evolving-history-invariants.lisp` | root | 34 | 8 | 0/0/0/8 | 0 | 0 | 0 |
-| `books/bp-receiver-evolving-node-invariants.lisp` | root | 38 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-history-invariants.lisp` | root | 35 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-node-invariants.lisp` | root | 41 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-store-invariants.lisp` | root | 31 | 11 | 0/0/0/11 | 0 | 0 | 0 |
 | `books/bp-receiver-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-receiver-journal-invariants.lisp` | root | 10 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -236,6 +236,7 @@ that `make certify` requests.
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
 | `books/bp-session-admission.lisp` | root | 31 | 32 | 31/0/1/0 | 0 | 0 | 0 |
+| `books/bp-signed-binding.lisp` | root | 10 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/bp-signed-receipt.lisp` | closure | 2 | 11 | 4/0/7/0 | 0 | 0 | 1 |
 | `books/bp-status-report-invariants.lisp` | root | 53 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/bp-status-report.lisp` | root | 12 | 26 | 25/0/1/0 | 0 | 0 | 0 |
@@ -729,6 +730,7 @@ that `make certify` requests.
 | `tests/acl2/bp-sequence-fidelity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 1 | 0 |
 | `tests/acl2/bp-sequence-persistence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/bp-session-admission-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 12 | 0 |
+| `tests/acl2/bp-signed-binding-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 29 | 4 | 0 |
 | `tests/acl2/bp-status-report-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 1 | 0 |
 | `tests/acl2/bp-transit-join-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 60 | 18 | 0 |
 | `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 2 | 0 |

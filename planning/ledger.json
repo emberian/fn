@@ -374,6 +374,8 @@
     "tests/acl2/bp-session-admission-tests",
     "books/bp-channel-ingress",
     "tests/acl2/bp-channel-ingress-tests",
+    "books/bp-signed-binding",
+    "tests/acl2/bp-signed-binding-tests",
     "books/bp-fnbs-delivery-codec",
     "tests/acl2/bp-fnbs-delivery-codec-tests",
     "books/bp-fnbs-delivery-replay",
@@ -916,25 +918,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 929,
-    "books_in_root_closure": 925,
-    "roots": 912,
-    "theorems": 12946,
-    "functions": 9043,
-    "assert_events": 13445,
-    "must_fails": 1506,
+    "books": 931,
+    "books_in_root_closure": 927,
+    "roots": 914,
+    "theorems": 12960,
+    "functions": 9054,
+    "assert_events": 13474,
+    "must_fails": 1510,
     "encapsulates": 65,
     "guards": {
       "verified": 2191,
-      "declared-off": 714,
-      "default-guarded": 4802,
-      "default-unguarded": 1336
+      "declared-off": 716,
+      "default-guarded": 4804,
+      "default-unguarded": 1343
     },
     "suspect_theorems": 113,
     "export_hygiene_warnings": 152,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 121,
-    "include_hygiene_warnings": 933,
+    "include_hygiene_warnings": 935,
     "host_names_warnings": 1055,
     "hand_written_record_warnings": 18
   },
@@ -4151,11 +4153,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 35,
-      "functions": 48,
+      "functions": 50,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 6,
         "default-unguarded": 44
       },
       "verify_guards_events": 0,
@@ -4227,7 +4229,7 @@
       "book": "books/bp-receiver-evolving-history-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 35,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -4253,7 +4255,7 @@
       "book": "books/bp-receiver-evolving-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
+      "theorems": 41,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -4928,6 +4930,31 @@
         "bp-native-app",
         "bp-primary",
         "peer-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-signed-binding.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-native-app-fast"
       ],
       "system_includes": [],
       "suspects": [],
@@ -18198,6 +18225,34 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-session-admission"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-signed-binding-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 29,
+      "must_fails": 4,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-signed-binding",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -33155,6 +33210,20 @@
         "line": 4,
         "include": "../../books/bp-session-admission",
         "included": "books/bp-session-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-signed-binding-tests.lisp",
+        "line": 14,
+        "include": "../../books/bp-signed-binding",
+        "included": "books/bp-signed-binding.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-signed-binding-tests.lisp",
+        "line": 15,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
