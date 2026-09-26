@@ -2858,9 +2858,13 @@
         "planning/evidence/public-exposure-2026-09-26-report.json",
         "tests/native_owner_chunk_loop_raw.lisp",
         "tests/test_native_owner.py",
-        "docs/operator.md"
+        "docs/operator.md",
+        "books/public-exposure-reply.lisp",
+        "tests/acl2/public-exposure-reply-tests.lisp",
+        "tests/test_native_bounds_join.py",
+        "planning/evidence/exposure-reply-size-2026-09-26.md"
       ],
-      "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign."
+      "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign. SCN-111 is the large-reply case: the observation after every step reads the reply's two facts (answered, the 481 count) by a constant-stack scan of the effects (PKT-481)."
     },
     {
       "id": "NNT-032",

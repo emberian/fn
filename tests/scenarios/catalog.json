@@ -3127,6 +3127,29 @@
         "record": "planning/evidence/control-reply-fit-2026-09-26.md",
         "log": "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
       }
+    },
+    {
+      "id": "SCN-111",
+      "title": "One served step whose reply is several MiB (the ARTICLE of a 1, 2 and 3 MiB article; an OVER of about 4 MB) is served whole and the owner keeps serving; the exposure's observation of that step decides as over the reply octets",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-031"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 4194304; start the owner; POST articles of 1,048,576, 2,097,152 and 3,145,728 octets and ARTICLE each back on the same connection.",
+        "POST 2,000 articles each carrying about 2,000 octets of folded References; GROUP; OVER over the whole group on one connection; STAT on a new connection; SIGTERM the owner."
+      ],
+      "expected": [
+        "Each POST is 240 and each ARTICLE is 220 with the posted octets as the stored article's suffix; the owner is still running.",
+        "The OVER is 224 with 2,003 lines, more than 3 MiB, and its terminator; the STAT is 223; the owner exits 0. Before PKT-481's fix the 2 MiB ARTICLE and the OVER each stopped the owner with exit 4, `ACL2 error in fn-owner-chunk: Control stack exhausted`."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "planning/evidence/exposure-reply-size-2026-09-26.md",
+        "books/public-exposure-reply.lisp",
+        "tests/acl2/public-exposure-reply-tests.lisp"
+      ]
     }
   ]
 }
