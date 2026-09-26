@@ -99,6 +99,63 @@ def evidence(entry: dict, advanced: set[str]) -> None:
                 fail(f"{entry['id']}: evidence is not a file: {path}")
 
 
+def scenario_implementation(ident: str, entry: dict) -> None:
+    """An implemented scenario names the test that runs it and the run's log.
+
+    `implementation` holds: `test`, a test module in dotted form
+    (`tests.test_x`, resolving to tests/test_x.py) or the repository path of
+    a harness script; `cases`, the TestCase classes or methods that run the
+    steps (required for a module; each must occur in its text); `native`,
+    whether the run was against a native image (false: the Python host or a
+    fake peer); `log`, a committed log of a passing run; and `record`, the
+    evidence record that reports that run.  The record must name the test or
+    the log's file, and the log must name the test or a case, or else the
+    record must name the log's file.  Whether a scenario is `validated` is the
+    qualification's mapping, not this check's.
+    """
+    impl = entry.get("implementation")
+    if not isinstance(impl, dict):
+        fail(f"{ident}: status {entry.get('status')} needs an `implementation` "
+             "naming the test module and the evidence log")
+        return
+    test = impl.get("test")
+    if not isinstance(test, str) or not test:
+        fail(f"{ident}: implementation.test is missing")
+        return
+    module = ROOT / (test if "/" in test else test.replace(".", "/") + ".py")
+    if not module.is_file():
+        fail(f"{ident}: implementation.test {test} does not resolve to a file")
+        return
+    cases = impl.get("cases", [])
+    if not isinstance(cases, list) or any(not isinstance(c, str) or not c for c in cases):
+        fail(f"{ident}: implementation.cases must be a list of names")
+        return
+    if "/" not in test:
+        if not cases:
+            fail(f"{ident}: implementation.cases must name the classes or tests of {test}")
+        text = module.read_text(encoding="utf-8", errors="replace")
+        for case in cases:
+            if case.split(".")[-1] not in text:
+                fail(f"{ident}: case {case} does not occur in {test}")
+    if not isinstance(impl.get("native"), bool):
+        fail(f"{ident}: implementation.native must say whether a native image ran it")
+    log, record = impl.get("log"), impl.get("record")
+    for field, value in (("log", log), ("record", record)):
+        if not isinstance(value, str) or not (ROOT / value).is_file():
+            fail(f"{ident}: implementation.{field} must be a committed file: {value!r}")
+            return
+    if not record.endswith(".md"):
+        fail(f"{ident}: implementation.record must be an evidence record (.md)")
+    body = (ROOT / log).read_text(encoding="utf-8", errors="replace")
+    prose = (ROOT / record).read_text(encoding="utf-8", errors="replace")
+    names = {module.stem, module.name} | {c.split(".")[-1] for c in cases}
+    log_named = Path(log).name in prose
+    if not (module.name in prose or module.stem in prose or log_named):
+        fail(f"{ident}: {record} names neither {test} nor {Path(log).name}")
+    if not any(name in body for name in names) and not log_named:
+        fail(f"{ident}: neither {log} names {test} nor {record} names the log")
+
+
 def conflict_markers() -> None:
     """Refuse a tracked file that still carries a merge conflict marker.
 
@@ -153,7 +210,7 @@ def main() -> int:
 
     for entries, statuses, advanced in [
         (requirements, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
-        (proofs, {"planned", "in-progress", "certified", "deferred"}, {"certified"}),
+        (proofs, {"planned", "uncertified-at-current-digest", "certified"}, {"certified"}),
         (scenarios, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
     ]:
         for ident, entry in entries.items():
@@ -173,6 +230,10 @@ def main() -> int:
         references(entry.get("proof_targets", []), proofs, ident)
         if not entry.get("verification"):
             fail(f"{ident}: no verification method")
+
+    for ident, entry in scenarios.items():
+        if entry.get("status") in {"implemented", "validated"}:
+            scenario_implementation(ident, entry)
 
     for ident, entry in proofs.items():
         references(entry.get("requirements", []), requirements, ident)

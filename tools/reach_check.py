@@ -64,6 +64,36 @@ BASELINE = ROOT / "planning" / "reach-baseline.json"
 DEFUN = re.compile(r"\((?:defun|defund|defun-nx|define|defmacro)\s+([a-zA-Z0-9<>=/*+-]+)")
 DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+-]+)")
 SYMBOL = re.compile(r"[a-zA-Z][a-zA-Z0-9<>=/*+-]*")
+NAME = r"[a-zA-Z0-9<>=/*+-]+"
+ATTACH_ONE = re.compile(rf"\(defattach\s+({NAME})\s+({NAME})")
+ATTACH_PAIR = re.compile(rf"\(\s*({NAME})\s+({NAME})\s*\)")
+
+
+def attachments(paths) -> dict[str, set[str]]:
+    """constrained name -> the functions `defattach` binds it to.
+
+    Calling a constrained function runs its attachment, so a host line that
+    reaches `fn-bs-txn-name` reaches `fn-bs-txn-name-impl`.  Both forms are
+    read: `(defattach f g)` and `(defattach (f g) (f2 g2) ...)`.  Pairs
+    inside `:hints` are not attachments; the scan stops at the first keyword.
+    """
+    found: dict[str, set[str]] = collections.defaultdict(set)
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for form in forms(text):
+            if not form.startswith("(defattach"):
+                continue
+            one = ATTACH_ONE.match(form)
+            if one:
+                found[one.group(1).lower()].add(one.group(2).lower())
+                continue
+            head = form.split(":", 1)[0]
+            for left, right in ATTACH_PAIR.findall(head):
+                found[left.lower()].add(right.lower())
+    return found
 
 
 def forms(text: str) -> list[str]:
@@ -128,12 +158,15 @@ class Graph:
 
         self.book_defs = definitions(self.books)
         host_defs = definitions(self.hosts)
-        self.known = set(self.book_defs) | set(host_defs)
+        attached = attachments(self.books)
+        self.known = set(self.book_defs) | set(host_defs) | set(attached)
 
         bodies = {n: f for n, (_, f) in self.book_defs.items()}
         bodies.update({n: f for n, (_, f) in host_defs.items()})
         self.edges = {name: self.mentions(form, name)
                       for name, form in bodies.items()}
+        for constrained, bound in attached.items():
+            self.edges.setdefault(constrained, set()).update(bound)
 
         # Seeds: everything host/ defines, plus every book symbol a host file
         # or a Python bridge names.  A bridge naming `fn-own-read` in a form
@@ -209,14 +242,28 @@ def load_baseline() -> dict:
     return json.loads(BASELINE.read_text())
 
 
+PLACEHOLDER = "no one has said why that is right"
+DISPOSITIONS = ("SPEC", "HOST")
+
+
+def unexplained(accepted: dict) -> list[str]:
+    """Baselined orphans whose reason is not a disposition.
+
+    Each entry says SPEC (a model or specification theorem kept, and why) or
+    HOST (the packet that will host it); a bare acceptance is a flag nobody
+    triaged (assurance-triage 2026-09-26 found 25 of 49 that way).
+    """
+    return sorted(key for key, reason in accepted.items()
+                  if PLACEHOLDER in reason or not reason.startswith(DISPOSITIONS))
+
+
 def write_baseline(findings) -> None:
     existing = load_baseline().get("accepted", {})
     accepted = {}
     for finding in sorted(findings, key=Finding.key):
         accepted[finding.key()] = existing.get(
             finding.key(),
-            "recorded when tools/reach_check.py was introduced; no host line "
-            "reaches this subject and no one has said why that is right")
+            "no host line reaches this subject and " + PLACEHOLDER)
     BASELINE.write_text(json.dumps(
         {"note": ("Registry events whose subject no host line reaches, that "
                   "the tree accepts for now.  tools/reach_check.py --strict "
@@ -277,7 +324,11 @@ def main(argv=None) -> int:
               f"{len(fresh)} of those unbaselined, {len(unresolved)} "
               f"unresolvable here")
 
-    return 1 if (arguments.strict and fresh) else 0
+    untriaged = unexplained({key: accepted[key] for key in accepted
+                             if key not in stale})
+    for key in untriaged:
+        print(f"reach_check: baselined without a SPEC or HOST disposition: {key}")
+    return 1 if (arguments.strict and (fresh or untriaged)) else 0
 
 
 if __name__ == "__main__":
