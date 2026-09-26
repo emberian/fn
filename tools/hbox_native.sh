@@ -12,11 +12,18 @@
 # basename of this worktree, or --name), it
 #   1. installs the default profile's closure from /tank/fn/certcache and
 #      certifies the rest under swarm-build (a lane's changed books);
-#   2. acquires and validates the image's artifact set (tools/proof_artifacts.py);
+#   2. acquires and validates the image's artifact set (tools/proof_artifacts.py;
+#      the dtn profile too when a DTN image is asked);
 #   3. builds the requested images under swarm-build
-#      (--images developer,production; default developer);
+#      (--images from developer,production,dtn,dtn-developer; default
+#      developer).  dtn and dtn-developer are host/native/build-dtn.lisp's
+#      images (build/fn-host-dtn, build/fn-host-dtn-developer), built exactly
+#      as tools/runbooks/hbox-image-build.sh builds them;
 #   4. runs each MODULE under systemd-run --user --scope -p MemoryMax (24G by
-#      default, --mem), with FN_OPENSSL_PREFIX and LD_LIBRARY_PATH set;
+#      default, --mem), with FN_OPENSSL_PREFIX and LD_LIBRARY_PATH set, and
+#      every --env NAME=VALUE exported.  When dtn-developer is built and dtn is
+#      not, FN_NATIVE_BP_HOST defaults to the dtn-developer image (the BP
+#      tests default to build/fn-host-dtn, which that run does not build);
 #   5. writes every log to logs/ and SHA256SUMS (images and logs), then
 #      `status` holding the first failing step's exit code, 0 if none.
 #
@@ -26,7 +33,8 @@
 #
 # Options: --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --jobs N (certify, default 8), --no-build (reuse the images already in that
-# scratch tree), --deadline S (default 5400), --dry-run (print the box script).
+# scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
+# --deadline S (default 5400), --dry-run (print the box script).
 #
 # Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
 # (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
@@ -42,7 +50,8 @@ BUILD=1
 DETACH=0
 DRY=0
 DEADLINE=5400
-usage() { sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+ENVS=
+usage() { sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -54,6 +63,15 @@ while [ $# -gt 0 ]; do
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
+        --env)
+            case $2 in
+                ?*=*) ;;
+                *) echo "hbox_native: --env takes NAME=VALUE" >&2; exit 2 ;;
+            esac
+            # Spelled out: a locale's [A-Z] range can match lower case.
+            case ${2%%=*} in [0-9]*|*[!ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_]*) echo "hbox_native: bad --env name ${2%%=*}" >&2; exit 2 ;; esac
+            case ${2#*=} in *[!A-Za-z0-9_./:\$-]*) echo "hbox_native: --env value may hold only A-Za-z0-9_./:-\$" >&2; exit 2 ;; esac
+            ENVS="$ENVS $2"; shift 2 ;;
         -h|--help) usage ;;
         -*) echo "hbox_native: unknown option $1" >&2; usage ;;
         *) break ;;
@@ -69,9 +87,20 @@ for module in "$@"; do
     case $module in *[!A-Za-z0-9_.]*) echo "hbox_native: bad module name $module" >&2; exit 2 ;; esac
 done
 case $NAME in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --name $NAME" >&2; exit 2 ;; esac
+DTN=0
+DTN_PRODUCTION=0
+DTN_DEVELOPER=0
 for image in $(echo "$IMAGES" | tr ',' ' '); do
-    case $image in developer|production) ;; *) echo "hbox_native: --images takes developer,production" >&2; exit 2 ;; esac
+    case $image in
+        developer|production) ;;
+        dtn) DTN=1; DTN_PRODUCTION=1 ;;
+        dtn-developer) DTN=1; DTN_DEVELOPER=1 ;;
+        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer" >&2; exit 2 ;;
+    esac
 done
+if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
+    case " $ENVS" in *" FN_NATIVE_BP_HOST="*) ;; *) ENVS="FN_NATIVE_BP_HOST=\$T/build/fn-host-dtn-developer$ENVS" ;; esac
+fi
 if [ "$REV" = . ]; then
     SOURCE="worktree $(git -C "$HERE" rev-parse --short=12 HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')"
     [ -n "$LABEL" ] || LABEL=wt-$(date -u +%Y%m%dT%H%M%SZ)
@@ -134,19 +163,46 @@ BOX
     if [ $BUILD -eq 1 ]; then
         cat <<BOX
 python3 tools/proof_artifacts.py roots --profile default > \$L/roots.txt || finish 13
+BOX
+        if [ $DTN -eq 1 ]; then
+            # The dtn profile's roots are not a subset of default's
+            # (books/records-concrete at 804896a1): certify their union.
+            cat <<BOX
+python3 tools/proof_artifacts.py roots --profile dtn >> \$L/roots.txt || finish 13
+sort -u -o \$L/roots.txt \$L/roots.txt
+BOX
+        fi
+        cat <<BOX
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify swarm-build python3 tools/certify_books.py --incremental --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
 step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2"
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2"
 BOX
-        for image in $(echo "$IMAGES" | tr ',' ' '); do
-            out=build/fn-host; [ "$image" = developer ] && out=build/fn-host-developer
+        if [ $DTN -eq 1 ]; then
+            # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
             cat <<BOX
-step image-$image env FN_NATIVE_PROFILE=$image FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
+step acquire-dtn python3 tools/proof_artifacts.py acquire --profile dtn --root \$T --cache \$CACHE --acl2 "\$ACL2"
+step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "\$ACL2"
+BOX
+        fi
+        for image in $(echo "$IMAGES" | tr ',' ' '); do
+            # The (profile, session script, image) triple per image, as
+            # tools/runbooks/hbox-image-build.sh's four build lines.
+            case $image in
+                production) profile=production build=host/native/build.lisp out=build/fn-host ;;
+                developer) profile=developer build=host/native/build.lisp out=build/fn-host-developer ;;
+                dtn) profile=production build=host/native/build-dtn.lisp out=build/fn-host-dtn ;;
+                dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer ;;
+            esac
+            cat <<BOX
+step image-$image env FN_NATIVE_PROFILE=$profile FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
 BOX
         done
     fi
+    for assignment in $ENVS; do
+        echo "export $assignment"
+    done
     for module in "$@"; do
         cat <<BOX
 tstep test-$module systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 -m unittest -v $module'
