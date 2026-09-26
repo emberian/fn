@@ -8,13 +8,14 @@ Aim (ember, 2026-09-26): friends bring up their own instances and peer, some pee
 
 | Pile | Packets |
 | --- | ---: |
-| (a) WAVE 4 | 150 |
-| &nbsp;&nbsp;already owned by a lane running or queued now | 9 |
-| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 121 |
+| (a) WAVE 4 and WAVE 5 | 174 |
+| &nbsp;&nbsp;already owned by a lane running or queued now | 8 |
+| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 126 |
 | &nbsp;&nbsp;coordinator chores (not lanes) | 20 |
-| (b) AFTER v1 | 126 |
+| &nbsp;&nbsp;in the eight wave-5 briefs (WAVE 5) | 20 |
+| (b) AFTER v1 | 129 |
 | (c) WON'T DO / SUPERSEDED | 21 |
-| **Total** | **297** |
+| **Total** | **324** |
 
 Sweep 10 (deputy 3, dev `88ec3ef0..804896a1`): 235 at the triage, 6 retired by merges in the window (PKT-002, 242, 249, 271, 319, 348; struck below with the hash), 38 added: sweep 10's 16 new packets (PKT-353 to 368), 13 reserved ids given their first backlog line (PKT-321, 323, 326, 330, 331, 401, 403 to 406, 409 to 411) and 9 open packets this pass had missed (PKT-168, 324, 332, 408, 412 to 416). Moved between piles: PKT-197 to (c); PKT-164 and PKT-263 to (b); PKT-252 to friend-session; PKT-300 to operator-daily; PKT-301 to served-path-scale. Running now (WAVE-STATE): outcome-algebra, pack-chain-open, signed-history-index-2, and the candidates peer-feeds, keys-and-accounts, community-bounds, reader-2 (their packets stay under their candidate headings).
 
@@ -43,6 +44,8 @@ Sweep 21 (deputy 4, dev `93ffe3dd..f314a5a3`): 278 after sweep 20, less 3 retire
 Sweep 22 (deputy 4, dev `793c576f..6addf294`): 281 after sweep 21, less 3 retired in the window (keys-and-accounts-4 b1cb86f6: PKT-473; hot-path-checker 6addf294: PKT-334 (ticked by the lane at c3502b01, its row struck here) and PKT-507 (superseded by PKT-505, ticked by the lane); struck with the hash), plus 8 added: the lanes' PKT-497 (keys-and-accounts, 6) and PKT-504, with PKT-447 and PKT-448 (open since hot-path-checker's first report and never placed; now under hot-path-checker, 15, beside PKT-470), first placed here, and sweep 22's PKT-540 (tooling-velocity, 14), PKT-541 (keys-and-accounts, 6), PKT-542 (operator-daily, 5; from checkpoint-capture-stream, NOT yet merged) and PKT-543 (a coordinator chore, the deputy's batch AD). PKT-448 and PKT-504 stay open although 6addf294's title says "retired": the record files finds under both. Not placed until their lanes merge: checkpoint-capture-stream's PKT-494 and PKT-495 (FOR EMBER), with PKT-492 and PKT-315 retired on its branch; ingress-span's PKT-479 and PKT-480 (decided: keep the 64 MiB trigger; PKT-316 annotated). The candidate 69046a76's closure is green (f0730c16) and its qualification in flight. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 and PKT-330 as before).
 
 Sweep 23 (deputy 4, dev `0edd743c..e285c856`): 286 after sweep 22, less 10 retired in the window (served-path-scale-2 0858ed36: PKT-190, 455, 395, 517; operator-daily-4 bd618576: PKT-269, 508, 518; checkpoint-capture-stream 865a2a40: PKT-492, 315; test-source-assertions 8be0361f: PKT-540; struck with the hash), plus 21 added: the lanes' and the ledger's ids first placed here, PKT-481 (a new (a0) block, launcher-env), PKT-494 and PKT-554 (service-envelope, 10), PKT-495 ((b) decisions), PKT-512 (operator-daily, 5), PKT-514, 556, 557, 558 (served-path-scale, 4), PKT-555 (ingress-span, 16; egress-span's), and sweep 23's PKT-560 (keys-and-accounts, 6), PKT-561 and 562 (coordinator chores, from ingress-span-2, finished NOT merged), PKT-563 (operator-daily, 5; a decision), PKT-564 (upgrade-restore, 3), PKT-565, 566, 569, 570 (tooling-velocity, 14), PKT-567 and 568 (qual-next, 17). PKT-543 stays a chore: its native modules have no record and planning/proofs.json still reads uncertified-at-current-digest for the cited PRFs. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
+
+Sweep 24 (deputy 4, dev `5a617f06..64ff51f3`): 297 after sweep 23, less 4 retired in the window (egress-span 8083367f: PKT-555; post-identity-index 342b603e: PKT-558, answered; launcher-env 720f5fa7: PKT-481 (a), whose (a0) block is now merged; the batch AD cite and gate c5b4c6df, 5a46a30c: PKT-543, cite and gate only; struck with the hash; PKT-476 (3) retired at 7d5a0584 as an item, the line stays), plus 31 added: 6 lane lines with no triage row (PKT-479 and 550 to ingress-span, 16; PKT-544 to service-envelope, 10; PKT-546 to (b) BP beside PKT-414; PKT-552 and 548 to served-path-scale, 4), PKT-559 (qual-next, 17), PKT-549 ((b) decisions), PKT-596 (community-bounds, 7), PKT-594 (a chore: batch AG's cite and modules), PKT-595 ((b) peering and public exposure), and a new WAVE 5 subsection of 20: PKT-510 (first placed, config-consumer-catalog's), 571, 573, 574, 577, 579, 580, 585, 586, 592, 593 and, from lanes finished but NOT yet merged, PKT-575, 576, 581, 582, 587, 588, 589, 590, 591 (placed so every open backlog line has its row; nothing of theirs ticked). The rep-wave-d-4 (a0) block is absorbed by w5-catalog-slice. R1 is observed stale (batch AG, log afd76501): PKT-571. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
 
 Every open packet appears exactly once below (struck lines are retired and not counted) (checked by script against the backlog's open lines).
 
@@ -148,7 +151,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-441 the one sound cheaper publication program: the next reservation's frontier under the marker's root barrier before the ack (sweep 12)
 - PKT-079 a cheaper publication program against A <= M <= D (326 to 388 ms per commit on ZFS)
 
-**rep-wave-d-4 (queued, Fable; waits on ember's PKT-293/PKT-167)**
+**rep-wave-d-4 (queued, Fable; waits on ember's PKT-293/PKT-167); sweep 24: absorbed by w5-catalog-slice (consolidation-design 3e277217, D33 decided): these packets are catalog-slice's, PKT-585 carries its steps)**
 
 - PKT-293 the shape of the records freeze (two views, shared transition)
 - PKT-167 adopt the representation program with the payload in the arena
@@ -166,9 +169,9 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - moved: PKT-164 the default built at 15c25aef; moved to (b) decisions with a default in force
 - moved: PKT-252 tin over TLS and the pill closed at 15c25aef; the remainder moved to friend-session
 
-**launcher-env (running)**
+**launcher-env (merged 720f5fa7; PKT-559 the remainder, in qual-next below)**
 
-- PKT-481 (a) the packaging trap: an install's `bin/fn` execs `$FN_NATIVE_HOST` when set, so it runs another image under its name; b6759850's rollback row is untested (qual-dfa810fc) (sweep 23)
+- ~~PKT-481 (a) the packaging trap: an install's `bin/fn` execs `$FN_NATIVE_HOST` when set, so it runs another image under its name; b6759850's rollback row is untested (qual-dfa810fc) (sweep 23)~~ retired at 720f5fa7 (sweep 24)
 
 ### Wave-4 lane candidates, by leverage toward friends peering and public reading
 
@@ -233,18 +236,20 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-041 in checkpoint mode pack, compact and the owner still rebuild all N records' octets
 - PKT-301 the O(N) POST allocation and OVER terms (from hot-path-scans, sweep 10)
 - moved: PKT-324 to served-path-scale (running; its brief, item 4) (sweep 12)
-- PKT-321 M1: control requests starve behind saturating reads in the mixed hour; mutex hold per request kind (sweep 10)
+- PKT-321 M1: control requests starve behind saturating reads in the mixed hour; mutex hold per request kind (sweep 10) (sweep 24: not met again at 69046a76, qual-69046a76's mixed hour)
 - ~~PKT-190 the greeting under the owner mutex: 369 ms at N = 20,000, linear (narrowed at c150c506; PKT-455 (1)) (sweep 14)~~ retired at 0858ed36 (the greeting runs no whole-state recognizer: 359 -> 1.2 ms at N = 10,000) (sweep 23)
 - ~~PKT-455 served-path-scale's remainder: (1) a carried greeting open equal to fn-ocfg-open under fn-ocl-relation, (2) the replay's linear lookup per step, (3) the fixture's checkpoint refused, (4) POST at N = 10,000 and the refresh's `len`, (5) PKT-041 (sweep 14)~~ retired at 0858ed36 ((1) done; (3) answered; (4) measured; (2) and (5) are PKT-514) (sweep 23)
 - PKT-324 hot-path-scans' served-path prefix traversals: (1)'s `len`, (2), (3), (7); (4) and (8) are PKT-474's (sweep 21: from hot-path-scans-2 in (a0))
-- PKT-330 signed-history-index's remainder: (2) the no-decode walks, (4) the prepare keystones under fn-ocl-relation, (5), (6) (sweep 21: from hot-path-scans-2 in (a0))
+- PKT-330 signed-history-index's remainder: (2) the no-decode walks, (4) the prepare keystones under fn-ocl-relation, (5), (6) (sweep 21: from hot-path-scans-2 in (a0)) (sweep 24: (2) narrowed at 3da24bc5, signed-post-linear)
 - PKT-474 what hot-path-scans-2 left: the prepare's candidate `len`, the status and health reports' folds, the checkpoint capture's `len`, one record encode per POST, the offline host's folds (sweep 21)
 - PKT-475 SCN-108 did not observe the CPU terms (hbox under load): a quiet re-measure at N = 1,000 and 10,000 and a deeper-stack profile (sweep 21)
 - ~~PKT-517 the per-POST group-index rebuild still grows with N (FN-INDEX-BUILD about 19,900 samples at 10k) though recorded closed at c150c506: name the caller, extend instead (sweep 21)~~ retired at 0858ed36 (not on the current code: zero index builds in 200 POSTs) (sweep 23)
 - PKT-514 what served-path-scale-2 left: the replay's per-step lookups and the octet-list re-validation at open, PKT-041, the peer open's recognizers, fn-own-refresh's len, a quiet repetition (served-path-scale-3) (sweep 23)
 - PKT-556 the chain open decodes every link (fn-ccc-decode-link 29.8 percent of the checkpoint open at 20,000) (perf-ledger C; sweep 23)
 - PKT-557 the checkpoint open re-recognizes what the decode produced (fn-record-p, fn-sf-record-listp); PKT-041 retired as a cost (perf-ledger D; sweep 23)
-- PKT-558 the POST's per-connection group index (fn-served-make-conn-group-indexed 15.6 percent of a POST's bytes): examine (post-identity-index) (perf-ledger E; sweep 23)
+- ~~PKT-558 the POST's per-connection group index (fn-served-make-conn-group-indexed 15.6 percent of a POST's bytes): examine (post-identity-index) (perf-ledger E; sweep 23)~~ retired at 342b603e: answered, not a rebuild; the per-byte connection record is PKT-479 (sweep 24)
+- PKT-548 what the view-trie lookups leave: the developer `store post` prepare, the transit, control and identity prepares, a withdrawal-targeted Message-ID (post-identity-index; sweep 24)
+- PKT-552 a signed POST's constant 65 to 90 ms: fn-article-parse-lines' quadratic append and the carrier parsed three times, completion, replay-identity-step (signed-post-linear; sweep 24)
 
 #### 5. operator-daily (merged e5c58f2e; operator-daily-2 merged b39f2363; PKT-472 the remainder)
 
@@ -319,9 +324,10 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-435 community-bounds' remainder: (1) field 7 governs group names up to the wire's 460, (2) the checkpoint generation names (PKT-168 (1)); (3) PKT-183's contiguity and credential-file bound and (4) the FNFD fit stay after the brief (sweep 11) (sweep 19: moved from caps-to-profile, narrowed at faa6bd8a)
 - PKT-370 the consumer bound across a reopen composed only in prose (replay does not re-apply field 9) (sweep 11) (sweep 19: moved from caps-to-profile)
 - PKT-451 caps-to-profile's remainder: field 7 governs group names up to the wire's 460 (a records-shape + byte-store-frame freeze), the pack path past 4,096 natively, the live owner's `peer carries` arm natively, the rollback rehearsal, `peer list` on a production image (a caps-to-profile-2 brief) (sweep 19)
-- PKT-501 every offline `operator` request replays the whole configuration log at open: O(N^2) over N requests (8,336 s for 1,100); a configuration checkpoint or the live owner's arm (sweep 19)
+- PKT-501 every offline `operator` request replays the whole configuration log at open: O(N^2) over N requests (8,336 s for 1,100); a configuration checkpoint or the live owner's arm (sweep 19) (sweep 24: narrowed at 96a68887, 7.7x; PKT-510 (1) the rest)
 - ~~PKT-135 classify feed, scheduler, anchor, consumer-token and topic payload caps~~ retired at 07922169 (sweep 11)
 - PKT-506 a References of 8,000 octets or more refused 441 and a 900-octet Subject shortened in OVER, unexamined: name each bound or remove it (D27) (sweep 20)
+- PKT-596 `init` with A = 4 MiB refused MAX-RECORD-OCTETS-BELOW-THE-ARTICLE-RECORD unless `--max-record-octets` is passed: derive R from A or name the value (qual-69046a76; sweep 24)
 
 #### 8. reader-2 (merged dc73c9e0; PKT-437 the remainder)
 
@@ -363,7 +369,8 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-191 N=100k: 86 ms per POST, 3,870 s full replay, checkpoint capture exhausts 32 GB
 - ~~PKT-377 the signed POST is not a gated throughput metric; the 24481dcc improvement unrecorded (sweep 12)~~ retired at b01eb9f0 (the baseline row to PKT-408) (sweep 18)
 - PKT-378 publish-program's 32 KiB N=10,000 curve and a second ZFS repetition (sweep 12)
-- PKT-476 what the envelope did not measure: the after rows (hot-path-scans-2, marker-sharing-2), 32 KiB, a quiet box, bytes consed, the mutex fraction, OVER at about 8 ms a row, memory growth, the collapse probe (sweep 18)
+- PKT-476 what the envelope did not measure: the after rows (hot-path-scans-2, marker-sharing-2), 32 KiB, a quiet box, bytes consed, the mutex fraction, OVER at about 8 ms a row, memory growth, the collapse probe (sweep 18) (sweep 24: (3) retired at 7d5a0584; PKT-544 what remains of OVER)
+- PKT-544 what remains of OVER and read-by-number after the number index: the range's number selection walks the bucket once per OVER; by-number reads (over-number-index; sweep 24)
 - ~~PKT-492 the profile admits what the heap cannot capture: the owner dies at N of about 33,000 x 2 KiB with no named refusal; refuse or defer by name until the arena (sweep 18) (sweep 22: retired on checkpoint-capture-stream's branch 83437961, NOT yet merged; strike at its merge)~~ retired at 865a2a40 (the capture defers by name before any encode) (sweep 23)
 - PKT-494 what checkpoint-capture-stream left: the buffer kept at the largest file, the per-process deferral, the frozen value's double cost and pre-encode walks, the O(N) estimate, the quiet checkpoint-phase comparison (sweep 23)
 - PKT-554 rows not measured on dev: store compact and reclaim at scale, BP transfers of 1 and 10 MiB, consumer poll at depth, signed POST, the pool, a quiet box (perf-ledger A; sweep 23)
@@ -454,7 +461,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-397 a farm run with an explicit root and `--affected-by` selected no book and certified nothing: refuse the combination; a zero-book run exits non-zero (sweep 14)
 - ~~PKT-493 docs_check cites docs/operator.md by line number in a generated book: an insertion above a quoted invocation changes a book; cite by anchor (sweep 18)~~ retired at 86915c1a (tooling-velocity-2, 46b7d397/295b67be) (sweep 20)
 - PKT-496 what tooling-velocity-2 left: the 66 U+00A7 book lines at the next closure recertification, bp_node's first test at 20.2 s, the 322 citations (sweep 20)
-- PKT-565 qual-dfa810fc's C19 to C26 stale native expectations; C25 hides the rest of its test (sweep 23)
+- PKT-565 qual-dfa810fc's C19 to C26 stale native expectations; C25 hides the rest of its test (sweep 23) (sweep 24: C27 to C29 from qual-69046a76 added)
 - PKT-566 throughput_gate cannot run a frozen image (its launcher reads a literal `$here/runtime/sbcl`) (sweep 23)
 - PKT-569 PKT-540's class rule: 29 native modules keep literal source checks that nothing runs at the refactor (sweep 23)
 - PKT-570 test_native_v0_matrix's historical schema case: planned rows missing from the matrix file (sweep 23)
@@ -482,11 +489,13 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - **Mandate:** §7; rep-wave-d §3 step (iv).
 - **Starts after:** rep-wave-d-4's freeze.
 
-- PKT-302 rep-wave-d's (iv) ingress span machine and (v) projections reading the arena by handle
+- PKT-302 rep-wave-d's (iv) ingress span machine and (v) projections reading the arena by handle (sweep 24: (iv) in part at 64688878, the buffer read proved the reference; PKT-479 the rest)
 - ~~PKT-315 the checkpoint writer's per-octet export call (0.12 us per octet) (sweep 22: retired on checkpoint-capture-stream's branch 83437961, NOT yet merged; strike at its merge)~~ retired at 865a2a40 (the streamed buffer writer) (sweep 23)
-- PKT-316 the 64 MiB collection trigger's placement slows the checkpoint reopen (sweep 22: DECIDED by the coordinator as ingress-span's PKT-480, not yet merged: keep the 64 MiB trigger until the ledger ranks it)
-- PKT-491 what the PKT-481 fix left: the reply materialized once as an octet list for the wire (the buffer-range twin of S2), fn-served-reply-octets recursing per effect (sweep 20)
-- PKT-555 ARTICLE 3 MiB's wall is not owner CPU (15.3 s wall, 2.7 s CPU): separate the writer's pacing from the client's reads (egress-span's first task; perf-ledger B; sweep 23)
+- PKT-316 the 64 MiB collection trigger's placement slows the checkpoint reopen (sweep 22: DECIDED by the coordinator as ingress-span's PKT-480, not yet merged: keep the 64 MiB trigger until the ledger ranks it) (sweep 24: PKT-480 merged at 64688878)
+- PKT-491 what the PKT-481 fix left: the reply materialized once as an octet list for the wire (the buffer-range twin of S2), fn-served-reply-octets recursing per effect (sweep 20) (sweep 24: narrowed at 8083367f, the reply a buffer range; PKT-550 the renderer)
+- ~~PKT-555 ARTICLE 3 MiB's wall is not owner CPU (15.3 s wall, 2.7 s CPU): separate the writer's pacing from the client's reads (egress-span's first task; perf-ledger B; sweep 23)~~ retired at 8083367f (sweep 24)
+- PKT-479 what ingress-span left: the per-byte wire-state rebuild and the per-event connection (about 97 percent of a 32 KiB POST's 20.4 MB), the per-line scan keystone (ingress-span-2; sweep 24)
+- PKT-550 the NNTP renderer's octet lists for an ARTICLE reply (about 470 MB and 0.5 s per 3 MiB) and two harness defects (unbuffered client reads, a partial unbuffered write) (egress-span; sweep 24)
 
 #### 17. qual-next
 
@@ -507,8 +516,9 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-385 native_operator_campaign's pack-chain-link row, never run (sweep 13)
 - PKT-388 the release-tarball run of the accounts module: friends_tarball.sh takes a module (sweep 13)
 - ~~PKT-395 the current image refuses the 20,000 fixture's checkpoint: bug or format refusal? if a format refusal, the first open after the upgrade is a full replay: the rehearsal records it on the deployed node's copy (sweep 14) (sweep 15: qual-dfa810fc's item 1 (c) and service-envelope told)~~ retired at 0858ed36 (9b6eb8ec: an unversioned index shape, now refused by name; the rehearsal is PKT-567) (sweep 23)
-- PKT-567 the next rehearsal opens the deployed node's checkpoint and records the open it takes; which deployed checkpoints fall in a249a699..d0df09ed (sweep 23)
+- PKT-567 the next rehearsal opens the deployed node's checkpoint and records the open it takes; which deployed checkpoints fall in a249a699..d0df09ed (sweep 23) (sweep 24: answered for 69046a76, cross-open refused both ways by name, a full replay; D34 reinstall)
 - PKT-568 the chain publication cut campaign and the 4,500-record EIO campaign did not finish in qual-dfa810fc's windows (sweep 23)
+- PKT-559 releases cut before launcher-env keep the old bin/fn: every rehearsal or rollback on them pops FN_NATIVE_*/FN_RUN_*/FN_TEST_* (launcher-env; sweep 24)
 
 ### Coordinator chores (in wave 4's window, not lanes)
 
@@ -542,9 +552,52 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-502 profile-open-refusal's and caps-to-profile's merge certifications at the merged bytes (config.lisp was resolved at the join), cited; the D26 re-measure of owner-invariants, config-owner-live, native-operator; the batch's gate (sweep 19)~~ retired at 5a9bfc4b and c3f0c2a8 (batch Z cite and gate; the quiet run is PKT-408) (sweep 20)
 - PKT-503 the join defect at faa6bd8a (delta code 17 taken twice; renumbered 18/19): the stale 17/18 prose, and briefs name the next free code from dev at launch (sweep 19)
 - ~~PKT-509 batch AA's gate over exposure-reply-size and the regenerated docs grammar book cited at the merged bytes, then the push and the cut carrying LargeReplyTests (sweep 20)~~ retired at 69046a76 (gates a931ed8d and 69046a76, the grammar book cited at 9333592f, pushed, cut; the qualification in flight) (sweep 21)
-- PKT-543 batch AD: keys-and-accounts-4 and hot-path-checker(-2) merged uncertified (PRF-184, PRF-185 uncertified at the current digest): one certification, the native modules, the gate, before the next cut (sweep 22)
-- PKT-561 test_native_owner's selectors raw script lacks fn-outcome-code since cd64c1ea: red on dev (ingress-span-2) (sweep 23)
+- ~~PKT-543 batch AD: keys-and-accounts-4 and hot-path-checker(-2) merged uncertified (PRF-184, PRF-185 uncertified at the current digest): one certification, the native modules, the gate, before the next cut (sweep 22)~~ retired at c5b4c6df and 5a46a30c: cite and gate only; batch AD predates the union-module rule (sweep 24)
+- PKT-561 test_native_owner's selectors raw script lacks fn-outcome-code since cd64c1ea: red on dev (ingress-span-2) (sweep 23) (sweep 24: still open; batch AG's test_native_owner names what remains)
 - PKT-562 the stop-path race in test_native_owner's two-client case: remember the answering socket at the first stop, spare it later (ingress-span-2; 6/40 on dev) (sweep 23)
+- PKT-594 batch AG merged uncertified (reader-clients over nntp-responses, 345 roots; usenet-headers over config.lisp; listener-v6 over native-config): the union cite and the named native modules; the gate done at 64ff51f3 (sweep 24)
+
+### WAVE 5: the consolidation (D33 to D36; the eight briefs under planning/briefs-wave5/, launched from build/coordinator/queue/)
+
+The eight briefs, with their packet ids (build/coordinator/WAVE-STATE.md's rows): w5-checkpoint-pipeline (running as checkpoint-pipeline-2; PKT-583..584, not yet placed; its brief names PKT-307, PKT-314), w5-catalog-slice (steps 1 to 3 merged 2672cdd1, catalog-slice-2 running; PKT-585..586; its brief names PKT-293), w5-migration-removal (finished, NOT yet merged; PKT-587), w5-release-product (finished, NOT yet merged; PKT-588; with heap-from-profile's PKT-581..582 and openbsd-feed's PKT-589..591, NOT yet merged), w5-adapter-retirement (queued; ids at launch; its brief names PKT-508), w5-bp-catalog (queued; names PKT-554), w5-config-consumer-catalog (queued; names PKT-510, PKT-554), w5-public-node (queued; PKT-579..580 from node-disk). Beside them, the coordinator's image-floor (PKT-593) and the NNTP gap lanes (reader-clients, usenet-headers, listener-v6 merged; group-policy finished, NOT yet merged). PKT-554 stays under service-envelope (10) and PKT-293, 307, 314, 508 where they are.
+
+**The coordinator's decisions for the wave**
+
+- PKT-592 consolidation-design section 6: P-B (attach-stobj as the representation rule), P-C (versions for pinned views), P-D (store export/import's scope); defaults in force; P-A and P-E decided by D33 and D36 (sweep 24)
+
+**w5-catalog-slice (catalog-slice-2 running)**
+
+- PKT-585 catalog-slice steps 4 to 9: catalog-commit, -delta, -relation, the served reads, the host, the measurement, SCN-131's module; the deletion map all still present (sweep 24)
+- PKT-586 FOR EMBER: article numbers never reused (default keep) (sweep 24)
+- PKT-571 R1 OBSERVED stale (a long-lived reader keeps GROUP 211 0 and 430 after a POST and an IHAVE; batch AG, log afd76501): the re-pin at GROUP/LISTGROUP; HELP's converse theorem, pan, the Thunderbird rerun, MODE READER before login (reader-clients; sweep 24)
+
+**w5-config-consumer-catalog (queued)**
+
+- PKT-510 caps-to-profile-2's remainder: a configuration checkpoint and one replay per offline request; the group-name width to 460; the pack path past 4,096; a stale source test (sweep 24)
+
+**w5-migration-removal (finished, NOT yet merged)**
+
+- PKT-587 FOR EMBER: `required` at birth now that the upgrade verb goes (default: init writes the covering marker of the empty history); SCN-133's 300-article store (NOT yet merged; sweep 24)
+
+**w5-release-product (finished, NOT yet merged), with heap-from-profile, openbsd-feed and the coordinator's image-floor**
+
+- PKT-588 the OpenBSD tarball, a self-signed certificate verb, the export/import leg, the root unit; with runtime-image's packet 2, the per-image book and certificate list in the release manifest (NOT yet merged; sweep 24)
+- PKT-581 no `--profile small`, OpenBSD constants unexecuted, a full store under 2 GiB unmeasured, upgrade-profile unrefused past the machine (heap-from-profile, NOT yet merged; sweep 24)
+- PKT-582 FOR EMBER: the D27 default profile (H 1 TiB) refused by name on every machine; the headroom constant (heap-from-profile, NOT yet merged; sweep 24)
+- PKT-589 `store clone` needs Linux renameat2 (openbsd-feed, NOT yet merged; sweep 24)
+- PKT-590 app-journal registered in the production image, docs say developer (openbsd-feed, NOT yet merged; sweep 24)
+- PKT-591 the unreproduced OpenBSD stop, the hand tunnel, SCN-136 not a module (openbsd-feed, NOT yet merged; sweep 24)
+- PKT-593 runtime-image's packet 1, the world-free image (about 98 MiB of the 281 MB floor): declined by the record's default, then taken up by image-floor on ember's memory target (D35) (sweep 24)
+
+**w5-public-node (queued) and the NNTP gap lanes**
+
+- PKT-579 the store on the NVMe ext4 root (decided, D36; rpool flips it only once boot-imported): open until the public node's store is placed (node-disk; sweep 24)
+- PKT-580 a measured POST on the chosen mount, a quiet tank row, tank's full special vdev (for ember), a re-probe if rpool moves (node-disk; sweep 24)
+- PKT-573 R3 Xref:full in the overview and P2 Injection-Info, designs in the record (usenet-headers; sweep 24)
+- PKT-574 FOR EMBER: the posting-account key's provenance (default a secret generated at init into the key directory) (usenet-headers; sweep 24)
+- PKT-577 status/health list no bound addresses; the T5 riders (INN recipe, the 480-to-transit-peers sentence); no rebind on reconfiguration (PKT-464 (a)) (listener-v6; sweep 24)
+- PKT-575 LIST COUNTS still `y` for a closed group; CT3's withdraw verb, design only (group-policy, NOT yet merged; sweep 24)
+- PKT-576 FOR EMBER: P1 own-post cancel for unsigned readers (default RFC 8315 Cancel-Lock under a node secret) (group-policy, NOT yet merged; sweep 24)
 
 ## (b) AFTER v1: matters, but not for friends peering
 
@@ -568,7 +621,8 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-015 the TCPCL MRU literal 1,048,576
 - PKT-299 the BP namespace's maintenance reservation (rotation reserve 0, unproved)
 - PKT-298 two older FNBS replay folds answer the old bound
-- PKT-414 `fn-bpb-encode` at ~6 us an octet; one `:session` step encodes every candidate three times (1.3 s) (sweep 10)
+- PKT-414 `fn-bpb-encode` at ~6 us an octet; one `:session` step encodes every candidate three times (1.3 s) (sweep 10) (sweep 24: narrowed at 5ffb18e3, the CRC table; the three scans stay)
+- PKT-546 what the CRC fix leaves: SCN-077's receiver open not re-measured with PRF-190, CRC-16 not tabled, the octet-list allocation (bp-crc-exec; sweep 24)
 
 ### BP: mission, routing, exits and assurance
 
@@ -664,6 +718,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 
 - PKT-356 no future-Date policy (RFC 5537 §3.4 local policy)
 - PKT-357 no theorem ties `fn-exp-conns` to `fn-own-conns`
+- PKT-595 the gap inventory's deferred rows before the wider Usenet: R8, R9, P3, P4, P6, P7, P9, T1 to T4, CT2, O3 (nntp-gap-inventory; sweep 24)
 
 ### Consumers beyond the local profile
 
@@ -710,6 +765,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-432 an older image faults on a pull journal holding the new FNPL record; default accept (no format bump) (sweep 12)~~ retired at bc774574 (decided by the coordinator: no format bump; the rollback sentence in docs/operator.md) (sweep 13)
 - PKT-444 (2) how a pre-C1 store holding a signed cancel is repaired (ember's; in force: every open refuses it by name, `store repair-control` refuses; the coordinator recommends replay as filed, a logged migration on a snapshot) (moved from control-across-peers-2, sweep 13)
 - PKT-495 DECISION: the checkpoint budget is the reader's file bound 3H + framing (default implemented at 865a2a40); a profile field only when a second consumer exists (sweep 23)
+- PKT-549 a retention id index (the coordinator's; default a derived id trie beside pins and releases; a retention-state shape change) (post-identity-index; sweep 24)
 
 ## (c) WON'T DO / SUPERSEDED
 
