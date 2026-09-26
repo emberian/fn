@@ -47227,119 +47227,91 @@
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 319,
-        "name": "fnn-hsig-null-p",
-        "source": "host/native/signatures.lisp",
-        "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/peer-invite.lisp",
-        "line": 319,
-        "name": "fnn-hsig-null",
-        "source": "host/native/signatures.lisp",
-        "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/peer-invite.lisp",
-        "line": 319,
-        "name": "fnn-%hsig-bio-free",
-        "source": "host/native/signatures.lisp",
-        "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/peer-invite.lisp",
-        "line": 341,
+        "line": 308,
         "name": "fnn-hsig-initialize",
         "source": "host/native/signatures.lisp",
         "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 341,
-        "name": "fnn-%hsig-context-free",
-        "source": "host/native/signatures.lisp",
-        "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/peer-invite.lisp",
-        "line": 359,
+        "line": 334,
         "name": "fnn-crypto-initialize",
         "source": "host/native/crypto.lisp",
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 370,
+        "line": 345,
         "name": "fnn-lstat",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 370,
+        "line": 345,
         "name": "fnn-mkdir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 370,
+        "line": 345,
         "name": "fnn-write-staged",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 370,
+        "line": 345,
         "name": "fill",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 370,
+        "line": 345,
         "name": "fnn-fsync-dir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 388,
+        "line": 363,
         "name": "fnn-owner-wall-milliseconds",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 448,
+        "line": 423,
         "name": "fnn-octets-string",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 448,
+        "line": 423,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 448,
+        "line": 423,
         "name": "fnn-operator-emit-status",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 448,
+        "line": 423,
         "name": "fnn-operator-status-of-exit-code",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 448,
+        "line": 423,
         "name": "fnn-exit-code-for",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -47906,38 +47878,59 @@
       },
       {
         "host": "host/native/signatures.lisp",
-        "line": 18,
+        "line": 17,
         "name": "fnn-core",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signatures.lisp",
-        "line": 97,
+        "line": 44,
+        "name": "plusp",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 44,
+        "name": "namestring",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 44,
+        "name": "merge-pathnames",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 44,
+        "name": "make-pathname",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/signatures.lisp",
+        "line": 120,
         "name": "fnn-crypto-initialize",
         "source": "host/native/crypto.lisp",
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signatures.lisp",
-        "line": 159,
+        "line": 165,
         "name": "fnn-crypto-octets",
         "source": "host/native/crypto.lisp",
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signatures.lisp",
-        "line": 293,
+        "line": 249,
         "name": "fnn-crypto-ed25519-observe",
         "source": "host/native/crypto.lisp",
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/signatures.lisp",
-        "line": 326,
-        "name": "plusp",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/tcpcl.lisp",
@@ -47948,49 +47941,56 @@
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 54,
+        "line": 59,
         "name": "probe-file",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 197,
+        "line": 111,
+        "name": "remove-if",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/tls.lisp",
+        "line": 235,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 344,
+        "line": 389,
         "name": "fnn-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 382,
+        "line": 427,
         "name": "fnn-now",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 386,
+        "line": 431,
         "name": "fnn-seconds-to-deadline",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 386,
+        "line": 431,
         "name": "*fnn-fd-waiter*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 439,
+        "line": 484,
         "name": "fnn-make-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
