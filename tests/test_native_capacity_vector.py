@@ -36,7 +36,10 @@ from tests.native_process import wait_for_announcement
 from tools import msgid_measure as m
 
 HIST = int(os.environ.get("FN_CV_HIST", "300000"))
-FLAGS = ["--max-history-octets", str(HIST), "--max-record-octets", "262144",
+# T well above what H admits, so the history bound is the one the fill meets
+# (the transaction budget is a lifetime budget: no maintenance returns it).
+FLAGS = ["--max-transactions", "4096",
+         "--max-history-octets", str(HIST), "--max-record-octets", "262144",
          "--max-article-octets", "131072", "--max-groups-per-article", "16"]
 LOG = os.environ.get("FN_CV_LOG")
 GROUP = "fn.test"
@@ -225,7 +228,7 @@ class NativeCapacityVectorTests(_Bp):
                         "work-native-bp", "3")
         self.assertEqual(r.returncode, 0, r.stderr.decode())
         promised = self.status(cfg)
-        self.out(tag="undertaken", **promised)
+        self.out(tag="undertaken", status=promised)
         self.assertIn("debt=1 held", promised["reserve"])
 
         # 2. Fill until ordinary admission refuses by name.
@@ -246,7 +249,7 @@ class NativeCapacityVectorTests(_Bp):
         full = self.status(cfg)
         self.out(tag="full", accepted=accepted, refused=refused,
                  wall_s=round(time.perf_counter() - t0, 1),
-                 footprint=footprint(sender), **full)
+                 footprint=footprint(sender), status=full)
         self.assertTrue(refused.startswith("441"), refused)
         self.assertIn("debt=1 held", full["reserve"])
 
@@ -277,7 +280,7 @@ class NativeCapacityVectorTests(_Bp):
         self.out(tag="receipt", exit=r.returncode,
                  stderr=r.stderr.decode(errors="replace")[-300:],
                  obligation=pinned.stdout.decode(errors="replace").strip(),
-                 **discharged)
+                 status=discharged)
         self.assertEqual(r.returncode, 0, r.stderr.decode())
         self.assertIn(b"pinned=no", pinned.stdout)
         self.assertIn("debt=0", discharged["reserve"])
@@ -314,7 +317,7 @@ class NativeCapacityVectorTests(_Bp):
         finally:
             self.stop_owner(owner)
         final = self.status(cfg)
-        self.out(tag="reuse", posts=reused, footprint=footprint(sender), **final)
+        self.out(tag="reuse", posts=reused, footprint=footprint(sender), status=final)
         self.out(tag="cuts", failures=bad)
         self.assertEqual(bad, [])
         self.assertTrue(all(a.startswith("240") for a in reused), reused)
