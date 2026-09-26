@@ -912,7 +912,7 @@
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 107,
     "include_hygiene_warnings": 914,
-    "host_names_warnings": 1016,
+    "host_names_warnings": 1014,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -41605,56 +41605,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 224,
+        "line": 232,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 224,
+        "line": 232,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 411,
+        "line": 419,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 532,
-        "name": "fn-rcon-ocfg-io",
-        "source": "books/records-concrete-owner.lisp",
-        "reason": "defined in books/records-concrete-owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/owner-host.lisp",
-        "line": 621,
+        "line": 629,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 621,
-        "name": "fn-rclb-existing-action",
-        "source": "books/store-reclaim-buffer.lisp",
-        "reason": "defined in books/store-reclaim-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/owner-host.lisp",
-        "line": 621,
+        "line": 629,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2095,
+        "line": 2103,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
