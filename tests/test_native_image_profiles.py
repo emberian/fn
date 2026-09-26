@@ -117,7 +117,11 @@ class NativeImageProfileSourceTests(unittest.TestCase):
 
     def test_packaged_launcher_defaults_to_the_production_image(self):
         launcher = (ROOT / "packaging/fn").read_text()
-        self.assertIn('../libexec/fn/fn-host', launcher)
+        installed = launcher.index('if [ -d "$here/../libexec/fn" ]; then')
+        override = launcher.index('elif [ -n "${FN_NATIVE_HOST:-}" ]; then')
+        # PKT-481 (a): an installed launcher's own image is chosen before the
+        # developer override is ever consulted.
+        self.assertLess(installed, override)
         self.assertIn('image=$root/build/fn-host', launcher)
         self.assertIn('native host core missing', launcher)
         self.assertIn("production saved native host image", launcher)
