@@ -353,6 +353,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-tests \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
+	books/bp-run-class \
 	tests/acl2/bp-node-host-tests \
 	books/bp-authored-wire \
 	tests/acl2/bp-authored-wire-tests \
@@ -454,6 +455,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	books/bp-node-run-class \
+	tests/acl2/bp-run-class-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \

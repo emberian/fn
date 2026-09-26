@@ -9,7 +9,7 @@
 
 (defstruct fnn-bps
   root lifecycle tally state spool-lock lock-fd (stages nil)
-  (next-session 0) (outcome :accepted)
+  (next-session 0)
   ;; The last base transfer's reading in the contact being driven, and
   ;; whose outcome it is.  :process (a one-shot verb that was asked for the
   ;; transfer: bp-contact tick, bp-service run) folds a refused or uncertain
@@ -29,6 +29,17 @@
   ;; ACL2's reading of the generation selection file, and the recovery
   ;; event built from it (spec bp-node-machine 3.6; N16).
   (plan (list :none)) (recovery-event nil))
+
+(defun fnn-bps-note (service word)
+  "Record WORD, an evidence word ACL2 named, for SERVICE's run."
+  (fnn-bp-note (fnn-bps-tally service) word)
+  service)
+
+(defun fnn-bps-outcome (service)
+  "ACL2's class of SERVICE's run so far (fn-bprc-class): :accepted, :refused,
+:uncertain (a connection lost after it existed), :not-connected or :fenced (a
+publication whose outcome is unknown; recovery required)."
+  (fnn-core 'fn-bprc-class (fnn-bp-tally-evidence (fnn-bps-tally service))))
 
 ; Bound only during a negotiated outbound TCPCL contact.  The ACL2 effect
 ; supplies the exact image after immutable kind-8 publication.
@@ -452,8 +463,7 @@ its outcome, which is the refusal to the offering ingress."
          (operation-id (third effect))
          (outcome (fnn-bps-persist-kind-fourteen
                    service epoch operation-id (fourth effect))))
-    (when (eq outcome :uncertain)
-      (setf (fnn-bps-outcome service) :uncertain))
+    (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
     (fnn-bps-foundation-step
      service (list :persist-result epoch operation-id outcome))))
 
@@ -561,12 +571,10 @@ its outcome, which is the refusal to the offering ingress."
         ;; transfer certainly did not happen (:failed, requeued by ACL2).
         ;; Any failure after the connection exists stays :uncertain.
         (setq outcome (if socket :uncertain :failed))))
+    ;; The outcome word is an observation; ACL2 names the run's evidence
+    ;; from the durable :requeued record's reason (the :forward-refused
+    ;; effect, fn-bpnrc-job-result-class-is-the-transport-class).
     (setf (fnn-bps-transfer service) outcome)
-    (when (eq (fnn-bps-transfer-scope service) :process)
-      (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))
-      (when (eq outcome :refused)
-        (unless (eq (fnn-bps-outcome service) :uncertain)
-          (setf (fnn-bps-outcome service) :refused))))
     (fnn-bps-drive-effects service
                            (fnn-bps-foundation-step
                             service (list :job-result key attempt outcome)))))
@@ -583,8 +591,7 @@ its outcome, which is the refusal to the offering ingress."
               (outcome
                 (fnn-bps-persist-dispatch
                  service epoch operation-id record)))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
@@ -593,11 +600,10 @@ its outcome, which is the refusal to the offering ingress."
       (:dispatch-answer
        (case (second effect)
          (:refused
-          (unless (eq (fnn-bps-outcome service) :uncertain)
-            (setf (fnn-bps-outcome service) :refused))
+          (fnn-bps-note service :refused)
           (fnn-out "BP received carrier dispatch refused"))
          (otherwise
-          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: dispatch publication uncertain"))))
       (:persist-conflict
        (fnn-bps-drive-effects service (fnn-bps-settle-conflict service effect)))
@@ -610,8 +616,7 @@ its outcome, which is the refusal to the offering ingress."
               (outcome
                 (fnn-bps-persist-kind-ten
                  service epoch operation-id record)))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
@@ -620,11 +625,10 @@ its outcome, which is the refusal to the offering ingress."
       (:delete-answer
        (case (second effect)
          (:refused
-          (unless (eq (fnn-bps-outcome service) :uncertain)
-            (setf (fnn-bps-outcome service) :refused))
+          (fnn-bps-note service :refused)
           (fnn-out "BP held carrier deletion refused"))
          (otherwise
-          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: held deletion uncertain"))))
       (:report-due
        (fnn-out "BP status report intent durable; outbound queue pending"))
@@ -637,8 +641,7 @@ its outcome, which is the refusal to the offering ingress."
               (outcome
                 (fnn-bps-persist-kind-eighteen
                  service epoch operation-id record)))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
@@ -649,7 +652,7 @@ its outcome, which is the refusal to the offering ingress."
        (case (second effect)
          (:refused (fnn-out "BP fragment family publication refused"))
          (otherwise
-          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: fragment family uncertain"))))
       (:persist-delivery
        (unless (= (length effect) 4)
@@ -660,8 +663,7 @@ its outcome, which is the refusal to the offering ingress."
               (outcome
                 (fnn-bps-persist-kind-seven
                  service epoch operation-id record)))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
@@ -673,8 +675,7 @@ its outcome, which is the refusal to the offering ingress."
               (record (fourth effect))
               (outcome (fnn-bps-persist-forward
                         service epoch operation-id record)))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
@@ -684,18 +685,16 @@ its outcome, which is the refusal to the offering ingress."
        (case (second effect)
          (:durable (fnn-out "BP application handoff durable"))
          (:refused
-          (unless (eq (fnn-bps-outcome service) :uncertain)
-            (setf (fnn-bps-outcome service) :refused))
+          (fnn-bps-note service :refused)
           (fnn-out "BP application handoff refused"))
          (otherwise
-          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: application handoff uncertain"))))
       (:persist
        (let* ((token (second effect))
               (record (third effect))
               (outcome (fnn-bps-persist-record service token record)))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-step service (list :persist-result token outcome)))))
       (:cl-send
@@ -711,10 +710,9 @@ its outcome, which is the refusal to the offering ingress."
       (:forward-answer
        (case (second effect)
          (:refused
-          (unless (eq (fnn-bps-outcome service) :uncertain)
-            (setf (fnn-bps-outcome service) :refused)))
+          (fnn-bps-note service :refused))
          (:uncertain
-          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: forwarding publication uncertain"))))
       (:forward-stale
        (fnn-out "BP forwarding callback stale"))
@@ -738,8 +736,7 @@ its outcome, which is the refusal to the offering ingress."
       (:resume-refused
        ;; ACL2's refusal of an operator resume (fn-bpnp-resume-refusal);
        ;; nothing was written.
-       (unless (eq (fnn-bps-outcome service) :uncertain)
-         (setf (fnn-bps-outcome service) :refused))
+       (fnn-bps-note service :refused)
        (fnn-out "BP forwarding resume refused arrival=~d reason=~(~a~)"
                 (second effect) (third effect)))
       (:progress-wait
@@ -765,11 +762,10 @@ its outcome, which is the refusal to the offering ingress."
       (:deferral-answer
        (case (second effect)
          (:refused
-          (unless (eq (fnn-bps-outcome service) :uncertain)
-            (setf (fnn-bps-outcome service) :refused))
+          (fnn-bps-note service :refused)
           (fnn-out "BP node busy count publication refused"))
          (otherwise
-          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: busy count publication uncertain"))))
       (:bundle-queue-accepted
        (fnn-out "BP queue accepted work=~a attempt=~a generation=~d status=~(~a~)"
@@ -777,20 +773,24 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-octets-string (fnn-octets (third effect)))
                 (fourth effect) (sixth effect)))
       (:bundle-queue-refused
-       (unless (eq (fnn-bps-outcome service) :uncertain)
-         (setf (fnn-bps-outcome service) :refused))
+       (fnn-bps-note service :refused)
        (fnn-out "BP queue refused reason=~(~a~)" (car (last effect))))
       (:bundle-queue-uncertain
-       (setf (fnn-bps-outcome service) :uncertain)
+       (fnn-bps-note service :fenced)
        (fnn-out "BP queue uncertain reason=~(~a~)" (car (last effect))))
       (:forward-refused
+       ;; A one-shot verb that asked for the transfer (:process scope) takes
+       ;; ACL2's word for the requeued record's reason; under :connection
+       ;; scope the reading costs only that connection (spec 4.3.2).
+       (when (eq (fnn-bps-transfer-scope service) :process)
+         (fnn-bps-note service (fnn-core 'fn-bprc-effect-evidence effect)))
        (fnn-out "BP forwarding retained reason=~(~a~)" (car (last effect))))
       (:transport
        (fnn-out "BP transport work=~a status=~(~a~)"
                 (fnn-octets-string (fnn-octets (second effect)))
                 (fifth effect)))
       (:restart-fault
-       (setf (fnn-bps-outcome service) :uncertain)
+       (fnn-bps-note service :fenced)
        (if (eq (second effect) :clock-domain)
            (fnn-indeterminate "bp-service: restart fenced: clock domain ~(~a~)"
                               (third effect))
@@ -807,8 +807,7 @@ its outcome, which is the refusal to the offering ingress."
               (operation-id (third effect))
               (outcome (fnn-bps-publish-generation service (fourth effect)
                                                    (fifth effect))))
-         (when (eq outcome :uncertain)
-           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
@@ -817,11 +816,10 @@ its outcome, which is the refusal to the offering ingress."
        ;; The selection is durable: retire what no recovery reads again.
        (fnn-bps-retire-generations service (second effect)))
       (:rotation-refused
-       (unless (eq (fnn-bps-outcome service) :uncertain)
-         (setf (fnn-bps-outcome service) :refused))
+       (fnn-bps-note service :refused)
        (fnn-out "BP journal rotation refused generation=~d" (second effect)))
       (:rotation-uncertain
-       (setf (fnn-bps-outcome service) :uncertain)
+       (fnn-bps-note service :fenced)
        (fnn-out "BP journal rotation uncertain generation=~d" (second effect)))
       (t nil)))
   service)
@@ -992,10 +990,9 @@ octet is ACL2's."
         (when (eq (first result) :accepted)
           (fnn-bps-fragment-progress service))
         (when (eq (first result) :uncertain)
-          (setf (fnn-bps-outcome service) :uncertain))
+          (fnn-bps-note service :fenced))
         (when (eq (first result) :refused)
-          (unless (eq (fnn-bps-outcome service) :uncertain)
-            (setf (fnn-bps-outcome service) :refused)))
+          (fnn-bps-note service :refused))
         (values result adu)))))
 
 (defun fnn-bps-tcpcl-ingress
@@ -1227,10 +1224,8 @@ answers, first first."
   service)
 
 (defun fnn-bps-exit-code (service)
-  (case (fnn-bps-outcome service)
-    (:accepted +fnn-exit-ok+)
-    (:refused +fnn-exit-refused+)
-    (t +fnn-exit-uncertain+)))
+  "ACL2's code for the run's evidence (fn-bprc-run-exit-code)."
+  (fnn-core 'fn-bprc-run-exit-code (fnn-bp-tally-evidence (fnn-bps-tally service))))
 
 (defun fnn-command-bp-service-run (host port adu-path journal node-id peer-id
                                    work attempt generation lifetime crc-type
@@ -1324,4 +1319,4 @@ answers, first first."
       (t (error 'fnn-usage-error
                 :message (format nil "unknown bp-service command ~a" command))))))
 
-(fnn-register-verb "bp-service" #'fnn-dispatch-bp-service)
+(fnn-register-verb "bp-service" (fnn-bp-verb #'fnn-dispatch-bp-service))

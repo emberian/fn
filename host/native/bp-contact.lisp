@@ -81,4 +81,4 @@
      ;; [STORE]: route the queued jobs by STORE's bp-route table.
      (fnn-tcl-arg args 11))))
 
-(fnn-register-verb "bp-contact" #'fnn-dispatch-bp-contact)
+(fnn-register-verb "bp-contact" (fnn-bp-verb #'fnn-dispatch-bp-contact))
