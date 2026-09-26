@@ -157,10 +157,16 @@ fn-heap-reserve-init-request, PKT-582); any other request unchanged."
                                                    (fnn-heap-init-request request) nil)))
                             (and (not (eq (car profile) :invalid)) profile))))
                  (fnn-heap-store-profile (fnn-absolute root)))
-               ;; The owner's client workers a `run' admits (0 for any other
-               ;; verb): ACL2's figure, the one fnn-operator-execute passes on.
-               (fnn-core 'fn-native-operator-host-result-run-max-connections
-                         result))))))
+               ;; The owner's client workers a `run' admits, ACL2's figure
+               ;; fnn-operator-execute passes on; for `init' the connections
+               ;; init judged the store by (fn-heap-reserve-init-connections),
+               ;; so the probe judges the store init makes as it will run.
+               (if (eq (fnn-core 'fn-native-operator-host-result-native-action
+                                 result)
+                       :init)
+                   (fnn-core 'fn-heap-reserve-init-connections)
+                 (fnn-core 'fn-native-operator-host-result-run-max-connections
+                           result)))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)

@@ -320,6 +320,13 @@
         (list :development (cadr (true-list-fix request)))
         (fn-heap-small-candidate request)))
 
+; The connections `init' judges a store by: the configuration's default
+; max-connections, which the heap probe also passes for `init' so that the
+; store init makes is judged as it will run.
+(defun fn-heap-reserve-init-connections ()
+  (declare (xargs :guard t))
+  *fn-ncfg-default-max-connections*)
+
 (defun fn-heap-reserve-acceptsp (request core nursery observations)
   (declare (xargs :guard t))
   (let ((p (fn-bs-profile-resolve request nil)))
