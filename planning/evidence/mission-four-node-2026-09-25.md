@@ -127,3 +127,75 @@ qual-bbf52159 records for the same modules on the bbf52159 image
 both images with identical output. Classification: harness (stale test
 expectation after spec 4.3.2), not this lane's behaviour; not turned green.
 
+## The four-node mission (task 1, SCN-066)
+
+Topology tested (loopback on hbox, nothing deployed):
+`A (dtn://fn-a/) -> X (fn relay) -> dtn7 r1 -> dtn7 r2 -> Y (fn relay) -> B (dtn://fn-b/)`
+and back; four `bp-node serve` processes of `fn-host-dtn-developer`, owners
+and consumers on `fn-host-developer`, dtn7-rs at the pinned
+`/tank/fn/dtn7/repo`, every process under `systemd-run -p MemoryMax=24G`.
+Driver: `tests/bp-dtn7/run_mission_four_node.py` (Python is only the external
+driver; every verdict is a native line, exit code or verb output). Runs on
+image abbd8aef: `mission-four-node/mission-abbd8aef.tgz` (sha256 eafa1ab2…;
+keys, stores and journals excluded; each report.json lists every log's
+SHA-256).
+
+**Unsigned report and reply: all seven steps held, exit 0, 105.8 s**
+(`unsigned/report.json` sha256 180a94ea…; the same on bbf52159, aac52d4c…):
+A fragments its request to X (`BP fragmenting length=5680 peer-mru=4096
+fragments=2`), X reassembles (`BP fragment family durable`), holds it while
+r1 is down, is SIGKILLed, recovers `held=1` and forwards `status=sent`;
+B takes custody and answers `request-accepted`, queues the receipt; the
+receipt crosses its own outage (X down, A SIGKILLed and restarted, X
+restarted) and A answers `receipt-accepted`, obligation `receipted
+pinned=no`, **before B's owner and consumer start**; B's consumer polls
+`<mission-report@fn-a.invalid>` and acks; B's reply crosses back, A answers
+`request-accepted`, B's `work-b-reply` is `receipted pinned=no`; A's
+consumer polls and acks the reply. Restarts: A SIGKILL and SIGTERM, X SIGKILL
+and SIGTERM, B and Y SIGTERM.
+
+Identities (unsigned, abbd8aef): work `work-a-report` / attempt
+`work-a-report-a1`, Message-ID `<mission-report@fn-a.invalid>`, authored
+source a658ee53… (B's stored copy 0c9cf40f…: B's own Path prepended);
+`work-b-reply` / `work-b-reply-a1`, `<mission-reply@fn-b.invalid>`, source
+8f151d4f…; bundles `dtn://fn-a/-843697605139-{0,1}` and
+`dtn://fn-b/-843697605139-{0,1}`; one kind-8 attempt and one `status=sent`
+per hop per bundle; FNBS lifecycle frames A 10, B 10, X 18, Y 16.
+
+**Signed report: FAILS, exit 1 (the brief's user-visible result is not
+reached).** A's `hybrid-author` carrier verifies at A
+(`hybrid-verify-source` rc 0) and crosses every hop, but B answers
+`BP node source carried carrier=y-boundary author=a-author | BP application
+handoff durable | BP node delivery request-refused`, and A refuses B's signed
+reply the same way. Classification: implementation (both images, both
+directions). The refusal names no reason (a second, observability defect):
+it is one of `fn-bpaj-transit-plan`'s `(:refused reason)` or
+`fn-owner-transit-decide` not `:want` (host/native/owner.lisp:1557). Not
+turned green: the unsigned pass is recorded as what it is.
+
+Other findings: an fn relay forwards held transit only toward its PEER-ID
+(`fn-bpnp-has-forward-pendingp`), so X and Y are restarted with the other
+peer when traffic turns (capability limit; a multi-peer relay is open); X and
+Y log `BP channel admission refused reason=ambiguous-peer` on some sessions
+and still take kind-5 custody of transit (two boundaries on one loopback
+address; a decision packet below); a consumer registered after a Store post
+still polls that post first.
+
+## PKT-170 (for ember): does transit custody need an admitted principal?
+
+Trace: X logs `BP channel admission refused reason=ambiguous-peer`, then
+takes kind-5 custody of the same session's transit bundle and forwards it.
+Constraint: D23 (carriage is not authorization; the receiving authority is
+bound to the author at the destination). Default (kept): a relay may hold
+and forward transit from an unadmitted channel; the destination judges.
+Rejected alternative: refuse custody without an admitted principal; cost:
+two boundaries sharing a loopback address stop relaying in the lab until
+boundaries are told apart by node ID. Affected: `fn-bpnp` receive step,
+spec §4.1. Continues without it: everything in this record.
+
+## Next exact actions
+
+1. Log the refusal reason on `BP node delivery request-refused`, then find why
+   a Store-rendered FN-Authorship carrier is refused at the destination (the
+   signed mission); rerun `run_mission_four_node.py` (signed) on the new image.
+2. Stale test expectations C1 in test_bp_service_native/test_bp_contact_native.
