@@ -58,18 +58,18 @@
                                (if (equal 0 1) :v (fn-gnix-get 0 nil))))))
 (must-fail
  (defthm fn-tgn-get-of-set-without-posp-n
-   (implies (posp m)
-            (equal (fn-gnix-get n (fn-gnix-set m value node))
-                   (if (equal n m) value (fn-gnix-get n node))))))
+   (implies (posp 1)
+            (equal (fn-gnix-get 0 (fn-gnix-set 1 :v nil))
+                   (if (equal 0 1) :v (fn-gnix-get 0 nil))))))
 ; Without (posp m): setting 0 writes the root, which 1 reads.
 (assert-event (and (posp 1) (not (posp 0))
                    (not (equal (fn-gnix-get 1 (fn-gnix-set 0 :v nil))
                                (if (equal 1 0) :v (fn-gnix-get 1 nil))))))
 (must-fail
  (defthm fn-tgn-get-of-set-without-posp-m
-   (implies (posp n)
-            (equal (fn-gnix-get n (fn-gnix-set m value node))
-                   (if (equal n m) value (fn-gnix-get n node))))))
+   (implies (posp 1)
+            (equal (fn-gnix-get 1 (fn-gnix-set 0 :v nil))
+                   (if (equal 1 0) :v (fn-gnix-get 1 nil))))))
 
 ;; fn-gnix-find-of-build (no hypothesis): the first entry of a number wins,
 ;; and an entry whose Message-ID is not valid is not indexed.
@@ -133,9 +133,9 @@
 (must-fail
  (defthm fn-tgn-keystone-without-relation
    (equal (fn-gidx-nidx-number-article
-           number (fn-gidx-bucket-numbers group buckets) trie)
+           2 (fn-gidx-bucket-numbers "fn.one" *tgn-corrupt-buckets*) *tgn-trie*)
           (fn-gidx-entry-number-article
-           group number (fn-gidx-bucket group buckets) trie))))
+           "fn.one" 2 (fn-gidx-bucket "fn.one" *tgn-corrupt-buckets*) *tgn-trie*))))
 
 ;; fn-gidx-numbers-okp-of-put.  Reachable witness: the put of the new
 ;; article's first entry into the refreshed buckets.  Without the
@@ -155,7 +155,9 @@
                          *tgn-corrupt-buckets*)))))
 (must-fail
  (defthm fn-tgn-put-without-relation
-   (fn-gidx-numbers-okp (fn-gidx-put entry buckets))))
+   (fn-gidx-numbers-okp
+    (fn-gidx-put (list "fn.two" 71 "<tgn-two@example.invalid>")
+                 *tgn-corrupt-buckets*))))
 
 ;; fn-gidx-numbers-okp-of-put-all and -of-refresh (books/owner.lisp).
 (assert-event
@@ -171,10 +173,11 @@
             (fn-gidx-refresh *tgn-corrupt-buckets* *tgn-new* *tgn-new*)))))
 (must-fail
  (defthm fn-tgn-put-all-without-relation
-   (fn-gidx-numbers-okp (fn-gidx-put-all entries buckets))))
+   (fn-gidx-numbers-okp (fn-gidx-put-all nil *tgn-corrupt-buckets*))))
 (must-fail
  (defthm fn-tgn-refresh-without-relation
-   (fn-gidx-numbers-okp (fn-gidx-refresh buckets old-articles new-articles))))
+   (fn-gidx-numbers-okp
+    (fn-gidx-refresh *tgn-corrupt-buckets* *tgn-new* *tgn-new*))))
 
 ;; fn-nntp-over-range-indexed-is-walk: the served OVER equals the walk's
 ;; on the refreshed buckets (reachable), rows found; not on the corrupted.
@@ -204,5 +207,7 @@
                                            *tgn-trie* *tgn-range* nil)))))
 (must-fail
  (defthm fn-tgn-over-range-without-relation
-   (equal (fn-nntp-over-range-indexed session buckets trie token legacyp)
-          (fn-nntp-over-range-walk session buckets trie token legacyp))))
+   (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets*
+                                      *tgn-trie* *tgn-range* nil)
+          (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets*
+                                   *tgn-trie* *tgn-range* nil))))

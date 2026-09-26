@@ -3425,6 +3425,34 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-118",
+      "title": "OVER over a range costs the rows asked for, not the group's size: at N = 10,000 x 2 KiB OVER 40 rows and OVER 2,000 rows on the lane's image against the perf-ledger's base image, the same fixture, the served bytes identical",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-001",
+        "NNT-006"
+      ],
+      "steps": [
+        "On hbox open copies of the fixture /tank/fn/scratch/fixtures/n10k-2k (N = 10,000 x 2,048-octet articles in fn.test; SHA256SUMS there) on /dev/shm with the perf-ledger developer image (dev f314a5a3) and with the lane's developer image (tools/hbox_native.sh), each in its own systemd-run --user --scope -p MemoryMax=24G.",
+        "planning/evidence/over-number-index-2026-09-26/measure.py reads: GROUP x5, STAT, ARTICLE by number and by Message-ID x32, OVER 1 x32, OVER 40 rows x20, OVER 1-2000 x5, owner CPU per operation from /proc; the SHA-256 of one OVER 1-2000 reply and 32 ARTICLEs by number."
+      ],
+      "expected": [
+        "The served-bytes SHA-256 is the same on both images.",
+        "OVER 40 rows and OVER 1-2000 fall from hundreds of ms and seconds (rows x N) to tens of ms and under 1 s on the lane image, the box load stated beside each figure."
+      ],
+      "evidence": [
+        "planning/evidence/over-number-index-2026-09-26.md",
+        "planning/evidence/over-number-index-2026-09-26/measure.py"
+      ],
+      "implementation": {
+        "test": "planning/evidence/over-number-index-2026-09-26/measure.py",
+        "native": true,
+        "record": "planning/evidence/over-number-index-2026-09-26.md",
+        "log": "planning/evidence/over-number-index-2026-09-26/after.json"
+      }
     }
   ]
 }
