@@ -189,11 +189,64 @@ current image during sustained posting, at N = 32,729 rather than 100,000.
 **One owner process that posts without a restart cannot reach N = 100,000
 on this image.**
 
-The continuation reaches 100,000 as an operator would have to. It runs
-`envelope-100k.sh` with `--session-posts 15000`: at most 15,000 preload POSTs
-per owner process, then a restart that the next unit resumes from. That is not
-a smaller case: the store still reaches 100,000, and the restarts are part of
-what the row reports.
+**A restart does not get past it.** The continuation (`envelope-100k.sh`,
+`--session-posts 15000`) resumed from the store and hit the same limit.
+
+- **The reopen.** `open=checkpoint:29453 suffix=3277`, 48.8 s to LISTENING,
+  VmHWM already 8.2 GB. The store held 32,729 articles: the POST the dead owner
+  never answered was not stored, and STAT said so.
+- **The next capture.** The owner posted, and published the capture at 32,730
+  (97.1 s, 257.8 MB).
+- **The second death, at N = 36,208**, 3,479 POSTs into the session.
+  `senv-t100k-load-b-after` stopped with `Heap exhausted, game over.` in
+  `FN-SCC-FRAMES` again, memory peak 31.3G, generations 3 and 4 at 10.1 and
+  18.0 GB. Evidence: `t100k-load-b-after-owner.stderr.txt` (sha256 2a920955…).
+
+So from about N = 33,000 upward, a single automatic checkpoint capture on this
+image needs most of the 32,000 MiB heap. A freshly opened owner reaches the
+next capture and dies there. The load cannot be continued by restarting.
+
+**The case N = 100,000 could not run** on the image after served-path-scale
+(1770d687): the owner cannot pass N ≈ 36,000 under a posting load, because the
+checkpoint capture (`FN-SCC-FRAMES`) exhausts SBCL's 32,000 MiB dynamic space.
+
+- Not substituted: no smaller N was measured in its place. The largest N the
+  node reached was measured once, labelled as that (below).
+- Not tried: raising the dynamic space (it is the image's build setting),
+  raising the profile's checkpoint interval (that defers the capture and does
+  not remove it), and building the store offline (`store probe`: the served
+  open then publishes its own checkpoint).
+
+Those are PKT-191's to decide.
+
+The warm rows at the largest N reached, 36,208 (one unit,
+`senv-t36k-latency-after`, `--steps latency`), are below. They are the
+largest-N point of this image, **not** the N = 100,000 row.
+
+| row at N = 36,208, tmpfs, after | value | at N = 10,000 (for scale) |
+| --- | ---: | ---: |
+| reopen, `open=checkpoint:32730 suffix=3479` | 51.2 s | 11.9 s (suffix 0) |
+| greeting p95 (median), capped at 12 samples in 60 s | 8,482 ms (3,850) | 1,294 ms (214) |
+| OVER 40-article window p95 (median), capped at 31 | 4,179 ms (1,166) | 317 ms (161) |
+| OVER 100-article range p95 (median), capped at 20 | 3,405 ms (3,103) | 703 ms (365) |
+| unsigned POST p95 (median), terminator to reply | 11.9 ms (8.8) | 6.5 ms (4.6) |
+| signed POST p95 (median) | 963 ms (916) | 282 ms (253) |
+| owner CPU per unsigned / signed POST | 45.7 / 921 ms | 13.1 / 257 ms |
+| VmHWM after the latency rows | 29.7 GB | 7.6 GB |
+| store on disk | 407 MB, 36,218 inodes | 41 MB, 10,009 |
+| box load average (median) | 9.3 | 12.7 |
+
+For 3.6 times N, the greeting's median is 18 times higher, OVER's 7 to 8
+times, and a signed POST's owner CPU 3.6 times. The unsigned POST's wall time
+barely moves, but its owner CPU is 3.5 times higher. Its CPU exceeds its wall
+time because the owner's other threads (publication, GC) are counted in it.
+Those three rows are the history-proportional work answers §3 says ordinary
+requests should not have. The heap after 150 POSTs was 29.7 GB of 32 GB.
+
+JSONs: `t36k-latency-after.json`, `t100k-load-b-after.json` (the load's
+open and the uncertain-POST check). Load-a wrote no JSON rows: its owner died
+inside the load step. Its account is the owner stderr above and the driver
+log.
 
 (the rows at 100,000: pending at this commit)
 
@@ -235,6 +288,54 @@ what the row reports.
    collapsed to 0.49 POSTs a second at 2 s of owner CPU each. It was not
    reproduced in a matched probe (c1: 51 /s), and it is recorded here, not
    explained.
+
+8. **The node's ceiling on this image is set by the checkpoint capture's
+   heap, at about N = 33,000 to 36,000 of 2 KiB articles under posting load,
+   not by the profile** (T = 1,048,576). Past it the owner dies with a
+   process-wide fault: every connection is lost and one POST is left
+   uncertain. It is not a named refusal. This belongs in D27's "no hidden
+   ceiling" reading: the profile admits what the process cannot hold.
+   PKT-191 is narrowed to it.
+
+## 4a. Seams, placement and what this lane is not
+
+- **served-path-scale** merged during the lane (1770d687). The 10k rows exist
+  before and after it, and the after rows are the published ones.
+  **hot-path-scans-2** (the POST's allocation) and **marker-sharing-2** (the
+  ZFS commit) had not landed. Their after rows are PKT-476 (1). The ZFS rows
+  ran while no marker unit was running: the driver waits while any running
+  user unit names `marker`.
+- **Unit discipline.** Every hbox step was a `senv-*` unit under `MemoryMax=40G`
+  and `RuntimeMaxSec=1800` (`driver.log`). None reached 30 minutes: the
+  longest was load-a at 13 min 52 s. The only process that died did so on
+  SBCL's own heap, not on the unit's ceiling. The live node was not touched.
+  The tmpfs stores were removed afterwards, and `/tank/fn/scratch/service-envelope`
+  holds 117 MB (the ZFS copies and the JSONs).
+- **docs/operator.md**. The section "What one node sustains" is the guide's
+  last section, with a pointer on the existing first paragraph of "Expose a node
+  to strangers". The brief offered a place beside that section or beside "Run
+  it as a service". Inserting lines before either would renumber the lines
+  `tests/acl2/docs-operator-grammar-tests.lisp` cites (tools/docs_check.py
+  generates that book from the docs' line numbers). That is a book change,
+  needing a farm run this lane has no budget for. At the end of the guide
+  nothing moves: `docs_check --check` reports 0 failures and the book is
+  unchanged.
+- **The assurance chain** does not apply in the theorem sense: this lane
+  proves nothing and changes no book or host line. Its observed results are
+  of the native entry `operator CONFIG run` (host/native/owner.lisp) under
+  loopback clients. The one rule it touches is "a claim names its
+  coordinate". Every figure names its image (revision and core sha256 in the
+  JSON), its box and load, its filesystem and pool state, and its JSON.
+
+## Not done
+
+- N = 100,000: could not run (above). No smaller case replaced it; the 36,208
+  rows are labelled as the largest N reached.
+- The after rows for hot-path-scans-2 and marker-sharing-2, 32 KiB articles,
+  a group distribution, a quiet box, bytes consed and the mutex fraction:
+  PKT-476.
+- The baseline row for the gate's signed metrics is the deputy's write. The
+  source run is lenient (box busy 0.363): PKT-477 (1).
 
 ## 5. Logs and reproduction
 

@@ -7,3 +7,8 @@
 2026-09-26T13:06:16Z senv-clone10k-after rc=0
 2026-09-26T13:11:10Z senv-t10k-after rc=0
 2026-09-26T13:18:04Z senv-z10k-after rc=0
+2026-09-26T13:32:05Z senv-t100k-load-a-after rc=1
+2026-09-26T13:32:05Z done 100k after last=a
+2026-09-26T13:37:50Z senv-t100k-load-b-after rc=1
+2026-09-26T13:37:50Z done 100k after last=b
+2026-09-26T13:43:31Z senv-t36k-latency-after rc=0
