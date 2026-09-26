@@ -274,6 +274,22 @@ The rehearsal on copies gave these results:
 
 **Answer with:** (a) adopt the §2 design in its order; (b) push the arena through fn-sn-finish and the served machine directly; (c) not now.
 
+## PKT-322: a revoked author's retry is refused on enrolment before identity, so it can settle only through the stored copy
+
+**The trace** (planning/evidence/consumer-e2-2-2026-09-26.md, the red test and the review's cut): the consumer dies after fn accepted R and before recording; the author's enrolment is then revoked (`hybrid-revoke-next`); the restarted consumer resends the exact saved artifact; fn refuses it on enrolment before it checks identity, so the D25 "already stored" answer never comes; the consumer keeps the operation `uncertain` and settles it only by `store inspect` (or a served read) showing R stored.
+
+**Constraints already selected:** D23 (the receiver verifies against the author's own enrolment); PKT-164's default (the login and posting gates run before the Store's duplicate answer: a held Message-ID must not be probeable by an unauthorized poster); NNT-019 (reconciliation by re-submission of the same source).
+
+**Proposed default (implemented as the client's behaviour):** keep the gate order; a revoked author is exactly an unauthorized poster; the consumer's `uncertain` stays honest and settles through the stored copy served to a reader the author can still be, or through the operator's `store inspect`.
+
+**Rejected alternative and its cost:** answering "already stored" to a revoked principal for a source it authored before the revocation: a disclosure to a principal the node no longer trusts, and a second gate order to prove.
+
+**What it touches:** nothing under the default; the consumer contract CNS-003 names the case.
+
+**What continues without it:** everything.
+
+**Answer with:** (a) keep the gate order, the stored copy settles it; (b) answer D25 for a source authored before the revocation; (c) a privileged operator query for revoked authors.
+
 ## For the coordinator
 
 ### PKT-246: a distinct `:conflict` word in the FNCT control reply codec
