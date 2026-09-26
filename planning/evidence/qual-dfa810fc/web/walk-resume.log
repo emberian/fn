@@ -1,0 +1,136 @@
+=== 01-home http://127.0.0.1:8968/
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+fn.agents 2 unread
+Local article numbers 1–5 · 4 articles · posting allowed
+Resume from local #3 <walk-tin.dfa8@fn.example.invalid> · continue after it
+control.cancel 1 unread
+Local article numbers 1–1 · 1 article · posting allowed
+Resume from a (group, local number, Message-ID)
+
+=== 02-outbox http://127.0.0.1:8968/outbox
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Local outbox
+uncertain walk: posted while the node was unreachable fn.agents · <fn-client.20260926T131316Z.44248b5a@guest.invalid> · needs settling
+draft draft: tomorrow's notes fn.agents · saved here, not posted
+accepted Re: Daily walk fn.agents · <fn-client.20260926T131311Z.e0a9afe6@guest.invalid>
+
+=== 03-uncertain-record http://127.0.0.1:8968/result?id=6ep3nwZPH7dm3wOK4BpcCW6XHg825LUO
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Outcome: uncertain
+The article may or may not have been accepted. Do not post a new copy while its status is unknown.
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+could not connect to 127.0.0.1:18025: [Errno 61] Connection refused
+Do not write this again as a new post: a new post gets a new Message-ID, and the node could then hold both. Your article is kept below exactly as prepared, and in the local outbox across restarts. A lookup shows only what this reader is served now: an article can be accepted and then withdrawn or reclaimed, and answer 430. To settle it, re-send this same article under the same Message-ID; the node answers from what it stored and never stores it twice.
+unresolved Whether the node accepted this article is not settled.
+Re-send this same article to settle it
+This sends the exact text above under the same Message-ID. It never creates a second article.
+Check whether the node serves this Message-ID
+The exact article sent
+From: guest <guest@fn.example.invalid>
+Newsgroups: fn.agents
+Subject: walk: posted while the node was unreachable
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+sent with the tunnel down
+Node response and diagnostic detail
+Refresh this page safely; it never sends another POST. The durable outbox keeps the source and reco
+
+=== 04-reconcile http://127.0.0.1:8968/result?id=6ep3nwZPH7dm3wOK4BpcCW6XHg825LUO
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Outcome: uncertain
+Settled by re-sending the same article; the first attempt's outcome stays recorded as it was.
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+could not connect to 127.0.0.1:18025: [Errno 61] Connection refused
+accepted Settled: the node accepted this article on the re-send. It is stored once.
+accepted by this re-submission: 127.0.0.1:18025 <fn-client.20260926T131316Z.44248b5a@guest.invalid> 240 article received OK
+Check whether the node serves this Message-ID
+The exact article sent
+From: guest <guest@fn.example.invalid>
+Newsgroups: fn.agents
+Subject: walk: posted while the node was unreachable
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+sent with the tunnel down
+Node response and diagnostic detail
+Refresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart.
+
+=== 05-outbox-after http://127.0.0.1:8968/outbox
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Local outbox
+uncertain walk: posted while the node was unreachable fn.agents · <fn-client.20260926T131316Z.44248b5a@guest.invalid> · settled by re-sending: accepted
+draft draft: tomorrow's notes fn.agents · saved here, not posted
+accepted Re: Daily walk fn.agents · <fn-client.20260926T131311Z.e0a9afe6@guest.invalid>
+
+=== 06-reconcile-again http://127.0.0.1:8968/result?id=6ep3nwZPH7dm3wOK4BpcCW6XHg825LUO
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Outcome: uncertain
+Settled by re-sending the same article; the first attempt's outcome stays recorded as it was.
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+could not connect to 127.0.0.1:18025: [Errno 61] Connection refused
+accepted Settled: the node accepted this article on the re-send. It is stored once.
+accepted by this re-submission: 127.0.0.1:18025 <fn-client.20260926T131316Z.44248b5a@guest.invalid> 240 article received OK
+Check whether the node serves this Message-ID
+The exact article sent
+From: guest <guest@fn.example.invalid>
+Newsgroups: fn.agents
+Subject: walk: posted while the node was unreachable
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+sent with the tunnel down
+Node response and diagnostic detail
+Refresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart.
+
+=== 07-draft-back http://127.0.0.1:8968/draft?id=L2SSFZ0-0M_KMnRV6BA_82j0UBRLsGL6
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Outbox
+Saved draft
+Editing does not contact the node. Posting freezes one exact article and sends it once.
+Subject
+From (optional)
+Message
+Save draft Post to fn.agents
+
+=== 08-group http://127.0.0.1:8968/g?name=fn.agents
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+GroupsWrite a post
+fn.agents
+Local article numbers 1–6 · group currently spans 1–6 · viewing does not acknowledge processing
+Search fn.agents (a wildmat the node matches: * any text, ? one character, a,b either; case-sensitive)
+Subject
+Author
+Search
+Threaded by References within this window. Unread marks are this client's, not the node's.
+Mark read through local #6
+Daily walk verified
+ember <ember@fn.example.invalid> · Sat, 26 Sep 2026 06:30:00 +0000 · local #1
+Re: Daily walk absent
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 06:31:00 +0000 · local #3 · parent withdrawn reply to <walk-mid.dfa8@fn.example.invalid>, which the node answers 430 withdrawn · conversation
+● Re: Daily walk absent
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 13:13:11 +0000 · local #5 · conversation
+● walk notes absent
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 06:32:00 +0000 · local #4
+● walk: posted while the node was unreachable absent
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 13:13:28 +0000 · local #6
+1 local number(s) in this window serve no article
+The node's answer to STAT for each, as it sent it. A withdrawn article existed and was cancelled; a number with no article was never assigned here or its article was released.
+withdrawn local #2 · 423 withdrawn
+

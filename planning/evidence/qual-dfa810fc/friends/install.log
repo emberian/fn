@@ -1,0 +1,11 @@
+fn-dfa810fceabe-linux-x86_64.tar.gz: OK
+SUMS-OK
+tarball sha256 a78e8385f6e6cfb3368e5551c85948ea37e96a81daf56b9c1a92f4c43ea0c2af  /tank/fn/scratch/qual-dfa810fc/friends/release/fn-dfa810fceabe-linux-x86_64.tar.gz
+tarball core vs gate core:
+099429ddd26c4737d2a026db067f6ccd236e1bdd16dafe19da1cb708847509b6  /tank/fn/scratch/qual-dfa810fc/friends/friend/fn-dfa810fceabe/libexec/fn/fn-host.core
+099429ddd26c4737d2a026db067f6ccd236e1bdd16dafe19da1cb708847509b6  /tank/fn/gates/qual-dfa810fc-20260926/build/images/dfa810fceabedde937ba7e4bfa46b43fd599ac62/fn-host.core
+432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505  /tank/fn/scratch/qual-dfa810fc/friends/friend/fn-dfa810fceabe/libexec/fn/fn-host
+432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505  /tank/fn/gates/qual-dfa810fc-20260926/build/images/dfa810fceabedde937ba7e4bfa46b43fd599ac62/fn-host
+fn --version: fn dfa810fceabedde937ba7e4bfa46b43fd599ac62
+bare fn: usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)
+accepted operator help

@@ -1,0 +1,72 @@
+=== 01-conversation http://127.0.0.1:8968/t?group=fn.agents&number=3
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agentsThe articleReply
+Conversation
+Started by <walk-root.dfa8@fn.example.invalid>. Earlier messages are the article's References, each asked of the node by Message-ID. Replies are the node's answer to XPAT References 1-4 *<walk-root.dfa8@fn.example.invalid>* over local numbers 1–4 of fn.agents: the node decides which served articles match; replies outside this window or this group are not shown.
+Daily walk
+ember <ember@fn.example.invalid> · Sat, 26 Sep 2026 06:30:00 +0000 · local #1
+withdrawn an earlier message, <walk-mid.dfa8@fn.example.invalid>; the node answered 430 withdrawn
+▸ Re: Daily walk
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 06:31:00 +0000 · local #3
+
+=== 02-reply-form http://127.0.0.1:8968/c?id=-rZcQlnjUWPRJzVNl9v_SxWQCMN_nEbp
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agents
+Write a post
+One form sends one exact article. If the reply is uncertain, keep its Message-ID and check it before trying again.
+Subject
+In reply to: <walk-tin.dfa8@fn.example.invalid> (References carries 3 Message-ID(s))
+From (optional)
+Message
+Save draft Post to fn.agents
+
+=== 03-dblclick-post http://127.0.0.1:8968/result?id=-rZcQlnjUWPRJzVNl9v_SxWQCMN_nEbp
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Outcome: accepted
+The node answered that it accepted this article.
+Message-ID: <fn-client.20260926T131311Z.e0a9afe6@guest.invalid>
+The node's answer:
+240 article received OK
+Back to fn.agents
+Check whether the node serves this Message-ID
+The exact article sent
+Node response and diagnostic detail
+Refresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart.
+
+=== 04-back-and-post-again http://127.0.0.1:8968/c?id=-rZcQlnjUWPRJzVNl9v_SxWQCMN_nEbp
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agents
+This form was already posted
+Posting it again would send nothing: one form sends one exact article.
+See what the node answered · Write a new post
+
+=== 05-refresh http://127.0.0.1:8968/c?id=-rZcQlnjUWPRJzVNl9v_SxWQCMN_nEbp
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agents
+This form was already posted
+Posting it again would send nothing: one form sends one exact article.
+See what the node answered · Write a new post
+
+=== 06-draft http://127.0.0.1:8968/draft?id=L2SSFZ0-0M_KMnRV6BA_82j0UBRLsGL6
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Outbox
+Saved draft
+Editing does not contact the node. Posting freezes one exact article and sends it once.
+Subject
+From (optional)
+Message
+Save draft Post to fn.agents
+

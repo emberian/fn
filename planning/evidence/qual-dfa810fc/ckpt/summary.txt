@@ -1,0 +1,2 @@
+largest admitted 32693
+K=4096 N=2048 A=32693

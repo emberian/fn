@@ -1,0 +1,5 @@
+friends_feed: OK # rc=0 wall=5
+friends_accounts: OK # rc=0 wall=3
+friends_signed:  # rc=0 wall=7
+auth_on_tarball: OK # rc=0 wall=9
+pull_unavailable_on_tarball: FAILED (failures=1) # rc=1 wall=6
