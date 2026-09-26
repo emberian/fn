@@ -5781,6 +5781,51 @@
       ]
     },
     {
+      "id": "PRF-175",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lb-binding-delta-binds-the-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-binding-delta-keeps-other-logins"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-binding-delta-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-pairs-deltas-set-exactly-their-logins"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-sync-binds-every-login-as-the-file-does"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-pairs-deltas-ignore-the-record-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-a-publication-keeps-every-open-connections-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-an-open-session-is-decided-under-its-pinned-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-a-connection-opened-after-a-publication-is-bound-anew"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-auth-admin-effect-word-applied-only-when-published"
+        }
+      ]
+    },
+    {
       "id": "PRF-167",
       "events": [
         {

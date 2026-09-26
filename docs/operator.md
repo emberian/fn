@@ -1180,8 +1180,10 @@ resolved to a peer record. A peer does not run AUTHINFO, so on a node with
 not set it on a node that is also taking a feed until that is decided
 (`planning/deputies/BOARD.md`, w11/auth-live).
 
-Restart the service after changing either the policy or the credential
-file: both are read once at start-up.
+Restart the service after changing the policy or a password in the
+credential file: both are read once at start-up. A login's `signing` binding
+is the exception (next section): `principal bind` and `unbind` apply to the
+running node at once.
 
 ### Bind a login to its signing principal
 
@@ -1201,10 +1203,20 @@ open` takes effect: a policy slot holds the value set last
 (`fn-cfg-set-policy-sets-the-policy`, books/config-invariants.lisp; until
 2026-09-25 the first value set stayed in force).
 
-`bind` writes a `signing` field into alice's table of `auth.toml` (restart to
-apply, like any credential change; `principal list` shows `signing=HEX`;
-`principal unbind alice` removes it). The policy is a durable configuration
-record, applied live. Under it, alice's unsigned article is answered `441
+`bind` writes a `signing` field into alice's table of `auth.toml`
+(`principal list` shows `signing=HEX`; `principal unbind alice` removes it).
+The node serves the binding from its configuration, not from the file: at
+start it publishes the file's bindings as configuration records, and when
+`bind` or `unbind` runs against a running node (the configuration names a
+`[control] path`) the verb asks the owner to re-read the file and publish
+the change at once (PKT-221; `books/login-binding-live.lisp`). The verb's
+last word says which: `applied` (the running owner published it),
+`effective-at-next-start` (no owner was running), `restart-required` (an
+owner holds the store and did not publish it, for example no control socket
+is configured), or `uncertain`. A session already authenticated keeps the
+binding in force when its connection opened; the next connection is decided
+under the new one. The policy is a durable configuration record, applied
+live. Under it, alice's unsigned article is answered `441
 posting failed; this login posts only articles signed by its bound
 principal`, and one signed by another principal `441 posting failed; the
 login is not bound to this signing principal`. A login without a binding,
