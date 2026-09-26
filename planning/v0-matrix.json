@@ -29,9 +29,9 @@
     "accepted": 142,
     "refused": 44,
     "uncertain": 2,
-    "not-exercised": 36,
+    "not-exercised": 44,
     "not-built": 1,
-    "total": 225,
+    "total": 233,
     "disagreed": 0,
     "faulted": 0,
     "independent": 12,
@@ -487,13 +487,21 @@
         "V0-CLIENT-TIN-READ",
         "V0-CLIENT-TIN-REPLY",
         "V0-CLIENT-TIN-POST",
-        "V0-CLIENT-TIN-CANCEL"
+        "V0-CLIENT-TIN-CANCEL",
+        "V0-CLIENT-THUNDERBIRD-READ",
+        "V0-CLIENT-THUNDERBIRD-REPLY",
+        "V0-CLIENT-THUNDERBIRD-POST",
+        "V0-CLIENT-THUNDERBIRD-CANCEL",
+        "V0-CLIENT-PAN-READ",
+        "V0-CLIENT-PAN-REPLY",
+        "V0-CLIENT-PAN-POST",
+        "V0-CLIENT-PAN-CANCEL"
       ],
       "counts": {
         "accepted": 2,
         "refused": 0,
         "uncertain": 0,
-        "not-exercised": 5,
+        "not-exercised": 13,
         "not-built": 0
       },
       "disagreed": 0
@@ -7510,6 +7518,284 @@
       "limit": "the 240 is the node filing the control article; whether it withdraws the target is the control work's (PKT-109), not this row's",
       "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
       "owner": null
+    },
+    {
+      "id": "V0-CLIENT-THUNDERBIRD-READ",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "Thunderbird, logged in over TLS with a redeemed account, opens a group and reads an article",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-003",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-THUNDERBIRD-REPLY",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "Thunderbird posts a followup over TLS (References set by Thunderbird)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-THUNDERBIRD-POST",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "Thunderbird posts a new article over TLS",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "the node files Thunderbird's cancel of its own article (control.cancel configured)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "the 240 is the node filing the control article; an unsigned cancel carries no authority (C2), so the target stays served",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-PAN-READ",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "pan, logged in over TLS with a redeemed account, opens a group and reads an article",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-003",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-PAN-REPLY",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "pan posts a followup over TLS (References set by pan)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-PAN-POST",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "pan posts a new article over TLS",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-PAN-CANCEL",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "the node files pan's cancel of its own article (control.cancel configured)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012",
+        "NNT-034"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050",
+        "SCN-094"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "the 240 is the node filing the control article; an unsigned cancel carries no authority (C2), so the target stays served",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
     }
   ],
   "by_requirement": {
@@ -7614,14 +7900,24 @@
       "V0-CLIENT-TIN-READ",
       "V0-CLIENT-TIN-REPLY",
       "V0-CLIENT-TIN-POST",
-      "V0-CLIENT-TIN-CANCEL"
+      "V0-CLIENT-TIN-CANCEL",
+      "V0-CLIENT-THUNDERBIRD-READ",
+      "V0-CLIENT-THUNDERBIRD-REPLY",
+      "V0-CLIENT-THUNDERBIRD-POST",
+      "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "V0-CLIENT-PAN-READ",
+      "V0-CLIENT-PAN-REPLY",
+      "V0-CLIENT-PAN-POST",
+      "V0-CLIENT-PAN-CANCEL"
     ],
     "NNT-003": [
       "V0-READ-FRAMING-A",
       "V0-READ-FRAMING-B",
       "V0-CLIENT-NNTPLIB-A",
       "V0-CLIENT-NNTPLIB-B",
-      "V0-CLIENT-TIN-READ"
+      "V0-CLIENT-TIN-READ",
+      "V0-CLIENT-THUNDERBIRD-READ",
+      "V0-CLIENT-PAN-READ"
     ],
     "NNT-004": [
       "V0-AUTH-POST-A",
@@ -7690,7 +7986,23 @@
       "V0-INN-SUPPLIED-PATH",
       "V0-CLIENT-TIN-REPLY",
       "V0-CLIENT-TIN-POST",
-      "V0-CLIENT-TIN-CANCEL"
+      "V0-CLIENT-TIN-CANCEL",
+      "V0-CLIENT-THUNDERBIRD-REPLY",
+      "V0-CLIENT-THUNDERBIRD-POST",
+      "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "V0-CLIENT-PAN-REPLY",
+      "V0-CLIENT-PAN-POST",
+      "V0-CLIENT-PAN-CANCEL"
+    ],
+    "NNT-034": [
+      "V0-CLIENT-THUNDERBIRD-READ",
+      "V0-CLIENT-THUNDERBIRD-REPLY",
+      "V0-CLIENT-THUNDERBIRD-POST",
+      "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "V0-CLIENT-PAN-READ",
+      "V0-CLIENT-PAN-REPLY",
+      "V0-CLIENT-PAN-POST",
+      "V0-CLIENT-PAN-CANCEL"
     ],
     "OBJ-001": [
       "V0-TRANSIT-IDENTICAL-AB",
@@ -7966,7 +8278,15 @@
       "V0-CLIENT-TIN-READ",
       "V0-CLIENT-TIN-REPLY",
       "V0-CLIENT-TIN-POST",
-      "V0-CLIENT-TIN-CANCEL"
+      "V0-CLIENT-TIN-CANCEL",
+      "V0-CLIENT-THUNDERBIRD-READ",
+      "V0-CLIENT-THUNDERBIRD-REPLY",
+      "V0-CLIENT-THUNDERBIRD-POST",
+      "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "V0-CLIENT-PAN-READ",
+      "V0-CLIENT-PAN-REPLY",
+      "V0-CLIENT-PAN-POST",
+      "V0-CLIENT-PAN-CANCEL"
     ],
     "SCN-015": [
       "V0-POST-CONCURRENT",
@@ -8103,8 +8423,24 @@
       "V0-INN-SUPPLIED-PATH",
       "V0-CLIENT-TIN-REPLY",
       "V0-CLIENT-TIN-POST",
-      "V0-CLIENT-TIN-CANCEL"
+      "V0-CLIENT-TIN-CANCEL",
+      "V0-CLIENT-THUNDERBIRD-REPLY",
+      "V0-CLIENT-THUNDERBIRD-POST",
+      "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "V0-CLIENT-PAN-REPLY",
+      "V0-CLIENT-PAN-POST",
+      "V0-CLIENT-PAN-CANCEL"
+    ],
+    "SCN-094": [
+      "V0-CLIENT-THUNDERBIRD-READ",
+      "V0-CLIENT-THUNDERBIRD-REPLY",
+      "V0-CLIENT-THUNDERBIRD-POST",
+      "V0-CLIENT-THUNDERBIRD-CANCEL",
+      "V0-CLIENT-PAN-READ",
+      "V0-CLIENT-PAN-REPLY",
+      "V0-CLIENT-PAN-POST",
+      "V0-CLIENT-PAN-CANCEL"
     ]
   },
-  "rows_digest": "a834bb53e2f8962b235dfe80f5faf608cee1dc8c362ab0834637232bc383d53d"
+  "rows_digest": "775b9fde7934c1f007e5cd38411c967d644bd71fc19869575651996cd7f0c585"
 }
