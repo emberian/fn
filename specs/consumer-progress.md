@@ -374,8 +374,9 @@ exact source back through `poll`, never by an fn acknowledgement. The same
 operation with a changed source is conflict evidence with no second
 transition or reply. `tools/fn_consumer.py` is the external consumer and
 `tests/test_native_consumer_exchange.py` the native scenario (SCN-061).
-Today an identical signed resend over the local control route is answered
-`refused`, not D25's duplicate, so the consumer settles such a POST by the
+An identical resend over the local control route (`hybrid-author` or
+`operator post`) is answered D25's duplicate (PKT-166); if that answer is
+lost too, the consumer settles such a POST by the
 served exact source ([evidence](../planning/evidence/consumer-e2-2026-09-25.md)).
 
 The read-only `consumer-project CURSOR.fncu ACCEPTED.fn-e` command calls

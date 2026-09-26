@@ -24,9 +24,9 @@ identical signed source (D25: the same exact source is a duplicate, a changed
 source a refusal) and, failing a duplicate answer, by fn serving the exact
 source back through poll.  An fn ack never settles this database or a POST.
 
-An uncertain POST whose identical resend is refused (the local control route
-does not yet answer D25's duplicate, planning/evidence/consumer-e2-2026-09-25.md)
-stays unsettled until poll serves the exact source back.
+An uncertain POST whose identical resend is refused (before PKT-166 the local
+control route did not answer D25's duplicate) stays unsettled until poll
+serves the exact source back.
 
 Exit codes: 0 finished, 1 refused (an fn or application refusal it cannot
 settle), 3 stopped on an uncertain fn outcome (wake again to settle), 4 fault.

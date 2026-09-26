@@ -233,10 +233,10 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.assertEqual([o["state"] for o in s["outbox"]], ["uncertain"])
         q_sha = s["outbox"][0]["sha256"]
 
-        # B re-POSTs the identical signed source.  D25 says duplicate (exit 0);
-        # the local control route answers refused today (the separate test
-        # below), so B settles by fn serving the exact source back to its own
-        # poll.  Either way the owner of the fact is fn's Store, not an ack.
+        # B re-POSTs the identical signed source.  D25 answers duplicate
+        # (exit 0; PKT-166).  Were the answer lost again, B would settle by fn
+        # serving the exact source back to its own poll.  Either way the
+        # owner of the fact is fn's Store, not an ack.
         self.consumer(b, "wake")
         s = self.summary(b)
         self.assertEqual([(o["state"], o["attempts"], o["sha256"]) for o in s["outbox"]],
