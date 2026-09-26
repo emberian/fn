@@ -3883,7 +3883,11 @@ else echo NONE; fi
         tin = getattr(self, "clients", {}).get("tin", "tin")
         user, secret = self.credential()
         home = "{}/tin-home".format(self.run)
-        self.sh("tin home", "mkdir -p {}".format(home))
+        # tin shows its first-run welcome page ("Press <RETURN> to continue")
+        # when it has to create ~/.tin itself; that page ate the first ENTER
+        # of run 20260926T095319 and shifted every keystroke after it.  An
+        # existing ~/.tin is what tin takes as "not the first run".
+        self.sh("tin home", "mkdir -p {}/.tin".format(home))
         if user:
             self.push_file("{} {} {}\n".format("127.0.0.1", secret, user),
                            "{}/.newsauth".format(home), mode="600")
