@@ -5603,7 +5603,6 @@
         "fn-ceis-io-preserves-indexed",
         "fn-osi-open-installs-indexed-store",
         "fn-osi-host-step-keeps-indexed",
-        "fn-osi-live-owner-store-is-indexed",
         "fn-osi-live-dispatch-fast-is-checked"
       ]
     },
