@@ -257,57 +257,161 @@
          1))
 
 ; -----------------------------------------------------------------------------
-; What a bare `init' writes (PKT-582).  heap-figure's fn-heap-init-request
-; gives the small preset under 4 GiB and the operator's request otherwise, and
-; the bare request is the default preset, whose H of 1 TiB no machine holds:
-; `init' made a store the launcher then refused.  A bare request now resolves
-; to the largest preset whose whole reservation (fn-heap-reserve-decide, at
-; the configuration's default max-connections) the observed machine holds:
-; scale, then development, else the small preset (which a machine under its
-; figure then refuses by name at start).  Every other request is the
+; What `init' writes (PKT-582).  The default preset's history bound is the
+; codec's 1 TiB, and a request over it that names no capacity field (a bare
+; `init', and every mission: books/native-operator.lisp
+; fn-native-mission-request sets only the article bound and groups per
+; article) resolved to H = 1 TiB, whose list-representation heap is
+; 16 x 2 x 2^40 octets: `heap=73402949 MB', refused on every machine.  The
+; figure is the formula (fn-heap-figure-octets-grows-with-history below); the
+; request was wrong for a machine.  Such a request now takes its capacity
+; from the machine: the first of scale, development and the small preset
+; (each with the request's own fields laid over it, the small one with R
+; raised to the request's article record) that resolves to a valid profile
+; whose whole reservation (fn-heap-reserve-decide, at the configuration's
+; default max-connections) the machine holds; else the small one, which the
+; machine then refuses by name.  A request naming T, H or R is the
 ; operator's, unchanged.
 
-(defconst *fn-heap-init-presets* '((:scale nil) (:development nil)))
+(defun fn-heap-capacity-free-fieldsp (fields)
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (and (not (and (consp (car fields))
+                      (member-equal (caar fields) '(2 3 4))))
+           (fn-heap-capacity-free-fieldsp (cdr fields)))
+    t))
+
+(defun fn-heap-machine-sized-requestp (request)
+  (declare (xargs :guard t))
+  (and (fn-bs-profile-requestp request)
+       (equal (car request) :default)
+       (fn-heap-capacity-free-fieldsp (cadr request))))
+
+; A field's value in a request's field list: the last one given (set-fields
+; applies them in order), else DEFAULT.
+(defun fn-heap-field-or (key fields default)
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (fn-heap-field-or key (cdr fields)
+                        (if (and (consp (car fields)) (equal (caar fields) key)
+                                 (natp (cdar fields)))
+                            (cdar fields)
+                          default))
+    default))
+
+; The small preset under the request's fields, R raised to the article
+; record the candidate's A (the request's, else the development base's
+; 32,768) and G (the request's, else 16) need (fn-bs-profile-invalid-reason's
+; :max-record-octets-below-the-article-record).
+(defun fn-heap-small-candidate (request)
+  (declare (xargs :guard t))
+  (let* ((fields (cadr (true-list-fix request)))
+         (a (fn-heap-field-or 5 fields 32768))
+         (g (fn-heap-field-or 6 fields 16))
+         (r (max 196608 (nfix (fn-record-encoded-octets-ceiling a g)))))
+    (list :development
+          (append (list (cons 2 16384) (cons 3 8388608) (cons 4 r)
+                        (cons 6 16) (cons 8 128))
+                  (true-list-fix fields)))))
+
+(defun fn-heap-init-candidates (request)
+  (declare (xargs :guard t))
+  (list (list :scale (cadr (true-list-fix request)))
+        (list :development (cadr (true-list-fix request)))
+        (fn-heap-small-candidate request)))
 
 (defun fn-heap-reserve-acceptsp (request core nursery observations)
   (declare (xargs :guard t))
-  (equal (car (fn-heap-reserve-decide (fn-bs-profile-resolve request nil)
-                                      core nursery observations
-                                      *fn-ncfg-default-max-connections*))
-         :heap))
+  (let ((p (fn-bs-profile-resolve request nil)))
+    (and (not (equal (car p) :invalid))
+         (equal (car (fn-heap-reserve-decide p core nursery observations
+                                             *fn-ncfg-default-max-connections*))
+                :heap))))
 
-(defun fn-heap-reserve-init-choose (presets core nursery observations)
+(defun fn-heap-reserve-init-choose (candidates last core nursery observations)
   (declare (xargs :guard t))
-  (cond ((atom presets) *fn-heap-small-request*)
-        ((fn-heap-reserve-acceptsp (car presets) core nursery observations)
-         (car presets))
-        (t (fn-heap-reserve-init-choose (cdr presets) core nursery observations))))
+  (cond ((atom candidates) last)
+        ((fn-heap-reserve-acceptsp (car candidates) core nursery observations)
+         (car candidates))
+        (t (fn-heap-reserve-init-choose (cdr candidates) last core nursery
+                                        observations))))
 
 (defun fn-heap-reserve-init-request (request core nursery observations)
   (declare (xargs :guard t))
-  (if (equal request '(:default nil))
-      (fn-heap-reserve-init-choose *fn-heap-init-presets* core nursery observations)
+  (if (fn-heap-machine-sized-requestp request)
+      (fn-heap-reserve-init-choose (fn-heap-init-candidates request)
+                                   (fn-heap-small-candidate request)
+                                   core nursery observations)
     request))
 
-; KEYSTONE (PKT-582).  On every machine that holds the small preset's whole
-; reservation, a bare `init' writes a profile whose whole reservation that
-; machine holds: the launcher accepts the store `init' made.
-(defthm fn-heap-reserve-init-request-is-accepted-where-small-is
-  (implies (fn-heap-reserve-acceptsp *fn-heap-small-request* core nursery observations)
+(defthm fn-heap-reserve-init-choose-accepts-when-any-does
+  (implies (or (fn-heap-reserve-acceptsp last core nursery observations)
+               (fn-heap-reserve-acceptsp (fn-heap-reserve-init-choose
+                                          candidates last core nursery observations)
+                                         core nursery observations)
+               (and (member-equal c candidates)
+                    (fn-heap-reserve-acceptsp c core nursery observations)))
            (fn-heap-reserve-acceptsp
-            (fn-heap-reserve-init-request '(:default nil) core nursery observations)
+            (fn-heap-reserve-init-choose candidates last core nursery observations)
             core nursery observations))
   :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp))))
 
-; And the choice is the largest preset the machine holds: scale when it
-; holds scale.
+; KEYSTONE (PKT-582).  For a request that names no capacity (a bare `init',
+; every mission), on every machine that holds the small candidate's whole
+; reservation, `init' writes a request whose profile is valid and whose
+; whole reservation that machine holds: the launcher runs the store `init'
+; made.
+(defthm fn-heap-reserve-init-request-is-accepted-where-small-is
+  (implies (and (fn-heap-machine-sized-requestp request)
+                (fn-heap-reserve-acceptsp (fn-heap-small-candidate request)
+                                          core nursery observations))
+           (fn-heap-reserve-acceptsp
+            (fn-heap-reserve-init-request request core nursery observations)
+            core nursery observations))
+  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
+                                      fn-heap-small-candidate
+                                      fn-heap-machine-sized-requestp))))
+
+; The first candidate the machine holds is taken: scale when it holds scale.
 (defthm fn-heap-reserve-init-request-takes-scale-when-it-fits
-  (implies (fn-heap-reserve-acceptsp '(:scale nil) core nursery observations)
-           (equal (fn-heap-reserve-init-request '(:default nil) core nursery observations)
-                  '(:scale nil)))
-  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp))))
+  (implies (and (fn-heap-machine-sized-requestp request)
+                (fn-heap-reserve-acceptsp (list :scale (cadr (true-list-fix request)))
+                                          core nursery observations))
+           (equal (fn-heap-reserve-init-request request core nursery observations)
+                  (list :scale (cadr (true-list-fix request)))))
+  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
+                                      fn-heap-machine-sized-requestp))))
 
 (defthm fn-heap-reserve-init-request-keeps-the-operators-request-by-definition
-  (implies (not (equal request '(:default nil)))
+  (implies (not (fn-heap-machine-sized-requestp request))
            (equal (fn-heap-reserve-init-request request core nursery observations)
                   request)))
+
+; -----------------------------------------------------------------------------
+; The figure is heap-figure's formula and grows with H and R: the default
+; preset's 73,402,949 MB is 32 x (2 x 2^40 + 2^26) octets of lists and not a
+; unit error.
+
+(defthm fn-heap-figure-octets-is-the-formula-by-definition
+  (equal (fn-heap-figure-octets profile core nursery)
+         (+ (nfix core) (nfix nursery)
+            (* 32 (+ (* 2 (fn-bs-profile-max-history-octets profile))
+                     (fn-bs-profile-max-record-octets profile)))
+            (* 2 (fn-ock-capture-budget profile))))
+  :hints (("Goal" :in-theory (enable fn-heap-figure-octets fn-heap-list-octets
+                                     fn-heap-buffer-octets))))
+
+(defthm fn-heap-figure-octets-grows-with-history-and-record
+  (implies (and (<= (fn-bs-profile-max-history-octets p1)
+                    (fn-bs-profile-max-history-octets p2))
+                (<= (fn-bs-profile-max-record-octets p1)
+                    (fn-bs-profile-max-record-octets p2))
+                (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
+           (<= (fn-heap-figure-octets p1 core nursery)
+               (fn-heap-figure-octets p2 core nursery)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets fn-heap-list-octets
+                                   fn-heap-buffer-octets)
+                                  (fn-ock-capture-budget
+                                   fn-bs-profile-max-history-octets
+                                   fn-bs-profile-max-record-octets)))))

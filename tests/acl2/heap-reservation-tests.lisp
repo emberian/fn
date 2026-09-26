@@ -179,13 +179,18 @@
                 1))
 (assert! (equal (fn-heap-decision-exit-code '(:heap 814 "small" 1536 1192 60)) 0))
 
-; -----------------------------------------------------------------------------
-; A bare `init' (PKT-582): the largest preset whose reservation the machine
-; holds.  2 GiB: small; 24 GiB (hbox_native's default cgroup): development;
-; 132 GB: scale.  The operator's own request is kept.
+;; -----------------------------------------------------------------------------
+; `init' (PKT-582): a request naming no capacity takes the first of scale,
+; development and the small candidate the machine holds.  A bare request:
+; 2 GiB small, 24 GiB development, 132 GB scale.  The default mission
+; (1 MiB articles, 8 groups): 24 GiB development with its fields; 2 GiB
+; refused, 2,498 MB, the stacks of 1 MiB articles.  A request naming H is
+; the operator's.
 (defconst *hrt-bare* '(:default nil))
-(assert! (equal (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery*
-                                              (list (* 2048 *fn-heap-mib*)))
+(defconst *hrt-mission* '(:default ((5 . 1048576) (6 . 8))))
+(defconst *hrt-2g* (list (* 2048 *fn-heap-mib*)))
+(assert! (equal (fn-heap-small-candidate *hrt-bare*) *fn-heap-small-request*))
+(assert! (equal (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery* *hrt-2g*)
                 *fn-heap-small-request*))
 (assert! (equal (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery*
                                               (list (* 24 1024 *fn-heap-mib*)))
@@ -193,19 +198,51 @@
 (assert! (equal (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery*
                                               (list 132000000000))
                 '(:scale nil)))
+(assert! (equal (fn-heap-reserve-init-request *hrt-mission* *hrt-core* *hrt-nursery*
+                                              (list (* 24 1024 *fn-heap-mib*)))
+                '(:development ((5 . 1048576) (6 . 8)))))
+(assert! (equal (fn-heap-reserve-decide
+                 (fn-bs-profile-resolve (fn-heap-small-candidate *hrt-mission*) nil)
+                 *hrt-core* *hrt-nursery* *hrt-2g* 32)
+                '(:refused :machine-cannot-hold-threads 2498 2048)))
 (assert! (equal (fn-heap-reserve-init-request '(:default ((3 . 4096))) *hrt-core*
                                               *hrt-nursery* (list 132000000000))
                 '(:default ((3 . 4096)))))
+; The formula: the default preset's figure is its lists, 32 x (2H + R).
+(assert! (equal (fn-heap-figure-octets *fn-bs-profile-defaults* 0 0)
+                (+ (* 32 (+ (* 2 1099511627776) 67108864))
+                   (* 2 (fn-ock-capture-budget *fn-bs-profile-defaults*)))))
 
-; The keystone's witness: 2 GiB holds small, and init's choice is accepted.
-(assert! (fn-heap-reserve-acceptsp *fn-heap-small-request* *hrt-core* *hrt-nursery*
-                                   (list (* 2048 *fn-heap-mib*))))
+; The keystone's witness: 2 GiB holds the bare request's small candidate, and
+; init's choice is accepted.
+(assert! (fn-heap-machine-sized-requestp *hrt-bare*))
+(assert! (fn-heap-reserve-acceptsp (fn-heap-small-candidate *hrt-bare*)
+                                   *hrt-core* *hrt-nursery* *hrt-2g*))
 (assert! (fn-heap-reserve-acceptsp
-          (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery*
-                                        (list (* 2048 *fn-heap-mib*)))
-          *hrt-core* *hrt-nursery* (list (* 2048 *fn-heap-mib*))))
-; Without it: 512 MiB holds no preset; init writes small, which it refuses.
-(assert! (not (fn-heap-reserve-acceptsp *fn-heap-small-request* *hrt-core* *hrt-nursery*
+          (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery* *hrt-2g*)
+          *hrt-core* *hrt-nursery* *hrt-2g*))
+; Without the machine-sized request: `(:scale nil)' is kept, and 2 GiB holds
+; its small candidate but not scale.
+(assert! (not (fn-heap-machine-sized-requestp '(:scale nil))))
+(assert! (fn-heap-reserve-acceptsp (fn-heap-small-candidate '(:scale nil))
+                                   *hrt-core* *hrt-nursery* *hrt-2g*))
+(assert! (not (fn-heap-reserve-acceptsp
+               (fn-heap-reserve-init-request '(:scale nil) *hrt-core* *hrt-nursery* *hrt-2g*)
+               *hrt-core* *hrt-nursery* *hrt-2g*)))
+(must-fail
+ (defthm hrt-init-without-machine-sized
+   (implies (fn-heap-reserve-acceptsp (fn-heap-small-candidate request)
+                                      core nursery observations)
+            (fn-heap-reserve-acceptsp
+             (fn-heap-reserve-init-request request core nursery observations)
+             core nursery observations))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-heap-small-candidate
+                                fn-heap-machine-sized-requestp)))))
+; Without the small candidate fitting: 512 MiB holds nothing; init writes
+; the small candidate, which it refuses.
+(assert! (not (fn-heap-reserve-acceptsp (fn-heap-small-candidate *hrt-bare*)
+                                        *hrt-core* *hrt-nursery*
                                         (list (* 512 *fn-heap-mib*)))))
 (assert! (not (fn-heap-reserve-acceptsp
                (fn-heap-reserve-init-request *hrt-bare* *hrt-core* *hrt-nursery*
@@ -213,20 +250,23 @@
                *hrt-core* *hrt-nursery* (list (* 512 *fn-heap-mib*)))))
 (must-fail
  (defthm hrt-init-without-small-fitting
-   (fn-heap-reserve-acceptsp
-    (fn-heap-reserve-init-request '(:default nil) core nursery observations)
-    core nursery observations)
+   (implies (fn-heap-machine-sized-requestp request)
+            (fn-heap-reserve-acceptsp
+             (fn-heap-reserve-init-request request core nursery observations)
+             core nursery observations))
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-heap-reserve-acceptsp)))))
-; Scale's witness and its hypothesis: 24 GiB does not hold scale, and init
-; does not take it.
+            :in-theory (disable fn-heap-reserve-acceptsp fn-heap-small-candidate
+                                fn-heap-machine-sized-requestp)))))
+; Scale's hypothesis: 24 GiB does not hold scale, and init does not take it.
 (assert! (fn-heap-reserve-acceptsp '(:scale nil) *hrt-core* *hrt-nursery*
                                    (list 132000000000)))
 (assert! (not (fn-heap-reserve-acceptsp '(:scale nil) *hrt-core* *hrt-nursery*
                                         (list (* 24 1024 *fn-heap-mib*)))))
 (must-fail
  (defthm hrt-init-scale-without-scale-fitting
-   (equal (fn-heap-reserve-init-request '(:default nil) core nursery observations)
-          '(:scale nil))
+   (implies (fn-heap-machine-sized-requestp request)
+            (equal (fn-heap-reserve-init-request request core nursery observations)
+                   (list :scale (cadr (true-list-fix request)))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-heap-reserve-acceptsp)))))
+            :in-theory (disable fn-heap-reserve-acceptsp
+                                fn-heap-machine-sized-requestp)))))

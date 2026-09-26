@@ -232,6 +232,30 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.post(port, ids)
         self.stop()
 
+    def test_the_default_mission_inits_and_runs(self):
+        """`[ops] mission = "small-community"' (1 MiB articles, 8 groups per
+        article over the default preset, whose H is the codec's 1 TiB) used
+        to resolve to a 73 TB figure and be refused everywhere.  Now its
+        capacity comes from the machine.  Under 2 GiB its thread stacks (60 x
+        21 MB for 1 MiB articles of empty lines, the served path's per-line
+        recursion) do not fit, and init is refused by name, exit 1."""
+        config, port = self.config("mission")
+        with open(config, "a", encoding="ascii") as f:
+            f.write('[ops]\nmission = "small-community"\n')
+        made = self.run_fn("operator", config, "init")
+        if SMALL:
+            self.assertEqual(made.returncode, EXIT_REFUSED, text(made))
+            self.assertIn("refused machine-cannot-hold-threads", text(made))
+            return
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        status = self.run_fn("operator", config, "status")
+        self.assertEqual(status.returncode, EXIT_OK, text(status))
+        self.assertIn("max-article-octets=1048576", status.stdout.decode())
+        ids = ["<mission-{}@example.invalid>".format(n) for n in range(3)]
+        self.start(config, port, self.tmp / "mission.log")
+        self.post(port, ids)
+        self.stop()
+
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")
 @unittest.skipUnless(SMALL, "run under a memory limit of at most 2 GiB "

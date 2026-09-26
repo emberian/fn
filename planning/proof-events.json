@@ -7009,6 +7009,10 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-init-request-takes-scale-when-it-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-figure-octets-grows-with-history-and-record"
         }
       ]
     }

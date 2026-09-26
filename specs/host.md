@@ -401,12 +401,17 @@ before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
 machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
 with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
 stack=KB KB threads=N`.
-A bare `init` (no preset word, no field flag) writes the largest preset whose
-whole reservation, at the configuration's default max-connections, this
-machine holds: scale, then development, else the small preset
-(`fn-heap-reserve-init-request`, PKT-582); before, it wrote the default
-preset, whose history bound no machine holds, and the launcher refused the
-store it had just made.
+`init` with a request that names no capacity field (a bare `init`, and every
+mission: they set only the article bound and groups per article over the
+default preset) writes the first of scale, development and the small preset
+(R raised to the article record the request needs), each with the request's
+own fields over it, whose whole reservation at the configuration's default
+max-connections this machine holds; else the small one, refused by name at
+start (`fn-heap-reserve-init-request`, PKT-582). Before, such a request kept
+the default preset's history bound, the codec's 1 TiB, whose list heap is
+73,402,949 MB: every machine refused the store `init` had made. Under 2 GiB
+the default mission (1 MiB articles) is still refused, by its thread stacks
+(60 x 21 MB), until the served path stops recursing per line.
 
 ### The served reader path
 
