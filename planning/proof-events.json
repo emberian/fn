@@ -6712,6 +6712,55 @@
           "name": "fn-osi-pidx-prepare-keeps-view-indexed"
         }
       ]
+    },
+    {
+      "id": "PRF-189",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-nidx-number-article-is-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-indexed-is-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gnix-find-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gnix-get-of-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-lines-for-numbers-numbered-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-bucket-numbers-under-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-build-entries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-put-all"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-refresh"
+        }
+      ]
     }
   ]
 }

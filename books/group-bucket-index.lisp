@@ -3,13 +3,26 @@
 (in-package "ACL2")
 (include-book "nntp-index-runtime")
 (include-book "msgid-index")
+(include-book "group-number-index")
 
+; A bucket is (group entries . numbers): the group's entries, newest first,
+; and NUMBERS, the same entries keyed by available number
+; (books/group-number-index.lisp; over-number-index, PRF-189).  `fn-gidx-put'
+; keeps both; `fn-gidx-numbers-okp' below is the relation between them.
 (defun fn-gidx-bucket (group buckets)
   (declare (xargs :guard t))
   (if (consp buckets)
       (if (equal group (fn-ag-car (fn-ag-car buckets)))
-          (fn-ag-cdr (fn-ag-car buckets))
+          (fn-ag-car (fn-ag-cdr (fn-ag-car buckets)))
         (fn-gidx-bucket group (cdr buckets)))
+    nil))
+
+(defun fn-gidx-bucket-numbers (group buckets)
+  (declare (xargs :guard t))
+  (if (consp buckets)
+      (if (equal group (fn-ag-car (fn-ag-car buckets)))
+          (fn-ag-cdr (fn-ag-cdr (fn-ag-car buckets)))
+        (fn-gidx-bucket-numbers group (cdr buckets)))
     nil))
 
 (defun fn-gidx-put (entry buckets)
@@ -17,10 +30,13 @@
   (let ((group (fn-index-entry-group entry)))
     (if (consp buckets)
         (if (equal group (fn-ag-car (fn-ag-car buckets)))
-            (cons (cons group (cons entry (fn-ag-cdr (fn-ag-car buckets))))
-                  (cdr buckets))
+            (let ((bucket (fn-ag-cdr (fn-ag-car buckets))))
+              (cons (cons group
+                          (cons (cons entry (fn-ag-car bucket))
+                                (fn-gnix-add group entry (fn-ag-cdr bucket))))
+                    (cdr buckets)))
           (cons (car buckets) (fn-gidx-put entry (cdr buckets))))
-      (list (cons group (list entry))))))
+      (list (cons group (cons (list entry) (fn-gnix-add group entry nil)))))))
 
 (defun fn-gidx-build-entries (entries)
   (declare (xargs :guard t))
@@ -50,6 +66,37 @@
 (defthm fn-gidx-bucket-of-build-entries
   (equal (fn-gidx-bucket group (fn-gidx-build-entries entries))
          (fn-gidx-select group entries)))
+
+; The relation the group index carries (PRF-189): every bucket's number index
+; is its entries' (`fn-gnix-build').  Proof-side only: no served step
+; evaluates it.  Established by every build and preserved by `fn-gidx-put'
+; (and so by `fn-gidx-put-all' and `fn-gidx-refresh', books/owner.lisp).
+(defun fn-gidx-numbers-okp (buckets)
+  (declare (xargs :guard t))
+  (if (consp buckets)
+      (let ((bucket (fn-ag-car buckets)))
+        (and (equal (fn-ag-cdr (fn-ag-cdr bucket))
+                    (fn-gnix-build (fn-ag-car bucket)
+                                   (fn-ag-car (fn-ag-cdr bucket))))
+             (fn-gidx-numbers-okp (cdr buckets))))
+    t))
+
+(defthm fn-gidx-bucket-numbers-under-okp
+  (implies (fn-gidx-numbers-okp buckets)
+           (equal (fn-gidx-bucket-numbers group buckets)
+                  (fn-gnix-build group (fn-gidx-bucket group buckets)))))
+
+(defthm fn-gidx-numbers-okp-of-put
+  (implies (fn-gidx-numbers-okp buckets)
+           (fn-gidx-numbers-okp (fn-gidx-put entry buckets)))
+  :hints (("Goal" :induct (fn-gidx-put entry buckets))))
+
+(defthm fn-gidx-numbers-okp-of-build-entries
+  (fn-gidx-numbers-okp (fn-gidx-build-entries entries)))
+
+(defthm fn-gidx-numbers-okp-of-build
+  (fn-gidx-numbers-okp (fn-gidx-build articles))
+  :hints (("Goal" :in-theory (enable fn-gidx-build))))
 
 ; The selected bucket is the exact ordered membership projection of the
 ; authoritative archive.  Connection pins carry this fact from build time;

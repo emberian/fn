@@ -197,6 +197,14 @@ percent. Cause and fix: fix lane 1. hot-path-checker's PKT-448 (c) named
 the served read walks as OVER's candidates; this profile names the one
 that costs.
 
+Result (over-number-index, 2026-09-26, rows 1 and 7; planning/evidence/over-number-index-2026-09-26.md):
+OVER's rows come from a number index the group index carries (PRF-189);
+same fixture and harness on hbox, before/after at N = 10,000: OVER 40 rows
+204.5 -> 9.9 ms median, OVER 1-2000 12.6 -> 0.55 s; at 20,000: 1.39 s ->
+17.5 ms and 40.8 -> 0.71 s; served bytes identical. Row 7 does not reproduce:
+ARTICLE by number costs what ARTICLE by Message-ID costs on each image (the
+by-number path never used the walk); what remains is PKT-544.
+
 Large articles (this lane: `big/big.json`, `big/sprof-article3m-flat.txt`;
 a default-profile store with `--max-article-octets 4194304`, N < 30):
 
