@@ -42,7 +42,7 @@
                    session archive index verdicts env keyword args)
                   (fn-nntp-archive-command session archive env keyword args)))
   :hints (("Goal"
-           :in-theory (e/d (fn-nntp-archive-command-pinned
+           :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-xref-reply
                             fn-nntp-archive-command fn-nntp-keywordp
                             fn-nntp-retrieval
                             fn-nntp-msgid-retrieval-indexed-refines-scan

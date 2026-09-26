@@ -1184,6 +1184,9 @@
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
                  fn-nntp-over-range-indexed
+                 fn-nntp-over-range-served fn-nntp-over-current-served
+                 fn-nntp-over-msgid-served fn-nntp-list-overview-fmt-served
+                 fn-nntp-xref-reply
                  fn-gidx-listgroup-command
                  fn-nntp-verdict-hdr-response fn-nntp-result-session
                  fn-nntp-session-consistentp))

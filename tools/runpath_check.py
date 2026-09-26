@@ -31,8 +31,9 @@ Python shebang; every executable is a /bin/sh script or an ELF object; the
 scripts' external commands are checked as above, and a command named by an
 absolute path must be the platform's shell or rc.subr; a symbolic link must
 stay inside the release; every ELF object's program interpreter must be the
-platform's C library loader, its DT_RPATH/DT_RUNPATH may not name a
-directory outside the release, and each DT_NEEDED name must be a file the
+platform's C library loader, it may need no GLIBC_x.y symbol version above
+GLIBC_FLOOR (the oldest glibc a Linux release supports), its
+DT_RPATH/DT_RUNPATH may not name a directory outside the release, and each DT_NEEDED name must be a file the
 release carries or the platform's C library (PLATFORM_LIBC); every shared
 object name the saved core may dlopen (the lib*.so strings in the core) must
 be carried by the release, the C library, or the system TLS library D35
@@ -108,6 +109,13 @@ LIBC_LOADERS = {"/lib64/ld-linux-x86-64.so.2", "/usr/libexec/ld.so"}
 SYSTEM_TLS = re.compile(r"^lib(?:ssl|crypto)\.so(?:\.[\d.]+)?$")
 # Absolute paths a shipped script may run: the shell and OpenBSD's rc.subr.
 SYSTEM_SCRIPTS = {"/bin/sh", "/bin/ksh", "/etc/rc.d/rc.subr"}
+# The oldest glibc a Linux release runs on: Debian 12's 2.36 (lane
+# release-glibc-floor, 2026-09-26; dregg-infra's edge boxes).  Every bundled
+# ELF object's GLIBC_x.y version needs must be at or below it; the release
+# build runs this check before packing (docs/operator.md, "From the release
+# tarball"; docs/install.md's requirements line).  The one place it is set.
+GLIBC_FLOOR = (2, 36)
+GLIBC_VERSION_RE = re.compile(r"^GLIBC_(\d+)\.(\d+)(?:\.(\d+))?$")
 CORE_WIDE_RE = re.compile(rb"(?:[A-Za-z0-9_+./-]\x00\x00\x00){6,256}")
 CORE_LIB_RE = re.compile(rb"lib[A-Za-z0-9_+-][A-Za-z0-9_+.-]*?\.so(?:\.\d+)*")
 
@@ -366,6 +374,38 @@ def elf_facts(data: bytes) -> dict | None:
         sh_link, = struct.unpack_from("<I", data, base + 0x28)
         sections.append((sh_type, sh_offset, sh_size, sh_link))
     needed, rpaths = [], []
+    versions: dict[int, str] = {}   # vna_other index -> version name (DT_VERNEED)
+    for sh_type, offset, size, link in sections:
+        if sh_type != 0x6FFFFFFE or link >= len(sections):  # SHT_GNU_verneed
+            continue
+        str_offset = sections[link][1]
+        pos = offset
+        while pos + 16 <= offset + size:
+            _vn_version, vn_cnt, _vn_file, vn_aux, vn_next = struct.unpack_from("<HHIII", data, pos)
+            aux = pos + vn_aux
+            for _ in range(vn_cnt):
+                _hash, _flags, other, name, vna_next = struct.unpack_from("<IHHII", data, aux)
+                end = data.index(b"\0", str_offset + name)
+                versions[other] = data[str_offset + name:end].decode("latin-1")
+                if not vna_next:
+                    break
+                aux += vna_next
+            if not vn_next:
+                break
+            pos += vn_next
+    symbol_versions: list[tuple[str, str]] = []  # (undefined symbol, version it needs)
+    versym = next((s for s in sections if s[0] == 0x6FFFFFFF), None)  # SHT_GNU_versym
+    dynsym = next((s for s in sections if s[0] == 11), None)          # SHT_DYNSYM
+    if versym and dynsym and dynsym[3] < len(sections):
+        str_offset = sections[dynsym[3]][1]
+        for i in range(dynsym[2] // 24):
+            st_name, _info, _other, st_shndx = struct.unpack_from("<IBBH", data, dynsym[1] + 24 * i)
+            index, = struct.unpack_from("<H", data, versym[1] + 2 * i)
+            index &= 0x7FFF
+            if st_shndx == 0 and index in versions:
+                end = data.index(b"\0", str_offset + st_name)
+                symbol_versions.append((data[str_offset + st_name:end].decode("latin-1"),
+                                        versions[index]))
     for sh_type, offset, size, link in sections:
         if sh_type != 6 or link >= len(sections):  # SHT_DYNAMIC
             continue
@@ -378,7 +418,27 @@ def elf_facts(data: bytes) -> dict | None:
                 end = data.index(b"\0", str_offset + val)
                 text = data[str_offset + val:end].decode("latin-1")
                 (needed if tag == 1 else rpaths).append(text)
-    return {"needed": needed, "rpaths": rpaths, "interp": interp}
+    return {"needed": needed, "rpaths": rpaths, "interp": interp,
+            "versions": sorted(set(versions.values())), "symbol_versions": symbol_versions}
+
+
+def glibc_version(name: str) -> tuple[int, ...] | None:
+    """(2, 38) for GLIBC_2.38, (2, 3, 4) for GLIBC_2.3.4; None for any other name."""
+    match = GLIBC_VERSION_RE.match(name)
+    return None if match is None else tuple(int(g) for g in match.groups() if g is not None)
+
+
+def glibc_above_floor(facts: dict) -> tuple[tuple[int, ...] | None, list[str]]:
+    """The highest GLIBC version an object needs, and each need above GLIBC_FLOOR
+    (`symbol@GLIBC_x.y`, or the bare version when no symbol names it)."""
+    needs = [v for v in (glibc_version(n) for n in facts["versions"]) if v is not None]
+    highest = max(needs) if needs else None
+    above = sorted({f"{sym}@{ver}" for sym, ver in facts["symbol_versions"]
+                    if (glibc_version(ver) or (0,)) > GLIBC_FLOOR})
+    named = {a.rsplit("@", 1)[1] for a in above}
+    above += sorted(n for n in facts["versions"]
+                    if (glibc_version(n) or (0,)) > GLIBC_FLOOR and n not in named)
+    return highest, above
 
 
 def core_dlopen_names(path: Path) -> set[str]:
@@ -461,8 +521,14 @@ def tree_check(top: Path) -> Findings:
             if facts["interp"] is not None and facts["interp"] not in LIBC_LOADERS:
                 findings.fail(f"{rel}: program interpreter {facts['interp']} is not the "
                               "platform C library loader")
+            highest, above = glibc_above_floor(facts)
+            floor = "GLIBC_" + ".".join(map(str, GLIBC_FLOOR))
+            for need in above:
+                findings.fail(f"{rel}: needs {need}, above the release's floor {floor}")
             findings.note(f"{rel}: ELF; needs {' '.join(needed) or '(none)'}"
-                          + (f"; interpreter {facts['interp']}" if facts["interp"] else ""))
+                          + (f"; interpreter {facts['interp']}" if facts["interp"] else "")
+                          + (f"; highest GLIBC_{'.'.join(map(str, highest))} (floor {floor})"
+                             if highest else ""))
             continue
         if path.suffix == ".core" and rel.startswith("libexec/"):
             names = core_dlopen_names(path)
@@ -531,7 +597,9 @@ def main(argv: list[str] | None = None) -> int:
     if findings.problems:
         print(f"runpath_check {label}: {len(findings.problems)} finding(s)", file=sys.stderr)
         return 1
-    print(f"runpath_check {label}: no Python on the deployed path")
+    floor = "" if label == "static" else \
+        f"; no bundled ELF object needs more than GLIBC_{'.'.join(map(str, GLIBC_FLOOR))}"
+    print(f"runpath_check {label}: no Python on the deployed path{floor}")
     return 0
 
 

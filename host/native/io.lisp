@@ -1935,22 +1935,20 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
 
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
-:absent, :refused, :exceeds-bound or :ok, the vocabulary of fn-sco-select."
+:absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
+the journal replays, `status' says reason=checkpoint-schema) or :ok, the
+vocabulary of fn-sco-select-named."
   (multiple-value-bind (status value)
       (handler-case (fnn-state-checkpoint-plan store)
         (fnn-os-error () (values :refused :io)))
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
       (:refused (fnn-core-state 'fn-store-sco-clear)
-       (values (if (eq value :exceeds-bound) :exceeds-bound :refused) 0))
+       (values (case value (:exceeds-bound :exceeds-bound) (:schema :schema) (t :refused)) 0))
       (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
            (cond ((and (consp answer) (eq (first answer) :ok)
                        (integerp (second answer)) (>= (second answer) 0))
                   (values :ok (second answer)))
-                 ;; ACL2's named refusal (books/store-checkpoint-shape.lisp):
-                 ;; an event index of an older image's shape.
-                 ((and (consp answer) (eq (second answer) :index-shape))
-                  (values :index-shape 0))
                  (t (values :refused 0))))))))
 
 (defun fnn-recover-full-replay (store config-records &optional (reason nil))
@@ -2131,37 +2129,12 @@ publication buffer fnn-live-octets-pub)."
                        (fnn-octet-list-p (fourth frame)) (fourth frame)))
                 plan))))
 
-(defun fnn-plan-octets (plan &optional (st (fnn-live-octets)))
-  "The plan's octets, fn-sccb-plan-octets transcribed: per frame the header,
-the buffer ST's cells A..B and the trailer, into one byte vector of the
-file's size.  The buffer's array is read in place; no list of the file is
-built.  fn-sccb-plan-is-file-octets says this vector is fn-scc-file-octets
-of the value the plan was made from."
-  (let* ((buffer (the fnn-octets (svref st 0)))
-         (total (loop for frame in plan
-                      sum (+ (length (first frame))
-                             (- (third frame) (second frame))
-                             (length (fourth frame)))))
-         (out (fnn-make-octets total))
-         (pos 0))
-    (dolist (frame plan out)
-      (let ((header (first frame)) (a (second frame)) (b (third frame))
-            (trailer (fourth frame)))
-        (replace out header :start1 pos)
-        (incf pos (length header))
-        (replace out buffer :start1 pos :start2 a :end2 b)
-        (incf pos (- b a))
-        (replace out trailer :start1 pos)
-        (incf pos (length trailer))))))
-
 (defun fnn-plan-write-all (fd plan st)
-  "Write the plan's octets (fn-sccb-plan-octets: per frame the header, the
+  "Write the frames' octets (fn-sccb-plan-octets: per frame the header, the
 buffer ST's cells A..B, the trailer) to FD straight from ST's array: no
-vector of the file is built.  The owner's automatic publication
-(host/native/owner.lisp fnn-owner-publish-captured) hands this to
-fnn-state-checkpoint-write as the staged file's writer;
-fn-ock-publication-stream-writes-the-file (books/owner-checkpoint-stream.lisp)
-says these octets are fn-scc-file-octets of the frozen checkpoint."
+vector of the file is built.  Both checkpoint entries call this once per
+pipeline step (fnn-checkpoint-write-steps) inside the staged file's writer
+handed to fnn-state-checkpoint-write."
   (let ((buffer (the fnn-octets (svref st 0))))
     (dolist (frame plan)
       (let ((header (fnn-octets (first frame))) (a (second frame)) (b (third frame))
@@ -2170,33 +2143,152 @@ says these octets are fn-scc-file-octets of the frozen checkpoint."
         (fnn-write-range fd buffer a b)
         (fnn-write-range fd trailer 0 (length trailer))))))
 
+;; PKT-169: the compaction's temporary space is checked against the disk.
+;; The host observes the free octets of the store's filesystem (statvfs:
+;; f_bavail blocks of f_frsize octets, what an unprivileged writer may use)
+;; and ACL2 decides (books/store-compact-verb.lisp `fn-cverb-disk-admitsp').
+;; NIL when the call fails or the platform's layout is not known here; ACL2
+;; then refuses :temporary-space by name.  A developer image honours
+;; FN_NATIVE_DISK_FREE=N, which caps the observation at N octets (a small
+;; disk for the native case; the production image refuses to start with it).
+(sb-alien:define-alien-routine ("statvfs" fnn-%statvfs) sb-alien:int
+  (path sb-alien:c-string) (buffer (* (sb-alien:unsigned 8))))
+
+(defun fnn-statvfs-free-octets (path)
+  (let ((buffer (sb-alien:make-alien (sb-alien:unsigned 8) 256)))
+    (unwind-protect
+         (when (zerop (fnn-%statvfs path buffer))
+           (let ((sap (sb-alien:alien-sap buffer)))
+             (declare (ignorable sap))
+             ;; f_frsize at 8 and f_bavail at 32: the Linux x86-64 and the
+             ;; OpenBSD amd64 struct statvfs (sys/statvfs.h, 7.9) agree.
+             #+(and (or linux openbsd) x86-64)
+             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-64 sap 32))
+             #+darwin
+             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-32 sap 24))
+             #-(or (and (or linux openbsd) x86-64) darwin)
+             nil))
+      (sb-alien:free-alien buffer))))
+
+(defun fnn-disk-free-octets (store)
+  (let ((free (fnn-statvfs-free-octets (fnn-store-root store)))
+        (cap (fnn-developer-selector "FN_NATIVE_DISK_FREE")))
+    (if (and free cap)
+        (let ((n (ignore-errors (parse-integer cap))))
+          (unless (and (integerp n) (>= n 0))
+            (fnn-fault "invalid FN_NATIVE_DISK_FREE (expected octets)"))
+          (min free n))
+        free)))
+
+;;; The batch loop both entries run (host/native/owner.lisp
+;;; fnn-owner-publish-captured on its thread; the verb below): ACL2's
+;;; fn-ockp-step over the publication buffer, each step's frames written to
+;;; FD before the next step (fnn-plan-write-all, straight from the buffer's
+;;; array), until the four tables are written.  The buffer holds one step's
+;;; rows and one segment's residue, never the file
+;;; (books/owner-checkpoint-pipeline.lisp).  A refused frame (one the reader
+;;; would refuse) abandons the staged file as a known failure before the
+;;; rename.  The developer selector FN_NATIVE_CHECKPOINT_BATCH_FAULT=K:kill
+;;; kills the process after the K-th step's frames were written (the
+;;; `created' cut's verdict: the next open reads the old checkpoint, the
+;;; staged file is swept).
+
+(defconstant +fnn-checkpoint-batch-rows+ 1024
+  "Rows of a table per pipeline step: a work bound per scheduling step (D27),
+never a bound on the store; the file is the same at every batch size.")
+
+(defun fnn-checkpoint-revision ()
+  "The writer's source revision for the checkpoint's F row: the recorded one
+(fnn-source-revision), or \"unknown\" on an image that records none (a
+scratch image): provenance, never a refusal."
+  (or (ignore-errors (fnn-source-revision)) "unknown"))
+
+(defun fnn-checkpoint-batch-fault ()
+  "Developer-only FN_NATIVE_CHECKPOINT_BATCH_FAULT=K:kill: the step after
+which the process is killed, or NIL."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_CHECKPOINT_BATCH_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw)))
+        (unless (and colon (string= (subseq raw (1+ colon)) "kill"))
+          (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
+        (let ((k (ignore-errors (parse-integer (subseq raw 0 colon)))))
+          (unless (and (integerp k) (>= k 0))
+            (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
+          k)))))
+
+(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st)
+  "Write the pipeline's frames to FD step by step; the number of steps."
+  (let ((state (fnn-core 'fn-ockp-initial-state (second setup) st))
+        (segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
+        (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
+        (fault (fnn-checkpoint-batch-fault))
+        (steps 0))
+    (loop
+      (when (fnn-core 'fn-ockp-donep state) (return steps))
+      (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
+                              segment sequence segment-bound file-bound st)))
+        ;; fnn-call answers the multiple-value list: VERDICT FRAMES STATE'
+        ;; and the stobj.
+        (unless (and (consp answer) (>= (length answer) 3))
+          (fnn-fault "ACL2 returned a malformed checkpoint step"))
+        (destructuring-bind (verdict frames next &rest stobj) answer
+          (declare (ignore stobj))
+          (unless (eq verdict :ok)
+            (fnn-refuse-io "the checkpoint pipeline refused a frame the open would refuse: ~a"
+                           verdict))
+          (unless (or (null frames) (fnn-plan-p frames st))
+            (fnn-fault "ACL2 returned a malformed checkpoint step"))
+          (fnn-plan-write-all fd frames st)
+          (setq state next)
+          (incf steps)
+          (when (and fault (= steps (1+ fault)))
+            (sb-posix:kill (sb-posix:getpid) sb-posix:sigkill)))))))
+
 (defun fnn-command-state-checkpoint (root)
   "Publish the exact-state checkpoint of the recovered Store (P3).
 
 The store opens as `recover' does (the exclusive writer lock, so a running
 owner refuses this).  ACL2 extends the checkpoint the open used over the
-records after it, or captures the whole history after a full replay, writes
-the file's program into the octet buffer once and returns a plan of segments
-over it (fn-store-sco-publish-plan, books/store-checkpoint-buffer.lisp);
-the host assembles the plan's octets from the buffer's array and writes
-them.  Before this (rep-wave-d-2, 2026-09-26) the file was built as an
-octet list, five to six copies at sixteen bytes per octet, and the verb
-died by heap exhaustion at N = 10,000 x 32 KiB."
+records after it, or captures the whole history after a full replay,
+builds the schema-3 tables of it and decides by name before anything is
+allocated (fn-store-sco-publish-setup, books/owner-checkpoint-pipeline.lisp:
+the estimate against the profile's checkpoint budget and the free space);
+then the same batch loop as the owner's thread writes the file through the
+publication buffer, one step's rows at a time.  Before this (rep-wave-d-2,
+2026-09-26) the file was the whole frozen checkpoint encoded into the
+buffer at once."
   (multiple-value-bind (store records)
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (unwind-protect
-         (let* ((segment (fnn-profile-nat 'fn-store-profile-max-record-octets store))
-                (answer (fnn-core-buffer-state 'fn-store-sco-publish-plan segment)))
-           (when (eq answer :unencodable)
-             (fnn-refuse "the recovered Store state is not encodable as a checkpoint"))
-           (unless (and (consp answer) (fnn-plan-p (first answer))
-                        (integerp (second answer)) (= (second answer) (length records)))
-             (fnn-fault "ACL2 returned a malformed state checkpoint"))
-           (let ((octets (fnn-plan-octets (first answer))))
-             (fnn-state-checkpoint-write store octets)
-             (fnn-out "checkpoint sequence=~d octets=~d ~a"
-                      (second answer) (length octets) (fnn-open-report store))
-             +fnn-exit-ok+))
+         (let* ((profile (fnn-store-config store))
+                (segment (fnn-profile-nat 'fn-store-profile-max-record-octets store))
+                (budget (fnn-core 'fn-ock-capture-budget profile))
+                (answer (fnn-core-state 'fn-store-sco-publish-setup segment budget
+                                        (fnn-disk-free-octets store)
+                                        (fnn-checkpoint-revision))))
+           (unless (and (consp answer) (= (length answer) 2)
+                        (consp (first answer)) (integerp (second answer))
+                        (= (second answer) (length records)))
+             (fnn-fault "ACL2 returned a malformed state checkpoint setup"))
+           (let* ((setup (first answer)) (sequence (second answer))
+                  (verdict (first setup)))
+             (cond
+               ((eq verdict :unencodable)
+                (fnn-refuse "the recovered Store state is not encodable as a checkpoint"))
+               ((and (consp verdict) (eq (first verdict) :deferred))
+                (fnn-refuse "checkpoint deferred reason=~(~a~) estimate=~d budget=~d"
+                            (second verdict) (third verdict) (fourth verdict)))
+               ((and (consp verdict) (eq (first verdict) :plan) (integerp (second verdict)))
+                (let ((st (fnn-live-octets-pub)) (steps 0))
+                  (fnn-state-checkpoint-write
+                   store
+                   (lambda (fd)
+                     (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
+                                                             profile st))))
+                  (fnn-out "checkpoint sequence=~d octets=~d steps=~d ~a"
+                           sequence (second verdict) steps (fnn-open-report store))
+                  +fnn-exit-ok+))
+               (t (fnn-fault "ACL2 returned a malformed checkpoint verdict")))))
       (fnn-store-close store))))
 
 (defun fnn-recover (store)
@@ -3744,7 +3836,7 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
     "FN_PULL_TEST_KILL"
-    "FN_NATIVE_RECLAIM_FAULT"
+    "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
 
 (defun fnn-developer-selector (name)

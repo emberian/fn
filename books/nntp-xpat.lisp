@@ -52,7 +52,7 @@
                                          (cdr (fn-nntp-tokenize line)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-step-pinned fn-nntp-command-pinned
-                            fn-nntp-archive-command-pinned
+                            fn-nntp-archive-command-pinned fn-nntp-xref-reply
                             fn-nntp-archive-command fn-nntp-archive-keywordp
                             fn-nntp-keywordp)
                            (fn-nntp-upcase-keyword fn-nntp-keyword-tokenp

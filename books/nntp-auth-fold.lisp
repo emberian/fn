@@ -203,6 +203,43 @@
                                    fn-gidx-pin-control fn-gidx-pin-trie
                                    fn-nntp-token-string fn-octet-listp)))))
 
+;; R3: the served OVER renderers (books/nntp-xref.lisp) answer through
+;; fn-nntp-single, -multi or -multi-octets.
+(defthm fn-auth-fold-nntp-over-range-served-has-no-offer
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
+                                   fn-post-offeredp fn-nov-served-lines-numbered fn-nntp-index-group-range-numbers fn-nntp-parse-range)))))
+
+(defthm fn-auth-fold-nntp-over-current-served-has-no-offer
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-current-served session archive server))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-current-served)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
+                                   fn-post-offeredp fn-nov-served-line fn-nov-overview fn-nntp-available-article)))))
+
+(defthm fn-auth-fold-nntp-over-msgid-served-has-no-offer
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-msgid-served session archive token server))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid-served)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
+                                   fn-post-offeredp fn-nov-served-line fn-nov-overview fn-find-article)))))
+
+(defthm fn-auth-fold-nntp-list-overview-fmt-served-has-no-offer
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-list-overview-fmt-served session))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-overview-fmt-served)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
+                                   fn-post-offeredp )))))
+
+(defthm fn-auth-fold-xref-reply-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-nntp-xref-reply session archive index env keyword args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xref-reply)
+                                  (fn-post-offeredp fn-nntp-keywordp
+                                   fn-nntp-xref-server
+                                   fn-nntp-over-range-served fn-nntp-over-current-served
+                                   fn-nntp-over-msgid-served
+                                   fn-nntp-list-overview-fmt-served)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects

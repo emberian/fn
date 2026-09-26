@@ -47,7 +47,7 @@ ROOT = verbs.ROOT
 DEVELOPER = verbs.DEVELOPER
 EXIT_OK = verbs.EXIT_OK
 
-CHECKPOINT_AUTO = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+) ms=(\d+)")
+CHECKPOINT_AUTO = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+) steps=(\d+) ms=(\d+)")
 CHECKPOINT_DEFERRED = re.compile(
     rb"CHECKPOINT deferred reason=([a-z-]+) estimate=(\d+) budget=(\d+) sequence=(\d+) ms=(\d+)")
 CHECKPOINT_ANY = re.compile(rb"CHECKPOINT ")
@@ -59,28 +59,35 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         owner_host = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         io = (ROOT / "host" / "native" / "io.lisp").read_text(encoding="ascii")
         publish = native_cuts.host_function(owner, "fnn-owner-publish-captured")
-        # The keystone's subject, with the publication buffer, never the
-        # served one; the plan's octets written from that buffer through the
-        # unchanged byte program; the list entry no longer called.
-        self.assertIn("(fnn-call 'fn-ock-publication-stream base configs records", publish)
+        # checkpoint-pipeline: NEXT (fn-ock-next-checkpoint), then the setup
+        # (fn-ockp-setup: the tables, the estimate, the decision BEFORE any
+        # allocation), then the batch loop over the PUBLICATION buffer, never
+        # the served one; each step's frames written through the unchanged
+        # byte program; the list entry and the whole-file plan are gone.
+        self.assertIn("(fnn-core 'fn-ock-next-checkpoint base configs records)", publish)
+        self.assertIn("(fnn-core 'fn-ockp-setup next frontier revision segment budget free)", publish)
         self.assertIn("(fnn-live-octets-pub)", publish)
         self.assertNotIn("(fnn-live-octets)", publish)
         self.assertNotIn("'fn-ock-publication ", publish)
-        self.assertIn("(fnn-plan-write-all fd plan (fnn-live-octets-pub))", publish)
+        self.assertNotIn("'fn-ock-publication-stream", publish)
+        self.assertIn("(fnn-checkpoint-write-steps", publish)
         self.assertIn("(fnn-state-checkpoint-write", publish)
         self.assertIn("CHECKPOINT deferred reason=", publish)
         self.assertNotIn("fnn-plan-octets", publish)
         # The decision's due half and the budget's derivation are ACL2's, on
-        # the due path.
+        # the due path; the space is observed once and handed to both.
         due = native_cuts.host_function(owner_host, "fn-owner-sco-due")
         self.assertIn("(fn-ock-publication-blockedp", due)
         self.assertIn("(fn-owner-sco-budget override profile)", due)
+        self.assertIn("(fn-ockp-space free)", due)
         capture = native_cuts.host_function(owner_host, "fn-owner-sco-capture")
         self.assertIn("(fn-owner-sco-budget override profile)", capture)
+        self.assertIn("(fn-sf-frontier (fn-sn-files st))", capture)
         budget = native_cuts.host_function(owner_host, "fn-owner-sco-budget")
         self.assertIn("(fn-ock-capture-budget profile)", budget)
         maybe = native_cuts.host_function(owner, "fnn-owner-maybe-publish")
         self.assertEqual(maybe.count("(fnn-checkpoint-budget-test-override nil)"), 2)
+        self.assertIn("(fnn-disk-free-octets (fnn-owner-service-store service))", maybe)
         self.assertNotIn("fnn-checkpoint-budget-test-override", publish)
         # The staged write's two cuts still bracket the write, whether a
         # vector or the plan writer is handed in; the cut map is unchanged.
@@ -156,9 +163,12 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.ids = self.post_batch(0, 64)
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication within the deadline")
-        sequence, suffix, octets, ms = (int(line.group(i)) for i in range(1, 5))
+        sequence, suffix, octets, steps, ms = (int(line.group(i)) for i in range(1, 6))
         self.assertEqual((sequence, suffix), (64, 64))
         self.assertGreater(octets, 0)
+        # The four tables are written in at least four steps (one per table
+        # at the development profile's batch), never as one file.
+        self.assertGreaterEqual(steps, 4)
         self.stop(owner)
         # The file the owner wrote has the octets ACL2 named (the estimate,
         # the plan's octets and the list codec's file are one length).
@@ -179,7 +189,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # republishes the automatic publication byte for byte.
         made = self.checkpoint()
         self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
-        self.assertIn("checkpoint sequence=64 octets={} ".format(octets).encode("ascii"),
+        self.assertIn("checkpoint sequence=64 octets={} steps=".format(octets).encode("ascii"),
                       made.stdout)
         self.assertEqual(self.digest(), published)
         self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=0")
@@ -224,6 +234,59 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(int(line.group(1)), 66)
         self.stop(owner)
         self.assertEqual(self.open_line(), "open=checkpoint:66 suffix=0")
+
+    def test_a_kill_between_two_batches_reopens_with_the_old_checkpoint_and_sweeps_the_stage(self):
+        # SCN-129 (design 2.4): the pipeline writes many segments between the
+        # `created' and `written' cuts of fn-bs-scp-program; a death between
+        # two steps is the `created' cut's verdict (old), never a torn file.
+        # First a durable checkpoint at 8 (the old one, by the verb: the same
+        # pipeline in a fresh process), then a publication, due when the
+        # suffix reaches K/2 = 64 (fn-ock-publication-duep), killed after its
+        # first step's frames were written.  The old checkpoint is early so
+        # that the 64 posts that make the publication due stay well under the
+        # development profile's transaction budget (hbox native-r2: an old
+        # checkpoint at 64 needed 128 posts and the budget refused the last
+        # of them with 441 before the publication was due).
+        self.init_development()
+        owner = self.start_owner(self.image)
+        self.ids = self.post_batch(0, 8)
+        self.stop(owner)
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, scp.EXIT_OK, made.stderr.decode())
+        old = self.digest()
+        self.assertIsNotNone(old)
+        self.assertEqual(self.open_line(), "open=checkpoint:8 suffix=0")
+        owner = self.start_owner(self.image,
+                                 extra_env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
+        self.ids += self.post_batch(8, 64)
+        # The owner is killed by its own publication thread after the first
+        # step; wait for the process to end.
+        deadline = time.monotonic() + 180.0
+        while owner.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.25)
+            try:
+                with socket.create_connection(("127.0.0.1", self.port), timeout=5) as conn:
+                    conn.recv(256)
+            except OSError:
+                pass
+        self.assertIsNotNone(owner.poll(), "the owner survived the batch fault")
+        self.reap(owner)
+        # A staging orphan (the partial file) exists; the old checkpoint is
+        # what the open reads, byte for byte; the writer's recover sweeps.
+        self.assertEqual(self.digest(), old)
+        self.assertEqual(self.open_line(), "open=checkpoint:8 suffix=64")
+        recovered = self.op("recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
+        self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertEqual(self.digest(), old)
+        # A fresh owner is due at once (suffix 64) and publishes the whole
+        # history at 72.
+        owner = self.start_owner(self.image)
+        line = self.owner_line(owner, CHECKPOINT_AUTO)
+        self.assertIsNotNone(line, "no automatic publication after the restart")
+        self.assertEqual(int(line.group(1)), 72)
+        self.stop(owner)
+        self.assertEqual(self.open_line(), "open=checkpoint:72 suffix=0")
 
 
 if __name__ == "__main__":

@@ -1157,7 +1157,12 @@ or (:damaged).  The read bound and decode budget are the profile's."
                              ;; namespace plan bound above (N16 native run:
                              ;; passing the latter replayed the empty new
                              ;; generation without its checkpoint).
-                             (fnn-core 'fn-bpnr-recover-auto-event
+                             ;; The held projection's replay (lane
+                             ;; bp-catalog): the octet total carried, not
+                             ;; re-summed per row; equal to
+                             ;; fn-bpnr-recover-auto-event by
+                             ;; fn-bphp-recover-auto-event-is-bpnr.
+                             (fnn-core 'fn-bphp-recover-auto-event
                                        (fnn-bps-state service) records
                                        sequence rows (fnn-bps-plan service))
                              (list domain))))

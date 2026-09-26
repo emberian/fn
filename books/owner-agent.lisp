@@ -86,10 +86,14 @@
           (fn-oag-descs (cdr names) v)))
     nil))
 
+; The third element is the node's <path-identity>, the posting agent below:
+; the server name of the served Xref overview field (R3, PRF-206,
+; books/nntp-xref.lisp `fn-nntp-listing-server').
 (defun fn-oag-listing (cfg)
   (declare (xargs :guard t))
   (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
-        (fn-cfg-motd-lines (fn-cfg-value cfg))))
+        (fn-cfg-motd-lines (fn-cfg-value cfg))
+        (fn-oag-agent cfg)))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.

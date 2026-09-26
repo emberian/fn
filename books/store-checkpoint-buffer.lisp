@@ -13,8 +13,12 @@
 ; checkpoint' dies by heap exhaustion (planning/evidence/rep-wave-d-2026-09-25.md
 ; section 1.2).  None of it is the retained payload.
 ;
-; This book writes the program once, forward, into the octet buffer
-; (books/octets-stobj.lisp; one byte per octet) and returns a PLAN: one
+; (Since lane checkpoint-pipeline, 2026-09-26, the whole-file plan
+; `fn-sccb-plan' is gone: the schema-3 tables are written in batches by
+; books/owner-checkpoint-pipeline.lisp; this book keeps the writers, the
+; slice and the frame's octets.)
+; This book wrote the program once, forward, into the octet buffer
+; (books/octets-stobj.lisp; one byte per octet) and returned a PLAN: one
 ; entry per segment, (HEADER A B TRAILER), whose octets are the header, the
 ; buffer's cells A..B and the trailer.  A chunk is read from the buffer by
 ; index for its seal (a list of at most one segment, transient) and never
@@ -295,26 +299,6 @@
 ; the last octet off every slice below.
 (local (in-theory (disable fn-sccb-slice-list-snoc)))
 
-; The frames of the buffer's cells from A: (HEADER A B TRAILER) per chunk,
-; chained by the trailer as `fn-scc-frames' chains them.  This is the
-; specification; the host runs `fn-sccb-frames-acc' below.
-(defun fn-sccb-frames (a index count sequence prev seg fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (natp a) (<= a (fn-octets-len fn-octets))
-                              (natp index) (natp count) (natp sequence)
-                              (natp seg))
-                  :measure (nfix (- (fn-octets-len fn-octets) (nfix a)))))
-  (let* ((len (fn-octets-len fn-octets))
-         (lastp (or (zp seg) (not (natp a)) (<= (- len a) seg)))
-         (b (if lastp len (+ a seg)))
-         (chunk (fn-oct-slice-list a b fn-octets))
-         (header (fn-scc-header index count (- b a) sequence))
-         (trailer (fn-scc-seal prev header chunk)))
-    (if lastp
-        (list (list header a b trailer))
-      (cons (list header a b trailer)
-            (fn-sccb-frames b (+ 1 index) count sequence trailer seg fn-octets)))))
-
 ; What the host writes for one frame and for the plan: the header, the
 ; buffer's cells A..B, the trailer.  This is the specification of the host's
 ; write (host/native/io.lisp `fnn-plan-octets'), never run on a served path.
@@ -340,119 +324,5 @@
    (true-listp (fn-scc-header index count length sequence))
    :hints (("Goal" :in-theory (enable fn-scc-header)))))
 
-; `fn-scc-concat' fixes each frame; a frame is header, chunk and trailer,
-; and the first two are true lists, so the fix lands on the trailer alone.
-; (`fn-frame-trailer' is closed, and is a digest only of an octet list; the
-; chain's trailers are, but the statement below holds of any PREV.)
-(local
- (defthm fn-sccb-true-list-fix-of-append
-   (implies (true-listp a)
-            (equal (true-list-fix (append a b)) (append a (true-list-fix b))))))
-
-(defthm fn-sccb-plan-octets-of-frames
-  (implies (and (natp a) (<= a (len fn-octets)) (true-listp fn-octets))
-           (equal (fn-sccb-plan-octets
-                   (fn-sccb-frames a index count sequence prev seg fn-octets)
-                   fn-octets)
-                  (fn-scc-concat
-                   (fn-scc-frames (fn-scc-chunks (nthcdr a fn-octets) seg)
-                                  index count sequence prev))))
-  :hints (("Goal" :induct (fn-sccb-frames a index count sequence prev seg fn-octets)
-           :in-theory (e/d (fn-oct-slice-list-is-take-nthcdr)
-                           (fn-scc-header fn-scc-seal fn-scc-u64 floor mod
-                            fn-scc-chunks)))))
-
-; The same frames built front to back with an accumulator, tail-recursive,
-; so each chunk (read for its seal, a list of one segment) is garbage
-; before the next is read.  `fn-sccb-frames' holds every chunk down its
-; recursion: at N = 10,000 x 32 KiB that is the whole file as lists again.
-(defun fn-sccb-frames-acc (a index count sequence prev seg acc fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (natp a) (<= a (fn-octets-len fn-octets))
-                              (natp index) (natp count) (natp sequence)
-                              (natp seg) (true-listp acc))
-                  :measure (nfix (- (fn-octets-len fn-octets) (nfix a)))))
-  (let* ((len (fn-octets-len fn-octets))
-         (lastp (or (zp seg) (not (natp a)) (<= (- len a) seg)))
-         (b (if lastp len (+ a seg)))
-         (chunk (fn-sccb-slice-acc a b nil fn-octets))
-         (header (fn-scc-header index count (- b a) sequence))
-         (trailer (fn-scc-seal prev header chunk))
-         (acc (cons (list header a b trailer) acc)))
-    (if lastp
-        (revappend acc nil)
-      (fn-sccb-frames-acc b (+ 1 index) count sequence trailer seg acc
-                          fn-octets))))
-
-(defthm fn-sccb-frames-acc-is-frames
-  (implies (and (natp a) (<= a (len fn-octets)))
-           (equal (fn-sccb-frames-acc a index count sequence prev seg acc fn-octets)
-                  (revappend acc (fn-sccb-frames a index count sequence prev seg
-                                                 fn-octets))))
-  :hints (("Goal" :induct (fn-sccb-frames-acc a index count sequence prev seg acc
-                                              fn-octets)
-           :in-theory (e/d (fn-sccb-frames)
-                           (fn-scc-header fn-scc-seal fn-scc-u64 floor mod
-                            fn-oct-slice-list)))))
-
-; -----------------------------------------------------------------------------
-; The host-called entry: the plan of the value C at segment size SEG, the
-; encoding left in the buffer.  :unencodable exactly where the file octets
-; would hold a non-octet.
-
-(defun fn-sccb-plan (c seg fn-octets)
-  (declare (xargs :stobjs fn-octets :guard (natp seg) :verify-guards nil))
-  (if (not (fn-sccb-treep c))
-      (mv :unencodable fn-octets)
-    (let* ((fn-octets (fn-octets-clear fn-octets))
-           (fn-octets (fn-sccb-renc c 0 fn-octets))
-           (plan (fn-sccb-frames-acc 0 0
-                                     (fn-sccb-chunk-count (fn-octets-len fn-octets) seg)
-                                     (fn-scc-value-sequence c) *fn-scc-genesis*
-                                     seg nil fn-octets)))
-      (mv plan fn-octets))))
-
-(local
- (defthm fn-sccb-value-sequence-natp
-   (natp (fn-scc-value-sequence c))
-   :rule-classes :type-prescription))
-
-(verify-guards fn-sccb-plan)
-
-; KEYSTONE: the octets the plan denotes over the buffer it leaves are the
-; file octets the list codec specified.
-(defthm fn-sccb-plan-is-file-octets
-  (implies (fn-sccb-treep c)
-           (equal (fn-sccb-plan-octets (mv-nth 0 (fn-sccb-plan c seg fn-octets))
-                                       (mv-nth 1 (fn-sccb-plan c seg fn-octets)))
-                  (fn-scc-file-octets c seg)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-scc-file-octets fn-scc-segments)
-                           (fn-sccb-frames fn-scc-frames fn-scc-chunks fn-scc-concat
-                            fn-scc-header fn-scc-seal fn-scc-program fn-scc-treep
-                            fn-sccb-treep fn-scc-value-sequence)))))
-
-; Where the list codec refused, the plan refuses.
-(defthm fn-sccb-plan-refuses-what-the-codec-refuses
-  (implies (not (fn-scc-treep c))
-           (equal (mv-nth 0 (fn-sccb-plan c seg fn-octets)) :unencodable))
-  :hints (("Goal" :do-not-induct t
-           :use fn-sccb-treep-is-treep
-           :in-theory (e/d (fn-sccb-plan)
-                           (fn-sccb-treep-is-treep fn-sccb-frames fn-sccb-renc
-                            fn-sccb-treep fn-scc-treep fn-sccb-chunk-count
-                            fn-scc-value-sequence fn-scc-program)))))
-
-; The plan's buffer is the encoding: what a later reader by index sees.
-(defthm fn-sccb-plan-buffer-is-encode
-  (implies (fn-sccb-treep c)
-           (equal (mv-nth 1 (fn-sccb-plan c seg fn-octets)) (fn-scc-encode c)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sccb-plan)
-                           (fn-sccb-frames fn-sccb-treep fn-scc-treep
-                            fn-sccb-chunk-count fn-scc-value-sequence
-                            fn-scc-program)))))
-
 (in-theory (disable fn-sccb-append-list fn-sccb-cons-ops fn-sccb-renc
-                    fn-sccb-slice-acc fn-sccb-frames fn-sccb-frames-acc
-                    fn-sccb-plan))
+                    fn-sccb-slice-acc))

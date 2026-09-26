@@ -140,6 +140,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-list-counts-read \
 	books/config-descriptions \
 	books/owner-descriptions-read \
+	books/owner-xref-read \
+	books/posting-account \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -206,12 +208,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
-	books/store-checkpoint-shape \
-	tests/acl2/store-checkpoint-shape-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
-	books/owner-checkpoint-stream \
-	tests/acl2/owner-checkpoint-stream-tests \
+	tests/acl2/store-checkpoint-tables-tests \
 	books/heap-figure \
 	tests/acl2/heap-figure-tests \
 	books/store-open-pre-c1 \
@@ -487,6 +486,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
+	books/bp-held-projection \
+	tests/acl2/bp-held-projection-tests \
+	books/bp-held-payload \
+	tests/acl2/bp-held-payload-tests \
 	books/bp-node-rotation-step \
 	books/bp-node-retire \
 	tests/acl2/bp-node-retire-tests \
@@ -691,6 +694,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-list-counts \
 	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/group-descriptions-tests \
+	tests/acl2/nntp-xref-tests \
+	tests/acl2/posting-account-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
@@ -734,6 +739,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
+	books/store-checkpoint-tables \
+	books/store-checkpoint-tables-reader \
+	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
 	books/proto-catalog \
@@ -746,8 +754,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-delta-tests \
 	tests/acl2/catalog-relation-tests \
 	tests/acl2/catalog-view-tests \
-	tests/acl2/store-checkpoint-buffer-tests \
-	tests/acl2/store-checkpoint-reader-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -919,6 +925,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/key-statements-tests \
 	books/peer-invite \
 	tests/acl2/peer-invite-tests \
+	books/tls-reload \
+	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-served \

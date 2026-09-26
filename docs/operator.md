@@ -549,6 +549,19 @@ library is the system's), `share/fn/` (the service template,
 `fn.toml.example`, `docs/install.md`, `release-gate.txt` with the gate's
 lines, `runpath-check.txt`) and `SHA256SUMS` over every file.
 
+**Requirements (Linux): glibc 2.36 or later**, the system's libssl (OpenSSL
+3.0 or later), x86-64, and nothing else. The glibc floor is `GLIBC_FLOOR` in
+`tools/runpath_check.py`, the one place it is set: the release build's
+runpath check refuses a bundled ELF object (the SBCL runtime, libsodium,
+libfn-mldsa65) that needs a `GLIBC_x.y` symbol version above it, and
+`tests/test_release_tarball.py` checks the tarball again. A runtime built on
+a newer glibc can need newer versions (SBCL 2.6.8's binary release needs
+`__isoc23_strtol@GLIBC_2.38`), so a Linux release is built with
+`--runtime-from DIR`, where `packaging/floor-runtime.sh SBCL SOURCE DIR`
+rebuilt the same SBCL, with its build-id, in a Debian 12 container; the
+freeze refuses that runtime unless it prints the same version and starts the
+image's core.
+
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
 --version` prints the 40-digit source revision recorded beside the image's
@@ -1280,6 +1293,47 @@ Restart the service after changing the policy or a password in the
 credential file: both are read once at start-up. A login's `signing` binding
 is the exception (next section): `principal bind` and `unbind` apply to the
 running node at once.
+
+### Renew the certificate without a restart: `tls reload`
+
+The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (the
+Let's Encrypt hook, `tools/runbooks/public-node/acme/fn-cert-install.sh`)
+has replaced the two files, ask the running node to take them:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml tls reload
+```
+
+The owner builds a new context from the same two paths and serves it to
+every connection that starts after the command returns; a session already
+open keeps the certificate it handshook with until it ends. ACL2 decides
+whether to take the new pair (books/tls-reload.lisp `fn-tlsr-decide`,
+PRF-212) from what the TLS library observed: it is taken exactly when the
+chain and the key load, the key matches the chain's leaf, the host clock
+lies between the leaf's notBefore and notAfter, its subjectAltName is
+readable, and every DNS name the served certificate names is still named.
+The command prints the line of the certificate now served and exits 0; the
+service log says `tls reload accepted: tls names=... not-after=...`.
+Otherwise it is refused by name (exit 1, `refused operator tls REASON`) and
+the old certificate is still served: `chain-unreadable`, `key-unreadable`
+(an encrypted key is refused here, as at `run`), `key-mismatch`,
+`validity-malformed`, `not-yet-valid`, `expired`, `names-malformed`, or
+`names-dropped`. A certificate for a different set of names is a restart,
+not a reload: a peer that verifies this node by a name would fail its next
+handshake. Without a running owner the command reaches no one and exits
+non-zero.
+
+`status` against a running owner prints one more line after its report,
+the served certificate's names and notAfter (UTC):
+
+```
+tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
+```
+
+`tls names=none` is a leaf without DNS names (a CN-only self-signed
+certificate), `tls none` a node without `tls_cert`, and `tls unknown
+REASON` an owner that did not answer the question (an owner older than
+this command answers `owner-lacks-tls-reload`).
 
 ### Bind a login to its signing principal
 
