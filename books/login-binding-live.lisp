@@ -508,6 +508,8 @@
 (defthm fn-lb-pairs-deltas-ignore-the-record-coordinates
   (equal (fn-cfg-apply v gen stamp (fn-lb-pairs-deltas pairs))
          (fn-cfg-apply v 0 nil (fn-lb-pairs-deltas pairs)))
+  ; Not a rewrite rule: it would rewrite its own right side forever.
+  :rule-classes nil
   :hints (("Goal" :induct (fn-lb-pairs-ind v 0 nil pairs)
            :in-theory (disable fn-lb-binding-delta))))
 
@@ -577,14 +579,54 @@
            (fn-ocfg-staged oc))
   :hints (("Goal" :in-theory (enable fn-ocl-publish)))))
 
+(local (defthm fn-lb-published-config-of-a-fresh-reconfigure
+  (let* ((staged (fn-ocfg-step oc (list :reconfigure other deltas)))
+         (result (fn-ocl-publish staged generation max-octets)))
+    (implies (and (not (fn-ocfg-staged oc))
+                  (equal (mv-nth 0 result) :durable)
+                  (fn-ocl-config-historyp staged))
+             (equal (fn-cfg-value (fn-ocfg-config (mv-nth 1 result)))
+                    (fn-cfg-apply (fn-cfg-value (fn-ocfg-config oc))
+                                  (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
+                                  (fn-ocfg-config-stamp (fn-own-clock (fn-ocfg-owner oc)))
+                                  deltas))))
+  :hints (("Goal" :do-not '(preprocess)
+           :in-theory (e/d (fn-ocfg-reconfig-record fn-cfg-apply-record)
+                           (fn-ocfg-step fn-ocl-publish fn-cfg-apply
+                            fn-ocl-config-historyp fn-ocfg-config-stamp
+                            fn-ocl-publish-installs-the-whole-staged-record
+                            fn-lb-durable-publish-had-a-staged-record
+                            fn-lb-staged-record-of-a-fresh-reconfigure))
+           :use ((:instance fn-ocl-publish-installs-the-whole-staged-record
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas))))
+                 (:instance fn-lb-durable-publish-had-a-staged-record
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas))))
+                 (:instance fn-lb-staged-record-of-a-fresh-reconfigure))))))
+
+; A fresh connection pins the live configuration when no pin is left at its
+; identifier (what fn-ocfg-statep guarantees in
+; fn-ocfg-open-pins-the-live-configuration; stated here as the one fact used).
+(local (defthm fn-lb-open-pins-the-live-configuration-at-a-free-identifier
+  (implies (and (not (fn-ocfg-pin-find (fn-own-next-id (fn-ocfg-owner oc))
+                                       (fn-ocfg-pins oc)))
+                (fn-own-find-conn
+                 (fn-own-next-id (fn-ocfg-owner oc))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
+           (equal (fn-ocfg-conn-config (cdr (fn-ocfg-open oc acfg))
+                                       (fn-own-next-id (fn-ocfg-owner oc)))
+                  (fn-ocfg-config oc)))
+  :hints (("Goal" :in-theory (enable fn-ocfg-open fn-ocfg-conn-config
+                                     fn-ocfg-pin-add fn-ocfg-pin-find)))))
+
 ; KEYSTONE (a new connection after the change).  When the owner, with nothing
 ; staged, stages PAIRS' binding deltas and publishes them durably, a
 ; connection it opens next pins a table that binds every login PAIRS names as
 ; FILE does, and every other login as before.  Hypotheses: the published
 ; configuration is its store history's replay before the publish (the
-; owner's maintained relation, fn-ocl-config-historyp), the owner relation
-; after it (fn-ocfg-statep, for the fresh identifier), and that the open
-; admitted the connection.  With PAIRS the start plan's
+; owner's maintained relation, fn-ocl-config-historyp), no stale pin at the
+; fresh identifier (a consequence of the owner relation fn-ocfg-statep,
+; books/owner-config.lisp fn-ocfg-open-pins-the-live-configuration), and that
+; the open admitted the connection.  With PAIRS the start plan's
 ; (fn-lb-sync-binds-every-login-as-the-file-does) that is the credential
 ; file's table.
 (defthm fn-lb-a-connection-opened-after-a-publication-is-bound-anew
@@ -597,7 +639,7 @@
     (implies (and (not (fn-ocfg-staged oc))
                   (equal (mv-nth 0 result) :durable)
                   (fn-ocl-config-historyp staged)
-                  (fn-ocfg-statep published)
+                  (not (fn-ocfg-pin-find new (fn-ocfg-pins published)))
                   (fn-own-find-conn new (fn-own-conns (fn-ocfg-owner opened)))
                   (fn-lb-pairs-okp pairs)
                   (fn-lb-pairs-targetp pairs file))
@@ -606,24 +648,21 @@
                         (fn-lb-binding name file)
                       (fn-lb-binding name (fn-lb-value-bindings
                                            (fn-cfg-value (fn-ocfg-config oc))))))))
-  :hints (("Goal" :in-theory (e/d (fn-ocfg-reconfig-record fn-cfg-apply-record)
-                                  (fn-lb-value-bindings fn-ocfg-step
-                                   fn-ocl-publish fn-ocfg-open fn-lb-pairs-deltas
-                                   fn-lb-pairs-okp fn-lb-pairs-targetp
-                                   fn-ocl-config-historyp fn-ocfg-statep))
-           :use ((:instance fn-ocfg-open-pins-the-live-configuration
+  :hints (("Goal" :do-not '(preprocess)
+           :in-theory (union-theories '(fn-lb-conn-bindings)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lb-open-pins-the-live-configuration-at-a-free-identifier
                             (oc (mv-nth 1 (fn-ocl-publish
                                            (fn-ocfg-step oc (list :reconfigure other
                                                                   (fn-lb-pairs-deltas pairs)))
                                            generation max-octets))))
-                 (:instance fn-ocl-publish-installs-the-whole-staged-record
-                            (oc (fn-ocfg-step oc (list :reconfigure other
-                                                       (fn-lb-pairs-deltas pairs)))))
-                 (:instance fn-lb-durable-publish-had-a-staged-record
-                            (oc (fn-ocfg-step oc (list :reconfigure other
-                                                       (fn-lb-pairs-deltas pairs)))))
-                 (:instance fn-lb-staged-record-of-a-fresh-reconfigure
-                            (deltas (fn-lb-pairs-deltas pairs)))))))
+                 (:instance fn-lb-published-config-of-a-fresh-reconfigure
+                            (deltas (fn-lb-pairs-deltas pairs)))
+                 (:instance fn-lb-pairs-deltas-set-exactly-their-logins
+                            (v (fn-cfg-value (fn-ocfg-config oc)))
+                            (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
+                            (stamp (fn-ocfg-config-stamp
+                                    (fn-own-clock (fn-ocfg-owner oc)))))))))
 
 (in-theory (disable fn-lb-ocfg-gate fn-lb-conn-bindings fn-lb-inflight-id
                     fn-lb-sync-plan fn-lb-value-bindings fn-lb-config-bindings))

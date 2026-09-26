@@ -184,8 +184,9 @@
                                (fn-lb-pairs-deltas
                                 (fn-lb-sync-pairs file (fn-lb-value-bindings v))))))
           (fn-lb-binding name file))
-   :hints (("Goal" :in-theory (disable fn-lb-value-bindings fn-lb-sync-pairs
-                                       fn-lb-pairs-deltas)))))
+   :hints (("Goal" :do-not '(preprocess)
+            :in-theory (disable fn-lb-value-bindings fn-lb-sync-pairs
+                                fn-lb-pairs-deltas)))))
 
 ; --- the pinned view ----------------------------------------------------------
 ; fn-lb-an-open-session-is-decided-under-its-pinned-table.  Witness (the
@@ -304,7 +305,7 @@
 (assert-event (not (fn-ocfg-staged *lblt-admin*)))
 (assert-event (equal (car *lblt-pub*) :durable))
 (assert-event (fn-ocl-config-historyp *lblt-staged*))
-(assert-event (fn-ocfg-statep *lblt-published*))
+(assert-event (not (fn-ocfg-pin-find *lblt-new* (fn-ocfg-pins *lblt-published*))))
 (assert-event (fn-own-find-conn *lblt-new* (fn-own-conns (fn-ocfg-owner *lblt-b*))))
 (assert-event (fn-lb-pairs-okp *lblt-pairs-q*))
 (assert-event (fn-lb-pairs-targetp *lblt-pairs-q* *lblt-file-q*))
@@ -316,6 +317,11 @@
 ; nothing, and the next connection pins the old table.
 (defconst *lblt-wrong* (mv-list 2 (fn-ocl-publish *lblt-staged* 99 *lblt-max*)))
 (assert-event (equal (car *lblt-wrong*) :refused))
+(assert-event (not (fn-ocfg-pin-find (fn-own-next-id (fn-ocfg-owner (cadr *lblt-wrong*)))
+                                       (fn-ocfg-pins (cadr *lblt-wrong*)))))
+(assert-event (fn-own-find-conn
+               (fn-own-next-id (fn-ocfg-owner (cadr *lblt-wrong*)))
+               (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil))))))
 (assert-event (null (fn-lb-binding *lblt-name*
                                    (fn-lb-conn-bindings
                                     (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil))
@@ -330,7 +336,7 @@
           (new (fn-own-next-id (fn-ocfg-owner published))))
      (implies (and (not (fn-ocfg-staged oc))
                    (fn-ocl-config-historyp staged)
-                   (fn-ocfg-statep published)
+                   (not (fn-ocfg-pin-find new (fn-ocfg-pins published)))
                    (fn-own-find-conn new (fn-own-conns (fn-ocfg-owner opened)))
                    (fn-lb-pairs-okp pairs)
                    (fn-lb-pairs-targetp pairs file))
@@ -339,8 +345,9 @@
                          (fn-lb-binding name file)
                        (fn-lb-binding name (fn-lb-value-bindings
                                             (fn-cfg-value (fn-ocfg-config oc))))))))
-   :hints (("Goal" :in-theory (disable fn-ocl-publish fn-ocfg-open fn-ocfg-step
-                                       fn-lb-conn-bindings)))))
+   :hints (("Goal" :do-not '(preprocess)
+            :in-theory (disable fn-ocl-publish fn-ocfg-open fn-ocfg-step
+                                fn-lb-conn-bindings)))))
 ; Without the targets naming the file's bindings: pairs that bind ember to Q
 ; do not bind it as a file binding ember to P does.
 (assert-event (not (fn-lb-pairs-targetp *lblt-pairs-q* (list (cons *lblt-name* *lblt-p*)))))

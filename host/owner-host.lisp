@@ -1635,6 +1635,16 @@
       (f-get-global 'fn-owner-transit-carried state)
     nil))
 
+;; PKT-221: the credential file's login bindings (BINDINGS, read by
+;; host/native-auth-host.lisp fn-native-auth-host-load-bindings from the file
+;; the profile accepted) against the owner's live configuration
+;; (books/login-binding-live.lisp fn-lb-sync-plan): (:ok RECORDS), each a
+;; delta list host/native/auth.lisp fnn-native-auth-publish-bindings stages
+;; with fn-owner-reconfigure-deltas and publishes in order, or (:refused R).
+(defun fn-owner-login-bindings-plan (bindings state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-lb-sync-plan bindings (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))))
+
 ;; The posting policy's gate for the served submission in flight
 ;; (books/login-binding-live.lisp fn-lb-ocfg-gate: the policy of the owner's
 ;; LIVE configuration, the login-binding table the submission's connection

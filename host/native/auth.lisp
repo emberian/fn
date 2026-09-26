@@ -32,8 +32,9 @@ PKT-221: ACL2's fn-lb-sync-plan names the delta lists; each is staged and made
 durable through fnn-owner-live-reconfigure-locked, the one live path.  The
 caller holds the owner mutex.  Answers :accepted, or :refused before any
 record whose publication was refused (records published before it stand)."
-  (let ((plan (fnn-owner-core 'fn-native-auth-host-bindings-plan
-                              octets presentp max-credentials)))
+  (let ((plan (fnn-owner-core 'fn-owner-login-bindings-plan
+                              (fnn-core 'fn-native-auth-host-load-bindings
+                                        octets presentp max-credentials))))
     (unless (and (consp plan) (eq (first plan) :ok) (listp (second plan)))
       (fnn-err "login bindings refused: ~a" (and (consp plan) (second plan)))
       (return-from fnn-native-auth-publish-bindings :refused))

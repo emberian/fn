@@ -28,14 +28,3 @@
 (defun fn-native-auth-host-load-bindings (octets presentp max-credentials)
   (declare (xargs :mode :program))
   (fn-native-auth-load-bindings octets presentp max-credentials))
-
-;; PKT-221: the credential file's login bindings against the running owner's
-;; live configuration (books/login-binding-live.lisp fn-lb-sync-plan):
-;; (:ok RECORDS), each a delta list the host stages and publishes through
-;; fnn-owner-live-reconfigure-locked in order, or (:refused REASON).  The
-;; file is the one fn-native-auth-host-load accepted under the same bound.
-(defun fn-native-auth-host-bindings-plan (octets presentp max-credentials state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-lb-sync-plan
-          (fn-native-auth-load-bindings octets presentp max-credentials)
-          (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))))

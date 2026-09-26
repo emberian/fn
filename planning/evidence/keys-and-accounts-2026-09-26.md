@@ -171,3 +171,75 @@ trip; peer-carriage 67 forms and its test book).
   served half (the POST reply and served-post log naming a refused key change beside a durable
   composite; the transit log already prints `detail=key-change-refused` with the accepted class),
   PKT-240 (the seven-class verdict in the transit log): not started.
+
+## Continuation: keys-and-accounts-2 (PKT-221, the live login binding)
+
+Lane keys-and-accounts-2 (Opus 5.5), from dev fac2c417. Ids taken: PRF-175 (new target), SEC-005,
+SCN-096, PKT-433 (narrowed), PKT-463.
+
+### What a friend can now do
+
+The operator re-binds a login's signing principal on a running node and it applies at once:
+`fn operator CONFIG principal bind LOGIN HEX` (or `unbind LOGIN`) rewrites the credential file and
+then asks the owner (control request 14) to publish the file's bindings; the verb answers
+`accepted operator principal bind applied`. A session already authenticated keeps the binding in
+force when its connection opened; the next connection is decided under the new one. No restart.
+
+### Design
+
+A redeemed account row is (DIGEST LOGIN VERIFIER 1) and carries no principal (the brief assumed one),
+so the binding is its own row kind in the same slot: mark-2 rows (LOGIN PRINCIPAL-HEX "" 2) of the
+`accounts` slot, written only by the new delta kind `:login-binding` (books/config.lisp, code 17),
+which replaces that login's binding rows (by login octets) and leaves the account rows (marks 0/1)
+in place and in order. One credential table, three row kinds; no binding global (the host's
+`fn-owner-login-bindings` is deleted). The credential file stays the operator's statement: the owner
+publishes its `signing` fields at start (host/native/auth.lisp fnn-native-auth-install, under the
+owner mutex, through fnn-owner-live-reconfigure-locked) and on request 14
+(host/native/login-bindings.lisp), with ACL2's plan fn-lb-sync-plan: one delta per login whose
+binding differs, in records of at most 64 deltas (no ceiling on the table: records compose,
+fn-lb-pairs-deltas-ignore-the-record-coordinates). PRF-164's statements are unchanged; only
+fn-acct-accounts-of-apply-delta-unfolds (a third writer) and one hint in books/accounts.lisp moved.
+
+Format consequence (joins PKT-440, for ember): an image older than this one refuses a store whose
+configuration log holds code 17; a store whose file binds no login and was never re-bound writes no
+code-17 record (the start plan is empty when the configuration already agrees).
+
+### PRF-175 (books/login-binding-live.lisp)
+
+Host lines: host/owner-host.lisp fn-owner-login-gate calls fn-lb-ocfg-gate (called by
+host/native/owner.lisp fnn-owner-attempt-served); host/native-auth-host.lisp
+fn-native-auth-host-bindings-plan calls fn-lb-sync-plan (from fnn-native-auth-publish-bindings);
+records staged by fn-owner-reconfigure-deltas and published by fn-owner-reconfigure-complete
+(fn-ocl-publish).
+
+- fn-lb-binding-delta-binds-the-login / -keeps-other-logins / -is-admitted (the delta).
+- fn-lb-sync-binds-every-login-as-the-file-does (the start and reload plan), with the fold
+  fn-lb-pairs-deltas-set-exactly-their-logins.
+- fn-lb-a-publication-keeps-every-open-connections-table (no hypotheses, over reconfigure then
+  fn-ocl-publish); fn-lb-an-open-session-is-decided-under-its-pinned-table (any owner trace that does
+  not re-pin the connection: the gate decides under the pinned table).
+- fn-lb-a-connection-opened-after-a-publication-is-bound-anew (nothing staged; durable; the history
+  relation before, fn-ocl-config-historyp; fn-ocfg-statep after; the open admitted).
+- fn-native-auth-admin-effect-word-applied-only-when-published; PRF-095's
+  fn-native-auth-admin-effect-word-restart-unless-no-owner restated with the owner's answer (PRF-095's
+  statement text updated to match).
+
+The posting policy is still read from the LIVE configuration (behaviour unchanged); only the table is
+pinned. PRF-028 (fn-ocl-no-reader-observes-a-half-change) is listed uncertified at the current digest
+in planning/current.md: cited, not claimed; the keystones above use fn-ocl-publish-leaves-connections-
+and-pins and fn-ocl-publish-installs-the-whole-staged-record instead.
+
+Teeth: tests/acl2/login-binding-live-tests.lisp (witness per keystone with every antecedent asserted;
+one must-fail per hypothesis; the gate witness is login-binding-tests' CONSTRUCTED owner (a
+submission in flight on connection 5), evaluated with guard checking off; the publication witness is
+config-owner-live-tests' replayed ground owner through reconfigure and fn-ocl-publish);
+tests/acl2/native-auth-admin-tests.lisp (effect word); tests/acl2/peer-invite-tests.lisp (request 14).
+
+### Assurance chain
+
+native entry (`operator CONFIG principal bind`, host/native/auth-admin.lisp after the durable file
+write -> request 14 -> host/native/login-bindings.lisp under the owner mutex; and the start hook) ->
+ACL2 fn-lb-sync-plan over the file's bindings and the live configuration value -> deltas staged
+(fn-ocfg-reconfigure) and published (fn-ocl-publish) -> relation: live configuration = replay of the
+history (maintained; PRF-028's, uncertified) and each open connection's pin = the configuration it
+opened at (fn-ocfg-statep) -> PRF-175 -> observed: tests.test_native_auth (below).
