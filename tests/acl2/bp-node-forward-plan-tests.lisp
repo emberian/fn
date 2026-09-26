@@ -73,9 +73,8 @@
 
 ;; fn-bpnp-progress-dispatch-names-the-routed-hop.  Witness: the first
 ;; progress event dispatches the older row (to dtn://bp-dest/) toward relay.
-(defconst *fp-progress-1*
-  (fn-bpnp-progress-step *fp-s1* *fp-local* *fp-obs* (list :table *fp-table*) 1
-                         (fn-bpnp-default-budgets)))
+(make-event `(defconst *fp-progress-1* ',(fn-bpnp-progress-step *fp-s1* *fp-local* *fp-obs* (list :table *fp-table*) 1
+                         (fn-bpnp-default-budgets))))
 (defconst *fp-eff-1* (car (fn-bpnf-answer-effects *fp-progress-1*)))
 (assert-event (equal (car *fp-eff-1*) :persist-dispatch))
 (assert-event (equal (car (fn-bpnp-dispatch-apply (fn-bpn-nth 3 *fp-eff-1*)
@@ -91,20 +90,18 @@
         (list :hop "relay" "dtn://relay/" 4556)))
 ;; Hypothesis "the effect is :persist-dispatch": with an empty table the
 ;; event proposes no dispatch, and the rows' destinations have no :hop.
-(defconst *fp-progress-0*
-  (fn-bpnp-progress-step *fp-s1* *fp-local* *fp-obs* (list :table nil) 1
-                         (fn-bpnp-default-budgets)))
+(make-event `(defconst *fp-progress-0* ',(fn-bpnp-progress-step *fp-s1* *fp-local* *fp-obs* (list :table nil) 1
+                         (fn-bpnp-default-budgets))))
 (must-fail (assert-event (equal (car (car (fn-bpnf-answer-effects *fp-progress-0*)))
                                 :persist-dispatch)))
 (must-fail (assert-event (equal (car (fn-bprt-outbound-choice "dtn://bp-dest/" nil)) :hop)))
 
 ;; Both rows dispatched and durable.
-(defconst *fp-s2* (fn-bpnf-answer-state (fp-durable *fp-progress-1*)))
-(defconst *fp-s3*
-  (fn-bpnf-answer-state
+(make-event `(defconst *fp-s2* ',(fn-bpnf-answer-state (fp-durable *fp-progress-1*))))
+(make-event `(defconst *fp-s3* ',(fn-bpnf-answer-state
    (fp-durable (fn-bpnp-progress-step *fp-s2* *fp-local* *fp-obs*
                                       (list :table *fp-table*) 1
-                                      (fn-bpnp-default-budgets)))))
+                                      (fn-bpnp-default-budgets))))))
 (defconst *fp-held* (fn-bpnf-held-list *fp-s3*))
 (assert-event (equal (fn-bpn-nth 11 (fn-bpnf-find-arrival
                                      (fn-bpn-nth 3 (car (reverse *fp-held*))) *fp-held*))

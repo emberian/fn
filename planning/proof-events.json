@@ -6084,6 +6084,39 @@
           "name": "fn-pull-records-replay-ignores-an-uncommitted-tail"
         }
       ]
+    },
+    {
+      "id": "PRF-176",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-listener-session-is-admitted-under-its-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-admitted-session-arrives-on-a-bound-listener"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-listener-ports-are-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-progress-dispatch-names-the-routed-hop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-table-route-peer-is-the-routed-hop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-plan-has-one-session-per-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-plan-offers-a-row-on-one-session"
+        }
+      ]
     }
   ]
 }
