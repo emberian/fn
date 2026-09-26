@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 946 |
-| Certification roots in the Makefile | 928 |
-| Books inside the root closure | 942 |
-| `defthm` and `defthmd` events | 13259 |
-| `defun` events | 9182 |
+| Books read | 949 |
+| Certification roots in the Makefile | 930 |
+| Books inside the root closure | 945 |
+| `defthm` and `defthmd` events | 13284 |
+| `defun` events | 9253 |
 | Functions with verified guards | 2198 |
 | Functions declared `:verify-guards nil` and never verified | 730 |
-| Functions left at the default with an explicit guard | 4886 |
+| Functions left at the default with an explicit guard | 4957 |
 | Functions left at the default with no guard | 1368 |
-| `assert-event` checks | 13678 |
-| `must-fail` checks | 1548 |
+| `assert-event` checks | 13748 |
+| `must-fail` checks | 1555 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 119 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 135 |
-| Include-hygiene warnings | 953 |
-| Host-names warnings | 1071 |
+| Include-hygiene warnings | 957 |
+| Host-names warnings | 1073 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -499,6 +499,8 @@ that `make certify` requests.
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
 | `books/provenance.lisp` | root | 68 | 35 | 12/0/23/0 | 0 | 0 | 1 |
+| `books/public-exposure-rows.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/public-exposure.lisp` | root | 25 | 69 | 0/0/69/0 | 0 | 0 | 0 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/reclaim-tombstone.lisp` | root | 0 | 13 | 0/0/13/0 | 0 | 0 | 0 |
@@ -930,6 +932,7 @@ that `make certify` requests.
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 21 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
+| `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 70 | 7 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/record-width-producers-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 25 | 4 | 0 |
 | `tests/acl2/records-ceiling-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 16 | 5 | 0 |
