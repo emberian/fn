@@ -289,6 +289,8 @@
     "tests/acl2/visibility-join-tests",
     "books/store-reclaim-holders",
     "tests/acl2/store-reclaim-holders-tests",
+    "books/store-reclaim-pack",
+    "tests/acl2/store-reclaim-pack-tests",
     "books/reclaim-admission",
     "tests/acl2/reclaim-admission-tests",
     "tests/acl2/store-history-marker-tests",
@@ -902,26 +904,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 915,
-    "books_in_root_closure": 911,
-    "roots": 898,
-    "theorems": 12693,
-    "functions": 8869,
-    "assert_events": 13229,
-    "must_fails": 1454,
+    "books": 917,
+    "books_in_root_closure": 913,
+    "roots": 900,
+    "theorems": 12730,
+    "functions": 8882,
+    "assert_events": 13253,
+    "must_fails": 1465,
     "encapsulates": 64,
     "guards": {
       "verified": 2182,
-      "declared-off": 680,
-      "default-guarded": 4689,
-      "default-unguarded": 1318
+      "declared-off": 689,
+      "default-guarded": 4690,
+      "default-unguarded": 1321
     },
-    "suspect_theorems": 111,
+    "suspect_theorems": 113,
     "export_hygiene_warnings": 150,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 107,
-    "include_hygiene_warnings": 920,
-    "host_names_warnings": 1022,
+    "include_hygiene_warnings": 923,
+    "host_names_warnings": 1025,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -9254,7 +9256,7 @@
       "book": "books/native-operator.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
+      "theorems": 35,
       "functions": 94,
       "guards": {
         "verified": 0,
@@ -13647,6 +13649,35 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-reclaim-pack.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 9,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-compact-verb",
+        "store-reclaim-holders"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rclp-event-of-an-unrewritten-event-by-definition",
+        "store-event-decode-of-a-record-octets"
+      ],
       "read_error": null
     },
     {
@@ -21324,9 +21355,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 174,
-      "must_fails": 10,
-      "defconsts": 32,
+      "assert_events": 178,
+      "must_fails": 16,
+      "defconsts": 36,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -24622,6 +24653,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-reclaim-pack-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 5,
+      "defconsts": 8,
+      "defmacros": 9,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-reclaim-pack",
+        "owner-served-invariants-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-reclaim-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26084,7 +26143,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1216,
+      "line": 1234,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -26275,6 +26334,14 @@
       "line": 155,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-rcl-config-rule and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-rclp-event-of-an-unrewritten-event-by-definition",
+      "book": "books/store-reclaim-pack.lisp",
+      "line": 116,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-rclp-event and the conclusion is that branch's value"
       ]
     },
     {
@@ -26501,6 +26568,14 @@
       "line": 804,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "store-event-decode-of-a-record-octets",
+      "book": "books/store-reclaim-pack.lisp",
+      "line": 163,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value"
       ]
     }
   ],
@@ -28224,7 +28299,7 @@
       {
         "check": "nopt-developer-init-groups-are-not-flags-without-init",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 913,
+        "line": 975,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -31055,6 +31130,13 @@
         "line": 27,
         "include": "store-reclaim",
         "included": "books/store-reclaim.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-reclaim-pack.lisp",
+        "line": 36,
+        "include": "store-reclaim-holders",
+        "included": "books/store-reclaim-holders.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -34590,6 +34672,20 @@
         "line": 9,
         "include": "stx-transit-tests",
         "included": "tests/acl2/stx-transit-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-pack-tests.lisp",
+        "line": 4,
+        "include": "../../books/store-reclaim-pack",
+        "included": "books/store-reclaim-pack.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-pack-tests.lisp",
+        "line": 6,
+        "include": "owner-served-invariants-tests",
+        "included": "tests/acl2/owner-served-invariants-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -38600,308 +38696,329 @@
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 130,
+        "line": 135,
         "name": "fnn-config-max-transactions",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 130,
+        "line": 135,
         "name": "fnn-transactions",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 130,
+        "line": 135,
         "name": "fnn-unlink",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 130,
+        "line": 135,
         "name": "fnn-fsync-dir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 193,
+        "line": 198,
         "name": "fnn-constant",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 245,
+        "line": 250,
         "name": "*fnn-pack-recover-callback*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 246,
+        "line": 251,
         "name": "*fnn-pack-lower-bound-callback*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 283,
+        "line": 288,
         "name": "fnn-require-writer",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 289,
+        "line": 294,
         "name": "fnn-core-state",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 305,
+        "line": 310,
         "name": "fnn-nat",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 350,
+        "line": 355,
         "name": "fnn-developer-selector",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 350,
+        "line": 355,
         "name": "fnn-os-fail",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 354,
+        "line": 359,
         "name": "make-hash-table",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 367,
+        "line": 372,
         "name": "gethash",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 516,
+        "line": 521,
         "name": "*fnn-checkpoint-recover-callback*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 518,
+        "line": 523,
         "name": "fnn-open-live-store",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 518,
+        "line": 523,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 518,
+        "line": 523,
         "name": "fnn-store-close",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 537,
+        "line": 542,
         "name": "fnn-store-checkpoint-outcome",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 537,
+        "line": 542,
         "name": "fnn-checkpoint-report",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 584,
+        "line": 589,
         "name": "fnn-regular-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 584,
+        "line": 589,
         "name": "fnn-symlink-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 597,
+        "line": 602,
         "name": "fnn-store-config",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 640,
+        "line": 645,
         "name": "*fnn-compact-callback*",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 687,
+        "line": 694,
+        "name": "fnn-state-checkpoint-path",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/checkpoint.lisp",
+        "line": 707,
+        "name": "fnn-store-prepare-observation",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/checkpoint.lisp",
+        "line": 798,
+        "name": "*fnn-reclaim-callback*",
+        "source": "host/native/operator.lisp",
+        "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/checkpoint.lisp",
+        "line": 846,
         "name": "fnn-open",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 687,
+        "line": 846,
         "name": "fnn-fstat",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 687,
+        "line": 846,
         "name": "fnn-make-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 687,
+        "line": 846,
         "name": "fnn-fsync-file",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 687,
+        "line": 846,
         "name": "fnn-close",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 716,
+        "line": 875,
         "name": "fnn-posix",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 755,
+        "line": 914,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 755,
+        "line": 914,
         "name": "truename",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 755,
+        "line": 914,
         "name": "fnn-parent",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 779,
+        "line": 938,
         "name": "make-fnn-store",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 779,
+        "line": 938,
         "name": "fnn-clone-fence-path",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 800,
+        "line": 959,
         "name": "fnn-owner-install",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 800,
+        "line": 959,
         "name": "fnn-owner-core",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 800,
+        "line": 959,
         "name": "fnn-owner-consumer-commit",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 800,
+        "line": 959,
         "name": "fnn-owner-feed-close-all",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 800,
+        "line": 959,
         "name": "fnn-owner-service-store",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 846,
+        "line": 1005,
         "name": "fnn-owner-consumer-entropy-observation",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 846,
+        "line": 1005,
         "name": "fnn-mkdir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 846,
+        "line": 1005,
         "name": "fnn-write-staged",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 943,
+        "line": 1102,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -40091,133 +40208,133 @@
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 350,
+        "line": 352,
         "name": "fnn-command-status",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 350,
+        "line": 352,
         "name": "fnn-command-recover",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 350,
+        "line": 352,
         "name": "fnn-command-upgrade-profile",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 350,
+        "line": 352,
         "name": "fnn-command-state-checkpoint",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 350,
+        "line": 352,
         "name": "fnn-command-needs-upgrade",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 350,
+        "line": 352,
         "name": "fnn-command-rollback-check",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 389,
+        "line": 393,
         "name": "fnn-control-live-status",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 389,
+        "line": 393,
         "name": "fnn-write-report",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 389,
+        "line": 393,
         "name": "fnn-command-live-report",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 428,
+        "line": 432,
         "name": "make-fnn-store",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 428,
+        "line": 432,
         "name": "fnn-load-config",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 428,
+        "line": 432,
         "name": "fnn-profile-nat",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 437,
+        "line": 441,
         "name": "fnn-native-auth-admin-execute",
         "source": "host/native/auth-admin.lisp",
         "reason": "defined in host/native/auth-admin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 454,
+        "line": 458,
         "name": "fnn-symlink-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 454,
+        "line": 458,
         "name": "fnn-regular-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 454,
+        "line": 458,
         "name": "fnn-octet-list",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 454,
+        "line": 458,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 469,
+        "line": 473,
         "name": "fnn-pinv-execute",
         "source": "host/native/peer-invite.lisp",
         "reason": "defined in host/native/peer-invite.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 527,
+        "line": 536,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
