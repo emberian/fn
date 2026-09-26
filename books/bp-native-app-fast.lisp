@@ -821,7 +821,8 @@
                 (fn-bpaj-transit-intentp fn-bpaj-transit-article-fields
                  fn-bpaj-record-for-msgid fn-bpr-store-record-acceptedp
                  fn-bpaj-record-for-msgid-is-cei-fold
-                 fn-cei-msgid-records fn-bpaj-store-indexedp)))))
+                 fn-cei-msgid-records fn-bpaj-store-indexedp
+                 fn-record-octets-string fn-sn-event-index)))))
 
 (defthm fn-bpaj-dispatch-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store)
