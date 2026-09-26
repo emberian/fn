@@ -430,7 +430,7 @@ open-cost replay-records=")
    (equal (fn-nls-report :peers profile s bytes cfg pins obs)
           (fn-native-admin-query-report plan (fn-cfg-value cfg)))
    :hints (("Goal" :in-theory (disable fn-native-admin-control-report
-                                       fn-native-admin-peer-report)))))
+                                       fn-native-admin-peer-budget-report)))))
 
 ; PRF-164: `account list' is the third query kind; the status path renders
 ; books/accounts.lisp's report (empty over a configuration with no account)

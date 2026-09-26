@@ -105,7 +105,9 @@ carrier to observe."
        (let ((plan (apply #'fnn-core 'fn-pinv-host-issue-plan received
                           (append observed
                                   (list (fnn-owner-core
-                                         'fn-pinv-host-owner-invitations))))))
+                                         'fn-pinv-host-owner-invitations)
+                                        (fnn-owner-core
+                                         'fn-owner-hybrid-snapshots))))))
          (if (not (eq (first plan) :issue))
              (fnn-pinv-refused :invite plan)
            (fnn-owner-live-reconfigure-locked
@@ -174,10 +176,13 @@ slot again, so only a row consumed by exactly this acceptance yields one."
                                       'fn-pinv-host-owner-invitations)
                                      (fnn-owner-core
                                       'fn-owner-hybrid-snapshots))))))
-      (if (not (eq (first step) :enrol))
-          (fnn-pinv-refused :confirm step)
-        (progn (fnn-owner-identity-commit service (second step))
-               :accepted)))))
+      ;; PKT-211: (:current) is ACL2's answer for an acceptor this keyring
+      ;; already holds at the acceptance's keys: nothing to enrol.
+      (case (first step)
+        (:enrol (fnn-owner-identity-commit service (second step)) :accepted)
+        (:current (fnn-err "peer confirm: the acceptor's current keys; nothing to enrol")
+                  :accepted)
+        (t (fnn-pinv-refused :confirm step))))))
 
 (defun fnn-pinv-owner-confirm (service received invitation)
   "PRF-124: one configuration record consumes the invitation and configures

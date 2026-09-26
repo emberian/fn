@@ -309,11 +309,15 @@ opens the store read-only.
 per peer, in the order `peer add` takes its arguments:
 
 ```
-far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44
+far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44 budget-octets=1048576 budget-count=16
 ```
 
-A half the record does not carry is `-`. The line is rendered by ACL2
-(`fn-native-admin-peer-report`, books/native-admin.lisp) from the replayed
+A half the record does not carry is `-`. A peer given a carriage budget
+(`peer budget NAME OCTETS COUNT`) ends its line with `budget-octets=` (the
+budget the Store charges against: whole 4096-octet pages, so `peer budget far
+1048577 16` shows 1048576) and `budget-count=`; a peer without one prints
+neither, and every earlier word keeps its place. The line is rendered by ACL2
+(`fn-native-admin-peer-budget-report`, books/native-admin-peer-budget.lisp) from the replayed
 configuration's own peer rows. `peer list` is a read, answered like
 `status`: by the running owner from the configuration it carries, or, with no
 owner, from the store opened without the exclusive writer lock. It can neither

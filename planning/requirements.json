@@ -2944,13 +2944,14 @@
     },
     {
       "id": "SEC-005",
-      "title": "A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened",
+      "title": "A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened, and a friend whose keys succeeded since genesis is peered under its current keys, never under a superseded set",
       "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
         "PRF-166",
-        "PRF-175"
+        "PRF-175",
+        "PRF-179"
       ],
       "verification": [
         "proof",
@@ -2967,9 +2968,16 @@
         "books/login-binding-live.lisp",
         "tests/acl2/login-binding-live-tests.lisp",
         "host/native/login-bindings.lisp",
-        "tests/test_native_auth.py"
+        "tests/test_native_auth.py",
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/test_native_peer_invite.py",
+        "books/native-admin-peer-budget.lisp",
+        "books/peer-carriage.lisp",
+        "books/owner-log.lisp",
+        "tests/test_native_hybrid_author.py"
       ],
-      "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner). The login binding (PKT-221): rows of the configuration's accounts slot (mark 2, delta kind :login-binding code 17), published by the owner at start and on `principal bind|unbind' through the live reconfiguration (control request 14); the served gate reads the table the submission's connection pinned at open."
+      "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner). The login binding (PKT-221): rows of the configuration's accounts slot (mark 2, delta kind :login-binding code 17), published by the owner at start and on `principal bind|unbind' through the live reconfiguration (control request 14); the served gate reads the table the submission's connection pinned at open. PRF-179 (PKT-211): a peering document binds a principal this node's keyring holds only by its current enrolment (fn-pinv-document under fn-owner-hybrid-snapshots), the genesis identity otherwise; the confirm of an acceptor already current at the acceptance's keys completes at its consumption."
     },
     {
       "id": "STO-021",

@@ -322,6 +322,43 @@
       (fn-prin-id (append ed ml) token)
     nil))
 
+; This node's keyring already holds exactly this enrolment as P's current one.
+(defun fn-pinv-enrolled-withp (principal keys snapshots)
+  (declare (xargs :guard t))
+  (let ((value (fn-hsig-keyring-snapshot-value
+                (fn-hl-current-for-principal principal snapshots))))
+    (and (consp value)
+         (equal (fn-pinv-at 0 value) principal)
+         (equal (fn-pinv-at 1 value) keys))))
+
+;; PKT-211: whose keys a document may be signed with.  When this node's
+;; keyring has a generation for P (fn-hl-current-for-principal: P's newest
+;; snapshot, an enrolment or a tombstone), the key set binds P only if it is
+;; P's current enrolment, so a principal whose keys succeeded since genesis
+;; signs with its current keys and never again with a superseded set.  When
+;; the keyring has no generation for P, the binding is P's genesis identity,
+;; as before.  The keyring is the owner's (fn-owner-hybrid-snapshots).
+(defun fn-pinv-knownp (principal snapshots)
+  (declare (xargs :guard t))
+  (if (fn-hl-current-for-principal principal snapshots) t nil))
+
+(defun fn-pinv-keys-bind-p (source principal keys snapshots)
+  (declare (xargs :guard t))
+  (if (fn-pinv-knownp principal snapshots)
+      (fn-pinv-enrolled-withp principal keys snapshots)
+    (fn-pinv-genesis-okp source principal keys)))
+
+;; The refusal that names why the keys do not bind: `genesis' for a
+;; principal this keyring has never enrolled, `revoked' for one whose newest
+;; generation is a tombstone, `not-current-keys' for a superseded key set.
+(defun fn-pinv-binding-refusal (principal snapshots)
+  (declare (xargs :guard t))
+  (cond ((not (fn-pinv-knownp principal snapshots)) :genesis)
+        ((fn-hsig-keyring-snapshot-value
+          (fn-hl-current-for-principal principal snapshots))
+         :not-current-keys)
+        (t :revoked)))
+
 (defun fn-pinv-kindp (source kind)
   (declare (xargs :guard t))
   (equal (fn-pinv-field "FN-Peering" source) (fn-pinv-text kind)))
@@ -332,7 +369,7 @@
 
 ; The checks both documents share.  (:ok source principal keys) or
 ; (:refused reason).
-(defun fn-pinv-document (received observed-ml ed ml kind)
+(defun fn-pinv-document (received observed-ml ed ml kind snapshots)
   (declare (xargs :guard t))
   (let* ((source (fn-pinv-received-source received))
          (principal (fn-pinv-received-principal received))
@@ -342,8 +379,8 @@
           ((not (fn-pinv-kindp source kind)) (list :refused :document-kind))
           ((not (fn-pinv-names-keysp source principal keys))
            (list :refused :claimed-keys))
-          ((not (fn-pinv-genesis-okp source principal keys))
-           (list :refused :genesis))
+          ((not (fn-pinv-keys-bind-p source principal keys snapshots))
+           (list :refused (fn-pinv-binding-refusal principal snapshots)))
           ((not (fn-pinv-hex-fieldp (fn-pinv-field "Nonce" source) 32))
            (list :refused :nonce))
           (t (list :ok source principal keys)))))
@@ -391,10 +428,10 @@
   (declare (xargs :guard t))
   (fn-hsig-authored-source-id source))
 
-(defun fn-pinv-issue-plan (received observed-ml ed ml invitations)
+(defun fn-pinv-issue-plan (received observed-ml ed ml invitations snapshots)
   (declare (xargs :guard t))
   (let ((doc (fn-pinv-document received observed-ml ed ml
-                               *fn-pinv-invitation-kind*)))
+                               *fn-pinv-invitation-kind* snapshots)))
     (if (not (equal (car doc) :ok)) doc
       (let* ((source (fn-pinv-at 1 doc))
              (nonce (fn-record-octets-string (fn-pinv-field "Nonce" source)))
@@ -410,11 +447,11 @@
 ; -----------------------------------------------------------------------------
 ; Accept (the invitee)
 
-(defun fn-pinv-accept-plan (received observed-ml ed ml)
+(defun fn-pinv-accept-plan (received observed-ml ed ml snapshots)
   ; (:enrol principal keys nonce-hex invitation-source-id) or (:refused why)
   (declare (xargs :guard t))
   (let ((doc (fn-pinv-document received observed-ml ed ml
-                               *fn-pinv-invitation-kind*)))
+                               *fn-pinv-invitation-kind* snapshots)))
     (if (not (equal (car doc) :ok)) doc
       (let* ((source (fn-pinv-at 1 doc))
              (sid (fn-pinv-source-id source)))
@@ -423,21 +460,12 @@
           (list :enrol (fn-pinv-at 2 doc) (fn-pinv-at 3 doc)
                 (fn-pinv-field "Nonce" source) sid))))))
 
-; This node's keyring already holds exactly this enrolment as P's current one.
-(defun fn-pinv-enrolled-withp (principal keys snapshots)
-  (declare (xargs :guard t))
-  (let ((value (fn-hsig-keyring-snapshot-value
-                (fn-hl-current-for-principal principal snapshots))))
-    (and (consp value)
-         (equal (fn-pinv-at 0 value) principal)
-         (equal (fn-pinv-at 1 value) keys))))
-
 ; The owner's accept step: the kind-3 enrolment at ACL2's next generation,
 ; or (:refused why).  host/native/peer-invite.lisp calls it.
 (defun fn-pinv-accept-step (sequence txid generation received observed-ml ed ml
                                      snapshots)
   (declare (xargs :guard t))
-  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml)))
+  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml snapshots)))
     (cond ((not (equal (car plan) :enrol)) plan)
           ((fn-pinv-enrolled-withp (fn-pinv-at 1 plan) (fn-pinv-at 2 plan)
                                    snapshots)
@@ -469,7 +497,7 @@
 (defun fn-pinv-acceptance-source (date-ms received observed-ml ed ml principal
                                           token keys path reachable)
   (declare (xargs :guard t))
-  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml)))
+  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml nil)))
     (if (not (equal (car plan) :enrol)) nil
       (fn-pinv-source "fn-acceptance"
                       (append (fn-pinv-text "<fn-accept-") (fn-pinv-tl (fn-pinv-at 3 plan))
@@ -483,10 +511,10 @@
 ; -----------------------------------------------------------------------------
 ; Confirm (the inviter)
 
-(defun fn-pinv-acceptance (received observed-ml ed ml)
+(defun fn-pinv-acceptance (received observed-ml ed ml snapshots)
   (declare (xargs :guard t))
   (let ((doc (fn-pinv-document received observed-ml ed ml
-                               *fn-pinv-acceptance-kind*)))
+                               *fn-pinv-acceptance-kind* snapshots)))
     (cond ((not (equal (car doc) :ok)) doc)
           ((not (fn-pinv-hex-fieldp
                  (fn-pinv-field "Invitation-Source-Id" (fn-pinv-at 1 doc)) 96))
@@ -502,7 +530,7 @@
 ; (:consume delta) | (:enrol principal keys) | (:refused why).
 (defun fn-pinv-confirm-plan (received observed-ml ed ml invitations snapshots)
   (declare (xargs :guard t))
-  (let ((doc (fn-pinv-acceptance received observed-ml ed ml)))
+  (let ((doc (fn-pinv-acceptance received observed-ml ed ml snapshots)))
     (if (not (equal (car doc) :ok)) doc
       (let* ((source (fn-pinv-at 1 doc))
              (principal (fn-pinv-at 2 doc))
@@ -534,18 +562,25 @@
 
 ; The owner's enrolment for a confirmed acceptance.  It is asked after the
 ; consumption is durable (and again after a crash): only a row consumed by
-; exactly this acceptance yields an event.
+; exactly this acceptance yields an event.  PKT-211: an acceptor this
+; keyring already holds at exactly the acceptance's keys (a friend whose
+; keys succeeded since genesis signs with its current ones) has nothing to
+; enrol: the step answers (:current), and the consumption and peer record
+; the host published before asking are the whole confirm.  The host asks
+; the step only after that publication or after a record plan's :enrol; a
+; replayed confirm is refused `already-confirmed' by the record plan.
 (defun fn-pinv-confirm-step (sequence txid generation received observed-ml ed
                                       ml invitations snapshots)
   (declare (xargs :guard t))
   (let ((plan (fn-pinv-confirm-plan received observed-ml ed ml invitations
                                     snapshots)))
-    (if (not (equal (car plan) :enrol)) plan
-      (let ((event (fn-hl-enroll-event sequence txid generation
-                                       (fn-hl-next-generation snapshots)
-                                       (fn-pinv-at 1 plan) (fn-pinv-at 2 plan)
-                                       snapshots)))
-        (if event (list :enrol event) (list :refused :event))))))
+    (cond ((equal plan (list :refused :already-confirmed)) (list :current))
+          ((not (equal (car plan) :enrol)) plan)
+          (t (let ((event (fn-hl-enroll-event sequence txid generation
+                                              (fn-hl-next-generation snapshots)
+                                              (fn-pinv-at 1 plan)
+                                              (fn-pinv-at 2 plan) snapshots)))
+               (if event (list :enrol event) (list :refused :event)))))))
 
 ; -----------------------------------------------------------------------------
 ; Keystones.  From here the definitions are closed; each proof opens what it
@@ -555,6 +590,7 @@
                     fn-pinv-confirm-plan fn-pinv-confirm-step
                     fn-pinv-issue-plan fn-pinv-document fn-pinv-acceptance
                     fn-pinv-verifiedp fn-pinv-names-keysp fn-pinv-genesis-okp
+                    fn-pinv-keys-bind-p fn-pinv-binding-refusal
                     fn-pinv-enrolled-withp fn-pinv-received-source
                     fn-pinv-received-principal fn-pinv-received-keys
                     fn-pinv-received-signatures fn-pinv-received-carrier
@@ -567,18 +603,18 @@
 
 ; The shared checks answer :ok or :refused and nothing a plan answers.
 (defthm fn-pinv-document-answers-no-plan
-  (and (not (equal (car (fn-pinv-document received observed-ml ed ml kind))
+  (and (not (equal (car (fn-pinv-document received observed-ml ed ml kind snapshots))
                    :enrol))
-       (not (equal (car (fn-pinv-document received observed-ml ed ml kind))
+       (not (equal (car (fn-pinv-document received observed-ml ed ml kind snapshots))
                    :issue))
-       (not (equal (car (fn-pinv-document received observed-ml ed ml kind))
+       (not (equal (car (fn-pinv-document received observed-ml ed ml kind snapshots))
                    :consume)))
   :hints (("Goal" :in-theory (enable fn-pinv-document))))
 
 (defthm fn-pinv-acceptance-answers-no-plan
-  (and (not (equal (car (fn-pinv-acceptance received observed-ml ed ml))
+  (and (not (equal (car (fn-pinv-acceptance received observed-ml ed ml snapshots))
                    :enrol))
-       (not (equal (car (fn-pinv-acceptance received observed-ml ed ml))
+       (not (equal (car (fn-pinv-acceptance received observed-ml ed ml snapshots))
                    :consume)))
   :hints (("Goal" :in-theory (enable fn-pinv-acceptance))))
 
@@ -586,7 +622,7 @@
 ; verifies under the key set it names (ACL2's conjunction over the two
 ; observations), the body has the kind line and names the principal and
 ; both keys, and the principal is the genesis identity of the keys.
-(defun fn-pinv-bound-document-p (received observed-ml ed ml kind)
+(defun fn-pinv-bound-document-p (received observed-ml ed ml kind snapshots)
   (declare (xargs :guard t))
   (let* ((source (fn-pinv-received-source received))
          (principal (fn-pinv-received-principal received))
@@ -600,30 +636,33 @@
                                (fn-pinv-hex (fn-pinv-ed keys)))
          (fn-pinv-body-names-p source "ML-DSA-65"
                                (fn-pinv-hex (fn-pinv-ml keys)))
-         (fn-sig-public-key-p (fn-pinv-genesis-key keys))
-         (fn-prin-tokenp (fn-pinv-genesis-token source))
-         (fn-prin-genesis-bindsp principal (fn-pinv-genesis-key keys)
-                                 (fn-pinv-genesis-token source))
+         (if (fn-pinv-knownp principal snapshots)
+             (fn-pinv-enrolled-withp principal keys snapshots)
+           (and (fn-sig-public-key-p (fn-pinv-genesis-key keys))
+                (fn-prin-tokenp (fn-pinv-genesis-token source))
+                (fn-prin-genesis-bindsp principal (fn-pinv-genesis-key keys)
+                                        (fn-pinv-genesis-token source))))
          (fn-pinv-body-names-p source "Nonce" (fn-pinv-field "Nonce" source)))))
 
 (defthm fn-pinv-document-ok-is-bound
-  (implies (and (equal (car (fn-pinv-document received observed-ml ed ml kind))
+  (implies (and (equal (car (fn-pinv-document received observed-ml ed ml kind snapshots))
                       :ok)
                 (consp (fn-pinv-text kind)))
-           (and (fn-pinv-bound-document-p received observed-ml ed ml kind)
+           (and (fn-pinv-bound-document-p received observed-ml ed ml kind snapshots)
                 (equal (fn-pinv-at 1 (fn-pinv-document received observed-ml ed
-                                                       ml kind))
+                                                       ml kind snapshots))
                        (fn-pinv-received-source received))
                 (equal (fn-pinv-at 2 (fn-pinv-document received observed-ml ed
-                                                       ml kind))
+                                                       ml kind snapshots))
                        (fn-pinv-received-principal received))
                 (equal (fn-pinv-at 3 (fn-pinv-document received observed-ml ed
-                                                       ml kind))
+                                                       ml kind snapshots))
                        (fn-pinv-received-keys received))))
   :hints (("Goal"
            :in-theory (e/d (fn-pinv-document fn-pinv-verifiedp
                                              fn-pinv-names-keysp
                                              fn-pinv-genesis-okp fn-pinv-kindp
+                                             fn-pinv-keys-bind-p
                                              fn-pinv-hex-fieldp)
                            (fn-pinv-field-is-a-body-line))
            :use ((:instance fn-pinv-field-is-a-body-line
@@ -654,7 +693,7 @@
                                    observed-ml ed ml snapshots)))
     (implies (equal (car step) :enrol)
              (and (fn-pinv-bound-document-p received observed-ml ed ml
-                                            *fn-pinv-invitation-kind*)
+                                            *fn-pinv-invitation-kind* snapshots)
                   (not (fn-pinv-enrolled-withp
                         (fn-pinv-received-principal received)
                         (fn-pinv-received-keys received) snapshots))
@@ -672,11 +711,11 @@
 ; KEYSTONE (issue).  An issued row records the nonce the body names, the
 ; principal whose carrier verified, and that invitation's source identity.
 (defthm fn-pinv-issue-plan-records-the-signed-invitation
-  (let ((plan (fn-pinv-issue-plan received observed-ml ed ml invitations))
+  (let ((plan (fn-pinv-issue-plan received observed-ml ed ml invitations snapshots))
         (source (fn-pinv-received-source received)))
     (implies (equal (car plan) :issue)
              (and (fn-pinv-bound-document-p received observed-ml ed ml
-                                            *fn-pinv-invitation-kind*)
+                                            *fn-pinv-invitation-kind* snapshots)
                   (not (consp (fn-cfg-rows-with-key
                                invitations
                                (fn-record-octets-string
@@ -709,10 +748,10 @@
                (fn-pinv-field "Invitation-Source-Id" source)))))
 
 (defthm fn-pinv-acceptance-ok-is-a-document
-  (implies (equal (car (fn-pinv-acceptance received observed-ml ed ml)) :ok)
-           (and (equal (fn-pinv-acceptance received observed-ml ed ml)
+  (implies (equal (car (fn-pinv-acceptance received observed-ml ed ml snapshots)) :ok)
+           (and (equal (fn-pinv-acceptance received observed-ml ed ml snapshots)
                        (fn-pinv-document received observed-ml ed ml
-                                         *fn-pinv-acceptance-kind*))
+                                         *fn-pinv-acceptance-kind* snapshots))
                 (consp (fn-pinv-field "Inviter-Principal"
                                       (fn-pinv-received-source received)))
                 (consp (fn-pinv-field "Invitation-Source-Id"
@@ -734,7 +773,7 @@
          (row (fn-cfg-invitation-row invitations nonce)))
     (implies (equal (car plan) :consume)
              (and (fn-pinv-bound-document-p received observed-ml ed ml
-                                            *fn-pinv-acceptance-kind*)
+                                            *fn-pinv-acceptance-kind* snapshots)
                   (fn-cfg-invitation-pendingp invitations nonce)
                   (fn-pinv-acceptance-names-row-p source row)
                   (equal (fn-pinv-at 1 plan)
@@ -770,7 +809,7 @@
          (row (fn-cfg-invitation-row invitations nonce)))
     (implies (equal (car step) :enrol)
              (and (fn-pinv-bound-document-p received observed-ml ed ml
-                                            *fn-pinv-acceptance-kind*)
+                                            *fn-pinv-acceptance-kind* snapshots)
                   (consp row)
                   (equal (fn-cfg-row-n row) 1)
                   (equal (fn-cfg-row-b row)
@@ -945,6 +984,149 @@
   :hints (("Goal" :use fn-pinv-confirm-step-enrols-only-the-consuming-acceptance
            :in-theory (disable
                        fn-pinv-confirm-step-enrols-only-the-consuming-acceptance))))
+
+; -----------------------------------------------------------------------------
+; PRF-179 (PKT-211): succession-era documents.  The subject is
+; fn-pinv-document under the owner's keyring, reached by the host through
+; fn-pinv-host-issue-plan, fn-pinv-host-accept-record-plan /
+; fn-pinv-host-accept-step and fn-pinv-host-confirm-record-plan /
+; fn-pinv-host-confirm-step (host/native/peer-invite.lisp
+; fnn-pinv-owner-issue, fnn-pinv-owner-accept, fnn-pinv-owner-confirm and
+; fnn-pinv-owner-enrol-confirmed, each passing fn-owner-hybrid-snapshots).
+
+; KEYSTONE.  A principal this keyring holds is bound by its current
+; enrolment and nothing else: a document naming it passes only under
+; exactly the key set of its newest generation (a superseded or revoked
+; key set never passes, whatever its genesis identity).
+(defthm fn-pinv-document-binds-a-known-principal-only-at-its-current-keys
+  (implies (and (fn-pinv-knownp (fn-pinv-received-principal received)
+                                snapshots)
+                (equal (car (fn-pinv-document received observed-ml ed ml kind
+                                              snapshots))
+                       :ok))
+           (fn-pinv-enrolled-withp (fn-pinv-received-principal received)
+                                   (fn-pinv-received-keys received)
+                                   snapshots))
+  :hints (("Goal" :in-theory (enable fn-pinv-document fn-pinv-keys-bind-p))))
+
+; KEYSTONE.  A succession-era principal's document is accepted and bound to
+; its current keys: every check but the binding passes and the keyring's
+; newest generation for P is exactly the key set the carrier verified
+; under, so the document is (:ok SOURCE P K) with no genesis condition.  A
+; principal enrolled at its genesis keys and never succeeded is the
+; instance whose current enrolment is its genesis key set.
+(defthm fn-pinv-document-of-a-current-enrolment-is-accepted
+  (let ((source (fn-pinv-received-source received))
+        (principal (fn-pinv-received-principal received))
+        (keys (fn-pinv-received-keys received)))
+    (implies (and (fn-pinv-verifiedp received observed-ml ed ml)
+                  (fn-pinv-kindp source kind)
+                  (fn-pinv-names-keysp source principal keys)
+                  (fn-pinv-hex-fieldp (fn-pinv-field "Nonce" source) 32)
+                  (fn-pinv-enrolled-withp principal keys snapshots))
+             (equal (fn-pinv-document received observed-ml ed ml kind
+                                      snapshots)
+                    (list :ok source principal keys))))
+  :hints (("Goal" :in-theory (enable fn-pinv-document fn-pinv-keys-bind-p
+                                     fn-pinv-enrolled-withp))))
+
+; KEYSTONE (the genesis case).  A principal this keyring has no generation
+; for is decided exactly as under an empty keyring: by its genesis identity
+; (fn-pinv-genesis-okp), the rule before PKT-211.
+(defthm fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision
+  (implies (not (fn-pinv-knownp (fn-pinv-received-principal received)
+                                snapshots))
+           (equal (fn-pinv-document received observed-ml ed ml kind snapshots)
+                  (fn-pinv-document received observed-ml ed ml kind nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pinv-document fn-pinv-keys-bind-p
+                                     fn-pinv-binding-refusal))))
+
+; The accepting CLI (host/native/peer-invite.lisp fnn-pinv-accept) holds no
+; keyring and builds the acceptance through fn-pinv-acceptance-source,
+; which asks the accept plan under the empty keyring.  Whenever the owner's
+; accept step enrolled, that is the plan the owner decided: the inviter was
+; not known here.
+(defthm fn-pinv-an-enrolling-accept-is-the-clis-plan
+  (implies (equal (car (fn-pinv-accept-step sequence txid generation received
+                                            observed-ml ed ml snapshots))
+                  :enrol)
+           (equal (fn-pinv-accept-plan received observed-ml ed ml nil)
+                  (fn-pinv-accept-plan received observed-ml ed ml snapshots)))
+  :hints (("Goal" :in-theory (enable fn-pinv-accept-step fn-pinv-accept-plan)
+           :use ((:instance fn-pinv-document-binds-a-known-principal-only-at-its-current-keys
+                            (kind *fn-pinv-invitation-kind*))
+                 (:instance fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision
+                            (kind *fn-pinv-invitation-kind*))))))
+
+;; The acceptance's own checks never answer the confirm plan's replay word.
+(defthm fn-pinv-acceptance-is-never-already-confirmed
+  (and (not (equal (fn-pinv-acceptance received observed-ml ed ml snapshots)
+                   (list :refused :already-confirmed)))
+       (not (equal (car (fn-pinv-acceptance received observed-ml ed ml
+                                            snapshots))
+                   :current)))
+  :hints (("Goal" :in-theory (enable fn-pinv-acceptance fn-pinv-document
+                                     fn-pinv-binding-refusal))))
+
+; KEYSTONE (confirm, the current acceptor).  The owner's confirm step
+; answers (:current) -- nothing to enrol -- only for an acceptance bound
+; under this keyring, whose invitation row was consumed by exactly this
+; acceptance, and whose principal's current enrolment here is exactly the
+; acceptance's key set.
+(defthm fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor
+  (let* ((step (fn-pinv-confirm-step sequence txid generation received
+                                     observed-ml ed ml invitations snapshots))
+         (source (fn-pinv-received-source received))
+         (nonce (fn-record-octets-string (fn-pinv-field "Nonce" source)))
+         (row (fn-cfg-invitation-row invitations nonce)))
+    (implies (equal (car step) :current)
+             (and (fn-pinv-bound-document-p received observed-ml ed ml
+                                            *fn-pinv-acceptance-kind*
+                                            snapshots)
+                  (consp row)
+                  (equal (fn-cfg-row-n row) 1)
+                  (equal (fn-cfg-row-b row)
+                         (fn-pinv-hex-string
+                          (fn-pinv-received-principal received)))
+                  (equal (fn-cfg-row-c row)
+                         (fn-pinv-hex-string (fn-pinv-source-id source)))
+                  (fn-pinv-enrolled-withp
+                   (fn-pinv-received-principal received)
+                   (fn-pinv-received-keys received) snapshots)
+                  (equal step (list :current)))))
+  :hints (("Goal" :in-theory (e/d (fn-pinv-confirm-step fn-pinv-confirm-plan)
+                                  (fn-pinv-acceptance-ok-is-a-document))
+           :use ((:instance fn-pinv-acceptance-ok-is-a-document)
+                 (:instance fn-pinv-document-ok-is-bound
+                            (kind *fn-pinv-acceptance-kind*))))))
+
+; KEYSTONE (confirm completes).  Once the consumption of a current
+; acceptor's acceptance is durable, the step the host asks next answers
+; (:current): the confirm of a friend whose keys succeeded since genesis
+; ends with the consumption and its peer record, enrolling nothing.
+(defthm fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption
+  (let ((plan (fn-pinv-confirm-plan received observed-ml ed ml
+                                    (fn-cfg-invitations v) snapshots)))
+    (implies (and (equal (car plan) :consume)
+                  (fn-pinv-enrolled-withp
+                   (fn-pinv-received-principal received)
+                   (fn-pinv-received-keys received) snapshots))
+             (equal (fn-pinv-confirm-step
+                     sequence txid generation received observed-ml ed ml
+                     (fn-cfg-invitations
+                      (fn-cfg-apply-delta v gen stamp (fn-pinv-at 1 plan)))
+                     snapshots)
+                    (list :current))))
+  :hints (("Goal" :in-theory (e/d (fn-pinv-confirm-step fn-pinv-confirm-plan
+                                   fn-cfg-consume-invitation
+                                   fn-cfg-invitation-row
+                                   fn-cfg-rows-with-key fn-cfg-ag-car)
+                                  (fn-pinv-acceptance-ok-is-a-document
+                                   fn-record-octets-string))
+           :use ((:instance fn-pinv-acceptance-ok-is-a-document)
+                 (:instance fn-pinv-document-ok-is-bound
+                            (kind *fn-pinv-acceptance-kind*))))))
 
 ; -----------------------------------------------------------------------------
 ; The control requests: one carrier each (kinds 9 issue, 10 accept, 11
@@ -1152,7 +1334,7 @@
                              (fn-cfg-set-peer-delta peer)))))))))
 
 (defthm fn-pinv-acceptance-never-configures
-  (not (equal (car (fn-pinv-acceptance received observed-ml ed ml))
+  (not (equal (car (fn-pinv-acceptance received observed-ml ed ml snapshots))
               :configure))
   :hints (("Goal" :in-theory (enable fn-pinv-acceptance fn-pinv-document))))
 
@@ -1359,7 +1541,7 @@
 ; (:configure DELTAS) | the accept plan (:enrol ...) | (:refused why).
 (defun fn-pinv-accept-record-plan (received observed-ml ed ml snapshots peers)
   (declare (xargs :guard t))
-  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml)))
+  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml snapshots)))
     (if (not (equal (car plan) :enrol)) plan
       (let* ((inv (fn-pinv-received-source received))
              (peer (fn-pinv-inviter-peer inv (fn-pinv-received-principal
@@ -1378,14 +1560,14 @@
               (t (list :configure (list (fn-cfg-set-peer-delta peer)))))))))
 
 (defthm fn-pinv-accept-plan-never-configures
-  (not (equal (car (fn-pinv-accept-plan received observed-ml ed ml))
+  (not (equal (car (fn-pinv-accept-plan received observed-ml ed ml snapshots))
               :configure))
   :hints (("Goal" :in-theory (enable fn-pinv-accept-plan fn-pinv-document))))
 
 (defthm fn-pinv-accept-plan-enrols-only-a-bound-invitation
-  (implies (equal (car (fn-pinv-accept-plan received observed-ml ed ml)) :enrol)
+  (implies (equal (car (fn-pinv-accept-plan received observed-ml ed ml snapshots)) :enrol)
            (fn-pinv-bound-document-p received observed-ml ed ml
-                                     *fn-pinv-invitation-kind*))
+                                     *fn-pinv-invitation-kind* snapshots))
   :hints (("Goal" :in-theory (enable fn-pinv-accept-plan)
            :use ((:instance fn-pinv-document-ok-is-bound
                             (kind *fn-pinv-invitation-kind*))))))
@@ -1405,7 +1587,7 @@
          (peer (fn-pinv-inviter-peer inv inviter)))
     (implies (equal (car rplan) :configure)
              (and (fn-pinv-bound-document-p received observed-ml ed ml
-                                            *fn-pinv-invitation-kind*)
+                                            *fn-pinv-invitation-kind* snapshots)
                   (not (fn-pinv-enrolled-withp
                         inviter (fn-pinv-received-keys received) snapshots))
                   (fn-pinv-inviter-addressedp inv)
@@ -1441,8 +1623,8 @@
                   (equal (fn-pinv-accept-record-plan received observed-ml ed ml
                                                      snapshots
                                                      (fn-cfg-peers next))
-                         (fn-pinv-accept-plan received observed-ml ed ml))
-                  (equal (car (fn-pinv-accept-plan received observed-ml ed ml))
+                         (fn-pinv-accept-plan received observed-ml ed ml snapshots))
+                  (equal (car (fn-pinv-accept-plan received observed-ml ed ml snapshots))
                          :enrol))))
   :hints (("Goal"
            :in-theory (e/d (fn-cfg-apply)
