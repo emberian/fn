@@ -65,8 +65,22 @@ The credential file's octet and line bounds follow its count: 512 octets and
 8 lines per credential, plus one unit for the header, a work bound per
 credential. fn.toml's size bounds stay constants. They bound the work of
 reading a fixed-schema file that names the store, and the file holds no
-collection. Consumers and policy members are not yet read from the
-profile (planning/evidence/bounds-profile-2026-09-25.md).
+collection. Consumers are read since STO-021; policy members are not
+(planning/evidence/bounds-profile-2026-09-25.md).
+
+STO-021: no hidden constant caps a community count (D27). Every constant
+that bounds stored data is one of three things: governed by a profile field,
+a work bound of one fixed-shape record, or a codec width that admits every
+valid profile (`fn-bs-profile-validp-codecs-accept`); the classification is
+planning/evidence/community-bounds-2026-09-26.md. The consumer count is the
+profile's `max-consumers` (field 9): the owner's registration
+(`fn-cp-register-within`, books/consumer-position.lisp) refuses
+`:max-consumers` exactly when the table already holds that many, and a raised
+field takes effect at the next open with no migration; replay re-runs the
+registration's validity, not the admission bound, because the profile only
+rises. Open: the group-name bound (field 7) is not yet read on the served
+path and the name width is 256, below the NNTP wire's 460; a peer's
+configuration rows are one record's data (PKT-435, PKT-436).
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store

@@ -5729,6 +5729,19 @@
           "name": "fn-rclp-reclaiming-pack-is-a-first-link"
         }
       ]
+    },
+    {
+      "id": "PRF-167",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cp-register-within-refuses-exactly-past-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cp-apply-preserves-consumer-capacity"
+        }
+      ]
     }
   ]
 }
