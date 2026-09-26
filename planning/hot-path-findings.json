@@ -634,10 +634,6 @@
       "class": "unexpected",
       "packet": "PKT-324 (5)"
     },
-    "fn-sbud-bytes-extend nthcdr N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (5)"
-    },
     "fn-sbud-record-octets recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (5)"
@@ -751,6 +747,10 @@
     "fnn-bp-profile-session length F": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
+    },
+    "fn-sbud-drop recursion N": {
+      "class": "unexpected",
+      "packet": "PKT-324 (5)"
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

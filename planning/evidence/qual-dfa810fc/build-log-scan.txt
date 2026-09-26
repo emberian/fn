@@ -1,0 +1,10 @@
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/acquire-default.txt sha256=b4fe83c9fc6b96e996d48d9a684d1e7e347680b00c68e8295f77d237d72c5faf errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/acquire-dtn.txt sha256=2194c248b5fccea884ccdbd150966b6be56c60fd7714a1be095585a604ff06de errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/image-hashes.txt sha256=034600c7a9c812feb395eb3f665c5ff5c284e5c3fcd0e2c2756fed69388232fd errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/image-validation.txt sha256=2bebd4c9fc545ebada5fb4fbdc3f792c663009e5a63fa2cffd4d87139d37c3e2 errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/native-build-developer.log sha256=7ba13e16dd5264290545fd40c33c5b088605e3da424bca820ce4fcf4e7e65c46 errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/native-build-dtn-developer.log sha256=5d4ae3cdaa857cba1b7a61bbec9362d9f78ac676cb0e453d135364d7f6dfd0e7 errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/native-build-dtn.log sha256=e8b2427d96a4114c6ff0b301d5b95a669046370bb9911819adfb2c8a6ee2d8a1 errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/native-build-production.log sha256=4a952fd0724e80d8ca195dcba6699e30548758cfdf458987511abdfdf08c7322 errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/validate-default.txt sha256=d71f26c9ed9dc864fd835ac2d71f44a5588f6eeef3fc794a2b5cba5b366656f7 errors=0
+/tank/fn/gates/qual-dfa810fc-20260926/build/freeze/validate-dtn.txt sha256=63810dee75aa1d5203d805f0889543f114c2e3c05b740872435221aaf15541f9 errors=0

@@ -1,0 +1,3 @@
+test_pack_chain_link_cut_leaves_exactly_the_selected_links (tests.test_native_pack_chain.NativePackChainTests.test_pack_chain_link_cut_leaves_exactly_the_selected_links)
+A death at `pack-chain-link' after link N, the chain program's cut ... ok
+test_every_chain_publication_cut_from_both_entries (tests.test_native_pack_chain.NativePackChainTests.test_every_chain_publication_cut_from_both_entries) ... # qual-dfa810fc: unit stopped by the lane at 15:24:26Z after ~70 min in test_every_chain_publication_cut_from_both_entries (unfinished; qual-69046a76 reruns it)

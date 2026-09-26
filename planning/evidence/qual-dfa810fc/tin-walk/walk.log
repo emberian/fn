@@ -1,0 +1,28 @@
+09:14:25 $ openssl req -x509 -newkey rsa:2048 -keyout /tank/fn/scratch/qual-dfa810fc/tin-walk/node/key.pem -out /tank/fn/scratch/qual-dfa810fc/tin-walk/node/cert.pem -sha256 -days 2 -nodes -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -> 0
+....+..+.+.........+...+.....+...+...+.......+..+.+..+...+....+..+.+...+......+........+......+......+++++++++++++++++++++++++++++++++++++++*.....+..+......+.+........+.+++++++++++++++++++++++++++++++++++++++*.+...................+....................+.+..+....+...............+........+.......+...+........+....+.....+.+...+..+.........+...................+..+...+.+...............+..............+......+.+...+..+.........+................+...+...........+...+...+....+........+.+.....+.+...+......+..+...+.+........+.......+...........+....+......+............+..+.+............+..+....+......+.........+.....+.........+.+.....+....+......+..............+.......+.....+............................+............+...+.....+...+............+.+..+...+......+...+............+....+..+....+...+.....+.............+...+.....+....+......+..+....+.........+..+..........+........+....+.....+.+...........+.+..+......+.+......+..+......+....+......+............+..+.+..+....+.........+..+....+........+.+............+..............+.+..+.+.....+......+.+.........+...+..+......+.......+..+...+...+....+.....+......+...............+....++++++
+.+..+....+..+...........................+++++++++++++++++++++++++++++++++++++++*.........+..+...............+.......+......+......+.....+.........+.......+..+...+++++++++++++++++++++++++++++++++++++++*...........................+......+...+..+...+...+...+......+.+.....+.......+...+...+.................+....+...+...+...+..+...................+......+...+......+.....+...................+..+.......+..+.........................+.........+.....+......+...+.+......+......+..+.+...........+...+......+....+..+.........+......+.+............+........+...+..........+..+...+.+.....+..........+.....................+..............+.+.....+.........+....+...........+...+.+..+.......+......+..++++++
+-----
+
+09:14:26 $ /tank/fn/gates/qual-dfa810fc-20260926/build/images/dfa810fceabedde937ba7e4bfa46b43fd599ac62/fn-host --fn operator /tank/fn/scratch/qual-dfa810fc/tin-walk/node/fn.toml init fn.test fn.letters control.cancel -> 0
+initialized /tank/fn/scratch/qual-dfa810fc/tin-walk/node/store
+accepted operator init
+
+09:14:26 $ setsid -w /tank/fn/gates/qual-dfa810fc-20260926/build/images/dfa810fceabedde937ba7e4bfa46b43fd599ac62/fn-host --fn operator /tank/fn/scratch/qual-dfa810fc/tin-walk/node/fn.toml principal set-password guest --posting -> 0
+guest principal=45d5ebf23ae82e66c1a1e789d7f52c95af520ca17148467cb6bbb1d44d78915b posting=true
+Password: Confirm password: accepted operator principal set-password effective-at-next-start
+
+09:14:26 $ systemctl --user stop qual-dfa810fc-tin-owner -> 5
+Failed to stop qual-dfa810fc-tin-owner.service: Unit qual-dfa810fc-tin-owner.service not loaded.
+
+09:14:26 $ systemctl --user reset-failed qual-dfa810fc-tin-owner -> 1
+Failed to reset failed state of unit qual-dfa810fc-tin-owner.service: Unit qual-dfa810fc-tin-owner.service not loaded.
+
+09:14:26 $ systemd-run --user --unit qual-dfa810fc-tin-owner -p MemoryMax=24G --setenv=ACL2_CUSTOMIZATION=NONE --setenv=LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib sh -c exec /tank/fn/gates/qual-dfa810fc-20260926/build/images/dfa810fceabedde937ba7e4bfa46b43fd599ac62/fn-host --fn operator /tank/fn/scratch/qual-dfa810fc/tin-walk/node/fn.toml run > /tank/fn/scratch/qual-dfa810fc/tin-walk/owner.stdout 2>&1 -> 0
+Running as unit: qual-dfa810fc-tin-owner.service; invocation ID: 3ae1c75d20624e65806e7fdb35c61a71
+
+09:14:27 owner: OWNER-OPEN open=full-replay reason=absent
+CONTROL /tank/fn/scratch/qual-dfa810fc/tin-walk/node/store/control.sock
+LISTENING 51509
+LISTENING-TLS 37453
+
+09:15:06 done
