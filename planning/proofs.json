@@ -6197,7 +6197,11 @@
         "fn-hsig-injected-carrier-unserved-group-is-refused-by-name",
         "fn-inj-decide-served-groups-choose-only-unknown-group",
         "fn-nhc-author-refusal-is-a-named-refusal",
-        "fn-nhc-author-refusal-names-an-unserved-group"
+        "fn-nhc-author-refusal-names-an-unserved-group",
+        "fn-replay-identity-step-never-admits-a-pre-c1-control-record",
+        "fn-replay-never-faults-on-a-pre-c1-control-record",
+        "fn-sopc-checkpoint-open-names-what-the-full-open-names",
+        "fn-sopc-classified-open-is-the-open-without-a-pre-c1-record"
       ]
     },
     {

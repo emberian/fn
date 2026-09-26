@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 966 |
-| Certification roots in the Makefile | 944 |
-| Books inside the root closure | 960 |
-| `defthm` and `defthmd` events | 13575 |
-| `defun` events | 9474 |
-| Functions with verified guards | 2204 |
-| Functions declared `:verify-guards nil` and never verified | 762 |
-| Functions left at the default with an explicit guard | 5104 |
-| Functions left at the default with no guard | 1404 |
-| `assert-event` checks | 14255 |
-| `must-fail` checks | 1661 |
+| Books read | 968 |
+| Certification roots in the Makefile | 946 |
+| Books inside the root closure | 962 |
+| `defthm` and `defthmd` events | 13590 |
+| `defun` events | 9491 |
+| Functions with verified guards | 2205 |
+| Functions declared `:verify-guards nil` and never verified | 763 |
+| Functions left at the default with an explicit guard | 5110 |
+| Functions left at the default with no guard | 1413 |
+| `assert-event` checks | 14273 |
+| `must-fail` checks | 1667 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 66 |
 | Theorems flagged SUSPECT by shape | 123 |
 | Export-hygiene warnings | 152 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 138 |
-| Include-hygiene warnings | 976 |
+| Include-hygiene warnings | 979 |
 | Host-names warnings | 1112 |
 | Hand-written-record warnings | 18 |
 
@@ -583,6 +583,7 @@ that `make certify` requests.
 | `books/store-observed.lisp` | root | 39 | 16 | 15/0/1/0 | 0 | 0 | 1 |
 | `books/store-open-bridge.lisp` | root | 26 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/store-open-node-bridge.lisp` | root | 21 | 4 | 0/0/2/2 | 0 | 0 | 0 |
+| `books/store-open-pre-c1.lisp` | root | 15 | 8 | 1/1/6/0 | 0 | 0 | 0 |
 | `books/store-prepare-correspondence.lisp` | root | 20 | 4 | 2/0/0/2 | 0 | 0 | 0 |
 | `books/store-profile-namespace.lisp` | root | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/store-profile-upgrade.lisp` | root | 25 | 14 | 0/0/14/0 | 0 | 0 | 0 |
@@ -1010,6 +1011,7 @@ that `make certify` requests.
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 137 | 0 | 0 |
 | `tests/acl2/store-open-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 2 | 0 |
 | `tests/acl2/store-open-node-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 6 | 0 |
+| `tests/acl2/store-open-pre-c1-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 18 | 6 | 0 |
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-profile-namespace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
 | `tests/acl2/store-profile-upgrade-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 72 | 18 | 0 |
