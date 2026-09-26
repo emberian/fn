@@ -2369,7 +2369,7 @@
         "tests/test_fn_web.py",
         "planning/evidence/reader-daily-2026-09-25.md"
       ],
-      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); tools/fn_web.py sends the commands, shows the node's lines and orders them for display.",
+      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); tools/fn_web.py sends the commands, shows the node's lines and orders them for display. The article page's fourth fact reads the node's HDR :fn-enrollment (NNT-036, PRF-168) and its fifth is the reader's own check (WEB-002).",
       "note": "Scripted walk and fake-socket tests; a scripted walk is not a human usability study. Current enrollment is not served by the node (PKT-175)."
     },
     {
@@ -2902,6 +2902,53 @@
         "planning/evidence/bounds-p5-2026-09-25.md"
       ],
       "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
+    },
+    {
+      "id": "NNT-036",
+      "title": "A reader is told the current enrollment of the principal a historical verdict names, as a fact distinct from the verdict",
+      "specification": "specs/peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-168"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/nntp-enrollment.lisp",
+        "books/owner-enrollment-read.lisp",
+        "tests/acl2/owner-enrollment-read-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "tests/test_fn_web_native.py",
+        "specs/human-client.md",
+        "planning/evidence/reader-2-2026-09-26.md"
+      ],
+      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 section 8.5 lets a server offer HDR metadata items (the `:` prefix). PKT-175 implemented as the coordinator's default (a); (b), authenticated readers only, is a one-line policy switch on the served step. The historical signature verdict, historical local acceptance, current enrollment and current administrative authority stay separate (mandate section 5.4). ACL2 decides the item (fn-enr-item); tools/fn_web.py shows the node's words as the fourth provenance fact.",
+      "note": "The keyring view is pinned per committed view like the verdicts, so a reader opened before a rotation or revocation still reads the enrollment of its view."
+    },
+    {
+      "id": "WEB-002",
+      "title": "The web reader verifies a signed article independently with the reader's own keyring and says whose keyring",
+      "specification": "specs/human-client.md#reader-metadata-lines",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test"
+      ],
+      "evidence": [
+        "tools/fn_web.py",
+        "tools/fn_verify.py",
+        "tests/test_fn_web.py",
+        "tests/test_fn_web_native.py",
+        "docs/web.md",
+        "planning/evidence/reader-2-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-253: a permitted external client check, not a node decision. tools/fn_web.py --keyring FILE runs tools/fn_verify.py check-article over the article's exact bytes (as tools/fn_consumer.py does) and renders verified here (principal, whose keyring), failed here (reason) or not performed (why). The node's keyring file is never read.",
+      "note": "Client behaviour; it proves nothing about the node's verdict and the page keeps the two apart."
     }
   ]
 }

@@ -99,6 +99,21 @@
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp)))))
 
+; HDR :fn-enrollment (books/nntp-enrollment.lisp): one clean line, its item
+; printable by fn-enr-item-is-printable.
+(defthm fn-nntp-enrollment-hdr-response-effects
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-enrollment-hdr-response session archive index verdicts args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-enrollment-hdr-response
+                                   fn-nov-decimal-field-is-clean)
+                                  (fn-nntp-single fn-nntp-hdr-line
+                                   fn-enr-item fn-stx-reader-lookup
+                                   fn-midx-lookup
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-nntp-token-string fn-octet-listp)))))
+
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -118,6 +133,7 @@
                             (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-verdict-hdr-response-effects)
                  (:instance fn-nntp-control-hdr-response-effects)
+                 (:instance fn-nntp-enrollment-hdr-response-effects)
                  (:instance fn-nntp-withdrawn-reply-effects (msgidp nil))
                  (:instance fn-nntp-withdrawn-reply-effects (msgidp t))
                  (:instance fn-nntp-effects-gidx-list-counts-command

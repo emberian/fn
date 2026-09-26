@@ -1967,7 +1967,9 @@
       "milestone": "M6",
       "status": "implemented",
       "requirements": [
-        "NNT-021"
+        "NNT-021",
+        "NNT-036",
+        "WEB-002"
       ],
       "steps": [
         "On a scratch developer-image node, post a root, a signed reply and a further reply; withdraw the signed reply with its author's signed cancel.",
@@ -1975,19 +1977,26 @@
       ],
       "expected": [
         "The group window lists the withdrawn number with the node's 423 withdrawn; the conversation lists the withdrawn reply with the node's 430 withdrawn and shows the root and the last reply from the node's XPAT References answer.",
-        "The search page names the node's XPAT command and window; the article page shows claimed From, carriers, the node's historical verdict, current enrollment as not served and no independent verification, separately.",
+        "The search page names the node's XPAT command and window; the article page shows claimed From, carriers, the node's historical verdict (HDR :fn-verified), the node's current enrollment of that verdict's principal (HDR :fn-enrollment: active, retired, revoked, unenrolled or a named none) and the reader's own independent verification with the reader's own keyring (verified here, failed here with the reason, or not performed with why), separately.",
         "Back after posting shows that the form was already posted and sends nothing; after restart the intent is uncertain and nothing is sent until the button; the reconciliation answer is recorded beside the unchanged original (NNT-019)."
       ],
       "evidence": [
         "tests/test_fn_web.py",
-        "planning/evidence/reader-daily-2026-09-25.md"
+        "planning/evidence/reader-daily-2026-09-25.md",
+        "planning/evidence/reader-2-2026-09-26.md"
       ],
       "implementation": {
         "test": "tests.test_fn_web",
         "cases": [
           "test_holes_are_the_nodes_answers_and_withdrawn_is_not_absent",
           "test_conversation_follows_references_across_a_withdrawn_middle",
-          "test_back_to_the_form_after_posting_returns_the_same_identifier"
+          "test_back_to_the_form_after_posting_returns_the_same_identifier",
+          "test_enrollment_is_the_nodes_current_fact_beside_the_historical_verdict",
+          "test_enrollment_asks_about_the_id_the_node_served_not_the_header",
+          "test_verified_here_names_the_principal_and_whose_keyring",
+          "test_failed_here_says_why",
+          "test_not_performed_says_why",
+          "test_the_page_shows_the_readers_check_beside_the_nodes_facts"
         ],
         "native": false,
         "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
@@ -2676,6 +2685,37 @@
         "native": true,
         "log": "planning/evidence/bounds-p5-2026-09-25.md",
         "record": "planning/evidence/bounds-p5-2026-09-25.md"
+      }
+    },
+    {
+      "id": "SCN-098",
+      "title": "a POST whose reply was lost, then whose login is re-bound to another principal, is settled unresolved: the retry draws 441 from the login gate before the Store decides",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-019"
+      ],
+      "steps": [
+        "A protected developer node under posting-policy bound-logins; the login is bound to principal P and posts over STARTTLS and AUTHINFO an article carrying P's FN-Authorship; the owner runs with FN_NATIVE_POST_FAULT=finish-durable:kill and dies after the commit is durable, before the reply (uncertain).",
+        "The operator re-binds the login to principal Q (principal bind) and the node restarts.",
+        "fn_client reconcile re-sends the exact stored lines; fn_client show <msgid>; HDR :fn-verified <msgid>; GROUP fn.test."
+      ],
+      "expected": [
+        "The retry draws 441 posting failed; the login is not bound to this signing principal (fn-owner-login-gate, fn-lb-bound-login-other-principal-is-refused) and never the already-stored answer: the gate refused before the Store's decision.",
+        "reconcile exits 4 and settles unresolved; the article is still served (220) and its verdict names P, never Q; the transaction files and GROUP fn.test are unchanged."
+      ],
+      "evidence": [
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/reader-2-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_visibility_join",
+        "cases": [
+          "test_lost_reply_then_login_rebound_is_unresolved"
+        ],
+        "native": true,
+        "log": "planning/evidence/reader-2-2026-09-26/tests.test_native_visibility_join.log",
+        "record": "planning/evidence/reader-2-2026-09-26.md"
       }
     }
   ]
