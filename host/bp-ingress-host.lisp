@@ -79,6 +79,30 @@
             (value (car (cdr proto)))
           (value nil))))))
 
+; The article gate for an ADU, asked before the allocator reservation as the
+; native `store post' asks it: `fn-store-sn-article-verdict' (the count gate
+; and the history gate at `fn-sbud-article-figure') at the record
+; `fn-bpi-ingress-prepare' would build, whose payload is the ADU and whose
+; groups are its Newsgroups mapped through the host policy.  An ADU that
+; composition rejects (syntax, Message-ID, an unmapped group) answers
+; :rejected, never a budget word.
+(defun fn-bpi-host-article-verdict (profile adu state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((parsed (fn-article-parse adu)))
+    (if (not (fn-article-result-okp parsed))
+        (value :rejected)
+      (let ((proto (fn-af-proto-article-check
+                    (fn-article-result-article parsed))))
+        (if (not (and (equal (car proto) :ok) (car (cdr proto))))
+            (value :rejected)
+          (let ((mapped (fn-bpi-map-groups (car (cdr (cdr proto)))
+                                           *fn-bpi-host-group-map*)))
+            (if (not (equal (car mapped) :ok))
+                (value :rejected)
+              (fn-store-sn-article-verdict profile (len adu)
+                                           (len (car (cdr mapped)))
+                                           state))))))))
+
 (defun fn-bpi-host-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-store-sn-reset state))

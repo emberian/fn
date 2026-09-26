@@ -2233,7 +2233,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-086",
-        "PRF-123"
+        "PRF-123",
+        "PRF-126"
       ],
       "verification": [
         "proof",
@@ -2570,6 +2571,32 @@
         "planning/evidence/reclaim-lifecycle-2026-09-25.md"
       ],
       "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Not implemented: the maintenance reservation in admission (PKT-169), release of the retention charge, a per-article release verb, BP/feed holders, chained packs."
+    },
+    {
+      "id": "STO-018",
+      "title": "A record whose charge fits u32 is within the profile's R at any sequence, transaction ID, generation and stamp width, and the allocation frontier frame carries u64 (format 3) with every format-2 frontier frame read to the same transaction ID",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-126"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/records-canonicality.lisp",
+        "books/records-seam.lisp",
+        "books/byte-store-frame.lisp",
+        "books/record-width-producers.lisp",
+        "books/store-budget-article.lisp",
+        "tests/acl2/record-width-producers-tests.lisp",
+        "tests/acl2/byte-store-frame-tests.lisp",
+        "tests/acl2/store-budget-article-tests.lisp",
+        "planning/evidence/width-producers-2-2026-09-26.md"
+      ],
+      "implementation_note": "R is not raised: the widening of a producer past 2^32 - 1 costs no profile field. The allocator still stops at 2^32 - 1 and the stamp producer at 2^32 s: their readers (file machine, observed open, checkpoint and its codec, consumer positions) are u32, PKT-244. The Python BP and owner clients ask the article verdict (fn-store-sn-article-verdict) at the article's own counts."
     }
   ]
 }
