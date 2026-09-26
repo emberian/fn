@@ -993,6 +993,11 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	$(PYTHON) tools/docs_check.py --check
+# Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
+# SBCL's compile-file and the Python tests read them with different default
+# encodings; the files that still carry a section sign are listed debt
+# (tools/ascii_debt.json, PKT-496) that may only shrink.
+	$(PYTHON) tools/ascii_check.py --strict
 # A certified registry row must name existing ACL2 events whose defining
 # books have source- and include-closure-compatible manifest evidence, and
 # must itself cite an archived manifest that certified each event book at its
@@ -1212,7 +1217,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 
