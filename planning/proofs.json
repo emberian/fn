@@ -6700,7 +6700,10 @@
         "fn-bs-profile-v1-valid-stays-valid",
         "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name",
         "fn-col-poll-report-of-an-admitted-payload-fits",
-        "fn-nls-page-refuses-exactly-past-the-total-width"
+        "fn-nls-page-refuses-exactly-past-the-total-width",
+        "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name",
+        "fn-spo-config-open-refuses-only-what-the-old-open-rejected",
+        "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
       ]
     }
   ]
