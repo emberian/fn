@@ -201,6 +201,13 @@
            :max-record-octets-below-an-event-kind)
           ((< *fn-bs-profile-record-ceiling-codec* r)
            :max-record-octets-above-codec)
+          ; PKT-467 (D27: profile validation and representation agree): a
+          ; stored event is served to a consumer as one kind-6 poll report,
+          ; whose ceiling (`fn-ncl-poll-event-bytesp',
+          ; books/consumer-local-control) is *fn-stxa-max-octets*, the Store
+          ; frame's u32 less the reply's 9 header and 346 cursor octets.
+          ((< *fn-stxa-max-octets* r)
+           :max-record-octets-above-the-poll-reply)
           ((or (< a 1) (< *fn-bs-profile-article-ceiling-codec* a))
            :max-article-octets-outside-codec)
           ((or (< g 1) (< *fn-bs-profile-groups-ceiling-codec* g))
@@ -464,6 +471,44 @@
                             fn-record-encode-narrow-length-bound
                             fn-record-encode-length-bound
                             fn-bs-profile-of fn-bs-profile-validp)))))
+
+;  KEYSTONE (every record a valid profile admits is a poll report; PKT-467).
+; The record field R of the profile a store runs under -- of any value, since
+; a value that is not a profile reads as zero -- is at most the kind-6 poll
+; reply's report ceiling (`fn-ncl-poll-event-bytesp', books/consumer-local-
+; control: *fn-stxa-max-octets*), so every Store payload the publication gate
+; admits (`fn-bs-publication-admissiblep', which host/store-host.lisp
+; `fn-store-publication-admissibility' calls for host/native/io.lisp
+; `fnn-publish') is a report that reply can carry.  Before the arm above, a
+; profile with R in the 355 octets between the two ceilings was valid and
+; admitted payloads the poll reply cannot carry.  (An article record alone
+; always fits: the record codec's own field widths bound it below the
+; ceiling; what can exceed it is a kind-4 composite, bounded only by R.)  The
+; poll side, over the reply encoder the host calls, is
+; books/consumer-owner-local-progress.lisp
+; `fn-col-poll-report-of-an-admitted-payload-fits'.
+(encapsulate ()
+(local
+ (defthm fn-bs-profile-validp-record-within-the-poll-reply
+   (implies (fn-bs-profile-validp values)
+            (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp
+                                    fn-bs-profile-invalid-reason)
+                                   (fn-bs-pf fn-frame-values-okp
+                                    fn-record-encoded-octets-ceiling))))))
+(defthm fn-bs-profile-valid-record-fits-a-poll-reply
+  (and (<= (fn-bs-profile-max-record-octets values) *fn-stxa-max-octets*)
+       (implies (fn-bs-publication-admissiblep values committed-count octets)
+                (<= octets *fn-stxa-max-octets*)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-profile-of-is-valid-or-nil))
+           :in-theory (e/d (fn-bs-profile-max-record-octets fn-bs-profile-field
+                            fn-bs-profile-record-ceiling
+                            fn-bs-publication-admissiblep)
+                           (fn-bs-profile-of fn-bs-profile-admittedp
+                            fn-bs-profile-validp fn-bs-pf
+                            fn-bs-profile-max-transactions))))))
 
 (defun fn-bs-meta-frame-okp (frame kind payload bound)
   (declare (xargs :guard t))

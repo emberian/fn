@@ -59,3 +59,29 @@
 (must-fail
  (thm (implies (equal values *bspv1-short-scale*)
                (fn-bs-profile-admittedp values))))
+
+; PKT-467's hypothesis on the two theorems: a profile the old relation admits
+; with R one octet past the poll reply's report ceiling (H raised with it).
+; The old relation admits it; this image refuses it by the new name, so the
+; conclusion of fn-bs-profile-v1-valid-stays-valid fails without the
+; hypothesis, and fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name
+; holds of it.  The saved presets satisfy the hypothesis (R 17 138 486).
+(defconst *bspv1-poll-window*
+  (fn-bs-profile-set-fields *bspv1-saved-scale*
+                            '((4 . 4294966941) (3 . 4294966941))))
+(assert-event (not (fn-bs-profile-v1-invalid-reason *bspv1-poll-window*)))
+(assert-event (< *fn-stxa-max-octets* (fn-bs-pf 4 *bspv1-poll-window*)))
+(assert-event (equal (fn-bs-profile-invalid-reason *bspv1-poll-window*)
+                     :max-record-octets-above-the-poll-reply))
+(assert-event (not (fn-bs-profile-admittedp *bspv1-poll-window*)))
+(assert-event (<= (fn-bs-pf 4 *bspv1-saved-scale*) *fn-stxa-max-octets*))
+(assert-event (<= (fn-bs-pf 4 *bspv1-saved-development*) *fn-stxa-max-octets*))
+(must-fail
+ (thm (implies (equal values *bspv1-poll-window*)
+               (fn-bs-profile-admittedp values))))
+; At the ceiling itself the old relation's profile stays admitted.
+(defconst *bspv1-poll-top*
+  (fn-bs-profile-set-fields *bspv1-saved-scale*
+                            '((4 . 4294966940) (3 . 4294966940))))
+(assert-event (not (fn-bs-profile-v1-invalid-reason *bspv1-poll-top*)))
+(assert-event (fn-bs-profile-admittedp *bspv1-poll-top*))
