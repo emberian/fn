@@ -100,6 +100,8 @@
 (include-book "books/feed-connection")
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
+; The process heap from the store profile (PKT-016): host/native/heap.lisp.
+(include-book "books/heap-figure")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.
@@ -178,9 +180,13 @@
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
 ;; D31: the history requirement and the recovery catch-up: io.lisp
-;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
-;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+;; fnn-check-history-marker and fnn-recover call
+;; fn-hmr-open-verdict and fn-hmr-catch-up.
 (include-book "books/store-history-required")
+;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
+;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
+;; fn-sxp-import-plan.
+(include-book "books/store-export")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
 ;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
@@ -254,13 +260,17 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
-        ; OpenSSL 3 is the explicit native STARTTLS trust boundary.  It loads
+        ; The system libssl is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
         (load "host/native/tls.lisp")
-        ; D09 uses the same process-wide OpenSSL pair as TLS and refuses the
-        ; image unless that pair provides ML-DSA-65 (OpenSSL >= 3.5).  The
-        ; restart revalidates that requirement against the bundled pair.
+        ; The build-time feature check: the system libssl pair (OpenSSL 3.0+
+        ; or LibreSSL 3+) resolves every function tls.lisp calls.
+        (fnn-tls-initialize)
+        ; D09's ML-DSA-65 is the vendored PQClean library in lib/ beside the
+        ; core (tools/build_mldsa65.sh; FN_MLDSA_LIBRARY names it during the
+        ; build); Ed25519 is libsodium.  Neither uses the TLS library.  Each
+        ; start re-loads and re-checks all three for that process.
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
@@ -269,6 +279,7 @@
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
                                 (fnn-tls-reset)
+                                (fnn-tls-initialize)
                                 (fnn-hsig-reset)
                                 (fnn-hsig-initialize)))
           (fnn-main)
@@ -302,6 +313,9 @@
         ; callback is present; it can call the already-loaded private admin
         ; executor for the ACL2-planned group/capacity actions.
         (load "host/native/operator.lisp")
+        ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
+        ; line `status' and `health' print; after operator.lisp, whose plan it reads.
+        (load "host/native/heap.lisp")
         (load "host/native/signature-command.lisp")
         ; Peering invitations (PRF-097): after the hybrid control handler it
         ; wraps, the signing commands it reuses and the admin publisher.

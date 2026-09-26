@@ -1,8 +1,8 @@
-;; Teeth for books/store-profile-open (PKT-471): the open of a saved profile
-;; in the poll reply's window is a named refusal, and the one repair.
+;; Teeth for books/store-profile-open (PKT-471, D34): the open of a saved
+;; profile in the poll reply's window is a named refusal, and so is the open
+;; of a profile frame of another format.
 (in-package "ACL2")
 (include-book "../../books/store-profile-open")
-(include-book "../../books/native-operator")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -50,11 +50,9 @@
                      '(:refused :max-record-octets-above-the-poll-reply)))
 ; What the open answered before (the generic fault): the decoder refuses it.
 (assert-event (null (fn-bs-config-decode *spot-window-octets*)))
-; The line every open path prints names the repair and the width.
+; The line every open path prints names the refusal and the way out.
 (assert-event (equal (fn-spo-refusal-text (fn-spo-config-open *spot-window-octets*))
-                     "profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940"))
-(assert-event (search "4294966940" (fn-spo-refusal-text
-                                     '(:refused :max-record-octets-above-the-poll-reply))))
+                     "open refused reason=max-record-octets-above-the-poll-reply: the profile record bound exceeds the poll reply width; reinstall from the release and import"))
 (assert-event (equal *fn-stxa-max-octets* 4294966940))
 
 ; The other half: at the ceiling the saved profile opens, as itself.
@@ -70,17 +68,6 @@
                      (list :opened *fn-bs-profile-defaults*)))
 (assert-event (equal (fn-spo-config-open (fn-bs-initial-config-octets))
                      (list :opened *fn-bs-profile-development*)))
-; A format-7 frame opens as its tuple, as before (the refinement theorem
-; fn-spo-config-open-refuses-only-what-the-old-open-rejected; the store runs
-; under its translation).
-(defun spot-format-7-frame (values)
-  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
-                 *fn-bs-meta-config-kind*
-                 (fn-frame-fields-octets *fn-bs-meta-format-7-spec* values)))
-(assert-event (equal (fn-spo-config-open
-                      (spot-format-7-frame *fn-bs-meta-format-7-scale-values*))
-                     (list :opened *fn-bs-meta-format-7-scale-values*)))
-
 ; Hypothesis removed (fn-bs-profile-v2-validp): R in the window but H one
 ; octet below it.  Retained hypothesis holds (R above the ceiling); the
 ; omitted one fails (the old relation refused it); the conclusion fails: the
@@ -108,66 +95,58 @@
 (assert-event (equal (fn-spo-config-open *spot-corrupted*) '(:rejected)))
 
 ; -----------------------------------------------------------------------------
-; The repair (fn-spo-repair-admits-exactly-the-lowering-to-the-width)
+; Another format (fn-spo-config-open-store-format-is-exactly-a-foreign-frame)
 
-; `store upgrade-profile --max-record-octets 4294966940' parses to the
-; repair request (books/native-operator.lisp fn-nop-parse-store).
-(assert-event (equal (car (fn-nop-parse-profile-flags
-                           '("--max-record-octets" "4294966940") :current nil nil))
-                     *fn-spo-repair-request*))
+; A format-7 store's config.json, built here: the sealed FNSM config frame
+; whose first text field is fn-store-experiment-7, then N=1048576, B=32768,
+; H=25165824, T=128 and the frontier format (the development tuple the
+; format-7 encoder wrote).  A function: a defconst cannot evaluate the
+; attached digest.
+(defconst *spot-fmt7-word*
+  '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109 101 110 116 45 55))
+(defun spot-codes (chars)
+  (if (consp chars) (cons (char-code (car chars)) (spot-codes (cdr chars))) nil))
+(assert-event (equal *spot-fmt7-word*
+                     (spot-codes (coerce "fn-store-experiment-7" 'list))))
+(defun spot-format-7-frame ()
+  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version* *fn-bs-meta-config-kind*
+                 (fn-frame-fields-octets '(:text :nat :nat :nat :nat :text)
+                                         (list *spot-fmt7-word* 1048576 32768
+                                               25165824 128
+                                               *fn-bs-meta-frontier-format*))))
 
-; Reachable witness: the window frame and that request: the verdict writes a
-; frame, the next open opens it as the saved profile with R lowered, H and
-; every other field kept.
-; (A defconst cannot evaluate the attached digest, so each check calls it.)
-(assert-event (equal (car (fn-spo-repair-verdict *spot-window-octets*
-                                                 *fn-spo-repair-request*))
-                     :repair))
-(assert-event (equal (fn-spo-config-open
-                      (cadr (fn-spo-repair-verdict *spot-window-octets*
-                                                   *fn-spo-repair-request*)))
-                     (list :opened (fn-spo-repaired *spot-window*))))
-(assert-event (equal (fn-spo-repaired *spot-window*) *spot-ceiling*))
-(assert-event (equal (fn-bs-pf 3 (fn-spo-repaired *spot-window*)) 4294967295))
-(assert-event (fn-bs-profile-validp (fn-spo-repaired *spot-window*)))
+; Reachable witness, the right side true: not in the window, not decoded,
+; a foreign format word; the open refuses by the format's name, and the
+; line says what to do.
+(assert-event (null (fn-spo-saved-format-8 (spot-format-7-frame))))
+(assert-event (null (fn-bs-config-decode (spot-format-7-frame))))
+(assert-event (equal (fn-spo-saved-format-word (spot-format-7-frame)) *spot-fmt7-word*))
+(assert-event (fn-spo-foreign-formatp (spot-format-7-frame)))
+(assert-event (equal (fn-spo-config-open (spot-format-7-frame))
+                     '(:refused :store-format)))
+(assert-event (equal (fn-spo-refusal-text (fn-spo-config-open (spot-format-7-frame)))
+                     "open refused reason=store-format: reinstall from the release and import"))
 
-; Every other target over the window store is refused by name, writing
-; nothing: one octet lower, the old R, a preset, and a second field.
-(assert-event (equal (fn-spo-repair-verdict *spot-window-octets*
-                                            '(:current ((4 . 4294966939))))
-                     '(:refused :repair-lowers-max-record-octets-to-the-poll-reply-only)))
-(assert-event (equal (car (fn-spo-repair-verdict *spot-window-octets* :scale)) :refused))
-(assert-event (equal (car (fn-spo-repair-verdict
-                           *spot-window-octets*
-                           '(:current ((4 . 4294966940) (2 . 8192)))))
-                     :refused))
-; A store that opens is not repaired (the upgrade verdict is its verb).
-(assert-event (equal (fn-spo-repair-verdict (fn-bs-config-encode *fn-bs-profile-scale*)
-                                            *fn-spo-repair-request*)
-                     '(:refused :not-above-the-poll-reply)))
-(assert-event (equal (fn-spo-repair-verdict (fn-spo-saved-frame *spot-ceiling*)
-                                            *fn-spo-repair-request*)
-                     '(:refused :not-above-the-poll-reply)))
-
-; Hypothesis removed (fn-bs-profile-v2-validp): over the short-history frame
-; R is above the ceiling and the target is the request, yet the verdict
-; refuses: the keystone's equivalence fails without the hypothesis.
-(assert-event (equal (car (fn-spo-repair-verdict (fn-spo-saved-frame *spot-short-history*)
-                                                 *fn-spo-repair-request*))
-                     :refused))
-(must-fail
- (thm (implies (equal saved *spot-short-history*)
-               (equal (equal (car (fn-spo-repair-verdict
-                                   (fn-spo-saved-frame saved) *fn-spo-repair-request*))
-                             :repair)
-                      (and (< *fn-stxa-max-octets* (fn-bs-pf 4 saved))
-                           (equal *fn-spo-repair-request* *fn-spo-repair-request*))))))
-
-; The upgrade relation is unchanged: lowering R is still not an upgrade of
-; an admitted profile (the exception lives only in the repair verdict).
-(assert-event (equal (fn-profile-upgrade-verdict *fn-bs-profile-defaults*
-                                                 '(:current ((4 . 17847355))))
-                     '(:refused :not-an-upgrade "max-record-octets")))
-; The upgrade verdict over the window profile refuses (it is not admitted).
-(assert-event (equal (fn-profile-upgrade-verdict *spot-window* *fn-spo-repair-request*)
-                     '(:refused :invalid-current-profile)))
+; Reachable witnesses, the right side false, one per conjunct.
+; A valid frame decodes: it opens.
+(assert-event (fn-bs-config-decode (fn-bs-config-encode *fn-bs-profile-scale*)))
+(assert-event (not (fn-spo-foreign-formatp (fn-bs-config-encode *fn-bs-profile-scale*))))
+; The window frame is in the window: the window's refusal, not the format's.
+(assert-event (fn-spo-in-the-windowp (fn-spo-saved-format-8 *spot-window-octets*)))
+(assert-event (not (equal (fn-spo-config-open *spot-window-octets*)
+                          '(:refused :store-format))))
+; A fn-store-8 frame the decoder refuses (H below R) is not foreign: the fault.
+(assert-event (equal (fn-spo-saved-format-word (fn-spo-saved-frame *spot-short-history*))
+                     *fn-bs-meta-format-8*))
+(assert-event (not (fn-spo-foreign-formatp (fn-spo-saved-frame *spot-short-history*))))
+; Octets that are no frame at all have no format word: the fault.
+(defconst *spot-garbage* '(1 2 3 4 5 6 7 8 9 10))
+(assert-event (null (fn-spo-saved-format-word *spot-garbage*)))
+(assert-event (equal (fn-spo-config-open *spot-garbage*) '(:rejected)))
+(assert-event (null (fn-spo-refusal-text (fn-spo-config-open *spot-garbage*))))
+; A format-7 frame whose trailer is corrupted is not a sealed frame: the fault.
+(assert-event
+ (equal (fn-spo-config-open
+         (let ((f (spot-format-7-frame)))
+           (update-nth 20 (logxor 1 (nth 20 f)) f)))
+        '(:rejected)))

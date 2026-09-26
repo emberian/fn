@@ -1183,8 +1183,8 @@ and sends, waits or closes as the answer says.
 
 | Slot | Decides | The client sees | Loopback default | Public default |
 | --- | --- | --- | --- | --- |
-| `exposure-connections` | connections held (never above the run's max) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | the run's max | the run's max |
-| `exposure-per-address` | connections held from one source address | `400 too many connections from this address; try again later` | the total | 8 |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | 31 | 31 |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | 8 |
 | `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
 | `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
 | `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
@@ -1216,6 +1216,44 @@ unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
 close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
 accounting and waiting instead of refusing are local policy.
 
+## Connection capacity and the trusted range (NNT-043)
+
+NNT-043: The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule
+
+The capacity is the `exposure-connections` row, a natural up to the limit
+rows' width (the CBOR uint32 maximum); with no row it is 31, the figure a
+run held before. No fixed ceiling sits under it: the owner a run installs is
+bounded one past that width (`*fn-exp-owner-connection-bound*`,
+books/public-exposure-rows.lisp), so the owner's own bound never refuses what
+the row admits, and the private connection a live `policy set` stages
+through always finds room. Below the capacity a connection is refused only
+by the per-address or failed-login rule; at it, every connection reads `400
+too many connections; try again later` and is closed
+(`fn-exp-open-refuses-exactly-at-the-capacity`, PRF-211). A raised row takes
+effect at the next accept.
+
+`exposure-trusted` (a policy row: `none`, or one or more comma-separated
+ranges `ADDRESS/BITS`, each address in `[listener] host`'s grammar, BITS at
+most 32 or 128, a bare address meaning the whole address) names the sources
+exempt from `exposure-per-address`. A node behind a home router whose NAT
+loopback presents every LAN reader as the router's address is the case: its
+readers would otherwise share one address's allowance. The exemption is from
+that rule alone: the capacity, the step budget and the failed-login limit
+apply to a trusted source as to any other
+(`fn-exp-trusted-address-is-never-refused-by-address`,
+`fn-exp-untrusted-address-is-refused-exactly-at-its-limit`). A range is
+matched by the kernel's family and the first BITS bits of the source
+address; an IPv4 range does not match an IPv4-mapped IPv6 source, which no
+admitted listener receives (NNT-041 refuses `::` and the mapped range).
+
+`operator CONFIG health` and `operator CONFIG status` print `exposure
+capacity connections=N capacity=C per-address=P trusted=RANGES`: the
+connections the owner holds, the capacity in force, the per-address limit
+and the trusted word (`none` when there is none).
+
+That the port refuses with 400 past a limit is RFC 3977 §5.1.1; the capacity,
+its default and the trusted range are local policy.
+
 ## Listener addresses (NNT-041)
 
 NNT-041: The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why
@@ -1241,6 +1279,47 @@ the portable form). The node is public when any listener is
 (`fn-exp-address-publicp` per address). A live reconfiguration does not
 rebind listeners (PKT-464 (a)); a changed `host` takes effect at restart.
 What remains: PKT-577.
+
+## Transit streaming (NNT-045)
+
+NNT-045: A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not
+
+A peer connection (a configured peer with an inbound half) accepts MODE
+STREAM with 203 (RFC 4644 §2.3; stateless: IHAVE stays available), CHECK
+(§2.4) and TAKETHIS (§2.5). The three forms are answered from two ACL2
+decisions of books/peer-inbound.lisp: `fn-peer-decide-offer` before the
+article (IHAVE's first reply, CHECK's only reply) and
+`fn-peer-decide-transfer` after it (IHAVE's second reply, TAKETHIS's only
+reply; it has no command formal). PRF-207 states the correspondence on the
+codes a peer reads off the socket:
+
+| decision | IHAVE (RFC 3977 §6.3.2) | streaming (RFC 4644) |
+| --- | --- | --- |
+| offer wanted / held / deferred or refused | 335 / 435 / 436, 435 | CHECK 238 / 438 / 431, 438 |
+| transfer durable / refused or held / deferred or uncertain | 235 / 437 / 436 | TAKETHIS 239 / 439 / 436 |
+
+RFC requirements: the codes and the Message-ID echoed by every CHECK and
+TAKETHIS reply. fn guarantee: one admission decision for all three forms,
+so no article is admitted under one form that another would refuse, and a
+duplicate is refused under every form. Local policy: 436 after TAKETHIS
+(RFC 4644 §2.5 names 400; innfeed retries 436 and a 400 closes the
+connection with every pipelined article behind it), and the pipeline
+bound: each 238 is a promise counted on the connection, a TAKETHIS retires
+one, and a CHECK with the peer record's inbound max-inflight outstanding
+(16 from `peer add`) answers 431, so a peer may pipeline without limit and
+fn's work per connection stays bounded (D27; the unbounded part is the
+peer's queue, not fn's).
+
+Outbound, fn sends MODE STREAM after the greeting when the peer record
+says streaming. 203: the feed offers with CHECK and transfers with
+TAKETHIS. 500 or 501 (RFC 3977 §3.2.1: the command or its argument is
+unknown, which is what a server without RFC 4644 answers): the same
+connection goes on with IHAVE, the owner logs one line
+(`fn-fc-fallback-log-line`) and records no stop; the next connection asks
+again. Any other answer is a refusal and stops the dial for the owner
+process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
+it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
+asks MODE STREAM, which every legacy server answers (PKT-599).
 
 ## Scope
 

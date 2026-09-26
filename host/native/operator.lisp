@@ -298,8 +298,11 @@ observation into the outcome and this function only carries it out."
                              result))))
               (unless (consp groups)
                 (fnn-fault "ACL2 accepted an init plan that names no group"))
-              (let* ((profile (fnn-core
-                               'fn-native-operator-host-result-init-profile result))
+              ;; PKT-016: a bare request on a machine under 4 GiB is the small
+              ;; preset (books/heap-figure.lisp fn-heap-init-request).
+              (let* ((profile (fnn-heap-init-request
+                               (fnn-core
+                                'fn-native-operator-host-result-init-profile result)))
                      (code (progn
                              (unless (consp profile)
                                (fnn-fault "ACL2 accepted an init plan with no store profile"))
@@ -465,30 +468,23 @@ observation into the outcome and this function only carries it out."
         (let ((code (case action
                       (:status (fnn-command-status root))
                       (:recover (fnn-command-recover root))
-                      (:upgrade-profile
-                       (let ((profile (fnn-core
-                                       'fn-native-operator-host-result-upgrade-profile
-                                       result)))
-                         (unless (consp profile)
-                           (fnn-fault "ACL2 accepted a store plan with no profile"))
-                         (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))
                       (:reclaim (funcall *fnn-reclaim-callback* root nil))
                       (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
                       (:checkpoint (fnn-command-state-checkpoint root))
-                      (:needs-upgrade (fnn-command-needs-upgrade root))
-                      (:rollback-check
-                       (fnn-command-rollback-check
+                      (:export
+                       (fnn-command-store-export
                         root
                         (fnn-octets-string
-                         (fnn-core 'fn-native-operator-host-result-rollback-path-octets
+                         (fnn-core 'fn-native-operator-host-result-archive-path-octets
                                    result))))
-                      (:rollback-snapshot
-                       (fnn-command-rollback-snapshot
+                      (:import
+                       (fnn-command-store-import
                         root
                         (fnn-octets-string
-                         (fnn-core 'fn-native-operator-host-result-snapshot-path-octets
-                                   result))))
+                         (fnn-core 'fn-native-operator-host-result-archive-path-octets
+                                   result))
+                        (fnn-core 'fn-native-operator-host-result-import-request result)))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -544,6 +540,9 @@ observation into the outcome and this function only carries it out."
                         (fnn-operator-emit-status
                          (fnn-operator-status-of-exit-code code) command condition)
                         (return-from fnn-operator-execute-status code))))))
+        ;; PKT-016: the heap figure of this store's profile on this machine
+        ;; (books/heap-figure.lisp, ACL2's line).
+        (fnn-heap-print-store-line root)
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
         (unless (and (integerp watch) (plusp watch))
           (return code))
@@ -605,6 +604,7 @@ observation into the outcome and this function only carries it out."
               (unless (and (integerp code) (<= 0 code 99))
                 (fnn-fault "ACL2 health report carries no exit code"))
               (fnn-write-report report)
+              (fnn-heap-print-store-line root)
               (fnn-operator-emit-status :accepted "health")
               code)))
       (error (condition)
@@ -616,8 +616,8 @@ observation into the outcome and this function only carries it out."
 (defun fnn-operator-store-max-credentials (root)
   "The store profile's max-credentials (D27, PRF-102), read from config.json
 without the writer lock: principal administration does not open the store.
-The profile only rises (fn-profile-upgradep), so a read that races an
-upgrade sees a bound no larger than the one the owner will load under."
+The profile is written once, at init or import (D34), so this read sees the
+bound the owner loads under."
   (let ((store (make-fnn-store root)))
     (fnn-load-config store)
     (fnn-profile-nat 'fn-store-profile-max-credentials store)))
@@ -742,8 +742,8 @@ one `init' makes; nothing is opened or locked."
           (:post (fnn-operator-execute-post result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
-          ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
-            :rollback-check :rollback-snapshot :reclaim :reclaim-dry-run)
+          ((:recover :compact :checkpoint :export :import
+            :reclaim :reclaim-dry-run)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))

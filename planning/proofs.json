@@ -3190,7 +3190,7 @@
     },
     {
       "id": "PRF-072",
-      "title": "Offline store-profile upgrade: the operator's fields (format 8), only non-shrinking upgrades, every gate monotone, old or new at every crash cut",
+      "title": "RETIRED (D34, lane migration-removal): Offline store-profile upgrade: the operator's fields (format 8), only non-shrinking upgrades, every gate monotone, old or new at every crash cut",
       "statement": "The store profile is the operator's (D27): format fn-store-8, twelve fields validated by fn-bs-profile-validp (1 <= T <= 2^32-1; R <= H; R at least every Store event kind's publication ceiling; R, A, G and the group-name bound within their codec ceilings; 1 <= K <= T; each namespace count in 1..2^32-1), with a format-7 tuple run under its translation fn-bs-profile-of. fn-bs-profile-validp-codecs-accept: every field of the profile a store runs under is within its codec, and when admitted R covers every kind. fn-profile-upgradep OLD NEW holds when OLD is admitted, NEW is a valid profile, NEW is not OLD, and none of the twelve fields is smaller; fn-profile-upgrade-format-7-to-8: a format-7 tuple upgrades to its translation with every kind's budget unchanged, and the verb with no field writes exactly that. Monotone gates, over the functions the host calls at open and publication: fn-profile-upgrade-keeps-txn-observation (fn-profile-txn-observation with the profile's max_transactions, host/native/io.lisp fnn-transaction-files), fn-profile-upgrade-keeps-replay-bound (fn-profile-replay-within-boundp with max_history_octets, per record from fnn-durable-records), fn-profile-upgrade-keeps-publication-admissibility (fn-bs-publication-admissiblep, fnn-publish) and fn-profile-upgrade-keeps-verdict (fn-sbud-verdict: the count gate and the history-octet gate, fn-sbud-verdict-is-the-count-and-history-admissibility). Replay takes no profile argument, so an admitted store replays to the same state. fn-profile-upgrade-verdict-writes-only-upgrades: an :upgrade verdict of the function fnn-command-upgrade-profile calls (through fn-store-profile-upgrade-verdict) carries octets that decode to the requested profile, an upgrade of the store's (under A-CRYPTO, fn-bs-config-decode-of-encode, now over every valid profile); fn-profile-upgrade-budget-after-reopen: the next open's budget is the requested profile's. fn-bs-profile-program-crash-is-old-or-new: for the byte program fnn-upgrade-profile-write runs, from a store with nothing pending, every crash image of every cut of the successful run names the old inode with its old content or the new inode with exactly the staged octets; -crash-budget-is-old-or-new gives the old or the new budget. Covered scope: the successful run and its crash images; syscall error arms are classified by the host and witnessed natively, not modelled. The owner's history gate uses a carried record-octet sum equal to the kernel's when the cache is a prefix sum (fn-sbud-bytes-used-is-kernel-sum); the host resets it at profile install and relies on committed records growing append-only within one owner process, which is stated, not proved.",
       "milestone": "M5",
       "requirements": [
@@ -3205,10 +3205,6 @@
       ],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/store-profile-upgrade.lisp",
-        "books/byte-store-profile-program.lisp",
-        "tests/acl2/store-profile-upgrade-tests.lisp",
-        "tests/test_native_profile_upgrade.py",
         "tests/campaign/native_cuts.py",
         "planning/evidence/manifests/certify-20260924T180001Z-3124349.json",
         "planning/evidence/manifests/certify-20260924T180112Z-1750504.json",
@@ -3225,7 +3221,7 @@
         "tests/acl2/store-budget-tests.lisp",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Lane m5-profile-upgrade (2026-09-24). Teeth in tests/acl2/store-profile-upgrade-tests.lisp: the relation over the four named profiles (two pairs), the verdict's five answers, 129 and 200 transaction names, the 24 MiB replay bound, 128 and 200 used, a reachable byte run whose rename cut has both images, and one must-fail per keystone hypothesis at constants (including a store with a pending write to config.json's inode and a step list that renames an unfenced stage). Native, developer image of 05b96703 on hbox: three articles, upgrade, budget 4096 with 3 used, the fourth POST accepted; same profile and downgrade refused through both entries; a held writer lock refuses; the five PROFILE_CUTS cuts x kill/eio x operator/store entries (20 cases) reopen with the old or the new frame byte for byte, with the candidate column's budget. Open: the checkpoint pack coverage (fn-store-checkpoint-compaction-coverage with field 4) is not in the monotone set; fn-store-txn-prefix-reclaim-plan kept its own copy of the namespace bound (that function is no longer in the tree at 17ff24aa; PKT-120). Lane bounds-p1-profile (2026-09-25, D27): the profile became the operator's twelve fields in format fn-store-8 with relations, not tables; init and store upgrade-profile take --FIELD N over a preset or the current profile; the upgrade is any valid non-shrinking profile, including the format 7 to 8 step; status prints every field and bytes-used/history-bound. Every keystone above restated by name over every valid profile; new: fn-bs-profile-validp-codecs-accept, fn-sbud-bytes-used-is-kernel-sum, fn-sbud-verdict-is-the-count-and-history-admissibility, fn-profile-upgrade-format-7-to-8. Native on hbox, images of 73ccdaa7 (planning/evidence/bounds-p1-2026-09-25.md): init with custom fields; P-1/P/P+1 octets against A = 20000 (accepted, accepted, refused `payload exceeds the modelled bound`); raise and shrink-by-name; 7 to 8 on a fresh format-7 scale store written by the c3420013 image, and its 20 cut cases old-or-new byte for byte. Format 6 is no longer opened. Open: R has one valid value (196608) until P2 raises the FNST ceiling; the article-record relation uses the kind table's figure until P2's fn-record-encoded-octets-ceiling merges; under T > 4096 compaction's one-unit pack can refuse (fn-cverb-preset-count-within-pack-events, P5).",
+      "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject was removed with it (the offline upgrade relation fn-profile-upgradep, fn-profile-upgrade-verdict and P-PROFILE, books/store-profile-upgrade.lisp and books/byte-store-profile-program.lisp). What now covers the property: a deploy is a reinstall plus store import (PRF-205); the store has one format (books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept.",
       "events": [
         "fn-profile-upgrade-keeps-txn-observation",
         "fn-profile-upgrade-keeps-replay-bound",
@@ -4156,8 +4152,6 @@
         "tests/test_native_operator_verdicts.py",
         "tests/test_native_control_filing.py",
         "planning/evidence/operator-verdicts-2026-09-25.md",
-        "books/store-profile-upgrade.lisp",
-        "tests/acl2/store-profile-upgrade-tests.lisp",
         "planning/evidence/deploy-fixes-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
         "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
@@ -4168,7 +4162,7 @@
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
       ],
       "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly when the writer-lock observation taken after the durable change is neither :free nor :absent and the running owner did not answer :accepted or :uncertain to the binding reload (PKT-221, PRF-175; a password change never asks, so for it this is the old statement). Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile, the store's own config.json profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted, does not drop the store's history-marker requirement (fn-profile-rollback-drops-markerp), and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). fn-profile-rollback-keeps-a-required-marker: when the store's profile requires the committed-history marker and the verdict is :sound, the kept profile requires it too; the kept format-7 config.json over a migrated store is refused as history-marker-required-dropped (qual-e747dbcc U1). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
-      "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
+      "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject, the profile upgrade relation and rollback verdict of books/store-profile-upgrade.lisp, was removed by lane migration-removal (planning/evidence/migration-removal-2026-09-26.md); the property a fresh install plus `store import` now carries is PRF-205. Earlier: Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
     },
     {
       "id": "PRF-102",
@@ -5232,7 +5226,7 @@
     {
       "id": "PRF-130",
       "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
-      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203, 500 or 501 in the :mode phase (RFC 4644 section 2.3; since PRF-207, 500 and 501 are the IHAVE fallback, the old form a must-fail in tests/acl2/feed-connection-tests.lisp) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -5747,7 +5741,7 @@
     },
     {
       "id": "PRF-141",
-      "title": "store rollback-check --snapshot: an earlier state of this history exactly when the snapshot's committed records are this store's first records, compared octet for octet, and the count is the records after them",
+      "title": "RETIRED (D34, lane migration-removal): store rollback-check --snapshot: an earlier state of this history exactly when the snapshot's committed records are this store's first records, compared octet for octet, and the count is the records after them",
       "statement": "books/native-operator.lisp. host/native/io.lisp fnn-command-rollback-snapshot acquires both stores read-only under their shared writer locks (fnn-acquire; a store an owner holds is refused, never read unlocked) and holds both while it reads each committed history as the open reads it (fnn-rollback-history: fnn-durable-records from the selected pack's lower bound, the pack's records through *fnn-pack-recover-callback*, i.e. fn-store-checkpoint-compaction-observe, then the suffix files; fnn-check-history-marker over the count) and calls fn-native-operator-history-start, then fn-native-operator-history-step once per snapshot record with the store's record at the same position (CUR-PRESENT nil past the store's end), then fn-native-operator-history-verdict with the store's record count (through the fn-native-operator-host-history-* wrappers). Both theorems are stated over that composition, V = (fn-native-operator-history-verdict (fn-nop-history-run (fn-native-operator-history-start) snap cur) (len cur)), fn-nop-history-run being the host's loop. KEYSTONE fn-native-operator-history-loss-is-ancestry: (and (iff (equal (car V) :loses) (equal (append snap (nthcdr (len snap) cur)) cur)) (implies (equal (append snap (nthcdr (len snap) cur)) cur) (equal (cadr V) (len (nthcdr (len snap) cur))))): the verb answers :loses exactly when the store's history is the snapshot's records followed by more records, and the count is the number of those records; otherwise (:refused :snapshot-not-a-prefix). fn-native-operator-history-loss-is-snapshot-loss: V equals fn-native-operator-snapshot-loss (PRF-130's list-level function). Events are exact record octets: no sequence number, length or file size is compared, as a filter or as a count, and no collision assumption is used. Every executable function is guard-verified (guard t). What it does not say: that the host's loop makes exactly these calls (host code, source-checked by tests/test_native_rollback_history.py); anything about the configuration history, which a restore also replaces; that the snapshot is the newest earlier state; or freshness (a store-local comparison is not an anti-rollback witness, mandate 5.6).",
       "milestone": "M4",
       "requirements": [
@@ -5757,13 +5751,12 @@
         "PRF-130"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/native-operator.lisp",
         "tests/acl2/native-operator-tests.lisp",
         "host/native/io.lisp",
         "host/native-operator-host.lisp",
-        "tests/test_native_rollback_history.py",
         "planning/evidence/rollback-history-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T065706Z-2375300.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
@@ -5774,7 +5767,8 @@
       "events": [
         "fn-native-operator-history-loss-is-ancestry",
         "fn-native-operator-history-loss-is-snapshot-loss"
-      ]
+      ],
+      "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject was removed with it (store rollback-check --snapshot, fn-native-operator-history-*, fn-native-operator-snapshot-loss). What now covers the property: a deploy is a reinstall plus store import (PRF-205); the store has one format (books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept."
     },
     {
       "id": "PRF-139",
@@ -5891,7 +5885,7 @@
     {
       "id": "PRF-161",
       "title": "The limits of a public reader port as the host calls them: admission bounded by the total and per-address rows in force, a step budget per quantum that waits and never refuses, the none anonymous policy gating every reader and posting command 480, and no limit or reconfiguration dropping a connection",
-      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step, as books/public-exposure-reply.lisp's fn-exp-observe-effects over the step's effects (fn-exp-observe-effects-unfolds: it is fn-exp-observe of fn-served-reply-octets of the effects, so every fn-exp-observe theorem here is about the host's call; its executable reads the reply's two facts, answered and the 481 count, by one constant-stack scan of the effects with no copy of the reply: fn-exp-481-scan-counts-the-481-replies, fn-exp-effects-scan-is-the-reply-scan, fn-exp-observe-effects-is-the-observation-of-the-reply; exposure-reply-size, PKT-481: fn-exp-481-count's per-octet recursion over a 2 MiB reply had exhausted the control stack and stopped the owner); fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the run's max_connections, ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total and the address below its per-address limit in force, and leaves the address at most one higher and within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
+      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step, as books/public-exposure-reply.lisp's fn-exp-observe-effects over the step's effects (fn-exp-observe-effects-unfolds: it is fn-exp-observe of fn-served-reply-octets of the effects, so every fn-exp-observe theorem here is about the host's call; its executable reads the reply's two facts, answered and the 481 count, by one constant-stack scan of the effects with no copy of the reply: fn-exp-481-scan-counts-the-481-replies, fn-exp-effects-scan-is-the-reply-scan, fn-exp-observe-effects-is-the-observation-of-the-reply; exposure-reply-size, PKT-481: fn-exp-481-count's per-octet recursion over a 2 MiB reply had exhausted the control stack and stopped the owner); fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the owner's bound (a run's is *fn-exp-owner-connection-bound*, PRF-211), ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total, leaves the address at most one higher, and, for an address outside the trusted range (PRF-211), happened only with the address below its per-address limit in force and leaves it within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address outside the trusted range past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
       "milestone": "M6",
       "requirements": [
         "NNT-031"
@@ -6111,7 +6105,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-position.lisp",
         "books/consumer-owner-local.lisp",
@@ -7497,6 +7491,139 @@
         "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
         "fn-ctl-withdrawal-plan-record-is-bound",
         "fn-ctl-cancel-executes-only-for-author-or-authority"
+      ]
+    },
+    {
+      "id": "PRF-205",
+      "title": "store export and store import: the import of an export replays the same history under the same profile",
+      "statement": "books/store-export.lisp fn-sxp-import-of-export-replays-the-same-history: for a valid profile VALUES, records in strictly increasing sequence and configuration names in order, fn-sxp-import-plan over the archive fn-sxp-entries and fn-sxp-manifest render (the export's, host/native/io.lisp fnn-command-store-export) with no field raised is (:import VALUES FRONTIER CONFIGS RECORDS): the same profile, frontier, configuration records and records in the same order, which host/native/io.lisp fnn-command-store-import writes and admits through the ordinary open's full replay (fn-store-sn-recover). The MANIFEST is a transport check under the abstract digest seam, not an integrity proof.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/migration-removal-2026-09-26.md"
+      ],
+      "progress_note": "Lane migration-removal 2026-09-26: admitted in the persvati REPL (session mr1); certification is the batch's.",
+      "events": [
+        "fn-sxp-import-of-export-replays-the-same-history",
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
+      ]
+    },
+    {
+      "id": "PRF-198",
+      "title": "The process heap is the store profile's figure: an accepted figure holds every store the profile admits and fits the observed machine; a profile the machine cannot hold is refused by name",
+      "statement": "books/heap-figure.lisp. fn-heap-decide (profile core nursery observations) is the host-called subject: host/native/heap.lisp fnn-heap-decision calls it, from fnn-command-heap (the `heap -- ARGV` probe the installed packaging/fn runs before it execs the command with --dynamic-space-size MB) and fnn-heap-print-store-line (the line `operator CONFIG status` and `health` print). The figure fn-heap-figure-octets = CORE + NURSERY + 2 x 16 x (2H + R) + 2 x fn-ock-capture-budget(profile), in SBCL megabytes rounded up (fn-heap-mb-of); the machine is fn-heap-machine-octets, the least positive observation. KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits: (implies (and (fn-bs-profile-admittedp profile) (equal (car d) :heap) (<= used (fn-bs-profile-max-history-octets profile)) (natp core) (natp nursery)) (and (<= (+ core nursery (* 32 (+ used used R)) (* 2 (fn-ock-capture-budget profile))) (* 2^20 (fn-heap-decision-mb d))) (<= (* 2^20 (fn-heap-decision-mb d)) (fn-heap-machine-octets observations)))) with d = (fn-heap-decide profile core nursery observations): for every history of USED octets within H (the store budget's bound, fn-sbud-verdict-at), the image, the nursery, the lists at sixteen bytes per octet with the collector's copy, and both checkpoint buffers fit the megabytes passed, which fit the machine. (natp used) was removed after proving the weakened theorem. fn-heap-decide-refuses-exactly-past-the-machine: for an admitted profile and an observed machine the decision is (:heap MB WORD MACHINE-MB) when MB x 2^20 <= machine and (:refused :machine-cannot-hold-profile MB MACHINE-MB) otherwise; fn-heap-decision-exit-code-of-a-refusal: a refusal exits 1 (outcome-class :refused). The small preset (*fn-heap-small-request*: the development base with T 16384, H 8 MiB, R 196608, G 16, K 128) is admitted and fn-heap-small-profile-fits-a-small-machine: with core <= 512 MiB and nursery <= 64 MiB it is accepted on every machine of at least 1536 MiB (OpenBSD's default datasize); fn-heap-init-request-on-a-small-machine-is-small / -keeps-the-operators-request: `init`'s bare request on a machine under 4 GiB resolves to it (host/native/operator.lisp fnn-operator-execute-init via fnn-heap-init-request), every other request is unchanged. Scope: the 16 B per octet is the octet-list representation's cons (rep-wave-d section 1.2); the second history copy is the open's transient; the model states retained octets, not SBCL's allocator, and the native case measures VmHWM against it.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-183"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-heap-decide-admits-every-store-the-profile-admits",
+        "fn-heap-decide-refuses-exactly-past-the-machine",
+        "fn-heap-small-profile-fits-a-small-machine",
+        "fn-heap-init-request-on-a-small-machine-is-small",
+        "fn-heap-init-request-keeps-the-operators-request",
+        "fn-heap-machine-octets-is-at-most-each-observation",
+        "fn-heap-decision-exit-code-of-a-refusal"
+      ],
+      "evidence": [
+        "books/heap-figure.lisp",
+        "tests/acl2/heap-figure-tests.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "tests/test_native_heap_from_profile.py",
+        "tests/test_native_cli_launcher.sh",
+        "planning/evidence/heap-from-profile-2026-09-26.md"
+      ],
+      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md)."
+    },
+    {
+      "id": "PRF-211",
+      "title": "The reader port's connection capacity is the operator's exposure-connections row with no fixed ceiling under it, the port refuses exactly at the capacity with RFC 3977's named 400, and an address in the operator's trusted range is never refused on the per-address rule while one outside is refused exactly at its limit",
+      "statement": "books/public-exposure.lisp over books/public-exposure-rows.lisp. The subject is fn-exp-open, which host/owner-host.lisp fn-owner-exposure-open calls at every accept (host/native/owner.lisp fnn-owner-serve-client) through fn-ocar-exp-open (equal to it under the configured owner's relation: fn-ocar-exp-open-is-exp-open-under-ocl-relation, books/owner-open-carried.lisp), over the limits fn-owner-exposure-limits reads with fn-exp-limits from the owner's LIVE configuration value and the owner's bound. A run's owner is installed with *fn-exp-owner-connection-bound* = one past the limit rows' width (books/native-operator.lisp fn-native-operator-result-run-max-connections, host/native/operator.lisp `run' through fnn-control-owner-run-normalized), so fn.toml's fixed 32 no longer bounds a run. fn-exp-owner-bound-exceeds-every-capacity: under fn-cfg-limits-withinp (carried by fn-cfg-valuep, preserved by every delta) the capacity fn-exp-connections-capacity (the exposure-connections row, 31 with none) is below that bound. fn-exp-limits-total-is-the-capacity: the total in force is the capacity whenever the owner's bound exceeds it. KEYSTONE fn-exp-open-refuses-exactly-at-the-capacity: under the run's bound, fn-cfg-limits-withinp and the failed-login rule not refusing the address (fn-exp-auth-refusesp), fn-exp-admit-decision is exactly (:refuse busy-400 1) when the owner holds the capacity or more, else (:refuse address-400 2) for an address outside the trusted range at its per-address limit, else :admit; fn-exp-open-refusal-is-a-400-and-opens-nothing (PRF-161) makes a refusal the named line (`400 too many connections; try again later', RFC 3977 section 5.1.1) with nothing opened. KEYSTONE fn-exp-trusted-address-is-never-refused-by-address: an address fn-exp-trusted-addressp accepts under the limits' trusted range (the `exposure-trusted' :set-policy row, parsed by fn-exp-trusted-of-word; `policy set exposure-trusted' admits only fn-exp-trusted-wordp, books/native-admin.lisp) is never given the per-address refusal. fn-exp-untrusted-address-is-refused-exactly-at-its-limit: outside the range, with the failed-login rule not refusing and the owner below the total, the decision is the per-address 400 exactly when the address holds its limit. Not proved: the CIDR parser's agreement with RFC 4632 text beyond the witnesses; the memory a capacity costs (PKT-605).",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-043"
+      ],
+      "depends_on": [
+        "PRF-161"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-host-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_public_limits.py",
+        "docs/operator.md",
+        "planning/evidence/public-limits-2026-09-26.md"
+      ],
+      "progress_note": "Lane public-limits 2026-09-26: every changed book and test book certified in the lane's persvati tree (tools/certify_books.py --incremental --no-publish, discovery); certification is the batch's.",
+      "events": [
+        "fn-exp-owner-bound-exceeds-every-capacity",
+        "fn-exp-limits-total-is-the-capacity",
+        "fn-exp-open-refuses-exactly-at-the-capacity",
+        "fn-exp-trusted-address-is-never-refused-by-address",
+        "fn-exp-untrusted-address-is-refused-exactly-at-its-limit"
+      ]
+    },
+    {
+      "id": "PRF-207",
+      "title": "One admission decision, three wire forms: CHECK and TAKETHIS answer as IHAVE does, the streaming pipeline is bounded, and fn's feed falls back to IHAVE on a peer that does not stream",
+      "statement": "books/peer-transit-forms.lisp over the functions the served path calls. fn-peer-check-and-ihave-answer-one-offer-decision: for one connection state and one well-formed Message-ID, the code fn-peer-command answers to IHAVE and to CHECK are fn-peer-offer-code's IHAVE and CHECK images of the same fn-peer-decide-offer decision, so CHECK's code is the RFC 4644 section 2.4 form of IHAVE's RFC 3977 section 6.3.2 code (238/335, 438/435, 431/436). fn-peer-takethis-and-ihave-answer-one-transfer-verdict: for every transfer decision and durable completion, fn-peer-transit-outcome-effects renders TAKETHIS's code as the streaming form of IHAVE's (239/235, 439/437, 436/436; 436 after TAKETHIS is fn's local policy, RFC 4644 section 2.5 names 400) and closes exactly when IHAVE's does. fn-peer-transfer-submission-differs-only-in-form-unfolds: the transfer arm hands the owner the same (peer, Message-ID, octets) whatever the form. fn-peer-step-pinned-keeps-outstanding-offers-within-the-peer-bound: no served event raises the connection's outstanding 238 count above the larger of its value and the peer record's inbound max-inflight (D27: a pipeline past the bound is 431). books/feed-connection.lisp fn-fc-mode-stream-unsupported-falls-back-to-ihave: a 500 or 501 answer to MODE STREAM (RFC 3977 section 3.2.1) makes the same connection ready with streaming off, security and credential kept, and records no stop; books/owner.lisp fn-own-feed-connect-in-ihave-form-offers-ihave, -sends-the-bare-article and fn-own-feed-connect-in-stream-form-offers-check: after a connect in the :ihave form the feed offers the IHAVE line and sends the bare article, after a streaming connect to a streaming record it offers CHECK. Not claimed: that a real peer's code means what the RFC says (the INN lab measures that), nor a CAPABILITIES-driven choice of form (RFC 4644 section 2.3 prefers CAPABILITIES; fn asks MODE STREAM).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-045"
+      ],
+      "depends_on": [
+        "PRF-130"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-transit-forms.lisp",
+        "tests/acl2/peer-transit-forms-tests.lisp",
+        "books/feed-connection.lisp",
+        "books/feed-connection-invariants.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "books/owner.lisp",
+        "tests/acl2/owner-feed-form-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/feed-service.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-streaming-2026-09-26.md"
+      ],
+      "progress_note": "Lane transit-streaming 2026-09-26: every changed book and test book admitted in the persvati REPL (sessions ptf, fc2, own); certification is the batch's.",
+      "events": [
+        "fn-peer-check-and-ihave-answer-one-offer-decision",
+        "fn-peer-takethis-and-ihave-answer-one-transfer-verdict",
+        "fn-peer-transfer-submission-differs-only-in-form-unfolds",
+        "fn-peer-step-pinned-keeps-outstanding-offers-within-the-peer-bound",
+        "fn-fc-mode-stream-unsupported-falls-back-to-ihave",
+        "fn-own-feed-connect-in-ihave-form-offers-ihave",
+        "fn-own-feed-connect-in-ihave-form-sends-the-bare-article",
+        "fn-own-feed-connect-in-stream-form-offers-check"
       ]
     }
   ]

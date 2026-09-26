@@ -6,12 +6,6 @@ v2) meet here.  Two things neither lane could run alone:
 * an operator profile whose article field is 4 MiB admits POSTs of 33 KiB,
   200 KiB and 3 MiB, each re-read identical, and refuses one octet past the
   bound with the 441 that names the size;
-* the deployed store's offline step, rehearsed on a format-7 scale store
-  written by a pre-D27 image (FN_FORMAT7_IMAGE): open under the new image,
-  upgrade with a 4 MiB article field, roll back by restoring the kept
-  config.json and reopen under the old image, upgrade again, POST 3 MiB,
-  re-read, restart, still open (planning/evidence/bounds-join-2026-09-25.md).
-
 * one served step whose reply is several MiB (PKT-481): the ARTICLE of 1, 2
   and 3 MiB articles and an OVER of about 4 MB, the owner still serving.
 
@@ -26,8 +20,7 @@ import socket
 import unittest
 
 from tests import test_native_operator_verbs as verbs
-from tests.test_native_profile_upgrade import (FORMAT7_IMAGE, FORMAT7_SCALE_FRAME,
-                                               ProfileUpgradeFixture)
+from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 MIB4 = 4 * 1024 * 1024
@@ -227,71 +220,6 @@ class LargeReplyTests(JoinFixture):
         finally:
             client.close()
         self.stop_serving(owner)
-
-
-@unittest.skipUnless(FORMAT7_IMAGE, "FN_FORMAT7_IMAGE names a pre-D27 image")
-class DeployRehearsalTests(JoinFixture):
-    """The offline 7-to-8 step for the deployed node, on a scratch store."""
-
-    def old(self, *words):
-        return self.operator(*words, image=FORMAT7_IMAGE)
-
-    def test_step_rollback_step_post_3_mib_restart(self):
-        created = self.old("init", "--profile", "scale", "fn.test")
-        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        self.assertEqual(self.frame(), FORMAT7_SCALE_FRAME)
-        owner = self.start_owner(FORMAT7_IMAGE)
-        self.assertEqual(self.post_many(["<seed@example.invalid>"]), ["240 article received OK"])
-        self.stop(owner)
-        # Step 2: keep config.json (the rollback) with the unit stopped.
-        kept = self.root / "config.json.format-7"
-        shutil.copyfile(self.store / "config.json", kept)
-        # Step 3: the new image opens the format-7 store under its translation.
-        status = self.op("status")
-        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
-        self.assertIn(b"profile format=7", status.stdout)
-        print(status.stdout.decode(), flush=True)
-        # Step 4 with the article field alone is refused by the relation: the
-        # translated R (17,138,486) does not hold a 4 MiB article's record.
-        alone = self.op("store", "upgrade-profile", "--max-article-octets", str(MIB4))
-        self.assertEqual(alone.returncode, EXIT_REFUSED, alone.stderr.decode())
-        self.assertIn(b"max-record-octets-below-the-article-record", alone.stderr)
-        self.assertEqual(self.frame(), FORMAT7_SCALE_FRAME)
-        step = ("store", "upgrade-profile", "--max-article-octets", str(MIB4),
-                "--max-record-octets", "33554432")
-        upgraded = self.op(*step)
-        self.assertEqual(upgraded.returncode, EXIT_OK, upgraded.stderr.decode())
-        print(upgraded.stdout.decode(), flush=True)
-        self.assertIn(b"transactions-used=1 transactions-budget=4096 previous-budget=4096",
-                      upgraded.stdout)
-        line = self.profile_line()
-        self.assertEqual((line["format"], line["max-article-octets"],
-                          line["max-record-octets"]), (8, MIB4, 33554432))
-        # Rollback: the old image refuses format 8; the kept frame restores it.
-        refused = self.old("status")
-        self.assertNotEqual(refused.returncode, EXIT_OK)
-        shutil.copyfile(kept, self.store / "config.json")
-        self.assertEqual(self.frame(), FORMAT7_SCALE_FRAME)
-        reopened = self.old("status")
-        self.assertEqual(reopened.returncode, EXIT_OK, reopened.stderr.decode())
-        # Step 4 again, then serve.
-        self.assertEqual(self.op(*step).returncode, EXIT_OK)
-        owner = self.start_owner(self.image)
-        rows = self.post_and_reread([3145728])
-        self.stop(owner)
-        self.assertTrue(rows[3145728][0].startswith("240"), rows)
-        self.assertTrue(rows[3145728][1])
-        # Restart: still open, the 3 MiB article rereads, the next POST lands.
-        status = self.op("status")
-        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
-        owner = self.start_owner(self.image)
-        self.assertTrue(self.reread("<join-3145728@example.invalid>", 3145728))
-        self.assertEqual(self.post_many(["<after@example.invalid>"]), ["240 article received OK"])
-        self.stop(owner)
-        self.assertEqual(self.headroom()["transactions-used"], 3)
-
-    profile_line = __import__("tests.test_native_profile_upgrade",
-                              fromlist=["OperatorFieldsTests"]).OperatorFieldsTests.profile_line
 
 
 class SpanReferenceTests(JoinFixture):

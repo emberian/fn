@@ -2331,6 +2331,12 @@
     (value :released)))
 
 ;; The lines `health' appends (host/native-live-status-host.lisp).
+;; PRF-211: the capacity and the count, the last line of `status'.
+(defun fn-owner-exposure-capacity (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-capacity-line (fn-owner-exposure-limits state)
+                        (len (fn-own-conns (fn-owner-core state)))))
+
 (defun fn-owner-exposure-health (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-exp-health-lines (fn-owner-exposure-state state)
@@ -2628,13 +2634,15 @@
 
 ; A raw TCP descriptor starts in the ACL2 connection phase below.  Only a
 ; successful greeting (and configured MODE STREAM exchange) makes this feed
-; live for selection.
-(defun fn-owner-feed-connect (peer-octets conn state)
+; live for selection.  FORM is ACL2's (`fn-fc-connection-form' of the ready
+; connection state): :ihave after a 500/501 to MODE STREAM (PRF-207), so the
+; feed offers this connection IHAVE; nil otherwise.
+(defun fn-owner-feed-connect (peer-octets conn form state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (natp conn)))
         (value nil)
-      (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
+      (let ((state (fn-owner-step (list :feed-conn peer conn form) state)))
         (value :ok)))))
 
 (defun fn-owner-feed-dial-open (peer-octets conn user pass allow-clear state)
@@ -2790,6 +2798,12 @@ existing port only after fn-fc has made this connection ready."
                             (f-put-global 'fn-owner-feed-log-line
                                           (fn-fc-stop-log-line peer) state)
                           state))
+                 ;; PRF-207: a 500/501 to MODE STREAM goes on in IHAVE; the
+                 ;; one line says so (no stop is recorded).
+                 (state (if (fn-fc-ihave-fallback-p input step)
+                            (f-put-global 'fn-owner-feed-log-line
+                                          (fn-fc-fallback-log-line peer) state)
+                          state))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-next-state step) inputs)
@@ -2820,7 +2834,10 @@ existing port only after fn-fc has made this connection ready."
                   (:ready
                    (mv-let (erp word state)
                      (fn-owner-feed-connect peer-octets
-                                            (fn-fc-conn (fn-fc-next-state step)) state)
+                                            (fn-fc-conn (fn-fc-next-state step))
+                                            (fn-fc-connection-form
+                                             (fn-fc-next-state step))
+                                            state)
                      (if erp (mv erp word state)
                        (if (equal word :ok) (value :ready) (value :fault)))))
                   (:reply

@@ -271,6 +271,10 @@ closed by this worker, preserving the one-closer rule."
        ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
        (when (eq word :streaming-refused)
          (fnn-owner-log 'fn-owner-feed-log-line t))
+       ;; Ready: after a 500/501 to MODE STREAM ACL2 rendered the IHAVE
+       ;; fallback line (PRF-207); otherwise there is none.
+       (when (eq word :ready)
+         (fnn-owner-log 'fn-owner-feed-log-line t))
        (values word
                (if (member word '(:starttls :auth-user :auth-pass :mode :send))
                    (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))

@@ -2,8 +2,8 @@
 
 PKT-467 (the coordinator's ruling: D27's "profile validation, representation
 and format evolution must agree"): a store profile whose record bound R the
-consumer poll reply cannot carry is refused by name, at `init` and at
-`store upgrade-profile`, rather than admitted and discovered at the first
+consumer poll reply cannot carry is refused by name at `init` (and at
+`store import`, which resolves the same relation), rather than admitted and discovered at the first
 oversized article.  The ceiling is `*fn-stxa-max-octets*` (4,294,966,940:
 the Store frame's u32 less the kind-6 reply's 9 header and 346 cursor
 octets); the arm is books/byte-store-frame.lisp `fn-bs-profile-invalid-reason`
@@ -15,9 +15,8 @@ The witnesses, on the developer image:
 * `init` one octet past the ceiling (H raised with it) is refused by that
   name, exit 1, and writes no config.json; at the ceiling it is written and
   the store serves: the owner starts and takes a POST;
-* `store upgrade-profile` of a default store one octet past the ceiling is
-  refused by that name, exit 1, the frame unchanged; to the ceiling it is an
-  upgrade; the owner serves after both.
+* a store saved in the window is refused by name at every open, with the
+  line that names the reinstall and import (D34 removed the in-place repair).
 
 The live-status (FNLS) row's named refusal
 (`fn-nls-page-refuses-exactly-past-the-total-width`) needs a report of 2^32
@@ -28,7 +27,7 @@ import hashlib
 import unittest
 
 from tests import test_native_operator_verbs as verbs
-from tests.test_native_profile_upgrade import ProfileUpgradeFixture
+from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 ROOT = verbs.ROOT
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
@@ -86,29 +85,12 @@ class ControlReplyFitTests(ControlReplyFitFixture):
         self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
         self.serves("init")
 
-    def test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it(self):
-        created = self.op("init", "fn.test")
-        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        before = self.config_frame()
-        refused = self.op("store", "upgrade-profile", "--max-record-octets", str(PAST))
-        print(refused.stderr.decode(errors="replace"), flush=True)
-        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
-        self.assertIn(b"store profile upgrade refused: " + NAME, refused.stderr)
-        self.assertEqual(self.config_frame(), before)
-        self.serves("refused")
-        raised = self.op("store", "upgrade-profile", "--max-record-octets", str(CEILING))
-        self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
-        self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
-        self.serves("raised")
-
-
 # PKT-471 (the coordinator's decision of 2026-09-26): a store SAVED before
 # PKT-467 with R in the window above CEILING is refused by name at every open
 # (books/store-profile-open.lisp fn-spo-config-open, the open
 # host/native/io.lisp fnn-metadata-config-decode calls; keystone
-# fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name), and
-# `store upgrade-profile --max-record-octets CEILING` is its one repair
-# (fn-spo-repair-verdict; fn-spo-repair-admits-exactly-the-lowering-to-the-width).
+# fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name); D34
+# removed the in-place repair, so the line names a reinstall and an import.
 #
 # The witness config.json is written BY HAND, never taken from a real store:
 # the octets the format-8 encoder wrote under the relation before PKT-467 for
@@ -123,8 +105,8 @@ WINDOW_FRAME = bytes.fromhex(
     "0000000001000000000000001000000000000010000000000000001000000000"
     "00000010000000000000001000000000000000100000000000000000000030f0"
     "f366d0c3978954589a8e03e2160450ce2cc20435273838484922cb8e9d12")
-LINE = ("profile record bound exceeds the poll reply width: "
-        "run store upgrade-profile --max-record-octets 4294966940")
+LINE = ("open refused reason=max-record-octets-above-the-poll-reply: the profile "
+        "record bound exceeds the poll reply width; reinstall from the release and import")
 
 
 class ProfileOpenRefusalSourceTests(unittest.TestCase):
@@ -156,7 +138,7 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
         self.assertIn(LINE, out)
         self.assertNotIn("ACL2 rejected durable configuration frame", out)
 
-    def test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired(self):
+    def test_a_store_saved_in_the_window_is_refused_by_name_at_every_open(self):
         created = self.op("init", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.serves("window")
@@ -167,7 +149,6 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
         self.assert_named(self.op("recover"), "operator recover")
         self.assert_named(self.op("store", "inspect", "<fit-window@example.invalid>"),
                           "operator store inspect")
-        self.assert_named(self.op("store", "needs-upgrade"), "operator store needs-upgrade")
         self.assert_named(self.op("store", "checkpoint"), "operator store checkpoint")
         self.assert_named(self.op("health"), "operator health")
         self.assert_named(self.run_owner(), "operator run")
@@ -178,27 +159,6 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
         # Refused, never mutated.
         self.assertEqual(self.files(), before)
 
-        # Any other target is refused by name and writes nothing.
-        other = self.op("store", "upgrade-profile", "--max-record-octets", str(CEILING - 1))
-        print(other.stderr.decode(errors="replace"), flush=True)
-        self.assertEqual(other.returncode, EXIT_REFUSED, other.stderr.decode())
-        self.assertIn(b"store profile upgrade refused: "
-                      b"repair-lowers-max-record-octets-to-the-poll-reply-only", other.stderr)
-        self.assertEqual(self.files(), before)
-
-        repaired = self.op("store", "upgrade-profile", "--max-record-octets", str(CEILING))
-        print(repaired.stdout.decode(errors="replace"), repaired.stderr.decode(errors="replace"),
-              flush=True)
-        self.assertEqual(repaired.returncode, EXIT_OK, repaired.stderr.decode())
-        self.assertIn(b"repaired profile=max-record-octets transactions-used=1", repaired.stdout)
-        profile = self.profile_line()
-        self.assertEqual(profile["max-record-octets"], CEILING)
-        self.assertEqual(profile["max-history-octets"], 4294967295)
-        self.assertEqual(profile["max-transactions"], 4096)
-        for name, digest in before.items():
-            if name != "config.json" and name.startswith("transactions"):
-                self.assertEqual(self.files()[name], digest)
-        self.serves("repaired")
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@
 ; directory listing or treats a prefix as a usable history.  The writer
 ; refuses a generation above the same field
 ; (`fn-native-admin-publication-authorize', `:max-config-generations'), and
-; the profile never shrinks (`fn-profile-upgradep'), so a store the node wrote
+; the profile is written once, at init or import (D34), so a store the node wrote
 ; never exceeds its own listing bound.  (D27, PRF-102; the pre-D27 constant
 ; was 8192.)
 

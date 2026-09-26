@@ -1230,7 +1230,8 @@
       "milestone": "M3",
       "status": "specified",
       "requirements": [
-        "OBJ-007"
+        "OBJ-007",
+        "HST-016"
       ],
       "steps": [
         "Enroll A at generation 1 and B at generation 2; authorize fresh signed sources from both after B is enrolled.",
@@ -1499,8 +1500,7 @@
       "implementation": {
         "test": "tests.test_native_history_required",
         "cases": [
-          "RetryResolutionTests",
-          "MigrationTests"
+          "RetryResolutionTests"
         ],
         "native": true,
         "log": "planning/evidence/marker-required/native-required.log",
@@ -1621,9 +1621,9 @@
     },
     {
       "id": "SCN-052",
-      "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
+      "title": "RETIRED (D34): an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-015"
       ],
@@ -1648,7 +1648,8 @@
         "native": true,
         "log": "planning/evidence/bounds-profile/native-namespace.log",
         "record": "planning/evidence/bounds-profile-2026-09-25.md"
-      }
+      },
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
     },
     {
       "id": "SCN-054",
@@ -2236,7 +2237,7 @@
       "id": "SCN-076",
       "title": "The operator walk: one installed fn from nothing to a recovered node on two scratch nodes",
       "milestone": "M4",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-008",
         "HST-009"
@@ -2258,22 +2259,10 @@
         "planning/evidence/operator-walk-2026-09-26/walk.sh",
         "planning/evidence/operator-walk-2026-09-26.md",
         "tests/acl2/native-operator-tests.lisp",
-        "tests/test_native_rollback_history.py",
         "planning/evidence/rollback-history-2026-09-26.md",
         "planning/evidence/outcome-algebra-2026-09-26.md"
       ],
-      "implementation": {
-        "test": "tests.test_native_rollback_history",
-        "cases": [
-          "test_equal_counters_different_content_is_not_an_earlier_state",
-          "test_an_earlier_state_counts_what_the_restore_loses",
-          "test_a_compacted_history_is_read_through_its_pack",
-          "test_a_held_store_is_refused_not_read_unlocked"
-        ],
-        "native": true,
-        "log": "planning/evidence/rollback-history-2026-09-26/green2-test.log",
-        "record": "planning/evidence/rollback-history-2026-09-26.md"
-      }
+      "retirement_note": "D34 removed rollback-check --snapshot, the walk item its implementation evidenced (tests.test_native_rollback_history, deleted); the walk is re-evidenced by the batch."
     },
     {
       "id": "SCN-075",
@@ -2555,7 +2544,8 @@
       "milestone": "M3",
       "status": "specified",
       "requirements": [
-        "NNT-030"
+        "NNT-030",
+        "HST-015"
       ],
       "steps": [
         "On the friend's machine: unpack the release tarball, `sha256sum -c SHA256SUMS`, `fn operator NODE/fn.toml mission small-community --host IP --port P`, make a TLS pair, `init`, `policy set path-identity`, `principal set-password`, start `run`.",
@@ -2579,7 +2569,7 @@
         "NNT-031"
       ],
       "steps": [
-        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 32, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
+        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 31, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
         "500 concurrent connections from 127.0.0.2; then, per-address lowered live to 1, 10 each from 127.0.1.1-50; then 4 silent and 4 one-octet-a-second connections from 127.0.0.4; lines of 600, 4096 and 65536 octets; an anonymous session under none, then under open (live) a 120-command STAT loop; AUTHINFO guessing at about 100 a second from 127.0.0.7; `operator CONFIG health`."
       ],
       "expected": [
@@ -2593,7 +2583,8 @@
       "milestone": "M6",
       "status": "implemented",
       "requirements": [
-        "NNT-032"
+        "NNT-032",
+        "HST-016"
       ],
       "steps": [
         "On a scratch developer-image node with tls_cert, tls_key and tls_port, [auth] required and protected_only, run the owner; connect over TLS on tls_port with a verified certificate; ask CAPABILITIES, AUTHINFO USER, STARTTLS, DATE; connect to the plaintext port and STARTTLS.",
@@ -2752,9 +2743,9 @@
     },
     {
       "id": "SCN-097",
-      "title": "an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
+      "title": "RETIRED (D34): an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-021"
       ],
@@ -2779,7 +2770,8 @@
         "native": true,
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
-      }
+      },
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
     },
     {
       "id": "SCN-100",
@@ -3098,7 +3090,7 @@
     },
     {
       "id": "SCN-107",
-      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init, at store upgrade-profile and at every open of a store saved with it; `store upgrade-profile --max-record-octets 4294966940` is that store's one repair; at the ceiling it is written and served",
+      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init and at every open of a store saved with it (D34: the refusal names a reinstall and import; the in-place repair is gone); at the ceiling it is written and served",
       "milestone": "M5",
       "status": "implemented",
       "requirements": [
@@ -3124,8 +3116,7 @@
         "test": "tests.test_native_control_reply_fit",
         "cases": [
           "test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling",
-          "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it",
-          "test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired"
+          "test_a_store_saved_in_the_window_is_refused_by_name_at_every_open"
         ],
         "native": true,
         "record": "planning/evidence/control-reply-fit-2026-09-26.md",
@@ -3838,6 +3829,194 @@
         "T as stored carries alice's Cancel-Lock unchanged; each cancel carries its Cancel-Key.",
         "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 withdrawn and OVER no longer lists it; after the restart T still answers 430.",
         "A serves T after T and bob's cancel, and answers 430 after alice's cancel; B answers 430 and its OVER omits T."
+      ]
+    },
+    {
+      "id": "SCN-134",
+      "title": "A stranger installs the release tarball, starts a node under the service manager, posts and reads over TLS from another machine, and reinstalls it",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-017",
+        "HST-018"
+      ],
+      "steps": [
+        "Build fn-REV12-linux-x86_64.tar.gz on hbox with packaging/release-tarball.sh from a git archive of REV (FN_CERT_CACHE, FN_ACL2 set).",
+        "tools/runpath_check.py --tarball over it; plant a python3 symlink in a scratch copy and run it again.",
+        "On hbox under /tank/fn/scratch/release-product: verify SHA256SUMS, unpack, sh fn/install.sh --prefix P --node N --no-service; mission small-community, a self-signed pair, init, policy set path-identity, principal set-password; run under systemd-run --user.",
+        "From persvati: STARTTLS, AUTHINFO, POST an article, read it back on a fresh connection.",
+        "Stop; remove P; install again from the tarball; start; read the same article from persvati."
+      ],
+      "expected": [
+        "The build prints the green-check line, the acquire/validate lines, `version fn REV`, and the runpath check's pass line; the planted copy fails naming bin/python3.",
+        "install.sh refuses an existing prefix; the reinstalled node serves the article posted before the reinstall."
+      ],
+      "evidence": [
+        "planning/evidence/release-product-2026-09-26.md",
+        "planning/evidence/release-product-2026-09-26/build-c755569badf5.log"
+      ],
+      "implementation": {
+        "test": "tests/test_release_tarball.py",
+        "native": true,
+        "record": "planning/evidence/release-product-2026-09-26.md",
+        "log": "planning/evidence/release-product-2026-09-26/test_release_tarball.log"
+      }
+    },
+    {
+      "id": "SCN-132",
+      "title": "A format-7 store is refused at open by name: open refused reason=store-format, exit 1, the store untouched",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "Open a copy of the format-7 fixture store (/tank/fn/scratch/fixtures/format-7-store) with status, recover and run."
+      ],
+      "expected": [
+        "Each exits 1 with the line open refused reason=store-format: reinstall from the release and import; no file of the store changes."
+      ]
+    },
+    {
+      "id": "SCN-133",
+      "title": "store export then store import on a fresh node serves the same history: Message-IDs, numbers, verdicts and consumer cursors equal",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "steps": [
+        "Build a store of 300 articles with a signed composite, a cancel, a retention event and a consumer registration; stop; store export DIR.",
+        "On a fresh node: store import DIR (and once with a raised field); start."
+      ],
+      "expected": [
+        "status and inspect observations and the article numbers are equal on both nodes; a tampered MANIFEST, a record out of sequence and a profile the codec cannot represent are refused by name, exit 1, nothing written."
+      ]
+    },
+    {
+      "id": "SCN-136",
+      "title": "Articles over the protected feed between a Linux node and an OpenBSD node, both from release tarballs: posted on each side, read on the other, and a hybrid-signed carrier crossing once",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-030",
+        "HST-015",
+        "HST-016"
+      ],
+      "steps": [
+        "Start from SCN-090's first two steps with one node on Linux (the release tarball, the system OpenSSL 3) and one on OpenBSD 7.9 (the OpenBSD tarball, base LibreSSL, rc.d), peered by invite, accept and confirm.",
+        "Both: a login bound to the other's principal, an FNAUTH1 profile, `peer add` of the same name with `starttls NAME ANCHOR` and both halves (`local.*`); restart both so the new logins are read.",
+        "Post one article on each node over STARTTLS; `peer pull` each way.",
+        "Enrol the OpenBSD node's own keys there (`hybrid-enroll`), sign an article with them (`hybrid-sign`) and inject it (`hybrid-author`).",
+        "Read each article back over STARTTLS on both nodes (raw ARTICLE bytes)."
+      ],
+      "expected": [
+        "Each origin logs `accepted feed peer=... code=239` and the receiver `accepted transit ... code=239 decision=want`, verdict `unsigned` for the plain posts and `verified` for the signed carrier; each `peer pull` round logs `round=done cursor=advanced transport=tls`.",
+        "On the receiving node the article's bytes equal the origin's except the Path line, where the receiver prepended its own path identity with the `!!` diagnostic (RFC 5537 section 3.2.1; RFC 5536 section 3.1.5).",
+        "Neither node stops; a fault that stops one is a failure of this scenario, not an environment note."
+      ],
+      "evidence": [
+        "planning/evidence/release-openbsd-2026-09-26.md",
+        "docs/peering-with-a-friend.md"
+      ],
+      "execution_scope": "Run once by hand on 2026-09-26: the Linux node on hbox (fn-cde3986a5c78 tarball, OpenSSL 3.3.1) and the OpenBSD 7.9 node in a QEMU guest on hbox (fn-a04213276edf tarball, LibreSSL 4.3.0, 1 vCPU, 2 GiB), OpenBSD-to-Linux carried through an ssh reverse tunnel because the guest's container cannot reach the host's docker bridge address. Not a test module: the log SHA-256s are in the record. One unreproduced stop of the OpenBSD node during the first pulls is PKT-591."
+    },
+    {
+      "id": "SCN-127",
+      "title": "On a 2 GiB machine a fresh node takes the small preset, serves 100 POSTs, checkpoints and reopens within its figure; the development profile is refused by name at start",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-013"
+      ],
+      "steps": [
+        "Under systemd-run --user --scope -p MemoryMax=2G, install bin/fn beside libexec/fn/fn-host (the production image); `operator CONFIG init local.test` with no profile word; `status`.",
+        "`run`; POST 100 articles of 2 KiB; ARTICLE the first and last, GROUP and OVER 1-100; wait for `CHECKPOINT auto`; read VmHWM; SIGTERM.",
+        "`status` (open=checkpoint); `run` again; ARTICLE and OVER again; VmHWM; SIGTERM.",
+        "`init --profile development` through bin/fn; the same store made by the image directly; `run` and `status` through bin/fn."
+      ],
+      "expected": [
+        "init writes max-history-octets=8388608; status ends `heap=N MB profile=small machine=2048 MB` with N <= 2048.",
+        "Every POST 240; both ARTICLEs 220 with their Message-ID; 211 100; 100 OVER rows; one automatic checkpoint; the owner exits 0.",
+        "status says open=checkpoint:S; the reopened owner serves the same; both VmHWM below the limit.",
+        "Each is refused, exit 1, `refused machine-cannot-hold-profile heap=H MB machine=2048 MB` with H > 2048, nothing on stdout, no store made by the refused init, nothing listening."
+      ],
+      "evidence": [
+        "planning/evidence/heap-from-profile-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_heap_from_profile",
+        "cases": [
+          "test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+          "test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start"
+        ],
+        "native": true,
+        "log": "planning/evidence/heap-from-profile-2026-09-26/native-heap.log",
+        "record": "planning/evidence/heap-from-profile-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-142",
+      "title": "A reader port admits exactly its connection capacity (raised above the old 31, then raised live), refuses the next by name, and exempts the trusted range from the per-address limit, on the developer and production images",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-043"
+      ],
+      "steps": [
+        "Per image: `init fn.test`; `policy set exposure-connections 40`; start the owner on 127.0.0.1; `status`; 40 connections from 127.0.0.1, then a 41st; `health`.",
+        "Live `policy set exposure-connections 45`; 5 more connections, then one more; `status`.",
+        "Close every connection; live `policy set exposure-per-address 2` and `policy set exposure-trusted 127.0.2.0/24`; 6 connections from 127.0.2.9; 3 from 127.0.3.9; `health`; `policy set exposure-trusted 127.0.2.0/33`; `status`."
+      ],
+      "expected": [
+        "status shows capacity=40; the 40 read a 200/201 greeting; the 41st reads `400 too many connections; try again later` and is closed; health prints `exposure capacity connections=40 capacity=40 per-address=40 trusted=none`.",
+        "The 5 are admitted and the next reads the same 400; status shows connections=45 capacity=45.",
+        "All 6 from 127.0.2.9 are admitted; 2 from 127.0.3.9 are admitted and the third reads `400 too many connections from this address; try again later`; health prints `connections=8 capacity=45 per-address=2 trusted=127.0.2.0/24`; the malformed range is refused (non-zero exit) and status still shows trusted=127.0.2.0/24; the owner stays up."
+      ],
+      "implementation": {
+        "test": "tests.test_native_public_limits",
+        "cases": [
+          "DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+          "ProductionImagePublicLimits.test_capacity_and_trusted_range"
+        ],
+        "native": true,
+        "record": "planning/evidence/public-limits-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-138",
+      "title": "An INN-shaped peer streams into fn (MODE STREAM, pipelined CHECKs, then TAKETHISes) and gets the IHAVE verdicts in streaming form; fn feeds a 203 peer with CHECK and TAKETHIS and a 501 peer with IHAVE on the same connection",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_inn_shaped_streaming_driver_gets_the_ihave_verdicts",
+          "test_feed_to_a_peer_without_streaming_falls_back_to_ihave",
+          "test_feed_to_a_streaming_peer_uses_check_and_takethis"
+        ],
+        "native": true,
+        "log": "planning/evidence/transit-streaming-2026-09-26/native-peering.log",
+        "record": "planning/evidence/transit-streaming-2026-09-26.md"
+      },
+      "requirements": [
+        "NNT-045"
+      ],
+      "steps": [
+        "Node T with peer S (inbound fn.*, max-inflight 16). On one connection: MODE STREAM; IHAVE an article (335, 235), IHAVE it again (435), IHAVE an out-of-scope article (335, 437).",
+        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238, each 239 awaited (two TAKETHIS articles in one socket read lose the second: PKT-600, test_pipelined_takethis_in_one_read_answers_every_article, an expected failure); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them; TAKETHIS a held article; CHECK it.",
+        "Node A with a streaming peer record to a scripted peer answering MODE STREAM 501: post an article; then to one answering 203."
+      ],
+      "evidence": [
+        "tests/acl2/peer-transit-forms-tests.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/acl2/owner-feed-form-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "203; sixteen 238 then four 431 and 438 for the held one, each echoing its Message-ID; sixteen 239; 439 for the out-of-scope TAKETHIS where IHAVE gave 437; the four deferred now 238 and 239; 439 and 438 for the held article where IHAVE gave 435; every stored article served byte-identical.",
+        "The 501 peer receives MODE STREAM then IHAVE on the same connection and never CHECK or TAKETHIS, and a second article reaches it (no stop); the 203 peer receives CHECK then TAKETHIS and never IHAVE."
       ]
     }
   ]
