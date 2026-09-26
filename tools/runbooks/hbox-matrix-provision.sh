@@ -13,7 +13,10 @@ rm -rf "$BASE"; mkdir -p "$BASE"
 for n in a b; do
   case $n in a) port=11190;; b) port=11191;; esac
   root=$BASE/$n; mkdir -p "$root"
-  "$IMG" --fn store "$root/store" init fn.letters >/dev/null
+  # control.cancel is the filing group of a `cmsg cancel` (books/control-classify.lisp,
+  # *fn-ctl-verb-groups*); without it a cancel draws 441 control-not-filed and the
+  # V0-CLIENT-TIN-CANCEL row reads refused (run 20260926T100024).
+  "$IMG" --fn store "$root/store" init fn.letters control.cancel >/dev/null
   printf '[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %s\n[control]\npath = "%s"\n' "$root/store" "$port" "$root/control.sock" > "$root/fn.toml"
 done
 echo "provisioned $BASE/a $BASE/b"
