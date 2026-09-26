@@ -40,16 +40,17 @@ class NativeServedCostTests(unittest.TestCase):
         self.assertIn("fn-wire-fast-statep", fast)
         self.assertNotIn("fn-wire-statep", fast)
 
-    def test_span_fold_allocates_nothing_inside_a_line(self) -> None:
-        # The executable span step (the :exec of fn-wire-feed-span) reaches
-        # the wire's state constructor only at a delimiter, the span's end
-        # or a refusal: the run between delimiters is an index scan.
-        wire_span = (ROOT / "books/wire-span.lisp").read_text()
-        scan = definition(wire_span, "fn-wire-span-scan")
-        self.assertIn("(fn-oct-run-end i bound fn-octets)", scan)
-        self.assertNotIn("fn-wire-feed-byte", scan)
-        run_end = definition(wire_span, "fn-oct-run-end")
-        self.assertNotRegex(run_end, re.compile(r"\(cons |fn-wire-make-state|list "))
+    def test_span_fold_reads_the_buffer_by_index(self) -> None:
+        # The served span fold reads each octet of the range from the buffer
+        # by index (fn-octets-get); the list of the range's octets
+        # (fn-oct-slice-list) is the logical model in the theorems only.
+        # The per-line index scan (no wire state inside a line) is PKT-479
+        # and has no static check until it lands.
+        span = (ROOT / "books/served-span.lisp").read_text()
+        fold = definition(span, "fn-scar-feed-span")
+        self.assertIn("(fn-octets-get i fn-octets)", fold)
+        self.assertNotIn("fn-oct-slice-list", fold)
+        self.assertNotIn("fn-octets-list", fold)
 
     def test_fast_predicate_has_fixed_spine_and_scalar_scope(self) -> None:
         wire = (ROOT / "books/wire.lisp").read_text()

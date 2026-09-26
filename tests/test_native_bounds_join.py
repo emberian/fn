@@ -319,8 +319,8 @@ class SpanReferenceTests(JoinFixture):
     fn-owner-chunk-span); the reference image (FN_SPAN_REFERENCE_HOST, a
     build of the base whose owner coerced every read to a list and called
     fn-owner-chunk) is driven with the same POSTs on a fresh store.  Every
-    reply line and every ARTICLE's octets must agree, the Injection-Date
-    field's value (the wall clock at injection) aside.  The articles are
+    reply line and every ARTICLE's octets must agree, the values of the
+    injected Date and Injection-Date fields (the wall clock) aside.  The articles are
     33 KiB, 200 KiB and 3 MiB of 78-octet lines (so body lines straddle the
     512-octet reads) and one article of dot-led lines written in 7-octet
     pieces (a dot-stuffed line split across reads).
@@ -338,7 +338,8 @@ class SpanReferenceTests(JoinFixture):
         if stored is None:
             return None
         head, sep, body = stored.partition(b"\r\n\r\n")
-        lines = [b"Injection-Date: *" if ln.lower().startswith(b"injection-date:") else ln
+        lines = [ln.split(b":", 1)[0] + b": *"
+                 if ln.lower().startswith((b"date:", b"injection-date:")) else ln
                  for ln in head.split(b"\r\n")]
         return b"\r\n".join(lines) + sep + body
 
