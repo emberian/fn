@@ -4,8 +4,24 @@
 ; sequence choose a fixed-depth radix path.  Every branch has at most 256
 ; octet keys plus one terminal key, so lookup and extension have a constant
 ; bound independent of the acknowledged prefix length.
+;
+; Since 2026-09-26 (lane signed-history-index, PRF-144 part 1) the index is a
+; pair: the sequence trie above, and a Message-ID trie from each Message-ID
+; to the article records the history commits under it, in history order --
+; a plain article record, and the record a signed kind-4 composite carries,
+; decoded once when the event is added (`fn-cei-event-article').  Both halves
+; are extended by the same `fn-cei-put', so the index the Store carries in
+; its derived field (`fn-sn-event-index', extended at `fn-sn-io''s record
+; directory append and built by every open) answers a Message-ID with the
+; exact fold over the history, `fn-cei-article-records-for', under the
+; correspondence the Store already maintains (`fn-cei-correspondencep';
+; `fn-cei-msgid-records-of-correspondence').  A lookup walks the Message-ID
+; by string index down a character trie: its work is bounded by the
+; Message-ID and the per-node branching, not by the history.
 (in-package "ACL2")
 (include-book "consumer-position")
+(include-book "replay")
+(include-book "msgid-index-concrete")
 
 (defconst *fn-cei-value-key* :fn-cei-value)
 
@@ -43,16 +59,78 @@
        (cdr digits) (fn-cei-branch-get (car digits) trie))
     (fn-cei-branch-get *fn-cei-value-key* trie)))
 
+; The article record a Store event commits: a plain article record is its
+; own; a signed acceptance composite (kind 4) commits the record it carries,
+; decoded as replay decodes it (`fn-replay-composite-record').  Every other
+; event maps to itself, which is never `fn-record-p'.  The same body as
+; books/bp-receipt.lisp's `fn-bpr-event-article' (equal by
+; `fn-bpaj-event-article-is-cei', books/bp-native-app.lisp).
+(defun fn-cei-event-article (event)
+  (declare (xargs :guard t))
+  (if (fn-stxa-p event) (fn-replay-composite-record event) event))
+
+; The specification of the Message-ID half: the article records of EVENTS
+; whose Message-ID is MSGID, in history order.
+(defun fn-cei-article-records-for (msgid events)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (let ((rest (fn-cei-article-records-for msgid (cdr events)))
+            (record (fn-cei-event-article (car events))))
+        (if (and (fn-record-p record)
+                 (equal msgid (fn-record-msgid record)))
+            (cons record rest)
+          rest))
+    nil))
+
+(defun fn-cei-snoc (xs x)
+  (declare (xargs :guard t))
+  (if (consp xs) (cons (car xs) (fn-cei-snoc (cdr xs) x)) (list x)))
+
+(defun fn-cei-sequence-trie (index)
+  (declare (xargs :guard t))
+  (if (consp index) (car index) nil))
+
+(defun fn-cei-msgid-trie (index)
+  (declare (xargs :guard t))
+  (if (consp index) (cdr index) nil))
+
+; A Message-ID's list in the trie: the walk by string index, no allocation.
+; The index only ever stores true lists; the test makes that a type.
+(defun fn-cei-trie-records (msgid trie)
+  (declare (xargs :guard t))
+  (let ((value (fn-mxc-lookup msgid trie)))
+    (if (true-listp value) value nil)))
+
+(defun fn-cei-msgid-records (msgid index)
+  (declare (xargs :guard t))
+  (fn-cei-trie-records msgid (fn-cei-msgid-trie index)))
+
+; Adding one event: its article record, if it has one with a string
+; Message-ID, is appended to that Message-ID's list.
+(defun fn-cei-msgid-add (event trie)
+  (declare (xargs :guard t))
+  (let ((record (fn-cei-event-article event)))
+    (if (and (fn-record-p record) (stringp (fn-record-msgid record)))
+        (fn-midx-put-chars
+         (coerce (fn-record-msgid record) 'list)
+         (fn-cei-snoc (fn-cei-trie-records (fn-record-msgid record) trie)
+                      record)
+         trie)
+      trie)))
+
 (defun fn-cei-put (sequence event index)
   (declare (xargs :guard t))
-  (if (fn-cp-uintp sequence)
-      (fn-cei-put-digits (fn-cbor-u32-bytes sequence) event index)
-    index))
+  (cons (if (fn-cp-uintp sequence)
+            (fn-cei-put-digits (fn-cbor-u32-bytes sequence) event
+                               (fn-cei-sequence-trie index))
+          (fn-cei-sequence-trie index))
+        (fn-cei-msgid-add event (fn-cei-msgid-trie index))))
 
 (defun fn-cei-get (sequence index)
   (declare (xargs :guard t))
   (if (fn-cp-uintp sequence)
-      (fn-cei-get-digits (fn-cbor-u32-bytes sequence) index)
+      (fn-cei-get-digits (fn-cbor-u32-bytes sequence)
+                         (fn-cei-sequence-trie index))
     nil))
 
 ; Executed only during observed open/recovery, not during a served poll.
@@ -142,10 +220,10 @@
            :use ((:instance fn-cei-get-digits-of-put-digits
                             (wanted (fn-cbor-u32-bytes wanted))
                             (digits (fn-cbor-u32-bytes sequence))
-                            (trie index))
+                            (trie (fn-cei-sequence-trie index)))
                  (:instance fn-cei-u32-key-injective
                             (a wanted) (b sequence)))
-           :in-theory (e/d (fn-cei-get fn-cei-put)
+           :in-theory (e/d (fn-cei-get fn-cei-put fn-cei-sequence-trie)
                            (fn-cei-get-digits-of-put-digits
                             fn-cei-u32-key-injective)))))
 
@@ -156,7 +234,11 @@
            (equal (fn-cei-build-aux (append events (list event)) sequence index)
                   (fn-cei-put (+ sequence (len events)) event
                               (fn-cei-build-aux events sequence index))))
-  :hints (("Goal" :induct (fn-cei-build-aux events sequence index))))
+  ; fn-cei-put stays closed: the step is the same put on both sides, and
+  ; opened it unfolds the composite decoder of the Message-ID half (91.9 s,
+  ; 74.7 million steps; 2026-09-26 persvati REPL).
+  :hints (("Goal" :induct (fn-cei-build-aux events sequence index)
+           :in-theory (disable fn-cei-put))))
 
 (defthm fn-cei-extend-preserves-correspondence
   (implies (fn-cei-correspondencep index events)
@@ -226,5 +308,89 @@
                             fn-cei-get-digits fn-cei-put-digits
                             fn-cei-branch-get fn-cei-branch-put)))))
 
+;; ---------------------------------------------------------------------------
+;; The Message-ID half (PRF-144 part 1).  The record codec and the composite
+;; decoder stay closed: nothing here looks inside an article record.
+
+(local (in-theory (disable fn-record-p fn-cei-event-article
+                           fn-replay-composite-record fn-stxa-p
+                           fn-record-msgid)))
+
+(defthm fn-cei-snoc-is-append-one
+  (implies (true-listp xs)
+           (equal (fn-cei-snoc xs x) (append xs (list x)))))
+
+(defthm fn-cei-snoc-is-true-list
+  (true-listp (fn-cei-snoc xs x)))
+
+(defthm fn-cei-msgid-records-is-a-true-list
+  (true-listp (fn-cei-msgid-records msgid index))
+  :rule-classes :type-prescription)
+
+(defthm fn-cei-msgid-records-of-put
+  (implies (stringp msgid)
+           (equal (fn-cei-msgid-records msgid (fn-cei-put sequence event index))
+                  (let ((record (fn-cei-event-article event)))
+                    (if (and (fn-record-p record)
+                             (equal msgid (fn-record-msgid record)))
+                        (fn-cei-snoc (fn-cei-msgid-records msgid index) record)
+                      (fn-cei-msgid-records msgid index)))))
+  :hints (("Goal"
+           :use ((:instance fn-midx-string-list-coercion-injective
+                            (a msgid)
+                            (b (fn-record-msgid
+                                (fn-cei-event-article event)))))
+           :in-theory (e/d (fn-cei-msgid-records fn-cei-put fn-cei-msgid-add
+                            fn-cei-msgid-trie fn-cei-trie-records
+                            fn-midx-lookup fn-midx-key-chars)
+                           (fn-cei-snoc fn-cei-snoc-is-append-one
+                            fn-midx-put-chars fn-midx-get-chars
+                            fn-midx-string-list-coercion-injective)))))
+
+(defthm fn-cei-msgid-records-of-build-aux
+  (implies (and (stringp msgid)
+                (true-listp (fn-cei-msgid-records msgid index)))
+           (equal (fn-cei-msgid-records msgid
+                                        (fn-cei-build-aux events sequence index))
+                  (append (fn-cei-msgid-records msgid index)
+                          (fn-cei-article-records-for msgid events))))
+  :hints (("Goal" :induct (fn-cei-build-aux events sequence index)
+           :in-theory (e/d (fn-cei-build-aux fn-cei-article-records-for)
+                           (fn-cei-msgid-records fn-cei-put)))))
+
+; The Message-ID half of the built index is the fold over the history.
+(defthm fn-cei-msgid-records-of-build
+  (implies (stringp msgid)
+           (equal (fn-cei-msgid-records msgid (fn-cei-build events))
+                  (fn-cei-article-records-for msgid events)))
+  :hints (("Goal" :use ((:instance fn-cei-msgid-records-of-build-aux
+                                   (sequence 0) (index nil)))
+           :in-theory (e/d (fn-cei-build fn-cei-msgid-records
+                            fn-cei-msgid-trie fn-cei-trie-records)
+                           (fn-cei-msgid-records-of-build-aux
+                            fn-cei-build-aux)))))
+
+; KEYSTONE (PRF-144 part 1, the index half): under the correspondence the
+; Store carries for its derived index, a Message-ID lookup in the index is
+; the fold over the committed history.  Established at every open (each
+; open installs `fn-cei-build' of the history it read) and preserved by every
+; Store transition (books/consumer-event-index-store-invariants.lisp); the
+; one transition that grows the history, `fn-sn-io''s record-directory
+; append, extends the index by `fn-cei-put' of the appended event
+; (`fn-cei-extend-preserves-correspondence').
+(defthm fn-cei-msgid-records-of-correspondence
+  (implies (and (stringp msgid)
+                (fn-cei-correspondencep index events))
+           (equal (fn-cei-msgid-records msgid index)
+                  (fn-cei-article-records-for msgid events)))
+  :hints (("Goal" :in-theory (e/d (fn-cei-correspondencep)
+                                  (fn-cei-msgid-records fn-cei-build)))))
+
 (verify-guards fn-cei-build-aux)
 (verify-guards fn-cei-build)
+
+; Exported closed: every Store book that carries the index across a
+; transition treats fn-cei-put as one opaque step (they already disabled it
+; by name), and opened it now unfolds the composite decoder of the
+; Message-ID half.
+(in-theory (disable fn-cei-put fn-cei-event-article fn-cei-msgid-add))

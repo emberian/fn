@@ -191,6 +191,57 @@
                  fn-snt-prepare-preserves-relation)
            :in-theory (disable fn-spc-prepare fn-sn-prepare fn-snt-relation))))
 
+;; ---------------------------------------------------------------------------
+;; The identity prepare's bridge (PRF-144 part 2).  A keyring snapshot or a
+;; signed POST's composite is staged by `fn-sn-prepare-identity', whose file
+;; gate `fn-sf-prepare-record' replays the whole appended history
+;; (`fn-sf-history-recoverablep' over (append records (list event))): O(N*L)
+;; per signed POST, and 46.7 % of one in carry-kind's profile.  In a related
+;; reserved state that replay is already carried: the live node IS the replay
+;; of the history at the reservation's transaction id (`fn-snt-relation''s
+;; :reserved arm), and the prepare's own gate has applied the event to that
+;; node.  `fn-snt-deferred-preparation-outcome' then says the extended history
+;; replays to the applied node at the frontier.  So the replay is redundant
+;; exactly where the host calls the prepare, and
+;; books/owner-commit-carried.lisp's `fn-ccar-sn-prepare-identity' stages
+;; through `fn-spc-stage-record' instead.
+(defthm fn-spc-related-identity-candidate-is-recoverable
+  (implies
+   (and (fn-snt-relation s)
+        (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+        (fn-sf-candidatep event
+                          (fn-sf-records (fn-sn-files s))
+                          (fn-sf-frontier (fn-sn-files s)))
+        (consp (fn-replay-apply-record (fn-sn-node s) event)))
+   (fn-sf-history-recoverablep
+    (fn-sn-groups s) (fn-sn-capacity s)
+    (append (fn-sf-records (fn-sn-files s)) (list event))
+    (fn-sf-frontier (fn-sn-files s))))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-typed-store-components)
+                 (:instance fn-sf-state-records-are-true-list
+                  (s (fn-sn-files s)))
+                 (:instance fn-replay-apply-record-non-nil-is-node-state
+                  (node (fn-sn-node s)) (record event))
+                 (:instance fn-snt-deferred-preparation-outcome
+                  (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+                  (history (fn-sf-records (fn-sn-files s)))
+                  (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))))
+           :in-theory
+           (e/d (fn-snt-relation fn-snt-idle-phasep fn-sf-candidatep)
+                (fn-sn-statep fn-sf-statep fn-node-statep fn-record-p
+                 fn-sf-record-listp fn-sf-history-recoverablep
+                 fn-sf-replay-node fn-snt-pending-linkp
+                 fn-snt-deferred-linkp fn-snt-completion-linkp
+                 fn-sn-completion-enabledp fn-sf-next-lower
+                 fn-replay-apply-record fn-store-event-p
+                 fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                 fn-snt-relation-implies-structural-state
+                 fn-snt-typed-store-components
+                 fn-sf-state-records-are-true-list
+                 fn-replay-apply-record-non-nil-is-node-state)))))
+
 ; Reconfiguration changes only the keyring/index pair.  The live-history
 ; relation deliberately concerns the storage history and node, so it is
 ; preserved while the statement index is recomputed under its own D21 proof.

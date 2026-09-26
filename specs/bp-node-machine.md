@@ -1800,6 +1800,20 @@ same article records; the replay loop installs a composite's record
 composite of the history before its end once (the article record's
 octets); a Message-ID index over events is owed (PKT-291).
 
+Since PRF-144 the lookups read the Store's derived Message-ID index instead
+(`fn-cei-msgid-records`; the walk is the refinement,
+`fn-bpaj-indexed-records-are-the-walk`), and both statements above are about
+the Store the host dispatches over: `fnn-bpapp-accept-locked` binds the
+installed owner's Store before every action, and that Store is
+`fn-osi-live-store` of the open `fn-owner-recover-extended` runs and the
+owner transitions the host has installed since
+(`books/owner-store-indexed.lisp`). The index relation `fn-ceis-indexedp`
+(the index is the index of the committed history) is a theorem of that
+Store (`fn-osi-live-owner-store-is-indexed`: established at every open path,
+preserved by every installed owner transition; the kernel crash, which the
+host never issues, is the one Store event that breaks it until recovery
+rebuilds it), not a hypothesis of the keystones.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:
