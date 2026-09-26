@@ -273,7 +273,7 @@ host resolver's intended deployment behavior.
   (declare (xargs :guard t))
   (cond ((equal table "store") (equal key "path"))
         ((equal table "listener")
-         (member-equal key '("host" "port" "tls_cert" "tls_key")))
+         (member-equal key '("host" "port" "tls_cert" "tls_key" "tls_port")))
         ((equal table "auth")
          (member-equal key '("required" "protected_only" "path")))
         ((equal table "posting") (member-equal key '("enabled" "agent")))
@@ -389,15 +389,16 @@ host resolver's intended deployment behavior.
                                      agent anchor log control acl2-path acl2-slots
                                      alert-command headroom refusal-rate cooldown
                                      mission unit scope keep-releases log-max-bytes
-                                     log-keep memory-max)
-  ; The last eleven are the operator's `[alerts]' and `[ops]' rows, read by the
+                                     log-keep memory-max tls-port)
+  ; The eleven after control-path are the operator's `[alerts]' and `[ops]' rows, read by the
   ; operator's command through `operator CONFIG show', never by the owner.
   (declare (xargs :guard t))
   (list store host port tls-cert tls-key auth-required auth-protected auth-path
         posting-enabled agent anchor log control acl2-path acl2-slots
         *fn-ncfg-default-max-connections* *fn-ncfg-default-clock-error-ms*
         alert-command headroom refusal-rate cooldown
-        mission unit scope keep-releases log-max-bytes log-keep memory-max))
+        mission unit scope keep-releases log-max-bytes log-keep memory-max
+        tls-port))
 
 (defun fn-native-config-store (c) (declare (xargs :guard t)) (fn-ncfg-nth 0 c))
 (defun fn-native-config-listener-host (c) (declare (xargs :guard t)) (fn-ncfg-nth 1 c))
@@ -427,6 +428,14 @@ host resolver's intended deployment behavior.
 (defun fn-native-config-ops-log-max-bytes (c) (declare (xargs :guard t)) (fn-ncfg-nth 25 c))
 (defun fn-native-config-ops-log-keep (c) (declare (xargs :guard t)) (fn-ncfg-nth 26 c))
 (defun fn-native-config-ops-memory-max (c) (declare (xargs :guard t)) (fn-ncfg-nth 27 c))
+; `[listener] tls_port': the implicit-TLS listener, or nil for none.  RFC
+; 4642 section 1 describes the separate port (563) that begins TLS at
+; connect and discourages it in favour of STARTTLS; fn offers it as a local
+; policy because deployed readers (tin 2.6) speak only that form.  RFC 8143
+; section 3, which is not among the supplied RFCs, later reversed the
+; preference.  The session behind it is the STARTTLS session after its
+; handshake (books/served-implicit-tls.lisp).
+(defun fn-native-config-listener-tls-port (c) (declare (xargs :guard t)) (fn-ncfg-nth 28 c))
 
 (defun fn-ncfg-absolutep (path)
   (declare (xargs :guard t))
@@ -445,6 +454,14 @@ host resolver's intended deployment behavior.
   (declare (xargs :guard t))
   (iff a b))
 
+(defun fn-ncfg-tls-port-okp (tls-port port tls-cert)
+  "No implicit-TLS listener, or one on a nonzero port other than PORT with a certificate."
+  (declare (xargs :guard t))
+  (or (null tls-port)
+      (and (not (equal tls-port 0))
+           (not (equal tls-port port))
+           (if tls-cert t nil))))
+
 (defun fn-ncfg-under-store (store suffix)
   ; Keep the raw string primitive behind a total ACL2 function.  This is also
   ; why a malformed required store field cannot make the parser's executable
@@ -461,6 +478,7 @@ host resolver's intended deployment behavior.
          (port (fn-ncfg-nat-value (fn-ncfg-value pairs "listener" "port") *fn-ncfg-default-listener-port* 65535))
          (tls-cert (fn-ncfg-string-value (fn-ncfg-value pairs "listener" "tls_cert") nil *fn-ncfg-max-path* nil))
          (tls-key (fn-ncfg-string-value (fn-ncfg-value pairs "listener" "tls_key") nil *fn-ncfg-max-path* nil))
+         (tls-port (fn-ncfg-nat-value (fn-ncfg-value pairs "listener" "tls_port") nil 65535))
          (required (fn-ncfg-bool-value (fn-ncfg-value pairs "auth" "required") nil))
          (protected (fn-ncfg-bool-value (fn-ncfg-value pairs "auth" "protected_only") nil))
          (auth-path (fn-ncfg-string-value (fn-ncfg-value pairs "auth" "path")
@@ -497,6 +515,9 @@ host resolver's intended deployment behavior.
             (equal control :bad) (equal acl2-path :bad) (equal acl2-slots :bad)
             (not (fn-native-config-listener-hostp host))
             (equal port 0) (not (fn-ncfg-pairedp tls-cert tls-key))
+            ; The implicit-TLS listener: a port of its own, and only with the
+            ; certificate and key its handshake needs.
+            (equal tls-port :bad) (not (fn-ncfg-tls-port-okp tls-port port tls-cert))
             ; The operator's tables: each row's own relation (PKT-096).
             (equal alert-command :bad) (equal headroom :bad)
             (equal refusal-rate :bad) (equal cooldown :bad)
@@ -512,7 +533,7 @@ host resolver's intended deployment behavior.
                              auth-path enabled agent anchor log control acl2-path acl2-slots
                              alert-command headroom refusal-rate cooldown
                              mission unit scope keep-releases log-max-bytes
-                             log-keep memory-max))))
+                             log-keep memory-max tls-port))))
 
 (defthm fn-native-config-listener-address-of-admitted-host
   (implies (fn-native-config-listener-hostp host)

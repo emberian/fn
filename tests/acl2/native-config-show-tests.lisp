@@ -72,11 +72,20 @@
                      (list :accepted *ncst-c*)))
 (assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-min*))
                      (list :accepted *ncst-min*)))
+; The implicit-TLS listener's port renders and comes back.
+(defconst *ncst-tls*
+  (cadr (fn-native-config-load
+         (ncst-lines
+          '("[store]" "path = \"/srv/fn\"" "[listener]" "tls_cert = \"/c.pem\""
+            "tls_key = \"/k.pem\"" "tls_port = 1563")))))
+(assert-event (equal (fn-native-config-listener-tls-port *ncst-tls*) 1563))
+(assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-tls*))
+                     (list :accepted *ncst-tls*)))
 ; Teeth (the one hypothesis, well-formedness): a store path with a quote
 ; is not a configuration the grammar can name, and it does not come back.
 (defconst *ncst-quoted*
   (fn-native-config-make "/srv/\"fn" "127.0.0.1" 1119 nil nil nil nil "/a" t nil nil nil "/c"
-                         nil nil nil 10 30 900 nil nil "user" 3 67108864 7 nil))
+                         nil nil nil 10 30 900 nil nil "user" 3 67108864 7 nil nil))
 (assert-event (not (fn-native-config-show-wfp *ncst-quoted*)))
 (must-fail
  (assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-quoted*))
@@ -84,7 +93,7 @@
 ; ... and one whose port is outside the grammar is not rendered as itself.
 (defconst *ncst-port*
   (fn-native-config-make "/srv/fn" "127.0.0.1" 70000 nil nil nil nil "/a" t nil nil nil "/c"
-                         nil nil nil 10 30 900 nil nil "user" 3 67108864 7 nil))
+                         nil nil nil 10 30 900 nil nil "user" 3 67108864 7 nil nil))
 (must-fail
  (assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-port*))
                       (list :accepted *ncst-port*))))
