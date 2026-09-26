@@ -21,7 +21,8 @@
 ;; binding now reads a history's article records (fn-bpr-article-records,
 ;; books/bp-receipt.lisp): a plain record, or the one a composite carries.
 ;;
-;; Keystones:
+;; Keystones (stated over the live owner's Store in
+;; books/owner-store-indexed.lisp; the -under-index lemmas here):
 ;;   fn-bpaj-dispatch-never-resubmits-a-stored-article: once the Store's
 ;;     history holds an article record (plain or signed) with the Message-ID
 ;;     the dispatcher reads, the dispatcher never answers (:submit): the first
@@ -35,9 +36,13 @@
 ;;     verdict: the one the delivery is bound to is the receiving Store's.
 ;; Both read the Store's Message-ID index since 2026-09-26 (PRF-144 part 1,
 ;; lane signed-history-index): the lookups no longer walk the history or
-;; decode every composite, and both keystones carry the index premise
-;; `fn-bpaj-store-indexedp' (the Store's derived index corresponds to its
-;; history), which every open establishes and every Store transition keeps.
+;; decode every composite.  This book states them over any Store whose index
+;; is the index of its history (fn-ceis-indexedp): the two -under-index
+;; lemmas below are the refinement layer.  The keystones themselves, with
+;; those names, are stated over the Store the host dispatches over, the
+;; Store of every owner the host reaches from its open, where the premise is
+;; a theorem (books/owner-store-indexed.lisp,
+;; fn-osi-live-owner-store-is-indexed; lane signed-history-index-2).
 ;; Teeth: tests/acl2/bp-signed-binding-tests.lisp.  The channel the request
 ;; arrived on is admitted before any of this (PRF-128); relaying keeps the
 ;; authored source (PRF-127); the D23 source decision is PRF-117.
@@ -65,8 +70,8 @@
            :in-theory (e/d (fn-bpr-article-records fn-bpaj-record-for-msgid)
                            (fn-bpr-event-article fn-record-p))))))
 
-(defthm fn-bpaj-dispatch-never-resubmits-a-stored-article
-  (implies (and (fn-bpaj-store-indexedp store)
+(defthm fn-bpaj-dispatch-never-resubmits-under-index
+  (implies (and (fn-ceis-indexedp store)
                 (member-equal record
                               (fn-bpr-article-records
                                (fn-sf-records (fn-sn-files store))))
@@ -132,7 +137,7 @@
   (implies (consp x) (member-equal (car x) x))))
 
 (local (defthm fn-bpsb-transit-lookup-found
-  (implies (and (fn-bpaj-store-indexedp store)
+  (implies (and (fn-ceis-indexedp store)
                 (equal (car (fn-bpaj-transit-record-lookup-fast
                              store request intent))
                        :found))
@@ -154,7 +159,7 @@
                                    fn-bpaj-store-record-accepted-fast))))))
 
 (local (defthm fn-bpsb-direct-lookup-found
-  (implies (and (fn-bpaj-store-indexedp store)
+  (implies (and (fn-ceis-indexedp store)
                 (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
            (let ((fields (fn-bpaj-article-fields request))
                  (record (cadr (fn-bpaj-record-lookup-fast store request))))
@@ -197,8 +202,8 @@
                                    fn-bpaj-request-planned-result
                                    fn-bpaj-request-planned-txid))))))
 
-(defthm fn-bpaj-dispatch-binds-the-stores-own-record
-  (implies (and (fn-bpaj-store-indexedp store)
+(defthm fn-bpaj-dispatch-binds-the-stores-own-record-under-index
+  (implies (and (fn-ceis-indexedp store)
                 (equal (car (fn-bpaj-dispatch-fast joined store request-octets
                                                    generation))
                        :bind))

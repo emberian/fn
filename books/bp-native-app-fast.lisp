@@ -6,25 +6,21 @@
 ; recognizers over all retained contexts, receipts, intents, or facts.
 (in-package "ACL2")
 (include-book "bp-native-app")
+(include-book "consumer-event-index-store-invariants")
 (local (include-book "bp-receiver-state-invariants"))
 (set-verify-guards-eagerness 0)
 
 ; Fast counterparts of the receiver transitions.  These are deliberately
 ; local to the joined application machine: the checked public receiver model
 ; remains the recovery/specification function.
-; The carried premise of the indexed lookups (PRF-144 part 1): the Store's
-; derived index corresponds to its committed history.  Never evaluated on a
-; served path; established by every open (`fn-cei-build' of the history the
-; open read) and preserved by every Store transition
-; (books/consumer-event-index-store-invariants.lisp, `fn-ceis-relatedp' in
-; every phase but :replaying and :fault).
-(defun fn-bpaj-store-indexedp (store)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-cei-correspondencep (fn-sn-event-index store)
-                          (fn-sf-records (fn-sn-files store))))
-; Closed: theorems carry it as a named premise, and the lemmas that use it
-; open it by name.
-(in-theory (disable fn-bpaj-store-indexedp))
+; The premise of the indexed lookups (PRF-144): fn-ceis-indexedp, the
+; Store's derived index is the index of its committed history
+; (books/consumer-event-index-store-invariants.lisp).  The lemmas below are
+; the refinement layer and take it as a hypothesis on any Store; the
+; theorems about the Store the host dispatches over discharge it:
+; books/owner-store-indexed.lisp establishes it at the host's open and
+; carries it across every owner transition the host installs
+; (fn-osi-live-owner-store-is-indexed).  Never evaluated on a served path.
 
 ; Store membership through the Message-ID index: the record's own
 ; Message-ID selects its candidates, so no walk of the history and no decode
@@ -390,7 +386,7 @@
 
 ; The existing semantic search and conflict rule, over the Store's
 ; maintained Message-ID index instead of a walk of the history
-; (`fn-bpaj-record-lookup-fast-is-checked' under `fn-bpaj-store-indexedp').
+; (`fn-bpaj-record-lookup-fast-is-checked' under `fn-ceis-indexedp').
 (defun fn-bpaj-record-lookup-fast (store request)
   (declare (xargs :guard t))
   (let ((fields (fn-bpaj-article-fields request)))
@@ -568,7 +564,7 @@
 
 ; The lookup reads the index; under the premise it is the walk.
 (defthm fn-bpaj-indexed-records-are-the-walk
-  (implies (and (fn-bpaj-store-indexedp store) (stringp msgid))
+  (implies (and (fn-ceis-indexedp store) (stringp msgid))
            (equal (fn-cei-msgid-records msgid (fn-sn-event-index store))
                   (fn-bpaj-record-for-msgid
                    msgid (fn-sf-records (fn-sn-files store)))))
@@ -576,7 +572,7 @@
                                    (index (fn-sn-event-index store))
                                    (events (fn-sf-records
                                             (fn-sn-files store)))))
-           :in-theory (e/d (fn-bpaj-store-indexedp)
+           :in-theory (e/d (fn-ceis-indexedp)
                            (fn-cei-msgid-records-of-correspondence
                             fn-cei-msgid-records fn-cei-correspondencep
                             fn-bpaj-record-for-msgid
@@ -584,7 +580,7 @@
 
 (local
  (defthm fn-bpaj-indexed-membership-is-history-membership
-   (implies (and (fn-bpaj-store-indexedp store) (fn-record-p record))
+   (implies (and (fn-ceis-indexedp store) (fn-record-p record))
             (iff (member-equal record
                                (fn-cei-msgid-records
                                 (fn-record-msgid record)
@@ -601,7 +597,7 @@
                          (:instance fn-bpaj-member-fold-is-member-article-records
                                     (events (fn-sf-records
                                              (fn-sn-files store)))))
-            :in-theory (e/d (fn-bpaj-store-indexedp)
+            :in-theory (e/d (fn-ceis-indexedp)
                             (fn-cei-msgid-records-of-correspondence
                              fn-bpaj-member-fold-is-member-article-records
                              fn-bpaj-record-msgid-is-a-string
@@ -612,7 +608,7 @@
 (in-theory (disable fn-bpaj-record-for-msgid-is-cei-fold))
 
 (defthm fn-bpaj-store-record-accepted-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-store-record-accepted-fast store record)
                   (fn-bpr-store-record-acceptedp store record)))
   :hints (("Goal" :in-theory
@@ -623,7 +619,7 @@
               fn-bpaj-indexed-membership-is-history-membership)))))
 
 (defthm fn-bpaj-request-acceptable-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-request-acceptable-fast
                    store config record request policy-authorizedp)
                   (fn-bpr-request-acceptablep
@@ -637,7 +633,7 @@
 
 (defthm fn-bpaj-bpr-accept-request-fast-is-checked
   (implies (and (fn-bpr-statep st) (fn-sn-statep store)
-                (fn-bpaj-store-indexedp store))
+                (fn-ceis-indexedp store))
            (equal (fn-bpaj-bpr-accept-request-fast
                    st store record request policy-authorizedp)
                   (fn-bpr-accept-request
@@ -676,14 +672,14 @@
 
 (defthm fn-bpaj-bprr-apply-record-fast-is-checked
   (implies (and (fn-bpr-statep st) (fn-sn-statep store)
-                (fn-bpaj-store-indexedp store))
+                (fn-ceis-indexedp store))
            (equal (fn-bpaj-bprr-apply-record-fast st store r)
                   (fn-bprr-apply-record st store r)))
   :hints (("Goal" :in-theory
            (enable fn-bpaj-bprr-apply-record-fast fn-bprr-apply-record))))
 
 (defthm fn-bpaj-projected-request-acceptable-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-projected-request-acceptable-fast
                    store config record request stored-octets authorizedp)
                   (fn-bpr-projected-request-acceptablep
@@ -695,7 +691,7 @@
 
 (defthm fn-bpaj-bpr-accept-projected-request-fast-is-checked
   (implies (and (fn-bpr-statep st) (fn-sn-statep store)
-                (fn-bpaj-store-indexedp store))
+                (fn-ceis-indexedp store))
            (equal (fn-bpaj-bpr-accept-projected-request-fast
                    st store record request stored-octets authorizedp)
                   (fn-bpr-accept-projected-request
@@ -706,7 +702,7 @@
                    fn-bpaj-projected-request-acceptable-fast-is-checked))))
 
 (defthm fn-bpaj-transit-context-matches-intent-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-transit-context-matches-intent-fastp
                    store context intent)
                   (fn-bpaj-transit-context-matches-intentp
@@ -722,7 +718,7 @@
 
 (defthm fn-bpaj-apply-record-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store)
-                (fn-bpaj-store-indexedp store))
+                (fn-ceis-indexedp store))
            (equal (fn-bpaj-apply-record-fast joined store r)
                   (fn-bpaj-apply-record joined store r)))
   :hints (("Goal"
@@ -788,7 +784,7 @@
            (enable fn-bpaj-config-status-fast fn-bpaj-config-status))))
 
 (defthm fn-bpaj-record-matches-request-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-record-matches-request-fast store record request)
                   (fn-bpaj-record-matches-requestp store record request)))
   :hints (("Goal" :in-theory
@@ -799,7 +795,7 @@
               fn-bpaj-store-record-accepted-fast-is-checked)))))
 
 (defthm fn-bpaj-record-lookup-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-record-lookup-fast store request)
                   (fn-bpaj-record-lookup store request)))
   :hints (("Goal" :in-theory
@@ -811,7 +807,7 @@
               (:type-prescription fn-record-octets-string))))))
 
 (defthm fn-bpaj-transit-record-lookup-fast-is-checked
-  (implies (and (fn-sn-statep store) (fn-bpaj-store-indexedp store))
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-transit-record-lookup-fast store request intent)
                   (fn-bpaj-transit-record-lookup store request intent)))
   :hints (("Goal" :in-theory
@@ -821,12 +817,12 @@
                 (fn-bpaj-transit-intentp fn-bpaj-transit-article-fields
                  fn-bpaj-record-for-msgid fn-bpr-store-record-acceptedp
                  fn-bpaj-record-for-msgid-is-cei-fold
-                 fn-cei-msgid-records fn-bpaj-store-indexedp
+                 fn-cei-msgid-records fn-ceis-indexedp
                  fn-record-octets-string fn-sn-event-index)))))
 
 (defthm fn-bpaj-dispatch-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store)
-                (fn-bpaj-store-indexedp store))
+                (fn-ceis-indexedp store))
            (equal (fn-bpaj-dispatch-fast
                    joined store request-octets current-generation)
                   (fn-bpaj-dispatch
@@ -880,7 +876,7 @@
 (defthm fn-bpaj-apply-record-fast-preserves-statep
   (implies (and (fn-bpaj-statep joined)
                 (fn-sn-statep store)
-                (fn-bpaj-store-indexedp store)
+                (fn-ceis-indexedp store)
                 (car (fn-bpaj-apply-record-fast joined store r)))
            (fn-bpaj-statep
             (fn-bpaj-nth 1
