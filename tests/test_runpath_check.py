@@ -16,26 +16,52 @@ sys.path.insert(0, str(ROOT / "tools"))
 import runpath_check  # noqa: E402
 
 
-def elf_with_needed(names: list[str]) -> bytes:
-    """A minimal ELF64LE object: section 1 dynamic (DT_NEEDED...), section 2 its strtab."""
+def elf_with_needed(names: list[str], symbols: list[tuple[str, str]] = ()) -> bytes:
+    """A minimal ELF64LE object: section 1 dynamic (DT_NEEDED...), section 2 its
+    strtab; with SYMBOLS ((name, version) pairs), sections 3 to 5 are the
+    undefined dynamic symbols, their .gnu.version indices and one DT_VERNEED
+    entry (libc.so.6) naming each version."""
     strtab = b"\0"
-    offsets = []
-    for name in names:
-        offsets.append(len(strtab))
-        strtab += name.encode() + b"\0"
+
+    def string(text: str) -> int:
+        nonlocal strtab
+        offset = len(strtab)
+        strtab += text.encode() + b"\0"
+        return offset
+
+    offsets = [string(name) for name in names]
     dynamic = b"".join(struct.pack("<qQ", 1, off) for off in offsets) + struct.pack("<qQ", 0, 0)
+    versions = sorted({version for _name, version in symbols})
+    index = {version: 2 + i for i, version in enumerate(versions)}
+    dynsym = bytes(24) + b"".join(struct.pack("<IBBHQQ", string(name), 0x12, 0, 0, 0, 0)
+                                  for name, _version in symbols)
+    versym = struct.pack("<H", 0) + b"".join(struct.pack("<H", index[version])
+                                              for _name, version in symbols)
+    verneed = b""
+    if versions:
+        verneed = struct.pack("<HHIII", 1, len(versions), string("libc.so.6"), 16, 0)
+        for i, version in enumerate(versions):
+            last = i == len(versions) - 1
+            verneed += struct.pack("<IHHII", 0, 0, index[version], string(version), 0 if last else 16)
     header_size = 64
-    dyn_off = header_size
-    str_off = dyn_off + len(dynamic)
-    sh_off = str_off + len(strtab)
+    blobs = [dynamic, strtab, dynsym, versym, verneed] if symbols else [dynamic, strtab]
+    offsets_of, cursor = [], header_size
+    for blob in blobs:
+        offsets_of.append(cursor)
+        cursor += len(blob)
+    sh_off = cursor
+    count = 1 + len(blobs)
     ident = b"\x7fELF" + bytes([2, 1, 1]) + bytes(9)
-    header = ident + struct.pack("<HHIQQQIHHHHHH", 3, 62, 1, 0, 0, sh_off, 0, 64, 0, 0, 64, 3, 0)
+    header = ident + struct.pack("<HHIQQQIHHHHHH", 3, 62, 1, 0, 0, sh_off, 0, 64, 0, 0, 64, count, 0)
 
     def section(sh_type, offset, size, link):
         return struct.pack("<IIQQQQIIQQ", 0, sh_type, 0, 0, offset, size, link, 0, 8, 0)
 
-    sections = section(0, 0, 0, 0) + section(6, dyn_off, len(dynamic), 2) + section(3, str_off, len(strtab), 0)
-    return header + dynamic + strtab + sections
+    types = [(6, 2), (3, 0), (11, 2), (0x6FFFFFFF, 3), (0x6FFFFFFE, 2)]
+    sections = section(0, 0, 0, 0) + b"".join(
+        section(sh_type, off, len(blob), link)
+        for (sh_type, link), off, blob in zip(types, offsets_of, blobs))
+    return header + b"".join(blobs) + sections
 
 
 class RunpathCheckTests(unittest.TestCase):
@@ -105,6 +131,39 @@ class RunpathCheckTests(unittest.TestCase):
             top = self.release(Path(tmp))
             (top / "libexec/fn/lib/libzstd.so.7.0").unlink()
             self.assert_finding(top, "DT_NEEDED libzstd.so.7.0 is neither carried")
+
+    def runtime_needing(self, top: Path, symbols: list[tuple[str, str]]) -> None:
+        (top / "libexec/fn/runtime/sbcl").write_bytes(
+            elf_with_needed(["libc.so.103.0", "libzstd.so.7.0"], symbols))
+
+    def test_glibc_need_at_the_floor_passes(self):
+        # The floor itself (GLIBC_2.36) and an older three-part version pass,
+        # and the note names the highest version the object needs.
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            self.runtime_needing(top, [("strtol", "GLIBC_2.2.5"), ("memcpy", "GLIBC_2.3.4"),
+                                       ("arc4random", "GLIBC_2.36")])
+            code, out, err = self.run_main(["--tree", str(top)])
+            self.assertEqual(code, 0, err)
+            self.assertIn("libexec/fn/runtime/sbcl: ELF; needs libc.so.103.0 libzstd.so.7.0; "
+                          "highest GLIBC_2.36 (floor GLIBC_2.36)", out)
+
+    def test_glibc_need_above_the_floor_fails(self):
+        # The AJ tarball's runtime (release-glibc-floor): one symbol, C23 strtol.
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            self.runtime_needing(top, [("strtol", "GLIBC_2.2.5"),
+                                       ("__isoc23_strtol", "GLIBC_2.38")])
+            self.assert_finding(top, "libexec/fn/runtime/sbcl: needs __isoc23_strtol@GLIBC_2.38, "
+                                     "above the release's floor GLIBC_2.36")
+
+    def test_glibc_floor_is_one_constant_and_the_docs_cite_it(self):
+        floor = ".".join(map(str, runpath_check.GLIBC_FLOOR))
+        self.assertIn(f"glibc {floor} or later", (ROOT / "docs/install.md").read_text())
+        self.assertIn(f"**Requirements (Linux): glibc {floor} or later**",
+                      (ROOT / "docs/operator.md").read_text())
+        self.assertEqual(runpath_check.glibc_version("GLIBC_2.3.4"), (2, 3, 4))
+        self.assertIsNone(runpath_check.glibc_version("GLIBC_PRIVATE"))
 
     def test_core_dlopen_name_not_carried_fails(self):
         with tempfile.TemporaryDirectory() as tmp:

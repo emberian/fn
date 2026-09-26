@@ -1,5 +1,8 @@
 """The release tarball as a stranger receives it (HST-017, HST-018, SCN-134).
 
+On Linux no bundled ELF object may need a glibc symbol version above
+tools/runpath_check.py's GLIBC_FLOOR (the release runs on Debian 12).
+
 Needs a release built by packaging/release-tarball.sh on this platform:
 
     FN_RELEASE_TARBALL=/abs/out/fn-REV12-linux-x86_64.tar.gz \\
@@ -118,6 +121,24 @@ class ReleaseTarballTests(unittest.TestCase):
             shutil.copytree(self.top, copy, symlinks=True)
             os.symlink("/usr/bin/python3", copy / "bin/python3")
             self.assertEqual(runpath_check.main(["--quiet", "--tree", str(copy)]), 1)
+
+    @unittest.skipUnless(platform.system() == "Linux", "the glibc floor is the Linux release's")
+    def test_no_bundled_elf_needs_glibc_above_the_floor(self):
+        # runpath_check.GLIBC_FLOOR (Debian 12's 2.36; lane release-glibc-floor).
+        elves, above = [], []
+        for path in sorted(p for p in self.top.rglob("*") if p.is_file() and not p.is_symlink()):
+            with open(path, "rb") as handle:
+                if handle.read(4) != b"\x7fELF":
+                    continue
+            facts = runpath_check.elf_facts(path.read_bytes())
+            self.assertIsNotNone(facts, path)
+            highest, over = runpath_check.glibc_above_floor(facts)
+            elves.append(path.relative_to(self.top).as_posix())
+            above += [f"{path.relative_to(self.top).as_posix()}: {need}" for need in over]
+        self.assertIn("libexec/fn/runtime/sbcl", elves)
+        self.assertIn("libexec/fn/lib/libsodium.so.23", elves)
+        self.assertIn("libexec/fn/lib/libfn-mldsa65.so", elves)
+        self.assertEqual(above, [])
 
     def install(self, prefix: Path, node: Path) -> subprocess.CompletedProcess:
         return subprocess.run(["sh", str(self.top / "install.sh"), "--prefix", str(prefix),
