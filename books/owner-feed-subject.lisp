@@ -147,3 +147,210 @@
                     fn-own-feed-durable-never-enqueues-on-the-origin
                     fn-own-feeds-of-fn-own-advance
                     fn-own-transit-outcome-never-enqueues-on-the-origin))
+
+; -----------------------------------------------------------------------------
+; A control article's scope (PKT-400; RFC 5537 sections 3.6 and 5.3).
+;
+; fn-own-sub-feed-groups (books/owner.lisp) is what the host's intent
+; (host/owner-host.lisp fn-owner-submission-intent, through
+; fn-icar-submission-targets, equal to fn-own-submission-targets) and the
+; durable enqueue (fn-own-feed-durable, from fn-owner-outcome,
+; fn-owner-control-outcome and fn-owner-transit-outcome) match each peer's
+; outbound wildmat against.  For a control article it is the submission's
+; base groups (its filing group, control.<verb>, for a local or signed
+; control submission; the Newsgroups names for transit) plus the article's
+; Newsgroups names and its filing group, from one parse.
+
+; The classification the scope reads is the one the filing plan reads
+; (books/peer-authored-accept.lisp fn-pa-filing-plan calls
+; fn-ctl-classify-octets): whenever the article parses, they are equal.
+(defthm fn-own-feed-control-of-is-the-filing-classification
+  (implies (fn-own-feed-article-of octets)
+           (equal (fn-own-feed-control-of octets)
+                  (fn-ctl-classify-octets octets)))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-control-of fn-own-feed-article-of
+                                   fn-ctl-classify-octets)
+                                  (fn-ctl-classify fn-article-parse)))))
+
+; A :control classification always names its verb, so the filing group is
+; read from a real word.
+(defthm fn-ctl-classify-control-has-a-verb
+  (implies (equal (car (fn-ctl-classify a)) :control)
+           (consp (cdr (fn-ctl-classify a))))
+  :hints (("Goal" :in-theory (enable fn-ctl-classify fn-ctl-classify-fields
+                                     fn-ctl-parse-command))))
+
+(defthm fn-own-feed-any-matchp-of-append
+  (equal (fn-own-feed-any-matchp w (append a b))
+         (or (fn-own-feed-any-matchp w a)
+             (fn-own-feed-any-matchp w b)))
+  :hints (("Goal" :in-theory (disable fn-own-feed-group-matchp))))
+
+(defthm fn-own-feed-any-matchp-of-true-list-fix
+  (equal (fn-own-feed-any-matchp w (true-list-fix a))
+         (fn-own-feed-any-matchp w a))
+  :hints (("Goal" :in-theory (disable fn-own-feed-group-matchp))))
+
+(defthm fn-own-feed-control-groups-of-names-newsgroups-and-filing-group
+  (implies (equal (car (fn-own-feed-control-of octets)) :control)
+           (equal (fn-own-feed-control-groups-of octets)
+                  (cons (fn-record-string-octets
+                         (fn-ctl-filing-group (cadr (fn-own-feed-control-of octets))))
+                        (fn-own-feed-groups-of octets))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-control-of fn-own-feed-control-groups-of
+                                   fn-own-feed-groups-of)
+                                  (fn-ctl-classify fn-ctl-filing-group
+                                   fn-record-string-octets fn-af-relayed-article-check
+                                   fn-own-feed-article-of))
+           :use ((:instance fn-ctl-classify-control-has-a-verb
+                            (a (fn-own-feed-article-of octets)))))))
+
+; KEYSTONE.  An ordinary article's scope is exactly what it was before
+; PKT-400: the base groups, untouched.  Only control articles gain groups.
+(defthm fn-own-sub-feed-groups-of-an-ordinary-article
+  (implies (not (equal (car (fn-own-feed-control-of (fn-own-sub-octets sub))) :control))
+           (equal (fn-own-sub-feed-groups sub)
+                  (fn-own-sub-feed-base-groups sub)))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-feed-groups fn-own-feed-control-of
+                                   fn-own-feed-control-groups-of)
+                                  (fn-ctl-classify fn-own-feed-article-of
+                                   fn-own-sub-feed-base-groups fn-own-sub-octets)))))
+
+(defthm fn-own-sub-feed-groups-match-of-a-control-article
+  (implies (equal (car (fn-own-feed-control-of (fn-own-sub-octets sub))) :control)
+           (equal (fn-own-feed-any-matchp w (fn-own-sub-feed-groups sub))
+                  (or (fn-own-feed-any-matchp w (fn-own-sub-feed-base-groups sub))
+                      (fn-own-feed-group-matchp
+                       w (fn-record-string-octets
+                          (fn-ctl-filing-group
+                           (cadr (fn-own-feed-control-of (fn-own-sub-octets sub))))))
+                      (fn-own-feed-any-matchp w (fn-own-feed-groups-of (fn-own-sub-octets sub))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-feed-groups)
+                                  (fn-own-feed-control-of fn-own-feed-control-groups-of
+                                   fn-own-feed-group-matchp fn-ctl-filing-group
+                                   fn-record-string-octets fn-own-feed-groups-of
+                                   fn-own-sub-feed-base-groups fn-own-sub-octets)))))
+
+(defthm fn-own-feed-new-targets-keeps-an-unqueued-name
+  (implies (and (member-equal name names)
+                (not (consp (fn-feed-find msgid (fn-feed-queue (fn-own-feed-find name tbl))))))
+           (member-equal name (fn-own-feed-new-targets names tbl msgid)))
+  :hints (("Goal" :in-theory (enable fn-own-feed-new-targets))))
+
+; KEYSTONE (PKT-400), over the function the host calls.  A control article
+; in flight is a target of every peer of the table whose outbound half is
+; configured, whose wildmat matches a group the article's Newsgroups names OR
+; its filing group (control.cancel for a cancel), whose path-identity the
+; Path does not name, which is not the peer it came from, and whose feed does
+; not already hold the Message-ID.  Before PKT-400 a signed cancel of a
+; local.general article was offered under control.cancel alone, so a friend
+; whose wildmat was local.* never received it.
+(defthm fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group
+  (let* ((sub (fn-own-inflight o))
+         (octets (fn-own-sub-octets sub))
+         (tbl (fn-own-feeds o))
+         (rec (fn-own-feed-record-of name tbl))
+         (wildmat (fn-cfg-peer-outbound-groups rec)))
+    (implies (and sub
+                  (fn-own-feed-tablep tbl)
+                  (fn-own-feed-entry-of name tbl)
+                  (equal (car (fn-own-feed-control-of octets)) :control)
+                  (fn-own-feed-outboundp rec)
+                  (or (fn-own-feed-any-matchp wildmat (fn-own-feed-groups-of octets))
+                      (fn-own-feed-group-matchp
+                       wildmat
+                       (fn-record-string-octets
+                        (fn-ctl-filing-group (cadr (fn-own-feed-control-of octets))))))
+                  (not (fn-path-names-p (fn-own-feed-path-of octets)
+                                        (fn-record-string-octets
+                                         (fn-cfg-peer-path-identity rec))))
+                  (not (equal (fn-own-sub-origin sub) name))
+                  (not (consp (fn-feed-find (fn-own-sub-msgid sub)
+                                            (fn-feed-queue (fn-own-feed-find name tbl))))))
+             (member-equal name (fn-own-submission-targets o))))
+  :hints (("Goal"
+           :use ((:instance fn-own-feed-targets-omit-no-offerable-peer
+                            (tbl (fn-own-feeds o))
+                            (origin (fn-own-sub-origin (fn-own-inflight o)))
+                            (groups (fn-own-sub-feed-groups (fn-own-inflight o)))
+                            (path (fn-own-feed-path-of (fn-own-sub-octets (fn-own-inflight o)))))
+                 (:instance fn-own-sub-feed-groups-match-of-a-control-article
+                            (sub (fn-own-inflight o))
+                            (w (fn-cfg-peer-outbound-groups
+                                (fn-own-feed-record-of name (fn-own-feeds o)))))
+                 (:instance fn-own-feed-new-targets-keeps-an-unqueued-name
+                            (names (fn-own-feed-targets
+                                    (fn-own-feeds o)
+                                    (fn-own-sub-origin (fn-own-inflight o))
+                                    (fn-own-sub-feed-groups (fn-own-inflight o))
+                                    (fn-own-feed-path-of
+                                     (fn-own-sub-octets (fn-own-inflight o)))))
+                            (tbl (fn-own-feeds o))
+                            (msgid (fn-own-sub-msgid (fn-own-inflight o)))))
+           :in-theory (e/d (fn-own-submission-targets fn-own-feed-offerablep)
+                           (fn-own-feed-targets-omit-no-offerable-peer
+                            fn-own-sub-feed-groups-match-of-a-control-article
+                            fn-own-feed-new-targets-keeps-an-unqueued-name
+                            fn-own-feed-targets fn-own-feed-new-targets
+                            fn-own-sub-feed-groups fn-own-feed-control-of
+                            fn-own-feed-groups-of fn-own-feed-path-of
+                            fn-own-feed-group-matchp fn-own-feed-any-matchp
+                            fn-ctl-filing-group fn-record-string-octets
+                            fn-path-names-p fn-own-feed-tablep
+                            fn-own-feed-entry-of fn-own-feed-record-of
+                            fn-own-feed-find fn-own-sub-octets fn-own-sub-origin
+                            fn-own-sub-msgid fn-own-feed-outboundp
+                            fn-own-sub-feed-base-groups)))))
+
+; KEYSTONE (the other direction).  The widening is exactly those groups: a
+; target of a control article matches its base groups, its Newsgroups names
+; or its filing group, and nothing else put it there.
+(defthm fn-own-submission-target-of-a-control-article-is-in-its-scope
+  (let* ((sub (fn-own-inflight o))
+         (octets (fn-own-sub-octets sub))
+         (tbl (fn-own-feeds o))
+         (wildmat (fn-cfg-peer-outbound-groups (fn-own-feed-record-of name tbl))))
+    (implies (and (fn-own-feed-tablep tbl)
+                  (member-equal name (fn-own-submission-targets o))
+                  (equal (car (fn-own-feed-control-of octets)) :control))
+             (or (fn-own-feed-any-matchp wildmat (fn-own-sub-feed-base-groups sub))
+                 (fn-own-feed-any-matchp wildmat (fn-own-feed-groups-of octets))
+                 (fn-own-feed-group-matchp
+                  wildmat
+                  (fn-record-string-octets
+                   (fn-ctl-filing-group (cadr (fn-own-feed-control-of octets))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-own-submission-targets-are-feed-targets)
+                 (:instance fn-own-feed-target-is-in-scope
+                            (tbl (fn-own-feeds o))
+                            (origin (fn-own-sub-origin (fn-own-inflight o)))
+                            (groups (fn-own-sub-feed-groups (fn-own-inflight o)))
+                            (path (fn-own-feed-path-of (fn-own-sub-octets (fn-own-inflight o)))))
+                 (:instance fn-own-sub-feed-groups-match-of-a-control-article
+                            (sub (fn-own-inflight o))
+                            (w (fn-cfg-peer-outbound-groups
+                                (fn-own-feed-record-of name (fn-own-feeds o))))))
+           :in-theory (disable fn-own-submission-targets-are-feed-targets
+                               fn-own-feed-target-is-in-scope
+                               fn-own-sub-feed-groups-match-of-a-control-article
+                               fn-own-submission-targets fn-own-feed-targets
+                               fn-own-sub-feed-groups fn-own-feed-control-of
+                               fn-own-feed-groups-of fn-own-feed-path-of
+                               fn-own-feed-group-matchp fn-own-feed-any-matchp
+                               fn-ctl-filing-group fn-record-string-octets
+                               fn-own-feed-tablep fn-own-feed-record-of
+                               fn-own-sub-octets fn-own-sub-origin
+                               fn-own-sub-feed-base-groups))))
+
+; The rules above rewrite the classification to the article parse; a book
+; that includes this one must not see the parser open.
+(in-theory (disable fn-own-feed-control-of-is-the-filing-classification
+                    fn-ctl-classify-control-has-a-verb
+                    fn-own-feed-any-matchp-of-append
+                    fn-own-feed-any-matchp-of-true-list-fix
+                    fn-own-feed-control-groups-of-names-newsgroups-and-filing-group
+                    fn-own-sub-feed-groups-of-an-ordinary-article
+                    fn-own-sub-feed-groups-match-of-a-control-article
+                    fn-own-feed-new-targets-keeps-an-unqueued-name
+                    fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group))

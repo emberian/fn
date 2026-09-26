@@ -1769,7 +1769,57 @@
 ; obligation.  Every remaining target must have room before any article
 ; commit is attempted, so a full feed cannot turn a durable acceptance into
 ; a silently lost obligation.
-(defun fn-own-sub-feed-groups (sub)
+;
+; A control article's scope (PKT-400, RFC 5537 sections 3.6 and 5.3).  A
+; relaying agent selects an article for a peer by the names in its
+; Newsgroups field (section 3.6), and a cancel "SHOULD have the same
+; Newsgroups header field as the message it is cancelling" precisely so
+; that it is relayed to the same servers (section 5.3).  fn FILES a control
+; article in its filing group, control.<verb> (section 3.7;
+; fn-pa-filing-plan), and a local or signed control submission carries that
+; filing group as its only group.  Selecting by it alone meant a friend
+; whose wildmat was `local.*' never received the cancel of a local.general
+; article (the two-machine session of 2026-09-26).  So a control article is
+; offered under the groups its Newsgroups names AND under its filing group:
+; the first is the RFC's relaying rule, the second keeps a peer that asked
+; for `control.cancel' by name.  An ordinary article's scope is unchanged.
+;
+; One parse: the article is read once (fn-own-feed-article-of) and both the
+; classification (books/control-classify.lisp fn-ctl-classify, the one
+; fn-pa-filing-plan uses) and the Newsgroups names (fn-af-relayed-article-check,
+; the view fn-own-feed-groups-of reads) come from that parse.
+(defun fn-own-feed-control-of (octets)
+  (declare (xargs :guard t))
+  (let ((a (fn-own-feed-article-of octets)))
+    (if (null a) nil (fn-ctl-classify a))))
+
+(defun fn-own-feed-control-groups-of (octets)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal"
+                                 :use fn-own-feed-article-of-is-syntax
+                                 :in-theory
+                                 (disable fn-own-feed-article-of-is-syntax
+                                          fn-own-feed-article-of
+                                          fn-ctl-classify
+                                          fn-ctl-filing-group
+                                          fn-record-string-octets)))))
+  (let ((a (fn-own-feed-article-of octets)))
+    (if (null a)
+        nil
+      (let ((c (fn-ctl-classify a)))
+        (if (and (consp c) (eq (car c) :control) (consp (cdr c)))
+            (cons (fn-record-string-octets (fn-ctl-filing-group (cadr c)))
+                  (let ((check (fn-af-relayed-article-check a)))
+                    (if (equal (fn-af-status-kind check) :ok)
+                        (fn-frame-item 2 check)
+                      nil)))
+          nil)))))
+
+; Closed from here on, in and out of the vocabulary: opened, every goal
+; about a submission pays for the article grammar.
+(in-theory (disable fn-own-feed-control-of fn-own-feed-control-groups-of))
+
+(defun fn-own-sub-feed-base-groups (sub)
   (declare (xargs :guard t))
   (let ((d (fn-own-sub-decision sub)))
     (if (fn-peer-submissionp d)
@@ -1779,6 +1829,16 @@
         ; authored bytes, including legacy articles with no Injection-Info.
         (fn-own-feed-groups-of (fn-own-sub-octets sub))
       (fn-inj-decision-groups d))))
+
+; The groups the feed matches peers' wildmats against: the base groups,
+; and for a control article its Newsgroups names and filing group too.
+(defun fn-own-sub-feed-groups (sub)
+  (declare (xargs :guard t))
+  (let ((base (fn-own-sub-feed-base-groups sub))
+        (ctl (fn-own-feed-control-groups-of (fn-own-sub-octets sub))))
+    (if (consp ctl)
+        (append (true-list-fix base) ctl)
+      base)))
 
 (defun fn-own-submission-targets (o)
   (declare (xargs :guard t))
@@ -2430,6 +2490,7 @@
     fn-own-open-peer fn-own-transit-subp fn-own-transit-inflightp
     fn-own-transit-outcome
     fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
+    fn-own-sub-feed-base-groups
     fn-own-sub-feed-groups fn-own-submission-targets
     fn-own-submission-intent-result fn-own-submission-intent-records
     fn-own-submission-resolution-records

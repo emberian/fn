@@ -1859,3 +1859,181 @@
                        (fn-own-feeds (cdr (fn-own-transit-outcome
                                            *own-tr-p-bad* 4 :want nil :durable))))
                       (own-origin-entry *own-tr-p-bad* (fn-own-feeds *own-tr-p-bad*)))))
+
+; -----------------------------------------------------------------------------
+; PKT-400 (PRF-163): a control article is offered under its Newsgroups names
+; and its filing group (books/owner-feed-subject.lisp,
+; fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group
+; and fn-own-submission-target-of-a-control-article-is-in-its-scope; RFC 5537
+; sections 3.6 and 5.3).  Every owner below is reached through the real
+; control submission and take, over *own-after-post* with a configured feed.
+
+(defconst *own-cancel-msgid* (fn-nntp-string-octets "<cancel@example.invalid>"))
+(defconst *own-cancel-filed* (list (fn-nntp-string-octets "control.cancel")))
+(defun own-article-octets (path newsgroups control)
+  (append (if path
+              (append (fn-nntp-string-octets (string-append "Path: " path)) '(13 10))
+            nil)
+          (fn-nntp-string-octets "From: cli@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: withdraw") '(13 10)
+          (fn-nntp-string-octets (string-append "Newsgroups: " newsgroups)) '(13 10)
+          (fn-nntp-string-octets "Message-ID: <cancel@example.invalid>") '(13 10)
+          (if control
+              (append (fn-nntp-string-octets "Control: cancel <control@example.invalid>")
+                      '(13 10))
+            nil)
+          '(13 10)
+          (fn-nntp-string-octets "Withdrawn by its author.") '(13 10)))
+(defconst *own-ctl-peer-record*
+  (fn-cfg-peer-make "ctl" "ctl.example" '(:nntp "127.0.0.1" 2120)
+                    nil '("control.cancel" nil 1 1) '(:source-address "127.0.0.2")))
+(defconst *own-ctl-cfg*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy
+                                          "path-identity" "own.example")
+                                         (fn-cfg-set-peer-delta
+                                          *own-ctl-peer-record*)))
+                           *fn-cfg-default-stamp*))))
+(defun own-local-taken (cfg groups octets)
+  (fn-own-take-submission
+   (fn-own-control-submit (fn-own-feeds-reconfigure *own-after-post* cfg)
+                          *own-cancel-msgid* groups octets)))
+(defun own-sub-octets-of (o) (fn-own-sub-octets (fn-own-inflight o)))
+(defun own-ctl-verb-group (o)
+  (fn-record-string-octets
+   (fn-ctl-filing-group (cadr (fn-own-feed-control-of (own-sub-octets-of o))))))
+; The complete antecedent of the keystone, literal by literal.
+(defun own-pkt400-antecedent (o name)
+  (let* ((sub (fn-own-inflight o))
+         (octets (fn-own-sub-octets sub))
+         (tbl (fn-own-feeds o))
+         (rec (fn-own-feed-record-of name tbl))
+         (wildmat (fn-cfg-peer-outbound-groups rec)))
+    (and sub
+         (fn-own-feed-tablep tbl)
+         (fn-own-feed-entry-of name tbl)
+         (equal (car (fn-own-feed-control-of octets)) :control)
+         (fn-own-feed-outboundp rec)
+         (or (fn-own-feed-any-matchp wildmat (fn-own-feed-groups-of octets))
+             (fn-own-feed-group-matchp wildmat (own-ctl-verb-group o)))
+         (not (fn-path-names-p (fn-own-feed-path-of octets)
+                               (fn-record-string-octets
+                                (fn-cfg-peer-path-identity rec))))
+         (not (equal (fn-own-sub-origin sub) name))
+         (not (consp (fn-feed-find (fn-own-sub-msgid sub)
+                                   (fn-feed-queue (fn-own-feed-find name tbl)))))
+         t)))
+
+; Witness A (the Newsgroups arm; the two-machine session's case).  A signed
+; or CLI cancel carries control.cancel as its only group; its Newsgroups is
+; fn.letters; the peer "out" asks for fn.*.  "out" is the target, and the
+; pre-PKT-400 scope (the base groups alone) did not match.
+(defconst *own-cancel-a*
+  (own-local-taken *own-out-cfg* *own-cancel-filed*
+                   (own-article-octets nil "fn.letters" t)))
+(assert-event (own-pkt400-antecedent *own-cancel-a* "out"))
+(assert-event (equal (fn-own-submission-targets *own-cancel-a*) '("out")))
+(assert-event (equal (fn-own-feed-control-of (own-sub-octets-of *own-cancel-a*))
+                     (fn-ctl-classify-octets (own-sub-octets-of *own-cancel-a*))))
+(assert-event (equal (own-ctl-verb-group *own-cancel-a*)
+                     (fn-nntp-string-octets "control.cancel")))
+(assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
+                                             (own-sub-octets-of *own-cancel-a*))))
+(must-fail (assert-event (fn-own-feed-any-matchp
+                          "fn.*" (fn-own-sub-feed-base-groups
+                                  (fn-own-inflight *own-cancel-a*)))))
+; The host's carried intent names the same target.
+(assert-event (equal (fn-icar-submission-targets
+                      *own-cancel-a* (fn-icar-carry-of (fn-own-inflight *own-cancel-a*)))
+                     '("out")))
+
+; Witness B (the filing-group arm).  Newsgroups local.general; the peer
+; "ctl" asks for control.cancel by name.  It is the target through the
+; filing group alone.
+(defconst *own-cancel-b*
+  (own-local-taken *own-ctl-cfg* *own-cancel-filed*
+                   (own-article-octets nil "local.general" t)))
+(assert-event (own-pkt400-antecedent *own-cancel-b* "ctl"))
+(assert-event (equal (fn-own-submission-targets *own-cancel-b*) '("ctl")))
+(must-fail (assert-event (fn-own-feed-any-matchp
+                          "control.cancel"
+                          (fn-own-feed-groups-of (own-sub-octets-of *own-cancel-b*)))))
+
+; The scope keystone's conclusion on both witnesses.
+(assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
+                                             (own-sub-octets-of *own-cancel-a*))))
+(assert-event (fn-own-feed-group-matchp "control.cancel" (own-ctl-verb-group *own-cancel-b*)))
+
+; Hypothesis removal, one owner each; every other literal is checked true,
+; the omitted one false, and the conclusion fails.
+; (1) the match: Newsgroups local.general, peer "out" asks for fn.*.
+(defconst *own-cancel-nomatch*
+  (own-local-taken *own-out-cfg* *own-cancel-filed*
+                   (own-article-octets nil "local.general" t)))
+(assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-cancel-nomatch*)))
+                     :control))
+(assert-event (fn-own-feed-outboundp (fn-own-feed-record-of "out" (fn-own-feeds *own-cancel-nomatch*))))
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-nomatch* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-nomatch*))))
+; (2) control: an ORDINARY article whose Newsgroups (fn.letters) matches,
+; submitted under local.general: its scope is its base groups, unchanged.
+(defconst *own-ordinary-c*
+  (own-local-taken *own-out-cfg* (list (fn-nntp-string-octets "local.general"))
+                   (own-article-octets nil "fn.letters" nil)))
+(assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
+                                             (own-sub-octets-of *own-ordinary-c*))))
+(assert-event (equal (fn-own-feed-control-of (own-sub-octets-of *own-ordinary-c*)) :ordinary))
+(assert-event (equal (fn-own-sub-feed-groups (fn-own-inflight *own-ordinary-c*))
+                     (fn-own-sub-feed-base-groups (fn-own-inflight *own-ordinary-c*))))
+(must-fail (assert-event (own-pkt400-antecedent *own-ordinary-c* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-ordinary-c*))))
+; (3) the Path: out.example already in it.
+(defconst *own-cancel-seen*
+  (own-local-taken *own-out-cfg* *own-cancel-filed*
+                   (own-article-octets "out.example!x" "fn.letters" t)))
+(assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
+                                             (own-sub-octets-of *own-cancel-seen*))))
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-seen* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-seen*))))
+; (4) the origin: the same cancel arriving FROM "out" as transit.
+(defconst *own-cancel-from-out*
+  (let ((sub (fn-own-inflight *own-cancel-a*)))
+    (own-with-inflight
+     *own-cancel-a*
+     (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+                      (fn-peer-make-submission "out" :ihave *own-cancel-msgid*
+                                               (own-article-octets "p.example!x" "fn.letters" t))))))
+(assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-cancel-from-out*)))
+                     :control))
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-from-out* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-from-out*))))
+; The same transit cancel from "p" does reach "out": transit is widened too.
+(defconst *own-cancel-from-p*
+  (let ((sub (fn-own-inflight *own-cancel-a*)))
+    (own-with-inflight
+     *own-cancel-a*
+     (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+                      (fn-peer-make-submission "p" :ihave *own-cancel-msgid*
+                                               (own-article-octets "p.example!x" "local.general" t))))))
+(defconst *own-ctl-from-p*
+  (fn-own-with-feeds *own-cancel-from-p* (fn-own-feeds *own-cancel-b*)))
+(assert-event (own-pkt400-antecedent *own-ctl-from-p* "ctl"))
+(assert-event (equal (fn-own-submission-targets *own-ctl-from-p*) '("ctl")))
+; (5) the queue: once "out" holds the Message-ID the host's targets are empty.
+(defconst *own-cancel-held*
+  (fn-own-with-feeds *own-cancel-a* (fn-own-feed-durable *own-cancel-a*
+                                                         (fn-own-inflight *own-cancel-a*))))
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-held* "out")))
+(assert-event (null (fn-own-submission-targets *own-cancel-held*)))
+; (6) the table entry: "q" is no peer of the table (its record is nil, so
+; the outbound literal fails with it: labelled structural, not reachable
+; separately).
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-a* "q")))
+(assert-event (not (member-equal "q" (fn-own-submission-targets *own-cancel-a*))))
+; (7) nothing in flight: no target.
+(assert-event (null (fn-own-inflight (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
+(assert-event (null (fn-own-submission-targets
+                     (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
