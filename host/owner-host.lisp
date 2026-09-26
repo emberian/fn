@@ -61,6 +61,14 @@
 ; The served article bound installed with the profile (PKT-103).
 (include-book "../books/owner-served-bound")
 (include-book "../books/topic-history-local-proposals")
+;; This file names what it calls, so every loader gets the same world: the
+;; native images (host/native/build.lisp) and the Python owner bridge
+;; (tools/bridge_image.py OWNER_FORMS), which boots from this file alone.
+;; fn-owner-io calls fn-rcon-ocfg-io; fn-owner-prepare-buffer reads the
+;; fn-octets buffer and calls fn-rclb-existing-action (D13, STO-014).
+(include-book "../books/records-concrete-owner")
+(include-book "../books/octets-stobj")
+(include-book "../books/store-reclaim-buffer")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to

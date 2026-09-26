@@ -654,10 +654,10 @@ def python_acl2_forms(root: Path):
 def acl2_findings(root: Path) -> tuple[list[dict], dict]:
     from tools import ledger
 
-    books = {relative: ledger.analyze_book(path, relative)
-             for path, relative in ledger.book_paths()}
-    hosts = ledger.load_hosts()
-    tree = ledger.Tree(books, ledger.makefile_roots(), hosts)
+    # The ledger's analysed tree, computed once per process (ledger.load_tree);
+    # both halves of this check built it separately (harness-repair).
+    tree = ledger.load_tree()
+    books, hosts = tree.books, tree.hosts
     macros: set[str] = set()
     for book in books.values():
         macros |= book.macros
@@ -1009,10 +1009,10 @@ def raw_arity_scan(sources: dict[str, list], exclude: set[str] = frozenset(),
 def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
     from tools import ledger
 
-    books = {relative: ledger.analyze_book(path, relative)
-             for path, relative in ledger.book_paths()}
-    hosts = ledger.load_hosts()
-    tree = ledger.Tree(books, ledger.makefile_roots(), hosts)
+    # The ledger's analysed tree, computed once per process (ledger.load_tree);
+    # both halves of this check built it separately (harness-repair).
+    tree = ledger.load_tree()
+    books, hosts = tree.books, tree.hosts
     raw = ledger.raw_host_paths(tree)
     sources = {relative: hosts[relative].forms for relative in raw}
     macros: set[str] = set()
