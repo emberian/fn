@@ -155,6 +155,9 @@
 ;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
 (include-book "books/store-history-required")
 (ld "host/store-host.lisp" :ld-error-action :error)
+;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
+;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+(include-book "books/store-checkpoint-buffer")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the

@@ -2146,6 +2146,32 @@
         "planning/evidence/source-corpus-2-2026-09-26.md",
         "planning/evidence/source-corpus-2-2026-09-26/native-7.log"
       ]
+    },
+    {
+      "id": "SCN-078",
+      "title": "The state checkpoint is published as a plan over the octet buffer, the file the list codec specified, and `store checkpoint` completes at N = 10,000 x 32 KiB",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010",
+        "REP-011"
+      ],
+      "steps": [
+        "On a live local buffer, plan a ground checkpoint-shaped value at segment sizes 7 (eight frames), 0 and 1000 (one frame), 56 and 55 (a chunk boundary at the end), and the empty value; compare the plan's octets with fn-scc-file-octets, the buffer with fn-scc-encode, and read the segments back with fn-scc-decode-segments; plan a value the codec refuses.",
+        "On hbox, copies of the wave-d stores (N = 1,000 x 32 KiB, N = 10,000 x 2 KiB, N = 10,000 x 32 KiB; planning/evidence/rep-wave-d-2026-09-25.md section 1) under the same 40G scope: `store checkpoint` timed with GNU time -v (the baseline's conditions), then the owner opened from the checkpoint to its LISTENING line with VmRSS and VmHWM read from /proc.",
+        "tests.test_native_state_checkpoint on the image built from the lane's tree: the corrupt checkpoint falls back to full replay, a running owner refuses the verb, the checkpoint open equals the full replay, and the host's source calls the plan subject.",
+        "For REP-011 (the record's payload as an arena handle), the same harness rows the wave-d baseline has (live heap after collection, allocation per POST, peak residency, reopen, checkpoint, OVER, ARTICLE) at N = 1,000 and N = 10,000 x 2 KiB and x 32 KiB, once the freeze lands under PKT-293's answer."
+      ],
+      "expected": [
+        "Every plan's octets equal fn-scc-file-octets of the value; the buffer holds fn-scc-encode; the reader recovers the value from the plan's segments; the refused value is :unencodable on both sides.",
+        "The N = 10,000 x 32 KiB publication completes inside the 40G scope where the baseline died by heap exhaustion at 32,000 MB after 253 s; the two smaller points publish files of the same octets as before; the numbers are in the record's table.",
+        "The native module passes on both images.",
+        "REP-011's rows are not run in this lane (the freeze did not start: planning/evidence/rep-wave-d-2-2026-09-26.md section 1 and PKT-293); the target stays the brief's: ten thousand 32 KiB articles in well under a gigabyte of live heap."
+      ],
+      "evidence": [
+        "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+      ]
     }
   ]
 }

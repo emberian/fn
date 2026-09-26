@@ -35,6 +35,13 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    ';; fn-rcl-existing-action (list payload) and '
                    'fn-rclb-existing-action (buffer).\n'
                    '(include-book "books/store-reclaim-buffer")\n')
+# rep-wave-d-2: the state checkpoint's publication over the buffer.  The book
+# includes books/octets-stobj itself, so a fixture that omits the buffer
+# includes omits this one too, or the omission is served transitively.
+CHECKPOINT_BUFFER_INCLUDES = (
+    ';; The state checkpoint\'s file octets over the octet buffer (rep-wave-d-2):\n'
+    ';; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.\n'
+    '(include-book "books/store-checkpoint-buffer")\n')
 BUFFER_FINDINGS = [
     "included: host/owner-host.lisp uses fn-octets, defined in "
     "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
@@ -42,6 +49,13 @@ BUFFER_FINDINGS = [
     "included: host/owner-host.lisp uses fn-rclb-existing-action, defined in "
     "books/store-reclaim-buffer.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]
+STORE_NODE_HOST_FINDINGS = [
+    "included: host/store-node-host.lisp uses fn-octets, defined in "
+    "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/store-node-host.lisp",
+    "included: host/store-node-host.lisp uses fn-sccb-plan, defined in "
+    "books/store-checkpoint-buffer.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/store-node-host.lisp"]
 # fn-rcl-existing-action is no longer a finding: host/store-node-host.lisp
 # includes books/store-reclaim itself since test-latency (the Python bridge
 # loads that host file alone).
@@ -152,16 +166,19 @@ class BuildListsCheckTests(unittest.TestCase):
         # whose owner-host.lisp does not.
         text = self.dtn_text()
         self.assertIn(BUFFER_INCLUDES, text)
+        self.assertIn(CHECKPOINT_BUFFER_INCLUDES, text)
         with bare_owner_host() as root:
-            found = check.include_findings(root, text.replace(BUFFER_INCLUDES, ""))
-        self.assertEqual(found, BUFFER_FINDINGS)
+            found = check.include_findings(
+                root, text.replace(BUFFER_INCLUDES, "").replace(CHECKPOINT_BUFFER_INCLUDES, ""))
+        self.assertEqual(found, STORE_NODE_HOST_FINDINGS + BUFFER_FINDINGS)
 
     def test_include_after_the_ld_is_too_late(self):
         # The order matters: an include after the `ld` does not serve it.
-        text = self.dtn_text().replace(BUFFER_INCLUDES, "") + BUFFER_INCLUDES
+        text = (self.dtn_text().replace(BUFFER_INCLUDES, "").replace(CHECKPOINT_BUFFER_INCLUDES, "")
+                + BUFFER_INCLUDES + CHECKPOINT_BUFFER_INCLUDES)
         with bare_owner_host() as root:
             found = check.include_findings(root, text)
-        self.assertEqual(len(found), len(BUFFER_FINDINGS), found)
+        self.assertEqual(len(found), len(STORE_NODE_HOST_FINDINGS) + len(BUFFER_FINDINGS), found)
 
     def test_owner_host_declares_its_own_books(self):
         # The same omission in the real tree is no finding: every loader of
@@ -183,7 +200,8 @@ class BuildListsCheckTests(unittest.TestCase):
             f"included: host/owner-host.lisp uses {name}, defined in {book}, "
             f"which {loader} has not included when it loads host/owner-host.lisp"
             for name, book in (
-                ("fn-octets", "books/octets-stobj.lisp"),
+                # rep-wave-d-2: books/octets-stobj is in STORE_FORMS now (the
+                # store-node host takes the buffer), so fn-octets is served.
                 ("fn-rclb-existing-action", "books/store-reclaim-buffer.lisp"),
                 ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
 

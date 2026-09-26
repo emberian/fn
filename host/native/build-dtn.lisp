@@ -136,6 +136,9 @@
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
+;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
+;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+(include-book "books/store-checkpoint-buffer")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file

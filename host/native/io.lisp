@@ -1812,24 +1812,66 @@ one falls back to full replay."
             (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e)
             (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))))))
 
+(defun fnn-plan-p (plan)
+  "A state checkpoint plan (books/store-checkpoint-buffer.lisp fn-sccb-plan):
+a nonempty list of (HEADER A B TRAILER), header and trailer nonempty octet
+lists, 0 <= A <= B <= the live buffer's fill."
+  (let ((fill (svref (fnn-live-octets) 1)))
+    (and (consp plan)
+         (every (lambda (frame)
+                  (and (consp frame) (= (length frame) 4)
+                       (fnn-octet-list-p (first frame)) (first frame)
+                       (integerp (second frame)) (integerp (third frame))
+                       (<= 0 (second frame) (third frame) fill)
+                       (fnn-octet-list-p (fourth frame)) (fourth frame)))
+                plan))))
+
+(defun fnn-plan-octets (plan)
+  "The plan's octets, fn-sccb-plan-octets transcribed: per frame the header,
+the live buffer's cells A..B and the trailer, into one byte vector of the
+file's size.  The buffer's array is read in place; no list of the file is
+built.  fn-sccb-plan-is-file-octets says this vector is fn-scc-file-octets
+of the value the plan was made from."
+  (let* ((buffer (the fnn-octets (svref (fnn-live-octets) 0)))
+         (total (loop for frame in plan
+                      sum (+ (length (first frame))
+                             (- (third frame) (second frame))
+                             (length (fourth frame)))))
+         (out (fnn-make-octets total))
+         (pos 0))
+    (dolist (frame plan out)
+      (let ((header (first frame)) (a (second frame)) (b (third frame))
+            (trailer (fourth frame)))
+        (replace out header :start1 pos)
+        (incf pos (length header))
+        (replace out buffer :start1 pos :start2 a :end2 b)
+        (incf pos (- b a))
+        (replace out trailer :start1 pos)
+        (incf pos (length trailer))))))
+
 (defun fnn-command-state-checkpoint (root)
   "Publish the exact-state checkpoint of the recovered Store (P3).
 
 The store opens as `recover' does (the exclusive writer lock, so a running
 owner refuses this).  ACL2 extends the checkpoint the open used over the
-records after it, or captures the whole history after a full replay
-(fn-store-sco-publish-octets), and returns the file; the host writes it."
+records after it, or captures the whole history after a full replay, writes
+the file's program into the octet buffer once and returns a plan of segments
+over it (fn-store-sco-publish-plan, books/store-checkpoint-buffer.lisp);
+the host assembles the plan's octets from the buffer's array and writes
+them.  Before this (rep-wave-d-2, 2026-09-26) the file was built as an
+octet list, five to six copies at sixteen bytes per octet, and the verb
+died by heap exhaustion at N = 10,000 x 32 KiB."
   (multiple-value-bind (store records)
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (unwind-protect
          (let* ((segment (fnn-profile-nat 'fn-store-profile-max-record-octets store))
-                (answer (fnn-core-state 'fn-store-sco-publish-octets segment)))
+                (answer (fnn-core-buffer-state 'fn-store-sco-publish-plan segment)))
            (when (eq answer :unencodable)
              (fnn-refuse "the recovered Store state is not encodable as a checkpoint"))
-           (unless (and (consp answer) (fnn-octet-list-p (first answer)) (first answer)
+           (unless (and (consp answer) (fnn-plan-p (first answer))
                         (integerp (second answer)) (= (second answer) (length records)))
              (fnn-fault "ACL2 returned a malformed state checkpoint"))
-           (let ((octets (fnn-octets (first answer))))
+           (let ((octets (fnn-plan-octets (first answer))))
              (fnn-state-checkpoint-write store octets)
              (fnn-out "checkpoint sequence=~d octets=~d ~a"
                       (second answer) (length octets) (fnn-open-report store))
@@ -3397,7 +3439,17 @@ serialized profile when the saved image later starts."
          +fnn-exit-ok+)
         (t (error 'fnn-usage-error :message (format nil "unknown verb ~a" verb)))))))
 
+;;; The collection trigger for every entry of the image, the operator verbs
+;;; included: the owner set it in fnn-owner-run alone (host/native/owner.lisp
+;;; +fnn-owner-gc-nursery-octets+), so `store checkpoint', `recover' and the
+;;; other offline verbs replayed a history under SBCL's default of 5% of the
+;;; dynamic space (1.6 GB at the launcher's 32 GB) and let that much garbage
+;;; pile up between collections (rep-wave-d baseline, section 1.2).  It bounds
+;;; dead memory, never data, and decides nothing ACL2 decides.
+(defparameter +fnn-gc-nursery-octets+ (* 64 1024 1024))
+
 (defun fnn-main ()
+  (setf (sb-ext:bytes-consed-between-gcs) +fnn-gc-nursery-octets+)
   (fnn-open-streams)
   ;; A peer that closed first must surface as EPIPE, never as a signal that
   ;; ends the listener; Python ignores SIGPIPE at interpreter start.
