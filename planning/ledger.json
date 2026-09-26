@@ -990,17 +990,17 @@
     "books": 1008,
     "books_in_root_closure": 1001,
     "roots": 983,
-    "theorems": 14088,
-    "functions": 9820,
-    "assert_events": 15090,
+    "theorems": 14137,
+    "functions": 9831,
+    "assert_events": 15102,
     "must_fails": 1802,
     "prover_refusals": 2,
-    "encapsulates": 73,
+    "encapsulates": 77,
     "guards": {
-      "verified": 2253,
+      "verified": 2255,
       "declared-off": 772,
-      "default-guarded": 5341,
-      "default-unguarded": 1454
+      "default-guarded": 5346,
+      "default-unguarded": 1458
     },
     "suspect_theorems": 135,
     "export_hygiene_warnings": 157,
@@ -4430,26 +4430,30 @@
       "book": "books/bp-primary.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 75,
+      "theorems": 64,
+      "functions": 84,
       "guards": {
-        "verified": 75,
+        "verified": 77,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
+        "default-guarded": 3,
+        "default-unguarded": 4
       },
-      "verify_guards_events": 75,
+      "verify_guards_events": 77,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 15,
+      "defconsts": 16,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 4,
       "includes": [
         "bp-primary-cbor"
       ],
       "system_includes": [
-        "arithmetic/top"
+        "arithmetic-5/top",
+        "arithmetic-5/top",
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas",
+        "ihs/quotient-remainder-lemmas"
       ],
       "suspects": [],
       "read_error": null
@@ -19703,18 +19707,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 2,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 124,
+      "assert_events": 136,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -31540,7 +31544,7 @@
       {
         "function": "fn-bpp-destination",
         "book": "books/bp-primary.lisp",
-        "line": 396,
+        "line": 837,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
           "books/bp-fragment-send.lisp",
@@ -31551,7 +31555,7 @@
       {
         "function": "fn-bpp-report-to",
         "book": "books/bp-primary.lisp",
-        "line": 398,
+        "line": 839,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
           "books/bp-fragment-send.lisp"
@@ -31561,7 +31565,7 @@
       {
         "function": "fn-bpp-lifetime",
         "book": "books/bp-primary.lisp",
-        "line": 401,
+        "line": 842,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
           "books/bp-fragment-send.lisp",
@@ -31572,7 +31576,7 @@
       {
         "function": "fn-bpp-fragment-offset",
         "book": "books/bp-primary.lisp",
-        "line": 402,
+        "line": 843,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
           "books/bp-fragment-send.lisp",
@@ -31583,7 +31587,7 @@
       {
         "function": "fn-bpp-total-adu-length",
         "book": "books/bp-primary.lisp",
-        "line": 403,
+        "line": 844,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
           "books/bp-fragment-send.lisp",
