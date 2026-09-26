@@ -882,6 +882,14 @@ raw owner binds exactly these octets and never resolves a name."
                        :bad)))
   :rule-classes nil)
 
+; The listener block's general rules stay inside it: left enabled for
+; includers, fn-ncfg-memberp-is-member-equal and the append rules reshape
+; native-config-show's parse of the rendered lines (fn-ncfg-show-lines-parse
+; failed to certify with them on, hbox native-r1 2026-09-26).
+(in-theory (disable fn-ncfg-memberp-is-member-equal fn-ncfg-first-of-cons
+                    fn-ncfg-second-of-cons fn-ncfg-octet-listp-of-append
+                    fn-ncfg-len-of-append))
+
 (defun fn-ncfg-listener-refusal (pairs)
   ; Why `[listener] host' is refused, or nil when it is admitted or absent.
   (declare (xargs :guard t))
