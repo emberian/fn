@@ -712,6 +712,65 @@
                             (v (fn-pcb-admission-verdict received snapshots
                                                          carried ed ml)))))))
 
+;; PKT-473 (PRF-184): the verdict of an ACCEPTED transit arm, for the
+;; transit log's verdict field.  fn-pcb-admission-verdict decides under the
+;; off-transit plan, where a revoked principal's carrier is a refusal; on
+;; NNTP transit (TRANSITP) the plan's :revoked arm is accepted as a revoked
+;; composite (PRF-098), so its verdict is :revoked when both observations
+;; verified.  Every other input is the admission verdict.  Host:
+;; host/owner-host.lisp fn-owner-transit-verdict, called by
+;; host/native/owner.lisp fnn-owner-attempt-transit on each accepted arm
+;; (absent, carried, current or revoked) before the kind-4 commit.
+(defun fn-pcb-transit-verdict (received snapshots carried transitp ed ml)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pa-current-plan received snapshots carried transitp)))
+    (if (and (consp plan) (eq (car plan) :revoked))
+        (if (and (eq ed :verified) (eq ml :verified))
+            :revoked
+          :cryptographically-invalid)
+      (fn-pcb-admission-verdict received snapshots carried ed ml))))
+
+; Off its :revoked arm the transit plan is the off-transit plan: TRANSITP
+; only decides whether a revoked principal's tombstone is an arm of its own.
+(defthm fn-pcb-transit-plan-off-its-revoked-arm
+  (implies (not (equal (car (fn-pa-current-plan received snapshots carried
+                                                 transitp))
+                       :revoked))
+           (equal (fn-pa-current-plan received snapshots carried transitp)
+                  (fn-pa-current-plan received snapshots carried nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
+                                  (fn-pa-carrier-form fn-pa-carriesp
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment fn-stxk-p
+                                   fn-stxk-keyring-generation
+                                   fn-pa-revoked-tombstonep)))))
+
+; KEYSTONE (no hypotheses).  On each accepted arm of the transit plan the
+; verdict names that arm: an absent carrier :unsigned, the D23 arm
+; :carried, a current enrolment with both observations verified :verified,
+; the revoked arm with both verified :revoked; and off the revoked arm it
+; is the admission verdict (so a refusal's verdict is unchanged).
+(defthm fn-pcb-transit-verdict-names-the-accepted-arm
+  (let ((plan (fn-pa-current-plan received snapshots carried transitp))
+        (v (fn-pcb-transit-verdict received snapshots carried transitp ed ml)))
+    (and (implies (equal plan :absent) (equal v :unsigned))
+         (implies (equal (car plan) :carried) (equal v :carried))
+         (implies (and (equal (car plan) :ok)
+                       (equal ed :verified) (equal ml :verified))
+                  (equal v :verified))
+         (implies (and (equal (car plan) :revoked)
+                       (equal ed :verified) (equal ml :verified))
+                  (equal v :revoked))
+         (implies (not (equal (car plan) :revoked))
+                  (equal v (fn-pcb-admission-verdict received snapshots
+                                                     carried ed ml)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pcb-transit-verdict fn-pcb-admission-verdict)
+                                  (fn-pa-current-plan fn-pcb-refusal-class))
+           :use (fn-pcb-transit-plan-off-its-revoked-arm
+                 fn-pcb-admission-verdict-names-its-class))))
+
 (in-theory (disable fn-pcb-usage fn-pcb-tally-records
                     fn-pcb-usage-extend fn-pcb-cache-validp fn-pcb-admission
                     fn-pcb-carried-event fn-pcb-admitted-from

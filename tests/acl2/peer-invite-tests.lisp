@@ -110,14 +110,15 @@
                                                    :verified
                                                    *fn-pinv-invitation-kind* nil)))
 
-; Already enrolled with exactly these keys: the accept step refuses, and
-; the keystone's "not already enrolled" conclusion fails there.
+; Already enrolled with exactly these keys: since PKT-473 the accept step
+; answers (:current), nothing to enrol (the record plan refuses a replay;
+; below), so the keystone's enrolment conclusion does not hold there.
 (defmacro pit-a-snapshots ()
   ' (list (fn-pinv-at 1 (pit-accept))))
 (assert-event (fn-pinv-enrolled-withp (pit-a) *pit-a-keys* (pit-a-snapshots)))
 (assert-event (equal (fn-pinv-accept-step 4 5 3 (pit-inv) *pit-a-ml* :verified
                                           :verified (pit-a-snapshots))
-                     '(:refused :already-enrolled)))
+                     '(:current)))
 
 ; -----------------------------------------------------------------------------
 ; Issue.  Witness: A records its invitation; a replayed nonce is refused
@@ -487,14 +488,22 @@
                      :enrol))
 (must-fail (assert-event (fn-pinv-inviter-addressedp
                           (fn-pinv-received-source (pit-other-inv)))))
-; (2) The inviter already enrolled here: refused before any record, and
-; "not yet enrolled" fails.
+; (2) The inviter already enrolled here (PKT-473): its peer is configured
+; all the same (fn-pinv-accept-of-a-current-inviter-configures-it, below);
+; with the peer's rows already there (a replay) or no address, refused
+; `already-enrolled' before any record.
 (assert-event (equal (fn-pinv-accept-record-plan (pit-inv) *pit-a-ml* :verified
                                                  :verified (pit-a-snapshots)
                                                  nil)
+                     (list :configure (list (fn-cfg-set-peer-delta (pit-inviter-peer))))))
+(assert-event (equal (fn-pinv-accept-record-plan (pit-inv) *pit-a-ml* :verified
+                                                 :verified (pit-a-snapshots)
+                                                 (fn-cfg-peers (pit-anext)))
                      '(:refused :already-enrolled)))
-(must-fail (assert-event (not (fn-pinv-enrolled-withp (pit-a) *pit-a-keys*
-                                                      (pit-a-snapshots)))))
+(assert-event (equal (fn-pinv-accept-record-plan (pit-other-inv) *pit-a-ml* :verified
+                                                 :verified (pit-a-snapshots)
+                                                 nil)
+                     '(:refused :already-enrolled)))
 ; (3) Another peer record under the name: refused, and "no configured peer
 ; has the name" fails.
 (defconst *pit-a-taken*
@@ -759,3 +768,76 @@
 ; no current enrolment in its keyring.
 (assert-event (equal (car (pit-confirm-step)) :enrol))
 (must-fail (assert-event (fn-pinv-enrolled-withp (pit-b) *pit-b-keys* nil)))
+
+; =============================================================================
+; PKT-473 (PRF-184): the accept of an inviter already current here.
+;
+; fn-pinv-accept-of-a-current-inviter-configures-it.  Reachable witness: B's
+; keyring holds A at exactly the invitation's keys (pit-a-snapshots, A's
+; enrolment, which is its current one whatever its generation: the rule
+; reads only fn-pinv-enrolled-withp); every antecedent, then both
+; conclusions.
+(assert-event (equal (car (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
+                                               :verified (pit-a-snapshots)))
+                     :enrol))
+(assert-event (fn-pinv-enrolled-withp (pit-a) *pit-a-keys* (pit-a-snapshots)))
+(assert-event (equal (fn-pinv-received-keys (pit-inv)) *pit-a-keys*))
+(assert-event (fn-pinv-inviter-addressedp (fn-pinv-received-source (pit-inv))))
+(assert-event (fn-cfg-peerp (pit-inviter-peer)))
+(assert-event (not (consp (fn-cfg-rows-with-key nil (fn-cfg-peer-name (pit-inviter-peer))))))
+(defun pit-current-conclusion (received snapshots peers)
+  (and (equal (fn-pinv-accept-record-plan received *pit-a-ml* :verified :verified
+                                          snapshots peers)
+              (list :configure (list (fn-cfg-set-peer-delta (pit-inviter-peer)))))
+       (equal (fn-pinv-accept-step 4 5 3 received *pit-a-ml* :verified :verified
+                                   snapshots)
+              (list :current))))
+(assert-event (pit-current-conclusion (pit-inv) (pit-a-snapshots) nil))
+; Each hypothesis dropped, the others kept: A unknown here (the step
+; enrols); no address (refused already-enrolled, no record); the name
+; taken (peer-name-taken); a tampered invitation (unverified).
+(assert-event (not (fn-pinv-enrolled-withp (pit-a) *pit-a-keys* nil)))
+(assert-event (not (pit-current-conclusion (pit-inv) nil nil)))
+(assert-event (not (fn-pinv-inviter-addressedp (fn-pinv-received-source (pit-other-inv)))))
+(assert-event (not (pit-current-conclusion (pit-other-inv) (pit-a-snapshots) nil)))
+(assert-event (consp (fn-cfg-rows-with-key *pit-a-taken* "a.example")))
+(assert-event (not (pit-current-conclusion (pit-inv) (pit-a-snapshots) *pit-a-taken*)))
+(assert-event (not (equal (car (fn-pinv-accept-plan (pit-tampered) *pit-a-ml* :verified
+                                                    :refused (pit-a-snapshots)))
+                          :enrol)))
+(assert-event (not (equal (fn-pinv-accept-step 4 5 3 (pit-tampered) *pit-a-ml* :verified
+                                               :refused (pit-a-snapshots))
+                          (list :current))))
+
+; fn-pinv-accept-step-current-only-for-a-bound-current-inviter: the witness's
+; step is (:current) and both conclusions hold; a keyring where A has moved
+; on (pit-a-moved) is refused not-current-keys, never (:current).
+(assert-event (fn-pinv-bound-document-p (pit-inv) *pit-a-ml* :verified :verified
+                                        *fn-pinv-invitation-kind* (pit-a-snapshots)))
+(assert-event (not (equal (fn-pinv-accept-step 1 2 3 (pit-inv) *pit-a-ml* :verified
+                                               :verified (pit-a-moved))
+                          (list :current))))
+(assert-event (not (fn-pinv-enrolled-withp (pit-a) *pit-a-keys* (pit-a-moved))))
+
+; fn-pinv-accept-words-are-the-owners-plan: under the keyring where A is
+; current, under the empty keyring, and under B's own keyring, the words
+; are the plan; with the hypothesis dropped (a keyring where A has moved on,
+; the plan refused) the words are not the plan.
+(assert-event (equal (fn-pinv-accept-words (pit-inv) *pit-a-ml* :verified :verified)
+                     (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified :verified
+                                          (pit-a-snapshots))))
+(assert-event (equal (fn-pinv-accept-words (pit-inv) *pit-a-ml* :verified :verified)
+                     (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified :verified nil)))
+(assert-event (not (equal (car (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
+                                                    :verified (pit-a-moved)))
+                          :enrol)))
+(assert-event (not (equal (fn-pinv-accept-words (pit-inv) *pit-a-ml* :verified :verified)
+                          (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified :verified
+                                               (pit-a-moved)))))
+; The acceptance source is built from those words: under every keyring the
+; CLI's source is the same document.
+(assert-event (consp (fn-pinv-acceptance-source 1790000000000 (pit-inv) *pit-a-ml*
+                                                :verified :verified (pit-b)
+                                                *pit-b-token* *pit-b-keys*
+                                                (fn-pinv-text "b.example")
+                                                (fn-pinv-text "-"))))

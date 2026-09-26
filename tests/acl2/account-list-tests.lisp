@@ -41,11 +41,12 @@
                 text)
         (not (search "pending" text))
         (not (search (fn-acct-code-digest-text *alt-code*) text)))))
-; The older report (books/accounts.lisp fn-acct-list-report) listed the
-; binding row as `pending expires ' with an empty expiry: the defect.
+; The older report (books/accounts.lisp fn-acct-list-report, removed by
+; PKT-473) listed the binding row as `pending expires ' with an empty expiry;
+; this report never does.
 (assert-event
- (search (concatenate 'string "pending expires " (string #\Newline))
-         (fn-record-octets-string (fn-acct-list-report (alt-v3)))))
+ (not (search (concatenate 'string "pending expires " (string #\Newline))
+              (fn-record-octets-string (fn-acct-kinds-list-report (alt-v3))))))
 
 ; fn-acct-list-word-is-pending-only-for-a-pending-row, both sides.
 (assert-event

@@ -225,6 +225,20 @@ carrier). None is `verified`, and a present carrier is never the unsigned
 arm (`fn-pcb-present-carrier-not-accepted-has-a-class`). The class is the
 transit refusal's log detail; the served POST keeps its own words.
 
+The transit log line names the verdict beside the detail on every arm. A
+refusal prints `detail=CLASS verdict=VERDICT`, the class and the seven-name
+admission verdict (`fn-pcb-transit-refusal-detail`). An accepted arm prints
+its own verdict (PKT-473, PRF-184): `detail=none verdict=verified`,
+`detail=carried verdict=carried`, `detail=revoked verdict=revoked` (PRF-098's
+revoked composite), `detail=none verdict=unsigned`, and
+`detail=key-change-refused verdict=verified` when a verified statement's key
+change was refused. The verdict is `fn-pcb-transit-verdict`, read by
+`fnn-owner-attempt-transit` through `fn-owner-transit-verdict` before the
+kind-4 commit. On each accepted arm it names that arm, and elsewhere it is
+the admission verdict (`fn-pcb-transit-verdict-names-the-accepted-arm`).
+`books/owner-log.lisp` `fn-olog-detail-fields` prints it. The four class
+words stay where an older reader finds them.
+
 NNT-015: a boundary carries articles of principals this node has not
 enrolled only within its operator-set charge and count budget, whose usage
 is the projection of the committed carried records, each exhaustion refused
@@ -1656,10 +1670,18 @@ NAMESPACE`; `keys` is grantable beside `cancel`.
 
 **Outcomes.** The article and its key change are two Store transactions,
 and their outcomes are reported apart (D13): a Store refusal of the key
-change leaves the statement accepted (the poster or peer is answered as
-accepted), and the transit log line carries `detail=key-change-refused`
-and the owner log `key-statement enrol-successor refused` (or `revoke
-refused`). An uncertain key-change commit is an uncertain outcome and a
+change leaves the statement accepted, and the transit log line carries
+`detail=key-change-refused` and the owner log `key-statement enrol-successor
+refused` (or `revoke refused`). A peer is answered as accepted (its 235 or
+239 is unchanged). A poster is answered with the one 240 that names both
+(PKT-473): `240 article received OK; the key change it carries was refused
+(key-change-refused)`. ACL2 chooses the word
+(`books/peer-authored-accept.lisp` `fn-pa-served-post-word`, host
+`fn-owner-served-post-word` from `fnn-owner-attempt-served`), the owner
+treats it as durable (`fn-own-durable-wordp`) and `fn-nntp-post-outcome`
+renders the line (`fn-osp-served-post-names-a-refused-key-change` and its
+converse `fn-osp-key-change-reply-only-for-a-consumed-refused-key-change`).
+Every other accepted POST's reply is the plain `240 article received OK`. An uncertain key-change commit is an uncertain outcome and a
 recovery event, like any other.
 
 **The crash cut.** A process death after the statement's commit and before
@@ -1879,10 +1901,18 @@ generation is decided by its genesis identity exactly as before
 confirm of an acceptor already current at the acceptance's keys ends with the
 consuming record: the step answers `(:current)` and enrols nothing
 (`fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption`). The
-accept of an inviter already enrolled here is still refused
-`already-enrolled`; the accepting CLI builds its acceptance from the plan
-under the empty keyring, which is the owner's whenever the owner enrolled
-(`fn-pinv-an-enrolling-accept-is-the-clis-plan`).
+accept of an inviter already current here at the invitation's keys
+(PKT-473, PRF-184) configures the inviter's peer and enrols nothing: the
+step answers `(:current)` only for such an inviter
+(`fn-pinv-accept-step-current-only-for-a-bound-current-inviter`,
+`fn-pinv-accept-of-a-current-inviter-configures-it`); with no address, or
+with the peer already configured exactly (a replay), it is refused
+`already-enrolled` before any record. The accepting CLI builds its
+acceptance from the invitation's verified words
+(`fn-pinv-accept-words`), which are the owner's plan whenever that plan
+enrolled or found the inviter current
+(`fn-pinv-accept-words-are-the-owners-plan`), so a succession-era inviter
+the owner accepted is not refused `genesis` by the keyring-less CLI.
 
 **Refusals, by name:** `unverified`, `document-kind`, `claimed-keys`,
 `genesis`, `not-current-keys`, `revoked`, `nonce`, `source-id`, `invitation-source-id`,

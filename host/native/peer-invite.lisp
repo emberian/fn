@@ -159,10 +159,15 @@ fn-pinv-accept-record-plan); the enrolment follows it."
                             (append observed
                                     (list (fnn-owner-core
                                            'fn-owner-hybrid-snapshots))))))
-           (if (not (eq (first step) :enrol))
-               (fnn-pinv-refused :accept step)
-             (progn (fnn-owner-identity-commit service (second step))
-                    :accepted))))))))
+           ;; PKT-473: (:current) is ACL2's answer for an inviter this
+           ;; keyring already holds at the invitation's keys: nothing to enrol.
+           (case (first step)
+             (:enrol (fnn-owner-identity-commit service (second step))
+                     :accepted)
+             (:current
+              (fnn-err "peer accept: the inviter's current keys; nothing to enrol")
+              :accepted)
+             (t (fnn-pinv-refused :accept step)))))))))
 
 (defun fnn-pinv-owner-enrol-confirmed (service received observed)
   "The enrolment the configuration now permits: ACL2 asks the invitations

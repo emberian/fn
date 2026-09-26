@@ -467,9 +467,14 @@
   (declare (xargs :guard t))
   (let ((plan (fn-pinv-accept-plan received observed-ml ed ml snapshots)))
     (cond ((not (equal (car plan) :enrol)) plan)
+          ;; PKT-473 (PRF-184): the inviter is already this keyring's current
+          ;; enrolment at exactly the invitation's keys (a friend known here,
+          ;; whose keys may have succeeded since genesis): nothing to enrol.
+          ;; The record plan admitted it only to configure the inviter's
+          ;; peer (fn-pinv-accept-record-plan); a replay is refused there.
           ((fn-pinv-enrolled-withp (fn-pinv-at 1 plan) (fn-pinv-at 2 plan)
                                    snapshots)
-           (list :refused :already-enrolled))
+           (list :current))
           (t (let ((event (fn-hl-enroll-event sequence txid generation
                                               (fn-hl-next-generation snapshots)
                                               (fn-pinv-at 1 plan)
@@ -494,10 +499,33 @@
 ; The acceptance's authored source, from the accept plan of the invitation
 ; it answers: its nonce, its source identity and its principal are the ones
 ; the plan verified, never words the host supplies.
+;; PKT-473 (PRF-184): the words of an invitation the owner accepted, from
+;; its signed body alone.  The accepting CLI (host/native/peer-invite.lisp
+;; fnn-pinv-accept) holds no keyring and builds its acceptance only after
+;; the owner's accept answered accepted; whose keys bind the inviter is the
+;; owner's decision (fn-pinv-accept-step under its keyring), and whenever
+;; the owner's plan enrolled or found the inviter current these words are
+;; that plan's (fn-pinv-accept-words-are-the-owners-plan).  Asking the plan
+;; under the empty keyring instead refused a succession-era inviter the
+;; owner had accepted (`genesis').
+(defun fn-pinv-accept-words (received observed-ml ed ml)
+  (declare (xargs :guard t))
+  (let* ((source (fn-pinv-received-source received))
+         (principal (fn-pinv-received-principal received))
+         (keys (fn-pinv-received-keys received))
+         (sid (fn-pinv-source-id source)))
+    (if (and (fn-pinv-verifiedp received observed-ml ed ml)
+             (fn-pinv-kindp source *fn-pinv-invitation-kind*)
+             (fn-pinv-names-keysp source principal keys)
+             (fn-pinv-hex-fieldp (fn-pinv-field "Nonce" source) 32)
+             (fn-hsig-exact-octets-p sid 48))
+        (list :enrol principal keys (fn-pinv-field "Nonce" source) sid)
+      (list :refused :invitation))))
+
 (defun fn-pinv-acceptance-source (date-ms received observed-ml ed ml principal
                                           token keys path reachable)
   (declare (xargs :guard t))
-  (let ((plan (fn-pinv-accept-plan received observed-ml ed ml nil)))
+  (let ((plan (fn-pinv-accept-words received observed-ml ed ml)))
     (if (not (equal (car plan) :enrol)) nil
       (fn-pinv-source "fn-acceptance"
                       (append (fn-pinv-text "<fn-accept-") (fn-pinv-tl (fn-pinv-at 3 plan))
@@ -1042,11 +1070,10 @@
   :hints (("Goal" :in-theory (enable fn-pinv-document fn-pinv-keys-bind-p
                                      fn-pinv-binding-refusal))))
 
-; The accepting CLI (host/native/peer-invite.lisp fnn-pinv-accept) holds no
-; keyring and builds the acceptance through fn-pinv-acceptance-source,
-; which asks the accept plan under the empty keyring.  Whenever the owner's
-; accept step enrolled, that is the plan the owner decided: the inviter was
-; not known here.
+; Whenever the owner's accept step enrolled, the accept plan under the
+; empty keyring is the plan the owner decided: the inviter was not known
+; here.  (Until PKT-473 the accepting CLI asked that plan; it now builds its
+; acceptance from fn-pinv-accept-words, fn-pinv-accept-words-are-the-owners-plan.)
 (defthm fn-pinv-an-enrolling-accept-is-the-clis-plan
   (implies (equal (car (fn-pinv-accept-step sequence txid generation received
                                             observed-ml ed ml snapshots))
@@ -1547,9 +1574,18 @@
              (peer (fn-pinv-inviter-peer inv (fn-pinv-received-principal
                                               received)))
              (name (fn-cfg-peer-name peer)))
-        (cond ((fn-pinv-enrolled-withp (fn-pinv-received-principal received)
-                                       (fn-pinv-received-keys received)
-                                       snapshots)
+        ;; PKT-473 (PRF-184): an inviter already this keyring's current
+        ;; enrolment at the invitation's keys is refused `already-enrolled'
+        ;; when there is nothing to do (no address, or its peer already
+        ;; configured exactly: a replay); an addressed invitation whose peer
+        ;; is not configured configures it, and the step then answers
+        ;; (:current).
+        (cond ((and (fn-pinv-enrolled-withp (fn-pinv-received-principal received)
+                                            (fn-pinv-received-keys received)
+                                            snapshots)
+                    (or (not (fn-pinv-inviter-addressedp inv))
+                        (equal (fn-cfg-rows-with-key peers name)
+                               (fn-cfg-peer-rows peer))))
                (list :refused :already-enrolled))
               ((not (fn-pinv-inviter-addressedp inv)) plan)
               ((not (fn-cfg-peerp peer)) (list :refused :peer-record))
@@ -1575,8 +1611,8 @@
 ; KEYSTONE (the record the accept publishes).  A (:configure DELTAS) plan
 ; exists only when the accept step's own plan enrols (the invitation's
 ; carrier verifies under the key set its body names and the inviter is its
-; genesis principal: `fn-pinv-document-ok-is-bound'), the inviter is not yet
-; enrolled here, the invitation names an address, the peer built from it is
+; genesis principal: `fn-pinv-document-ok-is-bound'), the invitation names
+; an address, the peer built from it is
 ; a well-formed peer record bound to exactly the verified inviter, no
 ; configured peer has its name, and DELTAS is that peer's (:set-peer) delta.
 (defthm fn-pinv-accept-record-configures-the-verified-inviter
@@ -1588,8 +1624,9 @@
     (implies (equal (car rplan) :configure)
              (and (fn-pinv-bound-document-p received observed-ml ed ml
                                             *fn-pinv-invitation-kind* snapshots)
-                  (not (fn-pinv-enrolled-withp
-                        inviter (fn-pinv-received-keys received) snapshots))
+                  ;; Since PKT-473 an inviter already current here at the
+                  ;; invitation's keys is configured too (its step answers
+                  ;; (:current): fn-pinv-accept-of-a-current-inviter-configures-it).
                   (fn-pinv-inviter-addressedp inv)
                   (fn-cfg-peerp peer)
                   (equal (fn-cfg-peer-auth peer)
@@ -1609,7 +1646,9 @@
 ; stamp) leaves the peers table holding exactly the inviter peer's rows
 ; under its name, and -- the crash point after the one record -- the same
 ; invitation's next accept plan over the folded peers table is the accept
-; step's enrolment plan, never a second record.
+; step's enrolment plan, never a second record; for an inviter already
+; current here (PKT-473) there is nothing left to do and the next accept is
+; refused `already-enrolled', as a replay is.
 (defthm fn-pinv-accept-record-fold-configures-the-inviter
   (let* ((rplan (fn-pinv-accept-record-plan received observed-ml ed ml
                                             snapshots (fn-cfg-peers v)))
@@ -1623,7 +1662,12 @@
                   (equal (fn-pinv-accept-record-plan received observed-ml ed ml
                                                      snapshots
                                                      (fn-cfg-peers next))
-                         (fn-pinv-accept-plan received observed-ml ed ml snapshots))
+                         (if (fn-pinv-enrolled-withp
+                              (fn-pinv-received-principal received)
+                              (fn-pinv-received-keys received) snapshots)
+                             (list :refused :already-enrolled)
+                           (fn-pinv-accept-plan received observed-ml ed ml
+                                                snapshots)))
                   (equal (car (fn-pinv-accept-plan received observed-ml ed ml snapshots))
                          :enrol))))
   :hints (("Goal"
@@ -1638,3 +1682,81 @@
                             (p (fn-pinv-inviter-peer
                                 (fn-pinv-received-source received)
                                 (fn-pinv-received-principal received))))))))
+
+;; ---------------------------------------------------------------------------
+;; PKT-473 (PRF-184): the accept of an inviter already current here.  Host
+;; lines: host/native/peer-invite.lisp fnn-pinv-owner-accept
+;; (fn-pinv-host-accept-record-plan, then fn-pinv-host-accept-step, whose
+;; (:current) is accepted with a named line), and fnn-pinv-accept (the CLI's
+;; fn-pinv-host-acceptance-source after the owner answered accepted).
+
+; KEYSTONE.  The owner's accept step answers (:current) -- nothing to enrol
+; -- only for an invitation bound under this keyring whose inviter's current
+; enrolment here is exactly the invitation's key set.
+(defthm fn-pinv-accept-step-current-only-for-a-bound-current-inviter
+  (implies (equal (fn-pinv-accept-step sequence txid generation received
+                                       observed-ml ed ml snapshots)
+                  (list :current))
+           (and (fn-pinv-bound-document-p received observed-ml ed ml
+                                          *fn-pinv-invitation-kind* snapshots)
+                (fn-pinv-enrolled-withp (fn-pinv-received-principal received)
+                                        (fn-pinv-received-keys received)
+                                        snapshots)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pinv-accept-step fn-pinv-accept-plan
+                                     fn-pinv-document)
+           :use ((:instance fn-pinv-accept-plan-enrols-only-a-bound-invitation)))))
+
+; KEYSTONE.  An addressed invitation, bound here, from an inviter already
+; current here at its keys, whose peer is a well-formed record with no
+; configured peer of its name: the accept publishes that peer's one record
+; and its step then answers (:current).  Accepted by name, never refused
+; `already-enrolled' and never a second enrolment.
+(defthm fn-pinv-accept-of-a-current-inviter-configures-it
+  (let* ((inv (fn-pinv-received-source received))
+         (inviter (fn-pinv-received-principal received))
+         (peer (fn-pinv-inviter-peer inv inviter)))
+    (implies (and (equal (car (fn-pinv-accept-plan received observed-ml ed ml
+                                                   snapshots))
+                         :enrol)
+                  (fn-pinv-enrolled-withp inviter (fn-pinv-received-keys received)
+                                          snapshots)
+                  (fn-pinv-inviter-addressedp inv)
+                  (fn-cfg-peerp peer)
+                  (not (consp (fn-cfg-rows-with-key peers (fn-cfg-peer-name peer)))))
+             (and (equal (fn-pinv-accept-record-plan received observed-ml ed ml
+                                                     snapshots peers)
+                         (list :configure (list (fn-cfg-set-peer-delta peer))))
+                  (equal (fn-pinv-accept-step sequence txid generation received
+                                              observed-ml ed ml snapshots)
+                         (list :current)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pinv-accept-step fn-pinv-accept-plan
+                                   fn-pinv-document)
+                                  (fn-pinv-inviter-peer fn-cfg-peerp
+                                   fn-pinv-inviter-addressedp
+                                   fn-record-octets-string)))))
+
+; KEYSTONE (the CLI's words).  Whenever the owner's accept plan under its
+; keyring enrols -- the only case in which its step answers (:enrol ...) or
+; (:current) and the CLI goes on -- the words the CLI builds its acceptance
+; from are that plan's, whatever the keyring (so a succession-era inviter the
+; owner accepted is never refused by the keyring-less CLI).
+(defthm fn-pinv-accept-words-are-the-owners-plan
+  (implies (equal (car (fn-pinv-accept-plan received observed-ml ed ml snapshots))
+                  :enrol)
+           (equal (fn-pinv-accept-words received observed-ml ed ml)
+                  (fn-pinv-accept-plan received observed-ml ed ml snapshots)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pinv-accept-plan fn-pinv-document))))
+
+(defthm fn-pinv-accepted-step-is-an-enrolling-plan
+  (implies (member-equal (car (fn-pinv-accept-step sequence txid generation
+                                                   received observed-ml ed ml
+                                                   snapshots))
+                         '(:enrol :current))
+           (equal (car (fn-pinv-accept-plan received observed-ml ed ml snapshots))
+                  :enrol))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pinv-accept-step fn-pinv-accept-plan
+                                     fn-pinv-document))))

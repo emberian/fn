@@ -3822,7 +3822,7 @@
     {
       "id": "PRF-089",
       "title": "The running owner's status report is the offline report of the same state, and its pages join to it",
-      "statement": "fn-nls-live-report-is-the-offline-report: for every KIND (status, pins, peers, obligations), profile, configured owner OC and observation, when the carried octet sum CACHE is valid for the records of OC's Store (fn-sbud-octets-cache-validp) and no connection is open (no pin in fn-ocfg-pins), (fn-nls-live-report kind profile oc cache obs) equals (fn-nls-offline-report kind profile (fn-own-store (fn-ocfg-owner oc)) (fn-ocfg-config oc) obs); the owner reaches fn-nls-live-report through fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer), once per request and the offline command reaches fn-nls-offline-report through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). fn-nls-client-step-of-owner-reply: for every octet REPORT whose length is a uint32 and every client prefix ACC of it (with, past the first page, the report's total and digest), the client's step on the owner's page from (len ACC) is :done REPORT, or :next with the strictly longer prefix of one more chunk; fnn-control-live-status folds pages through fn-nls-client-step. fn-nls-page-of-buffer-is-reply: for every REPORT and OFFSET, (fn-nls-page (fn-nls-buffer report) offset) equals (fn-nls-reply report offset), with no hypothesis; fn-nls-buffer is the report as one string with its frame digest and fn-nls-page answers a substring of it (the D27 twin of the page). fn-nls-client-step-of-owner-page: the client-step keystone with the same hypotheses over the page the owner answers, (fn-nls-page (fn-nls-buffer report) (len acc)). fn-nls-cached-buffer-of-put: for a positive offset, the buffer the owner looks up for KIND after storing BUFFER for KIND is BUFFER; fn-native-live-status-host-answer renders anew at offset 0 and otherwise pages from the stored buffer. fn-nls-nat-is-the-decimal-digits: for every natural N, (fn-nls-nat N), which renders every number of the report, is a nonempty run of decimal digits whose value under fn-nntp-decimal-value is N. Supporting: fn-nls-reply-decode-of-encode, fn-nls-request-decode-of-encode, fn-nls-open-of-seal. fn-nls-report-of-query-kind-is-query-report: for every administrative plan, the status-path report of the kind fn-native-admin-result-report-kind names -- the kind host/native/operator.lisp fnn-operator-execute-admin passes to fnn-operator-status-once for an accepted `peer list' or `control list', live (fn-nls-live-report) or offline (fn-nls-offline-report) -- is fn-nls-query-report of the plan over the same configuration (fn-native-admin-query-report, or books/accounts.lisp fn-acct-list-report for `account list'), so `control list' renders the authority rows (fn-cfg-authorities), `peer list' the peers and `account list' the accounts slot; supporting: fn-native-admin-control-report-empty-iff-no-rows (the listing is empty only over no grant row). Covered scope: the rows are rendered, not parsed back (qual-e747dbcc A3).",
+      "statement": "fn-nls-live-report-is-the-offline-report: for every KIND (status, pins, peers, obligations), profile, configured owner OC and observation, when the carried octet sum CACHE is valid for the records of OC's Store (fn-sbud-octets-cache-validp) and no connection is open (no pin in fn-ocfg-pins), (fn-nls-live-report kind profile oc cache obs) equals (fn-nls-offline-report kind profile (fn-own-store (fn-ocfg-owner oc)) (fn-ocfg-config oc) obs); the owner reaches fn-nls-live-report through fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer), once per request and the offline command reaches fn-nls-offline-report through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). fn-nls-client-step-of-owner-reply: for every octet REPORT whose length is a uint32 and every client prefix ACC of it (with, past the first page, the report's total and digest), the client's step on the owner's page from (len ACC) is :done REPORT, or :next with the strictly longer prefix of one more chunk; fnn-control-live-status folds pages through fn-nls-client-step. fn-nls-page-of-buffer-is-reply: for every REPORT and OFFSET, (fn-nls-page (fn-nls-buffer report) offset) equals (fn-nls-reply report offset), with no hypothesis; fn-nls-buffer is the report as one string with its frame digest and fn-nls-page answers a substring of it (the D27 twin of the page). fn-nls-client-step-of-owner-page: the client-step keystone with the same hypotheses over the page the owner answers, (fn-nls-page (fn-nls-buffer report) (len acc)). fn-nls-cached-buffer-of-put: for a positive offset, the buffer the owner looks up for KIND after storing BUFFER for KIND is BUFFER; fn-native-live-status-host-answer renders anew at offset 0 and otherwise pages from the stored buffer. fn-nls-nat-is-the-decimal-digits: for every natural N, (fn-nls-nat N), which renders every number of the report, is a nonempty run of decimal digits whose value under fn-nntp-decimal-value is N. Supporting: fn-nls-reply-decode-of-encode, fn-nls-request-decode-of-encode, fn-nls-open-of-seal. fn-nls-report-of-query-kind-is-query-report: for every administrative plan, the status-path report of the kind fn-native-admin-result-report-kind names -- the kind host/native/operator.lisp fnn-operator-execute-admin passes to fnn-operator-status-once for an accepted `peer list' or `control list', live (fn-nls-live-report) or offline (fn-nls-offline-report) -- is fn-nls-query-report of the plan over the same configuration (fn-native-admin-query-report, or books/account-list.lisp fn-acct-kinds-list-report for `account list'), so `control list' renders the authority rows (fn-cfg-authorities), `peer list' the peers and `account list' the accounts slot; supporting: fn-native-admin-control-report-empty-iff-no-rows (the listing is empty only over no grant row). Covered scope: the rows are rendered, not parsed back (qual-e747dbcc A3).",
       "milestone": "M4",
       "requirements": [
         "HST-006",
@@ -6833,6 +6833,63 @@
         "fn-scf-debt-carried-is-the-record-debt",
         "fn-scf-tally-advance-is-the-suffix-fold",
         "fn-scf-usage-carried-is-the-projection"
+      ]
+    },
+    {
+      "id": "PRF-184",
+      "title": "A poster whose statement's key change the Store refused is told so in its 240; the transit log names the verdict on accepted arms; a friend's node that already holds the inviter at the invitation's keys accepts it by name, configuring it and enrolling nothing",
+      "statement": "(1) Subject fn-pa-served-post-word (books/peer-authored-accept.lisp), host host/owner-host.lisp fn-owner-served-post-word called by host/native/owner.lisp fnn-owner-attempt-served: :durable-key-change-refused exactly for the :durable attempt whose detail is :key-change-refused (set by fnn-owner-statement-committed), fn-pa-served-word otherwise. books/owner.lisp fn-own-durable-wordp makes it a durable word of fn-own-outcome-completion and fn-own-post-rendering keeps it for the POST reply; books/nntp-post.lisp fn-nntp-post-outcome renders `240 article received OK; the key change it carries was refused (key-change-refused)' (fn-post-outcome-names-a-refused-key-change-only-for-its-completion: that line is the reply of no other completion). fn-osp-served-post-names-a-refused-key-change (over fn-own-outcome; host/owner-host.lisp fn-owner-outcome, from fnn-owner-drain-one, calls books/owner-advance-carried.lisp fn-acar-own-outcome, which also renders through fn-own-post-rendering and is fn-own-outcome under the owner relation, fn-acar-own-outcome-is-own-outcome / fn-acar-own-outcome-is-reference-under-ocl-relation): after a consumed completion the reply is that line and the owner moves exactly as for :durable; fn-osp-key-change-reply-only-for-a-consumed-refused-key-change: the reply is that line only for a :durable attempt with the :key-change-refused detail and a consumed completion. fn-own-consumed-completion-is-240-or-uncertain restated with the word's arm. (2) fn-pcb-transit-verdict-names-the-accepted-arm (no hypotheses; books/peer-carriage.lisp fn-pcb-transit-verdict, host fn-owner-transit-verdict read by fnn-owner-attempt-transit on each accepted arm before the kind-4 commit): unsigned, carried, verified and revoked name their arms, elsewhere the admission verdict; books/owner-log.lisp fn-olog-detail-fields-print-an-accepted-arms-verdict prints `detail=D verdict=V'. (3) books/peer-invite.lisp: fn-pinv-accept-step-current-only-for-a-bound-current-inviter, fn-pinv-accept-of-a-current-inviter-configures-it (host fnn-pinv-owner-accept through fn-pinv-host-accept-record-plan / fn-pinv-host-accept-step; (:current) is accepted with a named line), fn-pinv-accept-words-are-the-owners-plan and fn-pinv-accepted-step-is-an-enrolling-plan (host fnn-pinv-accept, fn-pinv-host-acceptance-source after the owner answered accepted). Not claimed: the history-relation and pairs-okp hypotheses of fn-lb-a-connection-opened-after-a-publication-is-bound-anew are not separated by a counter-witness (PKT-497).",
+      "milestone": "M3",
+      "requirements": [
+        "SEC-005"
+      ],
+      "depends_on": [
+        "PRF-026",
+        "PRF-098",
+        "PRF-099",
+        "PRF-124",
+        "PRF-160",
+        "PRF-179"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-authored-accept.lisp",
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "books/owner-signed-post.lisp",
+        "tests/acl2/owner-signed-post-tests.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/acl2/login-binding-live-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/peer-invite.lisp",
+        "tests/test_native_key_statements.py",
+        "tests/test_native_peer_invite.py",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/keys-and-accounts-2026-09-26.md"
+      ],
+      "events": [
+        "fn-pa-served-post-word-names-a-refused-key-change-only-when-durable",
+        "fn-post-outcome-names-a-refused-key-change-only-for-its-completion",
+        "fn-own-consumed-completion-is-240-or-uncertain",
+        "fn-osp-served-post-names-a-refused-key-change",
+        "fn-osp-key-change-reply-only-for-a-consumed-refused-key-change",
+        "fn-pcb-transit-verdict-names-the-accepted-arm",
+        "fn-olog-detail-fields-print-an-accepted-arms-verdict",
+        "fn-pinv-accept-step-current-only-for-a-bound-current-inviter",
+        "fn-pinv-accept-of-a-current-inviter-configures-it",
+        "fn-pinv-accept-words-are-the-owners-plan",
+        "fn-pinv-accepted-step-is-an-enrolling-plan"
       ]
     }
   ]

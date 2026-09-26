@@ -359,6 +359,9 @@
 (defconst *fn-post-malformed-session-line*
   "403 internal fault; the posting session is malformed")
 
+(defconst *fn-post-durable-key-change-refused-line*
+  "240 article received OK; the key change it carries was refused (key-change-refused)")
+
 (defun fn-nntp-post-outcome (ps completion)
   (declare (xargs :guard t))
   (if (not (fn-post-sessionp ps))
@@ -369,6 +372,12 @@
      (fn-post-single
       ps
       (cond ((equal completion :durable) "240 article received OK")
+            ;; PKT-473 (PRF-184): durable, and the key change the article
+            ;; carried was refused by the Store (books/owner.lisp
+            ;; fn-own-post-rendering).  RFC 3977 section 6.3.1: 240, its
+            ;; text is fn's.
+            ((equal completion :durable-key-change-refused)
+             *fn-post-durable-key-change-refused-line*)
             ((equal completion :clock-unusable)
              (fn-post-refusal-line :clock-unusable))
             ((fn-post-store-refusalp completion)
@@ -567,6 +576,27 @@
                        (fn-post-result-effects
                         (fn-nntp-post-outcome ps :durable)))))
   :hints (("Goal" :in-theory (e/d (fn-post-single fn-nntp-single)
+                                  (fn-nntp-replyp fn-post-sessionp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep))))
+  :rule-classes nil)
+
+;; PKT-473 (PRF-184).  The durable reply naming a refused key change: a 240
+;; whose text is its own, the reply of no other completion (so neither the
+;; plain 240 nor any 441 is ever read as it, and it is never read as them).
+(defthm fn-post-outcome-names-a-refused-key-change-only-for-its-completion
+  (implies (fn-post-sessionp ps)
+           (and (equal (fn-post-result-effects
+                        (fn-nntp-post-outcome ps :durable-key-change-refused))
+                       (fn-post-single ps *fn-post-durable-key-change-refused-line*))
+                (implies (not (equal completion :durable-key-change-refused))
+                         (not (equal (fn-post-result-effects
+                                      (fn-nntp-post-outcome ps completion))
+                                     (fn-post-result-effects
+                                      (fn-nntp-post-outcome
+                                       ps :durable-key-change-refused)))))))
+  :hints (("Goal" :in-theory (e/d (fn-post-single fn-nntp-single
+                                   fn-post-store-refusalp)
                                   (fn-nntp-replyp fn-post-sessionp
                                    fn-nntp-response-textp
                                    fn-nntp-initial-status-linep))))
