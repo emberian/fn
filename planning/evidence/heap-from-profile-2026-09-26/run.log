@@ -1,0 +1,16 @@
+== source commit 14e046e38d369315af969c841876945ce17a3f8c
+== install 18:34:47Z
+   install exit 0 (/tank/fn/scratch/heap-from-profile/native-14e046e38d36/logs/install.log)
+== certify 18:34:52Z
+   certify exit 0 (/tank/fn/scratch/heap-from-profile/native-14e046e38d36/logs/certify.log)
+== acquire 18:35:13Z
+   acquire exit 0 (/tank/fn/scratch/heap-from-profile/native-14e046e38d36/logs/acquire.log)
+== validate 18:35:45Z
+   validate exit 0 (/tank/fn/scratch/heap-from-profile/native-14e046e38d36/logs/validate.log)
+== image-production 18:36:09Z
+   image-production exit 0 (/tank/fn/scratch/heap-from-profile/native-14e046e38d36/logs/image-production.log)
+== test-tests.test_native_heap_from_profile 18:37:29Z
+   test-tests.test_native_heap_from_profile exit 0: tests.test_native_heap_from_profile: OK (2 ran, 0 skipped)
+   (/tank/fn/scratch/heap-from-profile/native-14e046e38d36/logs/test-tests.test_native_heap_from_profile.log)
+== modules: 1 OK, 0 SKIPPED (no test executed), 0 FAILED
+== done status 0; /tank/fn/scratch/heap-from-profile/native-14e046e38d36/SHA256SUMS

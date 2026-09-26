@@ -7435,6 +7435,41 @@
         "fn-sxp-import-of-export-replays-the-same-history",
         "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
+    },
+    {
+      "id": "PRF-198",
+      "title": "The process heap is the store profile's figure: an accepted figure holds every store the profile admits and fits the observed machine; a profile the machine cannot hold is refused by name",
+      "statement": "books/heap-figure.lisp. fn-heap-decide (profile core nursery observations) is the host-called subject: host/native/heap.lisp fnn-heap-decision calls it, from fnn-command-heap (the `heap -- ARGV` probe the installed packaging/fn runs before it execs the command with --dynamic-space-size MB) and fnn-heap-print-store-line (the line `operator CONFIG status` and `health` print). The figure fn-heap-figure-octets = CORE + NURSERY + 2 x 16 x (2H + R) + 2 x fn-ock-capture-budget(profile), in SBCL megabytes rounded up (fn-heap-mb-of); the machine is fn-heap-machine-octets, the least positive observation. KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits: (implies (and (fn-bs-profile-admittedp profile) (equal (car d) :heap) (<= used (fn-bs-profile-max-history-octets profile)) (natp core) (natp nursery)) (and (<= (+ core nursery (* 32 (+ used used R)) (* 2 (fn-ock-capture-budget profile))) (* 2^20 (fn-heap-decision-mb d))) (<= (* 2^20 (fn-heap-decision-mb d)) (fn-heap-machine-octets observations)))) with d = (fn-heap-decide profile core nursery observations): for every history of USED octets within H (the store budget's bound, fn-sbud-verdict-at), the image, the nursery, the lists at sixteen bytes per octet with the collector's copy, and both checkpoint buffers fit the megabytes passed, which fit the machine. (natp used) was removed after proving the weakened theorem. fn-heap-decide-refuses-exactly-past-the-machine: for an admitted profile and an observed machine the decision is (:heap MB WORD MACHINE-MB) when MB x 2^20 <= machine and (:refused :machine-cannot-hold-profile MB MACHINE-MB) otherwise; fn-heap-decision-exit-code-of-a-refusal: a refusal exits 1 (outcome-class :refused). The small preset (*fn-heap-small-request*: the development base with T 16384, H 8 MiB, R 196608, G 16, K 128) is admitted and fn-heap-small-profile-fits-a-small-machine: with core <= 512 MiB and nursery <= 64 MiB it is accepted on every machine of at least 1536 MiB (OpenBSD's default datasize); fn-heap-init-request-on-a-small-machine-is-small / -keeps-the-operators-request: `init`'s bare request on a machine under 4 GiB resolves to it (host/native/operator.lisp fnn-operator-execute-init via fnn-heap-init-request), every other request is unchanged. Scope: the 16 B per octet is the octet-list representation's cons (rep-wave-d section 1.2); the second history copy is the open's transient; the model states retained octets, not SBCL's allocator, and the native case measures VmHWM against it.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-183"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-heap-decide-admits-every-store-the-profile-admits",
+        "fn-heap-decide-refuses-exactly-past-the-machine",
+        "fn-heap-small-profile-fits-a-small-machine",
+        "fn-heap-init-request-on-a-small-machine-is-small",
+        "fn-heap-init-request-keeps-the-operators-request",
+        "fn-heap-machine-octets-is-at-most-each-observation",
+        "fn-heap-decision-exit-code-of-a-refusal"
+      ],
+      "evidence": [
+        "books/heap-figure.lisp",
+        "tests/acl2/heap-figure-tests.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "tests/test_native_heap_from_profile.py",
+        "tests/test_native_cli_launcher.sh",
+        "planning/evidence/heap-from-profile-2026-09-26.md"
+      ],
+      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md)."
     }
   ]
 }

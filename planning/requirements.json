@@ -3594,6 +3594,30 @@
         "planning/evidence/release-openbsd-2026-09-26.md"
       ],
       "implementation_note": "tools/runpath_check.py lists every program and library on the deployed path and fails on Python: statically (make check) every process-starting form in host/ (one, the operator-named pinned ION helper of app-journal workflow-ion-submit), the libraries the image dlopens, the shipped launcher, frozen launcher and service files; over a release (release-tarball.sh runs it before packing) every file: no .py, no Python shebang, every executable a /bin/sh script or ELF whose DT_NEEDED names no libpython, every service starting PREFIX/bin/fn. It cannot see what an operator-supplied helper is or what the loader resolves at run time. Python remains for clients and tests."
+    },
+    {
+      "id": "HST-013",
+      "title": "The node's heap is its store profile's figure on this machine, and a profile the machine cannot hold is refused by name at start",
+      "specification": "specs/host.md#process-heap",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-198"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/heap-figure.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_heap_from_profile.py",
+        "planning/evidence/heap-from-profile-2026-09-26.md"
+      ],
+      "implementation_note": "The installed bin/fn runs `heap -- ARGV` in the same image first (a boot figure of the core's size plus 128 MB, a bound on the probe's work), where ACL2 decides the figure from the command's store profile (config.json, or the init request's target) and the least of the machine's observations (sysconf physical pages; Linux cgroup memory.max up the hierarchy and RLIMIT_AS; RLIMIT_DATA), then execs the command with --dynamic-space-size MB through SBCL_USER_ARGS; a refusal is exit 1 with `refused machine-cannot-hold-profile heap=MB MB machine=M MB` and nothing else runs. `status` and `health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with a bare request on a machine under 4 GiB writes the small preset. A checkout's packaging/fn takes FN_TEST_HEAP_MB (the tests' figure), which the installed launcher ignores."
     }
   ]
 }

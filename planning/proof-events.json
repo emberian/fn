@@ -6954,6 +6954,39 @@
           "note": "KEYSTONE (D34, one format). Host: host/native/io.lisp fnn-metadata-config-decode via fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-198",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-decide-admits-every-store-the-profile-admits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-decide-refuses-exactly-past-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-small-profile-fits-a-small-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-request-on-a-small-machine-is-small"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-request-keeps-the-operators-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-machine-octets-is-at-most-each-observation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-decision-exit-code-of-a-refusal"
+        }
+      ]
     }
   ]
 }
