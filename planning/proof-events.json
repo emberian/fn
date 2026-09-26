@@ -6794,6 +6794,34 @@
         {
           "kind": "theorem",
           "name": "fn-cat-visible-at-withdrawn"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-at-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-row-keeps-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-from-empty"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-complete"
         }
       ]
     },
