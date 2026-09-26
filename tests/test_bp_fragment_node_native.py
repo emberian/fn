@@ -64,7 +64,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             timeout=timeout, check=False,
         )
 
-    def author_fragments(self):
+    def author_fragments(self, count=2):
         msgid = b"<bp-fragment-node@example.invalid>"
         article = (
             b"From: sender@example.invalid\r\n"
@@ -94,9 +94,17 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 + " '" + bridge.literal(article) + "))"
             )
             adu = run_store.acl2_octets(bridge.call(adu_form))
-            split = len(adu) // 2
-            self.assertGreater(split, 0)
-            self.assertLess(split, len(adu))
+            # COUNT - 1 interior cut points, strictly increasing.  The cut
+            # is fn-bpf-cut (no fragment-count ceiling), not fn-bpf-fragment
+            # (at most 64 pieces).
+            self.assertLess(count, len(adu))
+            cuts = [len(adu) * k // count for k in range(1, count)]
+            self.assertEqual(len(set(cuts)), count - 1)
+            self.assertGreater(cuts[0], 0)
+            self.assertLess(cuts[-1], len(adu))
+            cut_form = ("(fn-bpf-cut '" + bridge.literal(adu) + " 0 '("
+                        + " ".join(map(str, cuts)) + ") "
+                        + str(len(adu)) + ")")
             primary = (
                 "(fn-bpp-make-block 0 1 "
                 "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47)) "
@@ -105,11 +113,10 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 "1000 2 3600000 nil nil)"
             )
             paths = []
-            for index in (0, 1):
+            for index in range(count):
                 form = (
                     "(let* ((parent " + primary + ") "
-                    "(parts (cadr (fn-bpf-fragment '" + bridge.literal(adu)
-                    + " (list " + str(split) + ")))) "
+                    "(parts " + cut_form + ") "
                     "(part (nth " + str(index) + " parts))) "
                     "(fn-bpb-encode (fn-bpb-make-bundle "
                     "(fn-bpf-fragment-block parent (fn-bpf-offset part) "
@@ -124,14 +131,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         finally:
             bridge.close()
 
-    def start_receiver(self):
+    def start_receiver(self, once=True):
         process = subprocess.Popen(
             [str(IMAGE), "--fn", "bp-node", "serve", str(self.port),
              str(self.journal), str(self.store), str(self.receipts),
              str(self.workflow), "dtn://receiver/", "dtn://sender/",
              "dtn://receiver/", "native-policy", "dtn://receiver/",
-             "127.0.0.1", "9", "1", "3600000", "2", "32", "1048576",
-             "1000", "0"],
+             "127.0.0.1", "9", "1" if once else "0", "3600000", "2", "32",
+             "1048576", "1000", "0"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0,
         )
@@ -196,6 +203,34 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
         )
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(self.article_count(), 1)
+
+    def test_seventy_fragments_across_a_kill_reassemble_once(self):
+        # PRF-121: a family of 70 fragments, beyond the old 64-fragment
+        # reassembly ceiling, sent highest offset first, with the receiver
+        # killed (SIGKILL) after 35 of them.  The restarted receiver recovers
+        # the 35 held fragments from its journal, takes the other 35 and
+        # reassembles the family once: one handoff, one article.
+        fragments = self.author_fragments(70)
+        order = list(reversed(range(70)))
+        first, port = self.start_receiver(once=False)
+        for number in order[:35]:
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0, sent.stderr)
+        first.kill()
+        out, err = first.communicate(timeout=60)
+        self.assertNotIn(b"BP fragment family durable", out)
+        self.assertEqual(self.article_count(), 0)
+
+        second, port = self.start_receiver(once=False)
+        for number in order[35:]:
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0, sent.stderr)
+        second.terminate()
+        out, err = second.communicate(timeout=120)
+        self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
+        self.assertEqual(out.count(b"BP application handoff durable"), 1,
+                         (out, err))
         self.assertEqual(self.article_count(), 1)
 
 
