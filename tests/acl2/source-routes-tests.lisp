@@ -327,35 +327,41 @@
 (defun srt-carrier (source obs)
   (fn-hsig-injected-carrier-octets source *srt-principal* *srt-keys* *srt-sigs*
                                    *srt-config* obs))
-(defconst *srt-s-signed* (srt-store (srt-carrier *srt-signed-source* *srt-a*)))
+; Rendering calls the statement codec's attachment, which a defconst's
+; evaluation may not; make-event evaluates each value once (as
+; tests/acl2/hybrid-store-tests does) and the checks read the constants.
+(make-event `(defconst *srt-carrier-a* ',(srt-carrier *srt-signed-source* *srt-a*)))
+(make-event `(defconst *srt-carrier-b* ',(srt-carrier *srt-signed-source* *srt-b*)))
+(make-event `(defconst *srt-carrier-changed-a* ',(srt-carrier *srt-changed* *srt-a*)))
+(make-event `(defconst *srt-carrier-msgids*
+               ',(list (fn-inj-decision-msgid (srt-carrier-plan *srt-signed-source* *srt-a*))
+                       (fn-inj-decision-msgid (srt-carrier-plan *srt-signed-source* *srt-b*)))))
+(make-event `(defconst *srt-carrier-disabled*
+               ',(fn-hsig-injected-carrier-octets
+                  *srt-signed-source* *srt-principal* *srt-keys* *srt-sigs*
+                  (fn-inj-make-config nil *srt-agent* (list (srt-text "fn.test")) 32768)
+                  *srt-b*)))
+(defconst *srt-s-signed* (srt-store *srt-carrier-a*))
 (assert-event
  (let ((held (srt-held *srt-s-signed*)))
-   (and (srt-carrier *srt-signed-source* *srt-a*)
-        (srt-carrier *srt-signed-source* *srt-b*)
-        (equal (fn-article-payload held) (srt-carrier *srt-signed-source* *srt-a*))
-        (equal (fn-inj-decision-msgid (srt-carrier-plan *srt-signed-source* *srt-a*)) *srt-mo*)
-        (equal (fn-inj-decision-msgid (srt-carrier-plan *srt-signed-source* *srt-b*)) *srt-mo*)
+   (and *srt-carrier-a* *srt-carrier-b*
+        (equal (fn-article-payload held) *srt-carrier-a*)
+        (equal *srt-carrier-msgids* (list *srt-mo* *srt-mo*))
         (equal *srt-groups* (fn-article-groups held))
-        (equal (fn-rcl-existing-action *srt-msgid* (srt-carrier *srt-signed-source* *srt-b*)
-                                       *srt-groups* *srt-s-signed*)
+        (equal (fn-rcl-existing-action *srt-msgid* *srt-carrier-b* *srt-groups* *srt-s-signed*)
                :duplicate))))
 ; Hypothesis removed: the carrier of another source is held; conflict.
 (assert-event
- (equal (fn-rcl-existing-action *srt-msgid* (srt-carrier *srt-signed-source* *srt-b*)
-                                *srt-groups*
-                                (srt-store (srt-carrier *srt-changed* *srt-a*)))
-        :conflict))
+ (and (not (equal *srt-carrier-changed-a* *srt-carrier-a*))
+      (equal (fn-rcl-existing-action *srt-msgid* *srt-carrier-b* *srt-groups*
+                                     (srt-store *srt-carrier-changed-a*))
+             :conflict)))
 ; Hypothesis removed: other groups; conflict.
 (assert-event
- (equal (fn-rcl-existing-action *srt-msgid* (srt-carrier *srt-signed-source* *srt-b*)
-                                '("fn.other") *srt-s-signed*)
+ (equal (fn-rcl-existing-action *srt-msgid* *srt-carrier-b* '("fn.other") *srt-s-signed*)
         :conflict))
-; Hypothesis removed: no octets at B (injection disabled); no verdict of a
-; duplicate is claimed, and the octets are nil.
-(assert-event
- (null (fn-hsig-injected-carrier-octets
-        *srt-signed-source* *srt-principal* *srt-keys* *srt-sigs*
-        (fn-inj-make-config nil *srt-agent* (list (srt-text "fn.test")) 32768) *srt-b*)))
+; Hypothesis removed: no octets at B (injection disabled).
+(assert-event (null *srt-carrier-disabled*))
 (must-fail
  (defthm srt-signed-retry-without-the-held-payload
    (let ((pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
