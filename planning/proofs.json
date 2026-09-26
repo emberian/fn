@@ -4481,7 +4481,8 @@
         "host/owner-host.lisp",
         "tests/test_native_peer_pull.py",
         "planning/evidence/peering-tls-pull-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T003614Z-4146295.json"
+        "planning/evidence/manifests/certify-20260926T003614Z-4146295.json",
+        "planning/evidence/manifests/certify-20260926T004913Z-4166387.json"
       ],
       "events": [
         "fn-pull-session-credentials-wait-for-tls-and-login",
