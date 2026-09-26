@@ -84,6 +84,10 @@
 ;; refusal (exit 1) that recovery passes through unchanged, never the
 ;; generic "cannot reconstruct committed history" fault.
 (define-condition fnn-store-open-refusal (fnn-store-error) ())
+;; The open's named refusal of a saved profile (PKT-471,
+;; books/store-profile-open.lisp): `store upgrade-profile' answers it with
+;; the repair (fnn-command-repair-profile).
+(define-condition fnn-store-profile-refusal (fnn-store-open-refusal) ())
 
 ;; One POSIX failure, reported the way Python's OSError prints itself.
 (define-condition fnn-os-error (error)
@@ -705,12 +709,46 @@ execution-boundary fault, never a claim that the core refused an input."
 (defun fnn-metadata-config-decode (octets)
   "ACL2's decoded store profile: a format-8 profile, or a format-7 tuple the
 store runs under by its translation.  The host keeps the value opaque and
-reads every field through an ACL2 accessor."
-  (let ((value (fnn-core 'fn-store-metadata-config-decode
-                         (fnn-octet-list octets))))
-    (unless (and value (fnn-core 'fn-store-profile-admittedp value))
-      (fnn-fault "ACL2 rejected durable configuration frame"))
-    value))
+reads every field through an ACL2 accessor.  The verdict is ACL2's open
+(books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
+record bound the poll reply cannot carry is refused by name, exit 1, with
+ACL2's line (PKT-471); a frame that is no saved profile stays a fault."
+  (let ((verdict (fnn-core 'fn-store-metadata-config-open
+                           (fnn-octet-list octets))))
+    (cond ((and (consp verdict) (eq (first verdict) :opened)
+                (fnn-core 'fn-store-profile-admittedp (second verdict)))
+           (second verdict))
+          ((and (consp verdict) (eq (first verdict) :refused))
+           (let ((text (fnn-core 'fn-store-metadata-config-refusal-text verdict)))
+             (unless (stringp text)
+               (fnn-fault "ACL2 refused the store profile without naming a reason"))
+             (error 'fnn-store-profile-refusal :message text)))
+          ((equal verdict '(:rejected))
+           (fnn-fault "ACL2 rejected durable configuration frame"))
+          (t (fnn-fault "ACL2 returned a malformed profile open verdict")))))
+
+;; `store upgrade-profile' over a store whose open refused its profile by
+;; name (PKT-471): while it is bound, the open under the writer lock reads
+;; config.json through ACL2's repair verdict instead, and keeps the frame to
+;; write in *fnn-profile-repair-octets*.
+(defvar *fnn-profile-repair-target* nil)
+(defvar *fnn-profile-repair-octets* nil)
+
+(defun fnn-metadata-config-repair (octets target)
+  "The profile the repair verb opens the store under: the one it will write,
+decoded through the ordinary open (fn-spo-repair-verdict: the saved profile
+with R lowered to the poll reply's width, admitted only for that target)."
+  (let ((verdict (fnn-core 'fn-store-profile-repair-verdict
+                           (fnn-octet-list octets) target)))
+    (unless (and (consp verdict) (member (first verdict) '(:repair :refused)))
+      (fnn-fault "ACL2 returned a malformed profile repair verdict"))
+    (when (eq (first verdict) :refused)
+      (fnn-refuse "store profile upgrade refused: ~(~a~)" (second verdict)))
+    (unless (and (fnn-octet-list-p (second verdict)) (second verdict))
+      (fnn-fault "ACL2 returned a malformed profile frame"))
+    (let ((frame (fnn-octets (second verdict))))
+      (prog1 (fnn-metadata-config-decode frame)
+        (setf *fnn-profile-repair-octets* frame)))))
 
 (defun fnn-metadata-frontier-frame (frontier)
   (let ((value (fnn-core 'fn-store-metadata-frontier-frame frontier)))
@@ -1441,7 +1479,10 @@ after the syscall."
     ;; format-6 FNSM frame; migration is a separate offline operation.
     (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
       (fnn-fault "legacy JSON metadata is retained in place; explicit offline migration is required"))
-    (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
+    (setf (fnn-store-config store)
+          (if *fnn-profile-repair-target*
+              (fnn-metadata-config-repair raw *fnn-profile-repair-target*)
+              (fnn-metadata-config-decode raw)))))
 
 (defun fnn-load-frontier (store)
   (fnn-check-regular (fnn-frontier-path store))
@@ -2576,7 +2617,27 @@ reads whichever frame the directory holds, old or new, never a torn one
             (fnn-indeterminate "store profile replacement is indeterminate: ~a" e)
             (fnn-refuse-io "known failure before the profile replacement: ~a" e))))))
 
-(defun fnn-command-upgrade-profile (root profile)
+(defun fnn-command-repair-profile (root profile)
+  "Offline: the one lowering, over a store whose open refused its saved
+profile by name (PKT-471).  The store is opened as the upgrade opens it, under
+the profile ACL2's repair verdict would write; the verdict decides, the host
+writes its frame with the upgrade's byte program.  Any other target is
+refused by name (exit 1) and nothing is written."
+  (let ((*fnn-profile-repair-target* profile)
+        (*fnn-profile-repair-octets* nil))
+    (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
+      (unwind-protect
+           (let ((octets *fnn-profile-repair-octets*))
+             (unless octets
+               (fnn-fault "the profile repair opened without a verdict"))
+             (fnn-upgrade-profile-write store octets)
+             (fnn-out "repaired profile=max-record-octets transactions-used=~d"
+                      (length records))
+             (fnn-out-profile (fnn-metadata-config-decode octets))
+             +fnn-exit-ok+)
+        (fnn-store-close store)))))
+
+(defun fnn-command-upgrade-profile-open (root profile)
   "Offline: replace the store's profile by PROFILE when ACL2 calls it an upgrade.
 
 The store is opened as `recover' opens it: the exclusive writer lock (so a
@@ -2610,6 +2671,14 @@ write nothing."
                  (fnn-out-profile (fnn-metadata-config-decode octets))
                  +fnn-exit-ok+)))
       (fnn-store-close store))))
+
+(defun fnn-command-upgrade-profile (root profile)
+  "Offline: replace the store's profile by PROFILE when ACL2 calls it an
+upgrade; over a store whose open refuses its profile by name, the repair
+(fnn-command-repair-profile)."
+  (handler-case (fnn-command-upgrade-profile-open root profile)
+    (fnn-store-profile-refusal ()
+      (fnn-command-repair-profile root profile))))
 
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
