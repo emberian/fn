@@ -984,6 +984,12 @@ check:
 # planning/proof-cost-baseline.json: a new slow book, or one 25% over its
 # baseline, fails. Installed pairs have no proof time.
 	$(PYTHON) tools/proof_cost.py
+# The throughput gate (PKT-407): the newest hbox run under
+# planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
+# against planning/throughput-baseline.json per operation (25% or the
+# metric's floor); a regression fails unless planning/throughput-causes.json
+# names the run's revision with a reason.  No run: NOT MEASURED, passes.
+	$(PYTHON) tools/throughput_gate.py check
 # Every host file loaded alone in its own ACL2: the dynamic half of the
 # host-names lint.  Needs FN_ACL2 and installed certificates; without
 # FN_ACL2 it prints that it did not run and exits 0.
@@ -1163,7 +1169,7 @@ model-test: certify
 tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
+	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check -v
 
