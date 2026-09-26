@@ -15,6 +15,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -155,9 +156,15 @@ class DryRunTests(unittest.TestCase):
         (books / "acceptance.cert").write_text("(:CERT fake)\n")
         (books / "acceptance.port").write_text("()\n")
         cls.evidence = Path(cls.temp.name) / "deploy-evidence.md"
+        # The shared fake entry points plus this gate's fake owner: the gate
+        # takes one overlay, and the owner fake is this test's alone (see
+        # tests/deploy_gate_owner_fake/tools/run_owner.py).
+        overlay = Path(cls.temp.name) / "overlay"
+        shutil.copytree(ROOT / "tests/deploy_gate_fake", overlay)
+        shutil.copytree(ROOT / "tests/deploy_gate_owner_fake", overlay, dirs_exist_ok=True)
         cls.code = deploy_gate.main([
             commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
-            "--overlay", str(ROOT / "tests/deploy_gate_fake"),
+            "--overlay", str(overlay),
             "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep",
             # The fake ACL2 by name: the farm host's default launcher moved to
             # a gate toolchain path the fake HOME does not hold, and the
