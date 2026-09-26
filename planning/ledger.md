@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 994 |
-| Certification roots in the Makefile | 969 |
-| Books inside the root closure | 987 |
-| `defthm` and `defthmd` events | 13967 |
-| `defun` events | 9748 |
-| Functions with verified guards | 2228 |
-| Functions declared `:verify-guards nil` and never verified | 790 |
-| Functions left at the default with an explicit guard | 5288 |
+| Books read | 996 |
+| Certification roots in the Makefile | 971 |
+| Books inside the root closure | 989 |
+| `defthm` and `defthmd` events | 13996 |
+| `defun` events | 9762 |
+| Functions with verified guards | 2249 |
+| Functions declared `:verify-guards nil` and never verified | 769 |
+| Functions left at the default with an explicit guard | 5302 |
 | Functions left at the default with no guard | 1442 |
-| `assert-event` checks | 14948 |
-| `must-fail` checks | 1764 |
+| `assert-event` checks | 14984 |
+| `must-fail` checks | 1774 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
-| `encapsulate` events | 69 |
+| `encapsulate` events | 73 |
 | Theorems flagged SUSPECT by shape | 134 |
-| Export-hygiene warnings | 156 |
+| Export-hygiene warnings | 157 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 148 |
 | Include-hygiene warnings | 1004 |
-| Host-names warnings | 1145 |
+| Host-names warnings | 1148 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -345,7 +345,7 @@ that `make certify` requests.
 | `books/control-authority.lisp` | root | 27 | 43 | 0/0/43/0 | 0 | 0 | 0 |
 | `books/control-classify.lisp` | root | 6 | 20 | 0/0/20/0 | 1 | 0 | 0 |
 | `books/control-evidence-grammar.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/control-evidence.lisp` | root | 10 | 27 | 0/4/23/0 | 0 | 0 | 0 |
+| `books/control-evidence.lisp` | root | 27 | 27 | 0/4/23/0 | 0 | 0 | 0 |
 | `books/control-served.lisp` | root | 38 | 15 | 0/0/14/1 | 0 | 0 | 0 |
 | `books/control-visible.lisp` | root | 48 | 20 | 0/0/20/0 | 0 | 0 | 1 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -397,6 +397,7 @@ that `make certify` requests.
 | `books/key-statements.lisp` | root | 49 | 34 | 0/0/34/0 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
+| `books/log-sink.lisp` | root | 5 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/login-binding-live.lisp` | root | 46 | 22 | 0/0/21/1 | 0 | 0 | 2 |
 | `books/login-binding.lisp` | root | 9 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/mailbox.lisp` | root | 6 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -415,9 +416,9 @@ that `make certify` requests.
 | `books/native-config.lisp` | root | 2 | 82 | 0/0/82/0 | 0 | 0 | 0 |
 | `books/native-control-reason.lisp` | root | 10 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 18 | 34 | 0/0/34/0 | 0 | 0 | 0 |
-| `books/native-health.lisp` | root | 30 | 61 | 0/12/49/0 | 0 | 0 | 0 |
+| `books/native-health.lisp` | root | 35 | 62 | 11/1/50/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 5 | 17 | 0/0/17/0 | 0 | 0 | 0 |
-| `books/native-live-status.lisp` | root | 59 | 50 | 0/14/36/0 | 0 | 0 | 0 |
+| `books/native-live-status.lisp` | root | 59 | 50 | 4/10/36/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 50 | 123 | 0/0/122/1 | 0 | 0 | 1 |
 | `books/nntp-auth-fold.lisp` | root | 54 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -565,7 +566,7 @@ that `make certify` requests.
 | `books/statement.lisp` | root | 24 | 56 | 0/0/56/0 | 0 | 0 | 0 |
 | `books/store-budget-article.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-budget-naming.lisp` | root | 15 | 11 | 0/1/10/0 | 0 | 0 | 0 |
-| `books/store-budget.lisp` | root | 20 | 17 | 0/10/7/0 | 0 | 0 | 0 |
+| `books/store-budget.lisp` | root | 22 | 18 | 6/4/8/0 | 0 | 0 | 0 |
 | `books/store-capacity-config.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/store-capacity-vector.lisp` | root | 37 | 16 | 0/3/12/1 | 0 | 0 | 5 |
 | `books/store-carried-folds.lisp` | root | 12 | 5 | 0/2/3/0 | 0 | 0 | 2 |
@@ -847,7 +848,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/control-authority-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 39 | 0 | 0 |
-| `tests/acl2/control-evidence-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 23 | 3 | 0 |
+| `tests/acl2/control-evidence-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 31 | 7 | 0 |
 | `tests/acl2/control-served-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 10 | 11 | 0 |
 | `tests/acl2/control-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 29 | 6 | 0 |
 | `tests/acl2/control-visible-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 13 | 9 | 0 |
@@ -882,6 +883,7 @@ that `make certify` requests.
 | `tests/acl2/key-statements-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 104 | 23 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/linear-recognizers-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 24 | 0 | 0 |
+| `tests/acl2/log-sink-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 4 | 0 |
 | `tests/acl2/login-binding-live-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 84 | 11 | 0 |
 | `tests/acl2/login-binding-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 23 | 11 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
@@ -899,7 +901,7 @@ that `make certify` requests.
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/native-control-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 3 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 83 | 2 | 0 |
-| `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 74 | 13 | 0 |
+| `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 81 | 15 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
 | `tests/acl2/native-live-status-tests.lisp` | root | 1 | 8 | 0/5/2/1 | 65 | 15 | 0 |
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 5 | 0 |
