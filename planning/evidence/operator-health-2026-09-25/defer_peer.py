@@ -21,7 +21,7 @@ def serve(conn):
         elif word == b"CHECK":
             f.write(b"431 " + line.split(b" ", 1)[1].strip() + b"\r\n")
         elif word == b"MODE":
-            f.write(b"501 no streaming\r\n")
+            f.write(b"203 streaming ok\r\n")
         elif word == b"CAPABILITIES":
             f.write(b"101 capabilities\r\nVERSION 2\r\nIHAVE\r\n.\r\n")
         else:

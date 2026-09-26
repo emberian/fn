@@ -1,0 +1,9 @@
+health exit=23 state=space-pressure
+fenced clear
+exhausted clear
+unqualified-profile clear
+space-pressure held transactions=1/4294967295 history-octets=440/1099511627776 charge=2/1048576 min-free-percent=100
+no-route clear
+stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+receipt-debt clear

@@ -1,0 +1,9 @@
+health exit=25 state=stranded-transfer
+fenced clear
+exhausted clear
+unqualified-profile clear
+space-pressure clear
+no-route clear
+stranded-transfer held dropped=1 peers: sink
+unavailable-peer clear
+receipt-debt clear

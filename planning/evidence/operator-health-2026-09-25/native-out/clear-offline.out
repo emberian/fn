@@ -1,0 +1,9 @@
+health exit=19 state=none-held (some states unobserved)
+fenced clear
+exhausted clear
+unqualified-profile clear
+space-pressure clear
+no-route clear
+stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+receipt-debt clear

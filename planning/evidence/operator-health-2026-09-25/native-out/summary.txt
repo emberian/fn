@@ -1,0 +1,29 @@
+dev init --profile development exit=0
+unqualified-offline exit=22 first=health exit=22 state=unqualified-profile held=[unqualified-profile ] unobserved=[stranded-transfer unavailable-peer ]
+scale init (mission profile) exit=0
+clear-offline exit=19 first=health exit=19 state=none-held (some states unobserved) held=[] unobserved=[stranded-transfer unavailable-peer ]
+offline post exit=0
+scale alerts.headroom_min_percent=100
+pressure-offline exit=23 first=health exit=23 state=space-pressure held=[space-pressure ] unobserved=[stranded-transfer unavailable-peer ]
+peer add exit=0 accepted operator peer
+scale started: control-socket=yes
+clear-live exit=0 first=health exit=00 state=healthy held=[] unobserved=[]
+post exit=0
+unavailable-live exit=26 first=health exit=26 state=unavailable-peer held=[unavailable-peer ] unobserved=[]
+fenced-store-held exit=20 first=health exit=20 state=fenced held=[fenced ] unobserved=[exhausted unqualified-profile space-pressure no-route stranded-transfer unavailable-peer receipt-debt ]
+fenced-unanswering exit=20 first=health exit=20 state=fenced held=[fenced ] unobserved=[exhausted unqualified-profile space-pressure no-route stranded-transfer unavailable-peer receipt-debt ]
+strand init (mission profile) exit=0
+peer add sink exit=0
+strand started: control-socket=yes
+post exit=0
+stranded-live exit=25 first=health exit=25 state=stranded-transfer held=[stranded-transfer ] unobserved=[]
+fwd init (mission profile) exit=0
+fwd post exit=0
+workflow-init exit=0
+workflow-enqueue exit=0
+undertake exit=0 BP obligation owner durable undertaking work=work-a charge=3
+no-route-offline exit=24 first=health exit=24 state=no-route held=[no-route receipt-debt ] unobserved=[stranded-transfer unavailable-peer ]
+bp-boundary add exit=0 accepted operator bp-boundary
+bp-route add exit=0 accepted operator bp-route
+receipt-debt-offline exit=27 first=health exit=27 state=receipt-debt held=[receipt-debt ] unobserved=[stranded-transfer unavailable-peer ]
+units: inactive inactive 

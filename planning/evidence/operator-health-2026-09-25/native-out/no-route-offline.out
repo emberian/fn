@@ -1,0 +1,9 @@
+health exit=24 state=no-route
+fenced clear
+exhausted clear
+unqualified-profile clear
+space-pressure clear
+no-route held forward-obligations=1
+stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+receipt-debt held forward-obligations=1 charge=3
