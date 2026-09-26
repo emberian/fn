@@ -435,3 +435,73 @@ Assurance chain, BP route, now observed for the unsigned elements:
     answer: the default is to append `:conflict`, a refusal, exit 1).
 - `make check` is green in the worktree, with the ledger and the current
   view regenerated locally (not committed).
+
+## 2026-09-26, source-corpus-3 (continued): all seven carried elements arrive
+
+dev dc39db91 was merged at 1ec78422. It contains mission-signed-2 (67d31fc7,
+PRF-132): the BP receiver now binds the article record that a signed
+(kind-4) entry commits, and never submits it twice.
+
+Certification: none by this lane. The images' acquire first found 6 books
+uncached at the merged bytes, all unchanged by this lane:
+- bp-fnbs-deletion-, -dispatch-, -family- and -forward-publication;
+- bp-node-progress-guards;
+- bp-node-retire.
+
+The deputy's merge gate `/tank/fn/gates/merge-dc39db91` was certifying
+them. The lane waited for the cache to hold them and certified nothing.
+
+Images (hbox, `tree-r4`, built by `build.sh` and `build-default.sh`). Both
+build logs were read for ACL2 errors, and there were none.
+- dtn developer: launcher
+  `6b6378e0547444473135ac8355d53cf037783f9105e0994087334c83233ad0f1`, core
+  `8334d8028fa5ba948005d11e9a6244ef458c3113bf0d59fb6b779e0ac94a1b8b`;
+- developer: launcher
+  `9f38d45379f960af928859be6cb86dbb20a63b23256249ae55d5553252081e40`, core
+  `be9504259aead8768387b1cc8793613428142df227551e6960644d370a5d2e4b`.
+
+Native runs:
+- `native-7.log`
+  (`55ee81ca80f4d67bccc2e5cf0304cea263900a8be856215488dc6c1754027c7b`),
+  `tests.test_native_source_corpus_bp`: **OK**, 117 s. The module and its
+  expected answer are unchanged.
+- `native-8.log`
+  (`08bc4a610d71a0d0e539e641d87b67b3a0172d67a6cbcff9eb5a47eeaae21bed`),
+  `tests.test_native_source_corpus` (the NNTP-route regression gate): OK,
+  3/3.
+
+The identity table (native-7):
+- Every bundle's source is `dtn://sender/`, its destination is
+  `dtn://receiver/`, and its creation time is 843709803189 ms.
+- The B frame is B's kind-5 FNBS frame (`<frame>-<entry>.fnb`).
+- SHA-256 values are shown to 8 hex digits; native-7.log has them in full.
+
+| element | Message-ID | A POST | kind-8 attempt (adu) | bundle seq | B frame | B verdict | A stored | B stored | B = A + B's splice | same after SIGKILL and reopen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| supplied-date | `<sc-supplied-date@example.invalid>` | 240 | 483 | 0 | 1-0 | accepted | e9a0b6b9 | 2928df50 | yes | yes |
+| generated-date | `<sc-generated-date@example.invalid>` | 240 | 546 | 1 | 1-3 | accepted | ca6ae603 | 34c12027 | yes | yes |
+| client-path | `<sc-client-path@example.invalid>` | 240 | 513 | 2 | 1-6 | accepted | 8aa9d72c | 072842d0 | yes | yes |
+| xref | - | 441 Xref must not be supplied | - | - | - | - | - | - | - | - |
+| unknown-headers | `<sc-unknown-headers@example.invalid>` | 240 | 630 | 3 | 1-9 | accepted | 3a015185 | 1b14936d | yes | yes |
+| mime | `<sc-mime@example.invalid>` | 240 | 774 | 4 | 1-12 | accepted | 3d1922d7 | 2019d250 | yes | yes |
+| legacy | `<00000000843709810501.00000000000000003056.fn@sender.bp.gate.invalid>` (generated) | 240 | 589 | 5 | 1-15 | accepted | e6e4de83 | 36e77df6 | yes | yes |
+| signed (carrier) | `<sc-signed@example.invalid>` | 240 | 8015 | 6 | 2-0 | accepted after the mid-receive SIGKILL | 8ba224d3 | e2ce42e5 | yes | yes |
+
+- The generated-date and legacy elements carry generated values (Date, and
+  for legacy the Message-ID), so their stored hashes differ from native-5.
+- client-path keeps the poster's Path tail at B (D32).
+- The signed carrier's transfer was held mid-bundle, B was SIGKILLed and
+  restarted, and B accepted it once.
+
+SCN-073 moves to `implemented`, on native-7 at 1ec78422.
+
+The assurance chain, BP route, as observed for all seven elements:
+1. Native entry: `fnn-bpnode-request-result`.
+2. Executed subject: `fn-owner-app-plan-install`, then `fn-bpaj-transit-plan`
+   answering `:submit`.
+3. Behavioural theorem: `fn-rs-a-bp-transit-keeps-the-authored-source`.
+4. The signed element's Store binding is PRF-132's.
+5. Observed: B's stored octets are A's with only B's splice.
+
+Still open: the FNCT conflict word (PKT-246, packet above, waiting on the
+coordinator).

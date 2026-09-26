@@ -5177,7 +5177,7 @@
         "planning/evidence/manifests/certify-20260926T010817Z-22211.json",
         "planning/evidence/manifests/certify-20260926T022246Z-145464.json"
       ],
-      "progress_note": "Lanes source-corpus-2 and source-corpus-3 (2026-09-26). Certified on hbox: run-20260926T010101Z-8350 and run-20260926T010756Z-cf08 at the lane base; at the dev 43fad7ab merge run-20260926T022220Z-4401 (relay-source-routes 4.2 s, relay-source-routes-tests 4.9 s, relay-source cached at these bytes). Native BP carriage (SCN-073, native-5 on images d710917e/a3ea9eae): the six unsigned corpus elements arrive at B as A's records with B's splice, each with its kind-8 attempt and a distinct bundle identity; the signed carrier is stored and then refused reason=history (PKT-247, the Store binding of kind-4 acceptances).",
+      "progress_note": "Lanes source-corpus-2 and source-corpus-3 (2026-09-26). Certified on hbox: run-20260926T010101Z-8350 and run-20260926T010756Z-cf08 at the lane base; at the dev 43fad7ab merge run-20260926T022220Z-4401 (relay-source-routes 4.2 s, relay-source-routes-tests 4.9 s, relay-source cached at these bytes). Native BP carriage (SCN-073, native-7 on images 6b6378e0/9f38d453 at 1ec78422): all seven carried corpus elements arrive at B as A's records with B's splice, each with its kind-8 attempt and a distinct bundle identity; the signed carrier's binding is PRF-132's.",
       "events": [
         "fn-rs-authored-source-is-the-walk",
         "fn-rs-relaying-keeps-the-authored-source",
