@@ -35,7 +35,12 @@
       (fn-col-result-event
        o (list :write (list :bootstrap history incarnation))))))
 
-(defun fn-col-register (o consumer group)
+;   MAX is the operator's consumer count, the opened Store profile's field 9
+; (host/owner-host.lisp `fn-owner-consumer-local-register' reads it through
+; host/store-host.lisp `fn-store-profile-max-consumers'); the refusal past it
+; is `fn-cp-register-within''s `:max-consumers' (books/consumer-position,
+; `fn-cp-register-within-refuses-exactly-past-the-operator-bound').
+(defun fn-col-register (o max consumer group)
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store)))
     (if (or (not s) (not (fn-af-newsgroup-namep group))
@@ -45,8 +50,9 @@
                                (fn-sn-groups store))))
         (list :refused :query)
       (fn-col-result-event
-       o (fn-cp-register s *fn-col-principal* consumer group
-                         *fn-col-query-version* *fn-col-view-version*)))))
+       o (fn-cp-register-within s max *fn-col-principal* consumer group
+                                *fn-col-query-version*
+                                *fn-col-view-version*)))))
 
 (defun fn-col-ack (o cursor-octets)
   (let ((decoded (fn-cp-cursor-decode cursor-octets))
