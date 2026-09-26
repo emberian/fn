@@ -617,13 +617,21 @@ def main(argv=None):
                                                              "BP node delivery"))), "B")
 
         # === 4. the receipt's own outage ===================================
-        # Y (peer fn-b) holds B's receipt: it forwards only toward its
-        # PEER-ID, so it restarts with peer fn-a (SIGTERM, then serve).
+        # Y (peer fn-b) listens on r2's boundary, so B's first offer of the
+        # receipt toward Y (b-boundary's listener) fails connection-locally
+        # and the job stays owed.  Y restarts facing fn-a (it forwards only
+        # toward its PEER-ID and listens on b-boundary's port), then B
+        # restarts and offers its owed receipt job on the new contact.
+        # `bp-node serve' listens on one port (PKT-291): with a listener per
+        # boundary this turn would not be needed.
         y_had = m.wait(y_log, r"BP accepted.*[\s\S]*BP accepted", 20)
         m.stop_node("y", "SIGTERM")
         m.stop_node("b", "SIGTERM")
         _, a_log1 = m.serve("a", B, 1048576, "a-serve-1")
         _, y_log2 = m.serve("y", A, 1048576, "y-serve-2")
+        _, b_log1b = m.serve("b", A, 1048576, "b-serve-1b")
+        m.wait(y_log2, r"BP accepted xfer=", 60)
+        m.stop_node("b", "SIGTERM")
         y_sent = m.wait(y_log2, r"BP forwarding result durable arrival=\d+ status=sent")
         # r1 now holds the receipt: X is down.  A dies meanwhile, by SIGKILL.
         time.sleep(6.0)
@@ -640,7 +648,7 @@ def main(argv=None):
                        and "pinned=no" in a_status)
         m.step("4 B's receipt crosses its own outage (X down, A SIGKILLed) and settles at A "
                "before B's consumer wakes", receipt.group(1) if receipt else "no-receipt",
-               settled and bool(y_sent), ["y-serve-2", "x-serve-3", "a-serve-1", "a-serve-2",
+               settled and bool(y_sent), ["y-serve-2", "b-serve-1b", "x-serve-3", "a-serve-1", "a-serve-2",
                                           "a-status-4"],
                y_first_held_receipt=bool(y_had), y_forwarded=bool(y_sent),
                x_forward=m.grep("x-serve-3", "BP forwarding"),
@@ -730,10 +738,15 @@ def main(argv=None):
         a_queued = m.wait(a_log3, r"BP node receipt queued id=\S+", 30)
         a_contact = m.wait(a_log3, r"BP node receipt contact peer=\S+", 30)
         time.sleep(3.0)
-        # X holds A's receipt (peer fn-a): turn X and Y toward fn-b; B listens first.
+        # A's receipt is owed toward X's a-boundary listener; X (peer fn-a)
+        # listens on r1's, so turn X and Y toward fn-b (B listens first) and
+        # restart A so it offers its owed receipt job on the new contact
+        # (one listener per serve, PKT-291).
         m.stop_node("x", "SIGTERM")
         _, b_log2 = m.serve("b", A, 1048576, "b-serve-2")
         _, x_log4 = m.serve("x", B, 1048576, "x-serve-4")
+        m.stop_node("a", "SIGTERM")
+        _, a_log4 = m.serve("a", B, 1048576, "a-serve-4")
         x_sent = m.wait(x_log4, r"BP forwarding result durable arrival=\d+ status=sent")
         time.sleep(6.0)
         m.stop_node("y", "SIGTERM")
@@ -764,7 +777,7 @@ def main(argv=None):
         m.step("6 the reply crosses back; A delivers; A's receipt releases B's pin; A's "
                "consumer wakes, polls and acks",
                a_verdict.group(1) if a_verdict else "no-verdict", held6,
-               ["a-serve-3", "x-serve-4", "y-serve-3", "b-serve-2", "b-6-status",
+               ["a-serve-3", "a-serve-4", "x-serve-4", "y-serve-3", "b-serve-2", "b-6-status",
                 "a-6-owner", "a-6-consumer-status"] + [t for t in lab.logs if t.startswith(
                     ("a-6-poll", "a-6-ack"))],
                a_application=m.grep("a-serve-3", "BP node"),
