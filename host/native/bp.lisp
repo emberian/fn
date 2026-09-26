@@ -509,6 +509,21 @@ table of the calls the session made."
         (setq *fnn-bp-profile-arrival-ms* nil)
         (sb-profile:reset)))))
 
+(defun fnn-bp-profile-open (service started)
+  "After fnn-bps-open: the open's wall time, the rows it recovered and the
+table of the calls it made."
+  (when (fnn-bp-profile-points)
+    (let ((table (with-output-to-string (out)
+                   (let ((*standard-output* out) (*trace-output* out))
+                     (sb-profile:report :limit 40 :print-no-call-list nil)))))
+      (fnn-out "BP profile open held=~d open-ms=~d"
+               (length (fnn-core 'fn-bpnf-held-list (fnn-bps-state service)))
+               (fnn-bp-profile-ms started))
+      (with-input-from-string (in table)
+        (loop for line = (read-line in nil nil) while line
+              do (fnn-out "BP profile | ~a" line))))
+    (sb-profile:reset)))
+
 (defun fnn-bp-deliver-node
   (service conn session-counter xfer-id octets owner channel)
   "Complete one transfer through the single FNBS machine owner."
