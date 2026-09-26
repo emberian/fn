@@ -49,6 +49,7 @@
 (include-book "../books/owner-prepare-correspondence")
 ; The transaction budget: `fn-owner-prepare' installs `fn-sbud-prepare'.
 (include-book "../books/owner-store-budget")
+(include-book "../books/store-budget-article")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -555,6 +556,7 @@
              (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
+          (mv-let (bytes state) (fn-owner-record-octets state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid payload groups
@@ -575,7 +577,10 @@
                  ; (fn-pcar-sbud-prepare-is-sbud-prepare): its candidate
                  ; test reads the last record's txid instead of folding
                  ; every record's through fn-record-p.
-                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 ; Packet 1: the history gate at the article's own figure
+                 ; (books/store-budget-article.lisp): 0 when it does not fit H.
+                 (budget (fn-sbud-article-budget-for
+                          (fn-owner-store-profile state) bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -586,7 +591,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))
+              (value :prepared)))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -633,6 +638,7 @@
              (existing (fn-rclb-existing-action msgid fn-octets groups s)))
         (if existing
             (value existing)
+          (mv-let (bytes state) (fn-owner-record-octets state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid (fn-octets-list fn-octets) groups
@@ -640,7 +646,10 @@
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge))
-                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 ; Packet 1: the history gate at the article's own figure
+                 ; (books/store-budget-article.lisp): 0 when it does not fit H.
+                 (budget (fn-sbud-article-budget-for
+                          (fn-owner-store-profile state) bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -651,7 +660,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))
+              (value :prepared)))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
@@ -1753,18 +1762,33 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-pop-request event)))
 
+;; The grants a statement is decided under.  At acceptance: the live
+;; configuration's.  At open (AT-OPEN, the newest-record recovery): packet
+;; 7's `fn-ks-reopen-rows' under `*fn-ks-reopen-policy*' -- by default the
+;; configuration in force at the statement's own txid, the fold of the
+;; Store's configuration journal (books/key-statements.lisp
+;; fn-ks-recover-recorded).
+(defun fn-owner-key-statement-rows (event at-open state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((live (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))))
+    (if at-open
+        (fn-ks-reopen-rows *fn-ks-reopen-policy* event live
+                           (fn-sn-config-history (fn-owner-store state)))
+      live)))
+
 (defun fn-owner-key-statement-plan
-    (event observed-ml-key ed-observation ml-observation state)
+    (event observed-ml-key ed-observation ml-observation at-open state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-plan event (fn-sn-keyring-snapshots (fn-owner-store state))
-                     (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                     (fn-owner-key-statement-rows event at-open state)
                      observed-ml-key ed-observation ml-observation)))
 
 (defun fn-owner-key-statement-event
-    (event observed-ml-key ed-observation ml-observation coordinates state)
+    (event observed-ml-key ed-observation ml-observation coordinates at-open
+           state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-execute event (fn-sn-keyring-snapshots (fn-owner-store state))
-                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        (fn-owner-key-statement-rows event at-open state)
                         observed-ml-key ed-observation ml-observation
                         (first coordinates) (second coordinates)
                         (third coordinates))))

@@ -13,6 +13,7 @@
 (include-book "../books/store-node-resolution")
 (include-book "../books/store-prepare-correspondence")
 (include-book "../books/store-budget")
+(include-book "../books/store-budget-article")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
 ; D27, PRF-102: the operator's namespace counts.
@@ -65,6 +66,17 @@
 (defun fn-store-sn-publication-verdict (profile kind state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sbud-verdict profile kind (f-get-global 'fn-store-sn state))))
+
+; An article's verdict (packet 1): the count gate and the history gate at the
+; article's own figure, `fn-sbud-article-verdict-at' of the committed count
+; and octets (books/store-budget-article.lisp,
+; `fn-sbud-article-verdict-keeps-history').
+(defun fn-store-sn-article-verdict (profile payload-length group-count state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (f-get-global 'fn-store-sn state)))
+    (value (fn-sbud-article-verdict-at profile (fn-sbud-used s)
+                                       (fn-sbud-bytes-used s)
+                                       payload-length group-count))))
 
 (defun fn-store-sn-headroom (profile state)
   (declare (xargs :stobjs state :mode :program))

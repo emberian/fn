@@ -4606,6 +4606,142 @@
       ]
     },
     {
+      "id": "PRF-124",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-record-configures-the-issued-invitations-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-record-fold-consumes-and-configures"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-reopen-is-blind-to-later-configuration"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-a-decline-replays-as-a-decline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recorded-recovery-completes-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-verdict-names-its-class"
+        }
+      ]
+    },
+    {
+      "id": "PRF-115",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-vj-a-completion-keeps-a-held-message-id-answered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-vj-reclamation-keeps-a-held-message-id-answered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-vj-a-held-message-id-is-answered-441"
+        }
+      ]
+    },
+    {
+      "id": "PRF-123",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-a-narrow-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-admitted-article-record-is-within-r"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-staged-record-is-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-u32-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-prepare-record-stages-u32-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-article-record-stamp-and-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-admits-a-u32-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-under-article-budget-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-admitted-article-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-article-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-figure-bounds-the-record"
+        }
+      ]
+    },
+    {
+      "id": "PRF-117",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sr-an-injection-is-not-a-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-retry-is-already-stored"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-changed-source-is-a-conflict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-the-tombstone-keeps-the-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-retry-after-reclaim-is-already-stored"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-changed-source-after-reclaim-is-a-conflict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-an-injection-is-a-cons"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-signed-retry-is-already-stored"
+        }
+      ]
+    },
+    {
       "id": "PRF-116",
       "events": [
         {

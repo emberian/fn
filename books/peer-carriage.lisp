@@ -571,6 +571,76 @@
   :hints (("Goal" :in-theory (disable fn-pa-current-plan
                                       fn-pcb-unsupported-profilep))))
 
+;; =============================================================================
+;; Packet 4 (PRF-124): the admission verdict names its class and holds
+;; nothing.  The mandate's five inputs, as this node can tell them apart:
+;;
+;;   :malformed                 the carrier does not parse (fn-pcb class)
+;;   :cryptographically-invalid a locally bound key set whose primitive
+;;                              observation failed (:signature-failed)
+;;   :unenrolled                well formed, supported, but no local binding
+;;                              of its keys (:no-local-binding) -- this is the
+;;                              "supported but unverified" input: nothing
+;;                              here checked its signature
+;;   :unsupported-profile       well formed under a profile this node does
+;;                              not verify
+;;   :carried                   an allowlisted boundary carries it (D23);
+;;                              stored with a :carried verdict, never
+;;                              :verified
+;;
+;; plus :verified (bound, both observations verified) and :unsigned (no
+;; carrier).  The verdict is a pure function of the received octets, the
+;; snapshots, the boundary's carried list and the two observations: it
+;; produces no event and no charge, so a refused signed input holds nothing.
+;; Whether to HOLD :unverified evidence as a charged durable record is the
+;; packet's open question (planning/evidence/peering-compose-2026-09-25.md).
+
+(defthm fn-pcb-absent-carrier-plan-is-absent
+  (implies (equal (fn-pa-carrier-kind received) :absent)
+           (equal (fn-pa-current-plan received snapshots carried nil) :absent))
+  :hints (("Goal" :in-theory (enable fn-pa-current-plan fn-pa-carrier-form))))
+
+(defun fn-pcb-admission-verdict (received snapshots carried ed ml)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pa-current-plan received snapshots carried nil))
+        (class (fn-pcb-refusal-class received snapshots carried ed ml)))
+    (cond ((not (consp plan)) :unsigned)
+          ((eq (car plan) :carried) :carried)
+          ((equal class :malformed) :malformed)
+          ((equal class :signature-failed) :cryptographically-invalid)
+          ((equal class :no-local-binding) :unenrolled)
+          ((equal class :unsupported-profile) :unsupported-profile)
+          ((eq (car plan) :ok) :verified)
+          (t :malformed))))
+
+(defconst *fn-pcb-admission-verdicts*
+  '(:unsigned :carried :malformed :cryptographically-invalid :unenrolled
+    :unsupported-profile :verified))
+
+; KEYSTONE (packet 4).  The verdict is one of the seven names; :verified
+; only for a plan accepted under a local binding with BOTH observations
+; verified, :carried only for the D23 arm, and a present carrier is never
+; :unsigned.  So a failed signed request is never relabelled as unsigned
+; acceptance, and carriage is never verification.
+(defthm fn-pcb-admission-verdict-names-its-class
+  (let ((v (fn-pcb-admission-verdict received snapshots carried ed ml))
+        (plan (fn-pa-current-plan received snapshots carried nil)))
+    (and (member-equal v *fn-pcb-admission-verdicts*)
+         (iff (equal v :verified)
+              (and (equal (car plan) :ok)
+                   (equal ed :verified) (equal ml :verified)))
+         (iff (equal v :carried) (equal (car plan) :carried))
+         (implies (not (equal (fn-pa-carrier-kind received) :absent))
+                  (not (equal v :unsigned)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pcb-refusal-class)
+                                  (fn-pa-current-plan fn-pa-carrier-kind
+                                   fn-pcb-unsupported-profilep))
+           :use ((:instance fn-pa-current-plan-outcomes (transitp nil))
+                 fn-pa-current-plan-off-transit-never-revoked
+                 fn-pa-absent-is-only-parser-confirmed-absence
+                 fn-pcb-absent-carrier-plan-is-absent))))
+
 (in-theory (disable fn-pcb-usage fn-pcb-tally-records
                     fn-pcb-usage-extend fn-pcb-cache-validp fn-pcb-admission
                     fn-pcb-carried-event fn-pcb-admitted-from
