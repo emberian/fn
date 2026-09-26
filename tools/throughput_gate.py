@@ -119,11 +119,16 @@ METRICS = {
 # Metrics a run may carry that an older release run predates: `baseline`
 # takes the dev run's figure alone for these, and says so.
 NEW_METRICS = ("post_signed_median_ms", "post_signed_p95_ms", "post_signed_owner_cpu_ms")
-# CPU seconds and allocation of the measured process: to first order
-# independent of other tenants on a 24-core box that is not saturated.  A run
-# taken on a busy box (--under-load) is compared on these only.
-LOAD_INSENSITIVE = ("probe_cpu_s", "probe_bytes_consed_per_commit", "post_owner_cpu_ms",
-                    "post_signed_owner_cpu_ms")
+# A run taken on a busy box (--under-load) is compared on the deterministic
+# counters only (PKT-477 (1), the coordinator, 2026-09-26): bytes consed per
+# commit is a property of the code path, not of the box.  CPU seconds are
+# NOT: post_owner_cpu_ms read 1.9 and 3.1 ms for the same image twelve
+# minutes apart under different load, and 3.5 at bb7b2994 where the same
+# bytes read 2.2 on the bisect (a 60 percent swing against a 25 percent
+# tolerance).  A CPU or wall figure taken under load never gates; it is
+# re-measured at the next quiet window, which `check` prefers.
+DETERMINISTIC = ("probe_bytes_consed_per_commit",)
+LOAD_INSENSITIVE = DETERMINISTIC  # the old name; the old tuple held CPU figures too
 
 
 # ---------------------------------------------------------------------------
@@ -485,7 +490,7 @@ def box(a):
         print(out["refused"], file=sys.stderr)
         return 3
     if quiet["busy"]:
-        print("under load: wall-clock metrics will not be compared", flush=True)
+        print("under load: only the deterministic counters will be compared (PKT-477 (1))", flush=True)
     env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env["LD_LIBRARY_PATH"] = OPENSSL + "/lib" + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
@@ -587,7 +592,7 @@ def limit(base, floor):
 def compared(run_doc, baseline):
     names = list(baseline.get("metrics", {}))
     if run_doc.get("quiet") is False:
-        names = [n for n in names if n in LOAD_INSENSITIVE]
+        names = [n for n in names if n in DETERMINISTIC]
     return names
 
 
@@ -673,7 +678,7 @@ def check(a):
     print("throughput_gate: %s measures %s (%s), %d of %d metrics compared%s, box cpu busy median %s"
           % (path.name, rev[:12], scope, len(names), len(baseline.get("metrics", {})),
              "" if doc.get("quiet") is not False else
-             " (under load: %s busy; wall-clock figures not compared)" % ", ".join(u["unit"] for u in busy),
+             " (under load: %s busy; CPU and wall-clock figures not compared, PKT-477 (1))" % ", ".join(u["unit"] for u in busy),
              load.get("box_cpu_busy_median")))
     if failures and named:
         print("throughput_gate: named cause for %s: %s" % (rev[:12], named[0].get("reason")))
@@ -747,7 +752,7 @@ def main(argv=None):
     b.add_argument("--signed-posts", type=int, default=100, help="signed POSTs timed; 0 skips the row")
     b.add_argument("--wait-quiet", type=int, default=0, help="seconds to wait for a quiet box before refusing")
     b.add_argument("--under-load", action="store_true",
-                   help="measure on a busy box anyway; the check then compares only " + ", ".join(LOAD_INSENSITIVE))
+                   help="measure on a busy box anyway; the check then compares only the deterministic counters: " + ", ".join(DETERMINISTIC))
     b.add_argument("--quiet-cpu", type=float, default=QUIET_CPU,
                    help="busy threshold in cores; a run above the default is a smoke run the check ignores")
     r = sub.add_parser("run")
