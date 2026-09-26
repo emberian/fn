@@ -1,0 +1,97 @@
+Running as unit: qual-69046a76-reinstall.scope; invocation ID: e130e079d8a54f4b9be5781fceac9d04
+tarball sha256 1a2a61e997c086c333760cf27b2e3b1eaf0fa0101aa54dda95abbc3b9e174003
+STEP verify tarball .sha256 rc=0
+  | fn-69046a76798b-linux-x86_64.tar.gz: OK
+/tank/fn/scratch/qual-69046a76/reinstall.py:28: DeprecationWarning: Python 3.14 will, by default, filter extracted tar archives and reject files or modify their metadata. Use the filter argument to control this behavior.
+  with tarfile.open(TAR) as t: t.extractall(R / "opt")
+STEP SHA256SUMS of the unpacked release rc=0
+  | SUMS-OK
+STEP fn --version (which image answers) rc=0
+  | fn 69046a76798b8be6169eeed5a66cc46fbe399e51
+ENV FN_NATIVE_* in children: []
+STEP A init fn.test rc=0
+  | initialized /tank/fn/scratch/qual-69046a76/reinstall/fresh/store
+  | accepted operator init
+OWNER LISTENING after 0.29 s
+  A b'200 fn-nntp experimental server ready'
+  A ('GROUP fn.test', b'211 0 1 0 fn.test')
+  A ('ARTICLE <reinstall-a@qual.invalid>', b'430 no article with that message-id')
+  A ('POST', b'340 send article to be posted')
+  A ('POST body', b'240 article received OK')
+  A reread b'200 fn-nntp experimental server ready'
+  A reread ('GROUP fn.test', b'211 1 1 1 fn.test')
+  A reread ('ARTICLE <reinstall-a@qual.invalid>', b'220 1 <reinstall-a@qual.invalid> article follows')
+  A reread ('  lines', 10)
+OWNER exit 0
+STEP A recover rc=0
+  | recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP A status rc=0
+  | transactions=1 articles=1 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consume
+  | open-cost replay-records=4294967295 list-memory-octets=35184372088832
+  | headroom transactions-used=1 transactions-budget=4294967295 bytes-used=574 history-bound=1099511627776 charge-reserved=2 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=1 reserved=2 connections=0
+  | pack-chain none
+  | accepted operator status
+STEP cp -a the live store (read-only source) rc=0
+STEP B status on the imported store rc=0
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 ma
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | pack-chain none
+  | accepted operator status
+STEP B health offline rc=19
+  | health exit=19 state=none-held (some states unobserved)
+  | fenced clear
+  | exhausted clear
+  | unqualified-profile clear
+  | space-pressure clear
+  | no-route clear
+  | stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+  | unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+  | receipt-debt clear
+  | accepted operator health
+OWNER LISTENING after 0.18 s
+  B b'200 fn-nntp experimental server ready'
+  B ('LIST ACTIVE', b'215 list of active newsgroups follows')
+  B ('  lines', 4)
+  B ('GROUP fn.agents', b'211 12 1 12 fn.agents')
+  B ('ARTICLE', b'220 1 <node-probe.20260922T204219Z.3cbbac2e@probe.invalid> article follows')
+  B ('  lines', 11)
+  B ('POST', b'340 send article to be posted')
+  B ('POST body', b'240 article received OK')
+  B reread b'200 fn-nntp experimental server ready'
+  B reread ('GROUP fn.agents', b'211 13 1 13 fn.agents')
+  B reread ('ARTICLE <reinstall-b@qual.invalid>', b'220 13 <reinstall-b@qual.invalid> article follows')
+  B reread ('  lines', 10)
+OWNER exit 0
+STEP B recover rc=0
+  | recovered transactions=14 articles=14 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP B status after rc=0
+  | transactions=14 articles=14 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 ma
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=14 transactions-budget=4096 bytes-used=11568 history-bound=805306368 charge-reserved=28 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=14 reserved=28 connections=0
+  | pack-chain none
+  | accepted operator status
+DONE
+rc=0

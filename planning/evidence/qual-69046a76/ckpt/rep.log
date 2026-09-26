@@ -1,0 +1,38 @@
+greeting             median 0.497 ms  p95 0.837 ms  max 4.696 ms
+post_first_quarter   median 240.398 ms  p95 524.920 ms  max 891.382 ms
+post_last_quarter    median 284.958 ms  p95 608.195 ms  max 4806.040 ms
+stat_present         median 0.144 ms  p95 0.292 ms  max 0.331 ms
+article_present      median 50.332 ms  p95 135.678 ms  max 499.331 ms
+over_present         median 3.677 ms  p95 4.806 ms  max 47.379 ms
+residency_after_load             rss 1558088 KiB  hwm 1635176 KiB  live None
+residency_after_reopen           rss 5108892 KiB  hwm 5741284 KiB  live None
+residency_after_checkpoint_open  rss 5442604 KiB  hwm 7827912 KiB  live None
+first_open_seconds               0.158 s
+load_seconds                     661.677 s
+reopen_seconds                   24.530 s
+checkpoint_seconds               38.850 s
+reopen_from_checkpoint_seconds   24.922 s
+	Command being timed: "python3 tools/rep_measure.py --image /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host --work /tank/fn/scratch/qual-69046a76/ckpt/n2048 --articles 2048 --octets 32693 --profile scale --samples 32 --readers 3 --json /tank/fn/scratch/qual-69046a76/ckpt/n2048.json"
+	User time (seconds): 218.40
+	System time (seconds): 93.32
+	Percent of CPU this job got: 36%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 14:20.35
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 19214764
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1
+	Minor (reclaiming a frame) page faults: 32193564
+	Voluntary context switches: 17704677
+	Involuntary context switches: 7207
+	Swaps: 0
+	File system inputs: 1978260
+	File system outputs: 947289
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0

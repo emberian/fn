@@ -1,0 +1,23 @@
+# LargeReplyTests on /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn-developer start 2026-09-26T15:10:56Z
+test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving (tests.test_native_bounds_join.LargeReplyTests.test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving) ... FAIL
+
+======================================================================
+FAIL: test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving (tests.test_native_bounds_join.LargeReplyTests.test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/qual-69046a76/tree/tests/test_native_bounds_join.py", line 198, in test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving
+    owner, reader, log = self.start_drained_owner()
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/qual-69046a76/tree/tests/test_native_bounds_join.py", line 172, in start_drained_owner
+    owner = self.start_owner(self.image)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/qual-69046a76/tree/tests/test_native_operator_verbs.py", line 387, in start_owner
+    self.fail("owner failed: {}".format(
+AssertionError: owner failed: usage operator action run needs the nntp-service surface, which this image omits
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.102s
+
+FAILED (failures=1)
+# rc=1 wall=1

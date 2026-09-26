@@ -1,0 +1,3 @@
+init 1  refused operator init MAX-RECORD-OCTETS-BELOW-THE-ARTICLE-RECORD
+owner exited before LISTENING: init=1 b'' b'refused operator init MAX-RECORD-OCTETS-BELOW-THE-ARTICLE-RECORD\n'
+rc=1

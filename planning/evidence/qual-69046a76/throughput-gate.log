@@ -1,0 +1,10 @@
+started throughput-gate-69046a76798b-20260926T174825Z on hbox; /tank/fn/scratch/throughput-gate/run-69046a76798b-20260926T174825Z
+0
+phase alloc done
+phase served done
+phase signed done
+phase checkpoint done
+{"probe_wall_s": 1.251, "probe_cpu_s": 1.25, "probe_commit_ms": 0.481, "probe_reopen_s": 0.693, "probe_bytes_consed_per_commit": 1406484, "post_median_ms": 1.617, "post_p95_ms": 2.317, "post_owner_cpu_ms": 1.7, "article_median_ms": 2.437, "article_p95_ms": 2.505, "reopen_s": 0.145, "checkpoint_publish_ms": 643, "post_signed_median_ms": 61.74, "post_signed_p95_ms": 65.771, "post_signed_owner_cpu_ms": 62.7}
+
+wrote planning/evidence/throughput/69046a76798b-qual-69046a76-20260926T174825Z.json
+rc=0

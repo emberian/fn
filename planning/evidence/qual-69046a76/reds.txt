@@ -1,0 +1,41 @@
+prod    test_checkpoint                               reds=1 new=['test_corrupt_selected_generation_is_reported_not_rolled_back']
+prod    test_native_auth_admin_fidelity               reds=2 new=-
+prod    test_native_bounds_join                       GREEN now (was 2 red: ['test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it', 'test_step_rollback_step_post_3_mib_restart'])
+prod    test_native_checkpoint                        reds=1 new=-
+prod    test_native_consumer_project_bounds           reds=1 new=-
+prod    test_native_control                           GREEN now (was 1 red: ['test_operator_post_is_injected_and_refuses_what_post_refuses'])
+prod    test_native_history_required                  reds=1 new=['test_the_host_calls_acl2s_decisions']
+prod    test_native_hybrid_author                     GREEN now (was 1 red: ['test_portable_carrier_verifies_exact_source_and_keyset'])
+prod    test_native_key_statements                    reds=2 new=-
+prod    test_native_live_reconfiguration              reds=3 new=-
+prod    test_native_operator_verbs                    reds=1 new=['test_peer_list_is_a_query_and_the_host_asks_acl2_which']
+prod    test_native_owner                             reds=2 new=-
+prod    test_native_peer_invite                       reds=2 new=-
+prod    test_native_peer_pull                         reds=4 new=-
+prod    test_native_profile_upgrade                   reds=1 new=['test_the_verb_is_acl2s_and_the_host_writes_the_program']
+prod    test_native_source_corpus                     reds=1 new=-
+prod    test_native_state_checkpoint                  reds=1 new=-
+prod    test_native_v0_matrix                         reds=1 new=-
+prod    test_native_visibility_join                   reds=3 new=-
+dev     test_checkpoint                               reds=1 new=['test_corrupt_selected_generation_is_reported_not_rolled_back']
+dev     test_native_auth_admin_fidelity               reds=2 new=-
+dev     test_native_bounds_join                       GREEN now (was 2 red: ['test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it', 'test_step_rollback_step_post_3_mib_restart'])
+dev     test_native_checkpoint                        reds=1 new=-
+dev     test_native_consumer_project_bounds           reds=1 new=-
+dev     test_native_history_required                  reds=1 new=['test_the_host_calls_acl2s_decisions']
+dev     test_native_hybrid_author                     GREEN now (was 1 red: ['test_portable_carrier_verifies_exact_source_and_keyset'])
+dev     test_native_live_reconfiguration              reds=3 new=-
+dev     test_native_operator_verbs                    reds=2 new=['test_peer_list_is_a_query_and_the_host_asks_acl2_which']
+dev     test_native_outcome_algebra                   reds=1 new=-
+dev     test_native_owner                             reds=2 new=-
+dev     test_native_profile_upgrade                   reds=1 new=['test_the_verb_is_acl2s_and_the_host_writes_the_program']
+dev     test_native_source_corpus                     reds=1 new=-
+dev     test_native_state_checkpoint                  reds=1 new=-
+dev     test_native_v0_matrix                         reds=1 new=-
+dtn     test_bp_fragment_node_native                  reds=1 new=-
+dtn     test_bp_node_native                           reds=27 new=-
+dtn     test_bp_obligation_native                     reds=1 new=-
+dtn     test_bp_receive_integrity_native              reds=2 new=-
+dtn     test_bp_service_native                        reds=7 new=-
+dtndev  test_bp_fragment_node_native                  reds=1 new=-
+dtndev  test_bp_obligation_native                     reds=1 new=-

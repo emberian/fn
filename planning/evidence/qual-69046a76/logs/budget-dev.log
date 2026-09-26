@@ -1,0 +1,355 @@
+# label dev start 2026-09-26T17:46:50Z cwd /tank/fn/scratch/qual-69046a76/tree
+# FN_NATIVE_HOST /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# FN_NATIVE_BP_HOST /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn FN_NATIVE_BP_NODE_HOST /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn-developer
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_D23_VERIFY=1
+# env FN_DTN7_REPO=/tank/fn/dtn7/repo
+# env FN_FORMAT7_IMAGE=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+# env FN_INN_SRC=/tank/fn/inn/2.7.4
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=dc3b8919ab8d43750d9b9fb521c7c40039eaf29086d5f7b55293ba85d2faea7a
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=271f8297fa16917130ccef6d0b47ce7c88d3833712121f3a95eec92ce175d861
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_IMAGE_SOURCE_SHA=69046a76
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_READER_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/qual-69046a76/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/qual-69046a76/diag/dev
+# env FN_NATIVE_TEST_ROOT=/tank/fn/scratch/qual-69046a76/tree
+# env FN_OLD_IMAGE=/tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/fn-host
+# env FN_OLD_NATIVE_HOST=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env FN_RUN_VERIFY_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/qual-69046a76/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/runtime/sbcl-home/
+tests.test_checkpoint: 13.9 s of 180 s, 7 tests, FAILED (0 failures, 1 errors, exit 1)
+        5.84 s  CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+        2.87 s  CheckpointTests.test_corrupt_marker_is_reported
+        2.12 s  CheckpointTests.test_publish_select_and_suffix_replay_on_128_records
+tests.test_fn_verify: 11.4 s of 180 s, 33 tests, ok (3 skipped)
+        5.50 s  NativeVerifyTests.test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on
+        0.31 s  FakeNodeVerifyTests.test_a_lying_node_is_2
+        0.26 s  FakeNodeVerifyTests.test_check_article_is_the_offline_independent_check
+    skipped  tests.test_fn_verify.NativeVerifyTests.test_a_v1_record_from_before_v2_is_still_verified_0: set FN_VERIFY_OLD_HOST to an image from before carrier v2
+    skipped  tests.test_fn_verify.NativeVerifyTests.test_large_signed_posts_verify_under_their_version_0: set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB
+    skipped  tests.test_fn_verify.NativeVerifyTests.test_tampered_v2_post_is_refused_and_not_stored_3: set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB
+tests.test_fn_web_native: 11.5 s of 180 s, 5 tests, ok
+        3.15 s  NativeProvenanceWebTests.test_enrollment_rotation_and_revocation_beside_the_historical_verdict
+        2.27 s  NativeProtectedWebClientTests.test_thread_reply_outcomes_verdict_unread_and_resume
+        2.21 s  NativeWebClientTests.test_durable_draft_lost_post_reply_and_restart_keep_one_native_article
+tests.test_native_admin: 0.3 s of 180 s, 9 tests, SKIPPED (9 of 9; no test executed)
+        0.00 s  NativeAdminTests.test_create_capacity_retire_reopen_preserves_history
+        0.00 s  NativeAdminTests.test_live_uncertain_publication_fences_and_recovers
+        0.00 s  NativeAdminTests.test_peer_add_and_remove_use_public_native_admin
+    skipped  tests.test_native_admin.NativeAdminTests.test_create_capacity_retire_reopen_preserves_history: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_live_uncertain_publication_fences_and_recovers: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_peer_add_and_remove_use_public_native_admin: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_policy_set_path_identity_is_a_durable_configuration_record: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_running_owner_applies_durable_administration: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_running_owner_applies_policy_set_path_identity: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_running_owner_applies_symmetric_peer_add_and_remove: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_two_administrators_have_no_post_publish_generation_race: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_admin.NativeAdminTests.test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue: set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values
+tests.test_native_auth_admin_fidelity: 2.5 s of 180 s, 3 tests, FAILED (2 failures, 0 errors, exit 1)
+        1.17 s  NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers
+        1.16 s  NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process
+        0.00 s  NativeAuthAdminSourceMapTests.test_each_model_cut_is_on_the_actual_raw_executor
+tests.test_native_auth: 8.3 s of 180 s, 5 tests, ok
+        2.72 s  NativeAuthTests.test_restricted_command_before_login_is_480_and_leaves_no_article
+        2.58 s  NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit
+        1.71 s  NativeAuthTests.test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding
+tests.test_native_block_fault_ownership: 0.2 s of 180 s, 6 tests, ok
+        0.03 s  NativeBlockFaultOwnershipTests.test_live_same_core_in_another_session_is_excluded
+        0.00 s  NativeBlockFaultOwnershipTests.test_signal_rechecks_start_time_and_session_before_pidfd_signal
+        0.00 s  NativeBlockFaultOwnershipTests.test_dm_dependency_requires_one_exact_owned_loop
+tests.test_native_bounds_blob: 1.5 s of 180 s, 1 tests, ok
+        1.42 s  OperatorPostAboveTheOldBlobTests.test_operator_post_carries_up_to_a_and_names_one_octet_past
+tests.test_native_bounds_join: 33.0 s of 180 s, 3 tests, ok
+       16.85 s  LargeReplyTests.test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving
+       10.30 s  DeployRehearsalTests.test_step_rollback_step_post_3_mib_restart
+        5.77 s  LargeArticleTests.test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it
+tests.test_native_checkpoint: 78.2 s of 180 s, 26 tests, OVER BUDGET (a test over 20 s: test_reclaim_cuts_keep_served_view_and_next_number 36.9 s; also exit 1)
+       36.94 s  NativeCheckpointTests.test_reclaim_cuts_keep_served_view_and_next_number
+       10.39 s  NativeProductionCompactTests.test_operator_compact_keeps_every_article_and_next_number
+        6.83 s  NativeCheckpointTests.test_reclaim_keeps_served_view_watermarks_and_next_number
+tests.test_native_compaction_crash_map: 0.1 s of 180 s, 4 tests, ok
+        0.00 s  NativeCompactionCrashMapTests.test_actual_reclaim_calls_logical_plan_subject
+        0.00 s  NativeCompactionCrashMapTests.test_each_native_cut_is_a_model_program_cut
+        0.00 s  NativeCompactionCrashMapTests.test_recovery_calls_exact_observation_subject
+tests.test_native_consumer_e2: 9.0 s of 180 s, 4 tests, ok (1 skipped)
+        4.20 s  NativeConsumerE2Tests.test_durable_scope_ack_and_unrelated_article
+        2.41 s  NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply
+        2.34 s  NativeConsumerE2Tests.test_lost_register_reply_resolves_by_reopened_position
+    skipped  tests.test_native_consumer_e2.NativeConsumerE2Tests.test_different_local_uid_is_refused_by_owner: requires Linux root and setpriv to offer a distinct SO_PEERCRED uid to the real owner socket
+tests.test_native_consumer_exchange: 26.7 s of 180 s, 8 tests, ok
+        8.97 s  NativeConsumerExchangeTests.test_two_sleeping_agents_exchange_across_every_ownership_cut
+        4.17 s  NativeConsumerExchangeTests.test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one
+        3.19 s  NativeConsumerExchangeTests.test_death_while_recording_and_before_sending_are_reconciled
+tests.test_native_consumer_inspect: 0.5 s of 180 s, 4 tests, ok
+        0.25 s  NativeConsumerInspectTests.test_truncated_trailing_and_unknown_version_refuse
+        0.07 s  NativeConsumerInspectTests.test_exact_max_cursor_and_high_octet_ids
+        0.06 s  NativeConsumerInspectTests.test_zero_position_is_reported_exactly
+tests.test_native_consumer_project_bounds: 0.3 s of 180 s, 2 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.13 s  NativeConsumerProjectBoundsTests.test_overbound_cursor_and_event_refuse_without_projection
+        0.06 s  NativeConsumerProjectBoundsTests.test_malformed_within_bound_uses_acl2_codec_refusal
+tests.test_native_control_authority: 2.6 s of 180 s, 1 tests, ok
+        2.48 s  NativeControlAuthorityTests.test_grant_and_revoke_through_the_live_path_are_durable
+tests.test_native_control_filing: 16.8 s of 180 s, 5 tests, ok
+        5.38 s  NativeControlFilingTests.test_two_node_withdrawal
+        3.48 s  NativeControlFilingTests.test_transit_ihave
+        3.31 s  NativeControlFilingTests.test_signed_withdrawal
+tests.test_native_control: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_native_crash_correspondence: 0.1 s of 180 s, 8 tests, ok
+        0.03 s  NativeCrashCorrespondenceTests.test_recovery_cuts_run_in_program_order_and_sweep_after_the_barriers
+        0.00 s  NativeCrashCorrespondenceTests.test_actual_owner_calls_the_three_native_persistence_subjects
+        0.00 s  NativeCrashCorrespondenceTests.test_allocator_observations_and_cuts_follow_syscalls
+tests.test_native_crash_model: 49.7 s of 180 s, 7 tests, OVER BUDGET (a test over 20 s: test_all_native_post_process_death_cuts 43.4 s)
+       43.44 s  NativeCrashModelTests.test_all_native_post_process_death_cuts
+        3.52 s  NativeCrashModelTests.test_the_frame_is_the_sent_articles_not_anothers
+        1.50 s  NativeCrashModelTests.test_recovery_stage_unlink_process_death_scans_and_reopens
+tests.test_native_cut_map: 0.1 s of 180 s, 3 tests, ok
+        0.01 s  NativeCutMapTests.test_every_declared_native_cut_is_a_model_program_cut
+        0.00 s  NativeCutMapTests.test_checkpoint_cuts_match_native_and_reclaim_program
+        0.00 s  NativeCutMapTests.test_outcomes_remain_explicit
+tests.test_native_frozen_relocation: 0.1 s of 180 s, 2 tests, SKIPPED (2 of 2; no test executed)
+        0.00 s  FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup
+        0.00 s  FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa
+    skipped  tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup: set FN_RUN_RELOCATION_E2E=1 for a copied frozen image
+    skipped  tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa: set FN_RUN_RELOCATION_E2E=1 for a copied frozen image
+tests.test_native_history_marker: 5.8 s of 180 s, 6 tests, ok
+        4.07 s  NativeHistoryMarkerTests.test_every_marker_cut_recovers_and_keeps_detecting
+        0.56 s  NativeHistoryMarkerTests.test_a_burned_reservation_is_not_a_lost_record
+        0.42 s  NativeHistoryMarkerTests.test_a_store_without_a_marker_opens_and_the_open_marks_it
+tests.test_native_history_required: 54.3 s of 180 s, 6 tests, OVER BUDGET (a test over 20 s: test_the_served_owner_at_every_marker_cut 30.7 s; also exit 1)
+       30.67 s  RetryResolutionTests.test_the_served_owner_at_every_marker_cut
+       12.21 s  MigrationTests.test_every_migration_cut_reopens_consistently
+        5.72 s  RetryResolutionTests.test_the_catch_up_cuts
+tests.test_native_hybrid_author: 35.6 s of 180 s, 11 tests, ok
+        6.57 s  NativeHybridAuthorTest.test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it
+        4.92 s  NativeHybridAuthorTest.test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies
+        3.97 s  NativeHybridAuthorTest.test_carried_budget_and_refusal_classes
+tests.test_native_initializer_fidelity: 1.6 s of 180 s, 11 tests, ok
+        0.20 s  NativeInitializerFidelityTests.test_existing_valid_init_takes_actual_eexist_links_then_reopens
+        0.19 s  NativeInitializerFidelityTests.test_history_fenced_process_death_retries_through_config_eexist
+        0.19 s  NativeInitializerFidelityTests.test_sigkill_after_actual_config_eexist_leaves_existing_store_openable
+tests.test_native_key_statements: 17.1 s of 180 s, 5 tests, ok
+        4.29 s  NativeKeyStatementTests.test_an_accepted_statement_cut_then_its_grant_revoked
+        4.04 s  NativeKeyStatementTests.test_kill_at_the_cut_and_recovery_at_open
+        3.69 s  NativeKeyStatementTests.test_a_decline_across_a_restart_with_a_grant_added
+tests.test_native_live_reconfiguration: 5.0 s of 180 s, 11 tests, FAILED (3 failures, 0 errors, exit 1)
+        2.33 s  LiveReconfigurationImageTests.test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable
+        1.18 s  LiveReconfigurationImageTests.test_the_live_verb_answers_and_the_owner_keeps_serving
+        1.18 s  LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart
+tests.test_native_newnews_migration: 0.1 s of 180 s, 1 tests, SKIPPED (1 of 1; no test executed)
+        0.00 s  NativeNewnewsMigrationTests.test_legacy_horizon_and_new_stamp_on_reopened_store
+    skipped  tests.test_native_newnews_migration.NativeNewnewsMigrationTests.test_legacy_horizon_and_new_stamp_on_reopened_store: frozen pre-T2 and T2b developer images are required
+tests.test_native_nntp_post_probe: 0.2 s of 180 s, 13 tests, ok
+        0.02 s  RecordedRunTests.test_pre_d25_runs_fail_only_on_the_silent_swallow_and_the_wording
+        0.00 s  PostArmDerivationTests.test_a_cut_moved_out_of_ignore_errors_is_caught
+        0.00 s  PostArmDerivationTests.test_every_post_cut_has_the_arm_its_coordinate_gives
+tests.test_native_operator_campaign: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  OperatorCampaignParsingTests.test_a_missing_report_is_none_not_zero
+        0.00 s  OperatorCampaignParsingTests.test_articles_are_crlf_and_name_their_message_id
+        0.00 s  OperatorCampaignParsingTests.test_recover_line_counts_are_read_exactly
+tests.test_native_operator_cli: 6.9 s of 180 s, 6 tests, ok
+        4.31 s  NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv4_loopbacks
+        2.15 s  NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv6_loopback
+        0.19 s  NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage
+tests.test_native_operator_verbs: 127.7 s of 180 s, 22 tests, OVER BUDGET (a test over 20 s: test_the_production_image_refuses_the_selector 120.1 s; also exit 1)
+      120.09 s  NativeOperatorUncertainOutcomeTests.test_the_production_image_refuses_the_selector
+        2.52 s  NativeOperatorCapacityTests.test_the_development_profile_budget_is_reported_and_refused_by_name
+        2.37 s  NativeOperatorUncertainOutcomeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it
+tests.test_native_operator_verdicts: 12.9 s of 180 s, 6 tests, ok
+        5.39 s  NativeOperatorVerdictTests.test_two_node_withdrawal
+        3.33 s  NativeOperatorVerdictTests.test_signed_withdrawal
+        1.54 s  NativeOperatorVerdictTests.test_needs_upgrade_and_rollback_check
+tests.test_native_owner: 6.5 s of 180 s, 18 tests, FAILED (2 failures, 0 errors, exit 1)
+        1.55 s  NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart
+        1.50 s  NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading
+        1.28 s  NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit
+tests.test_native_peer_invite: 14.9 s of 180 s, 5 tests, ok
+        3.85 s  NativePeerInviteTests.test_invite_accept_confirm_and_the_refusals
+        3.83 s  NativePeerInviteTests.test_a_succeeded_friend_is_confirmed_under_its_current_keys
+        2.95 s  NativePeerInviteTests.test_accept_configures_the_inviter_and_resumes_after_a_cut
+tests.test_native_peer_pull: 112.5 s of 180 s, 13 tests, OVER BUDGET (a test over 20 s: test_pull_from_inn 33.9 s)
+       33.86 s  NativePeerPullTests.test_pull_from_inn
+       14.95 s  NativePeerPullTests.test_cursor_publication_cuts_over_tls
+       14.45 s  NativePeerPullTests.test_cursor_publication_cuts
+    skipped  tests.test_native_peer_pull.NativePeerPullTests.test_soak_two_nodes_and_an_unproducible_listing: set FN_PULL_SOAK_SECONDS for the bounded soak (runbook)
+tests.test_native_peering_matrix_slice: 0.2 s of 180 s, 1 tests, ok
+        0.01 s  NativePeeringMatrixSliceTests.test_hybrid_prefix_reaches_probe_and_startup_failure_names_rows
+tests.test_native_peering: 0.3 s of 180 s, 5 tests, SKIPPED (5 of 5; no test executed)
+        0.00 s  NativePeeringTests.test_durable_feed_requeues_after_source_process_death
+        0.00 s  NativePeeringTests.test_live_peer_configuration_activates_both_directions
+        0.00 s  NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate
+    skipped  tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death: set explicit native image/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_peering.NativePeeringTests.test_live_peer_configuration_activates_both_directions: set explicit native image/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate: set explicit native image/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_peering.NativePeeringTests.test_reset_while_transit_completes_keeps_durable_article_and_owner: set explicit native image/source and matching launcher/core SHA-256 values
+    skipped  tests.test_native_peering.NativePeeringTests.test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays: set explicit native image/source and matching launcher/core SHA-256 values
+tests.test_native_profile_namespace: 2.3 s of 180 s, 1 tests, ok
+        2.16 s  NativeProfileNamespaceTests.test_the_operator_raises_credentials_and_generations
+tests.test_native_profile_upgrade: 24.6 s of 180 s, 11 tests, FAILED (1 failures, 0 errors, exit 1)
+        8.26 s  ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile
+        6.73 s  FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8
+        2.65 s  FormatSevenToEightTests.test_the_step_keeps_every_bound_and_writes_the_scale_frame
+tests.test_native_profile: 2.7 s of 180 s, 3 tests, ok
+        1.26 s  NativeProfileTests.test_posts_land_in_the_configured_log_and_name_the_path_identity
+        1.18 s  NativeProfileTests.test_without_a_log_path_the_lines_go_to_stderr
+        0.21 s  NativeProfileTests.test_posting_agent_and_a_relative_log_are_refused_by_name
+tests.test_native_program_check: 0.6 s of 180 s, 14 tests, ok
+        0.09 s  UnbalancedFormTests.test_balance_mode_exit_codes
+        0.05 s  NativeProgramCheckTests.test_recovery_sweep_before_a_barrier_fails
+        0.05 s  NativeProgramCheckTests.test_current_tree_passes_every_program_in_the_cut_table
+tests.test_native_protected_peering: 0.4 s of 180 s, 5 tests, SKIPPED (5 of 5; no test executed)
+        0.00 s  NativeProtectedPeeringTests.test_acknowledged_protected_feed_does_not_reoffer_after_source_death
+        0.00 s  NativeProtectedPeeringTests.test_bad_outbound_password_yields_authenticated_430_observation
+        0.00 s  NativeProtectedPeeringTests.test_durable_sent_cut_requeues_on_protected_restart
+    skipped  tests.test_native_protected_peering.NativeProtectedPeeringTests.test_acknowledged_protected_feed_does_not_reoffer_after_source_death: set explicit source-matched native image and hashes
+    skipped  tests.test_native_protected_peering.NativeProtectedPeeringTests.test_bad_outbound_password_yields_authenticated_430_observation: set explicit source-matched native image and hashes
+    skipped  tests.test_native_protected_peering.NativeProtectedPeeringTests.test_durable_sent_cut_requeues_on_protected_restart: set explicit source-matched native image and hashes
+    skipped  tests.test_native_protected_peering.NativeProtectedPeeringTests.test_reciprocal_starttls_authinfo_transfer_and_reconnect: set explicit source-matched native image and hashes
+    skipped  tests.test_native_protected_peering.NativeProtectedPeeringTests.test_untrusted_certificate_yields_430_and_feed_journal_evidence: set explicit source-matched native image and hashes
+tests.test_native_raw_scripts: 0.5 s of 180 s, 9 tests, ok
+        0.10 s  RawScriptTests.test_native_feed_service_raw
+        0.05 s  RawScriptTests.test_native_owner_bound_commit_raw
+        0.05 s  RawScriptTests.test_native_live_config_cache_raw
+tests.test_native_reader_index: 13.1 s of 180 s, 5 tests, ok
+        3.99 s  NativeReaderIndexTest.test_listgroup_many_unrelated_groups_measured_socket_workload
+        2.30 s  NativeReaderIndexTest.test_over_xover_crosspost_sparse_range_historical_pin_and_restart
+        2.29 s  NativeReaderIndexTest.test_list_counts_and_numbered_msgid_lookup
+tests.test_native_recovery: 2.2 s of 180 s, 13 tests, ok
+        0.34 s  NativeRecoveryFidelityTests.test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes
+        0.28 s  NativeRecoveryFidelityTests.test_sixty_five_allocation_orphans_are_swept_in_rounds
+        0.21 s  NativeRecoveryFidelityTests.test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage
+tests.test_native_served_cost: 0.1 s of 180 s, 3 tests, ok
+        0.00 s  NativeServedCostTests.test_fast_entry_never_calls_full_recognizer
+        0.00 s  NativeServedCostTests.test_fast_predicate_has_fixed_spine_and_scalar_scope
+        0.00 s  NativeServedCostTests.test_owner_calls_fast_counted_entry
+tests.test_native_served_crash_model: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_native_served_differential: 1.1 s of 180 s, 7 tests, ok
+        0.15 s  NativeServedDifferentialTests.test_whole_transcript_agrees
+        0.15 s  NativeServedDifferentialTests.test_cut_after_a_reply_agrees
+        0.15 s  NativeServedDifferentialTests.test_bytewise_partition_agrees
+tests.test_native_shared_owner_bench: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  NativeSharedOwnerBenchTests.test_article_profile_is_exact_and_unique
+        0.00 s  NativeSharedOwnerBenchTests.test_nearest_rank_percentile_and_summary
+tests.test_native_source_corpus: 14.0 s of 180 s, 3 tests, FAILED (1 failures, 0 errors, exit 1)
+        8.84 s  NativeSourceCorpusTests.test_identity_table_across_routes
+        2.72 s  NativeSourceCorpusTests.test_cancel_orders_pinned_reader_and_replay
+        2.34 s  NativeSourceCorpusTests.test_signed_route_retry_is_already_stored
+tests.test_native_stamp_migration: 0.1 s of 180 s, 1 tests, SKIPPED (1 of 1; no test executed)
+        0.00 s  NativeStampMigrationTests.test_old_record_reopens_byte_exact_and_new_acceptance_uses_schema_one
+    skipped  tests.test_native_stamp_migration.NativeStampMigrationTests.test_old_record_reopens_byte_exact_and_new_acceptance_uses_schema_one: frozen pre-T2 and T2 developer images are required
+tests.test_native_starttls: 1.8 s of 180 s, 2 tests, ok
+        1.40 s  NativeStartTlsTests.test_pipelined_clienthello_protection_and_failure_isolation
+        0.30 s  NativeStartTlsTests.test_context_mismatch_refuses_before_listener
+tests.test_native_state_checkpoint: 106.2 s of 180 s, 6 tests, OVER BUDGET (a test over 20 s: test_every_cut_reopens_with_the_old_or_the_new_checkpoint 87.9 s; also exit 1)
+       87.91 s  StateCheckpointCutTests.test_every_cut_reopens_with_the_old_or_the_new_checkpoint
+        4.81 s  StateCheckpointTests.test_checkpoint_open_equals_full_replay
+        4.79 s  StateCheckpointTests.test_a_checkpoint_past_the_profile_bound_is_refused_by_name
+tests.test_native_storage_codec: 6.0 s of 180 s, 11 tests, ok
+        1.66 s  NativeStorageCodecTests.test_native_and_python_cross_open_identical_acl2_frames
+        0.78 s  NativeStorageCodecTests.test_native_namespace_codec_binds_filename_to_decoded_record_sequence
+        0.67 s  NativeStorageCodecTests.test_injected_allocator_barrier_failure_consumes_the_id_after_recovery
+tests.test_native_tls_transport: 1.0 s of 180 s, 2 tests, ok
+        0.48 s  NativeTlsTransportTest.test_client_chain_and_hostname_verification
+        0.26 s  NativeTlsTransportTest.test_context_handshake_failure_and_roundtrip
+tests.test_native_topic_local: 6.0 s of 180 s, 4 tests, ok (2 skipped)
+        3.47 s  NativeTopicLocalTest.test_root_and_report_admit_from_historical_signed_sources
+        2.25 s  NativeTopicLocalTest.test_install_is_durable_and_absent_source_refuses
+        0.07 s  NativeTopicLocalTest.test_v1_history_reopens_under_v2
+    skipped  tests.test_native_topic_local.NativeTopicLocalTest.test_fresh_v2_anchor_refuses_legacy_reopen: requires exact pre-v2 topic image
+    skipped  tests.test_native_topic_local.NativeTopicLocalTest.test_v1_history_reopens_under_v2: requires exact pre-v2 topic image
+tests.test_native_topic_metadata: 1.3 s of 180 s, 2 tests, ok
+        0.77 s  NativeTopicMetadataTest.test_signed_source_candidate_and_relay
+        0.41 s  NativeTopicMetadataTest.test_max_roster_folded_source_and_relay
+tests.test_native_two_host_protected_gate: 0.2 s of 180 s, 5 tests, ok
+        0.00 s  LauncherPathsTests.test_unknown_variables_traversal_wrong_core_and_commands_are_refused
+        0.00 s  LauncherPathsTests.test_current_frozen_layout_resolves_beside_launcher
+        0.00 s  LauncherPathsTests.test_known_sbcl_placeholder_is_forced_empty_for_all_invocations
+tests.test_native_v0_matrix: 0.6 s of 180 s, 67 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.06 s  NativeCommandTests.test_historical_schema_one_matrix_remains_valid
+        0.05 s  AuthDriverTests.test_a_permitted_unauthenticated_post_is_closed_not_abandoned
+        0.05 s  AuthDriverTests.test_the_secret_is_read_from_a_file_and_used_as_the_password
+tests.test_native_visibility_join: 12.3 s of 180 s, 3 tests, ok
+        5.98 s  NativeVisibilityJoinTests.test_lost_reply_then_authorization_change_is_unresolved
+        3.57 s  NativeVisibilityJoinTests.test_lost_reply_then_login_rebound_is_unresolved
+        2.58 s  NativeVisibilityJoinTests.test_lost_reply_then_withdrawal_reconciles_to_already_stored
+tests.test_native_capacity_vector: 71.2 s of 180 s, 1 tests, OVER BUDGET (a test over 20 s: test_full_store_finishes_releases_maintains_and_reuses 70.9 s)
+       70.86 s  NativeCapacityVectorTests.test_full_store_finishes_releases_maintains_and_reuses
+tests.test_native_consumer_exchange_two_nodes: 19.9 s of 180 s, 2 tests, ok
+       14.89 s  NativeTwoNodeConsumerExchangeTests.test_exchange_across_two_nodes_and_every_cut
+        4.86 s  NativeTwoNodeConsumerExchangeTests.test_revoked_author_settles_by_observation_across_nodes
+tests.test_native_consumer_profile: 26.8 s of 180 s, 1 tests, OVER BUDGET (a test over 20 s: test_the_operator_raises_the_consumer_count 26.7 s)
+       26.70 s  NativeConsumerProfileTests.test_the_operator_raises_the_consumer_count
+tests.test_native_control_across_peers: 27.1 s of 180 s, 4 tests, ok
+       14.57 s  NativeControlAcrossPeersTests.test_author_basis
+        9.08 s  NativeControlAcrossPeersTests.test_authority_basis
+        1.80 s  NativeControlAcrossPeersTests.test_a_view_with_every_article_withdrawn
+tests.test_native_friends_accounts: 8.2 s of 180 s, 1 tests, ok
+        8.09 s  NativeFriendsAccountsTests.test_a_friend_redeems_a_code_once_across_a_crash
+tests.test_native_friends_feed: 5.5 s of 180 s, 2 tests, ok
+        5.18 s  NativeFriendsFeedTests.test_a_cancel_reaches_the_friend_through_the_ordinary_feed
+        0.25 s  NativeFriendsFeedTests.test_bare_fn_and_version
+tests.test_native_implicit_tls: 3.0 s of 180 s, 3 tests, ok
+        1.43 s  NativeImplicitTlsTests.test_store_inspect_settles_accepted_and_absent
+        1.21 s  NativeImplicitTlsTests.test_implicit_tls_is_the_starttls_session
+        0.24 s  NativeImplicitTlsTests.test_tls_port_without_certificate_is_refused
+tests.test_native_outcome_algebra: 126.0 s of 180 s, 9 tests, OVER BUDGET (a test over 20 s: test_the_production_image_refuses_the_selector 120.1 s; also exit 1)
+      120.12 s  OutcomeAlgebraNativeTests.test_the_production_image_refuses_the_selector
+        2.38 s  OutcomeAlgebraNativeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it
+        1.18 s  OutcomeAlgebraNativeTests.test_control_conflict_is_a_refusal_named_conflict
+tests.test_native_pack_chain: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_native_pre_c1_open: 0.9 s of 180 s, 3 tests, ok
+        0.55 s  PreC1OpenTest.test_every_open_of_the_witness_refuses_by_name
+        0.21 s  PreC1OpenTest.test_the_store_without_the_cancel_opens
+        0.07 s  PreC1OpenTest.test_repair_control_refuses_until_its_semantics_are_decided
+tests.test_native_public_exposure: 52.8 s of 180 s, 1 tests, OVER BUDGET (a test over 20 s: test_flood_campaign 52.7 s)
+       52.70 s  NativePublicExposureTests.test_flood_campaign
+tests.test_native_rollback_history: 2.3 s of 180 s, 5 tests, ok
+        0.89 s  RollbackHistoryNativeTests.test_a_compacted_history_is_read_through_its_pack
+        0.51 s  RollbackHistoryNativeTests.test_an_earlier_state_counts_what_the_restore_loses
+        0.44 s  RollbackHistoryNativeTests.test_equal_counters_different_content_is_not_an_earlier_state
+tests.test_throughput_gate: 0.4 s of 180 s, 12 tests, ok
+        0.04 s  ThroughputGateTests.test_a_carrier_source_is_dot_safe_and_about_its_size
+        0.03 s  ThroughputGateTests.test_an_under_load_run_is_compared_on_the_deterministic_counters_only
+        0.03 s  ThroughputGateTests.test_the_nearest_measured_ancestor_is_compared_and_a_later_code_change_is_stale
+tests.test_native_checkpoint_generations: 0.9 s of 180 s, 2 tests, ok
+        0.45 s  NativeCheckpointGenerationTests.test_publication_past_4096_under_the_profile
+        0.36 s  NativeCheckpointGenerationTests.test_the_old_figure_is_the_instance_of_max_transactions_4095
+tests.test_native_control_evidence: 1.7 s of 180 s, 1 tests, ok
+        1.57 s  NativeControlEvidenceTests.test_log_and_evidence_live_and_offline
+tests.test_native_control_reply_fit: 7.6 s of 180 s, 5 tests, ok
+        3.44 s  ProfileOpenRefusalTests.test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired
+        2.58 s  ControlReplyFitTests.test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it
+        1.37 s  ControlReplyFitTests.test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling
+tests.test_native_peer_rows_growth: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+79 modules, 1939.2 s; 51 passed within budget, 6 SKIPPED (no test executed), 14 over budget; 30 tests skipped
+# test_budget rc=7 end 2026-09-26T18:19:09Z
+tests.test_native_control whole:  # rc=124 wall=3600 end 2026-09-26T19:19:09Z
+tests.test_native_served_crash_model whole: OK # rc=0 wall=261 end 2026-09-26T19:23:30Z
+tests.test_native_pack_chain whole:  # rc=143 wall=19 end 2026-09-26T19:23:49Z
+tests.test_native_peer_rows_growth whole:  # rc=143 wall=24 end 2026-09-26T19:24:13Z
