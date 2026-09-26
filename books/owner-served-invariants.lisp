@@ -110,9 +110,12 @@
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
-                                     fn-ipp-injected-octets fn-ipp-params
-                                     fn-ipp-accountp fn-ipp-octets))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
+                                   fn-ipp-accountp)
+                                  (fn-ipp-injected-octets fn-ipp-complaints))
+           :use ((:instance fn-ipp-injected-octets-without-parameters
+                            (d (fn-own-sub-decision sub))
+                            (login (fn-own-sub-login sub)))))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))

@@ -60,7 +60,7 @@
 
 (defun fn-ipp-accountp (secret login)
   (declare (xargs :guard t))
-  (and (fn-ns-secretp secret) (consp (fn-ipp-octets login))))
+  (and (fn-ns-secretp secret) (consp login)))
 
 (defun fn-ipp-params (secret login addr)
   (declare (xargs :guard t))
@@ -128,3 +128,15 @@
   (fn-ipp-with-params (fn-inj-decision-octets d)
                       (fn-inj-decision-msgid d)
                       (fn-ipp-params secret login (fn-ipp-complaints cfg))))
+
+; Without a login (or without the node secret) and without a complaints
+; address there are no parameters, and the injection is stored as it is.
+(defthm fn-ipp-injected-octets-without-parameters
+  (implies (and (not (fn-ipp-accountp secret login))
+                (not (fn-ipp-complaints cfg)))
+           (equal (fn-ipp-injected-octets d secret login cfg)
+                  (fn-inj-decision-octets d)))
+  :hints (("Goal" :in-theory (union-theories '(fn-ipp-injected-octets
+                                               fn-ipp-with-params fn-ipp-params
+                                               fn-inj-append)
+                                             (theory 'minimal-theory)))))

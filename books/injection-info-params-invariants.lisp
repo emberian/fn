@@ -282,16 +282,8 @@
   `(fn-inj-absentp (fn-article-result-article (fn-article-parse ,source))
                    *fn-inj-date-name*))
 
-; KEYSTONE (PKT-597, the Injection-Info line with parameters; subject
-; fn-ipp-with-params, which fn-ipp-injected-octets calls on every local
-; submission the owner stages, books/owner-served-invariants.lisp
-; fn-own-sub-stored-octets).  With parameters, an injected article is the
-; injected block with its closing Injection-Info line carrying them,
-; followed by what followed the block before: the source (recipe v2) or
-; the source with AGENT! inserted into its Path (recipe v3).  Nothing else
-; moves, and the line is the article's only Injection-Info
-; (fn-af-proto-article-check refuses a source that carries one).
-(defthm fn-ipp-with-params-of-an-injection
+(local
+ (defthm fn-ipp-with-params-of-an-injection-with-some
   (implies (and (fn-inj-injectedp (fn-inj-decide source config obs))
                 (consp params))
            (equal (fn-ipp-with-params
@@ -341,7 +333,70 @@
                             (date (fn-ipp-date obs))
                             (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
                             (agent (fn-inj-config-agent config))
-                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))))))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source))))))))
+
+(local
+ (defthm fn-ipp-no-params-lines
+   (implies (not (consp params))
+            (and (equal (fn-ipp-prefix-with date msgid agent gid gdate params)
+                        (fn-inj-prefix date msgid agent gid gdate))
+                 (equal (fn-ipp-block-with date msgid agent gid gdate params)
+                        (fn-inj-block date msgid agent gid gdate))))
+   :hints (("Goal" :in-theory (enable fn-ipp-prefix-with fn-ipp-block-with
+                                      fn-inj-prefix fn-inj-block
+                                      fn-inj-injection-info-line-with
+                                      fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-ipp-with-no-params
+   (implies (not (consp params))
+            (equal (fn-ipp-with-params x msgid params) x))
+   :hints (("Goal" :in-theory (enable fn-ipp-with-params)))))
+
+; KEYSTONE (PKT-597, the Injection-Info line with parameters; subject
+; fn-ipp-with-params, which fn-ipp-injected-octets calls on every local
+; submission the owner stages, books/owner-served-invariants.lisp
+; fn-own-sub-stored-octets).  With parameters, an injected article is the
+; injected block with its closing Injection-Info line carrying them,
+; followed by what followed the block before: the source (recipe v2) or
+; the source with AGENT! inserted into its Path (recipe v3).  Nothing else
+; moves, and the line is the article's only Injection-Info
+; (fn-af-proto-article-check refuses a source that carries one).
+(defthm fn-ipp-with-params-of-an-injection
+  (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+           (equal (fn-ipp-with-params
+                   (fn-inj-decision-octets (fn-inj-decide source config obs))
+                   (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                   params)
+                  (if (fn-inj-supplies-pathp source)
+                      (append (fn-ipp-block-with
+                               (fn-ipp-date obs)
+                               (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                               (fn-inj-config-agent config)
+                               (fn-ipp-gid source) (fn-ipp-gdate source) params)
+                              (fn-inj-splice source (fn-inj-path-offset source)
+                                             (fn-inj-path-insert
+                                              (fn-inj-config-agent config))))
+                    (append (fn-ipp-prefix-with
+                             (fn-ipp-date obs)
+                             (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                             (fn-inj-config-agent config)
+                             (fn-ipp-gid source) (fn-ipp-gdate source) params)
+                            source))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-ipp-inj-append-is-append))
+           :cases ((consp params))
+           :use ((:instance fn-ipp-with-params-of-an-injection-with-some)
+                 (:instance fn-ipp-with-no-params
+                            (x (fn-inj-decision-octets (fn-inj-decide source config obs)))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs))))
+                 (:instance fn-ipp-no-params-lines
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))
+                 (:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                 (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)))))
 
 ; -----------------------------------------------------------------------------
 ; The inverse reads past the parameters.
@@ -602,15 +657,6 @@
                             (addr (fn-ipp-complaints cfg)))
                  (:instance fn-ipp-complaints-is-an-addr-spec)))))
 
-; Without a login and without a complaints address the stored injection is
-; the injection: nothing is rewritten.
-(defthm fn-ipp-injected-octets-without-parameters
-  (implies (and (not (fn-ipp-accountp secret login))
-                (not (fn-ipp-complaints cfg)))
-           (equal (fn-ipp-injected-octets d secret login cfg)
-                  (fn-inj-decision-octets d)))
-  :hints (("Goal" :in-theory (enable fn-ipp-injected-octets fn-ipp-with-params))))
-
 (defthm fn-ipp-a-login-has-parameters
   (implies (fn-ipp-accountp secret login)
            (consp (fn-ipp-params secret login addr)))
@@ -619,17 +665,17 @@
 ; KEYSTONE (PKT-597 (1); subject fn-ipp-injected-octets, which
 ; books/owner-served-invariants.lisp fn-own-sub-stored-octets calls with the
 ; submission's login, the owner's node secret and the live configuration).
-; Whenever there are parameters -- a login with the node secret installed
-; (fn-ipp-a-login-has-parameters), or a complaints address -- the stored
-; injection is the injected block with its one Injection-Info line
-; carrying them (fn-ipp-params-of-a-login: the posting-account value of the
-; login first), followed by the source, and the article still gives back its
-; source.  Without them it is the injection (fn-ipp-injected-octets-without-
-; parameters).
+; The stored injection is the injected block with its one Injection-Info
+; line carrying the parameters, followed by the source, and the article
+; still gives back its source.  Under a login with the node secret installed
+; the parameters open with that login's posting-account value
+; (fn-ipp-params-of-a-login); with neither a login nor a complaints address
+; there are none and the line is the plain one
+; (fn-ipp-injected-octets-without-parameters, fn-ipp-params-without-a-login).
 (defthm fn-ipp-injected-octets-carry-the-parameters
   (let ((d (fn-inj-decide source config obs))
         (params (fn-ipp-params secret login (fn-ipp-complaints cfg))))
-    (implies (and (fn-inj-injectedp d) (consp params))
+    (implies (fn-inj-injectedp d)
              (and (equal (fn-ipp-injected-octets d secret login cfg)
                          (if (fn-inj-supplies-pathp source)
                              (append (fn-ipp-block-with
@@ -652,9 +698,16 @@
                          (cons t source)))))
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
                                              '(fn-ipp-injected-octets))
+           :cases ((consp (fn-ipp-params secret login (fn-ipp-complaints cfg))))
            :use ((:instance fn-ipp-params-are-a-parameter-run)
                  (:instance fn-ipp-with-params-of-an-injection
                             (params (fn-ipp-params secret login (fn-ipp-complaints cfg))))
                  (:instance fn-ipp-with-params-keeps-the-source
                             (params (fn-ipp-params secret login
-                                                   (fn-ipp-complaints cfg))))))))
+                                                   (fn-ipp-complaints cfg))))
+                 (:instance fn-ipp-with-no-params
+                            (x (fn-inj-decision-octets (fn-inj-decide source config obs)))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (params (fn-ipp-params secret login (fn-ipp-complaints cfg))))
+                 (:instance fn-inj-source-of-inverts-the-injection
+                            (observation obs))))))

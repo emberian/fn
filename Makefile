@@ -142,6 +142,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-descriptions-read \
 	books/owner-xref-read \
 	books/posting-account \
+	books/injection-info-policy \
+	books/injection-info-params \
+	books/injection-info-params-invariants \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -695,6 +698,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/posting-account-tests \
+	tests/acl2/injection-info-params-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
