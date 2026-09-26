@@ -79,8 +79,32 @@ profile's `max-consumers` (field 9): the owner's registration
 field takes effect at the next open with no migration; replay re-runs the
 registration's validity, not the admission bound, because the profile only
 rises. Open: the group-name bound (field 7) is not yet read on the served
-path and the name width is 256, below the NNTP wire's 460; a peer's
-configuration rows are one record's data (PKT-435, PKT-436).
+path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
+peer's configuration rows are now data (STO-023).
+
+STO-023: stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant.
+Two constants that capped data are gone (D27;
+planning/evidence/caps-to-profile-2026-09-26.md). A peer's row group grows
+by requests: `peer carries` and `peer budget` publish only the rows they
+change, `(:add-peer-rows NAME ROWS)` and `(:remove-peer-rows NAME ROWS)`
+(configuration delta codes 17 and 18, books/config.lisp), and
+`*fn-cfg-max-rows*` (1,024) bounds the work of one delta, not the rows one
+peer holds (`fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound`,
+`fn-cfg-apply-delta-adds-at-most-the-work-bound`); the published deltas
+apply as the whole-group extension did
+(`fn-pcb-extend-deltas-apply-as-the-extend-delta`), and the record count is
+the profile's `max-config-generations`. A checkpoint or pack generation
+number is a uint32, the width of its name and selection codec, and the
+generations a store retains are the profile's capacity, `max-transactions`
+plus one: the allocator refuses exactly at that capacity
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`,
+`fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), so
+`store upgrade-profile` raises it and a store no longer meets a lifetime
+figure of 4,096 publications. No store format changed: an older image
+refuses a configuration log holding codes 17 or 18 and a checkpoint
+directory holding more than 4,096 names or a name at or above 4096, the
+rollback consequence of these two steps. Open: the group-name width and
+field 7's reader (PKT-451).
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store

@@ -3091,6 +3091,28 @@
         "planning/evidence/friends-accounts-2026-09-26.md"
       ],
       "implementation_note": "XREDEEM is an fn extension, not RFC 4643 section 2.3's AUTHINFO; its replies reuse 381/281/482/483 in RFC 3977 section 3.2's classes. Built: the tenth configuration slot, admission, the redeem plan, the once-only theorems and the credential snapshot (PRF-164). Owed (PKT-439): the wire verb, its publication through fnn-owner-live-reconfigure-locked, `operator CONFIG account invite|list`, the native two-node session. PKT-401 narrowed to PKT-439."
+    },
+    {
+      "id": "STO-023",
+      "title": "Stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant: a peer's configuration rows grow by incremental deltas and checkpoint generations are a uint32 numbering under the profile's capacity",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-171"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/peer-carriage-rows.lisp",
+        "books/checkpoint-publish.lisp",
+        "books/checkpoint-pack-retire.lisp",
+        "planning/evidence/caps-to-profile-2026-09-26.md"
+      ],
+      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101). Open: field 7 read by group create and the group-name width 460 (PKT-451)."
     }
   ]
 }
