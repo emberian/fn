@@ -6,6 +6,7 @@
 ; host/owner-host.lisp.
 (in-package "ACL2")
 (include-book "../books/bp-channel-ingress")
+(include-book "../books/bp-listener-set")
 
 (defun fn-owner-bp-tcpcl-ingress
     (fnbs-state session-counter xfer-id channel announced-uri state)
@@ -20,6 +21,13 @@
 (defun fn-owner-bp-route-table (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bprt-table (fn-owner-config state))))
+
+;; PRF-176: the ports `bp-node serve -' binds, one per transport-bp boundary
+;; row of the current configuration that admits a session
+;; (fn-bpaj-listener-session-is-admitted-under-its-row).
+(defun fn-owner-bp-listener-ports (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpaj-listener-ports (fn-owner-config state))))
 
 (defun fn-owner-bp-receipt-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))

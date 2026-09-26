@@ -387,6 +387,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-session-admission-tests \
 	books/bp-channel-ingress \
 	tests/acl2/bp-channel-ingress-tests \
+	books/bp-listener-set \
+	tests/acl2/bp-listener-set-tests \
+	books/bp-node-forward-plan \
+	tests/acl2/bp-node-forward-plan-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
 	books/owner-store-indexed \
