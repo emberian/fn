@@ -22,7 +22,9 @@ stays at its current value.  These witnesses run the saved images:
 * the control stack books/heap-reservation.lisp decides for the small,
   development and scale profiles (1,192 KiB: 512 KiB + 40 octets for each
   of the 16,384 + 1,024 lines a 32,768-octet article can have) posts, serves,
-  reopens and serves again the worst such article, every body line empty; and
+  reopens and serves again the worst such article the small preset accepts
+  (32,000 octets offered, every body line empty: under 4 GiB `init' makes
+  the small preset, which refuses 32,768 once the node adds its headers); and
   a third of it (384 KiB) does not (the owner faults on control-stack
   exhaustion), so the witness measures the stack and not the harness.
 
@@ -115,7 +117,7 @@ class ProductionTests(unittest.TestCase):
     def stack_trial(self, kib):
         with tempfile.TemporaryDirectory() as work:
             res = subprocess.run([sys.executable, str(MEASURE), "stack-floor", str(IMAGE),
-                                  work, "--octets", "32768", "--line-octets", "2",
+                                  work, "--octets", "32000", "--line-octets", "2",
                                   "--heap", "1024", "--hi", str(kib), "--lo", str(kib - 1)],
                                  env=environment(), stdout=subprocess.PIPE, check=True,
                                  timeout=900)
