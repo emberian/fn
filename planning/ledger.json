@@ -304,6 +304,8 @@
     "books/byte-store-marker-program",
     "books/byte-store-k0-marker",
     "tests/acl2/byte-store-k0-marker-tests",
+    "books/byte-store-marker-candidates",
+    "tests/acl2/byte-store-marker-candidates-tests",
     "books/byte-store-k0-step-lemmas",
     "books/byte-store-k0-step-root-fence",
     "books/byte-store-k0-step",
@@ -946,26 +948,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 964,
-    "books_in_root_closure": 958,
-    "roots": 942,
-    "theorems": 13521,
-    "functions": 9420,
-    "assert_events": 14126,
-    "must_fails": 1632,
+    "books": 966,
+    "books_in_root_closure": 960,
+    "roots": 944,
+    "theorems": 13525,
+    "functions": 9433,
+    "assert_events": 14143,
+    "must_fails": 1638,
     "prover_refusals": 2,
     "encapsulates": 65,
     "guards": {
       "verified": 2199,
-      "declared-off": 759,
+      "declared-off": 762,
       "default-guarded": 5070,
-      "default-unguarded": 1392
+      "default-unguarded": 1402
     },
     "suspect_theorems": 121,
     "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 138,
-    "include_hygiene_warnings": 973,
+    "include_hygiene_warnings": 974,
     "host_names_warnings": 1111,
     "hand_written_record_warnings": 18
   },
@@ -6173,6 +6175,33 @@
         "consumer-store-invariants",
         "store-observed",
         "store-sweep"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-marker-candidates.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-marker-program",
+        "store-history-required"
       ],
       "system_includes": [],
       "suspects": [],
@@ -20088,6 +20117,35 @@
       "includes": [
         "../../books/byte-store-k0-staging",
         "byte-store-stable-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/byte-store-marker-candidates-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 10
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 6,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-marker-candidates",
+        "byte-store-k0-marker-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -35731,6 +35789,13 @@
         "line": 7,
         "include": "byte-store-stable-prefix-tests",
         "included": "tests/acl2/byte-store-stable-prefix-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-marker-candidates-tests.lisp",
+        "line": 8,
+        "include": "byte-store-k0-marker-tests",
+        "included": "tests/acl2/byte-store-k0-marker-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
