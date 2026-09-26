@@ -2949,7 +2949,7 @@
           "test_an_old_clients_plain_request_gets_the_plain_reply"
         ],
         "native": true,
-        "log": "planning/evidence/operator-daily/native-control.log",
+        "log": "planning/evidence/operator-daily-2/native-control.log",
         "record": "planning/evidence/operator-daily-2026-09-26.md"
       }
     },

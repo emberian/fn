@@ -6382,7 +6382,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
@@ -6401,7 +6401,9 @@
         "tests/acl2/native-control-reason-tests.lisp",
         "host/native/owner.lisp",
         "host/native/admin.lisp",
-        "host/native-admin-host.lisp"
+        "host/native-admin-host.lisp",
+        "planning/evidence/manifests/certify-20260926T124258Z-1868925.json",
+        "planning/evidence/manifests/certify-20260926T124728Z-1913800.json"
       ],
       "progress_note": "Lane operator-daily (2026-09-26, wave 4 lane 5): PKT-329 (1), PKT-283, PKT-344. Teeth in the two test books. Open: PKT-453. Continuation operator-daily-2 (2026-09-26): PKT-454's theorem; PKT-453 (a) the reason on the wire (request kinds 13 and 17, reply kind 18). Open: PKT-472.",
       "events": [

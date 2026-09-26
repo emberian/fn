@@ -247,3 +247,95 @@ lane; 15 and 16 were not taken (PKT-220 below).
   `fnn-bpo-call-with-owner-journal`, which installs its own owner and takes
   the exclusive lock). A live answer needs the owner to open the workflow
   journal: a design decision, not a routing change.
+
+### Teeth
+
+tests/acl2/native-health-tests.lisp (PKT-454): the positive (:fenced
+:starting) witness with every antecedent asserted (route :offline of a
+present socket and a :before-submission connect; also no socket node at
+all), the answered witness for the same lock, fence and listener; one
+witness per iff conjunct failed alone (clone fence, free lock, no listener,
+an uncertain route, a refused route); must-fails without the
+socket-present hypothesis and without the route conjunct.
+tests/acl2/native-control-reason-tests.lisp (PKT-453 (a)): the word of
+:unknown-group and :no-such-grant, NONE for nil, `unnamed` for a non-word,
+:none's word is not NONE; the positive round trip for :refused
+:unknown-group (membership, class and reason asserted) and for
+:article-exceeds-profile-bound :oversize; per hypothesis a witness and a
+must-fail (membership: :bad and the :transport step; refusal class: an
+acceptance prints nothing; a reason: NONE prints nothing); compatibility
+witnesses: the plain decoder refuses kind 13 as :frame, the reasoned
+decoders equal the plain ones on the same payload, framep of each kind, a
+plain kind-2 :refused reads :legacy and steps :resend, a plain :accepted
+reports no reason, and the old decoder answers :bad to kind 18. Both books
+were loaded form by form in persvati REPLs before the farm.
+
+### Certification
+
+- r1: persvati run-20260926T124231Z-f25a (`--affected-by` native-health,
+  native-control, native-control-reason, native-live-status, native-operator,
+  and the test books native-control-host-tests, accounts-wire-tests,
+  native-control-reason-tests): 26 certified, 202 from the cache, none over
+  10 s; manifest planning/evidence/manifests/certify-20260926T124258Z-1868925.json.
+- r2: persvati run-20260926T124704Z-3530, the regenerated
+  docs-operator-grammar-tests: 1 certified, none over 10 s; manifest
+  planning/evidence/manifests/certify-20260926T124728Z-1913800.json.
+- 45a6b818 after r1 changed only host/native/control.lisp (raw Lisp, not a
+  book).
+
+### Native (hbox, tools/hbox_native.sh, n2 at 45a6b818)
+
+hbox:/tank/fn/scratch/operator-daily-2/native-n2; fn-host
+96063a4dacd4e3c25b64ce494744dc0784d0c2a0b225d3c947e6e61856f7d5d4,
+fn-host-developer 2bfc750dd29a3e0b1ef075a76153f23c51e2d2a778f9d4a0dd4330413da48b57
+(planning/evidence/operator-daily-2/SHA256SUMS-n2; FN_NATIVE_HOST = the
+production launcher).
+
+| module | result | log (SHA-256) |
+|---|---|---|
+| tests.test_native_control (18 cases; the two new SCN-102 cases ok) | FAILED (failures=1, not this lane's: below) | operator-daily-2/native-control.log f2a5e741cc6a2ab7e4c73f22c20234b980f4c1dd548845605963853e20aebd0d |
+| tests.test_native_operator_verdicts | OK (skipped=1, the hybrid E2E OpenSSL gate) | operator-daily-2/native-operator_verdicts.log 62b331ad71db5c08583d097427d32cae3b9d91c1d4e923f6369633727cd815aa |
+| tests.test_native_operator_cli | OK | operator-daily-2/native-operator_cli.log 7815be36685f67819f5436ce2a3af858679db2c7feda615f5dcf7b0c238d8cd1 |
+
+The one failure: `test_operator_post_is_injected_and_refuses_what_post_refuses`
+line 654 asserts `inspect(path_id)` exits 0 after the same test asserted
+that `path_id` (`Path: not a path`) is refused (exit 1) and absent from the
+store (the loop above it). The two expectations contradict each other on
+dev 5c6825b2 as well; this lane changed neither the case nor the injection
+decision, and the refusal the case expects is the one observed (exit 1).
+Classification: harness (a stale block, probably meant for `supplied_id`,
+from qual-harness-c18's C4 refresh). Not repaired here: changing an expected
+answer is not this lane's to do; it is in PKT-472's scope note for the
+coordinator.
+
+n1 (39f7c8cf) ran with FN_NATIVE_HOST set to the developer launcher, which
+made test_native_control's production-only selector case run the developer
+image (each selector starts an owner that never exits: timeouts). Harness
+mistake (mine), stopped by PID and rerun as n2; its other results matched
+n2's except `test_the_reply_is_the_owners_status`, a static source check of
+fnn-control-handle-client's send form, repaired in 45a6b818 by keeping
+`(fnn-control-send-reply socket status)` and rebinding status before it.
+
+### Assurance chain
+
+native entry `fn operator CONFIG post` / live `control VERB` -> the client
+seals kind 13/17 (`fn-native-control-reasoned-request-encode`/`-admin-encode`)
+-> the owner decides (`fn-own-operator-decision-of` via
+`fn-owner-operator-refusal-reason`; `fn-native-admin-plan`, or
+`fn-ocfg-reconfig-refusal`/`fn-cfg-delta-reason` via the staging slot) ->
+the owner seals kind 18 with that reason (`fn-native-control-reasoned-reply-encode`)
+-> the client reads and steps (`fn-native-control-reasoned-reply-read`,
+`-client-step`) -> the printed detail (`fn-native-control-reply-detail`) ->
+keystone `fn-native-control-printed-reason-is-the-decisions` -> SCN-102's
+native lines. `health`: host observations -> `fn-nh-health-step` ->
+`fn-nh-starting-clears-on-listening`. No state is carried between
+invocations, so no maintained relation.
+
+### Not done: PKT-472
+
+(a) PKT-209 `control evidence`, `control log`, the carrier-render theorem;
+(b) PKT-220 (findings above; kinds 15 and 16 not taken); (c) `bp-node
+health`, alerts and `health --explain`, `[acl2] heap_mb`, the walk as tests;
+(d) PKT-269, the lock age, include hygiene (carried from PKT-453); (e) the
+owner's host-classified refusals (store, OS, socket errors) answer a
+reasoned frame with NONE: no ACL2 decision names them.
