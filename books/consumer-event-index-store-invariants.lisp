@@ -227,3 +227,153 @@
                 (fn-sn-statep fn-sf-statep fn-sf-recover
                  fn-sn-make-v6 fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
+
+; -----------------------------------------------------------------------------
+; The maintained relation (PRF-144, lane signed-history-index-2): the index
+; is the index of the committed history in EVERY phase.  fn-ceis-relatedp
+; above is its crash-tolerant weakening (vacuous while :replaying or :fault,
+; which only a crash and its recovery produce).  The BP receiver's Message-ID
+; lookups (books/bp-native-app-fast.lisp) and the consumer poll read the
+; index under this relation; books/owner-store-indexed.lisp establishes it at
+; the host's open and carries it across every owner transition the host
+; installs.  Never evaluated on a served path.
+(defun fn-ceis-indexedp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-cei-correspondencep (fn-sn-event-index s)
+                          (fn-sf-records (fn-sn-files s))))
+
+(defthm fn-ceis-indexedp-implies-related
+  (implies (fn-ceis-indexedp s) (fn-ceis-relatedp s))
+  :hints (("Goal" :in-theory (e/d (fn-ceis-indexedp fn-ceis-relatedp)
+                                  (fn-cei-correspondencep)))))
+
+(defthm fn-ceis-related-live-phase-is-indexed
+  (implies (and (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-indexedp s))
+  :hints (("Goal" :in-theory (e/d (fn-ceis-indexedp fn-ceis-relatedp)
+                                  (fn-cei-correspondencep)))))
+
+(defthm fn-ceis-initial-indexed
+  (fn-ceis-indexedp (fn-sn-initial groups capacity))
+  :hints (("Goal" :in-theory (enable fn-ceis-indexedp fn-sn-initial
+                                    fn-sn-make-v2 fn-sn-files
+                                    fn-sf-records
+                                    fn-sn-event-index fn-store-event-nth
+                                    fn-cei-correspondencep fn-cei-build))))
+
+; A transition that keeps both the history and the index keeps the relation.
+(defthm fn-ceis-indexedp-of-same-footprint
+  (implies (and (equal (fn-sn-event-index s2) (fn-sn-event-index s))
+                (equal (fn-sf-records (fn-sn-files s2))
+                       (fn-sf-records (fn-sn-files s))))
+           (equal (fn-ceis-indexedp s2) (fn-ceis-indexedp s)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ceis-indexedp))))
+
+; The two bridges are used by name, never as rewrite rules (each backchains
+; into the other).
+(in-theory (disable fn-ceis-indexedp-implies-related
+                    fn-ceis-related-live-phase-is-indexed))
+
+; The one transition that grows the history, `fn-sn-io''s record-directory
+; append, extends the index by the appended event; every other io keeps both.
+(defthm fn-ceis-io-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-io s operation result)))
+  :hints (("Goal" :cases ((and (fn-sn-statep s)
+                                (eq operation :record-directory)
+                                (eq result :ok)
+                                (eq (fn-sf-phase (fn-sn-files s))
+                                    :record-attempted)))
+           :use ((:instance fn-ceis-record-directory-extension
+                            (files (fn-sn-files s))
+                            (index (fn-sn-event-index s))))
+           :in-theory (e/d (fn-ceis-indexedp fn-sn-io fn-sn-file-step
+                            fn-sf-record-dir-result
+                            fn-store-files-traces-vocabulary)
+                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
+                            fn-sf-statep fn-store-event-p
+                            fn-cei-correspondencep fn-cei-build
+                            fn-cei-build-aux fn-cei-put fn-cei-put-digits
+                            fn-cei-branch-put fn-sn-statep)))))
+
+; The prepares and the finish keep both the history and the index; recovery
+; rebuilds the index of the history it recovered, or faults with both kept.
+(defthm fn-ceis-prepare-article-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-prepare s record)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-indexedp fn-sn-prepare
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+(defthm fn-ceis-prepare-identity-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-prepare-identity s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-indexedp fn-sn-prepare-identity
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux
+                 fn-stxe-p fn-stxk-p fn-stxa-p)))))
+(defthm fn-ceis-prepare-retention-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-prepare-retention s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-indexedp fn-sn-prepare-retention
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+(defthm fn-ceis-prepare-consumer-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-prepare-consumer s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-indexedp fn-sn-prepare-consumer
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+(defthm fn-ceis-prepare-topic-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-prepare-topic s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-indexedp fn-sn-prepare-topic
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+(defthm fn-ceis-finish-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-finish s)))
+  :hints (("Goal" :use (fn-ceis-finish-keeps-index
+                         fn-ceis-finish-keeps-records)
+           :in-theory (e/d (fn-ceis-indexedp)
+                           (fn-sn-finish fn-cei-correspondencep
+                            fn-ceis-finish-keeps-index
+                            fn-ceis-finish-keeps-records)))))
+(defthm fn-ceis-build-corresponds
+  (fn-cei-correspondencep (fn-cei-build events) events)
+  :hints (("Goal" :in-theory (e/d (fn-cei-correspondencep) (fn-cei-build)))))
+(defthm fn-ceis-recover-preserves-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-sn-recover s)))
+  :hints (("Goal" :use (fn-ceis-recovery-rebuilds-index-by-definition)
+           :in-theory
+           (e/d (fn-ceis-indexedp fn-sn-recover fn-sf-recover)
+                (fn-sn-statep fn-sf-statep
+                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux fn-sf-history-recoverablep
+                 fn-sf-replay-node fn-replay-identity
+                 fn-cpe-projection-replay fn-th-prefix-project)))))
+
+(in-theory (disable fn-ceis-indexedp))
