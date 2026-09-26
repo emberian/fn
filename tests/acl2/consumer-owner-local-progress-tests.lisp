@@ -201,6 +201,44 @@
 (assert-event (<= (len (fn-col-poll-report-octets (caddr *colp-poll*)))
                   *fn-stxa-max-octets*))
 (must-fail (assert-event (equal *colp-report* '(:refused :oversize))))
+; PKT-467 (PRF-178): fn-col-poll-report-of-an-admitted-payload-fits.
+; Reachable, the full antecedent: the page's event encoding is a payload the
+; development profile's publication gate admits, and the report is the page.
+(assert-event
+ (let ((octets (fn-col-poll-report-octets (caddr *colp-poll*))))
+   (and (eq (car *colp-poll*) :poll) (caddr *colp-poll*)
+        (consp octets) (fn-cbor-octet-listp octets)
+        (fn-bs-publication-admissiblep *fn-bs-profile-development* 0 (len octets))
+        (equal *colp-report* (list :poll (cadr *colp-poll*) octets)))))
+; The page hypothesis dropped: the scope refusal is not a page.
+(must-fail
+ (assert-event (equal (fn-col-poll-report (fn-own-start *colp-after-article* 2) '(9))
+                      (list :poll (cadr (fn-col-poll (fn-own-start *colp-after-article* 2) '(9)))
+                            nil))))
+; The admission hypothesis dropped: no report of 2^32 octets is
+; constructible, so its failure is proved for every such page -- the
+; conclusion fails whenever the encoding is past the report ceiling, which
+; every valid profile's gate refuses.
+(defthm colp-admitted-payload-fits-needs-the-admission
+  (let ((d (fn-col-poll o consumer)))
+    (implies (and (equal (car d) :poll) (caddr d)
+                  (consp (fn-col-poll-report-octets (caddr d)))
+                  (fn-cbor-octet-listp (fn-col-poll-report-octets (caddr d)))
+                  (< *fn-stxa-max-octets* (len (fn-col-poll-report-octets (caddr d)))))
+             (and (not (equal (fn-col-poll-report o consumer)
+                              (list :poll (cadr d)
+                                    (fn-col-poll-report-octets (caddr d)))))
+                  (not (fn-bs-publication-admissiblep
+                        profile committed-count
+                        (len (fn-col-poll-report-octets (caddr d))))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-col-poll-report-fits-or-refuses-by-name)
+                        (:instance fn-bs-profile-valid-record-fits-a-poll-reply
+                                   (values profile)
+                                   (octets (len (fn-col-poll-report-octets
+                                                 (caddr (fn-col-poll o consumer)))))))
+           :in-theory (disable fn-col-poll fn-col-poll-report fn-col-poll-report-octets
+                               fn-bs-publication-admissiblep fn-cbor-octet-listp))))
 ; A refusal or an empty page passes through unchanged (the scope refusal).
 (assert-event (equal (fn-col-poll-report (fn-own-start *colp-after-article* 2) '(9))
                      (fn-col-poll (fn-own-start *colp-after-article* 2) '(9))))
