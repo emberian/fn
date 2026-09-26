@@ -956,6 +956,17 @@
          (cfg (fn-owner-config state))
          (result (fn-own-bp-transit-submit-result
                   owner cfg peer msgid-octets payload id subject))
+         ; A refused submission keeps the transfer decision's reason for
+         ; the delivery's refusal line (fn-owner-bp-request-refusal-line).
+         (state (if (equal result :refused)
+                    (f-put-global
+                     'fn-owner-app-refusal-reason
+                     (fn-peer-decision-reason
+                      (fn-peer-decide-transfer
+                       (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
+                       payload (fn-own-clock owner) id subject))
+                     state)
+                  state))
          (state (fn-owner-step
                  (list :bp-transit-submit cfg peer msgid-octets payload
                        id subject) state)))

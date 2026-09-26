@@ -41,14 +41,36 @@
       (incf *fnn-bpnode-test-busy-answers*)
       t)))
 
+(defun fnn-bpnode-refusal-line (view result)
+  "Print ACL2's line for a request VIEW answered RESULT (not accepted):
+its reason class, which ACL2 already returned; the host classifies nothing."
+  (let ((line (fnn-owner-core 'fn-owner-bp-request-refusal-line view result
+                              *fnn-owner-transit-detail*)))
+    (when (stringp line)
+      (fnn-out "BP node ~a" line))))
+
 (defun fnn-bpnode-request-result
+    (owner receipt-root destination policy issuer view node-id)
+  (setq *fnn-owner-transit-detail* nil)
+  (multiple-value-bind (answer adu)
+      (fnn-bpnode-request-result-1 owner receipt-root destination policy
+                                   issuer view node-id)
+    (unless (member answer '(:request-accepted :request-duplicate))
+      (fnn-bpnode-refusal-line
+       view (case answer
+              (:request-refused :refused)
+              (:busy :busy)
+              (otherwise :uncertain))))
+    (values answer adu)))
+
+(defun fnn-bpnode-request-result-1
     (owner receipt-root destination policy issuer view node-id)
   (fnn-bpnode-source-decision view)
   (unless (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
-    (return-from fnn-bpnode-request-result
+    (return-from fnn-bpnode-request-result-1
       (values :request-refused '(0))))
   (when (fnn-bpnode-test-busy-p)
-    (return-from fnn-bpnode-request-result (values :busy '(0))))
+    (return-from fnn-bpnode-request-result-1 (values :busy '(0))))
   (let ((journal nil))
     (unwind-protect
          (progn
