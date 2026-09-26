@@ -1,0 +1,11 @@
+transactions=2112 articles=2112 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4096 list-memory-octets=25769803776
+headroom transactions-used=2112 transactions-budget=4096 bytes-used=69840888 history-bound=805306368 charge-reserved=19008 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 held
+open=checkpoint:2112 suffix=0
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file octets=140374050 modified=1790400767
+pins=2112 reserved=19008 connections=0
+accepted operator status
+rc=0 wall=40.603133382
