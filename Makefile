@@ -856,6 +856,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-control-read \
 	books/login-binding \
 	tests/acl2/login-binding-tests \
+	books/public-exposure \
+	tests/acl2/public-exposure-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
