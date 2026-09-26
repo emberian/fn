@@ -605,7 +605,10 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.assertTrue(later.startswith(b"441 "), later)
         finally:
             self.stop(d)
-        self.assertEqual(self.transactions_used(d), budget)
+        # The composite is the one record added; the key change is not
+        # (run n4: the budget that admits the composite is USED + 2, and the
+        # Store refuses the kind-3 with USED + 1 of it used).
+        self.assertEqual(self.transactions_used(d), used + 1)
         history = self.history(d)
         witness("history", history)
         self.assertEqual(history, ["generation=1 state=active principal=" + P.hex()])
