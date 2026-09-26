@@ -354,6 +354,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
 	books/bp-run-class \
+	books/bp-node-profile \
 	tests/acl2/bp-node-host-tests \
 	books/bp-authored-wire \
 	tests/acl2/bp-authored-wire-tests \
@@ -401,6 +402,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-fragment-replacement-tests \
 	books/bp-fnbs-family-replay \
 	tests/acl2/bp-fnbs-family-replay-tests \
+	books/bp-node-profile-replay \
+	tests/acl2/bp-node-profile-tests \
 	books/bp-node-fragment-step \
 	tests/acl2/bp-node-fragment-step-tests \
 	books/bp-node-fragment-guards \

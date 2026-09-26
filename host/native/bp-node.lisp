@@ -309,7 +309,7 @@ observations back.  Nil when there is nothing to observe."
 (defun fnn-bpnode-dispatch-pending
     (bp owner receipt-root workflow-root destination policy issuer node-id
      configured-peer)
-  (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+  (loop repeat (fnn-bps-max-rows bp)
         while (fnn-bpnode-dispatch-one
                bp owner receipt-root workflow-root destination policy issuer
                node-id configured-peer))
@@ -501,6 +501,40 @@ observations back.  Nil when there is nothing to observe."
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
 
+;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS': raise the node's profile,
+;;; the held rows and held octets its FNBS machine may hold (D27; books/
+;;; bp-node-profile.lisp, PRF-131).  ACL2 reads the profile in force and
+;;; answers the frame to publish, or refuses a write that lowers a field or
+;;; leaves the machine's limits (fn-bpnpf-write-octets).  The next open of the
+;;; journal runs under it.  Run it with the node stopped: it takes the FNBS
+;;; lifecycle lock as `bp-node serve' does.
+(defun fnn-command-bp-node-profile (journal-root node-id rows octets)
+  (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
+                                +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
+         (bp (fnn-bps-open journal-root config nil 0)))
+    (unwind-protect
+         (let* ((root (fnn-bps-root bp))
+                (frame (fnn-core 'fn-bpnpf-write-octets (fnn-bps-profile bp)
+                                 rows octets))
+                (final (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
+                (stage (fnn-join root (format nil ".bp-node-profile-~d-~a"
+                                              (sb-posix:getpid)
+                                              (fnn-random-hex 12)))))
+           (unless frame
+             (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a (in force ~a ~a)"
+                         rows octets (first (fnn-bps-profile bp))
+                         (second (fnn-bps-profile bp))))
+           (fnn-write-staged stage (fnn-octets frame))
+           (fnn-replace stage final)
+           ;; The rename is visible: from here a failed barrier leaves the
+           ;; profile's durability unknown.
+           (handler-case (fnn-fsync-dir root)
+             (fnn-os-error (e)
+               (fnn-indeterminate "bp-node profile: directory barrier failed: ~a" e)))
+           (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d" rows octets)
+           +fnn-exit-ok+)
+      (fnn-bps-release bp))))
+
 (defvar *fnn-bpnode-receipt-signer* nil
   "Directory of B's receipt-signing material, or nil for bare receipts:
 principal (32 octets), ed25519.public (32), ed25519.secret (64),
@@ -643,7 +677,7 @@ an operator's `bp-route' change applies to the next queue and contact."
      contact-host contact-port transfer-mru wall wall-error)
   (fnn-bpnode-route-by-owner bp)
   (let ((after nil))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows bp)
           for view = (fnn-core 'fn-bpah-outbox-view-after
                                (fnn-bps-state bp) after)
           while view
@@ -656,7 +690,7 @@ an operator's `bp-route' change applies to the next queue and contact."
 (defun fnn-bpnode-delete-expired (bp reports-enabled)
   ;; The persisted kind-5 anchor and this same-boot observation are interpreted
   ;; by ACL2. A refusal/uncertainty stops this bounded progression.
-  (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+  (loop repeat (fnn-bps-max-rows bp)
         while (eq (fnn-bps-outcome bp) :accepted)
         for tally = (fnn-bps-tally bp)
         for observation =
@@ -717,7 +751,7 @@ an operator's `bp-route' change applies to the next queue and contact."
     (bp peer-id node-id contact-host contact-port transfer-mru wall wall-error)
   (fnn-bpnode-route-by-owner bp)
   (let ((after nil))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows bp)
           for view = (fnn-core 'fn-bpn-report-outbox-next
                                (fnn-bps-state bp) after)
           while view
@@ -731,7 +765,7 @@ an operator's `bp-route' change applies to the next queue and contact."
   ;; Diagnostic only. ACL2 parses and correlates the received administrative
   ;; payload; this caller neither advances retry nor releases an obligation.
   (let ((after nil))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows bp)
           for observation =
             (fnn-core 'fn-bpn-report-observe-next
                       (fnn-bps-state bp) (fnn-bp-eid node-id) after)
@@ -882,7 +916,7 @@ uncertain, as it does everywhere else."
            ;; (fn-bprc-run-exit-code; specs/host.md "BP run classes").
            (fnn-core 'fn-bprc-run-exit-code
                      (fnn-core 'fn-bprc-note
-                               (fnn-bp-tally-evidence (fnn-bps-tally bp))
+                               (fnn-bp-run-evidence (fnn-bps-tally bp))
                                session-word)))
       (when listener (fnn-socket-shut listener))
       (when owner
@@ -902,6 +936,16 @@ uncertain, as it does everywhere else."
        (first args) (second args) (parse-integer (third args))
        (and (fourth args) (parse-integer (fourth args)))
        (if (fifth args) (parse-integer (fifth args)) 0))))
+  (when (string= command "profile")
+    ;; JOURNAL NODE-ID ROWS OCTETS
+    (unless (= (length args) 4)
+      (error 'fnn-usage-error
+             :message "bp-node profile: JOURNAL NODE-ID MAX-HELD-ROWS MAX-HELD-OCTETS"))
+    (return-from fnn-dispatch-bp-node
+      (fnn-command-bp-node-profile
+       (first args) (second args)
+       (fnn-bpc-u64-argument (third args) "max held rows")
+       (fnn-bpc-u64-argument (fourth args) "max held octets"))))
   (when (string= command "checkpoint")
     ;; JOURNAL NODE-ID [WALL WALL-ERROR]
     (when (< (length args) 2)
@@ -913,7 +957,7 @@ uncertain, as it does everywhere else."
        (and (third args) (parse-integer (third args)))
        (if (fourth args) (parse-integer (fourth args)) 0))))
   (unless (member command '("serve" "dispatch") :test #'string=)
-    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch or resume"))
+    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch, resume, checkpoint or profile"))
   (let ((offset (if (string= command "serve") 1 0)))
     (when (< (length args) (+ offset 11))
       (error 'fnn-usage-error

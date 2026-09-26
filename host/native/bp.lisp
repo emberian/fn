@@ -420,7 +420,6 @@ may or may not be durable."
         (fnn-octet-list
          (fnn-string-octets (format nil "~(~a~)~%" reason))))
        (incf (fnn-bp-tally-refused tally))
-       (fnn-bp-note tally :refused)
        (fnn-out "BP refused xfer=~d reason=~(~a~)" xfer-id reason)
        (list :refused reason))
       (:uncertain
@@ -479,13 +478,19 @@ may or may not be durable."
   (and conn (fnn-core 'fn-bprc-session-evidence
                       (fnn-tclc-outcome conn) (fnn-tclc-fenced conn))))
 
+(defun fnn-bp-run-evidence (tally)
+  "ACL2's evidence record of TALLY's run: its noted evidence with the article
+verdicts it counted (fn-bprc-with-articles)."
+  (fnn-core 'fn-bprc-with-articles (fnn-bp-tally-evidence tally)
+            (fnn-bp-tally-refused tally) (fnn-bp-tally-uncertain tally)))
+
 (defun fnn-bp-exit-code (tally conn)
   "The run's code: ACL2's class of TALLY's evidence with CONN's session
 outcome (books/bp-run-class.lisp; specs/host.md \"BP run classes\").  TALLY
 is not changed: a per-connection code does not become the service's
 evidence."
   (fnn-core 'fn-bprc-run-exit-code
-            (fnn-core 'fn-bprc-note (fnn-bp-tally-evidence tally)
+            (fnn-core 'fn-bprc-note (fnn-bp-run-evidence tally)
                       (fnn-bp-session-word conn))))
 
 (defun fnn-bp-summary (tally)
@@ -595,7 +600,7 @@ only refuses a name that is not a plain file name before it reads it."
                  (fnn-out "BP send ~a path=~a reason=contact: ~a"
                           (if socket "uncertain" "not-connected") path e))
                (fnn-bp-summary tally)
-               (fnn-core 'fn-bprc-run-exit-code (fnn-bp-tally-evidence tally)))))
+               (fnn-core 'fn-bprc-run-exit-code (fnn-bp-run-evidence tally)))))
       (fnn-bps-release service))))
 
 ;;; ---------------------------------------------------------------------------

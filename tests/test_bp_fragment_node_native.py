@@ -252,13 +252,19 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # capacity (*fn-bpn-machine-max-jobs*, 64 rows) across a kill.
         self.kill_across_family(64, 32)
 
-    @unittest.skip("SCN-067 blocked by the held-row capacity: "
-                   "*fn-bpn-machine-max-jobs* (64) refuses the 65th held "
-                   "fragment with XFER_REFUSE No Resources (observed on "
-                   "0069b282); PKT-171 P5 moves it into the profile")
     def test_seventy_fragments_across_a_kill_reassemble_once(self):
         # SCN-067: 70 fragments, beyond the old 64-fragment reassembly
-        # ceiling, with the receiver killed after 35.
+        # ceiling and the default profile's 64 held rows, with the receiver
+        # killed after 35.  The operator raises the node's profile to 128
+        # held rows first (PRF-131 part 2, books/bp-node-profile.lisp);
+        # ACL2 refuses to lower it again.
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 128, 16777216)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertIn(b"BP node profile max-held-rows=128", raised.stdout)
+        lowered = self.invoke("bp-node", "profile", self.journal,
+                              "dtn://receiver/", 64, 16777216)
+        self.assertEqual(lowered.returncode, 1, lowered.stderr)
         self.kill_across_family(70, 35)
 
     def rotate(self, stop=None):

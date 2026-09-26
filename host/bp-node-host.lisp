@@ -17,6 +17,7 @@
 (include-book "../books/bp-authored-wire")
 (include-book "../books/bp-channel-ingress")
 (include-book "../books/bp-run-class")
+(include-book "../books/bp-node-profile")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
