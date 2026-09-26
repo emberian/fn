@@ -58,6 +58,7 @@
 (in-package "ACL2")
 (include-book "peer-inbound")
 (include-book "principal")
+(include-book "accounts")
 (include-book "auth-secret")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary
@@ -299,6 +300,114 @@
 
 (defthm fn-auth-open-config-is-a-config
   (fn-auth-configp (fn-auth-open-config)))
+
+; -----------------------------------------------------------------------------
+; The credential table's second producer (PRF-164)
+;
+; ONE credential table, two producers: the operator's auth.toml, read at
+; start (fn-owner-set-auth-config), and the redeemed rows of the
+; configuration's `accounts' slot, published live by the owner's
+; reconfiguration (books/accounts.lisp).  A connection's snapshot is taken at
+; open (books/owner-config.lisp fn-ocfg-open, against the configuration the
+; connection pins): auth.toml's credentials first, so a login both producers
+; name is auth.toml's, then one credential per well-formed redeemed row.  A
+; redeemed row's credential is the login, its local principal
+; (fn-acct-local-principal, the principal `fn principal set-password' gives a
+; login without --principal), the verifier the row keeps, and the posting
+; allowance.  A row whose credential would not be well formed contributes
+; nothing, so the snapshot is always a configuration.
+
+(defun fn-auth-account-cred (row)
+  (declare (xargs :guard t))
+  (let ((name (fn-record-string-octets (fn-cfg-row-b row))))
+    (fn-auth-make-cred name (fn-acct-local-principal name)
+                       (fn-acct-text-verifier (fn-cfg-row-c row)) t)))
+
+(defun fn-auth-account-creds (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-n (car rows)) 1)
+               (fn-auth-credp (fn-auth-account-cred (car rows))))
+          (cons (fn-auth-account-cred (car rows))
+                (fn-auth-account-creds (cdr rows)))
+        (fn-auth-account-creds (cdr rows)))
+    nil))
+
+(defthm fn-auth-account-creds-are-creds
+  (fn-auth-cred-listp (fn-auth-account-creds rows))
+  :hints (("Goal" :in-theory (disable fn-auth-credp fn-auth-account-cred))))
+
+(local (defthm fn-auth-cred-listp-is-true-listp
+  (implies (fn-auth-cred-listp x) (true-listp x))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (disable fn-auth-credp)))))
+
+(defun fn-auth-config-with-accounts (acfg v)
+  ; The snapshot the host-called opener pins (fn-ocfg-open).
+  (declare (xargs :guard t))
+  (if (fn-auth-configp acfg)
+      (fn-auth-make-config (fn-auth-config-requiredp acfg)
+                           (fn-auth-config-protected-onlyp acfg)
+                           (fn-auth-config-tls-availablep acfg)
+                           (append (fn-auth-config-creds acfg)
+                                   (fn-auth-account-creds
+                                    (fn-cfg-accounts v))))
+    acfg))
+
+(local (defthm fn-auth-cred-listp-of-append
+  (implies (and (fn-auth-cred-listp a) (fn-auth-cred-listp b))
+           (fn-auth-cred-listp (append a b)))
+  :hints (("Goal" :in-theory (disable fn-auth-credp)))))
+
+(defthm fn-auth-config-with-accounts-is-a-config
+  (implies (fn-auth-configp acfg)
+           (fn-auth-configp (fn-auth-config-with-accounts acfg v)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-configp)
+                                  (fn-auth-cred-listp fn-auth-account-creds)))))
+
+(local (defthm fn-auth-find-cred-of-append
+  (implies (fn-auth-cred-listp a)
+           (equal (fn-auth-find-cred name (append a b))
+                  (if (fn-auth-find-cred name a)
+                      (fn-auth-find-cred name a)
+                    (fn-auth-find-cred name b))))
+  :hints (("Goal" :in-theory (enable fn-auth-credp fn-auth-cred-shapep)))))
+
+; KEYSTONE (the snapshot).  A login auth.toml does not name is looked up in
+; the redeemed rows: the credential AUTHINFO USER/PASS checks against is the
+; first redeemed row's for that login, with the login's local principal and
+; the verifier the row keeps.  Composed with
+; fn-auth-step-principal-login-binds-exactly-the-unique-match, a redeemed
+; account's 281 installs exactly that principal.
+(defthm fn-auth-config-with-accounts-finds-the-redeemed-credential
+  (implies (and (fn-auth-configp acfg)
+                (not (fn-auth-find-cred name (fn-auth-config-creds acfg))))
+           (equal (fn-auth-find-cred
+                   name (fn-auth-config-creds
+                         (fn-auth-config-with-accounts acfg v)))
+                  (fn-auth-find-cred name (fn-auth-account-creds
+                                           (fn-cfg-accounts v)))))
+  :hints (("Goal" :in-theory (disable fn-auth-configp fn-auth-account-creds))))
+
+(defthm fn-auth-config-with-accounts-keeps-the-operators-credential
+  (implies (and (fn-auth-configp acfg)
+                (fn-auth-find-cred name (fn-auth-config-creds acfg)))
+           (equal (fn-auth-find-cred
+                   name (fn-auth-config-creds
+                         (fn-auth-config-with-accounts acfg v)))
+                  (fn-auth-find-cred name (fn-auth-config-creds acfg))))
+  :hints (("Goal" :in-theory (disable fn-auth-configp fn-auth-account-creds))))
+
+; A redeemed row whose credential is well formed is found under its login,
+; with the login's local principal and the row's verifier, ahead of every
+; later row.
+(defthm fn-auth-account-creds-find-the-row
+  (implies (and (equal (fn-cfg-row-n row) 1)
+                (fn-auth-credp (fn-auth-account-cred row)))
+           (equal (fn-auth-find-cred (fn-record-string-octets (fn-cfg-row-b row))
+                                     (fn-auth-account-creds (cons row rows)))
+                  (fn-auth-account-cred row)))
+  :hints (("Goal" :in-theory (disable fn-auth-credp fn-record-string-octets))))
 
 ; -----------------------------------------------------------------------------
 ; The session: the peer session, the pinned configuration, and three bits of

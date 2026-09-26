@@ -1264,7 +1264,7 @@
          "relay"
          (fn-cfg-peers
           (fn-cfg-apply-delta
-           (fn-cfg-value-make nil 0 nil nil nil *fn-na-pcb-peers* nil nil nil) 1 nil
+           (fn-cfg-value-make nil 0 nil nil nil *fn-na-pcb-peers* nil nil nil nil) 1 nil
            (car (fn-native-admin-plan-deltas-over *fn-na-pcb-budget*
                                                   *fn-na-pcb-peers*)))))
         '(256 3)))

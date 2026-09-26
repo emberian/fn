@@ -5936,6 +5936,59 @@
           "name": "fn-enr-item-of-an-enrolled-principal"
         }
       ]
+    },
+    {
+      "id": "PRF-164",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acct-text-verifier-of-verifier-text"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeemed-row-stays"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeemed-row-stays-across-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeemed-refuses-another-redeem"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeem-plan-is-admitted-and-redeems"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeem-plan-after-its-redeem-is-already-redeemed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeem-plan-refuses-another-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-redeem-plan-of-an-unknown-code-stages-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-config-with-accounts-is-a-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-config-with-accounts-finds-the-redeemed-credential"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-config-with-accounts-keeps-the-operators-credential"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-account-creds-find-the-row"
+        }
+      ]
     }
   ]
 }
