@@ -466,11 +466,13 @@ failure rather than a refusal."
              :output t :element-type '(unsigned-byte 8) :buffering :full)))
 
 (defun fnn-tcl-exit-code (conn)
-  (case (fnn-tclc-outcome conn)
-    (:accepted +fnn-exit-ok+)
-    (:refused +fnn-exit-refused+)
-    (:uncertain +fnn-exit-uncertain+)
-    (t +fnn-exit-ok+)))
+  "ACL2's code for the session (books/bp-run-class.lisp, PRF-131/PRF-143): a
+transfer lost after the session was established is connection-local,
+:interrupted (6), never the fence; a fenced delivery callback is 3."
+  (fnn-core 'fn-bprc-run-exit-code
+            (fnn-core 'fn-bprc-note (fnn-core 'fn-bprc-empty)
+                      (fnn-core 'fn-bprc-session-evidence
+                                (fnn-tclc-outcome conn) (fnn-tclc-fenced conn)))))
 
 (defun fnn-tcl-summary (conn)
   (fnn-out "TCPCL ~a summary accepted=~d refused=~d uncertain=~d phase=~(~a~)"

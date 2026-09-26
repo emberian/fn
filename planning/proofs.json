@@ -6044,6 +6044,57 @@
         "fn-cp-register-within-refuses-exactly-past-the-operator-bound",
         "fn-cp-apply-preserves-consumer-capacity"
       ]
+    },
+    {
+      "id": "PRF-143",
+      "title": "One fn-wide outcome classification and one ACL2 code map: every native command exits code(classify(f, x)), the seven classes' codes are disjoint and fixed, a fence is the only 3 in every family, NO-STORE and the clock-undecided decode are refusals, and CONFLICT is a refusal that keeps every earlier FNCT octet",
+      "statement": "books/outcome-class.lisp: *fn-outcome-codes* maps :accepted 0, :refused 1, :fenced 3, :fault 4, :usage 5, :interrupted 6, :not-connected 7; fn-outcome-code reads it. fn-outcome-code-separates-the-classes: distinct classes have distinct codes. fn-outcome-code-table-by-definition: the seven codes are (0 1 3 4 5 6 7). fn-outcome-code-is-fenced-iff-fenced: over classes, the code is 3 exactly for :fenced. Families: host conditions (fn-outcome-of-host-condition, called by host/native/io.lisp fnn-exit-code-for; the +fnn-exit-*+ constants are fn-outcome-code of their classes): fn-outcome-host-condition-fences-iff-indeterminate. Operator (fn-native-operator-exit-code = fn-outcome-code of fn-native-operator-outcome-class, called through fn-native-operator-host-result-exit-code by host/native/operator.lisp): fn-native-operator-exit-is-fenced-iff-uncertain; fn-native-operator-absent-store-is-refused now concludes exit (fn-outcome-code :refused), 1. Control (fn-native-control-status-exit-code, called by the operator post and hybrid clients): fn-native-control-exit-is-fenced-iff-uncertain; topic control fn-thlc-outcome-class. BP (fn-bprc-exit-code is fn-outcome-code; host fnn-bp-exit-code, fnn-bps-exit-code, fnn-tcl-exit-code): fn-bprc-run-exit-code-is-fenced-iff-fenced; bp decode (fnn-command-bp-decode renders fn-bprc-decode-exit-code): fn-bprc-decode-never-fences, the clock-undecided verdict exits 1. CONFLICT (PKT-246): :conflict appended to *fn-nctrl-statuses*; fn-native-control-conflict-is-a-refusal: for an owner control result in the admitted range, the completion status (fn-native-control-completion-status, called by host/native/owner.lisp fnn-owner-complete-bound-submission for the operator post and hybrid-author) is :conflict only for an owner refusal of D25's :conflict word, it classes :refused and exits 1, and any other word passes the result through; fn-nctrl-conflict-keeps-every-earlier-octet: each status of *fn-nctrl-statuses-before-conflict* is sealed exactly as the enumeration before :conflict seals it. The round trip of :conflict and the older decoder's :bad are executed witnesses (the seal's digest is A-CRYPTO's constrained function in proofs).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-009",
+        "HST-008"
+      ],
+      "depends_on": [
+        "PRF-131",
+        "PRF-130"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/outcome-class.lisp",
+        "books/bp-run-class.lisp",
+        "books/native-operator.lisp",
+        "books/native-control.lisp",
+        "books/topic-history-local-control.lisp",
+        "tests/acl2/outcome-class-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/bp.lisp",
+        "host/native/tcpcl.lisp",
+        "host/native/owner.lisp",
+        "host/native/hybrid-control.lisp",
+        "tests/test_native_outcome_algebra.py",
+        "tests/test_fn_client.py",
+        "planning/evidence/outcome-algebra-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T092330Z-3847549.json",
+        "planning/evidence/manifests/certify-20260926T092805Z-3892210.json",
+        "planning/evidence/manifests/certify-20260926T094832Z-4083496.json"
+      ],
+      "progress_note": "Lane outcome-algebra (2026-09-26, wave 3; gpt-6 answers section 5; PKT-295 and PKT-246 retired by fn-outcome-code-separates-the-classes, fn-native-operator-absent-store-is-refused and fn-native-control-conflict-is-a-refusal). Teeth: tests/acl2/outcome-class-tests.lisp. Open: health's verdict scale 19..27 (PKT-329).",
+      "events": [
+        "fn-outcome-code-separates-the-classes",
+        "fn-outcome-code-table-by-definition",
+        "fn-outcome-code-is-fenced-iff-fenced",
+        "fn-outcome-of-status-fences-iff-uncertain",
+        "fn-outcome-host-condition-fences-iff-indeterminate",
+        "fn-bprc-run-exit-code-is-fenced-iff-fenced",
+        "fn-bprc-decode-never-fences",
+        "fn-native-operator-exit-is-fenced-iff-uncertain",
+        "fn-native-operator-absent-store-is-refused",
+        "fn-native-control-exit-is-fenced-iff-uncertain",
+        "fn-native-control-conflict-is-a-refusal",
+        "fn-nctrl-conflict-keeps-every-earlier-octet"
+      ]
     }
   ]
 }

@@ -169,7 +169,8 @@
                         (:duplicate :duplicate)
                         (:conflict :conflict)
                         (:absent (fnn-owner-identity-commit service event))
-                        (t (fnn-fault "owner returned malformed existing action")))))))
+                        (t (fnn-fault "owner returned malformed existing action")))))
+                  t))
              :refused)))))))))
 
 (defun fnn-hybrid-control-handle (service frame)

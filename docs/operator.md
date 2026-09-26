@@ -108,14 +108,16 @@ store (`run`, `post`, `status`, `pins`, `obligations`, `health`, `recover`,
 `bp-route`, `retention`, `control`, `principal`) first looks for the same
 five entries, by `lstat` alone. With none of them there is no store here: the
 node was never initialized (or `[store] path` names the wrong directory), and
-the answer is **`refused` with exit 6** and the line
+the answer is **`refused` with exit 1**, the code of every known refusal, and
+the line
 
 ```
 no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)
 refused operator status NO-STORE
 ```
 
-never a fault (4). ACL2 decides it (`fn-native-operator-store-outcome`,
+never a fault (4); the word `NO-STORE` and the `run:` line, not the code,
+tell it from another refusal. ACL2 decides it (`fn-native-operator-store-outcome`,
 `fn-native-operator-absent-store-is-refused`, books/native-operator.lisp);
 a store with some of its entries (an interrupted `init`) is not "no store"
 and goes to the open, which recovers or refuses it.
@@ -1048,12 +1050,18 @@ outcome, and exits with the code for that outcome:
 
 | Outcome | Exit | What it means |
 | --- | --- | --- |
-| `accepted` | 0 | The core accepted it and the decision is durable. |
-| `refused` | 1 | The core refused it. Nothing changed. Fix the input. |
-| `uncertain` | 3 | Whether it is durable is not known. See below. |
+| `accepted` | 0 | Done, or already so (`DUPLICATE`: the node holds exactly this article). The decision is durable. |
+| `refused` | 1 | The node refused it for the reason it names, and nothing was accepted: `CONFLICT` (a different article holds this Message-ID; post under a new one, or resend the saved bytes), `NO-STORE` (run `init`), a bound, a lock. Fix what the reason names. |
+| `uncertain` | 3 | Whether it is durable is not known: this node's Store must recover before anything else changes. See below. |
 | `fault` | 4 | The host could not carry out the operation. |
 | `usage` | 5 | The command line or the configuration file is wrong. |
-| `refused` | 6 | (native `fn operator`) No store at the configured `[store] path`: run `init`. |
+| `interrupted` | 6 | (BP verbs) A connection was lost after it existed; the job is kept and re-offered under its own identity. No recovery. |
+| `not-connected` | 7 | (BP verbs) No connection was made; nothing left the node and the job stays queued. |
+
+This is the one table for every native `fn` command (specs/host.md "CLI exit
+codes", HST-009): a number means the same class whatever the verb, and the
+reason is the word on the line, never a code of its own. `health` is the one
+exception: it exits with its verdict (below), 0 or 19 to 27.
 
 These three outcomes stay distinct everywhere: the exit code, the stderr
 line, the log line, and the reply on the control socket. Never map

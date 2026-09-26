@@ -162,10 +162,19 @@ same text again on purpose, give it a new Message-ID. A signed article's
 retry resends the signature bytes you saved, never a new signature:
 ML-DSA-65 signing is randomized (FIPS 204), so signing the same text again
 yields different signed octets, a changed source under the held Message-ID,
-which the node refuses as the conflict (`hybrid-author` answers REFUSED);
+which the node refuses as the conflict (`hybrid-author` and `operator post`
+answer `refused ... CONFLICT`, exit 1; fn_client prints `refused CONFLICT`);
 `post --draft` keeps the exact article, a carrier's signature bytes
 included, beside its Message-ID. Never map an uncertain
 or unresolved outcome onto accepted or refused in a wrapper script.
+Upgrade the client with the node: the `CONFLICT` word is new in the control
+reply, and an `fn` image from before it cannot decode it, so its
+`operator post` or `hybrid-author` answers `uncertain` (exit 3) for a
+conflict the node refused; the node's state is unchanged, and a current
+client reads the same reply as `refused ... CONFLICT` (exit 1). fn_client's
+own exit codes (0, 1, 3, 4 unresolved, 2 usage) describe the server's state
+as seen over NNTP; its `--json` record says so with `"scope": "server"`, and
+its 3 never asks you to recover a local Store.
 
 ### The watermark
 

@@ -2229,7 +2229,8 @@
       "milestone": "M4",
       "status": "implemented",
       "requirements": [
-        "HST-008"
+        "HST-008",
+        "HST-009"
       ],
       "steps": [
         "Install the production image with packaging/install-native.sh into a scratch prefix; every later command is PREFIX/bin/fn.",
@@ -2241,7 +2242,7 @@
         "rollback-check --snapshot between two stores whose first transaction holds different articles of equal encoded length, the store one transaction longer; between a store and its own earlier copy after it was compacted; with the store's writer lock held exclusively."
       ],
       "expected": [
-        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store.",
+        "Before init: refused NO-STORE exit 1 (specs/host.md \"CLI exit codes\", HST-009: the refused class; exit 6 before outcome-algebra) with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store.",
         "The equal-counter, different-content snapshot is refused snapshot-not-a-prefix (exit 1: not an earlier state of this history), never counted as one lost transaction; the compacted store's earlier copy is counted through its pack (loses 1 of 4); a held store is refused (already locked), never read unlocked."
       ],
       "evidence": [
@@ -2249,7 +2250,8 @@
         "planning/evidence/operator-walk-2026-09-26.md",
         "tests/acl2/native-operator-tests.lisp",
         "tests/test_native_rollback_history.py",
-        "planning/evidence/rollback-history-2026-09-26.md"
+        "planning/evidence/rollback-history-2026-09-26.md",
+        "planning/evidence/outcome-algebra-2026-09-26.md"
       ],
       "implementation": {
         "test": "tests.test_native_rollback_history",
