@@ -833,14 +833,56 @@ gives them.
   (`fn-auth-config-with-accounts-finds-the-redeemed-credential` with
   `fn-auth-step-principal-login-binds-exactly-the-unique-match`). The
   login-to-signing-key binding is not this section's (specs/identity.md).
-- **The wire** (designed; PKT-439): `XREDEEM CODE NAME` answers `381` (send
-  the password); the next line is the password, answered `281` once the
-  redeem is published (or already published for this login and password) and
-  `482` refused, with the reason class in the log and never the code or its
-  digest. Before a TLS layer is active on a listener that requires one, it is
-  `483`, AUTHINFO's rule above. It is refused `502` on an authenticated
-  connection. The salt is the host's observation, through the path
-  `fnn-native-auth-admin-csprng-salt` uses; ACL2 computes the verifier.
+- **The wire** (fn extension; RFC 4643 section 2.3 is AUTHINFO's and is not
+  overloaded; the codes keep RFC 3977 section 3.2's classes):
+
+      XREDEEM CODE NAME        -> 381 send the password with XREDEEM PASS
+      XREDEEM PASS PASSWORD    -> (held) then 281 or 482
+
+  `XREDEEM CODE NAME` caches the code and the login in the connection's memory
+  and answers `381`. `XREDEEM PASS PASSWORD` (one token, like AUTHINFO PASS;
+  the password is never a bare line, so a client that loses its place cannot
+  send it as a command) answers nothing at once: the session holds, the served
+  fold stops at the end of that line, and the owner, under its mutex, reads a
+  16-octet salt from the OS CSPRNG, runs `fn-acct-redeem-bounded-plan` over
+  the live configuration, and publishes a `:redeem` plan's delta through
+  `fnn-owner-live-reconfigure-locked`. Only then does it feed the connection
+  `(:account-outcome WORD)`: `281 account bound; authenticate with AUTHINFO on
+  a new connection` when WORD is `:bound` (the record is durable, or was
+  already durable for this login and password), otherwise `482 invitation
+  code refused`, with the reason class in the service log (`account redeem
+  refused account-unknown`) and never the code, its digest or the password.
+  A crash between the publication and the reply loses the 281; the same
+  exchange again answers 281 and binds nothing new. Before a TLS layer on a
+  listener that requires one both lines are `483` (AUTHINFO's rule above); on
+  an authenticated connection `502`; `XREDEEM PASS` with nothing cached is
+  `482`. The snapshot a connection pinned at open does not change, so the
+  friend logs in with AUTHINFO USER/PASS on a new connection. A code is the
+  operator's 32 hexadecimal characters and is never the word PASS. Theorems:
+  `fn-auth-step-pinned-xredeem-before-tls-is-483`,
+  `fn-auth-step-pinned-xredeem-pass-holds-for-the-owner`,
+  `fn-auth-step-pinned-redeem-outcome-answers-the-word`,
+  `fn-acct-redeem-word-is-bound-only-after-a-durable-redeem`.
+- **The admission limit** (D27: a profile limit, not a code ceiling): a
+  redeem is refused `:account-credential-bound` once auth.toml's credentials
+  plus the redeemed rows reach the store profile's `max-credentials`, the
+  bound auth.toml is loaded under
+  (`fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound`); a
+  resume adds no row and is never refused by it. Pending rows are bounded by
+  their expiry, in the record clock's unit (books/clock.lisp: wall
+  milliseconds since 2000-01-01).
+- **The operator.** `operator CONFIG account invite [--expires SECONDS]`
+  (default 604800): the host reads 16 CSPRNG octets, ACL2 renders the code
+  (`fn-acct-code-text`) and its digest, and only the digest is sent (to the
+  running owner over the control socket, or offline into the configuration
+  when no owner runs, as `peer add` is); the code is printed once, to stdout,
+  after the pending row is durable. `account list` prints `redeemed LOGIN
+  PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a digest or a
+  verifier.
+- **Rollback (PKT-440, decided).** Once an account code is redeemed on a
+  release with accounts, releases before it cannot open the store (an older
+  image refuses delta kinds 15 and 16 at decode); roll back only from the
+  pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
 
 ### The posting allowance
 
