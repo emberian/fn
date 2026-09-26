@@ -200,6 +200,8 @@
     "tests/acl2/store-checkpoint-open-tests",
     "books/owner-checkpoint-open",
     "tests/acl2/owner-checkpoint-open-tests",
+    "books/owner-checkpoint-stream",
+    "tests/acl2/owner-checkpoint-stream-tests",
     "books/store-open-pre-c1",
     "tests/acl2/store-open-pre-c1-tests",
     "tests/acl2/linear-recognizers-tests",
@@ -971,27 +973,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 992,
-    "books_in_root_closure": 985,
-    "roots": 967,
-    "theorems": 13932,
-    "functions": 9732,
-    "assert_events": 14929,
-    "must_fails": 1758,
+    "books": 994,
+    "books_in_root_closure": 987,
+    "roots": 969,
+    "theorems": 13967,
+    "functions": 9748,
+    "assert_events": 14948,
+    "must_fails": 1764,
     "prover_refusals": 2,
     "encapsulates": 69,
     "guards": {
-      "verified": 2226,
+      "verified": 2228,
       "declared-off": 790,
-      "default-guarded": 5276,
-      "default-unguarded": 1440
+      "default-guarded": 5288,
+      "default-unguarded": 1442
     },
     "suspect_theorems": 134,
     "export_hygiene_warnings": 156,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 148,
-    "include_hygiene_warnings": 1003,
-    "host_names_warnings": 1139,
+    "include_hygiene_warnings": 1004,
+    "host_names_warnings": 1145,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -10119,11 +10121,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 59,
-      "functions": 48,
+      "functions": 50,
       "guards": {
         "verified": 0,
         "declared-off": 14,
-        "default-guarded": 34,
+        "default-guarded": 36,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11141,12 +11143,12 @@
       "book": "books/octets-stobj.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 66,
-      "functions": 33,
+      "theorems": 72,
+      "functions": 35,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 27,
+        "default-guarded": 29,
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
@@ -11296,6 +11298,35 @@
         "store-checkpoint-open"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-checkpoint-stream.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 8,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-checkpoint-open",
+        "store-checkpoint-reader"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -23771,10 +23802,10 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 61,
+      "assert_events": 65,
       "must_fails": 15,
       "prover_refusals": 0,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -24408,17 +24439,17 @@
       "book": "tests/acl2/octets-stobj-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 26,
-      "functions": 9,
+      "theorems": 30,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 4,
         "default-guarded": 1,
-        "default-unguarded": 4
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
-      "must_fails": 17,
+      "assert_events": 20,
+      "must_fails": 19,
       "prover_refusals": 0,
       "defconsts": 27,
       "defmacros": 0,
@@ -24601,6 +24632,34 @@
       "encapsulates": 0,
       "includes": [
         "../../books/owner-checkpoint-open"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-checkpoint-stream-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 6,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-checkpoint-stream"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -26696,7 +26755,7 @@
       "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 4,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -26706,7 +26765,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 10,
-      "must_fails": 5,
+      "must_fails": 3,
       "prover_refusals": 0,
       "defconsts": 1,
       "defmacros": 0,
@@ -31200,7 +31259,7 @@
       {
         "function": "fn-octets$a-list",
         "book": "books/octets-stobj.lisp",
-        "line": 337,
+        "line": 339,
         "stated_in": [
           "tests/acl2/octets-stobj-tests.lisp"
         ],
@@ -31897,6 +31956,18 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "ocst-r-file-len-without-treep",
+        "book": "tests/acl2/owner-checkpoint-stream-tests.lisp",
+        "line": 280,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "ocst-r-len-acc-without-treep",
+        "book": "tests/acl2/owner-checkpoint-stream-tests.lisp",
+        "line": 304,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "fn-oco-t-observe-ignores-the-reading",
         "book": "tests/acl2/owner-config-observe-tests.lisp",
         "line": 39,
@@ -32146,18 +32217,6 @@
         "check": "sccbt-r-encodes-octets-without-treep",
         "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
         "line": 134,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "sccbt-r-append-list-without-true-listp-buffer",
-        "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
-        "line": 162,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "sccbt-r-append-list-without-true-listp-xs",
-        "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
-        "line": 188,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -34441,6 +34500,13 @@
         "line": 32,
         "include": "store-checkpoint-codec",
         "included": "books/store-checkpoint-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-checkpoint-stream.lisp",
+        "line": 59,
+        "include": "owner-checkpoint-open",
+        "included": "books/owner-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -39670,6 +39736,13 @@
       {
         "host": "host/native-live-status-host.lisp",
         "line": 24,
+        "name": "fn-owner-sco-deferred",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native-live-status-host.lisp",
+        "line": 24,
         "name": "fn-owner-exposure-health",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -44499,21 +44572,28 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 901,
+        "line": 926,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2640,
+        "line": 2156,
+        "name": "functionp",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 2705,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3668,
+        "line": 3734,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -45704,6 +45784,34 @@
       {
         "host": "host/native/owner.lisp",
         "line": 2165,
+        "name": "round",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 2165,
+        "name": "fnn-call",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 2165,
+        "name": "fnn-live-octets-pub",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 2165,
+        "name": "fnn-plan-p",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 2165,
         "name": "fnn-state-checkpoint-write",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -45711,83 +45819,83 @@
       {
         "host": "host/native/owner.lisp",
         "line": 2165,
-        "name": "round",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+        "name": "fnn-plan-write-all",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2254,
+        "line": 2279,
         "name": "*fnn-sighup-count*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2254,
+        "line": 2279,
         "name": "*fnn-owner-log-path*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2346,
+        "line": 2371,
         "name": "*fnn-sigterm-owner-active*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2346,
+        "line": 2371,
         "name": "*fnn-sigterm-requested*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2346,
+        "line": 2371,
         "name": "*fnn-sigterm-wakeup-fd*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2346,
+        "line": 2371,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2346,
+        "line": 2371,
         "name": "fnn-listen",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2455,
+        "line": 2480,
         "name": "fnn-tls-context-p",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2455,
+        "line": 2480,
         "name": "fnn-post-entry-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2455,
+        "line": 2480,
         "name": "fnn-state-checkpoint-test-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2510,
+        "line": 2535,
         "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -47047,42 +47155,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 243,
+        "line": 249,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 243,
+        "line": 249,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 450,
+        "line": 493,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 691,
+        "line": 734,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 691,
+        "line": 734,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2378,
+        "line": 2421,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
