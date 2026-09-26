@@ -4429,9 +4429,19 @@
         "tests/acl2/consumer-owner-local-progress-tests.lisp",
         "books/consumer-owner-local.lisp",
         "host/owner-host.lisp",
-        "planning/evidence/consumer-e2-2026-09-25.md"
+        "planning/evidence/consumer-e2-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T000312Z-2863061.json"
       ],
-      "progress_note": "Lane consumer-e2 (2026-09-25), PKT-165 for the retaining-mode decision."
+      "progress_note": "Lane consumer-e2 (2026-09-25), PKT-165 for the retaining-mode decision.",
+      "events": [
+        "fn-col-poll-scan-page-contract",
+        "fn-cp-ack-writes-only-a-forward-declaration-in-scope",
+        "fn-cp-ack-after-its-commit-is-a-no-op",
+        "fn-col-poll-is-a-page-or-a-refusal",
+        "fn-col-poll-is-the-index-window-scan-unfolds",
+        "fn-col-scope-entry-position-is-natural",
+        "fn-col-ack-is-the-kernel-ack-unfolds"
+      ]
     }
   ]
 }
