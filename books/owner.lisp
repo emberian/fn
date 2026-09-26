@@ -1891,7 +1891,7 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-               (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) feeds node-secret))
+               (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) feeds (fn-own-node-secret o)))
 
 ; What a submission tells the feed.  Both kinds carry the Message-ID and the
 ; article as octets; only a transit submission has an origin peer.  The octets

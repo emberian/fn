@@ -6987,6 +6987,26 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-stored-octets-carry-the-login-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-login-key-opens-exactly-its-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-served-payload-writes-one-login-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-input-separates-labels"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-cancel-lock-and-posting-account-inputs-differ"
         }
       ]
     },
