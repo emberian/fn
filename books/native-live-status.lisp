@@ -38,6 +38,8 @@
 (include-book "native-control")
 (include-book "native-admin")
 (include-book "store-budget")
+; PKT-169: the maintenance reservation `status' prints.
+(include-book "store-maintenance-reserve")
 (include-book "owner-config")
 (include-book "store-reclaim-holders")
 (include-book "records-stamp")
@@ -302,6 +304,18 @@ freed-octets=N'."
                         (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                                    (fn-ag-cdr headroom)))))))))
 
+; `maintenance-reserve octets=R transactions=1 held|short' (PKT-169,
+; books/store-maintenance-reserve.lisp `fn-smr-report'): the room admission
+; keeps for one release record, and whether the committed state has it.
+(defun fn-nls-reserve-words (report)
+  (declare (xargs :guard t))
+  (append (fn-nls-text "maintenance-reserve")
+          (fn-nls-field "octets" (fn-ag-car report))
+          (fn-nls-field "transactions" (fn-ag-car (fn-ag-cdr report)))
+          (if (equal (fn-ag-car (fn-ag-cdr (fn-ag-cdr report))) :held)
+              (fn-nls-text " held")
+            (fn-nls-text " short"))))
+
 (defun fn-nls-connection-lines (pins)
   "One `connection id=I config-generation=G' line per open connection's pin
 (books/owner-config.lisp: the generation it opened at, or advanced to)."
@@ -381,6 +395,8 @@ configuration pins (nil with no owner), OBS the host's open observation."
             (fn-nls-profile-words (fn-bs-profile-report profile)) *fn-nls-lf*
             (fn-nls-open-cost-words profile) *fn-nls-lf*
             (fn-nls-headroom-words (fn-sbud-headroom-at profile s bytes)) *fn-nls-lf*
+            (fn-nls-reserve-words (fn-smr-report profile (fn-sbud-used s) bytes))
+            *fn-nls-lf*
             (fn-nls-open-words obs) *fn-nls-lf*
             (fn-nls-reclaim-words s cfg obs) *fn-nls-lf*
             (fn-nls-checkpoint-file-words obs) *fn-nls-lf*

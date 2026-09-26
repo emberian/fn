@@ -616,7 +616,8 @@ The three operations (the Fable mandate, section 8):
 - **Content reclamation** (`store reclaim`, books/store-reclaim-pack.lisp)
   changes only the payload octets of released article records. Every
   event keeps its sequence, transaction ID, generation, Message-ID, groups,
-  obligation ID, content subject, release evidence, charge and stamp; every
+  obligation ID, content subject, release evidence and stamp, and its
+  charge falls to the one permanent history unit (below); every
   event that is not a legacy article record (an accepted-statement
   composite, a keyring snapshot, a statement verdict, a retention, consumer
   or topic event) keeps its bytes (`fn-rclp-events-keep-every-other-kind`).
@@ -653,17 +654,51 @@ pack rewrote is never rewritten again under any later context
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the older generation is retired, and in the
 committed-record octets the admission gate sums (`bytes-used` of
-`status`'s headroom line; `fn-rclp-freed-is-the-admission-count`). The
-transaction count is not released (sequence numbers are history) and the
-retention charge is not released (the archive pin is kept; D03's release of
-an archive undertaking is a node-invariant change, open).
+`status`'s headroom line; `fn-rclp-freed-is-the-admission-count`), and the
+retention charge of the reclaimed article's archive pin less one permanent
+history unit (`charge-reserved`; `fn-rclp-rewritten-charge-is-the-history-unit`):
+the pin itself stays, as `fn-retain-release` keeps one unit for a released
+obligation, and no other obligation's charge changes. The release is the
+operator's authorized retention rule. The transaction count is not released
+(sequence numbers are history).
 
-A known limit, stated: the compact verb's temporary-space rule (the files
-present plus the new pack within `max_history_octets`) and the admission
-gate's history rule (committed octets plus a record ceiling within the same
-bound) together mean a store refused for lack of history headroom cannot be
-compacted or reclaimed; the maintenance reservation is not yet an admission
-invariant (planning/evidence/reclaim-lifecycle-2026-09-25.md, PKT-169).
+### The maintenance reservation (STO-019)
+
+STO-019: Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance.
+
+The decision (PKT-169, 2026-09-26) and its two halves:
+
+- **The disk.** `store compact` and `store reclaim` write one new pack
+  beside the files present. The host reports the free octets of the
+  store's filesystem (statvfs: `f_bavail` blocks of `f_frsize` octets) and
+  ACL2 refuses by name (`temporary-space`, exit 1, nothing written) when
+  the pack's accounted octets exceed them or the observation failed
+  (`fn-cverb-pack-fits-the-disk`, `fn-rclp-pack-fits-the-disk`). The
+  history bound `max_history_octets` bounds the open's replay input (the
+  transaction files past the selected pack); the selected pack is read
+  under the compaction unit. So H is not maintenance's budget, and a store
+  at its history bound compacts and reclaims.
+- **The release record.** A release is a Store record (the `:release`
+  retention event). The served gates (`fn-smr-verdict-at` for every record
+  kind, `fn-smr-article-budget-for` for the served POST and BP transit,
+  `fn-smr-article-verdict-at` for the developer `store post`) admit a
+  record other than a release only if, after it, the profile's own gate
+  still admits one release record: one transaction of the profile's budget
+  and the release record's codec ceiling (4,096 octets) within H
+  (`fn-smr-admission-keeps-the-reserve`, `fn-smr-prepare-keeps-the-reserve`,
+  `fn-smr-article-verdict-keeps-the-reserve`). A release consumes the
+  reservation (`fn-smr-reserve-admits-the-release`). The reservation holds
+  at init under every admitted profile and is kept by a profile upgrade.
+  It is the profile's gate at kind `:release`, not a constant of its own;
+  `status` prints it: `maintenance-reserve octets=4096 transactions=1
+  held|short` (`short` only on a store filled before this rule).
+
+The release's configuration record (`retention set`) is in the
+configuration namespace, bounded by `max_config_generations` and the
+configuration record bound, never by H: no Store admission takes its room.
+The BP namespace keeps its own reservation, the FNBS received-namespace
+debt cover (books/bp-node-debt.lisp); a bundle delivered into the Store
+passes the Store gates above.
 
 ### Chained packs (not implemented)
 

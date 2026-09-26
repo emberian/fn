@@ -36,8 +36,20 @@
 (include-book "store-reclaim-holders")
 (include-book "store-compact-verb")
 
-; The record an article record becomes: the same eleven fields with the
-; tombstone of its payload in place of the payload.
+; The record an article record becomes: the same fields with the tombstone
+; of its payload in place of the payload, and the retention charge of its
+; archive pin reduced to the one permanent history unit (reclaim-lifecycle-2,
+; step 2; D03).  The release is the operator's authorized retention rule
+; (the configuration record `retention set' wrote, which
+; `fn-rcl-reclaimable' reads); the pin itself stays (every bound article
+; keeps a live pin, `fn-node-statep'), and what the ledger keeps for it is
+; exactly what `fn-retain-release' keeps for a released obligation: one
+; unit.  The content charge (pages) returns to the ledger's headroom when
+; the reclaiming pack is replayed.  Only the rewritten article's own pin
+; changes (every other event is the same octets,
+; `fn-rclp-events-never-touch-a-held-article',
+; `fn-rclp-events-keep-every-other-kind').
+(defconst *fn-rclp-history-unit* 1)
 (defun fn-rclp-tombstoned (r)
   (declare (xargs :guard t :verify-guards nil))
   (fn-record-make (fn-record-sequence r) (fn-record-txid r)
@@ -46,7 +58,7 @@
                                        (fn-record-string-octets (fn-record-msgid r)))
                   (fn-record-groups r) (fn-record-obligation-id r)
                   (fn-record-content-subject r) (fn-record-release-evidence r)
-                  (fn-record-charge r) (fn-record-stamp r)))
+                  *fn-rclp-history-unit* (fn-record-stamp r)))
 
 ; CTX is (RULE NOW HOLDERS VERDICTS ARTICLES) of the opened store.
 (defun fn-rclp-ctx-reclaimable (ctx msgid)
@@ -118,7 +130,8 @@
            (equal (fn-rclp-event octets ctx) octets)))
 
 ; A rewritten event decodes to the tombstoned record: every field of the
-; record the event held, with the payload replaced by its tombstone.
+; record the event held, with the payload replaced by its tombstone and the
+; charge released to the history unit.
 (defthm fn-rclp-event-decodes-to-the-tombstoned-record
   (implies (fn-rclp-rewrites-p octets ctx)
            (let ((new (fn-record-decode-exact (fn-rclp-event octets ctx)))
@@ -146,7 +159,7 @@
                   (equal (fn-record-release-evidence (fn-record-result-record new))
                          (fn-record-release-evidence old))
                   (equal (fn-record-charge (fn-record-result-record new))
-                         (fn-record-charge old))
+                         *fn-rclp-history-unit*)
                   (equal (fn-record-stamp (fn-record-result-record new))
                          (fn-record-stamp old)))))
   :hints (("Goal" :in-theory (disable fn-rclp-tombstoned)
@@ -383,6 +396,55 @@
          (- (fn-rclp-octets events) (fn-rclp-freed events ctx)))
   :hints (("Goal" :in-theory (disable fn-rclp-event))))
 
+;  The retention charge (reclaim-lifecycle-2, step 2).  The charge an event
+; carries into the ledger when it is replayed: an article record's archive
+; pin charge, 0 for any other event (its own pins are the other kinds'
+; events, which the rewrite never touches).
+(defun fn-rclp-charge-of (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((d (fn-record-decode-exact octets)))
+    (if (fn-record-result-okp d)
+        (fn-record-charge (fn-record-result-record d))
+      0)))
+
+(defun fn-rclp-charges (events)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp events)
+      (+ (fn-rclp-charge-of (car events)) (fn-rclp-charges (cdr events)))
+    0))
+
+; The charge released: for each rewritten event, its charge less the history
+; unit its replacement keeps.
+(defun fn-rclp-freed-charge (events ctx)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp events)
+      (+ (- (fn-rclp-charge-of (car events))
+            (fn-rclp-charge-of (fn-rclp-event (car events) ctx)))
+         (fn-rclp-freed-charge (cdr events) ctx))
+    0))
+
+;  KEYSTONE (a released article keeps only the history unit).  A rewritten
+; event's replacement carries the one permanent history unit of charge; an
+; event that is not rewritten carries its own charge unchanged, so a release
+; of one article's pin changes no other obligation's charge.
+(defthm fn-rclp-rewritten-charge-is-the-history-unit
+  (equal (fn-rclp-charge-of (fn-rclp-event octets ctx))
+         (if (fn-rclp-rewrites-p octets ctx)
+             *fn-rclp-history-unit*
+           (fn-rclp-charge-of octets)))
+  :hints (("Goal" :use ((:instance fn-rclp-event-decodes-to-the-tombstoned-record))
+           :in-theory (e/d (fn-rclp-charge-of)
+                           (fn-rclp-event fn-rclp-rewrites-p
+                            fn-rclp-event-decodes-to-the-tombstoned-record
+                            fn-rclp-tombstoned))
+           :cases ((fn-rclp-rewrites-p octets ctx)))
+          ("Subgoal 2" :in-theory (enable fn-rclp-event))))
+
+(defthm fn-rclp-freed-charge-account
+  (equal (fn-rclp-charges (fn-rclp-events events ctx))
+         (- (fn-rclp-charges events) (fn-rclp-freed-charge events ctx)))
+  :hints (("Goal" :in-theory (disable fn-rclp-event fn-rclp-charge-of))))
+
 ;  KEYSTONE (the freed charge is what admission counts).  For a rewritten
 ; event, the committed-record octets the admission gate sums
 ; (books/store-budget `fn-sbud-record-octets', which re-encodes each
@@ -430,8 +492,8 @@
 ; the clock is unusable, which reclaims nothing under release-after).  S:
 ; the Store state the open replayed (holders, verdicts, articles).  RECORDS:
 ; the committed history as octets (pack plus suffix).  FRONTIER: the durable
-; allocator frontier.  LOWER, NAMES, GENERATIONS, SELECTED, FOOTPRINT: the compact
-; verb's observation.  DRY: `--dry-run'.
+; allocator frontier.  LOWER, NAMES, GENERATIONS, SELECTED: the compact verb's
+; observation; DISK-FREE: the free octets the host observed (PKT-169).  DRY: `--dry-run'.
 ;
 ;   (:compact-first)                 the history is not one selected pack
 ;                                    with no transaction file left: the host
@@ -456,7 +518,7 @@
         (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
 
 (defun fn-rclp-decide (profile rule now s records frontier lower names
-                               generations selected footprint dry)
+                               generations selected disk-free dry)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((used (len records))
          (reclaim (fn-bs-pack-reclaim-plan
@@ -480,8 +542,7 @@
            (list :compact-first))
           (t
            (let ((new (fn-rclp-events records ctx)))
-             (if (< (fn-cverb-space-budget profile)
-                    (+ (fn-cverb-octet-sum footprint) (fn-cverb-pack-octets new)))
+             (if (not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets new)))
                  (list :refused :temporary-space)
                (let ((captured (fn-cc-capture new frontier)))
                  (if (not (equal (car captured) :ok))
@@ -495,7 +556,7 @@
 ; that list is a theorem about the bytes the host writes.
 (defthm fn-rclp-decide-publishes-the-rewrite
   (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected footprint dry)))
+                           generations selected disk-free dry)))
     (implies (equal (car d) :reclaim)
              (and (equal (nth 1 d) *fn-rclp-steps*)
                   (equal (car (fn-cc-capture
@@ -515,10 +576,34 @@
                                       fn-rclp-freed fn-cc-capture fn-cc-encode
                                       fn-rcl-store-counts fn-rclp-ctx
                                       fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                      fn-cverb-octet-sum fn-cverb-space-budget
+                                      fn-cverb-disk-admitsp
                                       fn-cverb-older-count
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-transactions))))
+
+;  KEYSTONE (temporary space against the disk, PKT-169).  When the verb
+; reclaims, the pack file the host seals from the octets it is handed (the
+; payload plus the frame trailer) fits the free octets the host reported for
+; the store's filesystem.
+(defthm fn-rclp-pack-fits-the-disk
+  (let ((d (fn-rclp-decide profile rule now s records frontier lower names
+                           generations selected disk-free dry)))
+    (implies (equal (car d) :reclaim)
+             (<= (+ (len (nth 4 d)) *fn-frame-trailer-octets*) disk-free)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cverb-capture-within-pack-octets
+                                   (records (fn-rclp-events
+                                             records (fn-rclp-ctx rule now s)))))
+           :in-theory (e/d (fn-cverb-disk-admitsp fn-cverb-pack-octets fn-cc-nth)
+                           (fn-rclp-events fn-rclp-rewritten-msgids
+                            fn-cverb-capture-within-pack-octets
+                            fn-rclp-freed fn-cc-capture fn-cc-encode
+                            fn-cc-event-octets-size
+                            fn-rcl-store-counts fn-rclp-ctx
+                            fn-bs-pack-reclaim-plan
+                            fn-cverb-older-count
+                            fn-bs-profile-admittedp
+                            fn-bs-profile-max-transactions)))))
 
 (local
  (defthm rewritten-msgids-under-keep-forever
@@ -531,13 +616,13 @@
 ; :reclaim.
 (defthm fn-rclp-keep-forever-writes-nothing
   (not (equal (car (fn-rclp-decide profile '(:keep-forever) now s records frontier
-                                   lower names generations selected footprint dry))
+                                   lower names generations selected disk-free dry))
               :reclaim))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-rclp-events fn-rclp-freed fn-cc-capture
                                       fn-cc-encode fn-rcl-store-counts
                                       fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                      fn-cverb-octet-sum fn-cverb-space-budget
+                                      fn-cverb-disk-admitsp
                                       fn-rclp-rewritten-msgids fn-cverb-older-count
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-transactions))))
