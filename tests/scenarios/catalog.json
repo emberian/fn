@@ -2965,6 +2965,41 @@
         "log": "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log",
         "record": "planning/evidence/peer-feeds-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-105",
+      "title": "The four-node mission with relays that serve both directions at once: no listener turns and no direction restarts of the relays",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-007"
+      ],
+      "steps": [
+        "tests/bp-dtn7/run_mission_four_node.py --report signed and --report unsigned on the DTN developer image: A -> X (fn relay) -> dtn7 r1 -> r2 -> Y (fn relay) -> B and back; X and Y run `bp-node serve -` (the listener set: both boundaries bound) with one argv per incarnation.",
+        "The only stops: X SIGKILLed while holding (step 2), X down while the receipt crosses (steps 2 to 4), A SIGKILLed (step 4), and the K6 Store writer-lock hand-offs (B stops for its owner in step 5 and serves again for A's receipt in step 6; A stops for its status and owner reads).",
+        "--case ambiguous-peer: X's two boundaries on one listener, served on that port explicitly."
+      ],
+      "expected": [
+        "7/7 steps held for both reports; Y is one incarnation for the whole mission; X's three incarnations are the SIGKILL and the outage; every receipt and the reply cross the relay in the opposite direction without a restart.",
+        "ambiguous-peer: X refuses A's transfer with reason ambiguous-peer and takes no custody (2/2)."
+      ],
+      "evidence": [
+        "planning/evidence/multi-peer-relay-2026-09-26.md",
+        "planning/evidence/multi-peer-relay-2026-09-26/signed.out",
+        "planning/evidence/multi-peer-relay-2026-09-26/unsigned.out",
+        "planning/evidence/multi-peer-relay-2026-09-26/ambiguous.out"
+      ],
+      "implementation": {
+        "test": "tests/bp-dtn7/run_mission_four_node.py",
+        "cases": [
+          "--report signed",
+          "--report unsigned",
+          "--case ambiguous-peer"
+        ],
+        "native": true,
+        "log": "planning/evidence/multi-peer-relay-2026-09-26/signed.out",
+        "record": "planning/evidence/multi-peer-relay-2026-09-26.md"
+      }
     }
   ]
 }
