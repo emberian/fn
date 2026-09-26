@@ -5498,6 +5498,19 @@
           "name": "fn-native-operator-history-loss-is-snapshot-loss"
         }
       ]
+    },
+    {
+      "id": "PRF-160",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-record-configures-the-verified-inviter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-record-fold-configures-the-inviter"
+        }
+      ]
     }
   ]
 }

@@ -2246,6 +2246,27 @@
         "The cut leaves the history at generation 1; the first restart logs `key-statement enrol-successor committed at-open` and the history shows generation 2 active, 1 retired; the second restart logs nothing new and the history is unchanged.",
         "Each restart logs `key-statement declined no-grant at-open` and the history is unchanged."
       ]
+    },
+    {
+      "id": "SCN-090",
+      "title": "A friend with the release tarball brings up a node on a second machine, peers with ember's from one invitation each way, and articles flow both ways over TLS",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-030"
+      ],
+      "steps": [
+        "On the friend's machine: unpack the release tarball, `sha256sum -c SHA256SUMS`, `fn operator NODE/fn.toml mission small-community --host IP --port P`, make a TLS pair, `init`, `policy set path-identity`, `principal set-password`, start `run`.",
+        "Both: `peer genesis KEYDIR`. Inviter: `peer invite FRIEND GROUPS FRIEND-IP FRIEND-PORT MY-PATH KEYDIR INV MY-IP MY-PORT`; friend: `peer accept INV KEYDIR FRIEND-PATH FRIEND-IP:PORT ACC`; inviter: `peer confirm ACC INV`; `peer list` on both.",
+        "Both: a login bound to the other's principal, an FNAUTH1 profile, `peer add` of the same name with STARTTLS, the other's certificate and both halves; `peer pull NAME SECONDS`; post on each side and read on the other.",
+        "Skew the friend's clock by ten minutes, restart both owners, post again on each side."
+      ],
+      "expected": [
+        "The tarball's sums verify and the node answers a STARTTLS login from the other machine.",
+        "After accept, the friend's `peer list` shows the inviter at the signed address bound to the inviter's principal; after confirm the inviter's shows the friend.",
+        "Each article posted on one node is readable on the other under the same Message-ID and the same content digest (local article numbers are each node's own).",
+        "After the restarts the feeds resume from their cursors: each article is stored exactly once on each node and none is skipped."
+      ]
     }
   ]
 }
