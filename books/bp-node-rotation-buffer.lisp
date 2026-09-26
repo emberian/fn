@@ -208,6 +208,161 @@
            :expand ((fn-bpnr-dec (fn-oct-slice-list i end x) d)
                     (fn-bpnrb-dec i end d x)))))
 
+; -----------------------------------------------------------------------------
+; The decode as bounded steps (the producer/consumer discipline of the store
+; checkpoint pipeline).  The recursion of `fn-bpnrb-dec' becomes an explicit
+; machine: a position I, a list of GOALS (a natural D: decode one value with
+; depth budget D here; :pair: combine the two values on top) and the stack
+; VALS of decoded values.  The host runs it a quantum at a time
+; (`fn-bpnrb-plan-step'): at most Q steps and about B octets per call, the
+; continuation (E I GOALS VALS) handed back exactly; nothing is truncated,
+; an exhausted quantum resumes.
+
+;; Progress: a value decoded consumes at least one octet.
+(defthm fn-bpnrb-counted-progress
+  (implies (mv-nth 0 (fn-bpnrb-counted i end x))
+           (< i (mv-nth 2 (fn-bpnrb-counted i end x))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (union-theories '(fn-bpnrb-counted nfix natp)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-bpnrb-dec-progress
+  (implies (mv-nth 0 (fn-bpnrb-dec i end d x))
+           (< i (mv-nth 2 (fn-bpnrb-dec i end d x))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-bpnrb-dec i end d x)
+           :in-theory (union-theories '(fn-bpnrb-dec fn-bpnrb-counted-next
+                                        fn-bpnrb-counted-progress natp nfix zp
+                                        (:e zp) (:e natp) (:t fn-bpnrb-u64))
+                                      (theory 'minimal-theory)))))
+
+(defun fn-bpnrb-mstep (i end goals vals fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp end) (<= end (fn-octets-len fn-octets)))))
+  (if (or (atom goals) (not (natp i)))
+      (mv nil 0 nil nil)
+    (let ((g (car goals)) (rest (cdr goals)))
+      (if (eq g :pair)
+          (if (and (consp vals) (consp (cdr vals)))
+              (mv t i rest (cons (cons (cadr vals) (car vals)) (cddr vals)))
+            (mv nil 0 nil nil))
+        (let ((d (nfix g)))
+          (if (or (zp d) (<= end i))
+              (mv nil 0 nil nil)
+            (if (equal (fn-octets-get i fn-octets) 10)
+                (mv t (1+ i) (list* (1- d) (1- d) :pair rest) vals)
+              (mv-let (ok v k) (fn-bpnrb-dec i end d fn-octets)
+                (if ok
+                    (mv t k rest (cons v vals))
+                  (mv nil 0 nil nil))))))))))
+
+(defun fn-bpnrb-measure (i end goals)
+  (declare (xargs :guard t))
+  (let ((r (nfix (- (nfix end) (nfix i)))))
+    (+ r r r (len goals))))
+
+(defthm fn-bpnrb-mstep-progress
+  (implies (and (mv-nth 0 (fn-bpnrb-mstep i end goals vals x)) (natp end))
+           (and (natp (mv-nth 1 (fn-bpnrb-mstep i end goals vals x)))
+                (< (fn-bpnrb-measure (mv-nth 1 (fn-bpnrb-mstep i end goals vals x))
+                                     end
+                                     (mv-nth 2 (fn-bpnrb-mstep i end goals vals x)))
+                   (fn-bpnrb-measure i end goals))))
+  :hints (("Goal" :in-theory (disable fn-bpnrb-dec fn-bpnrb-dec-next)
+           :use ((:instance fn-bpnrb-dec-next (d (nfix (car goals))))))))
+
+; The whole run: the specification of the host's loop of quanta.
+(defun fn-bpnrb-mrun-all (i end goals vals fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :measure (fn-bpnrb-measure i end goals)
+                  :hints (("Goal" :use ((:instance fn-bpnrb-mstep-progress (x fn-octets)))
+                           :in-theory (disable fn-bpnrb-mstep fn-bpnrb-measure
+                                               fn-bpnrb-mstep-progress)))
+                  :verify-guards nil))
+  (if (or (atom goals) (not (natp end)))
+      (mv (natp end) i vals)
+    (mv-let (ok i2 goals2 vals2) (fn-bpnrb-mstep i end goals vals fn-octets)
+      (if ok
+          (fn-bpnrb-mrun-all i2 end goals2 vals2 fn-octets)
+        (mv nil 0 nil)))))
+
+(local
+ (defun-nx fn-bpnrb-dec-ind (i end d goals vals x)
+   (declare (xargs :measure (nfix d)
+                   :hints (("Goal" :in-theory (disable fn-bpnrb-dec)))))
+   (if (or (zp d) (not (natp i)) (not (natp end)) (<= end i))
+       (list goals vals)
+     (if (equal (nth i x) 10)
+         (mv-let (ok a k) (fn-bpnrb-dec (1+ i) end (1- d) x)
+           (declare (ignore ok))
+           (list (fn-bpnrb-dec-ind (1+ i) end (1- d) (list* (1- d) :pair goals) vals x)
+                 (fn-bpnrb-dec-ind k end (1- d) (cons :pair goals) (cons a vals) x)))
+       (list goals vals)))))
+
+;; The pair case of the recursive decoder, stated once.
+(local
+ (defthm fn-bpnrb-dec-of-pair
+   (implies (and (not (zp d)) (natp i) (natp end) (< i end)
+                 (equal (nth i x) 10))
+            (equal (fn-bpnrb-dec i end d x)
+                   (mv-let (ok a k) (fn-bpnrb-dec (1+ i) end (1- d) x)
+                     (if (not ok)
+                         (mv nil nil 0)
+                       (mv-let (ok2 b k2) (fn-bpnrb-dec k end (1- d) x)
+                         (if (not ok2)
+                             (mv nil nil 0)
+                           (mv t (cons a b) k2)))))))
+   :hints (("Goal" :expand ((fn-bpnrb-dec i end d x))))))
+
+(local
+ (defthm fn-bpnrb-dec-refuses-without-input
+   (implies (or (zp d) (not (natp i)) (not (natp end)) (<= end i))
+            (not (mv-nth 0 (fn-bpnrb-dec i end d x))))
+   :hints (("Goal" :expand ((fn-bpnrb-dec i end d x))))))
+
+;; The machine run from a decode goal is the recursive decoder's result
+;; followed by the run of the remaining goals.
+(defthm fn-bpnrb-mrun-all-of-dec-goal
+  (implies (and (natp i) (natp end) (natp d))
+           (equal (fn-bpnrb-mrun-all i end (cons d goals) vals x)
+                  (if (mv-nth 0 (fn-bpnrb-dec i end d x))
+                      (fn-bpnrb-mrun-all (mv-nth 2 (fn-bpnrb-dec i end d x)) end goals
+                                         (cons (mv-nth 1 (fn-bpnrb-dec i end d x)) vals) x)
+                    (mv nil 0 nil))))
+  :hints (("Goal" :induct (fn-bpnrb-dec-ind i end d goals vals x)
+           :in-theory (disable fn-bpnrb-dec)
+           :expand ((fn-bpnrb-mrun-all i end (cons d goals) vals x)))))
+
+; One quantum: at most Q machine steps, stopping once the steps have
+; consumed B octets or more.
+(defun fn-bpnrb-mrun (q b i end goals vals fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp q) (integerp b) (natp end)
+                              (<= end (fn-octets-len fn-octets)))
+                  :measure (nfix q)
+                  :verify-guards nil))
+  (if (or (zp q) (atom goals) (not (natp end)))
+      (mv t i goals vals)
+    (mv-let (ok i2 goals2 vals2) (fn-bpnrb-mstep i end goals vals fn-octets)
+      (if (not ok)
+          (mv nil 0 nil nil)
+        (let ((b2 (- (ifix b) (- (nfix i2) (nfix i)))))
+          (if (<= b2 0)
+              (mv t i2 goals2 vals2)
+            (fn-bpnrb-mrun (1- q) b2 i2 end goals2 vals2 fn-octets)))))))
+
+;; A quantum keeps the run: the whole run from where it stops is the whole
+;; run from where it started, and a refused quantum is a refused run.
+(defthm fn-bpnrb-mrun-all-of-mrun
+  (equal (fn-bpnrb-mrun-all i end goals vals x)
+         (if (mv-nth 0 (fn-bpnrb-mrun q b i end goals vals x))
+             (fn-bpnrb-mrun-all (mv-nth 1 (fn-bpnrb-mrun q b i end goals vals x)) end
+                                (mv-nth 2 (fn-bpnrb-mrun q b i end goals vals x))
+                                (mv-nth 3 (fn-bpnrb-mrun q b i end goals vals x)) x)
+           (mv nil 0 nil)))
+  :hints (("Goal" :induct (fn-bpnrb-mrun q b i end goals vals x)
+           :in-theory (disable fn-bpnrb-mstep))))
+
 (local
  (defthm fn-bpnrb-u64-from-natp
    (implies (fn-cbor-octet-listp xs)
@@ -226,7 +381,9 @@
 ; -----------------------------------------------------------------------------
 ; The file: head, u64 payload length, payload, 32-octet trailer.
 
-(defun fn-bpnrb-decode-range (m budget fn-octets)
+; The frame: head, u64 payload length, trailer over the prefix.  The end
+; of the payload, or nil.
+(defun fn-bpnrb-frame-end (m budget fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp m) (<= m (fn-octets-len fn-octets)))))
   (if (or (not (natp budget)) (not (natp m)) (< m 14))
@@ -241,8 +398,31 @@
                            (fn-bpnr-checkpoint-prefix
                             (fn-bpnrb-slice-acc 14 e nil fn-octets)))))
               nil
-            (mv-let (ok v k) (fn-bpnrb-dec 14 e budget fn-octets)
-              (if (and ok (<= e k) (fn-bpnr-checkpointp v)) v nil))))))))
+            e))))))
+
+(defthm fn-bpnrb-frame-end-bound
+  (implies (fn-bpnrb-frame-end m budget x)
+           (and (natp (fn-bpnrb-frame-end m budget x))
+                (<= 14 (fn-bpnrb-frame-end m budget x))
+                (<= (fn-bpnrb-frame-end m budget x) m)))
+  :rule-classes ((:rewrite :corollary
+                  (implies (fn-bpnrb-frame-end m budget x)
+                           (natp (fn-bpnrb-frame-end m budget x))))
+                 (:linear :corollary
+                  (implies (fn-bpnrb-frame-end m budget x)
+                           (and (<= 14 (fn-bpnrb-frame-end m budget x))
+                                (<= (fn-bpnrb-frame-end m budget x) m)))))
+  :hints (("Goal" :in-theory (disable fn-frame-trailer fn-bpnr-checkpoint-prefix
+                                      fn-bpnrb-slice-acc-is-slice))))
+
+(defun fn-bpnrb-decode-range (m budget fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp m) (<= m (fn-octets-len fn-octets)))))
+  (let ((e (fn-bpnrb-frame-end m budget fn-octets)))
+    (if (not e)
+        nil
+      (mv-let (ok v k) (fn-bpnrb-dec 14 e budget fn-octets)
+        (if (and ok (<= e k) (fn-bpnr-checkpointp v)) v nil)))))
 
 (defthm fn-bpnrb-decode-range-is-decode
   (implies (and (fn-cbor-octet-listp x) (natp m) (<= m (len x)))
@@ -293,3 +473,4 @@
   :hints (("Goal" :in-theory (e/d (fn-bpnr-selection-plan)
                                   (fn-bpnrb-checkpoint-decode
                                    fn-bpnr-checkpoint-decode)))))
+

@@ -91,3 +91,36 @@
   (with-local-stobj fn-octets-bp
     (mv-let (result fn-octets-bp) (bpnrbt-shallow fn-octets-bp) result)))
 (assert-event (equal (bpnrbt-shallow-exec) (list nil nil *bpnrbt-ck*)))
+
+; The bounded-step machine (fn-bpnrb-mrun-all-of-dec-goal,
+; fn-bpnrb-mrun-all-of-mrun): quanta of at most 5 steps and 16 octets,
+; resumed from their exact continuations, reach the whole run's answer,
+; which is the recursive decoder's value over the payload.
+(defun bpnrbt-quanta (n i e goals vals fn-octets-bp)
+  (declare (xargs :stobjs fn-octets-bp :verify-guards nil :measure (nfix n)))
+  (if (or (zp n) (atom goals))
+      (mv i goals vals)
+    (mv-let (ok i2 goals2 vals2) (fn-bpnrb-mrun 5 16 i e goals vals fn-octets-bp)
+      (if (not ok)
+          (mv :refused nil nil)
+        (bpnrbt-quanta (1- n) i2 e goals2 vals2 fn-octets-bp)))))
+
+(defun bpnrbt-machine (fn-octets-bp)
+  (declare (xargs :stobjs fn-octets-bp :verify-guards nil))
+  (let* ((fn-octets-bp (fn-octets-bp-from-list (bpnrbt-file) fn-octets-bp))
+         (e (fn-bpnrb-frame-end (fn-octets-bp-len fn-octets-bp) *bpnrbt-budget*
+                                fn-octets-bp)))
+    (mv-let (i goals vals)
+      (bpnrbt-quanta 100000 14 e (list *bpnrbt-budget*) nil fn-octets-bp)
+      (mv-let (ok i-all vals-all)
+        (fn-bpnrb-mrun-all 14 e (list *bpnrbt-budget*) nil fn-octets-bp)
+        (mv (list (equal i e) goals (equal vals (list *bpnrbt-ck*))
+                  ok (equal i-all e) (equal vals-all vals))
+            fn-octets-bp)))))
+
+(defun bpnrbt-machine-exec ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets-bp
+    (mv-let (result fn-octets-bp) (bpnrbt-machine fn-octets-bp) result)))
+
+(assert-event (equal (bpnrbt-machine-exec) (list t nil t t t t)))

@@ -92,6 +92,10 @@ STORE_NODE_HOST_FINDINGS = [
 # host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
 # the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
 # (qual-e747dbcc A4), outside the `ld` closure this check reads.
+# In build-dtn.lisp fn-octets itself is no finding: it includes
+# books/bp-node-rotation-buffer (which includes books/octets-stobj) before it
+# loads host/store-node-host.lisp (lane bp-checkpoint-open).
+DTN_STORE_NODE_HOST_FINDINGS = STORE_NODE_HOST_FINDINGS[1:]
 
 
 OWNER_HOST_SELF_INCLUDES = ('(include-book "../books/records-concrete-owner")\n'
@@ -205,7 +209,7 @@ class BuildListsCheckTests(unittest.TestCase):
         with bare_owner_host() as root:
             found = check.include_findings(
                 root, text.replace(BUFFER_INCLUDES, "").replace(CHECKPOINT_BUFFER_INCLUDES, ""))
-        self.assertEqual(found, STORE_NODE_HOST_FINDINGS + BUFFER_FINDINGS)
+        self.assertEqual(found, DTN_STORE_NODE_HOST_FINDINGS + BUFFER_FINDINGS)
 
     def test_include_after_the_ld_is_too_late(self):
         # The order matters: an include after the `ld` does not serve it.
@@ -213,7 +217,7 @@ class BuildListsCheckTests(unittest.TestCase):
                 + BUFFER_INCLUDES + CHECKPOINT_BUFFER_INCLUDES)
         with bare_owner_host() as root:
             found = check.include_findings(root, text)
-        self.assertEqual(len(found), len(STORE_NODE_HOST_FINDINGS) + len(BUFFER_FINDINGS), found)
+        self.assertEqual(len(found), len(DTN_STORE_NODE_HOST_FINDINGS) + len(BUFFER_FINDINGS), found)
 
     def test_owner_host_declares_its_own_books(self):
         # The same omission in the real tree is no finding: every loader of
