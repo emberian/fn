@@ -3430,7 +3430,7 @@
       "id": "SCN-121",
       "title": "A served ARTICLE's reply leaves the owner as a range of the octet buffer, byte for byte the reply of the step's effects, at 2 KiB, 32 KiB and 1, 2 and 3 MiB",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-001"
       ],
@@ -3446,8 +3446,18 @@
         "tests/test_native_bounds_join.py",
         "books/served-reply-buffer.lisp",
         "tests/acl2/served-reply-buffer-tests.lisp",
-        "planning/evidence/egress-span-2026-09-26.md"
-      ]
+        "planning/evidence/egress-span-2026-09-26.md",
+        "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving"
+        ],
+        "native": true,
+        "record": "planning/evidence/egress-span-2026-09-26.md",
+        "log": "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
+      }
     }
   ]
 }
