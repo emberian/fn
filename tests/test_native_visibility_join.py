@@ -437,14 +437,16 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.command(operator + ["principal", "bind", user, other.hex()])
         self.start(node)
         before = self.transactions(node)
-        group_before = self.first_line(node, b"GROUP fn.test\r\n")
+        group_before = self.secure_lines(node, b"GROUP fn.test\r\n", user, secret)[0]
         # 3. Reconciliation re-sends the same article under the same Message-ID.
         rc_rec, reconciled = self.client(node, "reconcile", str(draft),
                                          credentials=credentials)
         rc_show, shown = self.client(node, "show", target, credentials=credentials)
-        verdict = self.first_line_hdr(node, target, user, secret)
+        hdr = self.secure_lines(node, b"HDR :fn-verified " + target.encode() + b"\r\n",
+                                 user, secret)
+        verdict = hdr[1] if hdr[0].startswith("225") else hdr[0]
         after = self.transactions(node)
-        group_after = self.first_line(node, b"GROUP fn.test\r\n")
+        group_after = self.secure_lines(node, b"GROUP fn.test\r\n", user, secret)[0]
         self.stop(node)
         final = json.loads(draft.read_text())
         self.witness = {"post": [posted.word, posted.status_lines],
@@ -471,9 +473,9 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.assertEqual(final["original"]["outcome"], "uncertain")
         self.assertEqual(final["reconciliations"][-1]["settled"], "unresolved")
 
-    def first_line_hdr(self, node, msgid, user, secret):
-        """The item line of HDR :fn-verified MSGID, over STARTTLS and AUTHINFO
-        (the protected listener serves nothing before both)."""
+    def secure_lines(self, node, command, user, secret):
+        """COMMAND over STARTTLS and AUTHINFO (the protected listener serves
+        nothing before both): its status line, then any multi-line body."""
         import ssl
         context = ssl.create_default_context(cafile=str(node["cert"]))
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as raw:
@@ -487,15 +489,15 @@ class NativeVisibilityJoinTests(unittest.TestCase):
                 self.assertTrue(secure.readline().startswith(b"381"))
                 secure.write(b"AUTHINFO PASS " + secret.encode() + b"\r\n")
                 self.assertTrue(secure.readline().startswith(b"281"))
-                secure.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
-                status = secure.readline().decode().strip()
-                if not status.startswith("225"):
-                    return status
-                item = secure.readline().decode().strip()
-                while secure.readline().strip() != b".":
-                    pass
-                return item
-
+                secure.write(command)
+                lines = [secure.readline().decode().strip()]
+                if lines[0][:3] in ("225", "215", "220", "221", "224"):
+                    while True:
+                        line = secure.readline().decode().strip()
+                        if line == ".":
+                            break
+                        lines.append(line)
+                return lines
 
 if __name__ == "__main__":
     unittest.main()
