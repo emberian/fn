@@ -1,7 +1,21 @@
 #!/bin/sh
+# Stage the release layout of one production image into ONE directory:
+#
+#   FN_NATIVE_HOST=IMAGE [FN_NATIVE_CORE=CORE] FN_NATIVE_SOURCE_REVISION=REV \
+#     [DESTDIR=STAGE] [PREFIX=DIR] sh packaging/install-native.sh
+#
+# PREFIX (default /opt/fn; /usr/local/fn on OpenBSD) receives bin/fn,
+# libexec/fn/ (launcher, core, SBCL runtime, the bundled libraries,
+# source-revision), share/fn/ (the service templates, native-artifacts.txt)
+# and install.sh, the installer a release carries (packaging/install.sh).
+# It refuses a PREFIX that exists and is not empty: an installation is one
+# directory, never a versioned sibling of another, and a reinstall removes
+# the old one first (D34: stop, export, remove, install, import, start).
+# packaging/release-tarball.sh stages every release through this script.
 set -eu
 
-prefix=${PREFIX:-/usr/local}
+case $(uname -s) in OpenBSD) default_prefix=/usr/local/fn ;; *) default_prefix=/opt/fn ;; esac
+prefix=${PREFIX:-$default_prefix}
 destdir=${DESTDIR:-}
 image=${FN_NATIVE_HOST:-build/fn-host}
 core=${FN_NATIVE_CORE:-$image.core}
@@ -12,7 +26,7 @@ case $prefix in *[!A-Za-z0-9_./-]*) echo "install-native: PREFIX contains unsupp
 case $source_revision in ''|*[!A-Za-z0-9._-]*) echo "install-native: invalid FN_NATIVE_SOURCE_REVISION" >&2; exit 2;; esac
 [ -x "$image" ] || { echo "install-native: missing executable image: $image" >&2; exit 4; }
 [ -s "$core" ] || { echo "install-native: missing image core: $core" >&2; exit 4; }
-for support in packaging/fn packaging/fn-native.service.in packaging/net.fn.native.plist.in; do
+for support in packaging/fn packaging/fn-native.service.in packaging/fn.rc.in packaging/install.sh; do
   [ -r "$support" ] || { echo "install-native: missing package input: $support" >&2; exit 4; }
 done
 grep -q '^#!.*sh' "$image" || { echo "install-native: image launcher is not the generated shell form" >&2; exit 4; }
@@ -21,10 +35,14 @@ if grep -q '^# fn frozen image launcher v2$' "$image"; then
   launcher_core=$image_dir/$(basename -- "$image").core
   runtime=$image_dir/runtime/sbcl
   sbcl_home=$image_dir/runtime/sbcl-home
+  # Linux freezes list `sha256sum' lines; OpenBSD's base `sha256' writes
+  # and checks its own BSD-format lines (packaging/freeze-native-image.sh).
+  if command -v sha256sum >/dev/null 2>&1; then check_sums='sha256sum -c'; else check_sums='sha256 -c'; fi
   [ -s "$image_dir/image.sha256" ] &&
-    (cd "$image_dir" && sha256sum -c image.sha256 >/dev/null) || {
+    (cd "$image_dir" && $check_sums image.sha256 >/dev/null) || {
       echo "install-native: frozen image digest check failed" >&2; exit 4; }
-  [ -s "$image_dir/lib/libsodium.so.23" ] &&
+  set -- "$image_dir"/lib/libsodium.so.*
+  [ -s "$1" ] &&
   [ -s "$image_dir/lib/libfn-mldsa65.so" ] || {
     echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
   frozen=yes
@@ -52,6 +70,7 @@ cmp -s "$core" "$launcher_core" || {
 
 hash_command=sha256sum
 command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
+command -v sha256sum >/dev/null 2>&1 || ! command -v sha256 >/dev/null 2>&1 || hash_command='sha256 -r'
 # The system provides the TLS library (OpenSSL 3.0+ or LibreSSL 3+; the
 # image checks the version and every function at start).  libsodium comes
 # from the frozen lib/ or the system; ML-DSA-65 from lib/ (HST-016).
@@ -104,10 +123,14 @@ fi
 rm -f "$profile_out"
 trap - EXIT HUP INT TERM
 
+if [ -d "$destdir$prefix" ] && [ -n "$(ls -A "$destdir$prefix")" ]; then
+  echo "install-native: $destdir$prefix exists and is not empty; an installation is one directory: remove the installed release first (stop, export, remove, install, import, start)" >&2
+  exit 4
+fi
 bindir=$destdir$prefix/bin
 libdir=$destdir$prefix/libexec/fn
 sharedir=$destdir$prefix/share/fn
-mkdir -p "$bindir" "$libdir" "$sharedir" "$sharedir/systemd" "$sharedir/launchd"
+mkdir -p "$bindir" "$libdir" "$sharedir"
 mkdir -p "$libdir/runtime/sbcl-home"
 install -m 0755 "$runtime" "$libdir/runtime/sbcl"
 cp -RL "$sbcl_home"/. "$libdir/runtime/sbcl-home"/
@@ -135,8 +158,16 @@ case $source_revision in
      fi ;;
 esac
 
-sed "s|@PREFIX@|$prefix|g" packaging/fn-native.service.in > "$sharedir/systemd/fn.service"
-sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd/net.fn.plist"
+# The service templates; install.sh renders the platform's one with the
+# prefix, the node directory and the service account it installs.
+if [ "$(uname -s)" = OpenBSD ]; then
+  mkdir -p "$sharedir/rc.d"
+  install -m 0644 packaging/fn.rc.in "$sharedir/rc.d/fn.rc.in"
+else
+  mkdir -p "$sharedir/systemd"
+  install -m 0644 packaging/fn-native.service.in "$sharedir/systemd/fn.service.in"
+fi
+install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
 
 {
   echo "profile=production (verified by disabled reader entrypoint)"
@@ -152,13 +183,14 @@ sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd
   $hash_command "$libdir/fn-host" "$libdir/fn-host.core"
   echo "runtime-identity:"
   $hash_command "$runtime" "$libdir/runtime/sbcl"
-  if command -v otool >/dev/null 2>&1; then otool -L "$runtime"
+  if [ "$(uname -s)" = OpenBSD ]; then objdump -p "$runtime" | awk '$1 == "NEEDED"'
+  elif command -v otool >/dev/null 2>&1; then otool -L "$runtime"
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
   echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65 (bundled)"
   if [ "$frozen" = yes ]; then
-    $hash_command "$image_dir/lib/libsodium.so.23" "$image_dir/lib/libfn-mldsa65.so"
-    $hash_command "$libdir/lib/libsodium.so.23" "$libdir/lib/libfn-mldsa65.so"
+    $hash_command "$image_dir"/lib/*
+    $hash_command "$libdir"/lib/*
   else
     $hash_command "$mldsa" "$libdir/lib/$(basename -- "$mldsa")"
   fi
