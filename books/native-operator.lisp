@@ -955,6 +955,7 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "bp-boundary")
            (equal (fn-native-operator-result-command result) "bp-route")
            (equal (fn-native-operator-result-command result) "policy")
+           (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control"))))
 
 (defun fn-native-operator-result-admin-plan (result)

@@ -136,16 +136,25 @@ def build(name, n, body=BODY, hist=HIST):
     return store, cfg, port
 
 
+def answer(c, text):
+    first = c.line(text)
+    if first[:3] in (b"220", b"221", b"222", b"224", b"225", b"230"):
+        while c.readline() not in (b".\r\n", b""):
+            pass
+    return first.decode(errors="replace").strip()
+
+
 def served(cfg, port, reclaimed_ids, first_number=1):
     p = owner(cfg)
     try:
         c = m.Conn(port)
         rec = {"group": c.line("GROUP " + GROUP).decode().strip()}
         rid = reclaimed_ids[0]
-        rec["article_by_id"] = c.line("ARTICLE " + rid).decode().strip()
-        rec["article_by_number"] = c.line("ARTICLE %d" % first_number).decode().strip()
-        rec["over_number"] = c.line("OVER %d" % first_number).decode().strip()
-        rec["stat_by_id"] = c.line("STAT " + rid).decode().strip()
+        rec["article_by_id"] = answer(c, "ARTICLE " + rid)
+        rec["article_by_number"] = answer(c, "ARTICLE %d" % first_number)
+        rec["over_number"] = answer(c, "OVER %d" % first_number)
+        rec["stat_by_id"] = answer(c, "STAT " + rid)
+        rec["article_live"] = answer(c, "STAT %d" % (first_number + 1))
         nn = c.line("NEWNEWS %s 20000101 000000 GMT" % GROUP)
         listed = []
         if nn.startswith(b"230"):

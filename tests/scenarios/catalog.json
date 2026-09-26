@@ -1719,6 +1719,35 @@
         "tests/acl2/bp-fragment-send-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-065",
+      "title": "`store reclaim` returns released payload octets and inodes to the file system, survives a cut at every step, and a reclaimed article never comes back",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Build a store of N articles in one group (one pack: N up to about 4,000), keep-forever: run `store reclaim`.",
+        "`retention set release-after 1`: `store reclaim --dry-run`. `retention set released-by-all-holders`: `store reclaim --dry-run`, `store compact`.",
+        "On a copy per cut, stop or kill `store reclaim` at every publication, selection and retirement cut and kill and EIO at each reclaim-* cut; reopen with `status`, rerun `store reclaim`.",
+        "Run `store reclaim`; record files, octets and du before and after, and `status` headroom; rerun it.",
+        "Serve: GROUP, ARTICLE by Message-ID and number, OVER, STAT, NEWNEWS; re-POST a reclaimed article's original bytes.",
+        "On a store refused for history headroom, run `store compact` and `store reclaim`."
+      ],
+      "expected": [
+        "keep-forever writes nothing (reclaimed=0, exit 0).",
+        "release-after 1 reclaims nothing (too recent); the dry run names every article and writes nothing.",
+        "Every reopen exits 0 and every rerun exits 0 with the clean run's selected pack bytes.",
+        "Files and octets fall by the old generation; bytes-used falls by the freed octets; a rerun reclaims 0.",
+        "GROUP is unchanged; ARTICLE answers 430 and 423 article reclaimed; OVER 423; NEWNEWS lists no reclaimed article; the re-POST is 441 (a duplicate).",
+        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169)."
+      ],
+      "evidence": [
+        "tests/reclaim_lifecycle_native.py",
+        "planning/evidence/reclaim-lifecycle-2026-09-25.md"
+      ]
     }
   ]
 }

@@ -2065,7 +2065,8 @@
         "books/native-live-status.lisp",
         "planning/evidence/reclaim-host-2026-09-25.md"
       ],
-      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 at every list site and fn-rclb-existing-action at the buffer sites and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 at every list site and fn-rclb-existing-action at the buffer sites and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge.",
+      "related": []
     },
     {
       "id": "NNT-012",
@@ -2321,6 +2322,28 @@
         "fn-bpfs-plan-fragments-restore-parent"
       ],
       "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059."
+    },
+    {
+      "id": "STO-017",
+      "title": "Packing, history compaction and content reclamation are distinct; `store reclaim` removes released payload octets through a reclaiming pack and returns them to the file system",
+      "specification": "specs/storage.md#content-reclamations-durable-step-store-reclaim-sto-017",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-119"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-reclaim-pack.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/acl2/store-reclaim-pack-tests.lisp",
+        "tests/reclaim_lifecycle_native.py",
+        "planning/evidence/reclaim-lifecycle-2026-09-25.md"
+      ],
+      "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Not implemented: the maintenance reservation in admission (PKT-169), release of the retention charge, a per-article release verb, BP/feed holders, chained packs."
     }
   ]
 }
