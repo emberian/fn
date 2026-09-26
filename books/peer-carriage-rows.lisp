@@ -201,5 +201,238 @@
                             (existing (fn-cfg-rows-with-key (fn-cfg-peers v)
                                                             name)))))))
 
+; -----------------------------------------------------------------------------
+; The incremental extension (D27, PRF-171; PKT-436's default).  The record an
+; extension publishes carries only the rows it changes: (:add-peer-rows NAME
+; NEW), then, when NEW supersedes a single-valued slot the group already
+; holds, (:remove-peer-rows NAME GONE) with exactly those superseded rows.
+; `*fn-cfg-max-rows*' is then a work bound on one request's delta, and the
+; peer's group grows past it across requests.  `fn-pcb-extend-delta' (the
+; whole group as one :set-peer) stays the logical model; the theorem below
+; equates the two, so every keystone stated over it holds of what the host
+; publishes.
+
+; The rows of EXISTING a single-valued slot of NEW supersedes, other than
+; rows NEW itself carries (those the add already leaves in place).
+(defun fn-pcb-slot-superseded-rows (existing new)
+  (declare (xargs :guard t))
+  (if (consp existing)
+      (if (and (not (member-equal (car existing) (if (true-listp new) new nil)))
+               (fn-pcb-budget-slotp (fn-cfg-row-b (car existing)))
+               (fn-pcb-slot-memberp (fn-cfg-row-b (car existing)) new))
+          (cons (car existing)
+                (fn-pcb-slot-superseded-rows (cdr existing) new))
+        (fn-pcb-slot-superseded-rows (cdr existing) new))
+    nil))
+
+; The deltas that extend NAME's group in PEERS by NEW, or nil when PEERS has
+; no such peer (an extension never creates a peer).  Host:
+; books/native-admin.lisp `fn-native-admin-plan-deltas-over', called from
+; host/native-admin-host.lisp `fn-native-admin-host-owner-reconfigure' and
+; `fn-native-admin-host-apply'.
+(defun fn-pcb-extend-deltas (name new peers)
+  (declare (xargs :guard t))
+  (let ((existing (fn-cfg-rows-with-key peers name)))
+    (if (and (consp existing) (consp new))
+        (let ((gone (fn-pcb-slot-superseded-rows existing new)))
+          (cons (fn-cfg-add-peer-rows name new)
+                (if (consp gone)
+                    (list (fn-cfg-remove-peer-rows name gone))
+                  nil)))
+      nil)))
+
+(local (in-theory (enable fn-cfg-rows-without-members fn-cfg-rows-within
+                          fn-pcb-kept-rows fn-pcb-extend-rows
+                          fn-pcb-row-supersededp)))
+
+(local (defthm fn-pcb-without-members-of-append
+  (equal (fn-cfg-rows-without-members (append a b) d)
+         (append (fn-cfg-rows-without-members a d)
+                 (fn-cfg-rows-without-members b d)))))
+
+(local (defthm fn-pcb-member-of-superseded
+  (iff (member-equal e (fn-pcb-slot-superseded-rows existing new))
+       (and (member-equal e existing)
+            (not (member-equal e (if (true-listp new) new nil)))
+            (fn-pcb-budget-slotp (fn-cfg-row-b e))
+            (fn-pcb-slot-memberp (fn-cfg-row-b e) new)))
+  :hints (("Goal" :induct (fn-pcb-slot-superseded-rows existing new)
+           :in-theory (disable fn-pcb-budget-slotp fn-pcb-slot-memberp)))))
+
+(local (defthm fn-pcb-true-listp-of-superseded
+  (true-listp (fn-pcb-slot-superseded-rows existing new))))
+
+(local (defthm fn-pcb-without-superseded-of-new-part
+  (implies (and (true-listp new) (true-listp xs) (subsetp-equal xs new))
+           (equal (fn-cfg-rows-without-members
+                   xs (fn-pcb-slot-superseded-rows existing new))
+                  xs))))
+
+(local (defthm fn-pcb-without-superseded-of-kept-part
+  (implies (and (true-listp new) (subsetp-equal xs existing))
+           (equal (fn-cfg-rows-without-members
+                   (fn-cfg-rows-without-members xs new)
+                   (fn-pcb-slot-superseded-rows existing new))
+                  (fn-pcb-kept-rows xs new)))))
+
+(local (defthm fn-pcb-subsetp-equal-of-cons
+  (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
+
+(local (defthm fn-pcb-subsetp-equal-refl
+  (subsetp-equal x x)))
+
+(local (defthm fn-pcb-without-members-of-atom
+  (implies (and (true-listp rows) (not (consp d)))
+           (equal (fn-cfg-rows-without-members rows d) rows))))
+
+(local (defthm fn-pcb-without-members-is-kept-when-nothing-superseded
+  (implies (and (true-listp new)
+                (not (consp (fn-pcb-slot-superseded-rows existing new))))
+           (equal (fn-cfg-rows-without-members existing new)
+                  (fn-pcb-kept-rows existing new)))
+  :hints (("Goal" :use ((:instance fn-pcb-without-superseded-of-kept-part
+                                   (xs existing)))
+           :in-theory (disable fn-pcb-without-superseded-of-kept-part)))))
+
+(local (defthm fn-pcb-without-members-keyed
+  (implies (fn-cfg-rows-keyed-p rows k)
+           (fn-cfg-rows-keyed-p (fn-cfg-rows-without-members rows d) k))))
+
+(local (defthm fn-pcb-without-key-of-keyed
+  (implies (fn-cfg-rows-keyed-p rows k)
+           (equal (fn-cfg-rows-without-key rows k) nil))))
+
+(local (defthm fn-pcb-without-key-idempotent
+  (equal (fn-cfg-rows-without-key (fn-cfg-rows-without-key rows k) k)
+         (fn-cfg-rows-without-key rows k))))
+
+(local (defthm fn-pcb-without-key-of-append
+  (equal (fn-cfg-rows-without-key (append a b) k)
+         (append (fn-cfg-rows-without-key a k)
+                 (fn-cfg-rows-without-key b k)))))
+
+(local (defthm fn-pcb-true-listp-of-without-members
+  (true-listp (fn-cfg-rows-without-members rows d))))
+
+(local (defthm fn-pcb-true-listp-of-with-key
+  (true-listp (fn-cfg-rows-with-key rows k))))
+
+(local (defthm fn-pcb-extend-deltas-apply-when-extending
+  (implies (and (true-listp new)
+                (fn-cfg-rows-keyed-p new name)
+                (fn-pcb-extend-delta name new (fn-cfg-peers v)))
+           (equal (fn-cfg-apply v gen stamp
+                                (fn-pcb-extend-deltas name new (fn-cfg-peers v)))
+                  (fn-cfg-apply-delta v gen stamp
+                                      (fn-pcb-extend-delta name new
+                                                           (fn-cfg-peers v)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply fn-cfg-apply-delta
+                                     fn-cfg-set-peer fn-cfg-add-peer-rows
+                                     fn-cfg-remove-peer-rows)))))
+
+(local (defthm fn-pcb-apply-delta-of-nil
+  (equal (fn-cfg-apply-delta v gen stamp nil) v)
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-delta-kind
+                                     fn-cfg-ag-car)))))
+
+; KEYSTONE (the incremental record is the whole-group extension).  Applying
+; the deltas the host publishes leaves exactly the configuration value the
+; single :set-peer of the extended group leaves (and, for a peer that does
+; not exist, both leave the value alone), so the budget keystone
+; `fn-pcb-peer-budget-after-extend-delta' and every theorem over
+; `fn-pcb-extend-delta' hold of the published record.
+(defthm fn-pcb-extend-deltas-apply-as-the-extend-delta
+  (implies (and (true-listp new)
+                (fn-cfg-rows-keyed-p new name))
+           (equal (fn-cfg-apply v gen stamp
+                                (fn-pcb-extend-deltas name new (fn-cfg-peers v)))
+                  (fn-cfg-apply-delta v gen stamp
+                                      (fn-pcb-extend-delta name new
+                                                           (fn-cfg-peers v)))))
+  :hints (("Goal" :use fn-pcb-extend-deltas-apply-when-extending
+           :in-theory (e/d (fn-pcb-extend-deltas fn-pcb-extend-delta
+                                                 fn-cfg-apply)
+                           (fn-pcb-extend-deltas-apply-when-extending
+                            fn-cfg-apply-delta)))))
+
+;; The work bound and the data it no longer caps (PRF-171).  Subject:
+;; `fn-cfg-delta-reason' and `fn-cfg-apply-delta', which the live owner runs
+;; through `fn-ocfg-step' (host/owner-host.lisp's reconfiguration) and the
+;; replay through `fn-cfg-record-acceptablep' / `fn-cfg-apply-record'
+;; (host/store-node-host.lisp `fn-store-cfg-peer-delta-record' admits the
+;; record by the same predicate).
+
+; KEYSTONE (the per-request work bound, exactly).  An :add-peer-rows delta
+; for a peer that exists, with keyed rows, is refused exactly when it
+; carries more than `*fn-cfg-max-rows*' rows, and admitted otherwise.  The
+; bound is on the delta, not on the peer.
+(defthm fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound
+  (implies (and (fn-cfg-labelp name)
+                (fn-cfg-row-listp rows)
+                (consp rows)
+                (fn-cfg-rows-keyed-p rows name)
+                (consp (fn-cfg-rows-with-key (fn-cfg-peers v) name)))
+           (equal (fn-cfg-delta-reason v gen stamp reserved ceiling
+                                       (fn-cfg-add-peer-rows name rows))
+                  (if (< *fn-cfg-max-rows* (len rows)) :malformed-delta nil)))
+  :hints (("Goal" :in-theory (enable fn-cfg-delta-reason fn-cfg-deltap
+                                     fn-cfg-add-peer-rows))))
+
+; KEYSTONE (the group grows by the delta's rows).  After an :add-peer-rows
+; the peer's group is its old group, less the rows the delta repeats,
+; followed by the delta's rows: nothing bounds the group but the records
+; that built it.
+(defthm fn-cfg-add-peer-rows-extends-the-group
+  (implies (and (true-listp rows) (fn-cfg-rows-keyed-p rows name))
+           (equal (fn-cfg-rows-with-key
+                   (fn-cfg-peers (fn-cfg-apply-delta
+                                  v gen stamp (fn-cfg-add-peer-rows name rows)))
+                   name)
+                  (append (fn-cfg-rows-without-members
+                           (fn-cfg-rows-with-key (fn-cfg-peers v) name) rows)
+                          rows)))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-add-peer-rows))))
+
+(local (defthm fn-pcb-len-of-append
+  (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local (defthm fn-pcb-len-without-members
+  (<= (len (fn-cfg-rows-without-members rows d)) (len rows))
+  :rule-classes :linear))
+
+(local (defthm fn-pcb-len-without-and-with-key
+  (equal (+ (len (fn-cfg-rows-without-key rows k))
+            (len (fn-cfg-rows-with-key rows k)))
+         (len rows))
+  :rule-classes :linear))
+
+(local (defthm fn-pcb-len-without-key
+  (<= (len (fn-cfg-rows-without-key rows k)) (len rows))
+  :rule-classes :linear))
+
+; KEYSTONE (one delta's work).  Whatever the delta, the peers slot grows by
+; at most `*fn-cfg-max-rows*' rows; a record of at most `*fn-cfg-max-deltas*'
+; deltas (`fn-cfg-recordp') by at most their product.  With the profile's
+; configuration generations (`fn-cvec-config-publication-keeps-the-release-
+; generation', books/store-capacity-config.lisp) that is the bound on the
+; table; no constant bounds one peer's group.
+(defthm fn-cfg-apply-delta-adds-at-most-the-work-bound
+  (implies (fn-cfg-deltap d)
+           (<= (len (fn-cfg-peers (fn-cfg-apply-delta v gen stamp d)))
+               (+ (len (fn-cfg-peers v)) *fn-cfg-max-rows*)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-cfg-apply-delta fn-cfg-deltap fn-cfg-set-groups)
+                                  (fn-cfg-labelp fn-record-uint32p
+                                   fn-cfg-row-listp)))))
+
+(defthm fn-cfg-apply-adds-at-most-the-work-bound
+  (implies (fn-cfg-delta-listp deltas)
+           (<= (len (fn-cfg-peers (fn-cfg-apply v gen stamp deltas)))
+               (+ (len (fn-cfg-peers v)) (* *fn-cfg-max-rows* (len deltas)))))
+  :hints (("Goal" :induct (fn-cfg-apply v gen stamp deltas)
+           :in-theory (e/d (fn-cfg-apply fn-cfg-delta-listp)
+                           (fn-cfg-apply-delta fn-cfg-deltap)))))
+
 (in-theory (disable fn-pcb-slot-natural fn-pcb-budget-of-rows
-                    fn-pcb-kept-rows fn-pcb-extend-rows))
+                    fn-pcb-kept-rows fn-pcb-extend-rows
+                    fn-pcb-slot-superseded-rows fn-pcb-extend-deltas))

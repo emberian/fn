@@ -186,6 +186,16 @@
 (local (defthm fn-cfg-row-listp-of-append
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))
+; The incremental peer arms (:add-peer-rows, :remove-peer-rows, PRF-171)
+; select from the peer's keyed group and append the delta's rows.
+(local (defthm fn-cfg-rows-with-key-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-with-key rows a)))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key)))))
+(local (defthm fn-cfg-rows-without-members-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-members rows drop)))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-without-members)))))
 
 ;; C2: the authorities slot stays a row list under a grant and a revoke.
 (local (defthm fn-cfg-rows-without-pair-is-row-listp

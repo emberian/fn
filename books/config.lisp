@@ -234,6 +234,25 @@
            (fn-cfg-rows-keyed-p (cdr rows) a))
     t))
 
+; The rows of ROWS that are not rows of DROP (exact equality).  The row
+; arithmetic of the incremental peer deltas, :add-peer-rows and
+; :remove-peer-rows (D27, PRF-171).
+(defun fn-cfg-rows-without-members (rows drop)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (member-equal (car rows) (if (true-listp drop) drop nil))
+          (fn-cfg-rows-without-members (cdr rows) drop)
+        (cons (car rows) (fn-cfg-rows-without-members (cdr rows) drop)))
+    nil))
+
+; Every row of XS is a row of YS.
+(defun fn-cfg-rows-within (xs ys)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (member-equal (car xs) (if (true-listp ys) ys nil))
+           (fn-cfg-rows-within (cdr xs) ys))
+    t))
+
 ; -----------------------------------------------------------------------------
 ; A group-table entry: a history entry, not a membership flag.
 
@@ -671,7 +690,7 @@
   '(:create-group :remove-group :set-capacity :set-quota :set-policy
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
     :grant-control :revoke-control :issue-invitation :consume-invitation
-    :account-invite :account-redeem))
+    :account-invite :account-redeem :add-peer-rows :remove-peer-rows))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -691,6 +710,8 @@
         ((equal kind :consume-invitation) 14)
         ((equal kind :account-invite) 15)
         ((equal kind :account-redeem) 16)
+        ((equal kind :add-peer-rows) 17)
+        ((equal kind :remove-peer-rows) 18)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -711,6 +732,8 @@
         ((equal code 14) :consume-invitation)
         ((equal code 15) :account-invite)
         ((equal code 16) :account-redeem)
+        ((equal code 17) :add-peer-rows)
+        ((equal code 18) :remove-peer-rows)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -762,6 +785,20 @@
 (defun fn-cfg-remove-peer (name)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :remove-peer name "" 0 nil))
+
+; The incremental peer deltas (D27, PRF-171; PKT-436's default).  A peer's
+; row group is data that grows by request: (:add-peer-rows name rows) adds
+; ROWS to the existing group (a row already there is not doubled) and
+; (:remove-peer-rows name rows) removes exactly the listed rows.  A record
+; carries only the rows it changes, so `*fn-cfg-max-rows*' bounds the work
+; of one delta, never the rows one peer holds.  (:set-peer name rows) keeps
+; its meaning: the whole group, written at `peer add'.
+(defun fn-cfg-add-peer-rows (name rows)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :add-peer-rows name "" 0 rows))
+(defun fn-cfg-remove-peer-rows (name rows)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :remove-peer-rows name "" 0 rows))
 
 ;; Control authority (D29, packet C2; specs/peering.md section 8).  A grant
 ;; is one authorities row (NAMESPACE PRINCIPAL-HEX VERB 0), keyed on the pair
@@ -1135,6 +1172,28 @@
                          (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)))
+     ((equal kind :add-peer-rows)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v)
+                         (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
+                                 (append (fn-cfg-rows-without-members
+                                          (fn-cfg-rows-with-key
+                                           (fn-cfg-peers v) a)
+                                          rows)
+                                         rows))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+     ((equal kind :remove-peer-rows)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v)
+                         (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
+                                 (fn-cfg-rows-without-members
+                                  (fn-cfg-rows-with-key (fn-cfg-peers v) a)
+                                  rows))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :grant-control)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -1234,6 +1293,28 @@
      ((equal kind :remove-peer)
       (if (consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)) nil
         :no-such-peer))
+     ; The incremental peer deltas extend or trim a peer that exists; every
+     ; row is keyed on it.  A removal names only rows the group holds and
+     ; leaves at least one (removing a peer is :remove-peer).
+     ((equal kind :add-peer-rows)
+      (cond ((not (consp (fn-cfg-delta-rows d))) :peer-rows-empty)
+            ((not (fn-cfg-rows-keyed-p (fn-cfg-delta-rows d) a))
+             :peer-rows-unkeyed)
+            ((not (consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)))
+             :no-such-peer)
+            (t nil)))
+     ((equal kind :remove-peer-rows)
+      (let ((existing (fn-cfg-rows-with-key (fn-cfg-peers v) a)))
+        (cond ((not (consp (fn-cfg-delta-rows d))) :peer-rows-empty)
+              ((not (fn-cfg-rows-keyed-p (fn-cfg-delta-rows d) a))
+               :peer-rows-unkeyed)
+              ((not (consp existing)) :no-such-peer)
+              ((not (fn-cfg-rows-within (fn-cfg-delta-rows d) existing))
+               :peer-row-absent)
+              ((not (consp (fn-cfg-rows-without-members
+                            existing (fn-cfg-delta-rows d))))
+               :peer-rows-emptied)
+              (t nil))))
      ; A grant names its namespace pattern and principal in a and b and
      ; carries exactly the one row (a b VERB 0); VERB is a grantable verb.
      ; Reserved names (RFC 5536 section 3.1.4) are refused at the operator
@@ -1843,6 +1924,8 @@
     (:d fn-cfg-limit-slot) (:d fn-cfg-limit-value) (:d fn-cfg-row-lookup)
     (:d fn-cfg-row-upsert) (:d fn-cfg-row-replace-key) (:d fn-cfg-rows-with-key)
     (:d fn-cfg-rows-without-key) (:d fn-cfg-rows-keyed-p)
+    (:d fn-cfg-rows-without-members) (:d fn-cfg-rows-within)
+    (:d fn-cfg-add-peer-rows) (:d fn-cfg-remove-peer-rows)
     (:d fn-cfg-group-entryp) (:d fn-cfg-group-listp)
     (:d fn-cfg-group-all-names) (:d fn-cfg-group-find) (:d fn-cfg-entry-livep)
     (:d fn-cfg-live-names) (:d fn-cfg-member-namep)
