@@ -5429,7 +5429,8 @@
         "books/store-capacity-config.lisp",
         "tests/acl2/store-capacity-vector-tests.lisp",
         "tests/test_native_capacity_vector.py",
-        "planning/evidence/capacity-vector-2026-09-26.md"
+        "planning/evidence/capacity-vector-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T073035Z-2680334.json"
       ],
       "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here.",
       "events": [
