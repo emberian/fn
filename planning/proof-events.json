@@ -6987,6 +6987,23 @@
           "name": "fn-heap-decision-exit-code-of-a-refusal"
         }
       ]
+    },
+    {
+      "id": "PRF-216",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-checkpoint-decode-is-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-selection-plan-is-selection-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-dec-is-dec"
+        }
+      ]
     }
   ]
 }

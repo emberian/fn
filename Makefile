@@ -487,6 +487,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
+	books/bp-node-rotation-slice \
+	books/bp-node-rotation-buffer \
+	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
 	tests/acl2/bp-held-projection-tests \
 	books/bp-held-payload \
