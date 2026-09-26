@@ -203,7 +203,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1376,7 +1376,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1395,7 +1395,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -2742,16 +2742,19 @@
       "specification": "specs/store-refinement.md#abstraction-relation",
       "milestone": "M5",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-201"
+      ],
       "verification": [
         "proof",
         "test",
         "measurement"
       ],
       "evidence": [
-        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+        "planning/evidence/rep-wave-d-2-2026-09-26.md",
+        "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator.",
+      "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator. Partial (catalog-slice, 2026-09-26): the held record fn-held-p carries a natp handle with the byte facts and the context (books/catalog-record.lisp), alpha (fn-held-wire-of) and the two interns are proved (fn-cat-intern-list-materializes); the acceptance state's payloads and the transition over the held record are PKT-585.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
     },
     {
@@ -3326,6 +3329,51 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "REP-013",
+      "title": "The committed event catalog: one attachable abstract stobj whose logical value is the list of held records and whose executable is the indexed tables, with the cross-field invariants stated once and preserved by every export",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-201",
+        "PRF-202",
+        "PRF-203",
+        "PRF-204"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/catalog.lisp",
+        "books/catalog-record.lisp"
+      ],
+      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585).",
+      "note": "Lane catalog-slice (wave 5 lane 2, D33; design planning/design-2026-09-26-consolidation.md section 1)."
+    },
+    {
+      "id": "STO-027",
+      "title": "The catalog is the served store's executable: the Message-ID binding, the local numbers, the visibility of a row to a version and the retained octets are columns read in constant time, never rediscovered by a walk of the history",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-201",
+        "PRF-204"
+      ],
+      "verification": [
+        "proof",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585).",
+      "note": "Lane catalog-slice (wave 5 lane 2, D33)."
     }
   ]
 }

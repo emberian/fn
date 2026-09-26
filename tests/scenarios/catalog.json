@@ -1136,7 +1136,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -3425,6 +3425,47 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-130",
+      "title": "A three-article history with a cancel committed after its target on the live catalog: the pinned reader at the version before the cancel reads the article, a reader who advanced does not, the numbers and Message-ID lookups answer from the tables",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "REP-013",
+        "STO-027"
+      ],
+      "steps": [
+        "tests/acl2/catalog-tests.lisp cat-exec: commit three held rows (two in fn.test, one in fn.test and fn.other), read the Message-ID and number columns, withdraw row 0 at version 3, commit the cancel at sequence 3, read fn-cat-visible-at for versions 3 and 4, redecide row 1, clear."
+      ],
+      "expected": "count 3; <b@x> at (1); fn.test number 3 is row 2; fn.other next 2; fn.test next 4; 600 octets; row 0 withdrawn (3 . 3); visible at version 3, not at 4; the cancel invisible at version 3; the redecided generation 7; the cleared count 0.",
+      "evidence": [
+        "tests/acl2/catalog-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T194426Z-1747941.json"
+      ],
+      "note": "Lane catalog-slice (2026-09-26).",
+      "implementation": {
+        "test": "tests/acl2/catalog-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/catalog-slice-2026-09-26.md",
+        "log": "planning/evidence/manifests/certify-20260926T194426Z-1747941.json"
+      }
+    },
+    {
+      "id": "SCN-131",
+      "title": "A long-lived reader connection sees a peer's new article after its next GROUP, and a cancel committed after the article leaves it visible to that reader until it advances past the cancel (two connections, native)",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-013",
+        "STO-027"
+      ],
+      "steps": [
+        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn)."
+      ],
+      "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423.",
+      "evidence": [],
+      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585)."
     }
   ]
 }

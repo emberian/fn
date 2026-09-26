@@ -20,6 +20,8 @@ returned entries; validating individual object hashes does not prove no entries
 were omitted. An externally implemented index is part of the trust boundary until
 a suitable correspondence/checking argument exists.
 
+STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33; lane catalog-slice: the columns exist and are proved, the served path moves to them in the continuation).
+
 Proposed on-disk roles, not a frozen directory ABI:
 
 ```text
