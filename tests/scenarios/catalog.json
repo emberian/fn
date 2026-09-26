@@ -3127,6 +3127,38 @@
         "record": "planning/evidence/control-reply-fit-2026-09-26.md",
         "log": "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
       }
+    },
+    {
+      "id": "SCN-109",
+      "title": "The v1 service envelope of one named profile (scale-1m, 2 KiB articles, one in 256 hybrid-signed) is measured at N = 10,000 on tmpfs and on the ZFS pool and at N = 100,000 on tmpfs: the loaded greeting, OVER, unsigned and signed POST p95, the sustained POST rate on 1 and 8 connections with readers, and the reopen by full replay and from a checkpoint, each row naming its image, box, load and JSON",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-016"
+      ],
+      "steps": [
+        "Preload a scale-1m store to N = 10,000 on tmpfs (`service_envelope.py load`); copy it to tmpfs and to the pool with the derived checkpoint removed (`clone --drop-checkpoint`).",
+        "On each copy (`measure --steps latency,checkpoint,restart,rate`, one senv-* unit, MemoryMax=40G, under 30 minutes): the first open (a full replay), 100 greetings, 100 OVERs over 40 and over 100 articles, 100 unsigned and 50 signed POSTs, `store checkpoint`, the open from it, 60 s of closed-loop POSTs on 1 and on 8 connections with 3 ARTICLE readers.",
+        "N = 100,000 on tmpfs once: resumable load units, the warm rows on the loading owner, the reopen as the store stands, a fresh checkpoint and the open from it with the rates, the full replay on a copy without the checkpoint."
+      ],
+      "expected": [
+        "Every row is recorded with the owner's OWNER-OPEN line, owner CPU, VmHWM, disk octets and inodes, the box load and (ZFS) zfs/zpool state; a row past its time budget says `capped`; a case that cannot run (the 40G ceiling, a unit's 30 minutes) is recorded with why, never replaced by a smaller N.",
+        "docs/operator.md publishes the table and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
+      ],
+      "evidence": [
+        "tools/service_envelope.py",
+        "planning/evidence/service-envelope-2026-09-26.md",
+        "planning/evidence/service-envelope-2026-09-26/t10k-after.json",
+        "planning/evidence/service-envelope-2026-09-26/z10k-after.json",
+        "planning/evidence/service-envelope-2026-09-26/driver.log"
+      ],
+      "implementation": {
+        "test": "tools/service_envelope.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/service-envelope-2026-09-26.md",
+        "log": "planning/evidence/service-envelope-2026-09-26/driver.log"
+      }
     }
   ]
 }

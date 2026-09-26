@@ -1,0 +1,49 @@
+OWNER-OPEN open=checkpoint:29453 suffix=3277
+CHECKPOINT auto sequence=32730 suffix=3277 octets=257761172 ms=97121
+Heap exhausted during garbage collection: 0 bytes available, 16 requested.
+     | Immobile Objects |
+ Gen layout symbol   code  Boxed   Cons    Raw   Code  SmMix  Mixed  LgRaw LgCode  LgMix Waste%       Alloc        Trig   Dirty GCs Mem-age
+  3      0      0      0      0 307402     21      0      0      5      0      0      0    0.1 10068534256   335544320  307428   0  0.9106
+  4      5      5      5     11 538411   4296      1      2     18   7079      0      0    0.1 18006486512     2000000   11375   0  0.6448
+  5      0      0      0      0      0      0      0      0      0      0      0      0    0.0           0     2000000       0   0  0.0000
+  6    861  31194  56559    530   5542   1182      4    207     27    652      0    344    3.0   269693152     2000000       8   0  0.0000
+  7      0      0      0      0 158265      1      0      0      0      0      0      0    0.0  5183495280     2000000  158266   0  0.0000
+Tot    866  31199  56564    5411009620   5500      5    209     50   7731      0    344    0.1 33528208816 [99.9% of 33554432000 max]
+GC control variables:
+   *GC-INHIBIT* = true
+   *GC-PENDING* = true
+   *STOP-FOR-GC-PENDING* = false
+Collection trigger variables:
+   dynamic_space_size = 33554432000
+   bytes_allocated = 33528208816
+   auto_gc_trigger = 28355290848
+   bytes_consed_between_gcs = 67108864
+fatal error encountered in SBCL pid 1902210 tid 1909709:
+Heap exhausted, game over.
+
+   0: fp=0x73c4236d6248 pc=0xb80000fdca APPEND
+   1: fp=0x73c4236d6290 pc=0xb801b2a4f3 ACL2::FN-SCC-FRAMES
+   2: fp=0x73c4236d62d8 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   3: fp=0x73c4236d6320 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   4: fp=0x73c4236d6368 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   5: fp=0x73c4236d63b0 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   6: fp=0x73c4236d63f8 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   7: fp=0x73c4236d6440 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   8: fp=0x73c4236d6488 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   9: fp=0x73c4236d64d0 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  10: fp=0x73c4236d6518 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  11: fp=0x73c4236d6560 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  12: fp=0x73c4236d65a8 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  13: fp=0x73c4236d65f0 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  14: fp=0x73c4236d6600 pc=0xb801b2a9ac ACL2::FN-SCC-FILE-OCTETS
+  15: fp=0x73c4236d6620 pc=0xb801b842fd ACL2::FN-OCK-PUBLICATION
+  16: fp=0x73c4236d6760 pc=0xb801c7052f ACL2::FNN-CALL
+  17: fp=0x73c4236d6790 pc=0xb801c708aa ACL2::FNN-CORE
+  18: fp=0x73c4236d6910 pc=0xb801cc1210 ACL2::FNN-OWNER-PUBLISH-CAPTURED
+  19: fp=0x73c4236d6a00 pc=0xb8024df77c (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  20: fp=0x73c4236d6af0 pc=0xb8024e0082 (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  21: fp=0x73c4236d6c48 pc=0xb8024df340 (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  22: fp=0x73c4236d6d38 pc=0xb8024dfa52 (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  23: fp=0x73c4236d6e28 pc=0xb8024df134 SB-THREAD::RUN
+  24: fp=0x73c4236d6e60 pc=0x5e1b72fefa92 Foreign function call_into_lisp_
+  25: fp=0x73c4236d6e80 pc=0x5e1b72fb34fa Foreign function funcall1

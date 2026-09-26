@@ -1,0 +1,251 @@
+{
+  "schema": 1,
+  "label": "t10k-after",
+  "revision": "1770d68709bb",
+  "image": "/tank/fn/scratch/throughput-gate/native-img-1770d68709bb/tree/build/fn-host-developer",
+  "core_sha256": "f7721cff01b7a92120c5b33a2d87f1f1b660682959fd35827bc8d921412dae00",
+  "launcher_sha256": "8beaeaaa3cf526887b4a29385750f133849e3ec55cd77d36e47b563084061ec0",
+  "client_sha256": {
+    "tools/service_envelope.py": "f146e67836b9812058c47c4a602057da45b564f8eb6467447b154c0e0ebdb8cc",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4"
+  },
+  "host": "hbox",
+  "unit": "senv-t10k-after.service",
+  "steps": [
+    "latency",
+    "checkpoint",
+    "restart",
+    "rate"
+  ],
+  "profile": "scale-1m",
+  "init_args": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384",
+    "fn.test"
+  ],
+  "store_dir": "/dev/shm/senv/t10k-after",
+  "filesystem": {
+    "type": "tmpfs"
+  },
+  "n_at_start": 10000,
+  "signed_every": 256,
+  "article_octets": 2048,
+  "groups_per_article": 1,
+  "pins": 0,
+  "relay_debt": 0,
+  "loaded_by_core_sha256": "f7721cff01b7a92120c5b33a2d87f1f1b660682959fd35827bc8d921412dae00",
+  "cloned_from": {
+    "dir": "/dev/shm/senv/src10k-after",
+    "utc": "2026-09-26T13:06:00Z",
+    "seconds": 0.599,
+    "filesystem": {
+      "type": "tmpfs"
+    },
+    "dropped_checkpoint_octets": 71556688
+  },
+  "offered_load": "one sequential client for the latency rows; closed loop for the rate rows",
+  "not_exposed": {
+    "bytes_consed": "needs the heap-hook image (rep_measure.py --heap-dir)",
+    "mutex_held_fraction": "the owner exposes no mutex accounting"
+  },
+  "samples": 100,
+  "started_utc": "2026-09-26T13:06:17Z",
+  "rows": {
+    "greeting": {
+      "n": 100,
+      "min_ms": 181.21763784438372,
+      "median_ms": 213.60197151079774,
+      "p95_ms": 1293.9189616590738,
+      "max_ms": 4479.639334604144,
+      "owner_cpu_s": 45.46
+    },
+    "group_reply": "211 10000 1 10000 fn.test",
+    "over40": {
+      "n": 100,
+      "min_ms": 11.13810669630766,
+      "median_ms": 160.7621293514967,
+      "p95_ms": 316.49526208639145,
+      "max_ms": 429.61612436920404,
+      "width": 40,
+      "octets_read": 419462,
+      "owner_cpu_s": 15.87
+    },
+    "over100": {
+      "n": 100,
+      "min_ms": 36.97054833173752,
+      "median_ms": 364.64747646823525,
+      "p95_ms": 702.6621354743838,
+      "max_ms": 765.6145570799708,
+      "width": 100,
+      "octets_read": 1048240,
+      "owner_cpu_s": 35.87
+    },
+    "post": {
+      "n": 100,
+      "command_to_reply": {
+        "n": 100,
+        "min_ms": 3.3482052385807037,
+        "median_ms": 4.864963237196207,
+        "p95_ms": 6.846413016319275,
+        "max_ms": 898.4233299270272
+      },
+      "capped": null,
+      "terminator_to_reply": {
+        "n": 100,
+        "min_ms": 3.2375622540712357,
+        "median_ms": 4.627745598554611,
+        "p95_ms": 6.474800407886505,
+        "max_ms": 898.0903243646026
+      },
+      "owner_cpu_ms_per_post": 13.1,
+      "octets": 2048
+    },
+    "signed": {
+      "n": 50,
+      "command_to_reply": {
+        "n": 50,
+        "min_ms": 235.72892788797617,
+        "median_ms": 253.33387264981866,
+        "p95_ms": 282.6922880485654,
+        "max_ms": 297.9738572612405
+      },
+      "capped": null,
+      "terminator_to_reply": {
+        "n": 50,
+        "min_ms": 235.35516392439604,
+        "median_ms": 253.05550266057253,
+        "p95_ms": 282.3634333908558,
+        "max_ms": 297.5651612505317
+      },
+      "owner_cpu_ms_per_post": 256.8,
+      "octets": 9534
+    },
+    "memory_after_latency_rows": {
+      "rss_kib": 4798208,
+      "hwm_kib": 7624500
+    },
+    "checkpoint": {
+      "seconds": 17.458,
+      "rc": 0,
+      "n": 10150,
+      "out": "\nACL2 Warning [Invariant-risk] in FN-STORE-SCO-PUBLISH-PLAN:  Invariant-\nrisk has been detected for a call of function FN-STORE-SCO-PUBLISH-PLAN\n(as possibly leading to an ill-guarded call of UPDATE-FN-OCTETS$C-FILL);\nsee :DOC invariant-risk.\n\ncheckpoint sequence=10151 octets=81776887 open=checkpoint:10001 suffix=150\naccepted operator checkpoint\n"
+    },
+    "rate1": {
+      "connections": 1,
+      "readers": 3,
+      "connect_s": 0.834,
+      "seconds": 60.004,
+      "posts": 4376,
+      "post_per_s": 72.929,
+      "window_posts_per_10s": [
+        1107,
+        1117,
+        318,
+        323,
+        150,
+        1361
+      ],
+      "latency": {
+        "n": 4376,
+        "min_ms": 4.2192647233605385,
+        "median_ms": 8.008148521184921,
+        "p95_ms": 17.948380671441555,
+        "max_ms": 3891.784191131592
+      },
+      "reader_articles": 3116,
+      "owner_cpu_s": 61.5,
+      "n_before": 10150,
+      "n_after": 14526,
+      "errors": [],
+      "owner_cpu_ms_per_post": 14.054
+    },
+    "rate8": {
+      "connections": 8,
+      "readers": 3,
+      "connect_s": 14.423,
+      "seconds": 60.045,
+      "posts": 3734,
+      "post_per_s": 62.187,
+      "window_posts_per_10s": [
+        483,
+        727,
+        1228,
+        172,
+        536,
+        588
+      ],
+      "latency": {
+        "n": 3734,
+        "min_ms": 3.87394055724144,
+        "median_ms": 55.12651614844799,
+        "p95_ms": 489.46578055620193,
+        "max_ms": 5402.902094647288
+      },
+      "reader_articles": 2255,
+      "owner_cpu_s": 75.14,
+      "n_before": 14526,
+      "n_after": 18260,
+      "errors": [],
+      "owner_cpu_ms_per_post": 20.123
+    },
+    "memory_after_rate": {
+      "rss_kib": 9935108,
+      "hwm_kib": 16895228
+    }
+  },
+  "opens": [
+    {
+      "n": 10000,
+      "after": "stop",
+      "mode": "open=full-replay reason=absent",
+      "seconds": 12.727,
+      "owner_cpu_s": 12.72,
+      "memory": {
+        "rss_kib": 1506144,
+        "hwm_kib": 1506144
+      }
+    },
+    {
+      "n": 10150,
+      "after": "checkpoint",
+      "mode": "open=checkpoint:10151 suffix=0",
+      "seconds": 11.937,
+      "owner_cpu_s": 11.92,
+      "memory": {
+        "rss_kib": 2337836,
+        "hwm_kib": 3711476
+      }
+    }
+  ],
+  "row_budget_s": 120,
+  "disk_before": {
+    "octets": 41299968,
+    "inodes": 10009
+  },
+  "n": 18260,
+  "signed_in_history": 89,
+  "written_utc": "2026-09-26T13:11:10Z",
+  "box_load": {
+    "samples": 58,
+    "interval_s": 5.0,
+    "cpus": 24,
+    "box_cpu_busy_median": 0.33,
+    "box_cpu_busy_max": 0.481,
+    "loadavg1_median": 12.66,
+    "loadavg1_max": 13.78
+  },
+  "disk_after": {
+    "octets": 206032896,
+    "inodes": 18270
+  },
+  "finished_utc": "2026-09-26T13:11:10Z",
+  "exit": 0
+}
