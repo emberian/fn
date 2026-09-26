@@ -909,21 +909,21 @@
     "books": 919,
     "books_in_root_closure": 915,
     "roots": 902,
-    "theorems": 12756,
-    "functions": 8947,
-    "assert_events": 13297,
-    "must_fails": 1473,
+    "theorems": 12779,
+    "functions": 8949,
+    "assert_events": 13321,
+    "must_fails": 1478,
     "encapsulates": 65,
     "guards": {
       "verified": 2182,
       "declared-off": 707,
-      "default-guarded": 4737,
-      "default-unguarded": 1321
+      "default-guarded": 4738,
+      "default-unguarded": 1322
     },
     "suspect_theorems": 113,
-    "export_hygiene_warnings": 151,
+    "export_hygiene_warnings": 152,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 113,
+    "teeth_form_warnings": 117,
     "include_hygiene_warnings": 924,
     "host_names_warnings": 1031,
     "hand_written_record_warnings": 18
@@ -5212,18 +5212,18 @@
       "book": "books/byte-store-frame.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 42,
+      "theorems": 30,
+      "functions": 43,
       "guards": {
         "verified": 2,
         "declared-off": 0,
-        "default-guarded": 37,
+        "default-guarded": 38,
         "default-unguarded": 3
       },
       "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 40,
+      "defconsts": 41,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11841,7 +11841,7 @@
       "book": "books/record-width-producers.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
+      "theorems": 16,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -11921,7 +11921,7 @@
       "book": "books/records-canonicality.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
+      "theorems": 48,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -12084,7 +12084,7 @@
       "book": "books/records-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
+      "theorems": 21,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -12830,7 +12830,7 @@
       "book": "books/store-budget-article.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
+      "theorems": 7,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -18247,10 +18247,10 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 69,
-      "must_fails": 0,
+      "assert_events": 83,
+      "must_fails": 2,
       "defconsts": 4,
-      "defmacros": 1,
+      "defmacros": 5,
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-frame",
@@ -23166,17 +23166,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 17,
-      "must_fails": 2,
-      "defconsts": 12,
+      "assert_events": 25,
+      "must_fails": 4,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -23741,9 +23741,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 20,
-      "must_fails": 1,
-      "defconsts": 3,
+      "assert_events": 22,
+      "must_fails": 2,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -26013,7 +26013,7 @@
     {
       "theorem": "fn-bs-names-outcomes-of-no-ops",
       "book": "books/byte-store-scan.lisp",
-      "line": 310,
+      "line": 311,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
       ]
@@ -26021,7 +26021,7 @@
     {
       "theorem": "fn-bs-profile-validp-of-profile-of",
       "book": "books/byte-store-frame.lisp",
-      "line": 371,
+      "line": 378,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp"
       ]
@@ -26844,9 +26844,15 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-bs-frontier-decode-extends-format-2",
+        "book": "books/byte-store-frame.lisp",
+        "line": 828,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-bs-frontier-next-is-successor",
         "book": "books/byte-store-frame.lisp",
-        "line": 925,
+        "line": 1137,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -28025,6 +28031,18 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "bsft-round-trip-without-the-width",
+        "book": "tests/acl2/byte-store-frame-tests.lisp",
+        "line": 311,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "bsft-extends-without-the-format-2-hypothesis",
+        "book": "tests/acl2/byte-store-frame-tests.lisp",
+        "line": 336,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "scp-t-ranges-without-exclusive-read",
         "book": "tests/acl2/byte-store-state-checkpoint-program-tests.lisp",
         "line": 79,
@@ -28544,6 +28562,18 @@
         "check": "rwpt-narrow-without-the-prepare-hypothesis",
         "book": "tests/acl2/record-width-producers-tests.lisp",
         "line": 87,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rwpt-producer-ceiling-without-the-charge-hypothesis",
+        "book": "tests/acl2/record-width-producers-tests.lisp",
+        "line": 226,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rwpt-within-ceiling-without-the-prepare-hypothesis",
+        "book": "tests/acl2/record-width-producers-tests.lisp",
+        "line": 250,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -30191,7 +30221,7 @@
       },
       {
         "book": "books/byte-store-record-provenance-node.lisp",
-        "line": 2114,
+        "line": 2115,
         "include": "byte-store-native-correspondence",
         "included": "books/byte-store-native-correspondence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -30947,7 +30977,7 @@
       },
       {
         "book": "books/record-width-producers.lisp",
-        "line": 31,
+        "line": 33,
         "include": "store-budget-article",
         "included": "books/store-budget-article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
