@@ -144,6 +144,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
+	books/native-health \
+	tests/acl2/native-health-tests \
 	books/feed-filename \
 	tests/acl2/feed-filename-tests \
 	books/feed-wire-input \

@@ -429,10 +429,9 @@ profile's."
   (declare (xargs :guard t))
   (append (fn-nh-exit-prefix) (fn-nh-digit2 (fn-nh-exit-code v))
           (fn-nls-text " state=")
-          (fn-nls-text (fn-nh-state-word (fn-nh-first-held v)))
-          (if (and (not (fn-nh-first-held v)) (fn-nh-any-unobservedp v))
-              (fn-nls-text " (some states unobserved)")
-            nil)
+          (fn-nls-text (if (and (not (fn-nh-first-held v)) (fn-nh-any-unobservedp v))
+                           "none-held (some states unobserved)"
+                         (fn-nh-state-word (fn-nh-first-held v))))
           *fn-nls-lf*))
 
 (defun fn-nh-outcome-word (o)
