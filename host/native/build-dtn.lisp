@@ -148,8 +148,6 @@
 ;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
 ;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
-; The process heap from the store profile (PKT-016): host/native/heap.lisp.
-(include-book "books/heap-figure")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
@@ -186,6 +184,10 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The process heap from the store profile (PKT-016): host/native/heap.lisp,
+; which the operator loaded below calls.  After every `ld': no host wrapper
+; above uses it, and it would otherwise serve their books transitively.
+(include-book "books/heap-figure")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

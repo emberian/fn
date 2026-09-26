@@ -209,6 +209,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-checkpoint-open-tests \
 	books/owner-checkpoint-stream \
 	tests/acl2/owner-checkpoint-stream-tests \
+	books/heap-figure \
+	tests/acl2/heap-figure-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/linear-recognizers-tests \

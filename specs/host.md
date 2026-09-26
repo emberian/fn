@@ -666,3 +666,40 @@ file descriptors and is superseded for this verb). The operator guide's
 [upgrade section](../docs/operator.md#upgrade-and-what-a-rollback-loses)
 describe the verbs.
 
+
+## Process heap
+
+HST-013: The node's heap is its store profile's figure on this machine, and a
+profile the machine cannot hold is refused by name at start. SBCL fixes its
+dynamic space when the process starts, so the installed `bin/fn`
+(packaging/fn with `libexec/fn` beside it) first runs the same image as
+`heap -- ARGV` and then execs the command with `--dynamic-space-size MB`
+(through `SBCL_USER_ARGS`, which every image launcher splices after its own
+figure; SBCL takes the last). ACL2 decides the figure
+(books/heap-figure.lisp `fn-heap-decide`, host/native/heap.lisp
+`fnn-heap-decision`): the saved core's length, the host's 64 MiB collection
+nursery, sixteen bytes per octet (one cons per octet, the octet-list
+representation) for twice the history bound H plus one record bound R, doubled
+for the collector's copy, and the two checkpoint buffers at the profile's
+file bound (`fn-ock-capture-budget`, three times H plus one segment), in MiB
+rounded up. The profile is the one the command's store was saved with
+(`config.json`), or for `init` the profile it will write; a command that
+names no existing store is given the machine. The machine is the least of
+the host's observations: physical memory (`sysconf`), on Linux the cgroup's
+`memory.max` from the process's group up and `RLIMIT_AS`, and `RLIMIT_DATA`
+(which OpenBSD's login classes set). A figure above the machine is refused:
+exit 1 (outcome class `refused`), `refused machine-cannot-hold-profile
+heap=MB MB machine=M MB` on stderr, and the command does not run. An
+accepted figure holds every store the profile admits
+(`fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
+`health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with no
+preset word and no field flag, on a machine under 4 GiB, writes the small
+preset (T 16,384, H 8 MiB, R 196,608, A 32,768, G 16, K 128: 1,002 MB on a
+389 MB core; `fn-heap-small-profile-fits-a-small-machine` for any core up to
+512 MiB on 1,536 MiB). The probe itself runs in the core's size plus 128 MB,
+a bound on its work (it reads `fn.toml` and `config.json`, 16 KiB each). A
+checkout's `packaging/fn` passes `FN_TEST_HEAP_MB` when set and otherwise
+the image launcher's own figure; the installed launcher ignores both
+`FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
+(H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
+PRF-198; the native case is SCN-127.
