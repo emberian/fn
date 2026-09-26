@@ -1,0 +1,37 @@
+== round1 mount=/tank/fn/scratch/node-disk load: 6.78, 6.24, 4.78
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/tank/fn/scratch/node-disk size=4096 n=100 syscall=fsync median_ms=66.626 p95_ms=116.719 min_ms=32.472 max_ms=158.262
+== round1 mount=/tank/fn/scratch/node-disk load: 7.48, 6.41, 4.85
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/tank/fn/scratch/node-disk size=4096 n=100 syscall=fdatasync median_ms=74.732 p95_ms=133.577 min_ms=33.016 max_ms=158.549
+== round1 mount=/tank/fn/scratch/node-disk load: 7.60, 6.46, 4.88
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/tank/fn/scratch/node-disk size=65536 n=100 syscall=fsync median_ms=145.858 p95_ms=2159.536 min_ms=50.320 max_ms=47420.033
+== round1 mount=/var/tmp load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/var/tmp size=4096 n=100 syscall=fsync median_ms=3.096 p95_ms=5.905 min_ms=2.072 max_ms=8.718
+== round1 mount=/var/tmp load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/var/tmp size=4096 n=100 syscall=fdatasync median_ms=3.086 p95_ms=3.314 min_ms=2.110 max_ms=5.982
+== round1 mount=/var/tmp load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/var/tmp size=65536 n=100 syscall=fsync median_ms=3.204 p95_ms=3.822 min_ms=2.322 max_ms=6.354
+== round1 mount=/othersys/home/hbox load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/othersys/home/hbox size=4096 n=100 syscall=fsync median_ms=0.787 p95_ms=0.891 min_ms=0.713 max_ms=1.125
+== round1 mount=/othersys/home/hbox load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/othersys/home/hbox size=4096 n=100 syscall=fdatasync median_ms=0.793 p95_ms=0.834 min_ms=0.730 max_ms=1.146
+== round1 mount=/othersys/home/hbox load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/othersys/home/hbox size=65536 n=100 syscall=fsync median_ms=0.833 p95_ms=0.914 min_ms=0.765 max_ms=1.194
+== round1 mount=/dev/shm load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/dev/shm size=4096 n=100 syscall=fsync median_ms=0.001 p95_ms=0.002 min_ms=0.001 max_ms=0.003
+== round1 mount=/dev/shm load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/dev/shm size=4096 n=100 syscall=fdatasync median_ms=0.001 p95_ms=0.001 min_ms=0.001 max_ms=0.003
+== round1 mount=/dev/shm load: 14.07, 9.34, 6.08
+units: run-r93ea9d6f40bd4b63bf359d1108b3294a.scope run-rc97c6d54014047148c75c546eb4d7c48.scope fn-node.service qual-69046a76-chainM.service qual-69046a76-mixed.service qual-69046a76-peerrows.service 
+dir=/dev/shm size=65536 n=100 syscall=fsync median_ms=0.014 p95_ms=0.017 min_ms=0.012 max_ms=0.245
+== round1 end 2026-09-26T18:11:57Z
