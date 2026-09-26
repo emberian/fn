@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1008 |
 | Certification roots in the Makefile | 983 |
 | Books inside the root closure | 1001 |
-| `defthm` and `defthmd` events | 14088 |
-| `defun` events | 9820 |
-| Functions with verified guards | 2253 |
+| `defthm` and `defthmd` events | 14137 |
+| `defun` events | 9831 |
+| Functions with verified guards | 2255 |
 | Functions declared `:verify-guards nil` and never verified | 772 |
-| Functions left at the default with an explicit guard | 5341 |
-| Functions left at the default with no guard | 1454 |
-| `assert-event` checks | 15090 |
+| Functions left at the default with an explicit guard | 5346 |
+| Functions left at the default with no guard | 1458 |
+| `assert-event` checks | 15102 |
 | `must-fail` checks | 1802 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
-| `encapsulate` events | 73 |
+| `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 135 |
 | Export-hygiene warnings | 157 |
 | Enabled-projection warnings | 43 |
@@ -210,7 +210,7 @@ that `make certify` requests.
 | `books/bp-outbound.lisp` | root | 10 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
 | `books/bp-primary-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-primary.lisp` | root | 15 | 75 | 75/0/0/0 | 0 | 0 | 0 |
+| `books/bp-primary.lisp` | root | 64 | 84 | 77/0/3/4 | 0 | 0 | 0 |
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 35 | 50 | 0/0/6/44 | 0 | 0 | 0 |
 | `books/bp-receive-evidence.lisp` | root | 4 | 25 | 0/6/0/19 | 0 | 0 | 0 |
@@ -757,7 +757,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 44 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 29 | 0 | 0 |
-| `tests/acl2/bp-primary-tests.lisp` | root | 1 | 2 | 0/0/0/2 | 124 | 0 | 0 |
+| `tests/acl2/bp-primary-tests.lisp` | root | 1 | 4 | 0/0/2/2 | 136 | 0 | 0 |
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 26 | 0 | 0 |
 | `tests/acl2/bp-receive-evidence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
