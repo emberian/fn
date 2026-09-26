@@ -28,11 +28,12 @@ cert() { mkdir -p $1/tls; openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curv
   -subj "/CN=127.0.0.1" -addext "subjectAltName=IP:127.0.0.1" \
   -keyout $1/tls/key.pem -out $1/tls/cert.pem >/dev/null 2>&1; chmod 600 $1/tls/key.pem; }
 art() { printf 'From: walk@example.invalid\r\nNewsgroups: local.test\r\nSubject: walk %s\r\nDate: Sat, 26 Sep 2026 02:00:00 +0000\r\nMessage-ID: <walk-%s@example.invalid>\r\n\r\nbody %s\r\n' "$1" "$1" "$1" > $W/p/$1; }
-start() { # NAME
+start() { # NAME : waits for the listener, not the socket file (a killed owner leaves a stale one)
+  local port; port=$(awk -F= '/^port=/{print $2; exit}' $W/$1/fn.toml)
   systemd-run --user --unit fn-ow-$1 -p MemoryMax=24G --setenv FN_OPENSSL_PREFIX=$FN_OPENSSL_PREFIX \
     --setenv LD_LIBRARY_PATH=$LD_LIBRARY_PATH $FN operator $W/$1/fn.toml run > /dev/null 2>&1
-  for i in $(seq 300); do [ -S $W/$1/store/control.sock ] && break; sleep 0.1; done
-  say "   start $1: control-socket=$([ -S $W/$1/store/control.sock ] && echo yes || echo no)"
+  for i in $(seq 600); do ss -ltnH "sport = :$port" | grep -q . && break; sleep 0.1; done
+  say "   start $1: listening=$(ss -ltnH "sport = :$port" | grep -q . && echo yes || echo no) control-socket=$([ -S $W/$1/store/control.sock ] && echo yes || echo no)"
 }
 stop() { systemctl --user stop fn-ow-$1; say "   stop $1: $(systemctl --user is-active fn-ow-$1)"; }
 
@@ -118,7 +119,8 @@ sed -e "s|$W/a/|$W/copy/|g" -e 's/^port=31601/port=31611/' $A > $W/copy/fn.toml
 C=$W/copy/fn.toml
 cp -p $W/copy/store/config.json $W/copy/config.json.kept
 step needs-upgrade 0 $FN operator $C store needs-upgrade
-step upgrade-profile-scale 0 $FN operator $C store upgrade-profile scale
+step upgrade-profile-scale 1 $FN operator $C store upgrade-profile scale
+step upgrade-profile-raise 0 $FN operator $C store upgrade-profile --max-history-octets 2199023255552
 step rollback-check-kept 0 $FN operator $C store rollback-check $W/copy/config.json.kept
 step upgrade-required 0 $FN operator $C store upgrade-profile --history-marker required
 step rollback-check-kept-required 1 $FN operator $C store rollback-check $W/copy/config.json.kept
@@ -133,6 +135,7 @@ step status-after-rollback 0 $FN operator $C status
 start a
 systemctl --user kill -s KILL fn-ow-a; sleep 2; say "   crash: SIGKILL, unit $(systemctl --user is-active fn-ow-a)"
 systemctl --user reset-failed fn-ow-a 2>/dev/null
+say "   after crash: stale control socket $([ -S $W/a/store/control.sock ] && echo present || echo absent)"
 step status-after-crash 0 $FN operator $A status
 step recover-after-crash 0 $FN operator $A recover
 start a
