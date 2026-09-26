@@ -48,6 +48,49 @@ Use RFC 3977 §§3.4 and 3.4.2, command sections, and Appendix B as the baseline
 The [implementation checklist](nntp-audit.md) tracks branches and remaining work;
 it is not a completed conformance audit.
 
+## HELP: the served command table (NNT-038)
+
+NNT-038: HELP lists every command the served dispatcher recognizes, and a command HELP does not list is answered 500
+
+RFC 3977 section 7.2 requires HELP (it is in the mandatory bundle) and
+leaves its text free: "a short summary of the commands that are understood
+by this implementation". That is the RFC requirement. fn's stronger
+guarantee is that the summary is exact: the lines HELP prints are the rows
+of one table, `*fn-nntp-served-command-table*` (`books/nntp-help.lisp`),
+and every keyword the served step does anything with is in it. The
+grouping into six lines and their order are local policy:
+
+```text
+100 help text follows
+CAPABILITIES HELP QUIT MODE DATE POST
+AUTHINFO STARTTLS XREDEEM
+GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS
+ARTICLE HEAD BODY STAT
+OVER XOVER HDR XHDR XPAT
+IHAVE CHECK TAKETHIS
+.
+```
+
+The table spans three layers of one dispatcher. `fn-auth-step-pinned`
+(`books/nntp-auth.lisp`, called by `books/served.lisp` `fn-served-dispatch`)
+answers AUTHINFO (RFC 4643), STARTTLS (RFC 4642), XREDEEM (NNT-034) and the
+connection's CAPABILITIES; the peer layer answers IHAVE, CHECK, TAKETHIS
+and MODE STREAM on a peer connection, and a reader connection answers the
+three transit verbs 502 (RFC 3977 section 3.2.1: understood, not
+permitted); `books/nntp.lisp` answers the rest. Before 2026-09-26 HELP
+listed only the last layer's verbs (the NNTP gap inventory's R4).
+
+`fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list` (PRF-194)
+is the keystone: on a served session in command mode (not handshaking TLS,
+no transit article or POST body awaited, the reader session open), a
+well-formed command line whose keyword is not in the table is answered
+exactly `500 command not recognized`, submits nothing and leaves the
+session unchanged. `fn-nntp-help-renders-the-served-command-table-by-definition`
+says HELP's lines are the table's rows. The converse, that each listed
+keyword draws a reply other than 500 for every argument list, is checked by
+evaluation on a served session in `tests/acl2/nntp-help-tests.lisp` and is
+not a theorem (PKT-571).
+
 ## Reserved header fields
 
 fn reserves header field names for its own use. Each is an ordinary RFC 5536

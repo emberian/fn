@@ -493,19 +493,25 @@
 
 (defun fn-nntp-help (session)
   ; RFC 3977 section 7.2: a short summary of the commands that are
-  ; understood.  Every keyword fn-nntp-session-command or
-  ; fn-nntp-archive-command (books/nntp.lisp) recognizes appears here, and
-  ; nothing else does; tests/acl2/nntp-legacy-tests.lisp pins the two lists
-  ; against each other.
+  ; understood.  The lines are the rows of the served command table,
+  ; *fn-nntp-served-command-table* in books/nntp-help.lisp: every keyword
+  ; the served dispatcher fn-auth-step-pinned recognizes, including the
+  ; authentication layer's AUTHINFO, STARTTLS and XREDEEM and the peer
+  ; layer's IHAVE, CHECK and TAKETHIS (PRF-194: a keyword outside the table
+  ; is answered 500 by the served step, and these lines render the table).
   (fn-nntp-multi session "100 help text follows"
                  (list (fn-nntp-string-octets
                         "CAPABILITIES HELP QUIT MODE DATE POST")
+                       (fn-nntp-string-octets
+                        "AUTHINFO STARTTLS XREDEEM")
                        (fn-nntp-string-octets
                         "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS")
                        (fn-nntp-string-octets
                         "ARTICLE HEAD BODY STAT")
                        (fn-nntp-string-octets
-                        "OVER XOVER HDR XHDR XPAT"))))
+                        "OVER XOVER HDR XHDR XPAT")
+                       (fn-nntp-string-octets
+                        "IHAVE CHECK TAKETHIS"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation

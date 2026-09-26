@@ -3433,6 +3433,30 @@
       ],
       "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
+    },
+    {
+      "id": "NNT-038",
+      "title": "HELP lists every command the served dispatcher recognizes, and a command HELP does not list is answered 500",
+      "specification": "specs/nntp.md#help-the-served-command-table-nnt-038",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-194"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-help.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-help-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tests/test_reader.py",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
     }
   ]
 }
