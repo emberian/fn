@@ -5209,7 +5209,7 @@
     {
       "id": "PRF-130",
       "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
-      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203, 500 or 501 in the :mode phase (RFC 4644 section 2.3; since PRF-207, 500 and 501 are the IHAVE fallback, the old form a must-fail in tests/acl2/feed-connection-tests.lisp) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -7529,6 +7529,44 @@
         "fn-exp-open-refuses-exactly-at-the-capacity",
         "fn-exp-trusted-address-is-never-refused-by-address",
         "fn-exp-untrusted-address-is-refused-exactly-at-its-limit"
+      ]
+    },
+    {
+      "id": "PRF-207",
+      "title": "One admission decision, three wire forms: CHECK and TAKETHIS answer as IHAVE does, the streaming pipeline is bounded, and fn's feed falls back to IHAVE on a peer that does not stream",
+      "statement": "books/peer-transit-forms.lisp over the functions the served path calls. fn-peer-check-and-ihave-answer-one-offer-decision: for one connection state and one well-formed Message-ID, the code fn-peer-command answers to IHAVE and to CHECK are fn-peer-offer-code's IHAVE and CHECK images of the same fn-peer-decide-offer decision, so CHECK's code is the RFC 4644 section 2.4 form of IHAVE's RFC 3977 section 6.3.2 code (238/335, 438/435, 431/436). fn-peer-takethis-and-ihave-answer-one-transfer-verdict: for every transfer decision and durable completion, fn-peer-transit-outcome-effects renders TAKETHIS's code as the streaming form of IHAVE's (239/235, 439/437, 436/436; 436 after TAKETHIS is fn's local policy, RFC 4644 section 2.5 names 400) and closes exactly when IHAVE's does. fn-peer-transfer-submission-differs-only-in-form-unfolds: the transfer arm hands the owner the same (peer, Message-ID, octets) whatever the form. fn-peer-step-pinned-keeps-outstanding-offers-within-the-peer-bound: no served event raises the connection's outstanding 238 count above the larger of its value and the peer record's inbound max-inflight (D27: a pipeline past the bound is 431). books/feed-connection.lisp fn-fc-mode-stream-unsupported-falls-back-to-ihave: a 500 or 501 answer to MODE STREAM (RFC 3977 section 3.2.1) makes the same connection ready with streaming off, security and credential kept, and records no stop; books/owner.lisp fn-own-feed-connect-in-ihave-form-offers-ihave, -sends-the-bare-article and fn-own-feed-connect-in-stream-form-offers-check: after a connect in the :ihave form the feed offers the IHAVE line and sends the bare article, after a streaming connect to a streaming record it offers CHECK. Not claimed: that a real peer's code means what the RFC says (the INN lab measures that), nor a CAPABILITIES-driven choice of form (RFC 4644 section 2.3 prefers CAPABILITIES; fn asks MODE STREAM).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-045"
+      ],
+      "depends_on": [
+        "PRF-130"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-transit-forms.lisp",
+        "tests/acl2/peer-transit-forms-tests.lisp",
+        "books/feed-connection.lisp",
+        "books/feed-connection-invariants.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "books/owner.lisp",
+        "tests/acl2/owner-feed-form-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/feed-service.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-streaming-2026-09-26.md"
+      ],
+      "progress_note": "Lane transit-streaming 2026-09-26: every changed book and test book admitted in the persvati REPL (sessions ptf, fc2, own); certification is the batch's.",
+      "events": [
+        "fn-peer-check-and-ihave-answer-one-offer-decision",
+        "fn-peer-takethis-and-ihave-answer-one-transfer-verdict",
+        "fn-peer-transfer-submission-differs-only-in-form-unfolds",
+        "fn-peer-step-pinned-keeps-outstanding-offers-within-the-peer-bound",
+        "fn-fc-mode-stream-unsupported-falls-back-to-ihave",
+        "fn-own-feed-connect-in-ihave-form-offers-ihave",
+        "fn-own-feed-connect-in-ihave-form-sends-the-bare-article",
+        "fn-own-feed-connect-in-stream-form-offers-check"
       ]
     }
   ]

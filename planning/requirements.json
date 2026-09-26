@@ -3736,6 +3736,29 @@
         "planning/evidence/public-limits-2026-09-26.md"
       ],
       "implementation_note": "RFC 3977 section 5.1.1 (400 then close) is the RFC requirement; the capacity, its default of 31 and the trusted range are local policy. The capacity is the existing exposure-connections :set-limit row (config delta code 8) and the range an exposure-trusted :set-policy row (code 5): no new delta code, no store format change, no fn.toml key. SCN-142 is the native case on both images. Sizing the capacity against the machine's memory and thread stacks is PKT-605."
+    },
+    {
+      "id": "NNT-045",
+      "title": "A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not",
+      "specification": "specs/nntp.md#transit-streaming-nnt-042",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-207"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-transit-forms.lisp",
+        "books/feed-connection.lisp",
+        "books/owner.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-streaming-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599)."
     }
   ]
 }
