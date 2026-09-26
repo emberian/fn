@@ -6317,6 +6317,31 @@
           "name": "fn-acct-list-word-is-pending-only-for-a-pending-row"
         }
       ]
+    },
+    {
+      "id": "PRF-178",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-valid-record-fits-a-poll-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-stays-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-report-of-an-admitted-payload-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-page-refuses-exactly-past-the-total-width"
+        }
+      ]
     }
   ]
 }

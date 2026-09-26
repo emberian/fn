@@ -214,6 +214,41 @@
                                   (fn-col-poll fn-col-poll-report-octets
                                    fn-cbor-octet-listp)))))
 
+;; PKT-467 (control-reply-fit, PRF-178; the coordinator's ruling: profile
+;; validation refuses a record bound the poll reply cannot carry).  A page
+;; whose event's exact encoding is a Store payload the publication gate
+;; admits under ANY profile (`fn-bs-publication-admissiblep', the gate
+;; host/store-host.lisp `fn-store-publication-admissibility' asserts on the
+;; actual bytes for host/native/io.lisp `fnn-publish') is served as that
+;; page: the kind-6 reply carries it (`fn-bs-profile-valid-record-fits-a-
+;; poll-reply', books/byte-store-frame), so `:oversize' is not answered.
+;; What stays reachable: an event whose encoding exceeds its store's own R
+;; (the open's read bound, host/store-host.lisp `fn-store-profile-read-bound',
+;; refuses a transaction FILE above R, but that the served event re-encodes
+;; to its file's octets is not stated here: PKT-470), so the arm stays as the
+;; named refusal for that corrupted state, not unreachable-in-composition.
+(defthm fn-col-poll-report-of-an-admitted-payload-fits
+  (let ((d (fn-col-poll o consumer)))
+    (implies (and (equal (car d) :poll)
+                  (caddr d)
+                  (consp (fn-col-poll-report-octets (caddr d)))
+                  (fn-cbor-octet-listp (fn-col-poll-report-octets (caddr d)))
+                  (fn-bs-publication-admissiblep
+                   profile committed-count
+                   (len (fn-col-poll-report-octets (caddr d)))))
+             (equal (fn-col-poll-report o consumer)
+                    (list :poll (cadr d)
+                          (fn-col-poll-report-octets (caddr d))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-col-poll-report-fits-or-refuses-by-name)
+                        (:instance fn-bs-profile-valid-record-fits-a-poll-reply
+                                   (values profile)
+                                   (octets (len (fn-col-poll-report-octets
+                                                 (caddr (fn-col-poll o consumer)))))))
+           :in-theory (e/d (fn-ncl-poll-event-bytesp)
+                           (fn-col-poll fn-col-poll-report fn-col-poll-report-octets
+                            fn-bs-publication-admissiblep fn-cbor-octet-listp)))))
+
 (defthm fn-col-poll-report-is-a-page-or-a-refusal
   (member-equal (car (fn-col-poll-report o consumer)) '(:poll :refused))
   :hints (("Goal" :use fn-col-poll-is-a-page-or-a-refusal

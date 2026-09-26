@@ -143,10 +143,12 @@
 ; legacy record through the concrete record encoder).  A report above the
 ; poll reply's report ceiling (`fn-ncl-poll-event-bytesp',
 ; *fn-stxa-max-octets*) is refused by name, `:oversize', at the consumer's
-; unchanged position: never truncated, never skipped.  It is reachable only
-; for a profile whose record bound R lies above that ceiling (R is bounded by
-; the Store frame's u32 payload, 355 octets wider); a report that is not
-; octets at all is `:report'.  Before this function the host encoded the
+; unchanged position: never truncated, never skipped.  Since PKT-467 no
+; valid profile's R lies above that ceiling (books/byte-store-frame
+; `:max-record-octets-above-the-poll-reply'), so a payload the publication
+; gate admitted is served (`fn-col-poll-report-of-an-admitted-payload-fits');
+; the refusal stays for a store holding an event past its own R (PKT-470).
+; A report that is not octets at all is `:report'.  Before this function the host encoded the
 ; event itself and an oversize report faulted the reply encoder.
 (defun fn-col-poll-report-octets (event)
   (declare (xargs :guard t))

@@ -862,5 +862,8 @@ after the first was answered is :after-submission: the owner was there."
             (:restart
              (when (>= (incf restarts) limit) (return :after-submission))
              (setq acc nil total nil digest nil))
-            (:refused (return :refused))
+            ;; ACL2's named refusal, (:refused WORD), is carried to the
+            ;; caller as it came (fn-nls-page-refuses-exactly-past-the-
+            ;; total-width); a bare refusal stays :refused.
+            (:refused (return (if (rest step) step :refused)))
             (t (return :after-submission))))))))

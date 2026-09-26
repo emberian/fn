@@ -2986,7 +2986,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-167"
+        "PRF-167",
+        "PRF-178"
       ],
       "verification": [
         "proof",
@@ -2995,9 +2996,10 @@
       "evidence": [
         "books/consumer-position.lisp",
         "books/consumer-owner-local.lisp",
-        "planning/evidence/community-bounds-2026-09-26.md"
+        "planning/evidence/community-bounds-2026-09-26.md",
+        "planning/evidence/control-reply-fit-2026-09-26.md"
       ],
-      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168)."
+      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168). The record bound R is refused past the consumer poll reply's report ceiling (PRF-178, PKT-467): the poll reply's width admits every valid profile."
     },
     {
       "id": "HST-009",

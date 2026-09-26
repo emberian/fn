@@ -444,3 +444,58 @@ open-cost replay-records=")
                        nil *nlst-obs*)
         (fn-nls-query-report *nlst-account-list*
                              (fn-cfg-value *nlst-granted-config*))))
+
+
+; ---------------------------------------------------------------------------
+; fn-nls-page-refuses-exactly-past-the-total-width (control-reply-fit,
+; PRF-178).  The antecedent's past-the-width side needs a report of 2^32
+; octets, which no test constructs (as PKT-254's :oversize); what is
+; witnessed concretely: the refused frame the owner sends for it (the exact
+; octets fn-nls-page answers there, whatever the report) is read by the
+; client as the named refusal, a pre-existing unnamed refusal is not, and at
+; or below the width the step is never the named refusal.
+(defmacro nlst-width-refusal ()
+  '(fn-nls-reply-encode :refused 0 nil *fn-nls-refusal-past-the-total-width*))
+(assert-event (equal (fn-nls-client-step nil nil nil (nlst-width-refusal))
+                     '(:refused :report-past-the-total-width)))
+(assert-event (equal (fn-nls-reply-decode (nlst-width-refusal))
+                     (list :reply :refused 0 nil
+                           *fn-nls-refusal-past-the-total-width*)))
+; The layout is every refused reply's: status 2, total 0, no digest.
+(assert-event (equal (fn-nls-client-step nil nil nil
+                                         (fn-nls-reply-encode :refused 0 nil nil))
+                     '(:refused)))
+; Reachable within the width (the full antecedent, the conclusion's false
+; side): the owner's page of the status report is not the named refusal.
+(assert-event
+ (and (fn-cbor-octet-listp (nlst-report))
+      (<= (len (nlst-report)) *fn-cbor-max-uint*)
+      (not (equal (fn-nls-client-step nil nil nil
+                                      (fn-nls-page (fn-nls-buffer (nlst-report)) 0))
+                  '(:refused :report-past-the-total-width)))))
+; An offset past the report within the width: the unnamed refusal, so
+; both sides are false (the theorem has no offset hypothesis: every offset).
+(assert-event (equal (fn-nls-client-step '(2 3 4) 2 (fn-frame-trailer '(2 3))
+                                         (fn-nls-page (fn-nls-buffer '(2 3)) 3))
+                     '(:refused)))
+; The one hypothesis, dropped: a report that is not octets is refused
+; unnamed (the buffer is :bad) at every length, so past the width the
+; conclusion fails -- proved for every such report, since none is
+; constructible concretely.
+(assert-event (equal (fn-nls-client-step nil nil nil
+                                         (fn-nls-page (fn-nls-buffer '(256)) 0))
+                     '(:refused)))
+(defthm nlst-width-refusal-needs-octets
+  (implies (and (not (fn-cbor-octet-listp report))
+                (< *fn-cbor-max-uint* (len report)))
+           (not (equal (equal (fn-nls-client-step acc total digest
+                                                  (fn-nls-page (fn-nls-buffer report) off))
+                              '(:refused :report-past-the-total-width))
+                       (< *fn-cbor-max-uint* (len report)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nls-reply-decode-of-encode
+                                   (status :refused) (total 0) (digest nil)
+                                   (chunk nil)))
+           :in-theory (e/d (fn-nls-page fn-nls-buffer fn-nls-client-step)
+                           (fn-nls-reply-decode-of-encode fn-nls-reply-decode
+                            fn-nls-reply-encode (:e fn-nls-reply-encode))))))

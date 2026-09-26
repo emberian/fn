@@ -3089,6 +3089,38 @@
         "log": "planning/evidence/served-path-scale-2026-09-26/open-img2-5e15ad4c.log",
         "record": "planning/evidence/served-path-scale-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-107",
+      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init and at store upgrade-profile; at the ceiling it is written and served",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-021"
+      ],
+      "steps": [
+        "init with max-record-octets and max-history-octets one octet past 4,294,966,940; then init at 4,294,966,940; start the owner and POST.",
+        "init a default store; store upgrade-profile --max-record-octets one octet past the ceiling; start the owner and POST; upgrade to the ceiling; start the owner and POST."
+      ],
+      "expected": [
+        "The first init exits 1 naming max-record-octets-above-the-poll-reply and writes no config.json; the second writes R 4,294,966,940 and the POST is 240.",
+        "The refused upgrade exits 1 with `store profile upgrade refused: max-record-octets-above-the-poll-reply`, config.json byte-identical; the owner serves; the upgrade to the ceiling exits 0 and status reads R 4,294,966,940; the owner serves."
+      ],
+      "evidence": [
+        "tests/test_native_control_reply_fit.py",
+        "planning/evidence/control-reply-fit-2026-09-26.md",
+        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_control_reply_fit",
+        "cases": [
+          "test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling",
+          "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it"
+        ],
+        "native": true,
+        "record": "planning/evidence/control-reply-fit-2026-09-26.md",
+        "log": "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
+      }
     }
   ]
 }
