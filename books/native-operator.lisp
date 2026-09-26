@@ -290,6 +290,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                       (:e fn-bs-profile-validp)))
           ("Goal'" :in-theory (enable (:e fn-bs-profile-validp)))))
 
+;; PRF-171 (PKT-451 (C)): field 7, max-group-name-octets, governs the names
+;; `init' creates, as it governs `group create' (books/store-capacity-config
+;; `fn-cvec-native-admin-authorize').  Every name of NAMES is at most N octets.
+(defun fn-nop-group-names-within (names n)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (and (<= (len (fn-record-string-octets (car names))) (nfix n))
+           (fn-nop-group-names-within (cdr names) n))
+    t))
+
 (defun fn-nop-parse-init-plain (words config)
   (declare (xargs :guard t))
   (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
@@ -314,8 +324,35 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           ; groups are flags, preset words and decimals, never a group name.
           ((fn-native-admin-some-group-name-reservedp words)
            (fn-nop-refused :reserved-group-name "init" config words))
+          ; The profile's field 7, by name.
+          ((not (fn-nop-group-names-within
+                 groups (fn-bs-profile-max-group-name-octets profile)))
+           (fn-nop-refused :max-group-name-octets "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
                             (list :init groups request))))))
+
+;  KEYSTONE (PRF-171).  An accepted `init' plan creates no group whose name is
+; longer than the max-group-name-octets of the profile it will write.  Host:
+; host/native/operator.lisp's init arm runs this plan
+; (`fn-native-operator-plan').
+(defthm fn-nop-init-plain-groups-are-within-the-profile
+  (let ((result (fn-nop-parse-init-plain words config)))
+    (implies (equal (fn-native-operator-result-status result) :accepted)
+             (fn-nop-group-names-within
+              (cadr (nth 4 result))
+              (fn-bs-profile-max-group-name-octets
+               (fn-bs-profile-resolve (caddr (nth 4 result)) nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nop-parse-init-plain fn-nop-result
+                                   fn-nop-refused fn-nop-usage
+                                   fn-native-operator-result-status)
+                                  (fn-nop-group-names-within
+                                   fn-bs-profile-max-group-name-octets
+                                   fn-bs-profile-resolve
+                                   fn-nop-parse-profile-flags
+                                   fn-nop-parse-init-groups
+                                   fn-nop-some-flag-wordp
+                                   fn-native-admin-some-group-name-reservedp)))))
 
 ;  `init' under a configuration that names a mission (`[ops] mission'): the
 ; mission fixes the profile, so a profile word is a usage error, and with no
@@ -1380,7 +1417,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
  (defthm fn-nop-parse-init-command
    (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-init fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-native-admin-some-group-name-reservedp))))))
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-native-admin-some-group-name-reservedp fn-nop-group-names-within fn-bs-profile-max-group-name-octets))))))
 
 (local
  (defthm fn-nop-parse-post-command

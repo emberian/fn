@@ -889,7 +889,7 @@
                                     fn-nop-usage fn-nop-refused fn-nop-result
                                     fn-native-operator-result-status)
                                    (fn-native-admin-group-name-reservedp
-                                    fn-native-admin-some-group-name-reservedp
+                                    fn-native-admin-some-group-name-reservedp fn-nop-group-names-within fn-bs-profile-max-group-name-octets
                                     fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-nop-argument-texts
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
@@ -909,7 +909,7 @@
                                     fn-nop-usage fn-nop-refused fn-nop-result
                                     fn-native-operator-result-status)
                                    (fn-native-admin-group-name-reservedp
-                                    fn-native-admin-some-group-name-reservedp
+                                    fn-native-admin-some-group-name-reservedp fn-nop-group-names-within fn-bs-profile-max-group-name-octets
                                     fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-nop-argument-texts
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
@@ -1297,3 +1297,68 @@
        (fn-native-operator-run *fn-nop-minimal-config*
                                (fn-nop-test-argv '("principal" "list"))))))
 (assert-event (fn-nop-help-subjectp "keys"))
+
+; -----------------------------------------------------------------------------
+; PRF-171 (PKT-451 (C)): `init' under a profile whose field 7 is 100
+; (fn-nop-init-plain-groups-are-within-the-profile).
+(defconst *fn-nop-name-100*
+  (coerce (append (coerce "fn." 'list) (make-list 97 :initial-element #\a))
+          'string))
+(defconst *fn-nop-name-101*
+  (coerce (append (coerce "fn." 'list) (make-list 98 :initial-element #\a))
+          'string))
+(defun fn-nop-init-100 (name)
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv
+                           (list "init" "--max-group-name-octets" "100" name))))
+; Reachable witness at the bound: accepted, and the plan's groups are within
+; the field 7 of the profile the plan resolves.
+(assert-event
+ (let ((r (fn-nop-parse-init-plain (list "--max-group-name-octets" "100"
+                                         *fn-nop-name-100*)
+                                   *fn-nop-minimal-config*)))
+   (and (equal (fn-native-operator-result-status r) :accepted)
+        (equal (cadr (nth 4 r)) (list *fn-nop-name-100*))
+        (equal (fn-bs-profile-max-group-name-octets
+                (fn-bs-profile-resolve (caddr (nth 4 r)) nil))
+               100)
+        (fn-nop-group-names-within (cadr (nth 4 r)) 100))))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-init-100 *fn-nop-name-100*))
+                     :accepted))
+; One octet past it: refused by name.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-init-100 *fn-nop-name-101*))
+                     :refused))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-init-100 *fn-nop-name-101*))
+                     :max-group-name-octets))
+; The same name under the default profile (field 7 = 256) is accepted.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv (list "init" *fn-nop-name-101*))))
+                     :accepted))
+; The keystone's hypothesis: without acceptance the conclusion fails.  A
+; refused or usage result carries the words as its arguments, so the words
+; ("x" (NAME-101)) put a list of one 101-octet name where an accepted plan
+; keeps its groups, under the resolution of no request (field 7 not a
+; positive bound).
+(defconst *fn-nop-not-accepted*
+  (fn-nop-parse-init-plain (list "x" (list *fn-nop-name-101*))
+                           *fn-nop-minimal-config*))
+(assert-event (not (equal (fn-native-operator-result-status *fn-nop-not-accepted*)
+                          :accepted)))
+(assert-event (not (fn-nop-group-names-within
+                    (cadr (nth 4 *fn-nop-not-accepted*))
+                    (fn-bs-profile-max-group-name-octets
+                     (fn-bs-profile-resolve (caddr (nth 4 *fn-nop-not-accepted*))
+                                            nil)))))
+(must-fail
+ (defthm fn-nop-init-groups-within-without-acceptance
+   (let ((result (fn-nop-parse-init-plain (list "x" (list *fn-nop-name-101*))
+                                          *fn-nop-minimal-config*)))
+     (fn-nop-group-names-within
+      (cadr (nth 4 result))
+      (fn-bs-profile-max-group-name-octets
+       (fn-bs-profile-resolve (caddr (nth 4 result)) nil))))))

@@ -103,8 +103,27 @@ plus one: the allocator refuses exactly at that capacity
 figure of 4,096 publications. No store format changed: an older image
 refuses a configuration log holding codes 18 or 19 and a checkpoint
 directory holding more than 4,096 names or a name at or above 4096, the
-rollback consequence of these two steps. Open: the group-name width and
-field 7's reader (PKT-451).
+rollback consequence of these two steps. Field 7, `max-group-name-octets`,
+now governs group names at both intakes: `init` refuses
+`:max-group-name-octets` by name (`fn-nop-init-plain-groups-are-within-the-profile`)
+and every configuration record, offline or through the live owner, is
+authorized against it (`fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound`);
+the field was always validated against the codec width, so no format
+changed. Open: the name width rising to the wire's 460 (RFC 3977 section
+3.1), PKT-510.
+
+STO-025: opening a store costs each configuration record its own work.
+Every fold that replays configuration records (`fn-cpr-loop` at open,
+`fn-sco-cpr-prefix` over a checkpoint's prefix, `fn-cnode-replay-loop` and
+`fn-cnode-apply-config` at each publication's authorization) carries the
+configuration invariant in its guard and checks each record with
+`fn-cnode-carried-acceptablep`, which is the node's acceptance check under
+that invariant (`fn-cnode-record-acceptablep-is-the-carried-check`); before
+it, each record re-ran the whole-configuration recognizer two or three
+times, so a replay's cost grew with the configuration's size per record
+(PKT-501; planning/evidence/caps-to-profile-2026-09-26.md, Continuation).
+The replay still reads every configuration record at open; a configuration
+checkpoint the open resumes from is PKT-510.
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store
