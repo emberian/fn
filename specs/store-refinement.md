@@ -258,6 +258,8 @@ will be checked against: kept by a commit's seal and established by an
 open's seals from the empty arena (PRF-118). Until the record holds the
 handle, the served path still holds the list.
 
+REP-013: The committed event catalog: one attachable abstract stobj (`fn-cat`, books/catalog.lisp) whose logical value is the list of held records (`fn-held-p`, books/catalog-record.lisp: the wire tuple's positions with the payload a handle into the arena, the byte facts and the context decided once at intern, the numbers assigned at commit, the withdrawal as a versioned fact) and whose executable is the indexed tables; `fn-cat$corr` states the cross-field invariants once, the creator establishes them and every export preserves them; alpha (`fn-held-wire-of`) of intern is the identity on the wire record. Wave 5 lane catalog-slice, D33.
+
 ## First proof obligations
 
 Implement these as general theorems over lists and natural numbers, not only as

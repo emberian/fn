@@ -6841,6 +6841,71 @@
           "name": "fn-cnode-advanced-node-is-configured"
         }
       ]
+    },
+    {
+      "id": "PRF-201",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "create-fn-cat{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdraw{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-redecide{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-clear{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-intern-list-materializes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-intern-is-intern-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hf-body-lines-of-is-nov-body-line-count-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit-keeps-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit-new-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit-binds-fresh-numbers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-visible-at-withdrawn"
+        }
+      ]
+    },
+    {
+      "id": "PRF-202",
+      "events": []
+    },
+    {
+      "id": "PRF-203",
+      "events": []
+    },
+    {
+      "id": "PRF-204",
+      "events": []
     }
   ]
 }
