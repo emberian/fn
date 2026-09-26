@@ -1092,6 +1092,32 @@ unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
 close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
 accounting and waiting instead of refusing are local policy.
 
+## Listener addresses (NNT-041)
+
+NNT-041: The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why
+
+`[listener] host` is one address or a comma-separated list. Each is an IPv4
+dotted quad, an IPv6 literal in RFC 4291 §2.2's text forms (optionally
+bracketed as RFC 3986 §3.2.2's IP-literal; the port is `[listener] port`,
+never inside the host) or the name `localhost` (the IPv4 loopback, never
+resolved). ACL2 (`fn-native-config-listener-addresses`,
+books/native-config.lisp) projects the list to the family and octets the
+owner binds, one listener per address on the same port, and one
+implicit-TLS listener per address when `tls_port` is set (the TLS listener
+itself is unchanged). PRF-197 is the keystone: every admitted list is
+nonempty, duplicate-free, and each element is an AF_INET quad other than
+`0.0.0.0` or an AF_INET6 address other than `::` and `::ffff:0:0/96`.
+A refusal is `listener-address` (not the grammar), `listener-unspecified`
+(a wildcard), `listener-mapped` (an IPv4-mapped IPv6 address: write the IPv4
+address) or `listener-duplicate`. RFC requirement: the text forms (RFC 4291
+§2.2, RFC 3986 §3.2.2). Local policy: the wildcard and mapped refusals, and
+one listener per written address rather than a dual-stack wildcard socket
+(OpenBSD's AF_INET6 sockets never carry IPv4, so one address per family is
+the portable form). The node is public when any listener is
+(`fn-exp-address-publicp` per address). A live reconfiguration does not
+rebind listeners (PKT-464 (a)); a changed `host` takes effect at restart.
+What remains: PKT-577.
+
 ## Scope
 
 No moderation, automated control-message execution, private-mail confidentiality,

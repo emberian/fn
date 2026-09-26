@@ -11,6 +11,11 @@
   (declare (xargs :mode :program))
   *fn-ncfg-max-octets*)
 
+(defun fn-native-config-host-listener-addresses (host-octets)
+  "NNT-041: every (FAMILY ADDRESS) the owner binds, in the written order."
+  (declare (xargs :mode :program))
+  (fn-native-config-listener-addresses host-octets))
+
 (defun fn-native-config-host-listener-address (host-octets)
   "The raw owner consumes this ACL2 projection instead of resolving HOST."
   (declare (xargs :mode :program))
