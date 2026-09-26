@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 940 |
-| Certification roots in the Makefile | 922 |
-| Books inside the root closure | 936 |
-| `defthm` and `defthmd` events | 13145 |
-| `defun` events | 9125 |
+| Books read | 942 |
+| Certification roots in the Makefile | 924 |
+| Books inside the root closure | 938 |
+| `defthm` and `defthmd` events | 13166 |
+| `defun` events | 9133 |
 | Functions with verified guards | 2194 |
 | Functions declared `:verify-guards nil` and never verified | 719 |
-| Functions left at the default with an explicit guard | 4858 |
-| Functions left at the default with no guard | 1354 |
-| `assert-event` checks | 13558 |
-| `must-fail` checks | 1533 |
+| Functions left at the default with an explicit guard | 4860 |
+| Functions left at the default with no guard | 1360 |
+| `assert-event` checks | 13562 |
+| `must-fail` checks | 1535 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 114 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 134 |
-| Include-hygiene warnings | 947 |
+| Include-hygiene warnings | 950 |
 | Host-names warnings | 1060 |
 | Hand-written-record warnings | 18 |
 
@@ -320,6 +320,7 @@ that `make certify` requests.
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 45 | 154 | 1/0/153/0 | 0 | 0 | 0 |
+| `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-event-index-store-invariants.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/consumer-event-index.lisp` | root | 16 | 10 | 2/1/7/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 5 | 18 | 18/0/0/0 | 0 | 0 | 0 |
@@ -794,6 +795,7 @@ that `make certify` requests.
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 102 | 0 | 0 |
+| `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 4 | 2 | 0 |
 | `tests/acl2/consumer-event-index-store-invariants-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 6 | 1 | 0 |
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 2 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 33 | 5 | 0 |
