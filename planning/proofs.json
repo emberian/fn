@@ -5918,7 +5918,8 @@
         "tests/test_native_peer_pull.py",
         "planning/evidence/peer-feeds-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T102136Z-292994.json",
-        "planning/evidence/manifests/certify-20260926T102946Z-380804.json"
+        "planning/evidence/manifests/certify-20260926T102946Z-380804.json",
+        "planning/evidence/manifests/certify-20260926T103810Z-481225.json"
       ],
       "events": [
         "fn-pull-session-close-advances-only-past-a-fully-answered-round",

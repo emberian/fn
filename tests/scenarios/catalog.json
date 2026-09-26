@@ -2699,7 +2699,8 @@
       "evidence": [
         "planning/evidence/peer-feeds-2026-09-26.md",
         "tests/test_native_peer_pull.py",
-        "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-run1.log"
+        "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-run1.log",
+        "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log"
       ],
       "implementation": {
         "test": "tests.test_native_peer_pull",
@@ -2709,7 +2710,7 @@
           "test_soak_two_nodes_and_an_unproducible_listing"
         ],
         "native": true,
-        "log": "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-run1.log",
+        "log": "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log",
         "record": "planning/evidence/peer-feeds-2026-09-26.md"
       }
     }
