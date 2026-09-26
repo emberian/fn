@@ -42,7 +42,8 @@
 ; handle (fn-arena-seals-keep-sealed), which is what lets the fold extend.
 
 (in-package "ACL2")
-(include-book "catalog-commit")
+(include-book "catalog-delta")   ; and catalog-commit through it; the redecide lemmas
+                                  ; fn-cat-redecide-count, -keeps-handles, fn-cat-handles-inp-of-redecide
 (include-book "owner-invariants")
 
 ; -----------------------------------------------------------------------------
