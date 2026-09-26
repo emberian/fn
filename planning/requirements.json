@@ -2019,7 +2019,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-083",
-        "PRF-104"
+        "PRF-104",
+        "PRF-199"
       ],
       "verification": [
         "proof",
@@ -3300,22 +3301,23 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-183"
+        "PRF-183",
+        "PRF-200"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
       "evidence": [
-        "books/owner-checkpoint-stream.lisp",
-        "tests/acl2/owner-checkpoint-stream-tests.lisp",
         "books/octets-stobj.lisp",
         "books/store-checkpoint-buffer.lisp",
         "books/native-live-status.lisp",
         "tests/test_native_checkpoint_auto.py",
-        "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
+        "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "books/owner-checkpoint-pipeline.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp"
       ],
-      "implementation_note": "The publication thread (host/native/owner.lisp fnn-owner-publish-captured) calls fn-ock-publication-stream with its own buffer fn-octets-pub; ACL2 computes the file's exact length first (fn-ockb-file-len) against the profile's checkpoint budget (fn-ock-capture-budget, the reader's file bound: 3 x max-history-octets plus one segment's framing) and defers by name (CHECKPOINT deferred reason=exceeds-budget estimate=E budget=B; `status' carries ` deferred=... estimate=E budget=B' on its checkpoint-file line; the retry waits until the budget covers E, fn-ock-publication-blockedp on the due path); else it encodes once into the buffer and the host writes the plan straight from the array through the unchanged fn-bs-scp-program cuts. The frozen checkpoint value itself (the records twice) still lives on the heap at sixteen bytes per octet: the arena (PKT-293/PKT-167) and PKT-314 remain."
+      "implementation_note": "Since lane checkpoint-pipeline (2026-09-26) the decision is the pipeline's (books/owner-checkpoint-pipeline.lisp fn-ockp-setup/fn-ockp-decide): the estimate is the file's length computed from the tables' metadata without encoding or touching a payload octet (fn-ockp-estimate-is-len-file-octets), compared with the profile's checkpoint budget (fn-ock-capture-budget, unchanged) and with the free space less the maintenance reserve; the deferral names its reason (exceeds-budget or exceeds-space), the estimate and the bound (CHECKPOINT deferred reason=R estimate=E budget=B; `status' carries it); the retry waits until the bound covers E (fn-ock-publication-blockedp on the due path). The encode is the batched writer of STO-026."
     },
     {
       "id": "HST-012",
@@ -3812,6 +3814,34 @@
       ],
       "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
+    },
+    {
+      "id": "STO-026",
+      "title": "The state checkpoint is four tables (schema 3), each a run of FNSC segments, holding every payload once, written by one resumable pipeline in bounded batches through the publication buffer and read back as the capture; a file of another schema is refused by name and the journal replays",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-199",
+        "PRF-200",
+        "PRF-133",
+        "PRF-135",
+        "PRF-183"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-tables.lisp",
+        "books/store-checkpoint-tables-reader.lisp",
+        "books/owner-checkpoint-pipeline.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      ],
+      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy); the loop theorem fn-ockp-run-writes-the-file (PKT-583)."
     }
   ]
 }

@@ -150,13 +150,19 @@
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
-;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
-;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
+;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
-;; The state checkpoint read from the octet buffer (rep-wave-d-3):
-;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
-;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+;; The FNSC segments read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The schema-3 tables and the pipeline (lane checkpoint-pipeline, D33/D34):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sct-load,
+;; fn-store-sco-select calls fn-sco-select-named and
+;; fn-store-sco-publish-setup calls fn-ockp-setup.
+(include-book "books/store-checkpoint-tables")
+(include-book "books/store-checkpoint-tables-reader")
+(include-book "books/owner-checkpoint-pipeline")
 ;; The served read over the octet buffer (ingress-span): host/owner-host.lisp
 ;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
 (include-book "books/served-span")

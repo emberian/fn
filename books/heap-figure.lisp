@@ -34,7 +34,7 @@
 ;   B        the buffer octets: 2 x F, F = `fn-ock-capture-budget' =
 ;            `fn-sccr-file-read-bound' (3H plus one segment's framing): the
 ;            publication buffer the automatic capture fills (fn-octets-pub,
-;            books/owner-checkpoint-stream.lisp) and the reader's buffer at
+;            books/owner-checkpoint-pipeline.lisp) and the reader's buffer at
 ;            open.  Byte vectors, one byte per octet, large objects the
 ;            collector does not copy.
 ;
@@ -59,7 +59,7 @@
 ; machine under 4 GiB (`fn-heap-init-request').
 
 (in-package "ACL2")
-(include-book "owner-checkpoint-stream")
+(include-book "owner-checkpoint-pipeline")
 (include-book "outcome-class")
 
 (defconst *fn-heap-mib* 1048576)

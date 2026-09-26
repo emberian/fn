@@ -473,23 +473,7 @@
   :hints (("Goal" :induct (fn-sccr-run i end stack fn-octets)
            :in-theory (e/d (fn-scc-run) (fn-scc-step floor mod nth)))))
 
-(defun fn-sccr-decode-tree (start end fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (natp start) (natp end) (<= start end)
-                              (<= end (fn-octets-len fn-octets)))))
-  (let ((stack (fn-sccr-run start end nil fn-octets)))
-    (if (and (consp stack) (null (cdr stack)))
-        (list :ok (car stack))
-      (list :refused :tree))))
-
-(defthm fn-sccr-decode-tree-is-decode-tree
-  (implies (and (fn-octets-p fn-octets) (natp start) (natp end) (<= start end)
-                (<= end (len fn-octets)))
-           (equal (fn-sccr-decode-tree start end fn-octets)
-                  (fn-scc-decode-tree (fn-oct-slice-list start end fn-octets))))
-  :hints (("Goal" :in-theory (e/d (fn-scc-decode-tree) (fn-scc-run)))))
-
-(in-theory (disable fn-sccr-run fn-sccr-decode-tree))
+(in-theory (disable fn-sccr-run))
 
 ; -----------------------------------------------------------------------------
 ; The plan: frames (HEADER A B TRAILER) over the buffer, contiguous from
@@ -599,37 +583,6 @@
                                     (len fn-octets))))))
   :hints (("Goal" :induct (fn-sccr-join plan pos index count sequence prev fn-octets)
            :in-theory (e/d (fn-octets-len) (fn-sccr-open-frame floor mod)))))
-
-; The reader over a plan: `fn-scc-decode-segments' mirrored.
-(defun fn-sccr-decode-plan (plan fn-octets)
-  (declare (xargs :stobjs fn-octets :guard t
-                  :guard-hints (("Goal" :use ((:instance fn-sccr-join-ok-end
-                                                         (pos (if (consp plan)
-                                                                  (fn-sccr-at 1 (car plan))
-                                                                0))
-                                                         (index 0)
-                                                         (count (nth 1 (fn-scc-parse-header
-                                                                        (fn-sccr-at 0 (car plan)))))
-                                                         (sequence (nth 3 (fn-scc-parse-header
-                                                                           (fn-sccr-at 0 (car plan)))))
-                                                         (prev *fn-scc-genesis*)))
-                                 :in-theory (disable fn-sccr-join-ok-end fn-sccr-join
-                                                     fn-scc-parse-header)))))
-  (let ((start (if (consp plan) (fn-sccr-at 1 (car plan)) 0)))
-    (if (not (fn-sccr-planp plan start fn-octets))
-        (list :refused :layout)
-      (let ((h (and (consp plan) (fn-scc-parse-header (fn-sccr-at 0 (car plan))))))
-        (if (not h)
-            (list :refused :header)
-          (let ((j (fn-sccr-join plan start 0 (nth 1 h) (nth 3 h) *fn-scc-genesis*
-                                 fn-octets)))
-            (if (not (eq (car j) :ok))
-                j
-              (let ((tree (fn-sccr-decode-tree start (nth 1 j) fn-octets)))
-                (if (and (eq (car tree) :ok)
-                         (equal (fn-scc-value-sequence (nth 1 tree)) (nth 3 h)))
-                    tree
-                  (list :refused :value))))))))))
 
 ; -----------------------------------------------------------------------------
 ; The twin: the buffer reader is the list reader on the frames' octets.
@@ -784,25 +737,24 @@
           (if (equal index count) (list :ok pos) (list :refused :truncated)))
    :hints (("Goal" :in-theory (enable fn-sccr-join)))))
 
-(local
- (defthm fn-sccr-join-is-join
-   (implies (and (fn-octets-p fn-octets) (fn-sccr-planp plan pos fn-octets)
-                 (fn-scc-octet-listp prev) (true-listp racc) (natp index))
-            (equal (fn-scc-join (fn-sccr-plan-segments plan fn-octets)
-                                index count sequence prev racc)
-                   (let ((j (fn-sccr-join plan pos index count sequence prev fn-octets)))
-                     (if (eq (car j) :ok)
-                         (list :ok (revappend racc (fn-oct-slice-list pos (nth 1 j) fn-octets)))
-                       j))))
-   :hints (("Goal" :induct (fn-sccr-join-ind plan pos index count sequence prev racc
-                                             fn-octets)
-            :expand ((fn-sccr-plan-segments plan fn-octets)
-                     (fn-sccr-join plan pos index count sequence prev fn-octets)
-                     (:free (segs) (fn-scc-join segs index count sequence prev racc)))
-            :in-theory (e/d ()
-                            (fn-scc-join fn-sccr-join fn-sccr-plan-segments
-                             fn-scc-open-segment fn-sccr-open-frame
-                             fn-sccr-planp fn-sccb-frame-octets floor mod nth))))))
+(defthm fn-sccr-join-is-join
+  (implies (and (fn-octets-p fn-octets) (fn-sccr-planp plan pos fn-octets)
+                (fn-scc-octet-listp prev) (true-listp racc) (natp index))
+           (equal (fn-scc-join (fn-sccr-plan-segments plan fn-octets)
+                               index count sequence prev racc)
+                  (let ((j (fn-sccr-join plan pos index count sequence prev fn-octets)))
+                    (if (eq (car j) :ok)
+                        (list :ok (revappend racc (fn-oct-slice-list pos (nth 1 j) fn-octets)))
+                      j))))
+  :hints (("Goal" :induct (fn-sccr-join-ind plan pos index count sequence prev racc
+                                            fn-octets)
+           :expand ((fn-sccr-plan-segments plan fn-octets)
+                    (fn-sccr-join plan pos index count sequence prev fn-octets)
+                    (:free (segs) (fn-scc-join segs index count sequence prev racc)))
+           :in-theory (e/d ()
+                           (fn-scc-join fn-sccr-join fn-sccr-plan-segments
+                            fn-scc-open-segment fn-sccr-open-frame
+                            fn-sccr-planp fn-sccb-frame-octets floor mod nth)))))
 
 (local
  (defthm fn-sccr-genesis-octets
@@ -824,154 +776,6 @@
                                       (nth 3 frame))))))
    :hints (("Goal" :in-theory (e/d (fn-sccb-frame-octets) (fn-scc-parse-header))))))
 
-; The twin.
-(defthm fn-sccr-decode-plan-is-decode-segments
-  (implies (and (fn-octets-p fn-octets)
-                (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets))
-           (equal (fn-sccr-decode-plan plan fn-octets)
-                  (fn-scc-decode-segments (fn-sccr-plan-segments plan fn-octets))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-sccr-join-ok-end
-                            (pos (fn-sccr-at 1 (car plan))) (index 0)
-                            (count (nth 1 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))))
-                            (sequence (nth 3 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))))
-                            (prev *fn-scc-genesis*)))
-           :in-theory (e/d (fn-scc-decode-segments fn-sccr-decode-plan
-                            fn-sccr-plan-segments)
-                           (fn-scc-join fn-sccr-join fn-scc-parse-header fn-scc-decode-tree
-                            fn-sccr-join-ok-end fn-scc-value-sequence
-                            fn-sccb-frame-octets)))))
-
-; Where the shape fails, the reader refuses by name.
-(defthm fn-sccr-decode-plan-refuses-layout-by-definition
-  (implies (not (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets))
-           (equal (fn-sccr-decode-plan plan fn-octets) (list :refused :layout)))
-  :hints (("Goal" :in-theory (enable fn-sccr-decode-plan))))
-
-; -----------------------------------------------------------------------------
-; The writer's plan is a reader's plan, and its frames' octets are the
-; codec's segments.
-
-(local
- (defthm fn-sccr-header-shape
-   (and (fn-scc-octet-listp (fn-scc-header index count length sequence))
-        (equal (len (fn-scc-header index count length sequence))
-               *fn-scc-segment-header-octets*))
-   :hints (("Goal" :in-theory (enable fn-scc-header)))))
-
-(local
- (defthm fn-sccr-chunks-short
-   (implies (or (zp seg) (<= (len p) seg))
-            (equal (fn-scc-chunks p seg) (list p)))))
-
-(local
- (defthm fn-sccr-chunks-long
-   (implies (and (not (zp seg)) (< seg (len p)))
-            (equal (fn-scc-chunks p seg)
-                   (cons (take seg p) (fn-scc-chunks (nthcdr seg p) seg))))))
-
-(local
- (defthm fn-sccr-planp-of-frames
-   (implies (and (fn-octets-p fn-octets) (natp a) (<= a (len fn-octets))
-                 (fn-scc-octet-listp prev))
-            (fn-sccr-planp (fn-sccb-frames a index count sequence prev seg fn-octets)
-                           a fn-octets))
-   :hints (("Goal" :induct (fn-sccb-frames a index count sequence prev seg fn-octets)
-            :in-theory (e/d (fn-sccb-frames fn-octets-len)
-                            (fn-scc-header fn-scc-seal fn-scc-u64 floor mod
-                             fn-oct-slice-list))))))
-
-(local
- (defthm fn-sccr-plan-segments-of-frames
-   (implies (and (fn-octets-p fn-octets) (natp a) (<= a (len fn-octets))
-                 (fn-scc-octet-listp prev))
-            (equal (fn-sccr-plan-segments
-                    (fn-sccb-frames a index count sequence prev seg fn-octets)
-                    fn-octets)
-                   (fn-scc-frames (fn-scc-chunks (nthcdr a fn-octets) seg)
-                                  index count sequence prev)))
-   :hints (("Goal" :induct (fn-sccb-frames a index count sequence prev seg fn-octets)
-            :in-theory (e/d (fn-sccb-frames fn-oct-slice-list-is-take-nthcdr)
-                            (fn-scc-header fn-scc-seal fn-scc-u64 floor mod
-                             fn-scc-chunks))))))
-
-(local
- (defthm fn-sccr-value-sequence-natp
-   (natp (fn-scc-value-sequence c))
-   :rule-classes :type-prescription))
-
-; The program of an encodable value is an octet buffer value.
-(local
- (defthm fn-sccr-octets-p-of-program
-   (implies (fn-sccb-treep c)
-            (fn-octets-p (fn-scc-program c)))
-   :hints (("Goal" :use fn-sccb-treep-encodes-octets
-            :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
-                            (fn-scc-program fn-sccb-treep fn-sccb-treep-encodes-octets))))))
-
-; The frames from A are nonempty and begin at A.
-(local
- (defthm fn-sccr-frames-first
-   (and (consp (fn-sccb-frames a index count sequence prev seg fn-octets))
-        (equal (fn-sccr-at 1 (car (fn-sccb-frames a index count sequence prev seg fn-octets)))
-               a))
-   :hints (("Goal" :expand ((fn-sccb-frames a index count sequence prev seg fn-octets))
-            :in-theory (disable fn-scc-header fn-scc-seal fn-oct-slice-list)))))
-
-; The writer's plan, as the reader takes it: contiguous from 0 over the
-; encoding, and its frames' octets are `fn-scc-segments'.
-(defthm fn-sccr-writer-plan-is-a-plan
-  (implies (fn-sccb-treep c)
-           (and (fn-sccr-planp (mv-nth 0 (fn-sccb-plan c seg fn-octets)) 0
-                               (mv-nth 1 (fn-sccb-plan c seg fn-octets)))
-                (equal (fn-sccr-plan-segments (mv-nth 0 (fn-sccb-plan c seg fn-octets))
-                                              (mv-nth 1 (fn-sccb-plan c seg fn-octets)))
-                       (fn-scc-segments c seg))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sccb-plan fn-scc-segments)
-                           (fn-sccb-frames fn-scc-frames fn-scc-chunks fn-scc-program
-                            fn-scc-treep fn-sccb-treep fn-scc-value-sequence
-                            fn-sccb-chunk-count fn-scc-encode fn-sccb-renc)))))
-
-(local
- (defthm fn-sccr-writer-plan-first
-   (implies (fn-sccb-treep c)
-            (and (consp (mv-nth 0 (fn-sccb-plan c seg fn-octets)))
-                 (equal (fn-sccr-at 1 (car (mv-nth 0 (fn-sccb-plan c seg fn-octets)))) 0)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-sccb-plan)
-                            (fn-sccb-frames fn-scc-frames fn-scc-chunks fn-scc-program
-                             fn-scc-header fn-scc-seal fn-scc-treep fn-sccb-treep
-                             fn-scc-value-sequence fn-sccb-chunk-count fn-sccb-renc
-                             fn-oct-slice-list))))))
-
-; KEYSTONE (PRF-135): the buffer decode of the writer's plan, over the
-; buffer the writer leaves, is the value.  The two width hypotheses are the
-; codec's u64 header fields (fn-scc-decode-segments-of-segments).
-(defthm fn-sccr-decode-of-plan
-  (implies (and (fn-sccb-treep c)
-                (< (+ 1 (len (fn-scc-encode c))) *fn-scc-u64-bound*)
-                (< (fn-scc-value-sequence c) *fn-scc-u64-bound*))
-           (equal (fn-sccr-decode-plan (mv-nth 0 (fn-sccb-plan c seg fn-octets))
-                                       (mv-nth 1 (fn-sccb-plan c seg fn-octets)))
-                  (list :ok c)))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-sccr-decode-plan-is-decode-segments
-                            (plan (mv-nth 0 (fn-sccb-plan c seg fn-octets)))
-                            (fn-octets (mv-nth 1 (fn-sccb-plan c seg fn-octets))))
-                 (:instance fn-sccr-writer-plan-is-a-plan)
-                 (:instance fn-sccr-writer-plan-first)
-                 (:instance fn-sccb-plan-buffer-is-encode)
-                 (:instance fn-sccr-octets-p-of-program)
-                 (:instance fn-scc-decode-segments-of-segments (segment-octets seg)))
-           :in-theory (e/d ()
-                           (fn-sccr-decode-plan-is-decode-segments fn-sccr-writer-plan-is-a-plan
-                            fn-sccr-writer-plan-first
-                            fn-scc-decode-segments-of-segments fn-sccb-plan fn-sccr-decode-plan
-                            fn-sccr-planp fn-sccr-plan-segments fn-scc-decode-segments
-                            fn-scc-segments fn-scc-program fn-sccb-treep fn-scc-value-sequence
-                            fn-sccb-plan-buffer-is-encode fn-sccb-plan-is-file-octets)))))
-
 ; -----------------------------------------------------------------------------
 ; The admission of one segment before it is read: the host holds the
 ; header (37 octets) and the running total of the file so far; ACL2 says
@@ -990,12 +794,26 @@
   (+ (* 3 (nfix max-history-octets))
      (fn-scc-segment-max-octets (nfix max-record-octets))))
 
+(defun fn-sccr-other-schemap (header)
+  ; The codec's magic, then a schema byte that is not this codec's.
+  (declare (xargs :guard t))
+  (and (fn-scc-octet-listp header)
+       (fn-scc-long-enoughp 5 header)
+       (equal (take 4 header) *fn-scc-magic*)
+       (not (equal (nth 4 header) *fn-scc-schema*))))
+
 (defun fn-sccr-admit-segment (header total segment-bound file-bound)
-  ; (:ok EXTENT CHUNK-OCTETS), (:refused :header) or (:refused :exceeds-bound).
+  ; (:ok EXTENT CHUNK-OCTETS), (:refused :header), (:refused :schema) or
+  ; (:refused :exceeds-bound).
   (declare (xargs :guard t))
   (let ((h (and (fn-scc-octet-listp header) (fn-scc-parse-header header))))
     (if (not h)
-        (list :refused :header)
+        ; A file of this magic under another schema (a schema-2 file of an
+        ; image before schema 3, D34) is refused BY NAME: the open replays
+        ; the journal, `status' says `reason=checkpoint-schema'.
+        (if (fn-sccr-other-schemap header)
+            (list :refused :schema)
+          (list :refused :header))
       (let* ((chunk (nth 2 h))
              (extent (+ *fn-scc-segment-header-octets* chunk *fn-frame-trailer-octets*)))
         (if (and (natp segment-bound) (<= extent segment-bound)
@@ -1016,5 +834,5 @@
                            (fn-scc-parse-header fn-scc-parse-header-facts floor mod)))))
 
 (in-theory (disable fn-sccr-framep fn-sccr-planp fn-sccr-plan-segments
-                    fn-sccr-open-frame fn-sccr-join fn-sccr-decode-plan
+                    fn-sccr-open-frame fn-sccr-join
                     fn-sccr-admit-segment fn-sccr-file-read-bound))

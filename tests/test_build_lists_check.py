@@ -44,15 +44,19 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
 # includes books/octets-stobj itself, so a fixture that omits the buffer
 # includes omits this one too, or the omission is served transitively.
 CHECKPOINT_BUFFER_INCLUDES = (
-    ';; The state checkpoint\'s file octets over the octet buffer (rep-wave-d-2):\n'
-    ';; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.\n'
+    ";; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):\n"
+    ';; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.\n'
     '(include-book "books/store-checkpoint-buffer")\n'
-    # rep-wave-d-3: the reader over the buffer includes the writer's book, so
-    # the fixture omits both or the buffer is served transitively.
-    ';; The state checkpoint read from the octet buffer (rep-wave-d-3):\n'
-    ';; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and\n'
-    ';; fn-store-sco-segment-admit calls fn-sccr-admit-segment.\n'
+    ';; The FNSC segments read from the octet buffer (rep-wave-d-3):\n'
+    ';; host/store-node-host.lisp fn-store-sco-segment-admit calls fn-sccr-admit-segment.\n'
     '(include-book "books/store-checkpoint-reader")\n'
+    ';; The schema-3 tables and the pipeline (lane checkpoint-pipeline, D33/D34):\n'
+    ';; host/store-node-host.lisp fn-store-sco-decode calls fn-sct-load,\n'
+    ';; fn-store-sco-select calls fn-sco-select-named and\n'
+    ';; fn-store-sco-publish-setup calls fn-ockp-setup.\n'
+    '(include-book "books/store-checkpoint-tables")\n'
+    '(include-book "books/store-checkpoint-tables-reader")\n'
+    '(include-book "books/owner-checkpoint-pipeline")\n'
     # ingress-span: the served read over the octet buffer.  The book includes
     # books/octets-stobj (through books/wire-span), so a fixture that omits the
     # buffer includes omits this one too, or the buffer is served transitively.
@@ -60,7 +64,7 @@ CHECKPOINT_BUFFER_INCLUDES = (
     ';; fn-owner-chunk-span calls fn-scar-ocfg-read-span.\n'
     '(include-book "books/served-span")\n')
 # checkpoint-capture-stream (2026-09-26): host/owner-host.lisp now also
-# includes books/owner-checkpoint-stream, whose closure holds octets-stobj,
+# includes books/owner-checkpoint-pipeline, whose closure holds octets-stobj,
 # so the bare copy (its three self-includes removed) still reaches fn-octets
 # and that finding is gone; the store-reclaim-buffer one stays.
 # post-identity-index (PRF-191): the served POST's owner-host calls are now
@@ -74,18 +78,13 @@ BUFFER_FINDINGS = [
     "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
     "books/served-span.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]
-STORE_NODE_HOST_FINDINGS = [
-    "included: host/store-node-host.lisp uses fn-octets, defined in "
-    "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/store-node-host.lisp",
-    "included: host/store-node-host.lisp uses fn-sccb-plan, defined in "
-    "books/store-checkpoint-buffer.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/store-node-host.lisp"] + [
-    # rep-wave-d-3: the reader's three entries the store-node host calls.
-    f"included: host/store-node-host.lisp uses {name}, defined in "
-    "books/store-checkpoint-reader.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/store-node-host.lisp"
-    for name in ("fn-sccr-admit-segment", "fn-sccr-decode-plan", "fn-sccr-file-read-bound")]
+# checkpoint-pipeline (2026-09-26): host/store-node-host.lisp includes
+# books/store-checkpoint-tables-reader and books/owner-checkpoint-pipeline
+# itself (their closure holds octets-stobj, the buffer and the reader), so
+# the bare copy reaches fn-octets, fn-sccr-admit-segment,
+# fn-sccr-file-read-bound, fn-sct-load and fn-ockp-setup on its own and
+# those findings are gone; the build lists keep the explicit includes.
+STORE_NODE_HOST_FINDINGS = []
 # fn-rcl-existing-action is no longer a finding: host/store-node-host.lisp
 # includes books/store-reclaim itself since test-latency (the Python bridge
 # loads that host file alone).

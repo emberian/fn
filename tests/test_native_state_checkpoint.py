@@ -1,11 +1,12 @@
 """The exact-state checkpoint (P3), native, through both entries.
 
 `operator CONFIG store checkpoint` and the developer `store ROOT checkpoint`
-open the store as `recover` does, ask ACL2 for the checkpoint file
-(host/store-node-host.lisp `fn-store-sco-publish-plan`: the open's
+open the store as `recover` does, ask ACL2 for the pipeline's setup
+(host/store-node-host.lisp `fn-store-sco-publish-setup`: the open's
 checkpoint extended over the records after it, or the capture of the whole
-history) and write it through `fnn-state-checkpoint-write`, the byte program
-`fn-bs-scp-program`.  Every later open reads it range by range, selects it
+history, its schema-3 tables, the estimate and the decision by name) and
+write the tables step by step (`fnn-checkpoint-write-steps`) through
+`fnn-state-checkpoint-write`, the byte program `fn-bs-scp-program`.  Every later open reads it range by range, selects it
 under the profile's K (`fn-sco-select`), reads only the transaction files at
 or after its sequence S and opens through `fn-sco-open`
 (`fn-sn-recover-from-checkpoint-equals-full-recover`).  A missing or corrupt
@@ -63,31 +64,48 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("'fn-store-sco-covered-count", opened)
         # rep-wave-d-3: the file is read into the octet buffer as the
         # writer's plan shape, each segment admitted by ACL2 against the
-        # profile's bounds before it is read, and decoded by index
-        # (fn-store-sco-decode over the buffer, books/store-checkpoint-reader.lisp
-        # fn-sccr-decode-plan); no octet list of the file is built.
+        # profile's bounds before it is read; checkpoint-pipeline (schema 3):
+        # the plan is loaded by the tables reader by index over the buffer
+        # (fn-store-sco-decode calls fn-sct-load, books/store-checkpoint-
+        # tables-reader.lisp; the tables mean the capture,
+        # fn-sct-capture-of-tables); no octet list of the file is built.
         plan = native_cuts.host_function(io, "fnn-state-checkpoint-plan")
         self.assertIn("'fn-store-sco-segment-admit", plan)
         self.assertIn("(fnn-octets-append-vector chunk)", plan)
         self.assertNotIn("fnn-octet-list (concatenate", plan)
         load = native_cuts.host_function(io, "fnn-state-checkpoint-load")
         self.assertIn("(fnn-core-buffer-state 'fn-store-sco-decode value)", load)
+        self.assertIn("(:schema :schema)", load)
         node_decode = native_cuts.host_function(node_host, "fn-store-sco-decode")
-        self.assertIn("(fn-sccr-decode-plan plan fn-octets)", node_decode)
+        self.assertIn("(fn-sct-load plan fn-octets)", node_decode)
+        self.assertIn("(fn-sct-capture-of-tables (cadr loaded))", node_decode)
         node_admit = native_cuts.host_function(node_host, "fn-store-sco-segment-admit")
         self.assertIn("(fn-sccr-admit-segment header total", node_admit)
+        node_select = native_cuts.host_function(node_host, "fn-store-sco-select")
+        self.assertIn("(fn-sco-select-named status sequence count", node_select)
         command = native_cuts.host_function(io, "fnn-command-state-checkpoint")
-        # rep-wave-d-2: the publication is a plan over the octet buffer
-        # (fn-store-sco-publish-plan, books/store-checkpoint-buffer.lisp
-        # fn-sccb-plan); the host assembles the plan's octets from the
-        # buffer's array (fnn-plan-octets, fn-sccb-plan-octets transcribed)
-        # and writes them through the same byte program as before.
-        self.assertIn("'fn-store-sco-publish-plan", command)
-        self.assertIn("(fnn-plan-octets (first answer))", command)
-        self.assertIn("(fnn-state-checkpoint-write store octets)", command)
-        node_plan = native_cuts.host_function(node_host, "fn-store-sco-publish-plan")
-        self.assertIn("(fn-sccb-plan (fn-sco-freeze next) segment-octets fn-octets)", node_plan)
+        # checkpoint-pipeline: the verb is the SAME pipeline as the owner's
+        # thread: ACL2 decides by name before anything is allocated
+        # (fn-store-sco-publish-setup -> fn-ockp-setup), then the batch loop
+        # (fnn-checkpoint-write-steps: fn-ockp-step per step, the step's
+        # frames written straight from the publication buffer) inside the
+        # same byte program's staged writer.
+        self.assertIn("'fn-store-sco-publish-setup", command)
+        self.assertIn("(fnn-checkpoint-write-steps fd setup segment sequence", command)
+        self.assertIn("(fnn-state-checkpoint-write", command)
+        self.assertNotIn("fnn-plan-octets", command)
+        steps = native_cuts.host_function(io, "fnn-checkpoint-write-steps")
+        self.assertIn("(fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+", steps)
+        self.assertIn("(fnn-plan-write-all fd frames st)", steps)
+        self.assertIn("(fnn-core 'fn-ockp-donep state)", steps)
+        node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup")
+        self.assertIn("(fn-ockp-setup next (fn-sf-frontier (fn-sn-files st)) revision", node_setup)
         native_cuts.verify_state_checkpoint_cut_map()
+
+
+# books/frame-octets.lisp *fn-frame-trailer-octets*: the chained seal that
+# ends every FNSC segment.
+FRAME_TRAILER_OCTETS = 32
 
 
 class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
@@ -207,7 +225,16 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three()
         expected = self.observation()
         data = bytearray(self.path().read_bytes())
-        data[len(data) // 2] ^= 0x01
+        # The last octet before the file's final trailer: the last segment's
+        # chunk (or, when that chunk is empty, the previous trailer the chain
+        # seals over), so the flipped bit is under a seal whichever table the
+        # segment carries.  The file's middle octet was a chunk octet under
+        # schema 2 (one run of segments); under schema 3 (four runs, each with
+        # a 37-octet header) it can land in a header's length field, which the
+        # reader refuses by name as `checkpoint-exceeds-bound' before it can
+        # read the seal (hbox native-r2, checkpoint-pipeline-2): a different
+        # refusal, the same fallback.
+        data[-(FRAME_TRAILER_OCTETS + 1)] ^= 0x01
         self.path().write_bytes(bytes(data))
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.assertEqual(self.observation(), expected)

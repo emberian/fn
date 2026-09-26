@@ -25,7 +25,8 @@
 (include-book "../books/store-profile-namespace")
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
-(include-book "../books/store-checkpoint-shape")
+(include-book "../books/store-checkpoint-tables-reader")
+(include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
 ; fn-store-sn-prepare and fn-store-sn-finish call the owner's carried twins
@@ -305,31 +306,26 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; PLAN: one frame (HEADER A B TRAILER) per segment in file order, as the
 ; host's range reads placed them (fnn-state-checkpoint-plan,
 ; host/native/io.lisp): the header and the trailer as octet lists, the
-; chunk as the buffer's cells A..B, the chunks contiguous.  The reader
-; (books/store-checkpoint-reader.lisp fn-sccr-decode-plan) decodes by
-; index over the buffer; no list of the file or of the joined program is
-; built (rep-wave-d-3).  The answer is (:ok S) or (:refused REASON).
+; chunk as the buffer's cells A..B, the chunks contiguous.  The schema-3
+; reader (books/store-checkpoint-tables-reader.lisp fn-sct-load) reads the
+; four table runs by index over the buffer, resolving every payload
+; reference against the P table; no list of the file is built.  The answer
+; is (:ok S) or (:refused REASON), REASON :layout, :header, :sequence,
+; :segment, :truncated, :f-row, :close, :ref, :tree or :trailing.
 (defun fn-store-sco-decode (plan fn-octets state)
   (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let ((decoded (fn-sccr-decode-plan plan fn-octets)))
-    (if (and (consp decoded) (eq (car decoded) :ok) (consp (cdr decoded))
-             ; An index of an older shape is refused by name
-             ; (books/store-checkpoint-shape.lisp, PKT-395): its thawed
-             ; records may be right while its derived index is not.
-             (eq (car (fn-sco-thaw-checked (cadr decoded))) :ok))
-        ; The file carries the count; the record list is read back out of
-        ; the event index (fn-sco-thaw, fn-sco-thaw-of-freeze).
-        (let* ((checkpoint (cadr (fn-sco-thaw-checked (cadr decoded))))
+  (let ((loaded (fn-sct-load plan fn-octets)))
+    (if (and (consp loaded) (eq (car loaded) :ok) (consp (cdr loaded)))
+        ; The tables mean the capture (fn-sct-capture-of-tables-of-capture):
+        ; the 7-tuple the open extends, its event index rebuilt from E.
+        (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
                (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
       (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
         (mv nil
-            (list :refused (cond ((and (consp decoded) (eq (car decoded) :ok)
-                                       (consp (cdr decoded)))
-                                  (cadr (fn-sco-thaw-checked (cadr decoded))))
-                                 ((and (consp decoded) (consp (cdr decoded)))
-                                  (cadr decoded))
-                                 (t :malformed)))
+            (list :refused (if (and (consp loaded) (consp (cdr loaded)))
+                               (cadr loaded)
+                             :malformed))
             state fn-octets)))))
 
 ; The checkpoint's file name: the rename target of the byte program
@@ -428,12 +424,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-store-sco-encode-records (fn-sco-records (fn-store-sco-current state)))))
 
-; The next checkpoint's file octets from the recovered Store: the open's
+; The verb's pipeline setup from the recovered Store: NEXT is the open's
 ; extended checkpoint E (fn-store-sn-open-extended), which is the capture of
-; the recovered history, else the capture of the whole history.  The file
-; carries the count, not the record list (fn-sco-freeze).  The answer is
-; (OCTETS S) or :unencodable.
-(defun fn-store-sco-publish-octets (segment-octets state)
+; the recovered history, else the capture of the whole history; then
+; `fn-ockp-setup' (books/owner-checkpoint-pipeline.lisp) decides by name
+; before anything is allocated.  The answer is (SETUP S): SETUP's first
+; element is :unencodable, (:deferred REASON ESTIMATE BOUND) or
+; (:plan ESTIMATE); host/native/io.lisp fnn-command-state-checkpoint then
+; loops on fn-ockp-step (the same steps the owner's thread runs).
+(defun fn-store-sco-publish-setup (segment-octets budget free revision state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (records (fn-sf-records (fn-sn-files st)))
@@ -444,37 +443,9 @@ reopen predicate, writer-lock observation and observed final namespace."
          (next (if (and opened (equal (fn-sco-records e) records))
                    e
                  (fn-sco-capture configs records)))
-         (octets (fn-scc-file-octets (fn-sco-freeze next) segment-octets)))
-    (if (equal octets :unencodable)
-        (value :unencodable)
-      (value (list octets (fn-sco-sequence next))))))
-
-; The same publication as a PLAN over the octet buffer
-; (books/store-checkpoint-buffer.lisp `fn-sccb-plan'): the checkpoint's
-; postfix program is written into the buffer once, and the host writes, per
-; segment, the header, the buffer's cells A..B and the trailer
-; (`fn-sccb-plan-octets', which is `fn-scc-file-octets' of the same value
-; and segment size by `fn-sccb-plan-is-file-octets').  No octet list of the
-; file is built.  The answer is (PLAN S) or :unencodable; the buffer is
-; returned holding the encoding.  This is what `store checkpoint' calls
-; (host/native/io.lisp `fnn-command-state-checkpoint'); the list entry
-; above stays for the callers that take octets.
-(defun fn-store-sco-publish-plan (segment-octets fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let* ((st (f-get-global 'fn-store-sn state))
-         (records (fn-sf-records (fn-sn-files st)))
-         (configs (fn-sn-config-history st))
-         (opened (and (boundp-global 'fn-store-sco-open state)
-                      (f-get-global 'fn-store-sco-open state)))
-         (e (car opened))
-         (next (if (and opened (equal (fn-sco-records e) records))
-                   e
-                 (fn-sco-capture configs records))))
-    (mv-let (plan fn-octets)
-      (fn-sccb-plan (fn-sco-freeze next) segment-octets fn-octets)
-      (if (equal plan :unencodable)
-          (mv nil :unencodable state fn-octets)
-        (mv nil (list plan (fn-sco-sequence next)) state fn-octets)))))
+         (setup (fn-ockp-setup next (fn-sf-frontier (fn-sn-files st)) revision
+                               segment-octets budget free)))
+    (value (list setup (fn-sco-sequence next)))))
 
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.

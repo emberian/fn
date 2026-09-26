@@ -70,7 +70,7 @@
 ;; fnn-owner-publish-captured calls fn-ock-publication-stream; host/owner-host.lisp
 ;; fn-owner-sco-due and fn-owner-sco-capture call fn-ock-publication-blockedp
 ;; and fn-ock-capture-budget (PKT-492, PKT-315).
-(include-book "books/owner-checkpoint-stream")
+(include-book "books/owner-checkpoint-pipeline")
 (include-book "books/poster-bytes-buffer")
 ;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
@@ -190,13 +190,19 @@
 ;; fn-sxp-import-plan.
 (include-book "books/store-export")
 (ld "host/store-host.lisp" :ld-error-action :error)
-;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
-;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
+;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
-;; The state checkpoint read from the octet buffer (rep-wave-d-3):
-;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
-;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+;; The FNSC segments read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The schema-3 tables and the pipeline (lane checkpoint-pipeline, D33/D34):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sct-load,
+;; fn-store-sco-select calls fn-sco-select-named and
+;; fn-store-sco-publish-setup calls fn-ockp-setup (owner-host.lisp includes
+;; books/owner-checkpoint-pipeline itself).
+(include-book "books/store-checkpoint-tables")
+(include-book "books/store-checkpoint-tables-reader")
 ;; Wave 5's attach-stobj prototype (planning/design-2026-09-26-consolidation.md
 ;; section 3): the attachable generic fn-pcat (books/proto-catalog.lisp) with
 ;; the arena attached before it is introduced; host/native/proto-catalog.lisp
