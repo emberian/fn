@@ -22,8 +22,31 @@
           (fnn-refuse "AUTHINFO credential file exceeds ACL2 bound: ~a" path))
         (values (fnn-octet-list (fnn-read-regular-bounded path maximum)) t)))))
 
-(defun fnn-native-auth-install (path requiredp protected-onlyp tls-availablep
-                                 max-credentials)
+(defvar *fnn-native-auth-live-path* nil
+  "The credential file this owner was started with, for the binding reload
+(host/native/login-bindings.lisp, control request 14).  NIL: none.")
+
+(defun fnn-native-auth-publish-bindings (service octets presentp max-credentials)
+  "Publish the credential file's login bindings into the owner's configuration.
+PKT-221: ACL2's fn-lb-sync-plan names the delta lists; each is staged and made
+durable through fnn-owner-live-reconfigure-locked, the one live path.  The
+caller holds the owner mutex.  Answers :accepted, or :refused before any
+record whose publication was refused (records published before it stand)."
+  (let ((plan (fnn-owner-core 'fn-native-auth-host-bindings-plan
+                              octets presentp max-credentials)))
+    (unless (and (consp plan) (eq (first plan) :ok) (listp (second plan)))
+      (fnn-err "login bindings refused: ~a" (and (consp plan) (second plan)))
+      (return-from fnn-native-auth-publish-bindings :refused))
+    (dolist (deltas (second plan) :accepted)
+      (unless (eq (fnn-owner-live-reconfigure-locked
+                   service
+                   (lambda (cid)
+                     (fnn-owner-action 'fn-owner-reconfigure-deltas cid deltas)))
+                  :accepted)
+        (return-from fnn-native-auth-publish-bindings :refused)))))
+
+(defun fnn-native-auth-install (service path requiredp protected-onlyp
+                                 tls-availablep max-credentials)
   "Load and install the exact ACL2-produced config before any connection opens.
 MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
   (multiple-value-bind (octets presentp)
@@ -41,20 +64,23 @@ MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
         (unless (eq (fnn-owner-action 'fn-owner-set-auth-config config) :ok)
           (fnn-fault "owner rejected ACL2-produced AUTHINFO configuration")))
       ;; The same accepted file's login bindings (`signing' fields), for the
-      ;; posting policy (books/login-binding.lisp).  ACL2 reads them.
-      (unless (eq (fnn-owner-action
-                   'fn-owner-set-login-bindings
-                   (fnn-core 'fn-native-auth-host-load-bindings octets presentp
-                             max-credentials))
-                  :ok)
-        (fnn-fault "owner rejected ACL2-produced login bindings"))
+      ;; posting policy, are published into the configuration (PKT-221,
+      ;; books/login-binding-live.lisp) before the listener opens.
+      (setq *fnn-native-auth-live-path* path)
+      (unless (eq (fnn-owner-serialized
+                   service nil
+                   (lambda ()
+                     (fnn-native-auth-publish-bindings service octets presentp
+                                                       max-credentials)))
+                  :accepted)
+        (fnn-refuse "owner refused to publish the credential file's login bindings"))
       :accepted)))
 
 (defun fnn-native-auth-startup-hook (path requiredp protected-onlyp)
   "Return a composable owner hook.  SERVICE contributes only whether a real
 TLS context loaded; ACL2 still owns the authentication policy decision."
   (lambda (service)
-    (fnn-native-auth-install path requiredp protected-onlyp
+    (fnn-native-auth-install service path requiredp protected-onlyp
                              (fnn-owner-service-tls-context service)
                              (fnn-profile-nat 'fn-store-profile-max-credentials
                                               (fnn-owner-service-store service)))))
