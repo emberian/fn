@@ -2198,6 +2198,32 @@
         "tests/test_native_state_checkpoint.py",
         "planning/evidence/rep-wave-d-3-2026-09-26.md"
       ]
+    },
+    {
+      "id": "SCN-080",
+      "title": "A consumer that dies between fn's acceptance and its own record never records the operation refused, resends only its saved artifact, and consumes only reports it verified itself",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-003"
+      ],
+      "steps": [
+        "A reports R; fn accepts R; A's consumer dies after fn answered and before its result transaction (and, separately, is killed while the owner that committed R withholds the answer); A's enrolment is revoked; A's consumer restarts.",
+        "A reports R1 and dies inside the answer's transaction, and R2 and dies after the in-flight record before sending; each consumer restarts.",
+        "U (enrolled at fn, not in B's keyring) and A (in B's keyring) report; M (trusted, not entitled to report ids) claims r1 before A and r2 after A; B wakes."
+      ],
+      "expected": [
+        "After each death the submission is uncertain with one unanswered attempt; the restarted consumer resends the saved artifact once, fn refuses it (revoked), and that refusal settles only the resend: R is stored by fn's Store serving the exact artifact back, never refused.",
+        "R1's resend is D25's duplicate and R2's a first acceptance; both are stored with the same artifact bytes.",
+        "B keeps U's report with its own verdict undecided beside fn's verified, with no operation, transition or reply; A's reports are applied; M's claims are conflict evidence (unentitled) in both arrival orders."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange.py",
+        "tests/test_fn_consumer_journal.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
+      ]
     }
   ]
 }

@@ -4,6 +4,7 @@
     fn_verify.py --node HOST[:PORT] --cafile NODE-CERT.pem --keyring KEYRING.json '<id@host>'
     fn_verify.py --node 127.0.0.1:1119 --plain --keyring KEYRING.json '<id@host>' --json
     fn_verify.py keyring-entry PRINCIPAL.bin ED-PUBLIC.bin ML-PUBLIC.pem [--generation N]
+    fn_verify.py check-article ARTICLE.eml '<id@host>' --keyring KEYRING.json
     fn_verify.py --node ... --keyring K.json '<target@host>' --withdrawal '<cancel@host>' \
         [--target-copy TARGET.eml]
 
@@ -65,6 +66,14 @@ claim, since the grant is this node's configuration and nothing
 independent can check it (the limit specs/identity.md states for local
 policy).
 
+`check-article` is the offline form, for a client that already holds the
+received bytes (tools/fn_consumer.py hands it the article fn's poll served):
+it asks no node, prints the independent check as JSON (the principal, both
+component verdicts, the carrier's two signatures and the SHA-256 of the
+projected authored source) and exits 0 verified, 1 unverified, 3 cannot
+decide.  The caller compares that with whatever the node said; this tool
+never reads a node verdict in this form.
+
 Credentials come from FN_CLIENT_USER and FN_CLIENT_PASSWORD or from
 `--credentials PATH` (mode 0600, `user password` on one line).  The password
 is sent only after STARTTLS; `--plain` never logs in and is for a loopback
@@ -75,6 +84,7 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -375,7 +385,10 @@ def independent_check(article, msgid, keyring):
     result = {"principal": principal.hex(), "ed25519": ed_ok, "ml-dsa-65": ml_ok,
               "carrier-version": version,
               "implementations": ed_impls + ml_impls,
-              "source-octets": len(source)}
+              "source-octets": len(source),
+              "source-sha256": hashlib.sha256(source).hexdigest(),
+              "signatures": {"ed25519": carrier["ed25519-signature"].hex(),
+                             "ml-dsa-65": carrier["ml-dsa-65-signature"].hex()}}
     if not (ed_ok and ml_ok):
         result.update(outcome="unverified", reason="signature")
         return result
@@ -782,6 +795,22 @@ def verify(args):
     return code
 
 
+def check_article(args):
+    """The offline form: the independent check of ARTICLE, no node asked."""
+    try:
+        keyring = load_keyring(args.keyring)
+        check = independent_check(Path(args.article).read_bytes(), args.msgid, keyring)
+        code = AGREE_VERIFIED if check["outcome"] == "verified" else AGREE_UNVERIFIED
+    except Undecided as error:
+        check, code = {"outcome": "undecided", "reason": str(error)}, UNDECIDED
+    except (OSError, ValueError, KeyError) as error:
+        check = {"outcome": "undecided",
+                 "reason": "{}: {}".format(type(error).__name__, error)}
+        code = UNDECIDED
+    print(json.dumps(check, sort_keys=True))
+    return code
+
+
 class Parser(argparse.ArgumentParser):
     def error(self, message):
         self.print_usage(sys.stderr)
@@ -801,6 +830,15 @@ def main(argv=None):
         print(json.dumps(keyring_entry(args.principal, args.ed_public,
                                        args.ml_public_pem, args.generation)))
         return 0
+    if argv[:1] == ["check-article"]:
+        parser = Parser(prog="fn_verify.py check-article")
+        parser.add_argument("article")
+        parser.add_argument("msgid")
+        parser.add_argument("--keyring", required=True)
+        parser.add_argument("--json", action="store_true",
+                            help="accepted for symmetry; this form always prints JSON")
+        args = parser.parse_args(argv[1:])
+        return check_article(args)
     parser = Parser(prog="fn_verify.py", description=__doc__.split("\n\n")[0])
     parser.add_argument("msgid")
     parser.add_argument("--node", required=True, help="HOST, HOST:PORT or [V6]:PORT")
