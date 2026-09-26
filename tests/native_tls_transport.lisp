@@ -42,10 +42,21 @@
 
 (load "host/native/tls.lisp")
 
+;; The loaded library names itself as OpenSSL 3+ or LibreSSL 3+ (HST-016),
+;; checked from the text here rather than through fnn-tls-supported-version-p.
+;; Refuted: no library loaded, an OpenSSL 1.x or LibreSSL 2.x, any other name.
+(defun fnn-tls-test-major-at-least-3-p (text prefix)
+  (let ((end (length prefix)))
+    (and (stringp text)
+         (> (length text) end)
+         (string= prefix text :end2 end)
+         (let ((major (parse-integer text :start end :junk-allowed t)))
+           (and major (>= major 3))))))
 (let ((version (fnn-tls-version)))
   (fnn-tls-test-check (and (consp version)
-                           (search "OpenSSL 3" (second version)))
-                      "OpenSSL 3 loader/version"))
+                           (or (fnn-tls-test-major-at-least-3-p (second version) "OpenSSL ")
+                               (fnn-tls-test-major-at-least-3-p (second version) "LibreSSL ")))
+                      "OpenSSL 3+ or LibreSSL 3+ loader/version"))
 
 ;; The sole-reader premise is checked at the host boundary: exact consumption
 ;; returns the peeked bytes, while EOF and changed bytes are connection faults.

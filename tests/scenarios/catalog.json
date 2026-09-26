@@ -3428,6 +3428,34 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-136",
+      "title": "Articles over the protected feed between a Linux node and an OpenBSD node, both from release tarballs: posted on each side, read on the other, and a hybrid-signed carrier crossing once",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-030",
+        "HST-015",
+        "HST-016"
+      ],
+      "steps": [
+        "Start from SCN-090's first two steps with one node on Linux (the release tarball, the system OpenSSL 3) and one on OpenBSD 7.9 (the OpenBSD tarball, base LibreSSL, rc.d), peered by invite, accept and confirm.",
+        "Both: a login bound to the other's principal, an FNAUTH1 profile, `peer add` of the same name with `starttls NAME ANCHOR` and both halves (`local.*`); restart both so the new logins are read.",
+        "Post one article on each node over STARTTLS; `peer pull` each way.",
+        "Enrol the OpenBSD node's own keys there (`hybrid-enroll`), sign an article with them (`hybrid-sign`) and inject it (`hybrid-author`).",
+        "Read each article back over STARTTLS on both nodes (raw ARTICLE bytes)."
+      ],
+      "expected": [
+        "Each origin logs `accepted feed peer=... code=239` and the receiver `accepted transit ... code=239 decision=want`, verdict `unsigned` for the plain posts and `verified` for the signed carrier; each `peer pull` round logs `round=done cursor=advanced transport=tls`.",
+        "On the receiving node the article's bytes equal the origin's except the Path line, where the receiver prepended its own path identity with the `!!` diagnostic (RFC 5537 section 3.2.1; RFC 5536 section 3.1.5).",
+        "Neither node stops; a fault that stops one is a failure of this scenario, not an environment note."
+      ],
+      "evidence": [
+        "planning/evidence/release-openbsd-2026-09-26.md",
+        "docs/peering-with-a-friend.md"
+      ],
+      "execution_scope": "Run once by hand on 2026-09-26: the Linux node on hbox (fn-cde3986a5c78 tarball, OpenSSL 3.3.1) and the OpenBSD 7.9 node in a QEMU guest on hbox (fn-a04213276edf tarball, LibreSSL 4.3.0, 1 vCPU, 2 GiB), OpenBSD-to-Linux carried through an ssh reverse tunnel because the guest's container cannot reach the host's docker bridge address. Not a test module: the log SHA-256s are in the record. One unreproduced stop of the OpenBSD node during the first pulls is PKT-591."
     }
   ]
 }

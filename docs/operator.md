@@ -574,7 +574,9 @@ Three OpenBSD rules decide where it lives and how it starts:
   overrides it per invocation.
 - **Working directory.** The image reads its working directory at start;
   run it from a directory its user can read (`cd /var/fn`), or it halts with
-  `getcwd: Permission denied`.
+  `getcwd: Permission denied`. The rc.d script starts the node in `/var/fn`
+  itself (`daemon_execdir=/var/fn` in `packaging/fn.rc.in`); only a start by
+  hand needs the `cd`.
 
 As root, with the tarball and its sum in `/tmp`:
 

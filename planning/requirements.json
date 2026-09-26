@@ -3370,7 +3370,10 @@
         "tests/mldsa65_interop.py",
         "tests/native_hybrid_signatures.lisp",
         "tests/test_native_hybrid_author.py",
-        "planning/evidence/crypto-deps-2026-09-26.md"
+        "planning/evidence/crypto-deps-2026-09-26.md",
+        "tests/test_native_starttls.py",
+        "tests/native_tls_transport.lisp",
+        "planning/evidence/release-openbsd-2026-09-26.md"
       ],
       "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
     }
