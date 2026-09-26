@@ -248,6 +248,23 @@ class Backend:
                                             row["verdict"] = report
                 except fn_client.Stop:
                     pass
+            # A reply whose parent (its last References entry, RFC 5536
+            # section 3.2.10) is not a row of this window: ask the node about
+            # the parent by Message-ID, exactly as the conversation page asks
+            # about each ancestor (Backend.ask_identity), so the two pages
+            # show the same answer.  At most MAX_RECENT STATs, one per
+            # distinct parent; the answer is shown as the node sent it.
+            present = {row["message_id"] for row in rows if row["message_id"]}
+            asked = {}
+            for row in rows:
+                refs = row["references"].split()
+                parent = refs[-1] if refs else ""
+                if not parent or parent in present:
+                    continue
+                if parent not in asked and len(asked) < MAX_RECENT:
+                    asked[parent] = self.ask_identity(client, parent)
+                if parent in asked:
+                    row["parent"] = {"message_id": parent, "answer": asked[parent]}
             # Numbers inside the window and the group's current range that
             # carry no overview row: ask the node what each one is now.  At
             # most MAX_RECENT STATs; the answer (`423 withdrawn`, `423 no
@@ -264,6 +281,17 @@ class Backend:
                                      "high": high, "window_start": window_start,
                                      "window_end": window_end, "holes": holes}, "")
         return self.using(query)
+
+    @staticmethod
+    def ask_identity(client, ident: str) -> str:
+        """The node's answer to `STAT <ident>`, or why it was not asked.
+
+        The one lookup the group view and the conversation page share for an
+        article they hold only by Message-ID (a parent, an ancestor)."""
+        if not (ident.startswith("<") and ident.endswith(">") and len(ident) <= 250):
+            return "not a Message-ID; not asked"
+        stat, _ = client.cmd("STAT " + ident)
+        return stat
 
     @staticmethod
     def over_row(client, number: int):
@@ -312,11 +340,7 @@ class Backend:
             ancestors = []
             for ident in references[:MAX_THREAD_REFERENCES]:
                 entry = {"message_id": ident, "answer": "", "row": None}
-                if not (ident.startswith("<") and ident.endswith(">") and len(ident) <= 250):
-                    entry["answer"] = "not a Message-ID; not asked"
-                    ancestors.append(entry)
-                    continue
-                stat, _ = client.cmd("STAT " + ident)
+                stat = self.ask_identity(client, ident)
                 entry["answer"] = stat
                 parts = stat.split()
                 if stat.startswith("223") and len(parts) > 1:
@@ -1093,6 +1117,24 @@ def answer_kind(answer: str) -> str:
     return "unavailable"
 
 
+def parent_withdrawn(row: dict) -> bool:
+    parent = row.get("parent")
+    return bool(parent) and answer_kind(parent["answer"]) == "withdrawn"
+
+
+def parent_note(row: dict) -> str:
+    """The group view's flag for a reply whose parent the node withdrew.
+
+    The text is the node's answer to `STAT <parent>`, the same answer the
+    conversation page shows as the parent's placeholder."""
+    if not parent_withdrawn(row):
+        return ""
+    parent = row["parent"]
+    return (" · <span class='badge withdrawn' title='" + e(parent["answer"]) +
+            "'>parent withdrawn</span> reply to <code>" + e(parent["message_id"]) +
+            "</code>, which the node answers <code>" + e(parent["answer"]) + "</code>")
+
+
 def withdrawn_note(answer: str) -> str:
     return ("The node answered <code>" + e(answer) + "</code>: an authorized cancel "
             "withdrew this article from what the node serves. The withdrawal says the "
@@ -1732,7 +1774,9 @@ class Handler(BaseHTTPRequestHandler):
                     e(" · ".join(x for x in (row["from"], row["date"],
                                              "local #%s" % row["number"],
                                              "reply to an article outside this window"
-                                             if outside else "") if x)) +
+                                             if outside and not parent_withdrawn(row)
+                                             else "") if x)) +
+                    parent_note(row) +
                     (" · <a href='" + e(href("/t", group=group, number=row["number"])) +
                      "'>conversation</a>" if row.get("references") or outside else "") +
                     "</p></article>"
