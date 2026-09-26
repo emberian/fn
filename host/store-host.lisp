@@ -408,7 +408,12 @@
 ;; The operator's namespace counts (D27, PRF-102).  The host reads each once
 ;; from the profile it opened and hands the natural to the ACL2 subject that
 ;; refuses at it (fn-nco-observe, fn-native-admin-publication-authorize,
-;; fn-native-auth-load, fn-native-auth-admin-set-password).
+;; fn-native-auth-load, fn-native-auth-admin-set-password, and for the
+;; consumer count fn-cp-register-within through fn-col-register, called from
+;; host/owner-host.lisp fn-owner-consumer-local-register).
+(defun fn-store-profile-max-consumers (values)
+  (fn-bs-profile-max-consumers values))
+
 (defun fn-store-profile-max-config-generations (values)
   (fn-bs-profile-max-config-generations values))
 

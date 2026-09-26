@@ -43,14 +43,14 @@
 (defconst *colt-id* '(7))
 (defconst *colt-group* '(102 110 46 116 101 115 116)) ; fn.test
 (defconst *colt-register*
-  (fn-col-register *colt-o0* *colt-id* *colt-group*))
+  (fn-col-register *colt-o0* 256 *colt-id* *colt-group*))
 (assert-event (eq (car *colt-register*) :write))
 (assert-event (equal (fn-cpe-operation (cadr *colt-register*))
                      (list :register *colt-id* *fn-col-principal*
                            *colt-group* 1 0 1)))
 (assert-event (equal (fn-col-position *colt-o0* *colt-id*)
                      '(:refused :scope)))
-(assert-event (equal (fn-col-register *colt-o0* *colt-id* '(1 2 3))
+(assert-event (equal (fn-col-register *colt-o0* 256 *colt-id* '(1 2 3))
                      '(:refused :query)))
 
 (defconst *colt-s1* (colt-commit *colt-boot* (cadr *colt-register*)))
@@ -132,12 +132,21 @@
  (equal (fn-col-poll-scan (list *colt-second-article*)
                           *colt-group* 2 4 16)
         '(:refused :history)))
-(assert-event (equal (fn-col-register *colt-o1* *colt-id* *colt-group*)
+(assert-event (equal (fn-col-register *colt-o1* 256 *colt-id* *colt-group*)
                      (list :no-op
                            (fn-cp-scope-cursor
                             (fn-sn-consumer *colt-s1*)
                             (fn-cp-find *colt-id*
                                         (fn-cp-nth 5 (fn-sn-consumer *colt-s1*)))))))
+
+; The served subject under the operator's consumer count (store profile
+; field 9): with one consumer registered, a second is a write under 2 and is
+; refused by name under 1; the existing one stays a no-op under 1.
+(assert-event (eq (car (fn-col-register *colt-o1* 2 '(8) *colt-group*)) :write))
+(assert-event (equal (fn-col-register *colt-o1* 1 '(8) *colt-group*)
+                     '(:refused :max-consumers)))
+(assert-event (eq (car (fn-col-register *colt-o1* 1 *colt-id* *colt-group*))
+                  :no-op))
 
 ; A public cursor remains a declaration, not evidence that a poll or
 ; application transaction happened.  The local authenticated principal is

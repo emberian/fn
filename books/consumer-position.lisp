@@ -6,7 +6,10 @@
 
 (defconst *fn-cp-max-id* 64)
 (defconst *fn-cp-max-token* 512)
-(defconst *fn-cp-max-consumers* 256)
+; The consumer count is the operator's (D27; store profile field 9,
+; `fn-bs-profile-max-consumers', books/store-profile-namespace): the served
+; decision `fn-cp-register-within' takes it as MAX.  Pre-D27 this book held a
+; constant 256 here, checked by the decision and again by replay.
 (defconst *fn-cp-magic* '(102 110 99 117)) ; "fncu"
 (defconst *fn-cp-version* 1)
 
@@ -176,7 +179,6 @@
        (fn-cp-uintp (fn-cp-nth 3 s))
        (posp (fn-cp-nth 4 s))
        (fn-cp-uintp (fn-cp-nth 4 s))
-       (<= (len (fn-cp-nth 5 s)) *fn-cp-max-consumers*)
        (fn-cp-entriesp (fn-cp-nth 5 s)
                        (fn-cp-nth 3 s) (fn-cp-nth 4 s))))
 
@@ -216,14 +218,28 @@
                         (equal view (fn-cp-nth 5 old)))
                    (list :no-op (fn-cp-scope-cursor s old))
                  (list :refused :rebase-required)))
-          ((>= (len (fn-cp-nth 5 s)) *fn-cp-max-consumers*)
-           (list :refused :capacity))
           ((or (not (posp (fn-cp-nth 4 s)))
                (not (fn-cp-uintp (fn-cp-nth 4 s)))
                (equal (fn-cp-nth 4 s) *fn-cbor-max-uint*))
            (list :refused :epoch-exhausted))
           (t (list :write (list :register consumer caller query qver view
                                 (fn-cp-nth 4 s)))))))
+
+;   The served registration: `fn-cp-register' under the operator's consumer
+; count MAX (profile field 9).  A register write that would hold more than
+; MAX entries is refused `:max-consumers'; every other answer is
+; `fn-cp-register''s.  Replay re-runs `fn-cp-register' only (the committed
+; event's validity, books/consumer-store-projection), not this admission
+; bound: the profile only rises (`fn-profile-upgrade-keeps-namespace-counts'),
+; so a register the node committed under an older bound is within the
+; current one, and a replay that refused it would be whole-state
+; revalidation of what the served decision already decided.
+(defun fn-cp-register-within (s max caller consumer query qver view)
+  (let ((d (fn-cp-register s caller consumer query qver view)))
+    (if (and (eq (fn-cp-nth 0 d) :write)
+             (<= (nfix max) (len (fn-cp-nth 5 s))))
+        (list :refused :max-consumers)
+      d)))
 
 (defun fn-cp-ack (s caller qver view cursor)
   (let ((entry (fn-cp-find (fn-cp-nth 3 cursor) (fn-cp-nth 5 s))))
@@ -271,7 +287,7 @@
          (old (fn-cp-find consumer entries)))
     (cond
      ((and (eq kind :register) (equal (len event) 7)
-           (not old) (< (len entries) *fn-cp-max-consumers*)
+           (not old)
            (equal (fn-cp-nth 6 event) (fn-cp-nth 4 s))
            (posp (fn-cp-nth 6 event))
            (fn-cp-uintp (fn-cp-nth 6 event))
@@ -374,6 +390,7 @@
 (verify-guards fn-cp-scope-cursor)
 (verify-guards fn-cp-scope-matchp)
 (verify-guards fn-cp-register)
+(verify-guards fn-cp-register-within)
 (verify-guards fn-cp-ack)
 (verify-guards fn-cp-rebase)
 (verify-guards fn-cp-unregister)
@@ -416,10 +433,53 @@
            (< (len (fn-cp-remove consumer entries)) (len entries)))
   :rule-classes :linear)
 
+; Only a register grows the table, and by one entry.
+(defthm fn-cp-apply-grows-only-by-a-register
+  (<= (len (fn-cp-nth 5 (fn-cp-apply s event)))
+      (if (eq (fn-cp-nth 0 event) :register)
+          (1+ (len (fn-cp-nth 5 s)))
+        (len (fn-cp-nth 5 s))))
+  :rule-classes nil)
+
+; KEYSTONE (the served registration refuses exactly past the operator's
+; bound).  Of the answers `fn-cp-register' gives, the served decision
+; changes only a register write, and refuses it `:max-consumers' exactly when
+; the table already holds MAX entries, so after the write it would hold more
+; than MAX.  Every other answer, and every write within the bound, is
+; `fn-cp-register''s, which replay re-runs.  The host calls the subject
+; through `fn-col-register' (books/consumer-owner-local), from
+; host/owner-host.lisp `fn-owner-consumer-local-register', with MAX the
+; opened profile's field 9 (host/store-host.lisp
+; `fn-store-profile-max-consumers').
+(defthm fn-cp-register-within-refuses-exactly-past-the-operator-bound
+  (let ((d (fn-cp-register s caller consumer query qver view))
+        (w (fn-cp-register-within s max caller consumer query qver view)))
+    (and (iff (equal w '(:refused :max-consumers))
+              (and (equal (car d) :write)
+                   (<= (nfix max) (len (fn-cp-nth 5 s)))))
+         (implies (not (equal w '(:refused :max-consumers)))
+                  (equal w d))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cp-register fn-cp-nth))))
+
+; KEYSTONE (the table stays within the operator's bound).  From a table of
+; at most MAX entries, applying the write the served decision proposed --
+; or any event that is not a register -- leaves at most MAX.  With the
+; upgrade keystone (a profile never lowers field 9) this carries the bound
+; across reopen: a table within the old profile's count is within the new.
 (defthm fn-cp-apply-preserves-consumer-capacity
-  (implies (<= (len (fn-cp-nth 5 s)) *fn-cp-max-consumers*)
-           (<= (len (fn-cp-nth 5 (fn-cp-apply s event)))
-               *fn-cp-max-consumers*)))
+  (implies (and (<= (len (fn-cp-nth 5 s)) (nfix max))
+                (or (not (eq (fn-cp-nth 0 event) :register))
+                    (equal (fn-cp-register-within s max caller consumer
+                                                  query qver view)
+                           (list :write event))))
+           (<= (len (fn-cp-nth 5 (fn-cp-apply s event))) (nfix max)))
+  :hints (("Goal" :use ((:instance fn-cp-apply-grows-only-by-a-register)
+                        (:instance
+                         fn-cp-register-within-refuses-exactly-past-the-operator-bound))
+           :in-theory (disable fn-cp-apply fn-cp-register-within
+                               fn-cp-register)))
+  :rule-classes nil)
 
 (defthm fn-cp-find-remove-absent-id
   (implies (and (fn-cp-idp key) (not (fn-cp-find key entries)))
