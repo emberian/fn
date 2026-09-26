@@ -2457,7 +2457,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "At this source, green_check finds books/nntp-newnews green at its exact include closure in certify-20260923T232942Z-484654, its test book green in certify-20260924T005919Z-653679, books/nntp-invariants green in certify-20260923T232820Z-480447, and books/nntp-effects green in certify-20260923T232942Z-484654; none has moved dependencies. These are archived certification records, not a current native image qualification. The earlier T2b affected-closure run is certify-20260923T170842Z-2026382; native served-reader validation remains separate.",
       "evidence": [
         "books/nntp-newnews.lisp",
@@ -6241,6 +6241,36 @@
         "fn-osi-open-installs-indexed-store",
         "fn-osi-host-step-keeps-indexed",
         "fn-osi-live-dispatch-fast-is-checked"
+      ]
+    },
+    {
+      "id": "PRF-168",
+      "title": "HDR :fn-enrollment over the host-called read is the pinned keyring view's enrollment of the recorded verdict's principal",
+      "statement": "fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment (books/owner-enrollment-read.lisp): for a read of owner connection ID of O whose octets frame nothing before the last and whose last octet frames exactly the command line `HDR :fn-enrollment <msgid>` (the fn-octl-reader-hyps reader premises, one Message-ID argument that is an octet list), on a connection with buckets whose pinned Message-ID trie holds that Message-ID, (car (fn-own-read O ID OCTETS)) is the one-line HDR reply `0 ITEM` with ITEM = fn-enr-item of the connection's pinned verdict for that Message-ID (fn-stx-reader-lookup over fn-own-conn-verdicts) against the connection's control pin (fn-own-conn-control), whose keyring slot is the view's fn-own-view-keyring. fn-enr-item (books/nntp-enrollment.lisp) names the verdict's 32-octet principal and the state of its newest snapshot in that keyring (fn-hl-current-for-principal, fn-hl-history-row): active when the row is :active at the verdict's generation, retired when :active at another generation, revoked when the row is the tombstone; unenrolled with no snapshot; none no-keyring-view / no-record / no-principal otherwise (fn-enr-item-of-an-enrolled-principal). Host line: host/native/owner.lisp (fnn-owner-action 'fn-owner-chunk ...) -> host/owner-host.lisp fn-owner-chunk -> fn-ocfg-read-tls-prefix = fn-ocfg-read (fn-ocfg-read-tls-prefix-is-full-read) -> fn-own-read. Supporting: fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment (the pinned dispatcher's arm), fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment, and fn-own-reader-opened-after-completion-pins-the-finished-keyring (a reader opened after the owner's (:complete) pins the keyring fn-sn-finish produced, with fn-hls-finish-identity-current-enrollment the chain from a durable kind-3 record).",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-036"
+      ],
+      "depends_on": [
+        "PRF-026",
+        "PRF-084"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/nntp-enrollment.lisp",
+        "books/owner-enrollment-read.lisp",
+        "tests/acl2/owner-enrollment-read-tests.lisp",
+        "planning/evidence/reader-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T101956Z-272280.json"
+      ],
+      "progress_note": "Implemented as PKT-175's default (a) by lane reader-2 (2026-09-26); certified by persvati run-20260926T101927Z-0d72 (certify-20260926T101956Z-272280: 332 passed, 0 failed, 2 jobs; books/owner-invariants 11.8 s, over D26, open in PKT-437). Teeth: reachable witnesses with an active (reader B), a retired (reader C, after a durable rotation) and a revoked (reader D, after a durable revocation) principal over fn-own-read, and must-fails for premises 1, 5, 8, 9, 10, 11, 12 and 15.",
+      "events": [
+        "fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment",
+        "fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment",
+        "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment",
+        "fn-own-reader-opened-after-completion-pins-the-finished-keyring",
+        "fn-enr-item-of-an-enrolled-principal"
       ]
     }
   ]

@@ -5911,6 +5911,31 @@
           "note": "Over the live Store (fn-osi-live-store) and a joined state satisfying fn-bpaj-statep, with fn-sn-statep of the Store (the pre-PRF-144 hypothesis, carried by fn-ocl-relation), fn-bpaj-dispatch-fast is fn-bpaj-dispatch, the checked walk; likewise fn-osi-live-store-record-accepted-fast-is-checked, fn-osi-live-record-lookup-fast-is-checked and fn-osi-live-transit-record-lookup-fast-is-checked. No index premise. Teeth: owner-store-indexed-tests (fast and checked answers equal at the live signed Store)."
         }
       ]
+    },
+    {
+      "id": "PRF-168",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-reader-opened-after-completion-pins-the-finished-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-enr-item-of-an-enrolled-principal"
+        }
+      ]
     }
   ]
 }

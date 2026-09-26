@@ -42,9 +42,11 @@ Message-ID with characters a wildmat cannot state is matched with `?` for each
 and the page says the match may include a near-identical identifier. An
 article page shows separately the claimed From, which authorship carriers are
 present, the node's historical verdict (`HDR :fn-verified`, what the node
-recorded at acceptance, unchanged by a later key retirement), that current
-enrollment is not served by the node, and that no independent verification was
-performed here. An uncertain submission, including an in-flight intent found
+recorded at acceptance, unchanged by a later key retirement), the node's
+current enrollment of that verdict's principal (`HDR :fn-enrollment`, the
+node's current keyring view, a separate fact), and the reader's own
+independent verification with the reader's own keyring (or why it was not
+performed); the grammar of each line is "Reader metadata lines" below. An uncertain submission, including an in-flight intent found
 after restart, is settled only on the person's explicit request, by NNT-019's
 reconciliation: the same bytes under the same Message-ID, the answer recorded
 beside the original, which never changes. A compose form's identifier is
@@ -54,6 +56,70 @@ again. Local HTTP refuses a request its browser marks as coming from another
 site (`Sec-Fetch-Site`) before any NNTP command or local write; reading never
 posts, and the lookup and the re-send are form POSTs with the per-process
 token.
+
+## Reader metadata lines
+
+The node's words a reader parses, specified once here. `tools/fn_web.py`
+(`parse_verdict_hdr`, `parse_enrollment_hdr`) accepts exactly these
+(`tools/fn_verify.py` `parse_hdr_item` reads the `:fn-verified` items, `revoked`
+from PKT-212); a line outside them is the node's
+non-answer, shown as unavailable, never as a status. Each HDR reply is RFC 3977
+section 8.5's `225` with one line `N ITEM` (N the local number, or `0` for the
+Message-ID form).
+
+`HDR :fn-verified` (range, current article or Message-ID; the historical
+verdict the Store recorded at acceptance, `books/stx-verify.lisp`
+`fn-stx-verified-item`, `books/stx-reader.lisp` `fn-stx-reader-item`):
+
+    verified HEX keyring G        the signature verified for principal HEX under keyring generation G
+    verified legacy keyring G     an earlier record whose detail is not a principal id
+    revoked HEX keyring G         the principal was revoked under generation G when checked
+    carried HEX                   authorship evidence naming HEX carried, not verified here
+    unverified REASON keyring G   REASON: malformed | ref-mismatch | signature | no-field | unknown
+    absent REASON                 REASON: the same words, or no-record (no verdict is recorded)
+
+HEX is the 64-hex-digit principal id and G a decimal generation. The verdict
+record names the principal and keyring generation and never the login that
+posted: that is by design (`books/login-binding.lisp`, the verdict record
+comment), since the login binding is a separate, logged decision.
+
+`HDR :fn-control <msgid>` (the withdrawal status of a control or superseding
+article, `books/nntp.lisp` `fn-nntp-control-hdr-response`,
+`books/control-served.lisp` `fn-ctl-control-item`):
+
+    executed withdrawal TARGET author      TARGET withdrawn on the author basis
+    executed withdrawal TARGET authority   TARGET withdrawn on the node's authority
+    owed                                   the withdrawal is due and not yet executed
+    declined REASON                        not executed, for REASON (a lower-case word)
+    none                                   the article withdraws nothing
+
+A retrieval of a withdrawn article answers the response text `423 withdrawn`
+(by number) or `430 withdrawn` (by Message-ID) instead of the plain "no
+article"; `withdrawn` is a response text, not an HDR item.
+
+`HDR :fn-enrollment <msgid>` (Message-ID form only, like `:fn-control`; the
+node's current keyring view of the principal the recorded verdict names,
+decided in ACL2 from the connection's pinned view; a separate fact from the
+historical verdict, which a later rotation or revocation never changes):
+
+    active HEX keyring N      the verdict's key generation is HEX's current enrollment, N
+    retired HEX keyring N     HEX enrolled again since; its current generation is N
+    revoked HEX keyring N     HEX's newest keyring entry is its revocation, at generation N
+    unenrolled HEX            the node's keyring view holds no entry for HEX
+    none no-record            no verdict is recorded for the article
+    none no-principal         the recorded verdict names no principal
+    none no-keyring-view      the connection pins no keyring view
+
+`430` answers a Message-ID the pinned view does not serve and `501` any other
+argument shape. A web page's fifth fact, independent verification here, is
+not a node line: it is `tools/fn_verify.py check-article` run by the reader
+with the reader's own keyring (verified here, failed here with the reason, or
+not performed with why).
+
+WEB-002: The web reader verifies a signed article independently with the
+reader's own keyring, never the node's, says whose keyring it used, and
+shows verified here, failed here with the reason, or not performed with why,
+beside and never merged with the node's historical verdict.
 
 ## Everyday tools over protection
 
