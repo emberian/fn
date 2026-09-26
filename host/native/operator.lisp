@@ -552,24 +552,23 @@ observation into the outcome and this function only carries it out."
          (answer (if socket-present
                      (fnn-control-live-status control-path :health)
                    :none)))
-    (if (and (consp answer) (eq (first answer) :done))
-        (second answer)
-      (let ((route (fnn-core 'fn-native-live-status-host-route socket-present answer)))
-        (if (eq route :refused)
-            :refused
-          (or (fnn-core 'fn-native-health-host-fenced route
-                        (fnn-store-owner-observation root)
-                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
-                        ;; Would an owner listen at all: a configured socket
-                        ;; in an image that has one (an observation; ACL2's
-                        ;; fn-nh-fence-of decides :starting from it).
-                        (and control-path (not (fnn-image-omits-p :control)) t))
-              (multiple-value-bind (store records) (fnn-open-live-store root nil)
-                (declare (ignore records))
-                (unwind-protect
-                     (fnn-core 'fn-native-health-host-offline
-                               (fnn-store-config store) min *the-live-state*)
-                  (fnn-store-close store)))))))))
+    ;; Every observation is taken before ACL2 decides (fn-nh-health-step,
+    ;; PKT-454): the owner's answer first, then the lock, the clone fence and
+    ;; whether an owner would listen (a configured socket in an image that has
+    ;; one).
+    (let ((step (fnn-core 'fn-native-health-host-step socket-present answer
+                          (fnn-store-owner-observation root)
+                          (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
+                          (and control-path (not (fnn-image-omits-p :control)) t))))
+      (case (first step)
+        ((:answered :fenced) (second step))
+        (:refused :refused)
+        (t (multiple-value-bind (store records) (fnn-open-live-store root nil)
+             (declare (ignore records))
+             (unwind-protect
+                  (fnn-core 'fn-native-health-host-offline
+                            (fnn-store-config store) min *the-live-state*)
+               (fnn-store-close store))))))))
 
 (defun fnn-operator-execute-health (result)
   (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))

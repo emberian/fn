@@ -555,7 +555,7 @@ did not answer). A writer lock held where an owner would listen and nothing
 answering yet is the fence reason `starting`, and the report's first line
 says so (`health exit=20 state=fenced reason=starting`); a lock with no
 configured socket, or one the probe could not read, is `store-held`
-(`fn-nh-fence-of-starting-iff`). The running owner renders the same verdict over the state it
+(`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
 [health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
