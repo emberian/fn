@@ -66,6 +66,7 @@
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
 (include-book "../books/peer-pull")
+(include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
