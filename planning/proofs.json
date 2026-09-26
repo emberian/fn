@@ -5454,7 +5454,7 @@
         "host/native-operator-host.lisp",
         "tests/test_native_rollback_history.py",
         "planning/evidence/rollback-history-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T064940Z-2305911.json"
+        "planning/evidence/manifests/certify-20260926T065706Z-2375300.json"
       ],
       "events": [
         "fn-native-operator-history-loss-is-ancestry",
