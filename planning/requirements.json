@@ -2462,6 +2462,34 @@
         "planning/evidence/source-corpus-2026-09-25.md"
       ],
       "implementation_note": "fn guarantee over RFC 5536 s3.1.3 and RFC 5537 s3.4/s3.5 (D25, D32): on the injecting routes (served POST, operator post, hybrid-author) the verdict is fn-rcl-existing-action on the poster's source; transit and BP admission key on Message-ID (RFC 3977 s6.3.2, RFC 4644). PKT-166 decided and implemented: hybrid-author asks fn-owner-existing-action first; a resend of the same signed carrier is DUPLICATE (exit 0), a changed or re-signed source the refusal (exit 1). Open: BP carriage of the corpus not exercised by the module; the tombstone arm is unreachable-in-composition until a program writes tombstones."
+    },
+    {
+      "id": "REP-009",
+      "title": "A base job is offered while it is ready even when an older job for the same peer is held, and a status report or receipt counts as sent only when its own attempt's transfer completed and the completion is durable",
+      "specification": "specs/bp-node-machine.md#49-the-fair-base-job-offer-and-the-report-effect-join-2026-09-25-lane-mission-four-node",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-120"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "rfc9174.txt",
+        "books/bp-node-job-offer.lisp",
+        "books/bp-node-job-offer-progress.lisp",
+        "books/assumptions.lisp",
+        "tests/acl2/bp-node-job-offer-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "specs/bp-node-machine.md",
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-four-node-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed."
     }
   ]
 }

@@ -1665,6 +1665,63 @@ contact; an accepted one is `:forwarded`, which no record returns to
   without STORE) keep the queued address.
 - The contact host is loopback.
 
+### 4.9 The fair base job offer and the report effect join (2026-09-25, lane mission-four-node)
+
+REP-009: A base job is offered while it is ready even when an older job for the same peer is held, and a status report or receipt counts as sent only when its own attempt's transfer completed and the completion is durable
+
+The served step is `fn-bpnj-step` (`books/bp-node-job-offer.lisp`), which
+`host/native/bp-service.lisp` `fnn-bps-foundation-step` calls. It is
+`fn-bpnp-step` on every event (`fn-bpnj-step-delegates-every-other-event`)
+except three:
+
+- `(:contact-job PEER KEY)`: open PEER's base contact and propose the
+  `:attempting` record of exactly the queued job KEY names, under the gate
+  that opens any base contact (`fn-bpnp-receipt-contact-event`).
+- `(:job-result KEY TOKEN OUTCOME)`: the transport result of one attempt.
+  TOKEN is the job's attempt token (`fn-bpnj-attempt-token`: the token of
+  its durable `:attempting` record), which the host reads before the
+  transfer. A TOKEN that is not the job's current attempt settles nothing
+  (`fn-bpnj-stale-job-result-settles-nothing`); the current one is the lower
+  machine's `(:forward-result KEY OUTCOME)`, whose proposal is `:finished`
+  for `:accepted` and `:requeued` otherwise
+  (`fn-bpnj-named-result-is-the-transport-outcome`).
+- a base `:forward-result` that names no attempt: the host's event check
+  refuses it (`fn-bpnj-host-refuses-an-unnamed-transport-result`).
+
+The contact loop asks `fn-bpnj-contact-next` before every offer. It offers
+the first queued job for the peer, in job-list order, that the contact has
+not offered and whose routing decision sends it on its durable route; it
+answers `(:held KEY DECISION)` only when no job is ready, and `(:close)`
+otherwise. The previous question (`fn-bpnp-contact-next`, §4.8) ended the
+contact at the first queued job when it was held or already offered, so one
+job with a changed route, or one refused transfer, stopped every younger job
+for that peer (the witness is in `tests/acl2/bp-node-job-offer-tests.lisp`).
+`fn-bpnj-contact-offers-while-a-ready-job-remains` states that a ready job
+keeps the contact offering. Under A-BP-CONTACT (`books/assumptions.lisp`) a
+contact offers a ready job within the number of jobs at or ahead of it
+(`fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact`).
+
+The status report effect join (mandate §5.7). A kind-10 deletion record
+carries the report intent; `:report-due` is logged as "intent durable;
+outbound queue pending" and is not a sent report. `bp-node` queues the
+intent as a base job (`fn-bpn-report-queue-step`): a durable `:queued`
+record, still not sent. It leaves only through the contact offer above, and
+`:forwarded` is reported only when the durable `:finished` record of an
+`:attempting` job is answered durable
+(`fn-bpnj-step-forwarded-needs-a-durable-finished-record`), which only the
+named `:accepted` result of that attempt proposes. A TCPCL acknowledgement
+is a transport fact: it is never a retention receipt and releases nothing.
+An encoder refusal of a pending lifecycle record is answered `:refused`,
+which clears the pending record and answers its refusal effect
+(`fn-bpnj-encoder-refusal-settles-the-pending-record`); the host no longer
+faults there.
+
+Not covered: the monotonicity of the journal token across every served
+event (a stale result from an earlier process cannot arrive after a
+restart; within a process a fresh attempt's token is the next token at its
+proposal, strictly above every earlier record's); the non-base events'
+effects are not shown free of `:finished` proposals by a theorem.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:
