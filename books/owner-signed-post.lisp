@@ -146,6 +146,117 @@
                             fn-hc-okp fn-hc-received-plan fn-stxk-snapshot
                             fn-hsig-authorized-carried-submission-event-base)))))
 
+; PRF-177 (a), the carried-source keystone of the two-node exchange (CNS-004).
+; The receiving node's host-called transit constructor keeps what the author
+; signed: host/native/owner.lisp fnn-owner-attempt-transit's :ok arm calls
+; host/owner-host.lisp fn-owner-peer-carried-event, which is
+; fn-pa-authorized-event.  Whenever it forms an event, the received octets
+; carry a well-formed carrier; the event's authored source is exactly the
+; carrier's source; the stored article record holds exactly the received
+; octets (so the carrier and both signatures in them); and the two
+; signatures the verdict authorized are exactly the carrier's.  The hop-local
+; parts of the received article (this node's Path) may differ between nodes;
+; the source and the signatures are the carrier's at every hop.
+(encapsulate ()
+(local
+ (defthm osp-base-keeps-source-and-signatures
+   (let ((e (fn-hsig-authorized-carried-submission-event-base
+             sequence txid generation keyring-generation enrolled-snapshot
+             msgid source received groups obligation-id content-subject
+             release-evidence charge principal keys signatures observed-ml-key
+             ed25519-observation ml-dsa-65-observation observation
+             projection-ok)))
+     (implies e
+              (and (equal (fn-stxa-authored-source e) source)
+                   (fn-hsig-authorize-at (fn-hsig-source-version source)
+                                         principal keys source signatures
+                                         observed-ml-key ed25519-observation
+                                         ml-dsa-65-observation))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-hsig-authorized-carried-submission-event-base
+                             fn-stxa-make-carried)
+                            (fn-stxa-bindsp fn-stxe-encode fn-record-stamp-of-observation
+                             fn-record-string-octets fn-hsig-authorize-at
+                             fn-hsig-carried-record-metadatap
+                             fn-hsig-authored-source-fields
+                             fn-hsig-authored-source-id
+                             fn-hsig-keyring-snapshot fn-hsig-source-filed-groups
+                             fn-stxe-make fn-record-make fn-hsig-evidence-tag
+                             fn-hsig-source-version))))))
+(local
+ (defthm osp-ok-plan-is-the-carrier-form
+   (let ((plan (fn-pa-current-plan received snapshots nil nil))
+         (form (fn-pa-carrier-form received)))
+     (implies (equal (car plan) :ok)
+              (and (equal (car form) :ok)
+                   (equal (nth 1 plan) (nth 1 form))
+                   (equal (nth 2 plan) (nth 2 form))
+                   (equal (nth 3 plan) (nth 3 form))
+                   (equal (nth 4 plan) (nth 4 form)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-pa-current-plan)
+                            (fn-pa-carrier-form fn-hl-current-for-principal
+                             fn-hl-current-enrollment fn-stxk-p
+                             fn-stxk-keyring-generation fn-pa-carriesp
+                             fn-pa-revoked-tombstonep))))))
+(defthm fn-osp-authorized-event-keeps-the-carried-source-and-signatures
+  (let ((e (fn-pa-authorized-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots
+            observed-ml-key ed-observation ml-observation clock-observation))
+        (form (fn-pa-carrier-form received)))
+    (implies e
+             (and (equal (car form) :ok)
+                  (equal (fn-stxa-authored-source e) (nth 1 form))
+                  (equal (fn-stxa-article-record e)
+                         (fn-record-encode
+                          (fn-record-make sequence txid generation msgid received
+                                          groups obligation-id content-subject
+                                          release-evidence charge
+                                          (fn-record-stamp-of-observation
+                                           clock-observation))))
+                  (fn-hsig-authorize-at (fn-hsig-source-version (nth 1 form))
+                                        (nth 2 form) (nth 3 form) (nth 1 form)
+                                        (nth 4 form) observed-ml-key
+                                        ed-observation ml-observation))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance osp-ok-plan-is-the-carrier-form)
+                 (:instance osp-base-keeps-source-and-signatures
+                  (keyring-generation (nth 6 (fn-pa-current-plan received snapshots nil nil)))
+                  (enrolled-snapshot (fn-stxk-snapshot
+                                      (nth 5 (fn-pa-current-plan received snapshots nil nil))))
+                  (source (nth 1 (fn-pa-current-plan received snapshots nil nil)))
+                  (principal (nth 2 (fn-pa-current-plan received snapshots nil nil)))
+                  (keys (nth 3 (fn-pa-current-plan received snapshots nil nil)))
+                  (signatures (nth 4 (fn-pa-current-plan received snapshots nil nil)))
+                  (ed25519-observation ed-observation)
+                  (ml-dsa-65-observation ml-observation)
+                  (observation clock-observation)
+                  (projection-ok (fn-hc-okp (fn-hc-received-plan received))))
+                 (:instance fn-osp-carried-event-base-shape
+                  (keyring-generation (nth 6 (fn-pa-current-plan received snapshots nil nil)))
+                  (enrolled-snapshot (fn-stxk-snapshot
+                                      (nth 5 (fn-pa-current-plan received snapshots nil nil))))
+                  (source (nth 1 (fn-pa-current-plan received snapshots nil nil)))
+                  (principal (nth 2 (fn-pa-current-plan received snapshots nil nil)))
+                  (keys (nth 3 (fn-pa-current-plan received snapshots nil nil)))
+                  (signatures (nth 4 (fn-pa-current-plan received snapshots nil nil)))
+                  (ed25519-observation ed-observation)
+                  (ml-dsa-65-observation ml-observation)
+                  (observation clock-observation)
+                  (projection-ok (fn-hc-okp (fn-hc-received-plan received)))))
+           :in-theory (e/d (fn-pa-authorized-event)
+                           (fn-pa-current-plan fn-pa-carrier-form
+                            fn-hsig-authorized-carried-submission-event-base
+                            fn-hsig-authorize-at fn-record-make
+                            fn-stxa-authored-source fn-stxa-article-record
+                            fn-record-stamp-of-observation fn-stxk-snapshot
+                            fn-hc-okp fn-hc-received-plan fn-hsig-source-version)))))
+)
+
 ; -----------------------------------------------------------------------------
 ; The valid arm over the owner's (:complete), which the host's fn-owner-finish
 ; runs.  Lemmas: the P8 keystones fn-sn-finish-of-a-kind-4-acceptance-records-

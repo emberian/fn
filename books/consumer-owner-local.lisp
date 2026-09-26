@@ -5,6 +5,8 @@
 (include-book "owner")
 (include-book "consumer-store-projection")
 (include-book "consumer-poll-index")
+(include-book "consumer-local-control")
+(include-book "records-codec-concrete")
 
 (defconst *fn-col-principal* '(108 111 99 97 108)) ; local
 (defconst *fn-col-query-version* 1)
@@ -133,6 +135,36 @@
             (list :poll (fn-cp-cursor-encode cursor)
                   (fn-cp-nth 2 scan))))))))
 
+; PKT-254: the report the host serves for a selected event, and the one
+; decision about a report the kind-6 poll reply cannot carry.  The host
+; (host/owner-host.lisp fn-owner-consumer-local-poll) serves exactly this
+; function's answer; it no longer encodes the event itself.  A selected
+; event's report is its exact Store encoding (the schema-1 composite, or a
+; legacy record through the concrete record encoder).  A report above the
+; poll reply's report ceiling (`fn-ncl-poll-event-bytesp',
+; *fn-stxa-max-octets*) is refused by name, `:oversize', at the consumer's
+; unchanged position: never truncated, never skipped.  It is reachable only
+; for a profile whose record bound R lies above that ceiling (R is bounded by
+; the Store frame's u32 payload, 355 octets wider); a report that is not
+; octets at all is `:report'.  Before this function the host encoded the
+; event itself and an oversize report faulted the reply encoder.
+(defun fn-col-poll-report-octets (event)
+  (declare (xargs :guard t))
+  (cond ((fn-stxa-p event) (fn-stxa-encode event))
+        ((fn-record-p event) (fn-rcon-record-encode-impl event))
+        (t nil)))
+
+(defun fn-col-poll-report (o consumer)
+  (let ((decision (fn-col-poll o consumer)))
+    (if (and (eq (car decision) :poll) (caddr decision))
+        (let ((report (fn-col-poll-report-octets (caddr decision))))
+          (cond ((fn-ncl-poll-event-bytesp report)
+                 (list :poll (cadr decision) report))
+                ((and (consp report) (fn-cbor-octet-listp report))
+                 (list :refused :oversize))
+                (t (list :refused :report))))
+      decision)))
+
 (verify-guards fn-col-result-event)
 (verify-guards fn-col-bootstrap)
 (verify-guards fn-col-register)
@@ -142,3 +174,4 @@
 (verify-guards fn-col-status)
 (verify-guards fn-col-unregister)
 (verify-guards fn-col-poll)
+(verify-guards fn-col-poll-report)
