@@ -15,6 +15,12 @@ from tools import run_bp_ingress, run_store
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
 
+# specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
+# connection lost after it existed is exit 6 (connection-local: the job stays
+# and is re-offered; no recovery); exit 3 stays the fence.
+LOST = 6
+
+
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 
@@ -387,7 +393,7 @@ class NativeBpApplicationTests(unittest.TestCase):
             sender_out, sender_err = sender.communicate(timeout=180)
             receiver_out, receiver_err = receiver.communicate(timeout=180)
             self.assertEqual(receiver.returncode, 3, receiver_err.decode())
-            self.assertEqual(sender.returncode, 3, sender_err.decode())
+            self.assertEqual(sender.returncode, LOST, sender_err.decode())
             self.assertNotIn(b"BP application accepted", receiver_out)
         finally:
             if receiver.poll() is None:

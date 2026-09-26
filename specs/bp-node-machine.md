@@ -2826,15 +2826,30 @@ The planned explicit header cap, stage slots and stage octets are not yet
 machine fields, so their rows below remain obligations for the family-plan
 batch. The limit equality alone does not establish maximum-size ADU service.
 
+**The node's profile (2026-09-26, lane bp-lifecycle-3, PRF-131).** The
+held rows (`max-jobs`) and held octets (`max-octets`) the machine holds are
+the operator's `bp-node-profile` (specs/storage.md, "Authority and
+layout"), read by `fnn-bps-open` through `fn-bpnpf-read` and installed by
+`fn-bpnf-initial-state`; the default is 64 rows and 16 MiB. Every host loop
+that walks held rows in one step is bounded by the profile's rows. Recovery
+replay refuses a well-formed received row past the profile with
+`(:fault :held-beyond-profile)` (`fn-bpnpf-replay-past-the-profile-is-refused`)
+and the restart fences with that reason. The rows below that name a
+constant are still constants: the ADU cap, the bundle decoder bound
+(`*fn-bpb-max-input*`, 1 MiB) and the held image (`*fn-bpnf-max-held-image*`)
+are data caps not yet in the profile (PKT-276), and the lifecycle-record
+count between rotations is a work bound.
+
 | Limit | Value today | Must satisfy |
 | --- | --- | --- |
+| held rows | the profile's `max-held-rows` (default 64; at most 2^24) | a row past it is refused at receive and at replay, by name |
 | request and receipt ADU | `*fn-bpa-max-octets*` 65538 | ≤ reassembly length |
 | reassembly length | `*fn-bpf-max-length*` 65538 | = ADU max; proved in current constants |
 | bundle image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | ADU max + `*fn-bpn-max-header-octets*` ≤ it |
 | record payload | `*fn-bpn-lifecycle-max-payload*` 134144 | bundle image + held-record overhead ≤ it |
 | fragment count | `*fn-bpf-max-fragments*` 64 | count × (per-fragment image) ≤ stage-octets; count ≤ stage-slots + 1 |
 | TCPCL transfer | the route's transfer MRU and the session's negotiated MRU | a whole image or a fragment image ≤ it (§7.3) |
-| aggregate | `max-octets` 16777216 | max-held × bundle image ≤ it, or the byte budget is the binding one and says so |
+| aggregate | the profile's `max-held-octets` (default 16777216) | max-held × bundle image ≤ it, or the byte budget is the binding one and says so |
 | execution | fast reassembly and cutting | cost linear in output length plus fragment bytes (§7.4) |
 
 ### 7.2 Reassembly as a family replacement (F-F)
@@ -3509,7 +3524,11 @@ tick` does. Over `fn-bpnp-step`, the event's one proposal is the
 (`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
 produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
 any failure after the connection exists stays `:uncertain`, and that
-reading is connection-local (§4.3.2): the pass logs it and continues. Not
+reading is connection-local (§4.3.2): the pass logs it and continues. A
+one-shot verb that asked for the transfer renders the durable `:requeued`
+record's reason as its run class (specs/host.md "BP run classes",
+`fn-bpnrc-job-result-class-is-the-transport-class`): `:failed` is exit 7,
+`:uncertain` exit 6, `:refused` exit 1. Not
 claimed as a theorem: once per contact (the host stops the contact at the
 first transfer or outcome that is not accepted; a durable `:attempting`
 makes the job not `:queued`).
