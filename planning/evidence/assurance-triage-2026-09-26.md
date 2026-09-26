@@ -263,8 +263,8 @@ PRF-120/PRF-121, unchanged.
 
 ## What ran
 
-- `make check-lane` green after step 1 to 4 edits (before the scenario
-  fields); rerun after step 5, below.
+- `make check-lane` green after steps 1 to 4 and again after step 5 (exit 0,
+  at b70c619a's tree).
 - Farm r1 on hbox, 2 jobs, 300 s: run-20260926T072413Z-c8fc, passed 10,
   failed 0, "no book over 10 s"; manifest committed. One farm run (the budget
   was three).
