@@ -365,5 +365,139 @@ class RealAcl2Tests(unittest.TestCase):
             shutil.rmtree(scratch, ignore_errors=True)
 
 
+class OwnershipTests(unittest.TestCase):
+    """PKT-346: a session carries its lane and an idle deadline; list and reap."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        fake = pathlib.Path(cls.tmp.name) / "fake-acl2"
+        fake.write_text(FAKE_ACL2)
+        fake.chmod(fake.stat().st_mode | stat.S_IXUSR)
+        cls.env = {**os.environ, "FN_ACL2": str(fake),
+                   "FN_ACL2_SLOT_DIR": str(pathlib.Path(cls.tmp.name) / "slots"),
+                   "FN_ACL2_SLOTS": "4"}
+        cls.scratch = ROOT / "build" / ("proof-repl-own-" + str(os.getpid()))
+        cls.scratch.mkdir(parents=True, exist_ok=True)
+        (cls.scratch / "tiny.lisp").write_text('(in-package "ACL2")\n(defun f (x) x)\n')
+        cls.book = str((cls.scratch / "tiny").relative_to(ROOT))
+        cls.names = []
+
+    @classmethod
+    def tearDownClass(cls):
+        for name in cls.names:
+            cls.cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+        shutil.rmtree(cls.scratch, ignore_errors=True)
+        cls.tmp.cleanup()
+
+    @classmethod
+    def cli(cls, *words, timeout=60):
+        return subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"), *words],
+                              capture_output=True, text=True, env=cls.env, cwd=ROOT,
+                              timeout=timeout)
+
+    def start(self, suffix, *extra):
+        name = f"own-{suffix}-{os.getpid()}"
+        self.names.append(name)
+        answer = self.cli("start", name, self.book, "--load-timeout", "20", *extra)
+        self.assertEqual(answer.returncode, 0, answer.stdout + answer.stderr)
+        return name
+
+    def state(self, name):
+        return json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+
+    def test_a_session_records_its_lane_and_stops_itself_when_idle(self):
+        name = self.start("idle", "--lane", "lane-idle", "--idle-seconds", "1.5")
+        state = self.state(name)
+        self.assertEqual(state["lane"], "lane-idle")
+        self.assertEqual(state["idle_seconds"], 1.5)
+        self.assertIsInstance(state["acl2_pgid"], int)
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline and (proof_repl.SESSIONS / name / "sock").exists():
+            time.sleep(0.2)
+        self.assertFalse((proof_repl.SESSIONS / name / "sock").exists())
+        state = self.state(name)
+        self.assertIn("idle", state["ended"])
+        self.assertFalse(state["ready"])
+        # The name, and with it the slot, is free again.
+        fd = proof_repl.open_session_lock(name)
+        self.assertIsNotNone(fd)
+        os.close(fd)
+
+    def test_a_send_postpones_the_idle_deadline_and_a_status_does_not(self):
+        name = self.start("busy", "--lane", "lane-busy", "--idle-seconds", "3")
+        for _ in range(4):
+            time.sleep(1)
+            self.assertEqual(self.cli("send", name, "(+ 1 2)").returncode, 0)
+        self.assertTrue((proof_repl.SESSIONS / name / "sock").exists())
+        for _ in range(8):
+            time.sleep(1)
+            if not (proof_repl.SESSIONS / name / "sock").exists():
+                break
+            self.cli("status", name)
+        self.assertFalse((proof_repl.SESSIONS / name / "sock").exists())
+
+    def test_list_names_the_lane_and_reap_by_lane_stops_only_that_lane(self):
+        mine = self.start("reap-a", "--lane", f"lane-a-{os.getpid()}")
+        other = self.start("reap-b", "--lane", f"lane-b-{os.getpid()}")
+        listing = self.cli("list")
+        self.assertEqual(listing.returncode, 0, listing.stderr)
+        row = next(line for line in listing.stdout.splitlines() if line.startswith(mine))
+        self.assertIn(f"lane-a-{os.getpid()}", row)
+        self.assertIn("live", row)
+        self.assertIn("2h00m", row)  # the default deadline, stated
+        dry = self.cli("reap", "--lane", f"lane-a-{os.getpid()}", "--dry-run")
+        self.assertIn(f"would reap {mine}", dry.stdout)
+        self.assertTrue((proof_repl.SESSIONS / mine / "sock").exists())
+        reaped = self.cli("reap", "--lane", f"lane-a-{os.getpid()}")
+        self.assertIn(f"reaped {mine}", reaped.stdout)
+        self.assertIn("stopped through its socket", reaped.stdout)
+        self.assertNotIn(other, reaped.stdout)
+        self.assertFalse((proof_repl.SESSIONS / mine / "sock").exists())
+        self.assertTrue((proof_repl.SESSIONS / other / "sock").exists())
+        self.assertEqual(self.cli("stop", other).returncode, 0)
+
+    def test_reap_signals_only_pids_that_are_still_the_session(self):
+        # A dead server whose recorded PIDs now belong to unrelated processes:
+        # reap removes the stale socket and signals nobody.
+        with tempfile.TemporaryDirectory() as temporary:
+            sessions = pathlib.Path(temporary)
+            stranger = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+            try:
+                directory = sessions / "ghost"
+                directory.mkdir()
+                (directory / "state.json").write_text(json.dumps({
+                    "name": "ghost", "book": "books/x", "pid": stranger.pid,
+                    "acl2_pgid": stranger.pid, "loaded": [], "sends": 0,
+                    "lane": "gone", "idle_seconds": 1, "last_active": 0}))
+                (directory / "sock").write_text("")
+                with mock.patch.object(proof_repl, "SESSIONS", sessions):
+                    rows = proof_repl.session_rows()
+                    self.assertFalse(rows[0]["server"])
+                    self.assertEqual(proof_repl.reap_reason(rows[0], None, None), "dead server")
+                    self.assertEqual(proof_repl.reap_one(rows[0]), "removed a stale socket")
+                self.assertIsNone(stranger.poll())
+                self.assertFalse((directory / "sock").exists())
+            finally:
+                stranger.kill()
+                stranger.wait()
+
+    def test_an_older_sessions_idle_time_is_its_state_files_age(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            sessions = pathlib.Path(temporary)
+            directory = sessions / "old"
+            directory.mkdir()
+            state_path = directory / "state.json"
+            state_path.write_text(json.dumps({"name": "old", "book": "books/x",
+                                              "pid": 999999, "loaded": [], "sends": 0}))
+            os.utime(state_path, (time.time() - 7200, time.time() - 7200))
+            with mock.patch.object(proof_repl, "SESSIONS", sessions):
+                row = proof_repl.session_rows()[0]
+            self.assertGreaterEqual(row["idle"], 7199)
+            self.assertIsNone(row["deadline"])
+            self.assertIsNone(proof_repl.reap_reason(row, None, None))  # dead, nothing held
+
+
 if __name__ == "__main__":
     unittest.main()
