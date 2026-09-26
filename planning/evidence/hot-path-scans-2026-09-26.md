@@ -284,8 +284,8 @@ indicative only. The allocation figures are counts and do not depend on load.
 | --- | ---: | ---: | ---: | ---: |
 | N=1,000 before | 2,485,094 | 51,382 | 499,384 | 171.0 s |
 | N=1,000 after | 2,484,820 | 50,314 | 500,415 | 193.3 s |
-| N=10,000 before | N10K-BEFORE-ALLOC | | | N10K-BEFORE-LOAD |
-| N=10,000 after | N10K-AFTER-ALLOC | | | N10K-AFTER-LOAD |
+| N=10,000 before | 7,965,868 | 50,342 | 499,375 | 2,669.3 s |
+| N=10,000 after | 7,955,659 | 51,370 | 499,355 | 2,485.7 s |
 
 **Allocation profile.** An sb-sprof `:alloc` profile covered 200 POSTs after
 the owner was reopened on the loaded store. Samples are about 32 KB each; the
@@ -293,9 +293,9 @@ table gives each function's total from the graph report:
 
 | term | N=1,000 before | N=1,000 after | N=10,000 before | N=10,000 after |
 | --- | ---: | ---: | ---: | ---: |
-| `FN-SBUD-RECORD-OCTETS` (the byte-count fold) | 2,555 | 0 | N10K-B-RO | N10K-A-RO |
-| `FN-SBUD-OCTETS-ADVANCE` (the index advance) | — | 401 | — | N10K-A-ADV |
-| `FN-OWNER-RECORD-DEBT` | 660 | 673 | N10K-B-DEBT | N10K-A-DEBT |
+| `FN-SBUD-RECORD-OCTETS` (the byte-count fold) | 2,555 | 0 | 20,752 | 0 |
+| `FN-SBUD-OCTETS-ADVANCE` (the index advance) | — | 401 | — | 401 |
+| `FN-OWNER-RECORD-DEBT` | 660 | 673 | 5,432 | 5,436 (at ff2eacb3; see below) |
 
 **Reading.**
 - *Before*, the byte-count term is dominated by the first verdict after the
@@ -308,8 +308,37 @@ table gives each function's total from the graph report:
   removed (`len` and `nthcdr` of the history, three caches per POST) are
   pointer walks that allocate nothing, so their cost was CPU and not
   allocation. What each POST still pays is the new record's encoding for its
-  length, and its kind for the debt (about 3.4 samples, through
-  `fn-record-p`), both constant in N. That is PKT-474 (d).
+  length (about 2 samples) and its kind for the debt (about 0.5 samples,
+  through `fn-record-p`), both constant in N. That is PKT-474 (d).
+
+**At N=10,000.** The byte-count term goes from 20,752 samples to 401, which
+is the 401 measured at N=1,000: constant in N.
+
+The steady-state POST allocation is 7.97 MB before and 7.96 MB after, against
+2.49 MB at N=1,000. That growth is not these terms. It is `fn-own-refresh`'s
+group-index rebuild (PKT-324 (1)), which served-path-scale owns and which is
+not on this base.
+
+The debt row exposed a second first-query fold: 5,432 samples at N=10,000
+against 660 at N=1,000. The debt and usage caches were reset to nil at open,
+so the first POST folded the history, calling `fn-record-p` on each record.
+Commit `97a3a5ac` folds both once at `fn-owner-install-profile`, as it
+already did for the octets. Its profile over the same stores is the "after2"
+row below.
+
+**after2** (commit `97a3a5ac`): the same `allocprof.py` over 200 POSTs, run on
+the stores the after runs loaded, with the owner reopened on the `97a3a5ac`
+profiling image.
+
+| term | N=1,000 | N=10,000 |
+| --- | ---: | ---: |
+| `FN-SBUD-OCTETS-ADVANCE` | 403 | 405 |
+| `FN-OWNER-RECORD-DEBT` (all under `FN-SCF-DEBT-ADVANCE`) | 104 | 107 |
+| `FN-SBUD-RECORD-OCTETS` | 0 | 0 |
+
+Every term is flat in N. At N=10,000, the octet and debt terms of the 200
+POSTs after the open went from 26,184 samples (about 840 MB) to 512 (about
+16 MB).
 
 **Visits per POST**, from the definitions:
 
