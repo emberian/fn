@@ -1031,6 +1031,39 @@
             (fn-pull-remote-effects (mv-nth 1 (fn-pull-on-line r line))) w since))
   :hints (("Goal" :in-theory (enable fn-pull-on-line))))
 
+; The fields no transition changes, as one term, so the drain's induction
+; carries one equality instead of six.
+(defun fn-pull-fixed (r)
+  (declare (xargs :guard t))
+  (list (fn-pull-r-peer r) (fn-pull-r-wildmat r) (fn-pull-r-since r)
+        (fn-pull-r-advances r) (fn-pull-r-pending r) (fn-pull-r-bound r)))
+
+(defthm fn-pull-fixed-of-round
+  (equal (fn-pull-fixed (fn-pull-round phase peer wildmat since advances pending bound
+                                       started listed todo answers unavailable buf
+                                       current))
+         (list peer wildmat since advances pending bound)))
+
+(defthm fn-pull-fixed-of-on-line-and-fail
+  (and (equal (fn-pull-fixed (car (fn-pull-on-line r line))) (fn-pull-fixed r))
+       (equal (fn-pull-fixed (car (fn-pull-fail r))) (fn-pull-fixed r)))
+  :hints (("Goal" :in-theory (disable fn-pull-on-line fn-pull-fail-facts))
+          ("Subgoal 1" :in-theory (enable fn-pull-fail))))
+
+(defthm fn-pull-fixed-fold
+  (equal (list (fn-pull-r-peer r) (fn-pull-r-wildmat r) (fn-pull-r-since r)
+               (fn-pull-r-advances r) (fn-pull-r-pending r) (fn-pull-r-bound r))
+         (fn-pull-fixed r)))
+
+(in-theory (disable fn-pull-fixed))
+
+(defthm fn-pull-drain-keeps-the-fixed-fields
+  (equal (fn-pull-fixed (car (fn-pull-drain r fuel))) (fn-pull-fixed r))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain)
+                           (fn-pull-on-line fn-pull-split fn-pull-line-phasep
+                            fn-pull-fail)))))
+
 (defthm fn-pull-drain-keeps-the-cursor
   (and (equal (fn-pull-r-peer (car (fn-pull-drain r fuel))) (fn-pull-r-peer r))
        (equal (fn-pull-r-since (car (fn-pull-drain r fuel))) (fn-pull-r-since r))
@@ -1038,11 +1071,16 @@
        (equal (fn-pull-r-pending (car (fn-pull-drain r fuel))) (fn-pull-r-pending r))
        (equal (fn-pull-r-bound (car (fn-pull-drain r fuel))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-drain r fuel))) (fn-pull-r-wildmat r)))
-  :hints (("Goal" :in-theory (enable fn-pull-drain))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pull-fixed) (fn-pull-drain-keeps-the-fixed-fields
+                                            fn-pull-fixed-fold))
+           :use ((:instance fn-pull-drain-keeps-the-fixed-fields)))))
 
 (defthm fn-pull-drain-journals-nothing
   (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-drain r fuel))) nil)
-  :hints (("Goal" :in-theory (enable fn-pull-drain))))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                           (fn-pull-on-line fn-pull-split fn-pull-line-phasep)))))
 
 (defthm fn-pull-step-keeps-the-cursor-fields
   (and (equal (fn-pull-r-peer (car (fn-pull-step r event))) (fn-pull-r-peer r))
@@ -1078,7 +1116,9 @@
 (defthm fn-pull-drain-keeps-answers
   (equal (fn-pull-r-answers (car (fn-pull-drain r fuel)))
          (fn-pull-r-answers r))
-  :hints (("Goal" :in-theory (enable fn-pull-drain))))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                           (fn-pull-on-line fn-pull-split fn-pull-line-phasep)))))
 
 ; KEYSTONE.  A step that changes the answers is a local reply, and it adds
 ; exactly one answer: that reply's own code, for the article in hand.
@@ -1171,7 +1211,10 @@
   (implies (and (equal w (fn-pull-r-wildmat r)) (equal since (fn-pull-r-since r)))
            (fn-pull-newnews-all
             (fn-pull-remote-effects (mv-nth 1 (fn-pull-drain r fuel))) w since))
-  :hints (("Goal" :in-theory (e/d (fn-pull-drain) (fn-pull-newnews-linep)))))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                           (fn-pull-newnews-linep fn-pull-on-line fn-pull-split
+                            fn-pull-line-phasep)))))
 
 ; KEYSTONE.  Every NEWNEWS a step sends names the round's own cursor instant:
 ; the one `fn-pull-begin' fixed and the journal holds.
@@ -1574,23 +1617,43 @@
 ; The fold the open performs: (committed . staged).  An unavailable record
 ; of the cursor's peer is staged; a cursor record of that peer commits the
 ; staged entries as its PENDING; any other record is ignored.
+(defun fn-pull-commit-of (x staged)
+  ; The cursor a cursor record X commits with the STAGED entries.
+  (declare (xargs :guard t))
+  (list (fn-pull-at 1 x) (fn-pull-at 2 x) (fn-pull-at 3 x)
+        (revappend (fn-pull-list staged) nil)))
+
+(defun fn-pull-commitsp (x c staged)
+  ; X is a cursor record of C's peer that commits a journaled cursor.
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :cursor)
+       (equal (fn-pull-at 1 x) (fn-pull-cursor-peer c))
+       (fn-pull-cursorp (fn-pull-commit-of x staged))))
+
+(defun fn-pull-stagesp (x c)
+  ; X is an unavailable record of C's peer.
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :unavailable)
+       (equal (fn-pull-at 1 x) (fn-pull-cursor-peer c))))
+
+(defun fn-pull-staged-entry (x)
+  (declare (xargs :guard t))
+  (cons (fn-pull-at 2 x) (fn-pull-at 3 x)))
+
 (defun fn-pull-records-fold (c staged records)
   (declare (xargs :guard t))
   (if (consp records)
       (let ((x (car records)))
-        (cond ((and (true-listp x) (equal (len x) 4) (equal (car x) :cursor)
-                    (equal (cadr x) (fn-pull-cursor-peer c))
-                    (fn-pull-cursorp (list (cadr x) (caddr x) (cadddr x)
-                                           (revappend (fn-pull-list staged) nil))))
-               (fn-pull-records-fold (list (cadr x) (caddr x) (cadddr x)
-                                           (revappend (fn-pull-list staged) nil))
-                                     nil (cdr records)))
-              ((and (true-listp x) (equal (len x) 4) (equal (car x) :unavailable)
-                    (equal (cadr x) (fn-pull-cursor-peer c)))
-               (fn-pull-records-fold c (cons (cons (caddr x) (cadddr x)) staged)
+        (cond ((fn-pull-commitsp x c staged)
+               (fn-pull-records-fold (fn-pull-commit-of x staged) nil (cdr records)))
+              ((fn-pull-stagesp x c)
+               (fn-pull-records-fold c (cons (fn-pull-staged-entry x) staged)
                                      (cdr records)))
               (t (fn-pull-records-fold c staged (cdr records)))))
     (cons c staged)))
+
+(in-theory (disable fn-pull-commit-of fn-pull-commitsp fn-pull-stagesp
+                    fn-pull-staged-entry))
 
 ; KEYSTONE SUBJECT.  The cursor the open recovers from the scanned records
 ; (host/native/pull-service.lisp `fnn-pull-journal-open').
@@ -1601,21 +1664,28 @@
 (defthm fn-pull-records-fold-of-append
   (equal (fn-pull-records-fold c staged (append a b))
          (fn-pull-records-fold (car (fn-pull-records-fold c staged a))
-                               (cdr (fn-pull-records-fold c staged a)) b)))
+                               (cdr (fn-pull-records-fold c staged a)) b))
+  :hints (("Goal" :induct (fn-pull-records-fold c staged a))))
+
+(defthm fn-pull-pending-record-stages
+  (let ((x (list :unavailable peer id n)))
+    (and (not (fn-pull-commitsp x c staged))
+         (equal (fn-pull-stagesp x c) (equal peer (fn-pull-cursor-peer c)))
+         (equal (fn-pull-staged-entry x) (cons id n))))
+  :hints (("Goal" :in-theory (enable fn-pull-commitsp fn-pull-stagesp
+                                     fn-pull-staged-entry fn-pull-at))))
 
 (defthm fn-pull-records-fold-of-pending-records
   (implies (and (fn-pull-pendingp pending)
                 (equal peer (fn-pull-cursor-peer c)))
            (equal (fn-pull-records-fold c staged (fn-pull-pending-records peer pending))
                   (cons c (revappend pending staged))))
-  :hints (("Goal" :in-theory (disable fn-pull-msgidp fn-pull-cursorp
-                                      fn-pull-cursorp-of-cursor revappend-removal))))
+  :hints (("Goal" :in-theory (disable fn-pull-msgidp revappend-removal))))
 
 (defthm fn-pull-records-fold-skips-another-peers-pending
   (implies (not (equal peer (fn-pull-cursor-peer c)))
            (equal (fn-pull-records-fold c staged (fn-pull-pending-records peer pending))
-                  (cons c staged)))
-  :hints (("Goal" :in-theory (disable fn-pull-cursorp fn-pull-cursorp-of-cursor))))
+                  (cons c staged))))
 
 (defthm fn-pull-revappend-revappend
   (equal (revappend (revappend x y) z) (revappend y (append x z)))
@@ -1636,7 +1706,8 @@
              (cons x nil)
            (cons c nil)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-pull-cursorp)
+           :in-theory (e/d (fn-pull-cursorp fn-pull-commitsp fn-pull-commit-of
+                            fn-pull-stagesp)
                            (fn-pull-pendingp fn-pull-pending-records revappend-removal
                             fn-pull-startable-cursor-is-its-fields
                             fn-pull-cursorp-is-startable))
@@ -1671,7 +1742,7 @@
   (implies (fn-pull-uncommittedp records)
            (equal (car (fn-pull-records-fold c staged records)) c))
   :hints (("Goal" :induct (fn-pull-records-fold c staged records)
-           :in-theory (disable fn-pull-cursorp fn-pull-cursorp-of-cursor))))
+           :in-theory (enable fn-pull-commitsp))))
 
 ; KEYSTONE (PRF-165, an uncommitted tail).  The unavailable records of a
 ; cursor whose own record never became durable change nothing: the open
@@ -1872,7 +1943,12 @@
           (append w rest)))
     nil))
 
-(verify-guards fn-pull-pending-envelope)
+(defthm fn-pull-journal-wrap-true-listp
+  (implies (not (equal (fn-pull-journal-wrap frame) :bad))
+           (true-listp (fn-pull-journal-wrap frame))))
+
+(verify-guards fn-pull-pending-envelope
+  :hints (("Goal" :in-theory (disable fn-pull-journal-wrap fn-pull-unavailable-frame))))
 
 (defthm fn-pull-pending-envelope-true-listp
   (implies (not (equal (fn-pull-pending-envelope peer pending) :bad))

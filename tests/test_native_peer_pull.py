@@ -207,16 +207,19 @@ class RecordingProxy:
         self.listener.close()
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class ScriptedPeer:
     """A reader-only NNTP server (PRF-165, PKT-213): DATE answers the wall
     clock, every NEWNEWS lists LISTED, and ARTICLE serves ARTICLES and
     answers 430 for any other id -- a peer that keeps listing an article it
     cannot produce.  It records each command, as the proxy does."""
 
-    def __init__(self, listed, articles):
+    def __init__(self, listed, articles, tls=None):
         self.listed = list(listed)
         self.articles = dict(articles)
+        # TLS: (certificate, key) -- STARTTLS is answered 382 and the
+        # session continues inside TLS, so ARTICLE is counted HERE, on the
+        # server side, where a proxy in front could not read it (PKT-236 b).
+        self.tls = tls
         self.listener = socket.socket()
         self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.listener.bind(("127.0.0.1", 0))
@@ -261,6 +264,13 @@ class ScriptedPeer:
                                      + octets + b".\r\n")
                     else:
                         stream.write(b"430 no such article\r\n")
+                elif word == "STARTTLS" and self.tls:
+                    import ssl
+                    stream.write(b"382 continue with TLS negotiation\r\n")
+                    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                    context.load_cert_chain(str(self.tls[0]), str(self.tls[1]))
+                    client = context.wrap_socket(client, server_side=True)
+                    stream = client.makefile("rwb", buffering=0)
                 elif word == "QUIT":
                     stream.write(b"205 bye\r\n")
                     return
@@ -287,6 +297,7 @@ class ScriptedPeer:
         self.listener.close()
 
 
+@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativePeerPullTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-pull-")
@@ -612,7 +623,7 @@ class NativePeerPullTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         return certificate, key
 
-    def initialize_protected(self, name, login, password):
+    def initialize_protected(self, name, login, password, protected_only=True):
         """A serving node: STARTTLS, authentication required and AUTHINFO only
         on a protected channel; LOGIN/PASSWORD is the principal it holds for
         the pulling node."""
@@ -626,8 +637,9 @@ class NativePeerPullTests(unittest.TestCase):
         config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n[log]\npath = "{}"\n'
-            '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'.format(
+            '[auth]\nrequired = true\nprotected_only = {}\npath = "{}"\n'.format(
                 store, port, certificate, key, control, root / "fn.log",
+                "true" if protected_only else "false",
                 root / "auth.toml"), encoding="ascii")
         enrolled = subprocess.run(
             [str(IMAGE), "--fn", "operator", str(config), "principal", "set-password",
@@ -801,7 +813,6 @@ class NativePeerPullTests(unittest.TestCase):
                 self.assertEqual(private, [], label)
         self.witness("tls-cursor-cuts", results, [])
 
-    @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
     # ------------------------------------------------------------ PRF-165
 
     def unavailable_pair(self, name, bound):
@@ -897,6 +908,113 @@ class NativePeerPullTests(unittest.TestCase):
                 self.assertEqual(counts[m], 1, (cut, counts))
         self.witness("unavailable-cuts", results, [])
 
+    # ------------------------------------------------------------ PKT-236 (b), (c)
+
+    def test_tls_replay_bound_counted_by_the_server(self):
+        """PKT-236 (b): the pull's duplicate-replay bound after a close cut,
+        observed through TLS.  The scripted peer terminates STARTTLS itself
+        and counts every ARTICLE it is sent.  B is killed after the fsync of
+        its close record (append 2: the round stored both ids) and before
+        that write; after the restart every ARTICLE B sends names an id not
+        stored at the kill, at most once (fn-pull-recovery-asks-the-dead-
+        rounds-newnews: the restarted round asks the dead round's NEWNEWS,
+        and ids the local node already holds draw 435, never ARTICLE)."""
+        results = {}
+        for cut in ("before-write:2", "after-fsync:2"):
+            name = cut.replace(":", "-")
+            root = self.base / ("S" + name)
+            root.mkdir()
+            certificate, key = self.certificate(root, "S")
+            ids = ["<tls-bound-{}-{}@example.invalid>".format(name, k) for k in range(2)]
+            peer = ScriptedPeer(ids, {m: article(m, "tb" + m[11:16], path="scripted!not-for-mail")
+                                      for m in ids}, tls=(certificate, key))
+            self.addCleanup(peer.close)
+            b = self.initialize("B" + name, ["fn.test"], "b.pull.example.invalid")
+            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "S",
+                          "s.pull.example.invalid", "127.0.0.1", str(peer.port), "fn.*",
+                          "-", "source-address", "127.0.0.9", "true", "starttls",
+                          "localhost", str(certificate)])
+            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull", "S",
+                          INTERVAL])
+            self.env["FN_PULL_TEST_KILL"] = cut
+            try:
+                self.start(b)
+            except Exception:
+                pass
+            finally:
+                del self.env["FN_PULL_TEST_KILL"]
+            process = b["process"]
+            code = process.wait(timeout=120)
+            b.pop("process")
+            process.communicate(timeout=60)
+            self.processes.remove(process)
+            self.assertEqual(code, -signal.SIGKILL, cut)
+            with peer.lock:
+                mark = len(peer.commands)
+            self.start(b)
+            for m in ids:
+                self.await_article(b, m)
+            self.await_log(b, "cursor=advanced", 1)
+            with peer.lock:
+                before = list(peer.commands[:mark])
+                after = list(peer.commands[mark:])
+            counts = {m: self.count_article(b, m) for m in ids}
+            lines = self.pull_lines(b)
+            self.stop(b)
+            fetched_before = [c for c in before if c.startswith("ARTICLE ")]
+            fetched_after = [c for c in after if c.startswith("ARTICLE ")]
+            results[cut] = {"article_before_kill": fetched_before,
+                            "article_after_restart": fetched_after,
+                            "starttls": sum(c == "STARTTLS" for c in before + after),
+                            "counts": counts, "pull_lines": lines,
+                            "log_sha256": sha256_of(b["log"])}
+            self.assertTrue(all("transport=tls" in l for l in lines if "round=" in l), lines)
+            self.assertEqual(sorted(fetched_before), sorted("ARTICLE " + m for m in ids))
+            # The bound: after the restart no id is fetched twice, and none
+            # the node already held at the kill (append 2 follows the whole
+            # round, so both ids were stored before it).
+            self.assertEqual(len(fetched_after), len(set(fetched_after)), fetched_after)
+            self.assertEqual(fetched_after, [], (cut, fetched_after))
+            for m in ids:
+                self.assertEqual(counts[m], 1, (cut, counts))
+        self.witness("tls-replay-bound", results, [])
+
+    def test_loopback_lab_exception_against_an_unprotected_server(self):
+        """PKT-236 (c): the loopback-lab exception's positive arm natively.
+        A requires authentication but not a protected channel
+        (protected_only = false); B's record for A is a clear transport to
+        the loopback literal with a credential whose profile permits clear
+        text.  B authenticates in the clear (the proxy sees AUTHINFO), pulls
+        both articles and advances."""
+        a = self.initialize_protected("A", "nodeB", "b-secret", protected_only=False)
+        b = self.initialize("B", ["fn.test"], "b.pull.example.invalid")
+        self.start(a)
+        proxy = RecordingProxy(a["port"])
+        self.addCleanup(proxy.close)
+        self.pull_protected(b, a, proxy.port, self.profile(b, "nodeB", "b-secret"),
+                            tls=False, allow_clear=True)
+        ids = ["<lab-one@example.invalid>", "<lab-two@example.invalid>"]
+        for n, message_id in enumerate(ids):
+            self.operator_post(a, message_id, "lab-{}".format(n))
+        self.start(b)
+        for message_id in ids:
+            self.await_article(b, message_id)
+        self.await_log(b, "cursor=advanced", 1)
+        with proxy.lock:
+            commands = list(proxy.commands)
+        lines = self.pull_lines(b)
+        self.stop(b)
+        self.stop(a)
+        self.witness("loopback-lab", {"commands": [c for c in commands
+                                                   if not c.upper().startswith("AUTHINFO PASS")],
+                                      "authinfo_pass_seen": any(c.upper().startswith("AUTHINFO PASS")
+                                                                for c in commands),
+                                      "pull_lines": lines}, [a, b])
+        self.assertIn("AUTHINFO USER nodeB", commands)
+        self.assertNotIn("STARTTLS", commands)
+        self.assertTrue(any("transport=clear" in l and "cursor=advanced" in l for l in lines), lines)
+
+    @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
     def test_pull_from_inn(self):
         inn = InnLab(self.base / "inn", Path(INN_SRC))
         self.addCleanup(inn.stop)
