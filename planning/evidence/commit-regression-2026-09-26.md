@@ -129,9 +129,9 @@ The lane's final commit changes no host or book file, so its image is the
 
 ## Ids
 
-The brief assigned PKT-283 (finding) and PKT-284 (fix). Both are already
-taken in planning/backlog-2026-09-25.md: PKT-283 is the `health` answer
-during recovery, and PKT-284 is build_native_host's ACL2-error refusal. This
+The brief assigned PKT-348 (finding) and PKT-348 (fix). Both are already
+taken in planning/backlog-2026-09-25.md: PKT-348 is the `health` answer
+during recovery, and PKT-348 is build_native_host's ACL2-error refusal. This
 lane took neither. No fix was needed, so the finding needs one id for its
 closure; the deputy should assign it.
 
