@@ -177,19 +177,27 @@
 ; An article record's shape: sequence, txid, generation, Message-ID at 3,
 ; payload at 4 (fn-record-make's order, books/records-shape).
 (defconst *sctt-record* (list 0 5 1 "<a@x>" *sctt-payload* '("g") nil nil nil 0 0))
+; The sequence half of the index by fn-cei-put; the Message-ID half built
+; directly (fn-cei-msgid-add indexes only a record the full recognizer
+; admits, which a hand-made shape is not): what the capture's index holds
+; for a real article.
 (defconst *sctt-mindex* (fn-cei-put 0 *sctt-record* nil))
+(defconst *sctt-mtrie* (fn-midx-put-chars (coerce "<a@x>" 'list) (list *sctt-record*) nil))
 (defconst *sctt-r* (list "node" (list (list "<a@x>" *sctt-payload* '("g") nil t 0)) 7))
 
 (assert-event
  (and (equal (fn-sct-payload-of *sctt-record*) *sctt-payload*)
       (equal (fn-sct-ref-get 0 *sctt-mindex*) *sctt-payload*)
-      (equal (fn-cei-trie-records "<a@x>" (fn-cei-msgid-trie *sctt-mindex*))
-             (list *sctt-record*))
-      (let* ((prog (fn-sct-program *sctt-r* nil (fn-cei-msgid-trie *sctt-mindex*) 1 *sctt-mindex*))
+      (equal (fn-cei-trie-records "<a@x>" *sctt-mtrie*) (list *sctt-record*))
+      (equal (fn-sct-candidate (list "<a@x>" *sctt-payload*) *sctt-mtrie* 1 *sctt-mindex*) 0)
+      (let* ((prog (fn-sct-program *sctt-r* nil *sctt-mtrie* 1 *sctt-mindex*))
              (literal (fn-scc-program *sctt-r*))
              (ptable (fn-cei-build (list *sctt-payload*))))
         (and (< (len prog) (len literal))
-             (equal (- (len literal) (len prog)) (- (+ 1 2 (len *sctt-payload*)) 3))
+             ; the literal leaf: op, a length of one digit (count byte and
+             ; digit), the 20 octets; the reference: op and nat 0 (one
+             ; count byte, no digit)
+             (equal (- (len literal) (len prog)) (- (+ 1 2 (len *sctt-payload*)) 2))
              (equal (fn-sct-run prog nil ptable) (list *sctt-r*))
              (equal (fn-sct-decode-rows prog ptable) (list :ok (list *sctt-r*)))
              ; a reference to a P row past the count is refused by name
@@ -258,21 +266,11 @@
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-sct-run fn-sct-program fn-sct-run-of-program)))))
 
-; fn-ockp-decide-defers-by-the-estimate, its (natp budget) hypothesis: a
-; non-natural budget defers nothing by the budget.
-(assert-event
- (and (not (natp nil))
-      (equal (car (fn-ockp-decide 5 nil 1000000)) :plan)))
-(must-fail
- (defthm sctt-r-decide-without-natp-budget
-   (implies (natp estimate)
-            (iff (equal (car (fn-ockp-decide estimate budget free)) :deferred)
-                 (or (< budget estimate)
-                     (not (natp (fn-ockp-space free)))
-                     (< (fn-ockp-space free) estimate))))
-   :rule-classes nil
-   :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-ockp-decide-defers-by-the-estimate)))))
+; fn-ockp-decide-defers-by-the-estimate, its two natp hypotheses: UNTOOTHED.
+; `<' treats a non-number as 0, so a nil budget defers and a nil estimate
+; plans exactly as the conclusion says (a ground attempt to refute either
+; failed); the hypotheses are likely removable, which needs the weakened
+; theorem proved first (the rule): a continuation item (PKT-583).
 
 ; fn-ockp-estimate-is-len-file-octets, its encodability hypothesis: a table
 ; whose row the codec refuses (a leaf of 2^2040 octets is not constructible;

@@ -2263,7 +2263,7 @@ here, and written only through fn-owner-sco-publication-done."
                   :due)
           (let ((captured (fnn-owner-core 'fn-owner-sco-capture
                                           (fnn-checkpoint-budget-test-override nil)
-                                          free (fnn-source-revision))))
+                                          free (fnn-checkpoint-revision))))
             (unless (and (true-listp captured) (= (length captured) 10))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             (let ((thread (sb-thread:make-thread

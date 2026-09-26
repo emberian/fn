@@ -2010,7 +2010,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-083",
-        "PRF-104"
+        "PRF-104",
+        "PRF-199"
       ],
       "verification": [
         "proof",
@@ -3338,7 +3339,8 @@
         "PRF-199",
         "PRF-200",
         "PRF-133",
-        "PRF-135"
+        "PRF-135",
+        "PRF-183"
       ],
       "verification": [
         "proof",

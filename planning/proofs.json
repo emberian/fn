@@ -5518,7 +5518,8 @@
       "statement": "books/owner-checkpoint-pipeline.lisp. The writer the host calls per step (fn-ockp-step -> fn-ockp-batch -> fn-ockp-encode-batch -> fn-sct-renc, called from host/native/io.lisp fnn-checkpoint-write-steps by both entries) writes forward into the buffer: fn-sct-renc-is-program: (implies (true-listp fn-octets) (equal (fn-sct-renc x cand mtrie n table k fn-octets) (append fn-octets (fn-sct-program x cand mtrie n table) (fn-scc-repeat (nfix k) *fn-scc-op-cons*)))); fn-ockp-encode-batch-is-rows-program: the batch of B rows appends fn-sct-rows-program of those rows; fn-ockp-chunks-of-append-cut: fn-scc-chunks of P ++ Q is the full chunks the cut of P emits then the chunks of the residue with Q behind it (the residue invariant of the batched cut); fn-ockp-frames-of-append: the frames of appended chunk lists chain through fn-ockp-chain-end. The same property as the schema-2 fn-sccb-plan-is-file-octets (the plan's octets over the buffer are the codec's file) at the level of one step; the loop's composition (fn-ockp-run-writes-the-file, PRF-199's buffer half) is open (PKT-583).",
       "milestone": "M5",
       "requirements": [
-        "REP-010"
+        "REP-010",
+        "STO-026"
       ],
       "depends_on": [
         "PRF-087"
@@ -5610,7 +5611,8 @@
       "statement": "books/store-checkpoint-tables-reader.lisp. fn-sct-load (the host-called entry: host/store-node-host.lisp fn-store-sco-decode, called by host/native/io.lisp fnn-state-checkpoint-load at the store's open) is the list reader on the frames' octets: fn-sct-load-is-decode-file: (implies (and (fn-octets-p fn-octets) (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets)) (equal (fn-sct-load plan fn-octets) (fn-sct-decode-file (fn-sccr-plan-segments plan fn-octets)))), with the same verdict on corrupt input. fn-sctr-run-is-run: the ref codec's machine by index over cells [i, end) is fn-sct-run over that slice; fn-sctr-step-is-step likewise; fn-sctr-run-decode-is-run-decode: a run over the plan is the list run over its frames' octets (through the unchanged chain check fn-sccr-join, fn-sccr-join-is-join). fn-sccr-admitted-within-bounds (kept): a segment ACL2 admits has the extent the codec sizes it, within both bounds; fn-sccr-admit-segment refuses another schema by name (:schema). The same property as the schema-2 fn-sccr-decode-plan-is-decode-segments and fn-sccr-decode-of-plan (the buffer decode is the list decode; with PRF-199 the decode of the writer's file is the value).",
       "milestone": "M5",
       "requirements": [
-        "REP-010"
+        "REP-010",
+        "STO-026"
       ],
       "depends_on": [
         "PRF-133"

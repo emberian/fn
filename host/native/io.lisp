@@ -2220,6 +2220,12 @@ handed to fnn-state-checkpoint-write."
   "Rows of a table per pipeline step: a work bound per scheduling step (D27),
 never a bound on the store; the file is the same at every batch size.")
 
+(defun fnn-checkpoint-revision ()
+  "The writer's source revision for the checkpoint's F row: the recorded one
+(fnn-source-revision), or \"unknown\" on an image that records none (a
+scratch image): provenance, never a refusal."
+  (or (ignore-errors (fnn-source-revision)) "unknown"))
+
 (defun fnn-checkpoint-batch-fault ()
   "Developer-only FN_NATIVE_CHECKPOINT_BATCH_FAULT=K:kill: the step after
 which the process is killed, or NIL."
@@ -2279,7 +2285,7 @@ buffer at once."
                 (budget (fnn-core 'fn-ock-capture-budget profile))
                 (answer (fnn-core-state 'fn-store-sco-publish-setup segment budget
                                         (fnn-disk-free-octets store)
-                                        (fnn-source-revision))))
+                                        (fnn-checkpoint-revision))))
            (unless (and (consp answer) (= (length answer) 2)
                         (consp (first answer)) (integerp (second answer))
                         (= (second answer) (length records)))
