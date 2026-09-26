@@ -125,9 +125,10 @@ token octets and 256 registered consumers. These are **proposed v1 policy
 limits**, subject to a measured host budget before deployment. A requested
 limit over policy is refused. A page stops before violating any independent
 scan, item or byte bound; it still carries the cursor for the prefix actually
-scanned. Oversize single articles are not silently skipped: the poll reports a
-bounded refusal at that position, leaving progress unchanged, until an
-explicit large-object retrieval contract exists. Register/rebase/ack metadata
+scanned. Oversize single articles are not silently skipped: the poll answers
+the named refusal `:oversize` at that position (`fn-col-poll-report`,
+PRF-177), leaving progress unchanged, until an explicit skip or large-object
+retrieval contract exists (PKT-466). Register/rebase/ack metadata
 is charged before the durable promise. Each event consumes one place in the
 persisted Store transaction-count profile and its kind-specific ACL2 byte
 ceiling is checked before reservation; the 256-entry table limit alone does
@@ -239,6 +240,56 @@ who may claim that operation identity.
 the native scenario (SCN-080) and `tests/test_fn_consumer_journal.py` the
 stand-in journal test; the fn side it relies on is PRF-137
 ([evidence](../planning/evidence/consumer-e2-2-2026-09-26.md)).
+One consumer process per database is enforced by the client, not stated:
+`fn_consumer.py` holds an exclusive `flock` on `<db>.lock` from before it
+opens the database until it exits, and a second process is refused (exit 1,
+`database in use by pid N`) before it reads anything, so the in-flight
+attempts a process finds on opening belong to a dead process (PKT-351).
+The lock, the resend and the correlation are the client's own bookkeeping
+under this contract; fn decides none of them.
+
+## Two nodes
+
+The exchange also runs across two fn nodes peered over NNTP. Agent A's
+consumer talks only to node A's control socket and agent B's only to node
+B's; neither consumer talks to the other node. A authors R into A's Store
+(`hybrid-author`); A's outbound feed carries R to B, and B may also receive
+it by its NEWNEWS pull (specs/peering.md, NNT-018); B's Store accepts R as a
+kind-4 event with B's own verdict under B's enrolment of A's author; B's
+consumer polls B, verifies R with its own keyring, commits its one
+transition and immutable reply Q, and acknowledges its position on B; Q
+crosses back by B's feed; A's consumer polls A, verifies Q with its own
+keyring and correlates it with R.
+
+Each hop keeps separate identities: the application operation
+(application-id, operation-id), the authored source (its SHA-256), the
+signature carrier (the two signatures), and the hop-local stored projection
+(the received article, which carries that node's `Path`). The authored
+source and both signatures are the submission artifact's at every hop; the
+stored projections may differ. A repeated transfer (the feed and a pull of
+the same Message-ID, or a later offer) is one Store event at the receiving
+node: the later arrival is answered duplicate (435 to an offer; the pull
+does not fetch an article its Store holds), so the consumer sees one event
+and performs one transition; its `repeat` disposition and the operations
+key are the backstop for an operation served to it again (its own reply
+served back). A node restart between a poll and its ack re-serves the same
+page and cursor (poll is a read), and the ack is idempotent. A revoked
+author's uncertain submission at its own node still settles only by that
+node's Store serving the artifact back (PKT-322), while a node that received
+the article before the revocation consumes it normally.
+
+CNS-004: two consumers on two fn nodes peered over NNTP exchange a signed
+report and a reply, each verifying what it receives with its own keyring and
+acknowledging only its own node's position after its transaction commits;
+the receiving node's stored event keeps the authored source and both
+signatures of the carrier it received (PRF-177,
+`fn-osp-authorized-event-keeps-the-carried-source-and-signatures`); a
+repeated transfer, a lost reply, a consumer death at every ownership cut and
+a node restart mid-poll produce no second application transition.
+`tests/test_native_consumer_exchange_two_nodes.py` is the native scenario
+(SCN-106) ([evidence](../planning/evidence/consumer-exchange-2026-09-26.md)).
+Carriage over BP through the relay network is not part of CNS-004 yet
+(PKT-333 phase 2, after the multi-peer relay).
 
 ## Executable seam and obligations
 
@@ -392,12 +443,16 @@ ACL2-encoded `fn-r` legacy article / `fn-e` accepted-article event. The
 schema-1 composite event includes the received article, separate bound exact
 authored source and identity, and historical verdict; legacy events retain
 their explicit version and make no source-authorship claim. The FNCT kind-6
-reply has a separate 196,963-octet payload ceiling, within the 4,194,304-octet
-underlying frame payload ceiling; ordinary control requests retain their smaller cap.
+reply's payload ceiling is its 9 header octets, the widest cursor (346) and
+the Store composite ceiling `*fn-stxa-max-octets*` (the u32 frame payload in
+all); ordinary control requests retain their smaller cap. ACL2 encodes the
+selected event (`fn-col-poll-report`) and answers the named refusal
+`:oversize` for a report above `*fn-stxa-max-octets*`; that is reachable only
+for a profile whose record bound R lies in the 355 octets above it (PKT-467).
 Its cursor and report lengths are checked independently. Poll leaves the
 durable consumer position unchanged; only a subsequent `ack` writes progress.
 The `consumer-project` exact-file reader uses the ACL2 cursor and event
-ceilings (346 and 196,608 octets). A file beyond either ceiling is a bounded
+ceilings (346 octets and `*fn-stxa-max-octets*`). A file beyond either ceiling is a bounded
 `:limit` refusal of that CLI request; malformed files within the ceilings
 reach the ACL2 projector's codec refusal. Neither result advances an ack.
 The called `fn-col-poll` reads at most 16 consecutive events by sequence from
@@ -436,10 +491,12 @@ files, and it keeps every event byte), so the unavailable-gap rule above is
 the general contract, unexercised here. The scan bound (16) and item bound
 (one event) are in that theorem; the reply byte ceiling and the 346-octet
 cursor are codec ceilings, not proved independent of the scan. A single
-article larger than the poll reply ceiling has no retrieval contract yet.
+article larger than the poll reply ceiling is refused by name (`:oversize`)
+and has no skip or retrieval contract yet (PKT-466).
 
 CNS-002: two consumers with independent durable state exchange a signed
-report and a reply through one fn node, each running the consumer
+report and a reply through one fn node (and, under CNS-004, through two
+nodes peered over NNTP, each consumer on its own node), each running the consumer
 transaction above and acknowledging only after it commits. Each uncertain
 fact at an ownership boundary is settled by its owner: an uncertain consumer
 transaction by the consumer's database, an uncertain `ack` by `position`, an

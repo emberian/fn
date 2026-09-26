@@ -6424,6 +6424,37 @@
         "fn-pull-records-replay-is-the-replay",
         "fn-pull-records-replay-ignores-an-uncommitted-tail"
       ]
+    },
+    {
+      "id": "PRF-177",
+      "title": "The two-node consumer exchange: the receiving node's stored event keeps the carrier's authored source and both signatures, and the served poll report is the event's exact encoding or a named :oversize refusal",
+      "statement": "(a) The subject is fn-pa-authorized-event, which host/native/owner.lisp fnn-owner-attempt-transit's :ok arm calls through host/owner-host.lisp fn-owner-peer-carried-event for NNTP and BP transit and served POSTs. fn-osp-authorized-event-keeps-the-carried-source-and-signatures (books/owner-signed-post): whenever it forms an event, fn-pa-carrier-form of the received octets is :ok; the event's authored source is exactly the carrier's source (nth 1); its article record is exactly fn-record-encode of the record over the received octets (so the stored projection holds the carrier); and fn-hsig-authorize-at holds of the carrier's source version, principal, keys, source and signatures (nth 4) with the host's primitive observations: the two signatures the verdict authorized are the carrier's. The hop-local Path may differ between nodes; the source and signatures may not. (c) The subject is fn-col-poll-report (books/consumer-owner-local), which host/owner-host.lisp fn-owner-consumer-local-poll serves. fn-col-poll-report-fits-or-refuses-by-name (books/consumer-owner-local-progress): a non-page or empty page is fn-col-poll's answer unchanged; a page whose encoded report satisfies fn-ncl-poll-event-bytesp is (:poll cursor report) with the event's exact encoding (fn-col-poll-report-octets: fn-stxa-encode, or fn-rcon-record-encode-impl for a legacy record); a page whose report is octets longer than *fn-stxa-max-octets* is (:refused :oversize). fn-col-poll-report-is-a-page-or-a-refusal: never a write, so an oversize article leaves the position unchanged. (b) PKT-256's CORRUPTED-state witness for fn-cp-ack-writes-only-a-forward-declaration-in-scope's frontier premise and (d) PKT-262's witness (a consumer registered after an article polls it first: intended) are teeth in tests/acl2/consumer-owner-local-progress-tests. Not claimed: that the :oversize antecedent is witnessed concretely (it needs a report above 4,294,966,940 octets, reachable only for a profile whose record bound R exceeds *fn-stxa-max-octets*; PKT-467); an explicit skip past an oversize article (PKT-466); anything about the Python consumer (an external client whose lock, resend and correlation are its own bookkeeping under CNS-003); BP carriage (PKT-333 phase 2).",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-004",
+        "CNS-002"
+      ],
+      "depends_on": [
+        "PRF-116"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/owner-signed-post.lisp",
+        "tests/acl2/owner-signed-post-tests.lisp",
+        "books/consumer-owner-local.lisp",
+        "books/consumer-owner-local-progress.lisp",
+        "tests/acl2/consumer-owner-local-progress-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/consumer-exchange-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T114912Z-1309060.json"
+      ],
+      "progress_note": "Lane consumer-exchange (2026-09-26), wave 4 lane 12; gpt-6's wave-2 review section 7.",
+      "events": [
+        "fn-osp-authorized-event-keeps-the-carried-source-and-signatures",
+        "fn-col-poll-report-fits-or-refuses-by-name",
+        "fn-col-poll-report-is-a-page-or-a-refusal"
+      ]
     }
   ]
 }
