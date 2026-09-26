@@ -1,0 +1,191 @@
+{
+ "description": "post-identity-index SCN-120: owner CPU (ms) and bytes consed per POST, K = 400, five alternating rounds pinned to cores 20-23 (results2/); tmpfs copies of the registered fixtures; before = dev 6407de336 developer image (throughput gate native-img-6407de336, core 8cd82dcc...), after = lane 50aebab85 (hbox_native r1, core 994b94c8...)",
+ "rows": {
+  "after-10k": [
+   {
+    "round": 1,
+    "owner_cpu_ms_per_post": 4.95,
+    "post_median_ms": 4.96,
+    "post_p95_ms": 5.8,
+    "bytes_consed_per_post": 2130106,
+    "loadavg": "10.94 10.64 11.19 10/1835 2415730"
+   },
+   {
+    "round": 2,
+    "owner_cpu_ms_per_post": 5.6,
+    "post_median_ms": 5.588,
+    "post_p95_ms": 6.487,
+    "bytes_consed_per_post": 2129940,
+    "loadavg": "11.51 10.84 11.22 12/1829 2418149"
+   },
+   {
+    "round": 3,
+    "owner_cpu_ms_per_post": 5.3,
+    "post_median_ms": 5.288,
+    "post_p95_ms": 6.227,
+    "bytes_consed_per_post": 2130011,
+    "loadavg": "12.71 11.31 11.36 11/1829 2420752"
+   },
+   {
+    "round": 4,
+    "owner_cpu_ms_per_post": 4.95,
+    "post_median_ms": 4.866,
+    "post_p95_ms": 5.806,
+    "bytes_consed_per_post": 2130057,
+    "loadavg": "12.28 11.49 11.42 9/1811 2423678"
+   },
+   {
+    "round": 5,
+    "owner_cpu_ms_per_post": 4.55,
+    "post_median_ms": 4.508,
+    "post_p95_ms": 5.248,
+    "bytes_consed_per_post": 2130053,
+    "loadavg": "11.15 11.32 11.37 10/1812 2426090"
+   }
+  ],
+  "after-1k": [
+   {
+    "round": 1,
+    "owner_cpu_ms_per_post": 3.225,
+    "post_median_ms": 3.291,
+    "post_p95_ms": 3.625,
+    "bytes_consed_per_post": 1985326,
+    "loadavg": "10.90 10.67 11.18 8/1828 2416772"
+   },
+   {
+    "round": 2,
+    "owner_cpu_ms_per_post": 3.75,
+    "post_median_ms": 3.772,
+    "post_p95_ms": 4.104,
+    "bytes_consed_per_post": 1985265,
+    "loadavg": "12.00 11.03 11.27 10/1833 2419225"
+   },
+   {
+    "round": 3,
+    "owner_cpu_ms_per_post": 3.5,
+    "post_median_ms": 3.571,
+    "post_p95_ms": 3.845,
+    "bytes_consed_per_post": 1985074,
+    "loadavg": "13.13 11.54 11.44 10/1831 2422379"
+   },
+   {
+    "round": 4,
+    "owner_cpu_ms_per_post": 3.625,
+    "post_median_ms": 3.666,
+    "post_p95_ms": 4.061,
+    "bytes_consed_per_post": 1985211,
+    "loadavg": "11.76 11.43 11.40 10/1821 2424911"
+   },
+   {
+    "round": 5,
+    "owner_cpu_ms_per_post": 3.225,
+    "post_median_ms": 3.306,
+    "post_p95_ms": 3.505,
+    "bytes_consed_per_post": 1985307,
+    "loadavg": "10.08 11.05 11.27 9/1801 2427464"
+   }
+  ],
+  "before-10k": [
+   {
+    "round": 1,
+    "owner_cpu_ms_per_post": 7.775,
+    "post_median_ms": 7.672,
+    "post_p95_ms": 10.47,
+    "bytes_consed_per_post": 2129967,
+    "loadavg": "10.20 10.49 11.16 9/1830 2414772"
+   },
+   {
+    "round": 2,
+    "owner_cpu_ms_per_post": 6.925,
+    "post_median_ms": 6.898,
+    "post_p95_ms": 8.382,
+    "bytes_consed_per_post": 2130041,
+    "loadavg": "11.07 10.71 11.19 9/1822 2416976"
+   },
+   {
+    "round": 3,
+    "owner_cpu_ms_per_post": 7.825,
+    "post_median_ms": 7.773,
+    "post_p95_ms": 9.891,
+    "bytes_consed_per_post": 2130264,
+    "loadavg": "12.00 11.03 11.27 12/1842 2419342"
+   },
+   {
+    "round": 4,
+    "owner_cpu_ms_per_post": 7.075,
+    "post_median_ms": 6.963,
+    "post_p95_ms": 8.643,
+    "bytes_consed_per_post": 2130096,
+    "loadavg": "12.96 11.53 11.43 10/1829 2422470"
+   },
+   {
+    "round": 5,
+    "owner_cpu_ms_per_post": 8.175,
+    "post_median_ms": 8.157,
+    "post_p95_ms": 10.526,
+    "bytes_consed_per_post": 2130133,
+    "loadavg": "11.62 11.41 11.40 10/1815 2425019"
+   }
+  ],
+  "before-1k": [
+   {
+    "round": 1,
+    "owner_cpu_ms_per_post": 3.475,
+    "post_median_ms": 3.469,
+    "post_p95_ms": 4.795,
+    "bytes_consed_per_post": 1985253,
+    "loadavg": "10.89 10.66 11.18 9/1830 2416639"
+   },
+   {
+    "round": 2,
+    "owner_cpu_ms_per_post": 4.175,
+    "post_median_ms": 4.213,
+    "post_p95_ms": 4.716,
+    "bytes_consed_per_post": 1985369,
+    "loadavg": "12.08 11.03 11.28 12/1854 2418948"
+   },
+   {
+    "round": 3,
+    "owner_cpu_ms_per_post": 3.7,
+    "post_median_ms": 3.731,
+    "post_p95_ms": 4.196,
+    "bytes_consed_per_post": 1985228,
+    "loadavg": "13.05 11.50 11.42 10/1822 2422225"
+   },
+   {
+    "round": 4,
+    "owner_cpu_ms_per_post": 3.575,
+    "post_median_ms": 3.653,
+    "post_p95_ms": 4.102,
+    "bytes_consed_per_post": 1985250,
+    "loadavg": "11.76 11.43 11.40 9/1821 2424632"
+   },
+   {
+    "round": 5,
+    "owner_cpu_ms_per_post": 3.45,
+    "post_median_ms": 3.534,
+    "post_p95_ms": 3.776,
+    "bytes_consed_per_post": 1985349,
+    "loadavg": "10.26 11.10 11.29 8/1798 2427253"
+   }
+  ]
+ },
+ "medians": {
+  "after-10k": {
+   "owner_cpu_ms_per_post": 4.95,
+   "bytes_consed_per_post": 2130053
+  },
+  "after-1k": {
+   "owner_cpu_ms_per_post": 3.5,
+   "bytes_consed_per_post": 1985265
+  },
+  "before-10k": {
+   "owner_cpu_ms_per_post": 7.78,
+   "bytes_consed_per_post": 2130096
+  },
+  "before-1k": {
+   "owner_cpu_ms_per_post": 3.58,
+   "bytes_consed_per_post": 1985253
+  }
+ }
+}

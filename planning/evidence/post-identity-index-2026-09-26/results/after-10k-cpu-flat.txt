@@ -1,0 +1,118 @@
+
+Number of samples:   882
+Sample interval:     0.001 seconds
+Total sampling time: 0.882 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2409144 "fn-heap" RUNNING {1211B03D13}> (48/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2409146 "fn service log writer" RUNNING {121226E683}> (448/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2409810 "fn pull feed" RUNNING {122B3F4A73}> (144/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2409812 "fn owner client" RUNNING {122BE90963}> (203336/1048576 bytes, 640 hash buckets)
+   #<THREAD tid=2409811 "fn local control accept" RUNNING {122BA66DC3}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2409145 "fn-prof" RUNNING {12120FB363}> (128/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     85   9.6     85   9.6     85   9.6        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+   4     39   4.4     39   4.4    124  14.1        -  FN-AG-CDR
+   6     36   4.1     60   6.8    160  18.1        -  FN-CBOR-OCTET-LISTP
+   8     33   3.7     33   3.7    193  21.9        -  FN-CBOR-OCTETP
+  10     27   3.1     27   3.1    220  24.9        -  FN-WIRE-AG-CDR
+  12     25   2.8     25   2.8    245  27.8        -  FN-AG-CAR
+  14     19   2.2     19   2.2    264  29.9        -  FN-CCAR-SEEK
+  16     17   1.9    155  17.6    281  31.9        -  FN-SCAR-FEED-BYTE
+  18     17   1.9     17   1.9    298  33.8        -  SB-KERNEL:STRING=*
+  20     16   1.8     16   1.8    314  35.6        -  foreign function __open64
+  22     13   1.5     21   2.4    327  37.1        -  FN-OWN-REFRESH
+  24     13   1.5     13   1.5    340  38.5        -  FN-SHS-ROUNDS
+  26     12   1.4     29   3.3    352  39.9        -  FN-RECORD-PAYLOADP
+  28     11   1.2     20   2.3    363  41.2        -  REPLACE
+  30     10   1.1    248  28.1    373  42.3        -  FN-SCAR-FEED-COUNTED
+  32     10   1.1     63   7.1    383  43.4        -  FN-WIRE-FEED-BYTE
+  34     10   1.1     10   1.1    393  44.6        -  FN-CBOR-AT-MOSTP
+  36     10   1.1     10   1.1    403  45.7        -  FN-WIRE-AG-CAR
+  38      9   1.0     15   1.7    412  46.7        -  SB-KERNEL:VECTOR-TO-LIST
+  40      9   1.0      9   1.0    421  47.7        -  APPEND
+  42      9   1.0      9   1.0    430  48.8        -  SB-IMPL::APPEND2
+  44      8   0.9     10   1.1    438  49.7        -  FN-SERVED-CONN-GROUP-INDEX
+  46      8   0.9      8   0.9    446  50.6        -  FN-ARTICLE-BODY-CRLFP
+  48      8   0.9      8   0.9    454  51.5        -  SB-IMPL::LIST-REVERSE
+  50      7   0.8      7   0.8    461  52.3        -  (SB-VM::OPTIMIZED-DATA-VECTOR-SET (UNSIGNED-BYTE 8))
+  52      7   0.8      7   0.8    468  53.1        -  foreign function __write
+  54      7   0.8      7   0.8    475  53.9        -  FN-ACAR-NNTP-PROJECTIONP
+  56      6   0.7     16   1.8    481  54.5        -  FN-SERVED-CONN-INDEX
+  58      6   0.7     12   1.4    487  55.2        -  FN-INJ-NTH
+  60      6   0.7     11   1.2    493  55.9        -  FN-SHS-LOAD-LIST-WORD
+  62      6   0.7      6   0.7    499  56.6        -  FN-SHS-EXTEND
+  64      6   0.7      6   0.7    505  57.3        -  FN-INJ-CDR
+  66      6   0.7      6   0.7    511  57.9        -  (SB-VM::OPTIMIZED-DATA-VECTOR-REF (UNSIGNED-BYTE 8))
+  68      5   0.6     13   1.5    516  58.5        -  FN-WIRE-STATE-BODY-LIMIT
+  70      5   0.6      5   0.6    521  59.1        -  LENGTH
+  72      5   0.6      5   0.6    526  59.6        -  GENERIC--
+  74      5   0.6      5   0.6    531  60.2        -  foreign function rename
+  76      4   0.5      8   0.9    535  60.7        -  FN-WIRE-LIST-LENGTH
+  78      4   0.5      7   0.8    539  61.1        -  FN-SERVED-CONN-VERDICTS
+  80      4   0.5      5   0.6    543  61.6        -  FN-SHS-LIST-BYTE
+  82      4   0.5      5   0.6    547  62.0        -  FN-SERVED-MAKE-RESULT
+  84      4   0.5      5   0.6    551  62.5        -  FN-PCAR-NEXT-LOWER
+  86      4   0.5      4   0.5    555  62.9        -  EQUAL
+  88      4   0.5      4   0.5    559  63.4        -  GENERIC-+
+  90      4   0.5      4   0.5    563  63.8        -  FN-WIRE-STATE-MODE
+  92      3   0.3     27   3.1    566  64.2        -  FN-ARTICLE-PARSE-LINES
+  94      3   0.3     20   2.3    569  64.5        -  FN-PCAR-CANDIDATEP
+  96      3   0.3      7   0.8    572  64.9        -  FN-CBOR-ENCODE-BOUNDED
+  98      3   0.3      7   0.8    575  65.2        -  FN-SERVED-CONN-CONTROL
+ 100      3   0.3      7   0.8    578  65.5        -  FN-ARTICLE-HEADER-BYTES-P
+ 102      3   0.3      5   0.6    581  65.9        -  FN-RECORD-STRING-OCTETS-AUX
+ 104      3   0.3      4   0.5    584  66.2        -  FN-SERVED-MAKE-CONN-GROUP-INDEXED
+ 106      3   0.3      4   0.5    587  66.6        -  FN-SERVED-COUNTED-MAKE
+ 108      3   0.3      3   0.3    590  66.9        -  foreign function syscall
+ 110      3   0.3      3   0.3    593  67.2        -  FN-WIRE-MAKE-STATE
+ 112      3   0.3      3   0.3    596  67.6        -  FN-WIRE-REVERSE-OCTETS-AUX
+ 114      3   0.3      3   0.3    599  67.9        -  FN-CFG-AG-CDR
+ 116      3   0.3      3   0.3    602  68.3        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-SET/CHECK-BOUNDS
+ 118      3   0.3      3   0.3    605  68.6        -  foreign function poll
+ 120      3   0.3      3   0.3    608  68.9        -  FN-SERVED-RESULT-CONN
+ 122      3   0.3      3   0.3    611  69.3        -  FN-RECORD-STRING-OCTETS
+ 124      3   0.3      3   0.3    614  69.6        -  FN-RECORD-ASCII-OCTET-LISTP
+ 126      3   0.3      3   0.3    617  70.0        -  SB-KERNEL:TWO-ARG-<=
+ 128      3   0.3      3   0.3    620  70.3        -  FN-ARTICLE-HEADER-BYTEP
+ 130      3   0.3      3   0.3    623  70.6        -  FN-SERVED-CONN-WIRE
+ 132      3   0.3      3   0.3    626  71.0        -  FN-RETAIN-OBLIGATION-ID
+ 134      2   0.2    223  25.3    628  71.2        -  FN-RETAIN-PIN-ID-SCANP
+ 136      2   0.2     10   1.1    630  71.4        -  FN-FRAME-VALUES-OKP
+ 138      2   0.2      8   0.9    632  71.7        -  FN-SERVED-CONN-INJECTION
+ 140      2   0.2      5   0.6    634  71.9        -  FN-ARTICLE-ASCII-DOWNCASE
+ 142      2   0.2      4   0.5    636  72.1        -  FN-SERVED-CONN-CONFIG
+ 144      2   0.2      4   0.5    638  72.3        -  FN-WIRE-STATE-BODY-REV
+ 146      2   0.2      4   0.5    640  72.6        -  FN-SHB-LOAD-BLOCK
+ 148      2   0.2      4   0.5    642  72.8        -  FN-CFG-ROW-LISTP
+ 150      2   0.2      3   0.3    644  73.0        -  FN-WILDMAT-UTF8-NEXT
+ 152      2   0.2      3   0.3    646  73.2        -  SB-IMPL::FIND-SYMBOL2
+ 154      2   0.2      3   0.3    648  73.5        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+ 156      2   0.2      3   0.3    650  73.7        -  FN-SERVED-COUNTED-CONSUMED
+ 158      2   0.2      3   0.3    652  73.9        -  FN-OCTET-LISTP
+ 160      2   0.2      2   0.2    654  74.1        -  FN-AG-APPEND-EXEC
+ 162      2   0.2      2   0.2    656  74.4        -  FN-BS-META-NTH
+ 164      2   0.2      2   0.2    658  74.6        -  FN-SERVED-CONN-SESSION
+ 166      2   0.2      2   0.2    660  74.8        -  TRUE-LISTP
+ 168      2   0.2      2   0.2    662  75.1        -  foreign function pthread_sigmask
+ 170      2   0.2      2   0.2    664  75.3        -  foreign function read
+ 172      2   0.2      2   0.2    666  75.5        -  GENERIC-<
+ 174      2   0.2      2   0.2    668  75.7        -  FN-WILDMAT-UTF8-OK
+ 176      2   0.2      2   0.2    670  76.0        -  FN-OCT-BUF-LIST-DOWN
+ 178      2   0.2      2   0.2    672  76.2        -  FN-CLOCK-OBSERVATIONP
+ 180      2   0.2      2   0.2    674  76.4        -  foreign function link
+ 182      2   0.2      2   0.2    676  76.6        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-REF/CHECK-BOUNDS
+ 184      1   0.1    767  87.0    677  76.8        -  FNN-OWNER-SERVE-CLIENT
+ 186      1   0.1     39   4.4    678  76.9        -  FNN-CORE
+ 188      1   0.1     26   2.9    679  77.0        -  FN-SHS-DIGEST-LIST
+ 190      1   0.1     15   1.7    680  77.1        -  FN-SERVED-TLS-HANDSHAKINGP
+ 192      1   0.1     13   1.5    681  77.2        -  FN-SBUD-OCTETS-ADVANCE
+ 194      1   0.1     11   1.2    682  77.3        -  FN-CCAR-COMPLETION-ENABLEDP
+ 196      1   0.1      8   0.9    683  77.4        -  FN-ACAR-OPEN-SESSION
+ 198      1   0.1      6   0.7    684  77.6        -  FNN-COUNTERPART
+ 200      1   0.1      6   0.7    685  77.7        -  FN-WILDMAT-DECODE-AUX
+------------------------------------------------------------------------
+        114  12.9                                     elsewhere
