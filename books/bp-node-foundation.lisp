@@ -6,7 +6,15 @@
 (include-book "bp-adu")
 (include-book "bp-signed-receipt")
 (set-verify-guards-eagerness 0)
-(defconst *fn-bpnf-max-held-image* 131072)
+; The held image's codec width (D27; PRF-134): the ceiling every field of the
+; BP node profile has (`fn-bpn-machine-limitp', 2^24), so no image within a
+; profile's held octets is refused by the codec.  The bound a node applies to
+; a held image is the profile's held octets: the step's held-octet check
+; below (and the family plan's) is against the machine state's max-octets,
+; which is the profile's (fn-bpnpf-valid-profile-opens).  Kind 5 and kind 18
+; carry the image in a `(:blob . W)' field of this width.  Before P5 it was
+; 131,072, the plain frame `:blob'.
+(defconst *fn-bpnf-max-held-image* 16777216)
 
 ; A partition is assigned from the admitted ingress principal before looking
 ; up an RFC 9171 bundle identity.  Nil is its own unauthenticated partition.

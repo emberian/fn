@@ -123,3 +123,118 @@
                      (append (bpnpft-prefix) (bpnpft-prefix))
                      (bpnpft-base 1) nil nil nil 0)
                     '(:fault :held-beyond-profile))))))
+
+;; ===========================================================================
+;; PRF-134: profile 2 (ROWS OCTETS ADU BUNDLE) and the held image at replay.
+
+;; fn-bpnpf-profile-read-of-octets.  Witness: the profile SCN-077 runs under
+;; (2,600 rows, 16 MiB held, a 10 MiB + 64 KiB ADU, 1 MiB bundles).
+(assert-event
+ (and (fn-bpnpf-profile-validp 2600 16777216 10551296 1048576)
+      (equal (fn-bpnpf-profile-read
+              t (fn-bpnpf-profile-octets 2600 16777216 10551296 1048576))
+             '(2600 16777216 10551296 1048576))
+      (< (len (fn-bpnpf-profile-octets 16777216 16777216 16777216 16777216))
+         (fn-bpnpf-read-bound))))
+;; Without validity: an ADU of 2^24 + 1 is no profile, and its frame is none.
+(assert-event
+ (and (not (fn-bpnpf-profile-validp 128 16777216 16777217 1048576))
+      (not (equal (fn-bpnpf-profile-read
+                   t (fn-bpnpf-profile-octets 128 16777216 16777217 1048576))
+                  '(128 16777216 16777217 1048576)))))
+(must-fail
+ (defthm bpnpft-profile-read-without-validity
+   (equal (fn-bpnpf-profile-read
+           t (fn-bpnpf-profile-octets rows octets adu bundle))
+          (list rows octets adu bundle))
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+;; A trailing octet, or the format-1 text in a five-field frame, is refused.
+(assert-event
+ (and (null (fn-bpnpf-profile-read
+             t (append (fn-bpnpf-profile-octets 128 16777216 65538 1048576) '(0))))
+      (null (fn-bpnpf-profile-read
+             t (fn-frame-fields-octets *fn-bpnpf-spec-2*
+                                       (list *fn-bpnpf-format* 128 16777216
+                                             65538 1048576))))))
+
+;; fn-bpnpf-profile-read-of-format-1: the file SCN-067 wrote opens with the
+;; default ADU and bundle octets; no file is the default.
+(assert-event
+ (and (equal (fn-bpnpf-profile-read t (fn-bpnpf-octets 128 16777216))
+             '(128 16777216 65538 1048576))
+      (equal (fn-bpnpf-profile-read nil nil) '(64 16777216 65538 1048576))))
+;; Without validity (zero rows): not the format-1 profile with defaults.
+(assert-event
+ (not (equal (fn-bpnpf-profile-read t (fn-bpnpf-octets 0 16777216))
+             '(0 16777216 65538 1048576))))
+
+;; fn-bpnpf-profile-write-never-lowers.  Witness: a format-1 profile raised to
+;; SCN-077's; each field lowered is refused.
+(assert-event
+ (let ((w (fn-bpnpf-profile-write-octets '(128 16777216 65538 1048576)
+                                         2600 16777216 10551296 1048576)))
+   (and w (equal (fn-bpnpf-profile-read t w)
+                 '(2600 16777216 10551296 1048576)))))
+(assert-event
+ (and (null (fn-bpnpf-profile-write-octets '(128 16777216 10551296 1048576)
+                                           128 16777216 65538 1048576))
+      (null (fn-bpnpf-profile-write-octets '(128 16777216 65538 1048576)
+                                           128 16777216 65538 1024))
+      (null (fn-bpnpf-profile-write-octets '(128 16777216 65538 1048576)
+                                           64 16777216 65538 1048576))))
+
+;; fn-bpnpf-replay-past-the-octets-is-refused.  A base of two rows whose held
+;; octets are the first row's image and the second's, less one.
+(defun bpnpft-base-octets (octets)
+  (let ((b (fn-bpnf-base *bpnff-state*)))
+    (fn-bpn-make-machine-state
+     (fn-bpn-machine-state-config b) (fn-bpn-machine-state-jobs b)
+     (fn-bpn-machine-state-contacts b) (fn-bpn-machine-state-pending b)
+     (fn-bpn-machine-state-fenced b) (fn-bpn-machine-state-next-token b)
+     2 octets)))
+(defun bpnpft-image-octets ()
+  (+ (fn-bpnf-held-octets
+      (fn-bpn-nth 1 (fn-bpnf-family-replay-rows-aux
+                     (bpnpft-prefix) (bpnpft-base-octets 16777216)
+                     nil nil nil 0)))
+     (len (fn-bpnpf-kind-five-row-image (bpnpft-row)))))
+(defun bpnpft-ro (octets)
+  (fn-bpnf-family-replay-rows-aux (bpnpft-prefix) (bpnpft-base-octets octets)
+                                  nil nil nil 0))
+(assert-event
+ (let* ((o (1- (bpnpft-image-octets))) (r (bpnpft-ro o)))
+   (and (< 0 (len (fn-bpnpf-kind-five-row-image (bpnpft-row))))
+        (equal (car r) :ready)
+        (fn-bpnpf-kind-five-row-fitsp (bpnpft-row) (fn-bpn-nth 1 r)
+                                      (fn-bpn-nth 3 r) (fn-bpn-nth 4 r))
+        (< o (+ (fn-bpnf-held-octets (fn-bpn-nth 1 r))
+                (len (fn-bpnpf-kind-five-row-image (bpnpft-row)))))
+        (equal (fn-bpnf-family-replay-rows-aux
+                (append (bpnpft-prefix) (list (bpnpft-row)))
+                (bpnpft-base-octets o) nil nil nil 0)
+               '(:fault :held-beyond-profile)))))
+;; Without the image past the held octets (exactly enough): :ready, both held.
+(assert-event
+ (let* ((o (bpnpft-image-octets)) (r (bpnpft-ro o)))
+   (and (equal (car r) :ready)
+        (fn-bpnpf-kind-five-row-fitsp (bpnpft-row) (fn-bpn-nth 1 r)
+                                      (fn-bpn-nth 3 r) (fn-bpn-nth 4 r))
+        (not (< o (+ (fn-bpnf-held-octets (fn-bpn-nth 1 r))
+                     (len (fn-bpnpf-kind-five-row-image (bpnpft-row))))))
+        (equal (len (nth 1 (fn-bpnf-family-replay-rows-aux
+                            (append (bpnpft-prefix) (list (bpnpft-row)))
+                            (bpnpft-base-octets o) nil nil nil 0)))
+               2))))
+(must-fail
+ (defthm bpnpft-octets-without-the-bound
+   (let ((r (fn-bpnf-family-replay-rows-aux
+             prefix base held handoffs prior next-arrival)))
+     (implies (and (true-listp prefix)
+                   (equal (car r) :ready)
+                   (fn-bpnpf-kind-five-row-fitsp
+                    row (fn-bpn-nth 1 r) (fn-bpn-nth 3 r) (fn-bpn-nth 4 r)))
+              (equal (fn-bpnf-family-replay-rows-aux
+                      (append prefix (cons row rest))
+                      base held handoffs prior next-arrival)
+                     (list :fault :held-beyond-profile))))
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))

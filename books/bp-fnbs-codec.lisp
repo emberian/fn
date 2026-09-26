@@ -8,10 +8,15 @@
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnf-stored-code* 5)
+; The wire field is `(:blob . *fn-bpnf-max-held-image*)' (PRF-134): a value
+; within both widths encodes to the same octets as under `:blob'
+; (books/frame-fields), so every kind-5 row written before keeps its bytes.
 (defconst *fn-bpnf-stored-fields*
-  '(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat :blob))
+  `(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat
+    (:blob . ,*fn-bpnf-max-held-image*)))
 (defconst *fn-bpnf-stored-fields-v1*
-  '(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat :blob
+  `(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat
+    (:blob . ,*fn-bpnf-max-held-image*)
     :nat :nat :nat :nat))
 
 (defun fn-bpnf-stored-frame-limit ()
