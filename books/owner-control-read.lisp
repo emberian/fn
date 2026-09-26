@@ -449,6 +449,53 @@
                                     fn-nntp-stuff-lines fn-nntp-crlf
                                     fn-ctl-target-octets fn-nntp-decimal-field))))))
 
+(local
+ (defthm fn-octl-nntp-over-range-served-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-range-served fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects fn-nov-served-line
+                                    fn-nov-served-lines-numbered fn-nov-overview))))))
+
+(local
+ (defthm fn-octl-nntp-over-current-served-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-current-served session archive server)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-current-served fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects fn-nov-served-line
+                                    fn-nov-served-lines-numbered fn-nov-overview))))))
+
+(local
+ (defthm fn-octl-nntp-over-msgid-served-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-msgid-served session archive token server)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-over-msgid-served fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects fn-nov-served-line
+                                    fn-nov-served-lines-numbered fn-nov-overview))))))
+
+(local
+ (defthm fn-octl-nntp-list-overview-fmt-served-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-overview-fmt-served session)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-nntp-list-overview-fmt-served fn-nntp-single fn-nntp-multi
+                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                   (fn-nntp-result-effects fn-nov-served-line
+                                    fn-nov-served-lines-numbered fn-nov-overview))))))
+
+(local
+ (defthm fn-octl-xref-reply-effects-true-listp
+   (true-listp (fn-nntp-result-effects
+                (fn-nntp-xref-reply session archive index env keyword args)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-xref-reply)
+                                   (fn-nntp-result-effects fn-nntp-keywordp
+                                    fn-nntp-xref-server
+                                    fn-nntp-over-range-served fn-nntp-over-current-served
+                                    fn-nntp-over-msgid-served
+                                    fn-nntp-list-overview-fmt-served))))))
+
 (defthm fn-octl-archive-command-pinned-effects-true-listp
   (true-listp (fn-nntp-result-effects
                (fn-nntp-archive-command-pinned session archive index verdicts
@@ -459,6 +506,9 @@
                                    fn-nntp-withdrawn-reply fn-gidx-list-counts-command
                                    fn-nntp-msgid-retrieval-indexed fn-gidx-listgroup-command
                                    fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
+                                   fn-nntp-over-range-served fn-nntp-over-current-served
+                                   fn-nntp-over-msgid-served fn-nntp-list-overview-fmt-served
+                                   fn-nntp-xref-reply
                                    fn-nntp-control-hdr-response fn-nntp-keywordp
                                    fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p)))))
 

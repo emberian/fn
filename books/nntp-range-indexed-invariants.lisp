@@ -141,6 +141,7 @@
 
 (defthm fn-nntp-pinned-over-range-equals-archive-command
   (implies (and (fn-statep archive)
+                (null (fn-nntp-xref-server env))
                 (or (fn-nntp-keywordp keyword "OVER")
                     (fn-nntp-keywordp keyword "XOVER")))
            (equal
@@ -157,7 +158,7 @@
            :in-theory (e/d (fn-nntp-archive-command-pinned
                             fn-nntp-archive-command fn-nntp-over-response
                             fn-nntp-xover-response fn-nntp-keywordp)
-                           (fn-nntp-over-range-indexed
+                           (fn-nntp-over-range-indexed fn-nntp-xref-server
                             fn-nntp-over-range fn-nntp-xover-range
                             fn-nntp-parse-range fn-nntp-upcase-keyword)))))
 
@@ -167,6 +168,7 @@
                 (fn-midx-correspondencep
                  (fn-gidx-pin-trie index)
                  (fn-state-articles archive))
+                (null (fn-nntp-xref-server env))
                 (or (fn-nntp-keywordp keyword "OVER")
                     (fn-nntp-keywordp keyword "XOVER")))
            (equal (fn-nntp-archive-command-pinned
@@ -182,6 +184,6 @@
                             fn-nntp-archive-command
                             fn-nntp-over-response fn-nntp-xover-response
                             fn-nntp-keywordp)
-                           (fn-nntp-over-range-indexed
+                           (fn-nntp-over-range-indexed fn-nntp-xref-server
                             fn-nntp-over-range fn-nntp-xover-range
                             fn-nntp-upcase-keyword fn-nntp-parse-range)))))

@@ -202,6 +202,58 @@ class NativeReaderIndexTest(unittest.TestCase):
         recovered[0].close()
         self.stop_owner(restarted)
 
+    def test_over_carries_xref_of_local_numbers(self):
+        # PRF-206 (SCN-137): RFC 3977 section 8.3.2 Xref:full as the ninth
+        # overview field (books/nntp-xref.lisp, books/owner-xref-read.lisp):
+        # "Xref: SERVER group:number ..." with the node's path-identity and
+        # the article's LOCAL numbers in every group that holds it; LIST
+        # OVERVIEW.FMT names it.  The stored article gains no Xref header.
+        self.run_native("operator", self.config, "group", "create", "fn.alt")
+        self.run_native("operator", self.config, "policy", "set",
+                        "path-identity", "news.example.org")
+        owner = self.start_owner()
+        early = "<reader-xref-early@example.invalid>"
+        cross = "<reader-xref-cross@example.invalid>"
+        self.post(early, 401, "fn.alt")
+        self.post(cross, 402, ("fn.test", "fn.alt"))
+        reader = self.reader()
+        status, fmt = self.command(reader, "LIST OVERVIEW.FMT", True)
+        self.assertEqual(status, b"215 order of fields in overview database\r\n")
+        self.assertEqual(fmt, [b"Subject:\r\n", b"From:\r\n", b"Date:\r\n",
+                               b"Message-ID:\r\n", b"References:\r\n",
+                               b":bytes\r\n", b":lines\r\n", b"Xref:full\r\n"])
+
+        def xref(row):
+            fields = row.rstrip(b"\r\n").split(b"\t")
+            self.assertEqual(len(fields), 9, row)
+            words = fields[8].split(b" ")
+            self.assertEqual(words[:2], [b"Xref:", b"news.example.org"], row)
+            return fields[0], sorted(words[2:])
+
+        self.assertTrue(self.command(reader, "GROUP fn.test")[0].startswith(b"211 "))
+        status, rows = self.overview(reader, "OVER", "1-100")
+        self.assertEqual(status, b"224 overview information follows\r\n")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(xref(rows[0]), (b"1", [b"fn.alt:2", b"fn.test:1"]))
+        self.assertEqual(self.overview(reader, "XOVER", "1-100")[1], rows)
+        # The current article (GROUP selected 1) and the message-id form.
+        self.assertEqual(self.command(reader, "OVER", True), (status, rows))
+        mid_status, mid_rows = self.command(reader, "OVER " + cross, True)
+        self.assertEqual(mid_status, status)
+        self.assertEqual(xref(mid_rows[0]), (b"0", [b"fn.alt:2", b"fn.test:1"]))
+        self.assertTrue(self.command(reader, "GROUP fn.alt")[0].startswith(b"211 "))
+        alt_rows = self.overview(reader, "OVER", "1-2")[1]
+        self.assertEqual([xref(row) for row in alt_rows],
+                         [(b"1", [b"fn.alt:1"]),
+                          (b"2", [b"fn.alt:2", b"fn.test:1"])])
+        # ARTICLE serves the stored octets: no Xref header was spliced in.
+        art_status, art_rows = self.command(reader, "ARTICLE " + cross, True)
+        self.assertTrue(art_status.startswith(b"220 "), art_status)
+        self.assertFalse(any(row.lower().startswith(b"xref:") for row in art_rows))
+        reader[1].close()
+        reader[0].close()
+        self.stop_owner(owner)
+
     def listgroup(self, reader, group, number_range=None):
         command = "LISTGROUP " + group
         if number_range is not None:

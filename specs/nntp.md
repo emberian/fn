@@ -317,9 +317,36 @@ a line is projected on demand from the exact retained octets. RFC 3977 §8.3.2's
 transformation - remove CRLF pairs, then replace each remaining TAB, NUL, LF and
 CR with one space - is applied once, and `books/nntp-overview.lisp` proves the
 result clean for any input whatsoever. `:bytes` is the retained octet count and
-`:lines` the retained body line count; Xref is omitted rather than approximated,
-so exactly eight fields are emitted and LIST OVERVIEW.FMT lists exactly the
-seven fixed lines of §8.4.2.
+`:lines` the retained body line count.
+
+### The Xref overview field (PRF-206, 2026-09-26)
+
+On the served path (the pinned dispatcher, `fn-nntp-archive-command-pinned`)
+every OVER/XOVER line carries a ninth field in RFC 3977 §8.3.2's full form,
+`Xref: SERVER group:number ...` (RFC 5536 §3.2.14 syntax), and LIST
+OVERVIEW.FMT lists `Xref:full` after the seven fixed lines (§8.4). The
+distinction:
+
+- RFC requirement (§8.3.2, §8.4): a field past the eighth is named in LIST
+  OVERVIEW.FMT, and a full-form field carries its header name. Both are
+  decided on the same value, the environment's server name
+  (`fn-nntp-xref-server`), so the format list and the lines never disagree.
+- fn guarantee (PRF-206): the locations are exactly the (group, number)
+  pairs at which this node serves the article, the local numbers GROUP,
+  LISTGROUP and ARTICLE n use (`fn-xref-pairs-exact`), each an entry the
+  group index builds for it (`fn-xref-pair-is-an-index-entry`); SERVER is
+  the node's `path-identity` (`fn-oag-listing-server-is-the-path-identity`;
+  unset, the `.invalid` agent); the eight fields are the eight-field
+  renderer's (`fn-nov-served-lines-numbered-extend-the-eight-fields`). Local
+  numbers are never merged across nodes: a peer's Xref is not read.
+- Local policy: Xref is overview metadata only. ARTICLE and HEAD serve the
+  stored octets as held (no Xref header is spliced in); a proto-article
+  carrying Xref is refused at injection (RFC 5537 §3.5 item 2), but an
+  article a peer relayed is stored as offered, so its HEAD may carry the
+  peer's Xref with the peer's numbers (PKT-597 (c)); the overview field is
+  the one naming this node's. A group whose name carries a colon is not listed (none is
+  admitted). Without a server name (a blind environment, not the served
+  path) the eight fields and seven format lines of before are answered.
 
 ## Sessions and framing
 

@@ -3892,6 +3892,38 @@
         "native": true,
         "record": "planning/evidence/group-policy-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-137",
+      "title": "A reader reads a cross-posted article's overview: the Xref field names the node's path-identity and the article's local number in every group that holds it, and LIST OVERVIEW.FMT names Xref:full",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-006"
+      ],
+      "steps": [
+        "Init a store with fn.test, create fn.alt, set policy path-identity news.example.org, start the owner.",
+        "Post one article to fn.alt, then one cross-posted to fn.test and fn.alt.",
+        "A reader: LIST OVERVIEW.FMT; GROUP fn.test; OVER 1-100; XOVER 1-100; OVER; OVER <msgid>; GROUP fn.alt; OVER 1-2; ARTICLE <msgid>."
+      ],
+      "expected": [
+        "LIST OVERVIEW.FMT lists the seven fields then Xref:full.",
+        "Each OVER line has nine fields; the ninth is 'Xref: news.example.org' then fn.test:1 and fn.alt:2 for the cross-post, fn.alt:1 for the other; the message-id form numbers the line 0.",
+        "ARTICLE shows no Xref header (the stored octets)."
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "tests/acl2/nntp-xref-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_reader_index",
+        "cases": [
+          "test_over_carries_xref_of_local_numbers"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-2-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-2026-09-26.md"
+      }
     }
   ]
 }
