@@ -2677,6 +2677,37 @@
         "log": "planning/evidence/bounds-p5-2026-09-25.md",
         "record": "planning/evidence/bounds-p5-2026-09-25.md"
       }
+    },
+    {
+      "id": "SCN-097",
+      "title": "an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-021"
+      ],
+      "steps": [
+        "`operator CONFIG init --max-consumers 256 fn.test`; run the owner; `consumer bootstrap`; register c1..c257 over the local control socket.",
+        "Stop; `store upgrade-profile --max-consumers 300`; restart; register c257..c301; `position c1`.",
+        "Restart; register c301; `position c300`; `store upgrade-profile --max-consumers 299`."
+      ],
+      "expected": [
+        "c1..c256 are accepted and c257 is refused (exit 1).",
+        "The upgrade exits 0 and status prints max-consumers=300; the reopen replays the 256 registrations; c257..c300 are accepted, c301 refused, position c1 accepted.",
+        "The reopen replays 300 registrations; c301 is refused; position c300 is accepted; the shrink is refused (exit 1) naming max-consumers."
+      ],
+      "evidence": [
+        "planning/evidence/community-bounds-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_profile",
+        "cases": [
+          "test_the_operator_raises_the_consumer_count"
+        ],
+        "native": true,
+        "log": "planning/evidence/community-bounds/native-consumer-profile.log",
+        "record": "planning/evidence/community-bounds-2026-09-26.md"
+      }
     }
   ]
 }
