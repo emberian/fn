@@ -164,7 +164,10 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
         before = self.files()
 
         self.assert_named(self.op("status"), "operator status")
-        self.assert_named(self.op("store", "recover"), "operator store recover")
+        self.assert_named(self.op("recover"), "operator recover")
+        self.assert_named(self.op("store", "inspect", "<fit-window@example.invalid>"),
+                          "operator store inspect")
+        self.assert_named(self.op("store", "needs-upgrade"), "operator store needs-upgrade")
         self.assert_named(self.op("store", "checkpoint"), "operator store checkpoint")
         self.assert_named(self.op("health"), "operator health")
         self.assert_named(self.run_owner(), "operator run")
