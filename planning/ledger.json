@@ -384,6 +384,8 @@
     "tests/acl2/bp-channel-ingress-tests",
     "books/bp-signed-binding",
     "tests/acl2/bp-signed-binding-tests",
+    "books/owner-store-indexed",
+    "tests/acl2/owner-store-indexed-tests",
     "books/bp-fnbs-delivery-codec",
     "tests/acl2/bp-fnbs-delivery-codec-tests",
     "books/bp-fnbs-delivery-replay",
@@ -941,26 +943,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 956,
-    "books_in_root_closure": 952,
-    "roots": 937,
-    "theorems": 13403,
-    "functions": 9359,
-    "assert_events": 13996,
-    "must_fails": 1609,
+    "books": 958,
+    "books_in_root_closure": 954,
+    "roots": 939,
+    "theorems": 13471,
+    "functions": 9375,
+    "assert_events": 14055,
+    "must_fails": 1612,
     "prover_refusals": 2,
     "encapsulates": 65,
     "guards": {
       "verified": 2199,
-      "declared-off": 753,
-      "default-guarded": 5022,
+      "declared-off": 759,
+      "default-guarded": 5032,
       "default-unguarded": 1385
     },
-    "suspect_theorems": 120,
+    "suspect_theorems": 121,
     "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 138,
-    "include_hygiene_warnings": 965,
+    "include_hygiene_warnings": 966,
     "host_names_warnings": 1111,
     "hand_written_record_warnings": 18
   },
@@ -2942,7 +2944,7 @@
       "book": "books/bp-native-app-fast.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
+      "theorems": 35,
       "functions": 19,
       "guards": {
         "verified": 0,
@@ -2959,7 +2961,8 @@
       "encapsulates": 0,
       "includes": [
         "bp-native-app",
-        "bp-receiver-state-invariants"
+        "bp-receiver-state-invariants",
+        "consumer-event-index-store-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7462,11 +7465,11 @@
       "book": "books/consumer-event-index-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 1,
+      "theorems": 28,
+      "functions": 2,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 2,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -7482,19 +7485,21 @@
         "store-node"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-ceis-build-corresponds"
+      ],
       "read_error": null
     },
     {
       "book": "books/consumer-event-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
-      "functions": 10,
+      "theorems": 23,
+      "functions": 18,
       "guards": {
         "verified": 2,
         "declared-off": 1,
-        "default-guarded": 7,
+        "default-guarded": 15,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -7505,7 +7510,9 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "consumer-position"
+        "consumer-position",
+        "msgid-index-concrete",
+        "replay"
       ],
       "system_includes": [],
       "suspects": [],
@@ -11637,6 +11644,39 @@
       "read_error": null
     },
     {
+      "book": "books/owner-store-indexed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 42,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-signed-binding",
+        "consumer-event-index-store-invariants",
+        "owner-checkpoint-open",
+        "owner-offer-indexed",
+        "owner-served-bound",
+        "public-exposure",
+        "records-concrete-owner",
+        "store-node-resolution"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-tls-prefix.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14611,7 +14651,7 @@
       "book": "books/store-prepare-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
+      "theorems": 20,
       "functions": 4,
       "guards": {
         "verified": 2,
@@ -19312,10 +19352,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 29,
+      "assert_events": 33,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -24265,6 +24305,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-store-indexed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 46,
+      "must_fails": 3,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-store-indexed",
+        "bp-signed-binding-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -25811,10 +25880,10 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 35,
+      "assert_events": 44,
       "must_fails": 10,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28031,6 +28100,14 @@
       "line": 118,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cc-nth and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-ceis-build-corresponds",
+      "book": "books/consumer-event-index-store-invariants.lisp",
+      "line": 364,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
@@ -32581,13 +32658,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/consumer-owner-index-invariants.lisp",
-        "line": 5,
-        "include": "consumer-event-index-store-invariants",
-        "included": "books/consumer-event-index-store-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/consumer-owner-local-progress.lisp",
         "line": 22,
         "include": "consumer-owner-local",
@@ -32599,13 +32669,6 @@
         "line": 7,
         "include": "consumer-poll-index",
         "included": "books/consumer-poll-index.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/consumer-poll-index.lisp",
-        "line": 4,
-        "include": "consumer-event-index",
-        "included": "books/consumer-event-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -33134,6 +33197,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-store-indexed.lisp",
+        "line": 44,
+        "include": "owner-offer-indexed",
+        "included": "books/owner-offer-indexed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-store-indexed.lisp",
+        "line": 45,
+        "include": "owner-checkpoint-open",
+        "included": "books/owner-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-store-indexed.lisp",
+        "line": 47,
+        "include": "owner-served-bound",
+        "included": "books/owner-served-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-store-indexed.lisp",
+        "line": 48,
+        "include": "public-exposure",
+        "included": "books/public-exposure.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-store-indexed.lisp",
+        "line": 51,
+        "include": "bp-signed-binding",
+        "included": "books/bp-signed-binding.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner.lisp",
         "line": 86,
         "include": "msgid-index",
@@ -33530,13 +33628,6 @@
         "line": 18,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/store-node.lisp",
-        "line": 20,
-        "include": "consumer-event-index",
-        "included": "books/consumer-event-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -35179,14 +35270,14 @@
       },
       {
         "book": "tests/acl2/bp-signed-binding-tests.lisp",
-        "line": 14,
+        "line": 17,
         "include": "../../books/bp-signed-binding",
         "included": "books/bp-signed-binding.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-signed-binding-tests.lisp",
-        "line": 15,
+        "line": 18,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -35882,20 +35973,6 @@
         "line": 14,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/consumer-event-index-store-invariants-tests.lisp",
-        "line": 4,
-        "include": "../../books/consumer-event-index-store-invariants",
-        "included": "books/consumer-event-index-store-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/consumer-event-index-tests.lisp",
-        "line": 3,
-        "include": "../../books/consumer-event-index",
-        "included": "books/consumer-event-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -36620,6 +36697,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-store-indexed-tests.lisp",
+        "line": 12,
+        "include": "bp-signed-binding-tests",
+        "included": "tests/acl2/bp-signed-binding-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-tests.lisp",
         "line": 19,
         "include": "../../books/codec-attach",
@@ -37041,7 +37125,7 @@
       },
       {
         "book": "tests/acl2/store-events-carried-tests.lisp",
-        "line": 5,
+        "line": 6,
         "include": "owner-signed-post-tests",
         "included": "tests/acl2/owner-signed-post-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -45331,7 +45415,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2330,
+        "line": 2332,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
