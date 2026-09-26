@@ -125,26 +125,90 @@
              (equal (nth 8 cursor)
                     (nth 6 (fn-cp-find (nth 3 cursor) (nth 5 s))))))
 
-; Reach capacity through actual register/apply decisions, not a fabricated
-; duplicate-filled table.  Each one-byte consumer ID is distinct.
-(defun fn-cpt-fill (s n)
+; Reach the operator's bound through actual register/apply decisions, not a
+; fabricated duplicate-filled table.  Each consumer ID is distinct: one
+; octet below 256, then (1 k-256).
+; The old figure 256 is an instance of MAX: every pre-D27 witness runs at it.
+(defconst *cpt-old* 256)
+(defun fn-cpt-fill (s max n)
   (declare (xargs :measure (nfix n)))
   (if (zp n) s
-    (let* ((candidate (fn-cp-register s *cpt-p* (list (1- n)) *cpt-q* 1 1)))
-      (fn-cpt-fill (fn-cp-apply s (cadr candidate)) (1- n)))))
-(defconst *cpt-full* (fn-cpt-fill *cpt-first* 256))
-(assert-event (equal (len (nth 5 *cpt-full*)) *fn-cp-max-consumers*))
+    (let* ((k (1- n))
+           (candidate (fn-cp-register-within
+                       s max *cpt-p* (if (< k 256) (list k) (list 1 (- k 256)))
+                       *cpt-q* 1 1)))
+      (fn-cpt-fill (fn-cp-apply s (cadr candidate)) max (1- n)))))
+(defconst *cpt-full* (fn-cpt-fill *cpt-first* *cpt-old* 256))
+(assert-event (equal (len (nth 5 *cpt-full*)) *cpt-old*))
 (assert-event (fn-cp-statep *cpt-full*))
-(assert-event (equal (fn-cp-register *cpt-full* *cpt-p* '(0 0) *cpt-q* 1 1)
-                     '(:refused :capacity)))
+; Positive witness at the bound: the 256th register is a write under 256.
+(defconst *cpt-255* (fn-cpt-fill *cpt-first* *cpt-old* 255))
+(assert-event (equal (len (nth 5 *cpt-255*)) 255))
+(assert-event (equal (car (fn-cp-register-within *cpt-255* *cpt-old* *cpt-p*
+                                                 '(0 0) *cpt-q* 1 1))
+                     :write))
+; Exactly past the bound: the 257th is refused by name under 256 ...
+(assert-event (equal (fn-cp-register-within *cpt-full* *cpt-old* *cpt-p*
+                                            '(0 0) *cpt-q* 1 1)
+                     '(:refused :max-consumers)))
+; ... and is a write under a raised bound (300, the native case's figure),
+; with the same event replay re-runs through fn-cp-register.
+(defconst *cpt-257* (fn-cp-register-within *cpt-full* 300 *cpt-p* '(0 0)
+                                           *cpt-q* 1 1))
+(assert-event (equal (car *cpt-257*) :write))
+(assert-event (equal *cpt-257*
+                     (fn-cp-register *cpt-full* *cpt-p* '(0 0) *cpt-q* 1 1)))
+(assert-event (equal (len (nth 5 (fn-cp-apply *cpt-full* (cadr *cpt-257*))))
+                     257))
+(assert-event (fn-cp-statep (fn-cp-apply *cpt-full* (cadr *cpt-257*))))
+; Replay validity carries no admission bound: the committed 257th applies.
+(defconst *cpt-300* (fn-cpt-fill *cpt-first* 300 300))
+(assert-event (equal (len (nth 5 *cpt-300*)) 300))
+(assert-event (equal (fn-cp-register-within *cpt-300* 300 *cpt-p* '(0 0)
+                                            *cpt-q* 1 1)
+                     '(:refused :max-consumers)))
+; A no-op and a refusal fn-cp-register gives are unchanged at the bound.
+(assert-event (equal (car (fn-cp-register-within *cpt-full* *cpt-old* *cpt-p*
+                                                 '(0) *cpt-q* 1 1))
+                     :no-op))
 (defconst *cpt-full-rebase* (fn-cp-rebase *cpt-full* *cpt-p* '(0) *cpt-q* 1 2))
 (assert-event (equal (car *cpt-full-rebase*) :write))
 (assert-event (equal (len (nth 5 (fn-cp-apply *cpt-full*
                                               (cadr *cpt-full-rebase*))))
-                     *fn-cp-max-consumers*))
+                     *cpt-old*))
+; Teeth of fn-cp-register-within-refuses-exactly-past-the-operator-bound: the
+; refusal needs the table at the bound (a write below it is not refused) ...
+(must-fail (defthm fn-cpt-within-refuses-without-the-bound
+             (implies (equal (car (fn-cp-register s caller consumer query
+                                                  qver view))
+                             :write)
+                      (equal (fn-cp-register-within s max caller consumer
+                                                    query qver view)
+                             '(:refused :max-consumers)))))
+; ... and a write: an overlong caller stays refused :input, not :max-consumers.
+(assert-event (equal '(:refused :input)
+              (fn-cp-register *cpt-full* (make-list 65 :initial-element 1)
+                              '(0 0) *cpt-q* 1 1)))
+(assert-event (equal (fn-cp-register-within *cpt-full* *cpt-old* (make-list 65 :initial-element 1)
+                                            '(0 0) *cpt-q* 1 1)
+                     (fn-cp-register *cpt-full* (make-list 65 :initial-element 1)
+                                     '(0 0) *cpt-q* 1 1)))
+; Teeth of fn-cp-apply-preserves-consumer-capacity: one per hypothesis.
+; Without the starting table within MAX:
 (must-fail (defthm fn-cpt-capacity-needs-bounded-initial-table
-             (<= (len (nth 5 (fn-cp-apply s event)))
-                 *fn-cp-max-consumers*)))
+             (implies (or (not (eq (nth 0 event) :register))
+                          (equal (fn-cp-register-within s max caller consumer
+                                                        query qver view)
+                                 (list :write event)))
+                      (<= (len (nth 5 (fn-cp-apply s event))) (nfix max)))))
+; Without the served decision's write (a register applied at the bound):
+(must-fail (defthm fn-cpt-capacity-needs-the-served-decision
+             (implies (<= (len (nth 5 s)) (nfix max))
+                      (<= (len (nth 5 (fn-cp-apply s event))) (nfix max)))))
+; The witness of the second: the committed 257th applied to a 256 table
+; exceeds 256 (the replay admits it; the served decision under 256 did not).
+(assert-event (< *cpt-old*
+                 (len (nth 5 (fn-cp-apply *cpt-full* (cadr *cpt-257*))))))
 
 ; No invariant is asserted of malformed initial states.  The transition
 ; theorem and its trace corollary both require a recognized starting state.

@@ -6,6 +6,8 @@
 (defconst *fn-th-topic-magic* '(102 110 116 111)) ; "fnto"
 (defconst *fn-th-topic-version* 1)
 (defconst *fn-th-topic-anchor-v2-version* 2)
+; WORK bound of a fixed record shape (D27; community-bounds 2026-09-26): one
+; install, anchor or admit tuple of at most *fn-th-topic-max-items* items.
 (defconst *fn-th-topic-max-octets* 1024)
 (defconst *fn-th-topic-max-items* 24)
 
