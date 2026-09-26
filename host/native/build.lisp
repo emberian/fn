@@ -88,6 +88,8 @@
 (include-book "books/native-operator")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
+; PKT-209: `control log' and `control evidence'.
+(include-book "books/control-evidence")
 (include-book "books/native-hybrid-control")
 (include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")

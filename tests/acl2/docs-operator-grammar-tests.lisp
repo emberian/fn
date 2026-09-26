@@ -80,6 +80,8 @@
     ("docs/operator.md#bind-a-login-to-its-signing-principal" 2 "policy" "set" "posting-policy" "bound-logins")
     ("docs/operator.md#re-decide-a-declined-key-statement-keys-redecide" 1 "control" "grant" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "keys" "fn.keys")
     ("docs/operator.md#re-decide-a-declined-key-statement-keys-redecide" 2 "keys" "redecide" "<a1@example.invalid>")
+    ("docs/operator.md#why-was-an-article-withdrawn-control-log-and-control-evidence" 1 "control" "log")
+    ("docs/operator.md#why-was-an-article-withdrawn-control-log-and-control-evidence" 2 "control" "evidence" "<c1@example.invalid>")
     ("docs/operator.md#expose-a-node-to-strangers" 1 "policy" "set" "exposure-connections" "200")
     ("docs/operator.md#expose-a-node-to-strangers" 2 "policy" "set" "exposure-per-address" "8")
     ("docs/operator.md#expose-a-node-to-strangers" 3 "policy" "set" "exposure-steps-per-second" "64")
