@@ -259,8 +259,49 @@
                   (fn-sccb-chunk-count (len p) seg)))
   :hints (("Goal" :induct (fn-scc-chunks p seg))))
 
+; The chunk read back to front with an accumulator, tail-recursive.
+; `fn-oct-slice-list' (octets-stobj's derived reader) conses on the way
+; back up, and a chunk is a whole segment: at the profile's segment size it
+; exhausted the control stack on the N = 1,000 x 32 KiB store (hbox
+; native-ckpt2, 2026-09-26) where the list codec's `take' had not.
+(defun fn-sccb-slice-acc (i n acc fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp n) (<= i n)
+                              (<= n (fn-octets-len fn-octets)))
+                  :measure (nfix (- n (nfix i)))))
+  (if (or (not (natp i)) (not (natp n)) (<= n i))
+      acc
+    (fn-sccb-slice-acc i (1- n) (cons (fn-octets-get (1- n) fn-octets) acc)
+                       fn-octets)))
+
+(local
+ (defthm fn-sccb-slice-list-snoc
+   (implies (and (natp i) (natp n) (< i n))
+            (equal (fn-oct-slice-list i n fn-octets)
+                   (append (fn-oct-slice-list i (1- n) fn-octets)
+                           (list (nth (1- n) fn-octets)))))
+   :hints (("Goal" :induct (fn-oct-slice-list i n fn-octets)
+            :in-theory (enable fn-oct-slice-list)))))
+
+(local
+ (defthm fn-sccb-slice-list-true-listp
+   (true-listp (fn-oct-slice-list i n fn-octets))
+   :hints (("Goal" :in-theory (enable fn-oct-slice-list)))))
+
+(defthm fn-sccb-slice-acc-is-slice-list
+  (implies (and (natp i) (natp n) (<= i n))
+           (equal (fn-sccb-slice-acc i n acc fn-octets)
+                  (append (fn-oct-slice-list i n fn-octets) acc)))
+  :hints (("Goal" :induct (fn-sccb-slice-acc i n acc fn-octets)
+           :in-theory (enable fn-oct-slice-list))))
+
+; The snoc form served its one proof; as a rewrite it would keep pulling
+; the last octet off every slice below.
+(local (in-theory (disable fn-sccb-slice-list-snoc)))
+
 ; The frames of the buffer's cells from A: (HEADER A B TRAILER) per chunk,
-; chained by the trailer as `fn-scc-frames' chains them.
+; chained by the trailer as `fn-scc-frames' chains them.  This is the
+; specification; the host runs `fn-sccb-frames-acc' below.
 (defun fn-sccb-frames (a index count sequence prev seg fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp a) (<= a (fn-octets-len fn-octets))
@@ -325,6 +366,39 @@
                            (fn-scc-header fn-scc-seal fn-scc-u64 floor mod
                             fn-scc-chunks)))))
 
+; The same frames built front to back with an accumulator, tail-recursive,
+; so each chunk (read for its seal, a list of one segment) is garbage
+; before the next is read.  `fn-sccb-frames' holds every chunk down its
+; recursion: at N = 10,000 x 32 KiB that is the whole file as lists again.
+(defun fn-sccb-frames-acc (a index count sequence prev seg acc fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp a) (<= a (fn-octets-len fn-octets))
+                              (natp index) (natp count) (natp sequence)
+                              (natp seg) (true-listp acc))
+                  :measure (nfix (- (fn-octets-len fn-octets) (nfix a)))))
+  (let* ((len (fn-octets-len fn-octets))
+         (lastp (or (zp seg) (not (natp a)) (<= (- len a) seg)))
+         (b (if lastp len (+ a seg)))
+         (chunk (fn-sccb-slice-acc a b nil fn-octets))
+         (header (fn-scc-header index count (- b a) sequence))
+         (trailer (fn-scc-seal prev header chunk))
+         (acc (cons (list header a b trailer) acc)))
+    (if lastp
+        (revappend acc nil)
+      (fn-sccb-frames-acc b (+ 1 index) count sequence trailer seg acc
+                          fn-octets))))
+
+(defthm fn-sccb-frames-acc-is-frames
+  (implies (and (natp a) (<= a (len fn-octets)))
+           (equal (fn-sccb-frames-acc a index count sequence prev seg acc fn-octets)
+                  (revappend acc (fn-sccb-frames a index count sequence prev seg
+                                                 fn-octets))))
+  :hints (("Goal" :induct (fn-sccb-frames-acc a index count sequence prev seg acc
+                                              fn-octets)
+           :in-theory (e/d (fn-sccb-frames)
+                           (fn-scc-header fn-scc-seal fn-scc-u64 floor mod
+                            fn-oct-slice-list)))))
+
 ; -----------------------------------------------------------------------------
 ; The host-called entry: the plan of the value C at segment size SEG, the
 ; encoding left in the buffer.  :unencodable exactly where the file octets
@@ -336,10 +410,10 @@
       (mv :unencodable fn-octets)
     (let* ((fn-octets (fn-octets-clear fn-octets))
            (fn-octets (fn-sccb-renc c 0 fn-octets))
-           (plan (fn-sccb-frames 0 0
-                                 (fn-sccb-chunk-count (fn-octets-len fn-octets) seg)
-                                 (fn-scc-value-sequence c) *fn-scc-genesis*
-                                 seg fn-octets)))
+           (plan (fn-sccb-frames-acc 0 0
+                                     (fn-sccb-chunk-count (fn-octets-len fn-octets) seg)
+                                     (fn-scc-value-sequence c) *fn-scc-genesis*
+                                     seg nil fn-octets)))
       (mv plan fn-octets))))
 
 (local
@@ -384,4 +458,5 @@
                             fn-scc-program)))))
 
 (in-theory (disable fn-sccb-append-list fn-sccb-cons-ops fn-sccb-renc
-                    fn-sccb-frames fn-sccb-plan))
+                    fn-sccb-slice-acc fn-sccb-frames fn-sccb-frames-acc
+                    fn-sccb-plan))
