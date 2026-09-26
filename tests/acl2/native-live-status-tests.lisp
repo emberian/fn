@@ -440,11 +440,11 @@ open-cost replay-records=")
 ; octets fn-nls-page answers there, whatever the report) is read by the
 ; client as the named refusal, a pre-existing unnamed refusal is not, and at
 ; or below the width the step is never the named refusal.
-(defconst *nlst-width-refusal*
-  (fn-nls-reply-encode :refused 0 nil *fn-nls-refusal-past-the-total-width*))
-(assert-event (equal (fn-nls-client-step nil nil nil *nlst-width-refusal*)
+(defmacro nlst-width-refusal ()
+  '(fn-nls-reply-encode :refused 0 nil *fn-nls-refusal-past-the-total-width*))
+(assert-event (equal (fn-nls-client-step nil nil nil (nlst-width-refusal))
                      '(:refused :report-past-the-total-width)))
-(assert-event (equal (fn-nls-reply-decode *nlst-width-refusal*)
+(assert-event (equal (fn-nls-reply-decode (nlst-width-refusal))
                      (list :reply :refused 0 nil
                            *fn-nls-refusal-past-the-total-width*)))
 ; The layout is every refused reply's: status 2, total 0, no digest.

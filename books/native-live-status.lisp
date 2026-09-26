@@ -1088,12 +1088,18 @@ malformed page."
                                              (fn-nls-page (fn-nls-buffer report) off))
                          '(:refused :report-past-the-total-width))
                   (< *fn-cbor-max-uint* (len report))))
-  :hints (("Goal" :cases ((not (fn-record-uint32p (len report)))
-                          (not (and (natp off) (<= off (len report)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((not (fn-record-uint32p (len report)))
+                   (and (fn-record-uint32p (len report))
+                        (not (and (natp off) (<= off (len report)))))
+                   (and (fn-record-uint32p (len report))
+                        (natp off) (<= off (len report))))
            :in-theory (e/d (fn-nls-client-step)
                            (fn-nls-page fn-nls-buffer fn-nls-reply
                             fn-nls-reply-decode fn-nls-reply-encode
-                            (:e fn-nls-reply-encode)
+                            (:e fn-nls-reply-encode) fn-record-uint32p
+                            fn-cbor-octet-listp
                             fn-frame-trailer take nthcdr fn-nls-page-width)))))
 )
 
