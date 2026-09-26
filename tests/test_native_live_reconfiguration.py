@@ -37,6 +37,8 @@ import subprocess
 import tempfile
 import unittest
 
+from tests.campaign import native_cuts
+
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
@@ -87,8 +89,9 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         # (`fn-native-admin-plan-deltas-over`), which is
         # `fn-native-admin-plan-deltas` for every plan but :extend-peer
         # (fn-native-admin-plan-deltas-over-other-plans-by-definition).
-        self.assertIn("(fn-native-admin-plan-deltas-over\n                 plan "
-                      "(fn-cfg-peers (fn-cfg-value (fn-owner-config state))))", body)
+        self.assertIn("(fn-native-admin-plan-deltas-over plan "
+                      "(fn-cfg-peers (fn-cfg-value (fn-owner-config state))))",
+                      " ".join(body.split()))
         self.assertIn("(fn-owner-reconfigure-deltas id deltas state)", body)
         # No delta constructor and no octet/string conversion in the bridge:
         # the labels' type is decided once, in the book.
@@ -123,7 +126,11 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         # (fn-sco-store-open-of-extended-capture: the full open
         # fn-cpo-open-observed); the owner installs from that open.
         self.assertIn("(fn-sco-extend (fn-sco-capture config-records nil) config-records records)", store)
-        self.assertIn("(fn-sco-store-open e config-records frontier)", store)
+        # Directly or through the book wrapper the host calls in its place
+        # (fn-sopc-classified-open since 2e25e21b).
+        self.assertTrue(native_cuts.calls_through_book(
+            native_cuts.host_function(store, "fn-store-sn-open-extended"),
+            "fn-sco-store-open", "e config-records frontier"))
         self.assertIn("(fn-ock-install (cadr opened) (caddr opened) max-conns)", owner)
         publish = (ROOT / "books" / "config-owner-publish.lisp").read_text(encoding="ascii")
         self.assertIn("(fn-ocl-publish (fn-owner-ocfg state) generation", owner)
