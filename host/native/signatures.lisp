@@ -10,7 +10,6 @@
 (defconstant +fnn-hsig-ed-signature-octets+ 64)
 (defconstant +fnn-hsig-ml-public-key-octets+ 1952)
 (defconstant +fnn-hsig-ml-signature-octets+ 3309)
-(defconstant +fnn-hsig-openssl-3-5+ #x30500000)
 
 ;;; The preimage bound is ACL2's (fn-hsig-host-max-preimage-octets): the v2
 ;;; layout over the widest v2 source.  Every message here is an ACL2-produced
@@ -26,11 +25,39 @@
 (define-condition fnn-hsig-unsupported (fnn-hsig-error) ())
 (define-condition fnn-hsig-fault (fnn-hsig-error) ())
 
-(defvar *fnn-hsig-openssl-state* :uninitialized)
-(defvar *fnn-hsig-openssl-library* nil)
-(defvar *fnn-hsig-openssl-version* nil)
-(defvar *fnn-hsig-openssl-lock*
-  (sb-thread:make-mutex :name "fn ML-DSA provider initialization"))
+;;; ML-DSA-65 is the vendored PQClean implementation (FIPS 204 final, pure,
+;;; empty context) behind host/native/fn-mldsa65.c, built by
+;;; tools/build_mldsa65.sh into lib/ beside the image's core (HST-016).  It
+;;; reads and writes the key files OpenSSL 3.5 wrote (PKCS#8 and
+;;; SubjectPublicKeyInfo PEM), byte for byte; tests/mldsa65_interop.py checks
+;;; that and every committed OpenSSL-made signature.  Nothing here depends on
+;;; the TLS library.
+(defvar *fnn-hsig-mldsa-state* :uninitialized)
+(defvar *fnn-hsig-mldsa-library* nil)
+(defvar *fnn-hsig-mldsa-version* nil)
+(defvar *fnn-hsig-mldsa-lock*
+  (sb-thread:make-mutex :name "fn ML-DSA-65 initialization"))
+
+(defun fnn-hsig-mldsa-library-name ()
+  (if (member :darwin *features*) "libfn-mldsa65.dylib" "libfn-mldsa65.so"))
+
+(defun fnn-hsig-mldsa-library-candidates ()
+  "FN_MLDSA_LIBRARY when the operator names one, else lib/ beside the core:
+build/lib for a built image, the frozen or installed directory's lib/."
+  (let ((named (sb-ext:posix-getenv "FN_MLDSA_LIBRARY"))
+        (core sb-ext:*core-pathname*))
+    (cond ((and named (plusp (length named)))
+           (if (find (code-char 0) named)
+               (error 'fnn-hsig-unsupported :detail "invalid FN_MLDSA_LIBRARY")
+             (list named)))
+          (core
+           (list (namestring
+                  (merge-pathnames (concatenate 'string "lib/"
+                                                (fnn-hsig-mldsa-library-name))
+                                   (make-pathname :name nil :type nil
+                                                  :version nil
+                                                  :defaults core)))))
+          (t nil))))
 
 (sb-alien:define-alien-routine
     ("crypto_sign_detached" fnn-%hsig-ed-sign-detached) sb-alien:int
@@ -39,122 +66,101 @@
   (message (* sb-alien:unsigned-char))
   (message-length sb-alien:unsigned-long-long)
   (secret-key (* sb-alien:unsigned-char)))
-(sb-alien:define-alien-routine ("OpenSSL_version_num" fnn-%hsig-version-num)
-    sb-alien:unsigned-long)
-(sb-alien:define-alien-routine ("OpenSSL_version" fnn-%hsig-version)
-    sb-alien:c-string (selector sb-alien:int))
-(sb-alien:define-alien-routine ("BIO_new_file" fnn-%hsig-bio-new-file)
-    (* t) (filename sb-alien:c-string) (mode sb-alien:c-string))
-(sb-alien:define-alien-routine ("BIO_free" fnn-%hsig-bio-free)
-    sb-alien:int (bio (* t)))
 (sb-alien:define-alien-routine
-    ("PEM_read_bio_PrivateKey" fnn-%hsig-read-private-key) (* t)
-  (bio (* t)) (key (* t)) (password-callback (* t)) (userdata (* t)))
+    ("fn_mldsa65_implementation" fnn-%hsig-ml-implementation) sb-alien:c-string)
+(sb-alien:define-alien-routine ("fn_mldsa65_widths" fnn-%hsig-ml-widths)
+    sb-alien:int (out (* sb-alien:unsigned-long)))
+(sb-alien:define-alien-routine ("fn_mldsa65_strerror" fnn-%hsig-ml-strerror)
+    sb-alien:c-string (code sb-alien:int))
 (sb-alien:define-alien-routine
-    ("PEM_read_bio_PUBKEY" fnn-%hsig-read-public-key) (* t)
-  (bio (* t)) (key (* t)) (password-callback (* t)) (userdata (* t)))
-(sb-alien:define-alien-routine ("EVP_PKEY_free" fnn-%hsig-pkey-free)
-    sb-alien:void (key (* t)))
+    ("fn_mldsa65_public_from_pem_file" fnn-%hsig-ml-public-from-file)
+    sb-alien:int (path sb-alien:c-string) (public-key (* sb-alien:unsigned-char)))
 (sb-alien:define-alien-routine
-    ("EVP_PKEY_new_raw_public_key_ex" fnn-%hsig-new-raw-public-key) (* t)
-  (library-context (* t)) (keytype sb-alien:c-string)
-  (properties sb-alien:c-string) (key (* sb-alien:unsigned-char))
-  (key-length sb-alien:unsigned-long))
-(sb-alien:define-alien-routine
-    ("EVP_PKEY_get_raw_public_key" fnn-%hsig-get-raw-public-key) sb-alien:int
-  (key (* t)) (output (* sb-alien:unsigned-char))
-  (output-length (* sb-alien:unsigned-long)))
-(sb-alien:define-alien-routine
-    ("EVP_PKEY_CTX_new_from_pkey" fnn-%hsig-context-new) (* t)
-  (library-context (* t)) (key (* t)) (properties sb-alien:c-string))
-(sb-alien:define-alien-routine ("EVP_PKEY_CTX_free" fnn-%hsig-context-free)
-    sb-alien:void (context (* t)))
-(sb-alien:define-alien-routine ("EVP_SIGNATURE_fetch" fnn-%hsig-fetch)
-    (* t) (library-context (* t)) (algorithm sb-alien:c-string)
-    (properties sb-alien:c-string))
-(sb-alien:define-alien-routine ("EVP_SIGNATURE_free" fnn-%hsig-signature-free)
-    sb-alien:void (signature (* t)))
-(sb-alien:define-alien-routine
-    ("EVP_PKEY_sign_message_init" fnn-%hsig-sign-init) sb-alien:int
-  (context (* t)) (algorithm (* t)) (parameters (* t)))
-(sb-alien:define-alien-routine
-    ("EVP_PKEY_verify_message_init" fnn-%hsig-verify-init) sb-alien:int
-  (context (* t)) (algorithm (* t)) (parameters (* t)))
-(sb-alien:define-alien-routine ("EVP_PKEY_sign" fnn-%hsig-sign) sb-alien:int
-  (context (* t)) (signature (* sb-alien:unsigned-char))
-  (signature-length (* sb-alien:unsigned-long))
-  (message (* sb-alien:unsigned-char)) (message-length sb-alien:unsigned-long))
-(sb-alien:define-alien-routine ("EVP_PKEY_verify" fnn-%hsig-verify) sb-alien:int
-  (context (* t)) (signature (* sb-alien:unsigned-char))
-  (signature-length sb-alien:unsigned-long)
-  (message (* sb-alien:unsigned-char)) (message-length sb-alien:unsigned-long))
+    ("fn_mldsa65_sign_pem_file" fnn-%hsig-ml-sign-file) sb-alien:int
+  (path sb-alien:c-string) (message (* sb-alien:unsigned-char))
+  (message-length sb-alien:unsigned-long) (signature (* sb-alien:unsigned-char)))
+(sb-alien:define-alien-routine ("fn_mldsa65_verify" fnn-%hsig-ml-verify)
+    sb-alien:int
+  (signature (* sb-alien:unsigned-char)) (signature-length sb-alien:unsigned-long)
+  (message (* sb-alien:unsigned-char)) (message-length sb-alien:unsigned-long)
+  (public-key (* sb-alien:unsigned-char)))
 
-(defun fnn-hsig-null () (sb-alien:sap-alien (sb-sys:int-sap 0) (* t)))
-(defun fnn-hsig-null-p (pointer) (sb-alien:null-alien pointer))
 (defun fnn-hsig-pointer (vector)
   (sb-alien:sap-alien (sb-sys:vector-sap vector) (* sb-alien:unsigned-char)))
 
+(defun fnn-hsig-mldsa-load ()
+  (let ((last-error nil))
+    (dolist (candidate (fnn-hsig-mldsa-library-candidates))
+      (handler-case
+          (progn
+            ;; Not serialized into the core: startup re-loads from the
+            ;; restarted image's own lib/ (fnn-hsig-reset clears readiness).
+            (sb-alien:load-shared-object candidate :dont-save t)
+            (return-from fnn-hsig-mldsa-load candidate))
+        (error (condition) (setq last-error condition))))
+    (error 'fnn-hsig-unsupported
+           :detail (if last-error
+                       (format nil "the ML-DSA-65 library cannot be loaded: ~a"
+                               last-error)
+                     "no ML-DSA-65 library candidate (lib/ beside the core)"))))
+
+(defun fnn-hsig-mldsa-check-abi ()
+  (let ((widths (make-array 3 :element-type '(unsigned-byte 64))))
+    (sb-sys:with-pinned-objects (widths)
+      (unless (zerop (fnn-%hsig-ml-widths
+                      (sb-alien:sap-alien (sb-sys:vector-sap widths)
+                                          (* sb-alien:unsigned-long))))
+        (error 'fnn-hsig-unsupported :detail "ML-DSA-65 widths unavailable")))
+    (unless (and (= (aref widths 0) +fnn-hsig-ml-public-key-octets+)
+                 (= (aref widths 1) +fnn-hsig-ml-signature-octets+))
+      (error 'fnn-hsig-unsupported
+             :detail "the ML-DSA-65 library was built for other widths")))
+  (fnn-%hsig-ml-implementation))
+
 (defun fnn-hsig-initialize ()
-  "Require the process-wide TLS OpenSSL pair to be >= 3.5 with ML-DSA-65."
+  "Load libsodium (Ed25519) and the ML-DSA-65 library once; check their ABI."
   (fnn-crypto-initialize)
-  (sb-thread:with-mutex (*fnn-hsig-openssl-lock*)
-    (case *fnn-hsig-openssl-state*
+  (sb-thread:with-mutex (*fnn-hsig-mldsa-lock*)
+    (case *fnn-hsig-mldsa-state*
       (:ready t)
       (:unsupported
        (error 'fnn-hsig-unsupported :detail "ML-DSA-65 is unavailable"))
       (t
        (handler-case
-             (progn
-               ;; One loader owns libcrypto/libssl.  This prevents TLS binding
-               ;; OpenSSL 3.0 while the signature FFI resolves into a later
-               ;; independently loaded library with the same global symbols.
-               (unless (fboundp 'fnn-tls-initialize)
-                 (error 'fnn-hsig-unsupported
-                        :detail "the shared OpenSSL TLS facility is not loaded"))
-               (fnn-tls-initialize)
-               (unless (>= (fnn-%hsig-version-num) +fnn-hsig-openssl-3-5+)
-                 (error 'fnn-hsig-unsupported
-                        :detail "OpenSSL 3.5 or newer is required for ML-DSA (set FN_OPENSSL_PREFIX)"))
-               (let ((algorithm (fnn-%hsig-fetch (fnn-hsig-null)
-                                                  "ML-DSA-65" nil)))
-                 (when (fnn-hsig-null-p algorithm)
-                   (error 'fnn-hsig-unsupported
-                          :detail "the active OpenSSL providers lack ML-DSA-65"))
-                 (fnn-%hsig-signature-free algorithm))
-               (setq *fnn-hsig-openssl-library* *fnn-tls-libraries*
-                     *fnn-hsig-openssl-version* (fnn-%hsig-version 0)
-                     *fnn-hsig-openssl-state* :ready)
-               t)
-           (fnn-hsig-unsupported (condition)
-             (setq *fnn-hsig-openssl-state* :unsupported)
-             (error condition)))))))
+           (let* ((library (fnn-hsig-mldsa-load))
+                  (version (fnn-hsig-mldsa-check-abi)))
+             (setq *fnn-hsig-mldsa-library* library
+                   *fnn-hsig-mldsa-version* version
+                   *fnn-hsig-mldsa-state* :ready)
+             t)
+         (fnn-hsig-unsupported (condition)
+           (setq *fnn-hsig-mldsa-state* :unsupported)
+           (error condition))
+         (error (condition)
+           (setq *fnn-hsig-mldsa-state* :unsupported)
+           (error 'fnn-hsig-unsupported
+                  :detail (format nil "ML-DSA-65 ABI cannot initialize: ~a"
+                                  condition))))))))
 
 (defun fnn-hsig-reset ()
-  (setq *fnn-hsig-openssl-state* :uninitialized
-        *fnn-hsig-openssl-library* nil *fnn-hsig-openssl-version* nil)
+  (sb-thread:with-mutex (*fnn-hsig-mldsa-lock*)
+    (setq *fnn-hsig-mldsa-state* :uninitialized
+          *fnn-hsig-mldsa-library* nil *fnn-hsig-mldsa-version* nil))
   t)
 
-(defun fnn-hsig-read-key (path privatep)
+(defun fnn-hsig-version ()
+  (fnn-hsig-initialize)
+  (list *fnn-hsig-mldsa-library* *fnn-hsig-mldsa-version*))
+
+(defun fnn-hsig-ml-fault (code what)
+  (error 'fnn-hsig-fault
+         :detail (format nil "~a: ~a" what (fnn-%hsig-ml-strerror code))))
+
+(defun fnn-hsig-key-path (path)
   (unless (and (stringp path) (> (length path) 0)
                (not (find (code-char 0) path)))
     (error 'fnn-hsig-fault :detail "a PEM key path is required"))
-  (let ((bio (fnn-%hsig-bio-new-file path "rb")))
-    (when (fnn-hsig-null-p bio)
-      (error 'fnn-hsig-fault :detail (format nil "cannot open key ~a" path)))
-    (unwind-protect
-           (let* ((callback (sb-alien:cast
-                             (sb-alien:alien-callable-function
-                              'fnn-%tls-no-password) (* t)))
-                  (key (if privatep
-                        (fnn-%hsig-read-private-key bio (fnn-hsig-null)
-                                                    callback (fnn-hsig-null))
-                      (fnn-%hsig-read-public-key bio (fnn-hsig-null)
-                                                callback (fnn-hsig-null)))))
-           (when (fnn-hsig-null-p key)
-             (error 'fnn-hsig-fault
-                    :detail (format nil "cannot read unencrypted key ~a" path)))
-           key)
-      (fnn-%hsig-bio-free bio))))
+  path)
 
 (defun fnn-hsig-ed25519-sign (secret-key message)
   (fnn-crypto-initialize)
@@ -177,118 +183,68 @@
         (error 'fnn-hsig-fault :detail "unexpected Ed25519 signature width")))
     signature))
 
-(defun fnn-hsig-ml-public-key-from-handle (key)
-  (let ((output (make-array +fnn-hsig-ml-public-key-octets+
+(defun fnn-hsig-ml-dsa-65-public-key (public-key-path)
+  "Return the raw FIPS 204 public key from a SubjectPublicKeyInfo PEM file."
+  (fnn-hsig-initialize)
+  (let ((path (fnn-hsig-key-path public-key-path))
+        (output (make-array +fnn-hsig-ml-public-key-octets+
                             :element-type '(unsigned-byte 8))))
-    (sb-alien:with-alien ((actual sb-alien:unsigned-long))
-             (setf actual +fnn-hsig-ml-public-key-octets+)
-             (sb-sys:with-pinned-objects (output)
-               (unless (= (fnn-%hsig-get-raw-public-key
-                           key (fnn-hsig-pointer output)
-                           (sb-alien:addr actual)) 1)
-                 (error 'fnn-hsig-fault
-                        :detail "ML-DSA-65 public-key export failed")))
-             (unless (= actual +fnn-hsig-ml-public-key-octets+)
-               (error 'fnn-hsig-fault
-                      :detail "unexpected ML-DSA-65 public-key width")))
+    (sb-sys:with-pinned-objects (output)
+      (let ((code (fnn-%hsig-ml-public-from-file path (fnn-hsig-pointer output))))
+        (unless (zerop code)
+          (fnn-hsig-ml-fault code (format nil "ML-DSA-65 public key ~a" path)))))
     output))
 
-(defun fnn-hsig-ml-dsa-65-public-key (public-key-path)
-  "Return and width-check the raw FIPS 204 public key from a supplied PEM."
-  (fnn-hsig-initialize)
-  (let ((key nil))
-    (unwind-protect
-         (progn (setq key (fnn-hsig-read-key public-key-path nil))
-                (fnn-hsig-ml-public-key-from-handle key))
-      (when key (fnn-%hsig-pkey-free key)))))
-
 (defun fnn-hsig-ml-dsa-65-sign (private-key-path message)
+  "Pure ML-DSA-65 (empty context, hedged) with the key in a PKCS#8 PEM file.
+The secret key is read, expanded and wiped inside the library; it never
+enters the Lisp heap."
   (fnn-hsig-initialize)
-  (let ((text (fnn-crypto-octets message (fnn-hsig-max-message-octets)
+  (let ((path (fnn-hsig-key-path private-key-path))
+        (text (fnn-crypto-octets message (fnn-hsig-max-message-octets)
                                  "hybrid signed preimage"))
-        (key nil) (context nil) (algorithm nil)
         (signature (make-array +fnn-hsig-ml-signature-octets+
                                :element-type '(unsigned-byte 8))))
-    (unwind-protect
-         (progn
-           (setq key (fnn-hsig-read-key private-key-path t)
-                 context (fnn-%hsig-context-new (fnn-hsig-null) key nil)
-                 algorithm (fnn-%hsig-fetch (fnn-hsig-null) "ML-DSA-65" nil))
-           (when (or (fnn-hsig-null-p context) (fnn-hsig-null-p algorithm))
-             (error 'fnn-hsig-unsupported :detail "ML-DSA-65 context unavailable"))
-           (unless (= (fnn-%hsig-sign-init context algorithm (fnn-hsig-null)) 1)
-             (error 'fnn-hsig-fault :detail "ML-DSA-65 signing initialization failed"))
-           (sb-alien:with-alien ((actual sb-alien:unsigned-long))
-             (setf actual +fnn-hsig-ml-signature-octets+)
-             (sb-sys:with-pinned-objects (text signature)
-               (unless (= (fnn-%hsig-sign context (fnn-hsig-pointer signature)
-                                            (sb-alien:addr actual)
-                                            (fnn-hsig-pointer text) (length text)) 1)
-                 (error 'fnn-hsig-fault :detail "ML-DSA-65 signing failed")))
-             (unless (= actual +fnn-hsig-ml-signature-octets+)
-               (error 'fnn-hsig-fault :detail "unexpected ML-DSA-65 signature width"))))
-      (when algorithm (fnn-%hsig-signature-free algorithm))
-      (when context (fnn-%hsig-context-free context))
-      (when key (fnn-%hsig-pkey-free key)))
+    (sb-sys:with-pinned-objects (text signature)
+      (let ((code (fnn-%hsig-ml-sign-file path (fnn-hsig-pointer text)
+                                          (length text)
+                                          (fnn-hsig-pointer signature))))
+        (unless (zerop code)
+          (fnn-hsig-ml-fault code "ML-DSA-65 signing"))))
     signature))
 
 (defun fnn-hsig-ml-dsa-65-verify-key (key message signature)
-  "Verify with an already imported public key and report its actual raw bytes."
+  "Verify under the exact raw public KEY; the second value is the key
+observed (the octets verification used)."
   (let ((text (fnn-crypto-octets message (fnn-hsig-max-message-octets)
                                  "hybrid signed preimage"))
         (sig (fnn-crypto-octets signature +fnn-hsig-ml-signature-octets+
                                 "ML-DSA-65 signature"))
-        (context nil) (algorithm nil) (observed-key nil))
-    (unless (= (length sig) +fnn-hsig-ml-signature-octets+)
+        (raw (fnn-crypto-octets key +fnn-hsig-ml-public-key-octets+
+                                "ML-DSA-65 public key")))
+    (unless (and (= (length sig) +fnn-hsig-ml-signature-octets+)
+                 (= (length raw) +fnn-hsig-ml-public-key-octets+))
       (return-from fnn-hsig-ml-dsa-65-verify-key nil))
-    (unwind-protect
-         (progn
-           (setq context (fnn-%hsig-context-new (fnn-hsig-null) key nil)
-                 algorithm (fnn-%hsig-fetch (fnn-hsig-null) "ML-DSA-65" nil))
-           (setq observed-key (fnn-hsig-ml-public-key-from-handle key))
-           (when (or (fnn-hsig-null-p context) (fnn-hsig-null-p algorithm))
-             (error 'fnn-hsig-unsupported :detail "ML-DSA-65 context unavailable"))
-           (unless (= (fnn-%hsig-verify-init context algorithm (fnn-hsig-null)) 1)
-             (error 'fnn-hsig-fault :detail "ML-DSA-65 verification initialization failed"))
-           (sb-sys:with-pinned-objects (text sig)
-             (let ((result (fnn-%hsig-verify context (fnn-hsig-pointer sig)
-                                              (length sig) (fnn-hsig-pointer text)
-                                              (length text))))
-               (cond ((= result 1) (values t observed-key))
-                     ((= result 0) (values nil observed-key))
-                     (t (error 'fnn-hsig-fault
-                               :detail "ML-DSA-65 verification fault"))))))
-      (when algorithm (fnn-%hsig-signature-free algorithm))
-      (when context (fnn-%hsig-context-free context)))))
+    (sb-sys:with-pinned-objects (text sig raw)
+      (let ((code (fnn-%hsig-ml-verify (fnn-hsig-pointer sig) (length sig)
+                                       (fnn-hsig-pointer text) (length text)
+                                       (fnn-hsig-pointer raw))))
+        (cond ((= code 0) (values t raw))
+              ((= code 1) (values nil raw))
+              (t (fnn-hsig-ml-fault code "ML-DSA-65 verification")))))))
 
 (defun fnn-hsig-ml-dsa-65-verify (public-key-path message signature)
-  (fnn-hsig-initialize)
-  (let ((key nil))
-    (unwind-protect
-         (progn
-           (setq key (fnn-hsig-read-key public-key-path nil))
-           (fnn-hsig-ml-dsa-65-verify-key key message signature))
-      (when key (fnn-%hsig-pkey-free key)))))
+  (fnn-hsig-ml-dsa-65-verify-key (fnn-hsig-ml-dsa-65-public-key public-key-path)
+                                 message signature))
 
 (defun fnn-hsig-ml-dsa-65-verify-raw (public-key message signature)
-  "Import the exact bounded enrolled key bytes; no PEM file or key choice."
+  "Verify under the exact bounded enrolled key bytes; no PEM file or key choice."
   (fnn-hsig-initialize)
   (let ((raw (fnn-crypto-octets public-key +fnn-hsig-ml-public-key-octets+
-                                 "ML-DSA-65 public key"))
-        (key nil))
+                                "ML-DSA-65 public key")))
     (unless (= (length raw) +fnn-hsig-ml-public-key-octets+)
       (return-from fnn-hsig-ml-dsa-65-verify-raw nil))
-    (unwind-protect
-         (progn
-           (sb-sys:with-pinned-objects (raw)
-             (setq key (fnn-%hsig-new-raw-public-key
-                        (fnn-hsig-null) "ML-DSA-65" nil
-                        (fnn-hsig-pointer raw) (length raw))))
-           (when (fnn-hsig-null-p key)
-             (error 'fnn-hsig-fault
-                    :detail "cannot import ML-DSA-65 enrolled public key"))
-           (fnn-hsig-ml-dsa-65-verify-key key message signature))
-      (when key (fnn-%hsig-pkey-free key)))))
+    (fnn-hsig-ml-dsa-65-verify-key raw message signature)))
 
 (defun fnn-hsig-observe
     (ed-public-key ml-public-key-path message signatures)

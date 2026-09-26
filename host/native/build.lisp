@@ -258,13 +258,17 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
-        ; OpenSSL 3 is the explicit native STARTTLS trust boundary.  It loads
+        ; The system libssl is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
         (load "host/native/tls.lisp")
-        ; D09 uses the same process-wide OpenSSL pair as TLS and refuses the
-        ; image unless that pair provides ML-DSA-65 (OpenSSL >= 3.5).  The
-        ; restart revalidates that requirement against the bundled pair.
+        ; The build-time feature check: the system libssl pair (OpenSSL 3.0+
+        ; or LibreSSL 3+) resolves every function tls.lisp calls.
+        (fnn-tls-initialize)
+        ; D09's ML-DSA-65 is the vendored PQClean library in lib/ beside the
+        ; core (tools/build_mldsa65.sh; FN_MLDSA_LIBRARY names it during the
+        ; build); Ed25519 is libsodium.  Neither uses the TLS library.  Each
+        ; start re-loads and re-checks all three for that process.
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
@@ -273,6 +277,7 @@
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
                                 (fnn-tls-reset)
+                                (fnn-tls-initialize)
                                 (fnn-hsig-reset)
                                 (fnn-hsig-initialize)))
           (fnn-main)

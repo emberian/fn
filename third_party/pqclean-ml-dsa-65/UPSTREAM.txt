@@ -1,0 +1,46 @@
+PQClean ML-DSA-65 (FIPS 204, final), portable C99 "clean" implementation.
+
+Upstream:  https://github.com/PQClean/PQClean
+Commit:    0586a824fc0d49df0b6b6e9179d8d15d06d0974f (2026-08-04)
+Copied:    crypto_sign/ml-dsa-65/clean/*  -> clean/   (unmodified)
+           crypto_sign/ml-dsa-65/META.yml -> META.yml (unmodified)
+           common/fips202.c, fips202.h, randombytes.h -> common/ (unmodified)
+Licence:   clean/LICENSE (CC0 public domain); common/fips202.c names its
+           public-domain sources in its header.
+Not copied: common/randombytes.c.  fn supplies PQCLEAN_randombytes in
+           host/native/fn-mldsa65.c (getentropy(2); a seed is injected there
+           only for keypair-from-seed).
+
+The implementation is FIPS 204 final: crypto_sign_signature/verify are the
+_ctx functions with an empty context (M' = 0x00 || 0x00 || M), hedged
+signing (rnd from randombytes), which is what OpenSSL 3.5's EVP_PKEY_sign
+with "ML-DSA-65" and no parameters produces and accepts.
+
+Refresh: re-copy the same paths from a new commit, update the commit line and
+the digests below, and rerun tests/mldsa65_interop.py (interop with OpenSSL
+and every committed signed fixture).
+
+SHA-256 of the vendored files (shasum -a 256, from this directory):
+e83150131384d5e43a2a59baedcef96c48f5bbf4dce9377094f9bdc3ed12f7d6  META.yml
+5d7798eec4d8c8ef0a72dfe805ec54dfd7b212d3928bf9695fda4095d22829ab  clean/LICENSE
+9a52812131eb17f815fb742e85dc676f7c822450caec9195aa79a61ea57cea30  clean/api.h
+5b996157805d2b5b6ac83b57af350e42397d409c859c80e41cb011365325cc41  clean/ntt.c
+8858cc04b1a2b4bd66b16d29454f2f26b1a66eee25a63f16c6dbbdc40e6f5ea9  clean/ntt.h
+39050b86013556909cfcf09fa16c38ea7e0f324300d60e678dd4bcbabe037ef5  clean/packing.c
+2242c5b64ec063c6be015ade9d40df27d1088d3a87ad30ac8cb1bd3cb2434eb5  clean/packing.h
+9a8cbfeb0f0573d8e0bfe1bd14ffaf0e342ba1adf48d09b49f9d5f4b7eab6928  clean/params.h
+d4b88b41ba9754a3ba09db2722d0ac86131e5d312e3dada63cba760740989def  clean/poly.c
+a71de330d5a896f89094acbdfd96546b91ab10330d0cf4229d85a653c95013c1  clean/poly.h
+71becebe740254b33da42ceeec0b83223bf17fc3353ce1523b52a295a77a1569  clean/polyvec.c
+c0cbfb2c9082f63777fd1f8feeb187faf7b6b6153e8e5454243340430dcc4069  clean/polyvec.h
+a5e8f91cfd93c551b7573eb6dc76db04fa5e94c68ec87cfc0e35fadd5bddab8e  clean/reduce.c
+1fb6330353027ea3f846fb0238c92a4a84bbbcb9bf94ad96bb90afcc1942f149  clean/reduce.h
+e9d14eeb963064239f76a53a7a4f6bcdf9443d1c3945f2700ac0e812739cb943  clean/rounding.c
+144965279a28f50e25014888854a2ad0aeede1d7ec20f263603f8dcb707cab5d  clean/rounding.h
+dced10c875fd1dc6a3683a13f377e13f2a71b33c763e3f5b9ef5429de94dcd68  clean/sign.c
+a8d2d12690ada6129c470e9a04417b0b59b6d7402283eb6a4a9033cb9b0ab97f  clean/sign.h
+688d85949cbfb3307135fede18dca46fd40b07e8a2e65ce05d599050af222ab1  clean/symmetric-shake.c
+e89fb0432e8eb80b0088ae5f756dee656baccd9ce83645b9e9eeb1a099eeaa91  clean/symmetric.h
+4871baddebf2d4771d86b5088719123e2e43addce1a3c0eca75b4d18970ffc1f  common/fips202.c
+bf99a54bc1988380418054a18bd5a14d059770e70c1aac23b6d9c914539168e0  common/fips202.h
+7ae401d4d5eeb41bfa738d1281d57da3f78f915ca94388d89f4f33cbe6a3fe1e  common/randombytes.h
