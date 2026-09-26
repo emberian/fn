@@ -154,6 +154,17 @@ core bd4436f70ef2c3fb245581a1f74e366f8f358567017aee5213dc8855175efaff):
 
 N300 section: see section 5.
 
+A behaviour change a test pinned, stated: the reservation includes the
+release's transaction, so a store admits articles while used + 1 < T. On the
+development profile (T = 128) the 128th article is now refused by name and
+the 128th transaction stays the release's.
+tests/test_native_operator_verbs.py `NativeOperatorCapacityTests` asserted
+128 accepted; it now asserts 127 and says why (the decided policy, not a
+relaxed expectation). hbox, the 1a370f0a image: that class (5 tests) OK,
+and tests/test_native_checkpoint.py `NativeProductionCompactTests` with
+`test_reclaim_keeps_served_view_watermarks_and_next_number` and
+`test_reclaim_cuts_keep_served_view_and_next_number` OK (3 tests, 55.9 s).
+
 ## 5. The lifecycle at N=300 with the charge release
 
 Image at 1a370f0a (developer core
