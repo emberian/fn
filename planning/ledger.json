@@ -787,6 +787,8 @@
     "books/poster-bytes-invariants",
     "tests/acl2/poster-bytes-tests",
     "tests/acl2/source-routes-tests",
+    "books/relay-source",
+    "tests/acl2/relay-source-routes-tests",
     "tests/acl2/owner-served-invariants-tests",
     "tests/acl2/owner-numbering-tests",
     "tests/acl2/owner-fault-tests",
@@ -918,25 +920,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 931,
-    "books_in_root_closure": 927,
-    "roots": 914,
-    "theorems": 12960,
-    "functions": 9054,
-    "assert_events": 13474,
-    "must_fails": 1510,
+    "books": 934,
+    "books_in_root_closure": 930,
+    "roots": 916,
+    "theorems": 12998,
+    "functions": 9069,
+    "assert_events": 13489,
+    "must_fails": 1515,
     "encapsulates": 65,
     "guards": {
       "verified": 2191,
       "declared-off": 716,
-      "default-guarded": 4804,
-      "default-unguarded": 1343
+      "default-guarded": 4813,
+      "default-unguarded": 1349
     },
     "suspect_theorems": 113,
     "export_hygiene_warnings": 152,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 121,
-    "include_hygiene_warnings": 935,
+    "teeth_form_warnings": 125,
+    "include_hygiene_warnings": 940,
     "host_names_warnings": 1055,
     "hand_written_record_warnings": 18
   },
@@ -12400,6 +12402,59 @@
       "read_error": null
     },
     {
+      "book": "books/relay-source-routes.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-transit-join",
+        "relay-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/relay-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 33,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-properties",
+        "hybrid-carrier",
+        "path-update"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/relay.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -23658,6 +23713,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/relay-source-routes-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 5,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/relay-source-routes",
+        "bp-transit-join-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/relay-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -27931,9 +28014,10 @@
         "line": 111,
         "stated_in": [
           "books/article-properties.lisp",
+          "books/relay-source.lisp",
           "books/source-projection-bridge.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-fields",
@@ -27943,19 +28027,21 @@
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/peer-authored-accept.lisp",
+          "books/relay-source.lisp",
           "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-raw-lines",
         "book": "books/article.lisp",
         "line": 129,
         "stated_in": [
-          "books/article-work.lisp"
+          "books/article-work.lisp",
+          "books/relay-source.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-name",
@@ -27990,10 +28076,12 @@
           "books/nntp-post.lisp",
           "books/peer-authored-accept.lisp",
           "books/peer-inbound-invariants.lisp",
+          "books/relay-source-routes.lisp",
+          "books/relay-source.lisp",
           "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-value",
@@ -28988,6 +29076,30 @@
         "check": "rst-trailing-dot-without-hypothesis",
         "book": "tests/acl2/records-shape-tests.lisp",
         "line": 180,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rst-walk-without-the-parse",
+        "book": "tests/acl2/relay-source-routes-tests.lisp",
+        "line": 83,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rst-relay-without-the-received-parse",
+        "book": "tests/acl2/relay-source-routes-tests.lisp",
+        "line": 137,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rst-relay-without-the-stored-parse",
+        "book": "tests/acl2/relay-source-routes-tests.lisp",
+        "line": 161,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rst-bp-transit-without-the-submit",
+        "book": "tests/acl2/relay-source-routes-tests.lisp",
+        "line": 253,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -31376,6 +31488,27 @@
         "line": 18,
         "include": "relay",
         "included": "books/relay.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/relay-source-routes.lisp",
+        "line": 23,
+        "include": "relay-source",
+        "included": "books/relay-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/relay-source-routes.lisp",
+        "line": 24,
+        "include": "bp-transit-join",
+        "included": "books/bp-transit-join.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/relay-source.lisp",
+        "line": 42,
+        "include": "article-properties",
+        "included": "books/article-properties.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -34848,6 +34981,20 @@
         "line": 3,
         "include": "../../books/records-attach",
         "included": "books/records-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/relay-source-routes-tests.lisp",
+        "line": 17,
+        "include": "../../books/relay-source-routes",
+        "included": "books/relay-source-routes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/relay-source-routes-tests.lisp",
+        "line": 18,
+        "include": "bp-transit-join-tests",
+        "included": "tests/acl2/bp-transit-join-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

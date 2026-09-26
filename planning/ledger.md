@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 931 |
-| Certification roots in the Makefile | 914 |
-| Books inside the root closure | 927 |
-| `defthm` and `defthmd` events | 12960 |
-| `defun` events | 9054 |
+| Books read | 934 |
+| Certification roots in the Makefile | 916 |
+| Books inside the root closure | 930 |
+| `defthm` and `defthmd` events | 12998 |
+| `defun` events | 9069 |
 | Functions with verified guards | 2191 |
 | Functions declared `:verify-guards nil` and never verified | 716 |
-| Functions left at the default with an explicit guard | 4804 |
-| Functions left at the default with no guard | 1343 |
-| `assert-event` checks | 13474 |
-| `must-fail` checks | 1510 |
+| Functions left at the default with an explicit guard | 4813 |
+| Functions left at the default with no guard | 1349 |
+| `assert-event` checks | 13489 |
+| `must-fail` checks | 1515 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 113 |
 | Export-hygiene warnings | 152 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 121 |
-| Include-hygiene warnings | 935 |
+| Teeth-form warnings | 125 |
+| Include-hygiene warnings | 940 |
 | Host-names warnings | 1055 |
 | Hand-written-record warnings | 18 |
 
@@ -515,6 +515,8 @@ that `make certify` requests.
 | `books/records.lisp` | root | 23 | 13 | 8/0/4/1 | 0 | 0 | 0 |
 | `books/relay-crash-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-invariants.lisp` | root | 52 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/relay-source-routes.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/relay-source.lisp` | root | 33 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 37 | 27 | 18/0/9/0 | 0 | 0 | 0 |
@@ -928,6 +930,7 @@ that `make certify` requests.
 | `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 25 | 7 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 9 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
+| `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 1 | 0 |
