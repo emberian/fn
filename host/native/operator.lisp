@@ -331,14 +331,21 @@ observation into the outcome and this function only carries it out."
                                  (consp control-path-list)
                                  (not (fnn-image-omits-p :control))
                                  (fnn-octets control-path-list)))
+               ;; An image without the control surface (the DTN image)
+               ;; loads neither the decision nor the socket code: it has no
+               ;; socket to observe, and its executor's exclusive lock
+               ;; refuses a held store, as before PKT-344.
                (liveness
-                 (fnn-core 'fn-native-control-host-liveness
-                           (and socket-path
-                                (fnn-control-socket-path-p
-                                 (fnn-lstat (fnn-octets-string socket-path)))
-                                t)
-                           (fnn-store-owner-observation root)))
-               (note (fnn-core 'fn-native-control-host-liveness-note liveness))
+                 (if (fnn-image-omits-p :control)
+                     :offline
+                   (fnn-core 'fn-native-control-host-liveness
+                             (and socket-path
+                                  (fnn-control-socket-path-p
+                                   (fnn-lstat (fnn-octets-string socket-path)))
+                                  t)
+                             (fnn-store-owner-observation root))))
+               (note (and (not (fnn-image-omits-p :control))
+                          (fnn-core 'fn-native-control-host-liveness-note liveness)))
                (livep (and control-path (eq liveness :live)))
                (code
                  (progn
