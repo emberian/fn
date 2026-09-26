@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 919 |
 | Certification roots in the Makefile | 902 |
 | Books inside the root closure | 915 |
-| `defthm` and `defthmd` events | 12779 |
-| `defun` events | 8949 |
-| Functions with verified guards | 2182 |
+| `defthm` and `defthmd` events | 12787 |
+| `defun` events | 8963 |
+| Functions with verified guards | 2187 |
 | Functions declared `:verify-guards nil` and never verified | 707 |
-| Functions left at the default with an explicit guard | 4738 |
+| Functions left at the default with an explicit guard | 4747 |
 | Functions left at the default with no guard | 1322 |
-| `assert-event` checks | 13321 |
-| `must-fail` checks | 1478 |
+| `assert-event` checks | 13361 |
+| `must-fail` checks | 1481 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 113 |
 | Export-hygiene warnings | 152 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 117 |
+| Teeth-form warnings | 118 |
 | Include-hygiene warnings | 924 |
-| Host-names warnings | 1031 |
+| Host-names warnings | 1032 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -340,7 +340,7 @@ that `make certify` requests.
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/feed-connection-invariants.lisp` | root | 45 | 21 | 0/0/21/0 | 0 | 0 | 1 |
-| `books/feed-connection.lisp` | root | 2 | 39 | 39/0/0/0 | 0 | 0 | 0 |
+| `books/feed-connection.lisp` | root | 5 | 44 | 44/0/0/0 | 0 | 0 | 0 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -400,7 +400,7 @@ that `make certify` requests.
 | `books/native-hybrid-control.lisp` | root | 3 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/native-live-status.lisp` | root | 56 | 46 | 0/14/32/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 35 | 95 | 0/0/95/0 | 0 | 0 | 1 |
+| `books/native-operator.lisp` | root | 40 | 104 | 0/0/104/0 | 0 | 0 | 1 |
 | `books/nntp-auth-fold.lisp` | root | 52 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 31 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 122 | 60 | 42/3/14/1 | 0 | 0 | 3 |
@@ -803,7 +803,7 @@ that `make certify` requests.
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/feed-connection-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 7 | 0 |
 | `tests/acl2/feed-connection-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 16 | 0 |
-| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 0 | 0 |
+| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 41 | 0 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/feed-journal-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 22 | 2 | 0 |
@@ -844,9 +844,9 @@ that `make certify` requests.
 | `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 44 | 8 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/native-live-status-tests.lisp` | root | 0 | 8 | 0/5/2/1 | 51 | 15 | 0 |
-| `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 5 | 0 |
+| `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
-| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 178 | 16 | 0 |
+| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 202 | 19 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 336 | 83 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
@@ -1073,7 +1073,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 345 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
-| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1241 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
+| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1265 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-nss-hdr-lines-of-no-numbers` | `books/nntp-search-scope.lisp` | 77 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 847 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
