@@ -2502,7 +2502,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-120"
+        "PRF-120",
+        "PRF-128"
       ],
       "verification": [
         "proof",
@@ -2519,9 +2520,17 @@
         "host/native/bp-node.lisp",
         "specs/bp-node-machine.md",
         "tests/bp-dtn7/run_mission_four_node.py",
-        "planning/evidence/mission-four-node-2026-09-25.md"
+        "planning/evidence/mission-four-node-2026-09-25.md",
+        "books/bp-channel-ingress.lisp",
+        "tests/acl2/bp-channel-ingress-tests.lisp",
+        "books/bp-native-app.lisp",
+        "books/bp-native-app-fast.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "host/native/bp.lisp",
+        "host/bp-native-app-host.lisp",
+        "planning/evidence/mission-signed-2026-09-26.md"
       ],
-      "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed."
+      "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed. Custody (PRF-128, lane mission-signed; D23): a relay takes custody only over an admitted channel; a bundle from a refused channel is refused at reception with the admission's reason (fn-bpaj-admitted-receive-event, called by fnn-bps-receive); a local policy (D23): RFC 9171 leaves the acceptance of a received bundle to the node."
     },
     {
       "id": "NNT-023",

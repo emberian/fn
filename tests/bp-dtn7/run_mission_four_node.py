@@ -47,6 +47,18 @@ held transit whose destination is its PEER-ID (fn-bpnp-has-forward-pendingp,
 books/bp-node-progress.lisp), so X and Y are restarted with the other peer
 when the direction of travel changes; the report records each incarnation.
 No power-loss claim follows.
+
+Each relay boundary has its own listener (PRF-128, D23): a relay takes
+custody only over a channel the policy admits, and the loopback policy
+names the neighbour by the listener it arrives on
+(fn-bpaj-session-principal), so two boundaries on one listener are
+`ambiguous-peer' and refused.  `bp-node serve' listens on one port, so X
+and Y listen on the boundary of the neighbour that sends toward them in
+the current direction of travel: X on a-boundary's port toward fn-b and on
+r1-boundary's toward fn-a; Y on r2-boundary's toward fn-b and on
+b-boundary's toward fn-a.  `--case ambiguous-peer' provisions the relays as
+before (both boundaries on one listener) and runs steps 0 and 1 only: X
+must refuse A's transfer with the policy's reason and take no custody.
 """
 import argparse
 import hashlib
@@ -115,6 +127,10 @@ class Relay(Dtnd):
         time.sleep(2.5)
 
 
+class Stop(Exception):
+    """The case ends after its last step; the report is still written."""
+
+
 class Mission:
     def __init__(self, args):
         self.args = args
@@ -133,6 +149,10 @@ class Mission:
                      control=lab.path(name + "-control.sock"),
                      serve=None, incarnations=[])
             self.nodes[name] = d
+        # A relay's second listener: the far (dtn7-facing) boundary's.
+        for name in ("x", "y"):
+            self.nodes[name]["port_far"] = (
+                self.nodes[name]["port"] if args.case == "ambiguous-peer" else free_port())
         self.r_ports = {r: (free_port(), free_port()) for r in ("r1", "r2")}
         self.relays = {}
 
@@ -156,13 +176,15 @@ class Mission:
         n = self.nodes[name]
         contact = dict(a=self.nodes["x"]["port"], b=self.nodes["y"]["port"],
                        x=self.r_ports["r1"][0], y=self.r_ports["r2"][0])[name]
+        # X toward fn-a hears r1, Y toward fn-b hears r2: the far listener.
+        port = n["port_far"] if (name, peer) in (("x", A), ("y", B)) else n["port"]
         proc, log = self.lab.spawn(
-            tag, "bp-node", "serve", n["port"], n["fnbs"], n["store"], n["rj"], n["wf"],
+            tag, "bp-node", "serve", port, n["fnbs"], n["store"], n["rj"], n["wf"],
             n["eid"], peer, n["eid"], "native-policy", n["eid"], "127.0.0.1", contact,
             "0", 3600000, 2, 32, mru, self.lab.wall, 60000)
         listening = self.lab.wait_log(log, r"BP NODE LISTENING", 180)
         n["serve"] = proc
-        n["incarnations"].append(dict(tag=tag, pid=proc.pid, peer=peer, mru=mru,
+        n["incarnations"].append(dict(tag=tag, pid=proc.pid, peer=peer, mru=mru, port=port,
                                       listening=bool(listening),
                                       at=round(time.monotonic() - self.t0, 1)))
         return proc, log
@@ -285,6 +307,9 @@ def main(argv=None):
     ap.add_argument("--report-lines", type=int, default=110,
                     help="body lines of the report (the request must exceed --x-mru)")
     ap.add_argument("--openssl", default=os.environ.get("FN_TEST_OPENSSL", "openssl"))
+    ap.add_argument("--case", choices=("mission", "ambiguous-peer"), default="mission",
+                    help="mission (the default): all seven steps; ambiguous-peer: the "
+                         "relays' two boundaries share one listener, steps 0 and 1")
     args = ap.parse_args(argv)
     m = Mission(args)
     lab, nodes = m.lab, m.nodes
@@ -295,7 +320,9 @@ def main(argv=None):
                   dtn7_revision=subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
                                                capture_output=True, text=True).stdout.strip(),
                   topology="A -> X -> dtn7 r1 -> dtn7 r2 -> Y -> B and back",
+                  case=args.case,
                   ports=dict({k: v["port"] for k, v in nodes.items()},
+                             x_far=nodes["x"]["port_far"], y_far=nodes["y"]["port_far"],
                              r1=m.r_ports["r1"], r2=m.r_ports["r2"]))
     identity = {}
     try:
@@ -322,6 +349,7 @@ def main(argv=None):
         # PORT (the 4th operand) is this node's own listener: the boundary is
         # observed on it.  An author boundary names a port nothing listens on.
         xp, yp = nodes["x"]["port"], nodes["y"]["port"]
+        xf, yf = nodes["x"]["port_far"], nodes["y"]["port_far"]
         rows = [
             ("a", "x-boundary", "x.mission.invalid", X, nodes["a"]["port"],
              ["carries", B, "releases-for", B], xp),
@@ -330,9 +358,9 @@ def main(argv=None):
              ["carries", A, "releases-for", A], yp),
             ("b", "a-author", "a.mission.invalid", A, free_port(), SCOPE, None),
             ("x", "a-boundary", "a.mission.invalid", A, xp, [], nodes["a"]["port"]),
-            ("x", "r1-boundary", "r1.mission.invalid", R1, xp, [], m.r_ports["r1"][0]),
+            ("x", "r1-boundary", "r1.mission.invalid", R1, xf, [], m.r_ports["r1"][0]),
             ("y", "b-boundary", "b.mission.invalid", B, yp, [], nodes["b"]["port"]),
-            ("y", "r2-boundary", "r2.mission.invalid", R2, yp, [], m.r_ports["r2"][0]),
+            ("y", "r2-boundary", "r2.mission.invalid", R2, yf, [], m.r_ports["r2"][0]),
         ]
         for node, name, remote, eid, port, extra, contact in rows:
             tag = "setup-{}-{}".format(node, name)
@@ -491,11 +519,11 @@ def main(argv=None):
         m.relays["r1"] = Relay(repo, lab.work, "dtn7-r1", *r1p,
                                "1 {}* {}* {}\n2 {}* {}* {}\n".format(A, B, R2, B, A, X),
                                ["tcp://127.0.0.1:{}/dtn7-r2".format(r2p[0]),
-                                "tcp://127.0.0.1:{}/fn-x".format(xp)])
+                                "tcp://127.0.0.1:{}/fn-x".format(xf)])
         m.relays["r2"] = Relay(repo, lab.work, "dtn7-r2", *r2p,
                                "1 {}* {}* {}\n2 {}* {}* {}\n".format(A, B, Y, B, A, R1),
                                ["tcp://127.0.0.1:{}/dtn7-r1".format(r1p[0]),
-                                "tcp://127.0.0.1:{}/fn-y".format(yp)])
+                                "tcp://127.0.0.1:{}/fn-y".format(yf)])
         r1, r2 = m.relays["r1"], m.relays["r2"]
 
         # === 1. A's request, fragmented to X; r1 down, X holds ==============
@@ -505,6 +533,25 @@ def main(argv=None):
         req = m.dfn("a-1-request", "bp-obligation", "request", nodes["a"]["store"],
                     nodes["a"]["wf"], WORK_A, WORK_A + "-a1", nodes["a"]["fnbs"], A,
                     "127.0.0.1", xp, 3600000, 2, 32, 1048576, lab.wall, 60000)
+        if args.case == "ambiguous-peer":
+            # PRF-128: the refused channel's transfer is refused with the
+            # policy's reason; X writes no kind-5 custody for it.
+            refused = m.wait(x_log, r"BP refused xfer=\d+ reason=ambiguous-peer", 60)
+            admission = m.wait(x_log, r"BP channel admission refused reason=ambiguous-peer", 5)
+            time.sleep(3.0)
+            a_status1 = m.dfn("a-status-1", "bp-obligation", "status", nodes["a"]["store"],
+                              nodes["a"]["wf"], WORK_A).stdout.strip()
+            custody = m.grep("x-serve-1", "BP accepted")
+            m.step("1 ambiguous-peer: X's two boundaries share one listener; X refuses A's "
+                   "transfer with the policy's reason and takes no custody; A keeps its pin",
+                   outcome_of(req.returncode),
+                   bool(refused and admission and not custody and "pinned=yes" in a_status1),
+                   ["a-1-request", "x-serve-1", "a-status-1"],
+                   x_refused=m.grep("x-serve-1", "BP refused"),
+                   x_admission=m.grep("x-serve-1", "BP channel admission"),
+                   x_custody=custody, x_frames=m.frames("x"), a_status=a_status1,
+                   a_request=lines_of(lab.logs["a-1-request"]))
+            raise Stop()
         family = m.wait(x_log, r"BP fragment family durable")
         unavailable = m.wait(x_log, r"BP forwarding session unavailable", 60)
         reqlines = lines_of(lab.logs["a-1-request"])
@@ -563,7 +610,7 @@ def main(argv=None):
                       (lines_of(b_log) or [None])[-1], "B")
         elif verdict.group(1) != "request-accepted":
             m.finding("B's BP application refused the {} report after custody and D23 "
-                      "admission; no line names ACL2's reason".format(args.report),
+                      "admission (ACL2's reason is on the refusal line)".format(args.report),
                       "implementation", " | ".join(
                           l for l in blines if l.startswith(("BP node source",
                                                              "BP application",
@@ -703,8 +750,8 @@ def main(argv=None):
         status_a_consumer = consumer("a-6-consumer-status", "a", "status", "a-reader")
         lab.stop(owner_a)
         if a_verdict and a_verdict.group(1) != "request-accepted":
-            m.finding("A's BP application refused B's {} reply; no line names ACL2's "
-                      "reason".format("signed" if report.get("reply_signed") else "unsigned"),
+            m.finding("A's BP application refused B's {} reply (ACL2's reason is on the "
+                      "refusal line)".format("signed" if report.get("reply_signed") else "unsigned"),
                       "implementation", " | ".join(
                           l for l in lines_of(a_log3) if l.startswith(
                               ("BP node source", "BP application", "BP node delivery"))), "A")
@@ -733,6 +780,8 @@ def main(argv=None):
         if not x_sent and a_verdict and a_verdict.group(1) == "request-accepted":
             m.finding("X did not forward A's receipt toward fn-b after turning", "see-logs",
                       (m.grep("x-serve-4", "BP forwarding") or [None])[-1], "X")
+    except Stop:
+        pass
     finally:
         for p in lab.procs:
             if p["proc"].poll() is None:
@@ -773,7 +822,8 @@ def main(argv=None):
         report["steps"] = m.steps
         report["findings"] = m.findings
         report["wall_seconds"] = round(time.monotonic() - m.t0, 1)
-        report["all_steps_held"] = bool(m.steps) and len(m.steps) == 7 and \
+        report["all_steps_held"] = bool(m.steps) and \
+            len(m.steps) == (7 if args.case == "mission" else 2) and \
             all(s["held"] for s in m.steps)
         out = lab.path("report.json")
         out.write_text(json.dumps(report, indent=2, sort_keys=True))

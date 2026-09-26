@@ -952,18 +952,25 @@ octet is ACL2's."
                 service (list :family (second candidate) observation)))))
   service)
 
-(defun fnn-bps-receive (service ingress wire)
-  "Return the ACL2-selected TCPCL disposition after kind-5 custody settles."
+(defun fnn-bps-receive (service admission wire)
+  "Return the ACL2-selected TCPCL disposition after kind-5 custody settles.
+ADMISSION is ACL2's channel admission answer for this transfer
+(fnn-bps-tcpcl-admission).  PRF-128: fn-bpaj-admitted-receive-event refuses
+a bundle from a refused channel with the admission's reason, and only its
+:ready answer reaches fnn-bps-foundation-step, so no custody is taken."
   (let* ((tally (fnn-bps-tally service))
          (observation
            (fnn-bp-observation (fnn-bp-tally-wall tally)
                                 (fnn-bp-tally-wall-error tally)))
          (prepared
-           (fnn-core 'fn-bpnf-receive-wire-event
-                     (fnn-bp-tally-config tally) wire observation ingress)))
+           (fnn-core 'fn-bpaj-admitted-receive-event
+                     admission (fnn-bp-tally-config tally) wire observation)))
     (unless (eq (fnn-core 'fn-bpnf-receive-wire-readyp prepared) t)
       (return-from fnn-bps-receive (values prepared nil)))
     (let* ((event (fnn-core 'fn-bpnf-receive-wire-event-value prepared))
+           ;; The admitted ingress the :ready event carries
+           ;; (fn-bpaj-admitted-channel-receives-under-its-ingress).
+           (ingress (fourth event))
            (adu (fnn-core 'fn-bpb-payload (second event)))
            (effects (fnn-bps-foundation-step service event))
            (path nil))
@@ -1000,9 +1007,16 @@ octet is ACL2's."
 
 (defun fnn-bps-tcpcl-ingress
   (fnbs-state conn session-counter xfer-id owner channel)
-  "The CL ingress ACL2 admits for one transfer, or NIL.  FNBS-STATE names the
-epoch: bp-node's live FNBS state, or the initial state for bp-app receive,
-which runs no FNBS machine."
+  "The CL ingress ACL2 stamps for one transfer (anonymous when the channel
+was refused), or NIL: the third element of fnn-bps-tcpcl-admission."
+  (third (fnn-bps-tcpcl-admission fnbs-state conn session-counter xfer-id
+                                  owner channel)))
+
+(defun fnn-bps-tcpcl-admission
+  (fnbs-state conn session-counter xfer-id owner channel)
+  "ACL2's channel admission answer for one transfer, or NIL.  FNBS-STATE names
+the epoch: bp-node's live FNBS state, or the initial state for bp-app
+receive, which runs no FNBS machine."
   (let* ((negotiated
            (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
          (announced
@@ -1017,7 +1031,7 @@ which runs no FNBS machine."
       ;; channel boundary without logging an identity or article octets.
       (fnn-out "BP channel admission refused reason=~(~a~)"
                (second answer)))
-    (third answer)))
+    answer))
 
 (defun fnn-bps-selection-plan (root)
   "ACL2's reading of the generation selection file: (:none), (:selected CK)
