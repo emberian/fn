@@ -953,17 +953,17 @@
     "books": 968,
     "books_in_root_closure": 962,
     "roots": 946,
-    "theorems": 13590,
-    "functions": 9491,
-    "assert_events": 14273,
-    "must_fails": 1667,
+    "theorems": 13608,
+    "functions": 9502,
+    "assert_events": 14287,
+    "must_fails": 1672,
     "prover_refusals": 2,
     "encapsulates": 66,
     "guards": {
       "verified": 2205,
-      "declared-off": 763,
-      "default-guarded": 5110,
-      "default-unguarded": 1413
+      "declared-off": 766,
+      "default-guarded": 5116,
+      "default-unguarded": 1415
     },
     "suspect_theorems": 123,
     "export_hygiene_warnings": 152,
@@ -6963,13 +6963,13 @@
       "book": "books/checkpoint-pack-chain.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 55,
-      "functions": 43,
+      "theorems": 73,
+      "functions": 54,
       "guards": {
         "verified": 0,
-        "declared-off": 22,
-        "default-guarded": 21,
-        "default-unguarded": 0
+        "declared-off": 25,
+        "default-guarded": 27,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -20812,10 +20812,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 34,
-      "must_fails": 14,
+      "assert_events": 48,
+      "must_fails": 19,
       "prover_refusals": 0,
-      "defconsts": 24,
+      "defconsts": 34,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

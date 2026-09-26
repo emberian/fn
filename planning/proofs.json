@@ -6012,7 +6012,9 @@
         "fn-ccc-publication-crash-walks-old-or-new-chain",
         "fn-ccc-links-count-within-boundary",
         "fn-cverb-pack-decision-capture-succeeds",
-        "fn-rclp-reclaiming-pack-is-a-first-link"
+        "fn-rclp-reclaiming-pack-is-a-first-link",
+        "fn-ccc-chain-link-cut-walks-the-extended-chain",
+        "fn-ccc-chain-link-cut-reopens-to-the-history"
       ]
     },
     {
