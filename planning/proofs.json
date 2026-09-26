@@ -4433,10 +4433,6 @@
       "events": [
         "fn-sco-store-open-of-extended-capture",
         "fn-sco-finalize-okp-is-kind-ok",
-        "fn-sco-thaw-of-freeze",
-        "fn-sco-freeze-of-capture-carries-the-count",
-        "fn-ock-published-segments-decode-to-the-checkpoint",
-        "fn-ock-publication-is-the-capture-at-the-capture-point",
         "fn-ks-distinctp-is-nodupp",
         "fn-ks-subsetp-is-subset-logic",
         "fn-article-listp-is-shape-and-distinct-msgids",
@@ -5508,10 +5504,11 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sccb-plan-is-file-octets",
-        "fn-sccb-renc-is-program",
-        "fn-sccb-plan-refuses-what-the-codec-refuses",
-        "fn-sccb-treep-encodes-octets"
+        "fn-sct-renc-is-program",
+        "fn-ockp-encode-batch-is-rows-program",
+        "fn-ockp-chunks-of-append-cut",
+        "fn-ockp-frames-of-append",
+        "fn-ockp-counts-are-chunk-counts"
       ],
       "evidence": [
         "books/owner-checkpoint-pipeline.lisp",
@@ -5600,9 +5597,11 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sccr-decode-of-plan",
-        "fn-sccr-decode-plan-is-decode-segments",
-        "fn-sccr-run-is-run",
+        "fn-sct-load-is-decode-file",
+        "fn-sctr-run-decode-is-run-decode",
+        "fn-sctr-run-is-run",
+        "fn-sctr-step-is-step",
+        "fn-sccr-join-is-join",
         "fn-sccr-admitted-within-bounds"
       ],
       "evidence": [
@@ -6891,12 +6890,11 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-ock-publication-stream-writes-the-file",
-        "fn-ock-publication-stream-refuses-what-the-codec-refuses",
-        "fn-ock-publication-stream-defers-by-the-estimate",
-        "fn-ockb-file-len-is-len-file-octets",
-        "fn-ock-publication-blockedp-by-definition",
-        "fn-ock-publication-stream-next-is-the-capture"
+        "fn-ockp-estimate-is-len-file-octets",
+        "fn-ockp-len-acc-is-len-program",
+        "fn-ockp-rows-len-is-len-rows-program",
+        "fn-ockp-run-len-is-len-run",
+        "fn-ockp-decide-defers-by-the-estimate"
       ],
       "evidence": [
         "books/owner-checkpoint-pipeline.lisp",
@@ -6987,8 +6985,7 @@
         "fn-ocar-own-open-is-own-open",
         "fn-ocar-own-reader-context-is-reference",
         "fn-ocar-ocfg-open-keeps-store",
-        "fn-osi-ocar-exp-open-keeps-store",
-        "fn-sco-thaw-checked-accepts-own-publication"
+        "fn-osi-ocar-exp-open-keeps-store"
       ]
     },
     {
@@ -7233,7 +7230,14 @@
         "fn-cat-commit-keeps-rows",
         "fn-cat-commit-new-row",
         "fn-cat-commit-binds-fresh-numbers",
-        "fn-cat-visible-at-withdrawn"
+        "fn-cat-visible-at-withdrawn",
+        "fn-cat-relation-at-init",
+        "fn-cat-load-row-keeps-relation",
+        "fn-cat-load-establishes-relation",
+        "fn-cat-load-from-empty",
+        "fn-cat-relation-of-withdraw",
+        "fn-cat-relation-of-redecide",
+        "fn-cat-relation-of-complete"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
@@ -7759,6 +7763,60 @@
         "fn-tlsr-decide-carries-the-facts-or-a-named-refusal"
       ],
       "progress_note": "Lane tls-reload (2026-09-26): the book, its test book and the changed native-operator book with its test book admitted in the persvati REPL (proof_repl, toolchain w25); certification is the batch's (Validation by batch)."
+    },
+    {
+      "id": "PRF-214",
+      "title": "The BP receiver's open carries the held octet total instead of re-summing it per row, and is the replay it replaced",
+      "statement": "fn-bphp-replay-rows-is-aux (books/bp-held-projection.lisp; keystone, hypothesis (equal octets (fn-bpnf-held-octets held)), the relation the open establishes): the carried fold (fn-bphp-replay-rows rows base held handoffs prior next-arrival octets) equals the journal fold fn-bpnf-family-replay-rows-aux on the same arguments; fn-bphp-replay-from-is-bpnr and fn-bphp-recover-auto-event-is-bpnr (no hypotheses): the open's entry and the :recover-fnbs event it builds equal fn-bpnr-replay-from and fn-bpnr-recover-auto-event, so PRF-081, the N16 rotation keystones and PRF-131 describe the new event unchanged. fn-bpnf-recovery-heldp-fast-is-logic (books/bp-node-machine-guards.lisp, no hypotheses): the one-pass recovery check equals fn-bpnf-recovery-heldp, whose guard proof uses it. Host line: host/native/bp-service.lisp fnn-bps-open calls fn-bphp-recover-auto-event; host/native/build.lisp and build-dtn.lisp include the book. books/bp-node-foundation's executable body changed (mbe), its logic did not.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-081"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-held-projection.lisp",
+        "books/bp-node-machine-guards.lisp",
+        "books/bp-node-foundation.lisp",
+        "tests/acl2/bp-held-projection-tests.lisp",
+        "host/native/bp-service.lisp",
+        "planning/evidence/bp-catalog-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-catalog (Opus, 2026-09-26; numbered by the batch AM runner: the lane took no ids). Measured on hbox (dtn-developer, 1,311 held rows): the dispatch open before rotation 16.1 -> 5.7 s; the held-octets calls 2,623 / 9.87 s -> 1 / 0.007 s. Teeth: tests/acl2/bp-held-projection-tests.lisp (its last assertion block needs the changed foundation and the fixture chain in one world: checked by the batch certification only). Not done: the reopen after a rotation (763 s, 99 % in the unverified fn-bpnr-checkpoint-decode: lane bp-checkpoint-open), PKT-630.",
+      "events": [
+        "fn-bphp-replay-rows-is-aux",
+        "fn-bphp-held-octets-of-cons",
+        "fn-bphp-replay-from-is-bpnr",
+        "fn-bphp-recover-auto-event-is-bpnr",
+        "fn-bpnf-recovery-heldp-fast-is-logic"
+      ]
+    },
+    {
+      "id": "PRF-215",
+      "title": "The BP receipt's article comparison by arena handle is the acceptance conjunct over the materialized wire record",
+      "statement": "fn-bphh-request-article-matches-is-wire (books/bp-held-payload.lisp; keystone, hypothesis (fn-arena-p fn-arena)): (fn-bphh-request-article-matches request held fn-arena), which compares the request's article octets with the arena slice in place (fn-bphh-octets-at-p, no list copy), equals (equal (fn-bpa-request-article request) (fn-record-payload (fn-held-wire-of held fn-arena))), the list model the acceptance conjunct reads; fn-bphh-octets-at-p-is-equal-payload (same hypothesis): the in-place walk from 0 is equality with (fn-arena-payload h fn-arena).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-held-payload.lisp",
+        "tests/acl2/bp-held-payload-tests.lisp",
+        "planning/evidence/bp-catalog-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-catalog (Opus, 2026-09-26; numbered by the batch AM runner). Teeth: tests/acl2/bp-held-payload-tests.lisp.",
+      "pending_subject": "No host line calls fn-bphh-request-article-matches yet: the Store hands BP list records until catalog-slice's steps 7 and 8 (PKT-585); the receipt's comparison moves to it then (PKT-630).",
+      "events": [
+        "fn-bphh-request-article-matches-is-wire",
+        "fn-bphh-octets-at-p-is-equal-payload"
+      ]
     }
   ]
 }

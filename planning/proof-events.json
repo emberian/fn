@@ -7291,6 +7291,44 @@
           "name": "fn-tlsr-decide-carries-the-facts-or-a-named-refusal"
         }
       ]
+    },
+    {
+      "id": "PRF-214",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-replay-rows-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-held-octets-of-cons"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-replay-from-is-bpnr"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-recover-auto-event-is-bpnr"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-recovery-heldp-fast-is-logic"
+        }
+      ]
+    },
+    {
+      "id": "PRF-215",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bphh-request-article-matches-is-wire"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphh-octets-at-p-is-equal-payload"
+        }
+      ]
     }
   ]
 }
