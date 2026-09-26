@@ -53,6 +53,108 @@
 (assert-event (equal (fn-bpp-crc32c *bp7-sample-crc32-zeroed*) 3394225000))
 (assert-event (equal (fn-cbor-u32-bytes 3394225000) '(202 79 195 104)))
 
+;; -----------------------------------------------------------------------------
+;; The executed CRC-32C and exclusive-or (PRF-190)
+;;
+;; The vectors above run the executed bodies: `fn-bpp-crc32c' is guard-verified
+;; and called within its guard, so its scan runs the table and its exclusive-or
+;; runs `logxor'.  The keystones say those bodies are the bitwise definitions.
+
+; Every table entry, checked by evaluation (the proof checks the same).
+(assert-event (fn-bpp-crc32c-table-agrees 256))
+
+; A differential over 4,096 pseudo-random octets and a register that is not the
+; initial one: the table scan against eight register steps an octet, stepped
+; here by `fn-bpp-crc32c-octet' itself.
+(defun bpp-crc-lcg-octets (seed n)
+  (declare (xargs :guard (and (natp seed) (natp n))))
+  (if (zp n)
+      nil
+    (let ((next (mod (+ 12345 (* 1103515245 seed)) 2147483648)))
+      (cons (mod (floor next 65536) 256)
+            (bpp-crc-lcg-octets next (- n 1))))))
+
+(defun bpp-crc-bitwise-scan (crc xs)
+  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))))
+  (if (consp xs)
+      (bpp-crc-bitwise-scan (fn-bpp-crc32c-octet (fn-bpp-xor crc (car xs) 32) 8)
+                            (cdr xs))
+    (nfix crc)))
+
+(defconst *bpp-crc-random-octets* (bpp-crc-lcg-octets 7 4096))
+(assert-event (fn-cbor-octet-listp *bpp-crc-random-octets*))
+(assert-event
+ (equal (fn-bpp-crc32c-scan-table 305419896 *bpp-crc-random-octets*)
+        (bpp-crc-bitwise-scan 305419896 *bpp-crc-random-octets*)))
+(assert-event
+ (equal (fn-bpp-crc32c-scan-table 4294967295 *bpp-crc-random-octets*)
+        (bpp-crc-bitwise-scan 4294967295 *bpp-crc-random-octets*)))
+
+; fn-bpp-crc32c-scan-table-is-scan: a reachable witness, the antecedent and the
+; conclusion of the literal theorem over the check string.
+(assert-event
+ (let ((crc 4294967295) (xs '(49 50 51 52 53 54 55 56 57)))
+   (and (natp crc)
+        (fn-cbor-octet-listp xs)
+        (equal (fn-bpp-crc32c-scan-table crc xs) (fn-bpp-crc32c-scan crc xs))
+        (equal (fn-bpp-xor (fn-bpp-crc32c-scan-table crc xs) 4294967295 32)
+               3808858755))))
+
+;   without `(natp crc)': a register of -1 over no octets is -1 to the table
+;   scan and 0 to the bitwise one.  Evaluated logically, outside the guard.
+(assert-event
+ (with-guard-checking :none
+  (and (fn-cbor-octet-listp nil)
+       (not (natp -1))
+       (not (equal (fn-bpp-crc32c-scan-table -1 nil)
+                   (fn-bpp-crc32c-scan -1 nil))))))
+
+;   without `(fn-cbor-octet-listp xs)': `logxor' reads the fraction 1/2 as 0,
+;   the bitwise exclusive-or reads its parity, and the registers differ.
+(assert-event
+ (with-guard-checking :none
+  (and (natp 0)
+       (not (fn-cbor-octet-listp '(1/2)))
+       (not (equal (fn-bpp-crc32c-scan-table 0 '(1/2))
+                   (fn-bpp-crc32c-scan 0 '(1/2)))))))
+
+; fn-bpp-xor-is-masked-logxor: a reachable witness, and one where the mask
+; truncates (2^40 + 1 exclusive-or 0 over 32 bits is 1).
+(assert-event
+ (and (natp 5) (natp 3)
+      (equal (fn-bpp-xor 5 3 32) (logand (logxor 5 3) (+ -1 (expt 2 32))))
+      (equal (fn-bpp-xor 5 3 32) 6)))
+(assert-event
+ (and (natp 1099511627777) (natp 0)
+      (equal (fn-bpp-xor 1099511627777 0 32)
+             (logand (logxor 1099511627777 0) (+ -1 (expt 2 32))))
+      (equal (fn-bpp-xor 1099511627777 0 32) 1)))
+
+;   without `(natp a)': the bitwise exclusive-or reads the parity of 1/2, and
+;   `logxor' reads 1/2 as 0.  Evaluated logically, outside the guard.
+(assert-event
+ (with-guard-checking :none
+  (and (natp 0)
+       (not (natp 1/2))
+       (not (equal (fn-bpp-xor 1/2 0 1)
+                   (logand (logxor 1/2 0) (+ -1 (expt 2 1))))))))
+
+;   without `(natp b)': the same, the other way round.
+(assert-event
+ (with-guard-checking :none
+  (and (natp 0)
+       (not (natp 1/2))
+       (not (equal (fn-bpp-xor 0 1/2 1)
+                   (logand (logxor 0 1/2) (+ -1 (expt 2 1))))))))
+
+;   The width carries no hypothesis: the theorem was proved without `(natp k)'
+;   (a width that is not a natural is no width, and both sides are 0).
+(assert-event
+ (with-guard-checking :none
+  (and (not (natp -1))
+       (equal (fn-bpp-xor 5 3 -1) (logand (logxor 5 3) (+ -1 (expt 2 -1))))
+       (equal (fn-bpp-xor 5 3 -1) 0))))
+
 ; That sample block is not accepted as a block: its dtn SSPs omit the "//".
 (assert-event (not (fn-bpp-dtn-sspp '(110 50 47 105 110 98 111 120))))
 (assert-event (fn-bpp-dtn-sspp '(47 47 110 50 47 105 110 98 111 120)))

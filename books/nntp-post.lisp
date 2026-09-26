@@ -223,13 +223,15 @@
              (fn-inj-refuse :group-read-only)
            (fn-inj-decide source config injection))))
 
+; The reader environment of the served step: the connection's pinned clock
+; observation, no creation facts, the posting bit, the reader listing
+; (PRF-195) and the closed groups (O2, PRF-196), all from the connection's
+; pinned configuration.
 (defun fn-post-reader-env (config observation)
   (declare (xargs :guard t))
-  (if (consp (fn-inj-config-closed config))
-      (fn-nntp-env-with-closed observation nil
-                               (and (fn-inj-config-allow config) t)
-                               (fn-inj-config-closed config))
-    (fn-nntp-env observation nil (and (fn-inj-config-allow config) t))))
+  (fn-nntp-env-full observation nil (and (fn-inj-config-allow config) t)
+                    (fn-inj-config-listing config)
+                    (fn-inj-config-closed config)))
 
 ; The step's lemmas treat the environment as one term; the facts about it
 ; (fn-post-reader-env-is-an-env below, and its closed list) are stated once.
@@ -239,30 +241,35 @@
   (equal (fn-nntp-env-posting (fn-post-reader-env config observation))
          (and (fn-inj-config-allow config) t))
   :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
-                                     fn-nntp-env-with-closed
+                                     fn-nntp-env-full
                                      fn-nntp-env-posting))))
 
 (defthm fn-post-reader-env-observation
   (equal (fn-nntp-env-observation (fn-post-reader-env config observation))
          observation)
   :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
-                                     fn-nntp-env-with-closed
+                                     fn-nntp-env-full
                                      fn-nntp-env-observation))))
 
 (defthm fn-post-reader-env-facts
   (equal (fn-nntp-env-facts (fn-post-reader-env config observation)) nil)
   :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
-                                     fn-nntp-env-with-closed
+                                     fn-nntp-env-full
                                      fn-nntp-env-facts))))
+
+; The listing LIST NEWSGROUPS and LIST MOTD read is the configuration's.
+(defthm fn-post-reader-env-listing
+  (equal (fn-nntp-env-listing (fn-post-reader-env config observation))
+         (fn-inj-config-listing config))
+  :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env-full
+                                     fn-nntp-env-listing))))
 
 ; The closed list LIST ACTIVE reads is the configuration's.
 (defthm fn-post-reader-env-closed
   (equal (fn-nntp-env-closed (fn-post-reader-env config observation))
-         (if (consp (fn-inj-config-closed config))
-             (fn-inj-config-closed config)
-           nil))
+         (fn-inj-config-closed config))
   :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
-                                     fn-nntp-env-with-closed
+                                     fn-nntp-env-full
                                      fn-nntp-env-closed))))
 
 (defun fn-nntp-post-step (ps archive config observation injection wire-event)
@@ -312,7 +319,7 @@
       ; creation date.
       ; O2: the environment carries the configuration's closed groups
       ; (books/group-status.lisp), so LIST ACTIVE's status field is the
-      ; POST gate's list; with none closed it is the four-field one.
+      ; POST gate's list, and the reader listing (PRF-195) with it.
       (let ((r (fn-nntp-step (fn-post-session-base ps) archive
                              (fn-post-reader-env config observation)
                              wire-event)))

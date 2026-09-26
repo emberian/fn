@@ -404,39 +404,91 @@
 ; The configuration record.  Opaque: shape and accessor-of-constructor lemmas
 ; are proved once here and the definition runes are withdrawn immediately.
 
-; A configuration is four fields, or five when it names the groups closed to
-; local posting (O2, RFC 3977 section 7.6.3 status "n"): the fifth field,
-; `fn-inj-config-closed', is the octets of each served group whose
-; configured status is "n" (books/config.lisp `fn-cfg-closed-names';
-; books/owner-agent.lisp `fn-oag-post-config' fills it).  A four-field
-; configuration closes no group.  The injection decision `fn-inj-decide'
-; does not read the fifth field: the gate is books/group-status.lisp's,
-; called by the served POST step before the decision.
+; A configuration is six fields.  The first four are the injection inputs.
+; The fifth is the reader listing (PRF-195): the group descriptions and the
+; node's message the connection's LIST NEWSGROUPS and LIST MOTD show
+; (books/nntp-responses.lisp `fn-nntp-env-listed').  The sixth,
+; `fn-inj-config-closed', names the groups closed to local posting (O2,
+; PRF-196; RFC 3977 section 7.6.3 status "n"): the octets of each served
+; group whose configured status is "n" (books/config.lisp
+; `fn-cfg-closed-names').  books/owner-agent.lisp `fn-oag-post-config' fills
+; both through `fn-inj-make-config-full'.  The injection decision
+; `fn-inj-decide' reads neither (fn-inj-decide-ignores-the-listing and
+; fn-inj-decide-ignores-the-listing-and-closed below); the posting gate is
+; books/group-status.lisp's, called by the served POST step before the
+; decision.  `fn-inj-make-config' builds a configuration with no listing and
+; no closed group, `fn-inj-make-config-listed' one with no closed group and
+; `fn-inj-make-config-closed' one with no listing.
 (defun fn-inj-config-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (or (equal (len x) 4) (equal (len x) 5))))
+  (and (true-listp x) (equal (len x) 6)))
 (defun fn-inj-config-allow (x) (declare (xargs :guard t)) (fn-inj-nth 0 x))
 (defun fn-inj-config-agent (x) (declare (xargs :guard t)) (fn-inj-nth 1 x))
 (defun fn-inj-config-groups (x) (declare (xargs :guard t)) (fn-inj-nth 2 x))
 (defun fn-inj-config-max-octets (x) (declare (xargs :guard t)) (fn-inj-nth 3 x))
-(defun fn-inj-config-closed (x) (declare (xargs :guard t)) (fn-inj-nth 4 x))
+(defun fn-inj-config-listing (x) (declare (xargs :guard t)) (fn-inj-nth 4 x))
+(defun fn-inj-config-closed (x) (declare (xargs :guard t)) (fn-inj-nth 5 x))
 
-(defun fn-inj-make-config (allow agent groups max-octets)
+(defun fn-inj-make-config-full (allow agent groups max-octets listing closed)
   (declare (xargs :guard t))
-  (list allow agent groups max-octets))
+  (list allow agent groups max-octets listing closed))
+
+(defun fn-inj-make-config-listed (allow agent groups max-octets listing)
+  (declare (xargs :guard t))
+  (fn-inj-make-config-full allow agent groups max-octets listing nil))
 
 (defun fn-inj-make-config-closed (allow agent groups max-octets closed)
   (declare (xargs :guard t))
-  (list allow agent groups max-octets closed))
+  (fn-inj-make-config-full allow agent groups max-octets nil closed))
 
-(defthm fn-inj-config-shapep-of-fn-inj-make-config
-  (fn-inj-config-shapep (fn-inj-make-config allow agent groups max-octets)))
-(defthm fn-inj-config-closed-of-fn-inj-make-config
-  (equal (fn-inj-config-closed (fn-inj-make-config allow agent groups max))
+(defun fn-inj-make-config (allow agent groups max-octets)
+  (declare (xargs :guard t))
+  (fn-inj-make-config-listed allow agent groups max-octets nil))
+
+(defthm fn-inj-config-shapep-of-fn-inj-make-config-full
+  (fn-inj-config-shapep (fn-inj-make-config-full allow agent groups max listing closed)))
+(defthm fn-inj-config-allow-of-fn-inj-make-config-full
+  (equal (fn-inj-config-allow (fn-inj-make-config-full allow agent groups max listing closed))
+         allow))
+(defthm fn-inj-config-agent-of-fn-inj-make-config-full
+  (equal (fn-inj-config-agent (fn-inj-make-config-full allow agent groups max listing closed))
+         agent))
+(defthm fn-inj-config-groups-of-fn-inj-make-config-full
+  (equal (fn-inj-config-groups (fn-inj-make-config-full allow agent groups max listing closed))
+         groups))
+(defthm fn-inj-config-max-octets-of-fn-inj-make-config-full
+  (equal (fn-inj-config-max-octets (fn-inj-make-config-full allow agent groups max listing closed))
+         max))
+(defthm fn-inj-config-listing-of-fn-inj-make-config-full
+  (equal (fn-inj-config-listing (fn-inj-make-config-full allow agent groups max listing closed))
+         listing))
+(defthm fn-inj-config-closed-of-fn-inj-make-config-full
+  (equal (fn-inj-config-closed (fn-inj-make-config-full allow agent groups max listing closed))
+         closed))
+
+(defthm fn-inj-config-shapep-of-fn-inj-make-config-listed
+  (fn-inj-config-shapep (fn-inj-make-config-listed allow agent groups max listing)))
+(defthm fn-inj-config-allow-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-allow (fn-inj-make-config-listed allow agent groups max listing))
+         allow))
+(defthm fn-inj-config-agent-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-agent (fn-inj-make-config-listed allow agent groups max listing))
+         agent))
+(defthm fn-inj-config-groups-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-groups (fn-inj-make-config-listed allow agent groups max listing))
+         groups))
+(defthm fn-inj-config-max-octets-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-max-octets (fn-inj-make-config-listed allow agent groups max listing))
+         max))
+(defthm fn-inj-config-listing-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-listing (fn-inj-make-config-listed allow agent groups max listing))
+         listing))
+(defthm fn-inj-config-closed-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-closed (fn-inj-make-config-listed allow agent groups max listing))
          nil))
+
 (defthm fn-inj-config-shapep-of-fn-inj-make-config-closed
-  (fn-inj-config-shapep
-   (fn-inj-make-config-closed allow agent groups max-octets closed)))
+  (fn-inj-config-shapep (fn-inj-make-config-closed allow agent groups max closed)))
 (defthm fn-inj-config-allow-of-fn-inj-make-config-closed
   (equal (fn-inj-config-allow (fn-inj-make-config-closed allow agent groups max closed))
          allow))
@@ -449,9 +501,15 @@
 (defthm fn-inj-config-max-octets-of-fn-inj-make-config-closed
   (equal (fn-inj-config-max-octets (fn-inj-make-config-closed allow agent groups max closed))
          max))
+(defthm fn-inj-config-listing-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-listing (fn-inj-make-config-closed allow agent groups max closed))
+         nil))
 (defthm fn-inj-config-closed-of-fn-inj-make-config-closed
   (equal (fn-inj-config-closed (fn-inj-make-config-closed allow agent groups max closed))
          closed))
+
+(defthm fn-inj-config-shapep-of-fn-inj-make-config
+  (fn-inj-config-shapep (fn-inj-make-config allow agent groups max)))
 (defthm fn-inj-config-allow-of-fn-inj-make-config
   (equal (fn-inj-config-allow (fn-inj-make-config allow agent groups max))
          allow))
@@ -464,8 +522,16 @@
 (defthm fn-inj-config-max-octets-of-fn-inj-make-config
   (equal (fn-inj-config-max-octets (fn-inj-make-config allow agent groups max))
          max))
+(defthm fn-inj-config-listing-of-fn-inj-make-config
+  (equal (fn-inj-config-listing (fn-inj-make-config allow agent groups max))
+         nil))
+(defthm fn-inj-config-closed-of-fn-inj-make-config
+  (equal (fn-inj-config-closed (fn-inj-make-config allow agent groups max))
+         nil))
 
 (in-theory (disable (:d fn-inj-config-shapep) (:d fn-inj-make-config)
+                    (:d fn-inj-make-config-full)
+                    (:d fn-inj-make-config-listed) (:d fn-inj-config-listing)
                     (:d fn-inj-config-allow) (:d fn-inj-config-agent)
                     (:d fn-inj-config-groups) (:d fn-inj-config-max-octets)
                     (:d fn-inj-config-closed) (:d fn-inj-make-config-closed)))
@@ -981,3 +1047,47 @@
           fn-inj-reinjectionp)))
 
 (in-theory (disable fn-inj-vocabulary))
+
+; The reader listing is not an input of the injection decision: a served
+; configuration that carries one (books/owner-agent.lisp
+; `fn-oag-post-config') decides every POST exactly as the same configuration
+; without it (PRF-195).
+(defthm fn-inj-decide-ignores-the-listing
+  (equal (fn-inj-decide source
+                        (fn-inj-make-config-listed allow agent groups max listing)
+                        observation)
+         (fn-inj-decide source (fn-inj-make-config allow agent groups max)
+                        observation))
+  :hints (("Goal" :in-theory '(fn-inj-decide fn-inj-configp
+                               fn-inj-generated-message-id
+                               fn-inj-make-config
+                               fn-inj-config-shapep-of-fn-inj-make-config-listed
+                               fn-inj-config-allow-of-fn-inj-make-config-listed
+                               fn-inj-config-agent-of-fn-inj-make-config-listed
+                               fn-inj-config-groups-of-fn-inj-make-config-listed
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))
+
+; Nor is the closed-group list (PRF-196): the configuration the served
+; connection carries, built by `fn-inj-make-config-full', decides every POST
+; exactly as its four injection inputs alone.  The O2 gate is
+; books/group-status.lisp's, applied before this decision.
+(defthm fn-inj-decide-ignores-the-listing-and-closed
+  (equal (fn-inj-decide source
+                        (fn-inj-make-config-full allow agent groups max
+                                                 listing closed)
+                        observation)
+         (fn-inj-decide source (fn-inj-make-config allow agent groups max)
+                        observation))
+  :hints (("Goal" :in-theory '(fn-inj-decide fn-inj-configp
+                               fn-inj-generated-message-id
+                               fn-inj-make-config
+                               fn-inj-config-shapep-of-fn-inj-make-config-full
+                               fn-inj-config-allow-of-fn-inj-make-config-full
+                               fn-inj-config-agent-of-fn-inj-make-config-full
+                               fn-inj-config-groups-of-fn-inj-make-config-full
+                               fn-inj-config-max-octets-of-fn-inj-make-config-full
+                               fn-inj-config-shapep-of-fn-inj-make-config-listed
+                               fn-inj-config-allow-of-fn-inj-make-config-listed
+                               fn-inj-config-agent-of-fn-inj-make-config-listed
+                               fn-inj-config-groups-of-fn-inj-make-config-listed
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))

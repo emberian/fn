@@ -3176,18 +3176,21 @@
         "`operator CONFIG init --max-transactions 1164 --max-config-generations 1164 fn.test`; `peer add far ...`; 1,100 separate `peer carries far HEX`; `peer list`.",
         "`peer budget far 1048576 3`; `peer budget far 2097152 5`; `peer list`; `peer carries far HEX0` again; `peer list`.",
         "Developer `store ROOT init --max-transactions 8191`; post; `checkpoint publish`; hard-link generation 0 as generations 1..4096; `checkpoint publish`; `checkpoint status`.",
-        "The same with `--max-transactions 4095` and generations 0..4095."
+        "The same with `--max-transactions 4095` and generations 0..4095.",
+        "`init --max-group-name-octets 100 fn.test`; `group create` of a 100-octet name, then of a 101-octet name; `init --max-group-name-octets 100` of a 101-octet name on a fresh root; `init fn.test` and `group create` of the 101-octet name."
       ],
       "expected": [
         "Every request exits 0; the listing (a fresh open replaying every configuration record) names the 1,100 principals in request order.",
         "Both budget requests exit 0 and the 1,100 principals stay; the repeated principal adds no row.",
         "The second publication prints generation=4097 and status lists 4096 and 4097.",
-        "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged."
+        "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged.",
+        "The 100-octet name is created; the 101-octet `group create` exits 1 naming max-group-name-octets with the configuration directory unchanged; the `init` exits 1 naming it and writes no store; under the default profile the 101-octet name is created."
       ],
       "evidence": [
         "planning/evidence/caps-to-profile-2026-09-26.md",
         "planning/evidence/caps-to-profile/native-checkpoint-generations.log",
-        "planning/evidence/caps-to-profile/native-peer-rows-growth.log"
+        "planning/evidence/caps-to-profile/native-peer-rows-growth.log",
+        "planning/evidence/caps-to-profile/native-group-name-bound.log"
       ],
       "implementation": {
         "test": "tests.test_native_peer_rows_growth",
@@ -3457,6 +3460,353 @@
         "native": true,
         "record": "planning/evidence/group-policy-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-122",
+      "title": "A signed POST's owner CPU does not grow with the retained history: at N = 1,000 and N = 10,000 (32 hybrid-signed carriers in each history) the lane's image spends about the same owner CPU per signed POST, where its base grows about linearly with N",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-004"
+      ],
+      "steps": [
+        "On hbox load a store of N POSTs of about 2 KiB, 32 of them hybrid-signed carriers spread evenly, one hybrid author enrolled (planning/evidence/signed-post-linear-2026-09-26/prof_signed.py load, /dev/shm, profile scale), for N = 1,000 and N = 10,000.",
+        "On a fresh copy of each store, open it with the base image (dev 6407de336) and with the lane's image, warm with one unsigned and one signed POST, then time 20 unsigned and 20 signed POSTs, each batch on one connection opened before it, with the owner's CPU (/proc/PID/stat) over each batch (prof_signed.py run).",
+        "Profile the base's signed batch with sb-sprof (the profiling twin, --sprof) at both N and name the term that grows."
+      ],
+      "expected": [
+        "Every POST answers 240.",
+        "The lane's signed POST owner CPU at N = 10,000 is within a small factor of its figure at N = 1,000, and well below the base's at N = 10,000; the box load is stated beside each figure.",
+        "The base's profile at N = 10,000 attributes the growth to fn-sf-next-lower under fn-ccar-sn-prepare-identity."
+      ],
+      "evidence": [
+        "planning/evidence/signed-post-linear-2026-09-26.md",
+        "planning/evidence/signed-post-linear-2026-09-26/prof_signed.py",
+        "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
+      ],
+      "implementation": {
+        "test": "planning/evidence/signed-post-linear-2026-09-26/prof_signed.py",
+        "native": true,
+        "record": "planning/evidence/signed-post-linear-2026-09-26.md",
+        "log": "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
+      }
+    },
+    {
+      "id": "SCN-120",
+      "title": "A POST's owner CPU does not grow with the history through its Message-ID tests: at N = 1,000 and N = 10,000 x 2 KiB the lane's image spends less owner CPU per POST than its base, with the same verdicts, and no Message-ID lookup walks the article list",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "On hbox take the developer image of the lane's base (dev 6407de336, the throughput gate's native-img-6407de336) and the lane's (tools/hbox_native.sh r1, which also runs tests.test_native_owner).",
+        "Load a 1,000-article store of 2 KiB articles (postmeasure.py load) and use the registered 10,000-article fixture /tank/fn/scratch/fixtures/n10k-2k.",
+        "For each N and image, on a /dev/shm copy of the store, in its own systemd-run scope: open, one warm-up POST, then K = 400 POSTs of 2,048 octets with the heap hook (bytes consed) and /proc owner CPU around them (postmeasure.py post); alternate the images, five rounds pinned to cores 20-23 (run2.sh); one sb-sprof :cpu window on the lane's image at N = 10,000."
+      ],
+      "expected": [
+        "Every POST answers 240; the lane's owner CPU per POST at N = 10,000 is below its base's and near its own N = 1,000 figure, the box load stated beside each figure.",
+        "In the lane's CPU profile at N = 10,000, FN-FIND-ARTICLE and FN-ACCEPTEDP have no samples under the POST, and FN-RETAIN-PIN-ID-SCANP (the one remaining admissibility scan, PKT-549) is reached from FN-PIDX-NODE-PREPARE alone, not also from FN-RETAIN-ADMIT."
+      ],
+      "evidence": [
+        "planning/evidence/post-identity-index-2026-09-26.md",
+        "planning/evidence/post-identity-index-2026-09-26/postmeasure.py"
+      ],
+      "implementation": {
+        "test": "planning/evidence/post-identity-index-2026-09-26/postmeasure.py",
+        "native": true,
+        "record": "planning/evidence/post-identity-index-2026-09-26.md",
+        "log": "planning/evidence/post-identity-index-2026-09-26/results.json"
+      }
+    },
+    {
+      "id": "SCN-118",
+      "title": "OVER over a range costs the rows asked for, not the group's size: at N = 10,000 x 2 KiB OVER 40 rows and OVER 2,000 rows on the lane's image against the perf-ledger's base image, the same fixture, the served bytes identical",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-001",
+        "NNT-006"
+      ],
+      "steps": [
+        "On hbox open copies of the fixture /tank/fn/scratch/fixtures/n10k-2k (N = 10,000 x 2,048-octet articles in fn.test; SHA256SUMS there) on /dev/shm with the perf-ledger developer image (dev f314a5a3) and with the lane's developer image (tools/hbox_native.sh), each in its own systemd-run --user --scope -p MemoryMax=24G.",
+        "planning/evidence/over-number-index-2026-09-26/measure.py reads: GROUP x5, STAT, ARTICLE by number and by Message-ID x32, OVER 1 x32, OVER 40 rows x20, OVER 1-2000 x5, owner CPU per operation from /proc; the SHA-256 of one OVER 1-2000 reply and 32 ARTICLEs by number."
+      ],
+      "expected": [
+        "The served-bytes SHA-256 is the same on both images.",
+        "OVER 40 rows and OVER 1-2000 fall from hundreds of ms and seconds (rows x N) to tens of ms and under 1 s on the lane image, the box load stated beside each figure."
+      ],
+      "evidence": [
+        "planning/evidence/over-number-index-2026-09-26.md",
+        "planning/evidence/over-number-index-2026-09-26/measure.py"
+      ],
+      "implementation": {
+        "test": "planning/evidence/over-number-index-2026-09-26/measure.py",
+        "native": true,
+        "record": "planning/evidence/over-number-index-2026-09-26.md",
+        "log": "planning/evidence/over-number-index-2026-09-26/after.json"
+      }
+    },
+    {
+      "id": "SCN-119",
+      "title": "A BP bundle's CRC-32C runs the table: on the lane's developer image a bundle of 48 KiB, 256 KiB and 1 MiB encodes and decodes with wire bytes identical to the base image's, and the encode and decode cost about 1 percent of the base's",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "On hbox, with the base developer image (the perf-ledger's, dev f314a5a3, whose codec books are dev's) and the lane's developer image (tools/hbox_native.sh), load planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp into each image's raw Lisp with bpenc.sh, back to back on the same box.",
+        "For each payload (49,152, 262,144 and 1,048,576 octets) record the guard, encode and decode seconds, the wire length, a digest of the wire computed in raw Lisp (not by the CRC under test) and whether the decode returns the bundle."
+      ],
+      "expected": [
+        "The wire length and digest of every payload are the same on both images, and both decode their wire back to the bundle.",
+        "The lane's encode and decode are each about 1 percent of the base's at the same payload on the same box, the box load stated beside each figure."
+      ],
+      "evidence": [
+        "planning/evidence/bp-crc-exec-2026-09-26.md",
+        "planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp"
+      ],
+      "implementation": {
+        "test": "planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp",
+        "native": true,
+        "record": "planning/evidence/bp-crc-exec-2026-09-26.md",
+        "log": "planning/evidence/bp-crc-exec-2026-09-26/bpenc-after-1.out"
+      }
+    },
+    {
+      "id": "SCN-121",
+      "title": "A served ARTICLE's reply leaves the owner as a range of the octet buffer, byte for byte the reply of the step's effects, at 2 KiB, 32 KiB and 1, 2 and 3 MiB",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 4194304; start the owner; POST articles of 1,048,576, 2,097,152 and 3,145,728 octets and ARTICLE each back on the same connection (tests/test_native_bounds_join.py LargeReplyTests, the served path now through fn-owner-reply-buffer).",
+        "Measure ARTICLE 32 KiB and 3 MiB with a client that reads in 1 MiB chunks: wall, owner CPU and bytes consed per ARTICLE, before and after (planning/evidence/egress-span-2026-09-26/egress.py)."
+      ],
+      "expected": [
+        "Each ARTICLE is 220 with the posted octets as the stored article's suffix and the owner keeps serving; the bytes are those fn-served-reply-octets of the step's effects decides (fn-served-reply-to-buffer-is-the-reply).",
+        "No per-octet cons for the reply on the served read: the ARTICLE's bytes consed fall by at least the reply list and its host copy."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "books/served-reply-buffer.lisp",
+        "tests/acl2/served-reply-buffer-tests.lisp",
+        "planning/evidence/egress-span-2026-09-26.md",
+        "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving"
+        ],
+        "native": true,
+        "record": "planning/evidence/egress-span-2026-09-26.md",
+        "log": "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
+      }
+    },
+    {
+      "id": "SCN-110",
+      "title": "A POST is served byte-identical after the ingress reads the octet buffer instead of a per-read list: an article of 33 KiB, 200 KiB and 3 MiB is accepted (240) and re-reads identical, and a line split across two socket reads and a dot-stuffed line frame the same article",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "REP-012"
+      ],
+      "steps": [
+        "Init a 4 MiB-article profile; run the owner; POST 33,792 / 204,800 / 3,145,728 octets and re-read each with ARTICLE; POST A+1 octets.",
+        "In ACL2: feed a dot-stuffed body line whose CRLF is split across two buffer ranges through fn-wire-feed-span in two reads, and in one read; compare to fn-wire-feed-proper over the octets.",
+        "On hbox, the same POSTs (33,792 / 204,800 / 3,145,728 octets, and 200 dot-led lines written in 7-octet pieces) to the span image and to the base image (per-read list, FN_SPAN_REFERENCE_HOST), each on a fresh 4 MiB-article store; ARTICLE each (tests.test_native_bounds_join.SpanReferenceTests)."
+      ],
+      "expected": [
+        "Each of 33 KiB / 200 KiB / 3 MiB is 240 and re-reads identical; A+1 is refused 441 by size; transactions-used is 3.",
+        "The two-read span and the one-read span leave the same wire state and frame the same (:article ((.hi))) event, equal to the reference; a line over the limit closes :line-overlimit at the same octet.",
+        "Every POST reply, ARTICLE status line and served article octet agrees between the two images (the injected Date and Injection-Date values masked), and each re-reads the posted body."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "tests/acl2/wire-span-tests.lisp",
+        "tests/acl2/served-span-tests.lisp",
+        "planning/evidence/ingress-span-2026-09-26.md",
+        "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.SpanReferenceTests.log",
+        "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.LargeArticleTests.log"
+      ],
+      "execution_scope": [
+        "native",
+        "proof"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_span_read_serves_the_reference_images_bytes_at_33k_200k_3m_and_split_dot_lines",
+          "test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it"
+        ],
+        "native": true,
+        "record": "planning/evidence/ingress-span-2026-09-26.md",
+        "log": "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.SpanReferenceTests.log"
+      }
+    },
+    {
+      "id": "SCN-115",
+      "title": "1,100 separate offline `peer carries` requests on one store cost each request a replay at the records' own work, not the configuration's size per record",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-025"
+      ],
+      "steps": [
+        "`operator CONFIG init --max-transactions 1164 --max-config-generations 1164 fn.test`; `peer add far ...`; 1,100 separate `peer carries far HEX`, timed; `peer list`."
+      ],
+      "expected": [
+        "Every request exits 0 and the listing names the 1,100 principals in request order; the total time is recorded against the same run on the image before PRF-186 (planning/evidence/caps-to-profile-2026-09-26.md, Continuation)."
+      ],
+      "evidence": [
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/caps-to-profile/native-peer-rows-growth-after.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "log": "planning/evidence/caps-to-profile/native-peer-rows-growth-after.log",
+        "record": "planning/evidence/caps-to-profile-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-130",
+      "title": "A three-article history with a cancel committed after its target on the live catalog: the pinned reader at the version before the cancel reads the article, a reader who advanced does not, the numbers and Message-ID lookups answer from the tables",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "REP-013",
+        "STO-027"
+      ],
+      "steps": [
+        "tests/acl2/catalog-tests.lisp cat-exec: commit three held rows (two in fn.test, one in fn.test and fn.other), read the Message-ID and number columns, withdraw row 0 at version 3, commit the cancel at sequence 3, read fn-cat-visible-at for versions 3 and 4, redecide row 1, clear."
+      ],
+      "expected": "count 3; <b@x> at (1); fn.test number 3 is row 2; fn.other next 2; fn.test next 4; 600 octets; row 0 withdrawn (3 . 3); visible at version 3, not at 4; the cancel invisible at version 3; the redecided generation 7; the cleared count 0.",
+      "evidence": [
+        "tests/acl2/catalog-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T194426Z-1747941.json"
+      ],
+      "note": "Lane catalog-slice (2026-09-26).",
+      "implementation": {
+        "test": "tests/acl2/catalog-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/catalog-slice-2026-09-26.md",
+        "log": "planning/evidence/manifests/certify-20260926T194426Z-1747941.json"
+      }
+    },
+    {
+      "id": "SCN-131",
+      "title": "A long-lived reader connection sees a peer's new article after its next GROUP, and a cancel committed after the article leaves it visible to that reader until it advances past the cancel (two connections, native)",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-013",
+        "STO-027"
+      ],
+      "steps": [
+        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn)."
+      ],
+      "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423.",
+      "evidence": [],
+      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585)."
+    },
+    {
+      "id": "SCN-123",
+      "title": "A stranger's HELP names every command the node serves, AUTHINFO, STARTTLS and XREDEEM included, and a command it does not name is answered 500",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-038"
+      ],
+      "steps": [
+        "Open a reader connection to a native node (TLS or clear) and send HELP before any login.",
+        "Send each keyword HELP listed, alone on its line, and one it did not list (XPATH)."
+      ],
+      "expected": [
+        "HELP answers 100 and the six lines of specs/nntp.md's NNT-038 section, then the dot.",
+        "No listed keyword draws 500 command not recognized; XPATH does."
+      ],
+      "evidence": [
+        "tests/acl2/nntp-help-tests.lisp",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/acl2/nntp-help-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/reader-clients-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-124",
+      "title": "An operator describes a group and sets the message of the day on a running node; a new reader connection is shown both, a restart keeps them, and clearing them restores the marker and an empty message",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-039"
+      ],
+      "steps": [
+        "Init a store with fn.test, create fn.live, start the owner; LIST NEWSGROUPS shows the marker for both and LIST MOTD an empty block.",
+        "While the owner runs: group describe fn.test Friends 'and letters'; motd set 'Welcome to fn.' 'Ask ember for a code.'; group describe fn.nosuch x and group describe fn.test '   ' are refused.",
+        "A new reader: LIST NEWSGROUPS, LIST NEWSGROUPS fn.t*, LIST MOTD, LIST MOTD x.",
+        "Stop and restart the owner; read again; clear both and read again."
+      ],
+      "expected": [
+        "fn.test\\tFriends and letters and fn.live\\t(no description); the wildmat form lists fn.test only; LIST MOTD the two lines; LIST MOTD x is 501.",
+        "After restart the same; after clearing, both markers and an empty 215 block.",
+        "The refused commands exit non-zero and change nothing a reader is shown."
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "planning/evidence/usenet-headers-2026-09-26-native.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_reader_index",
+        "cases": [
+          "test_list_newsgroups_descriptions_and_motd_published_live"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-126",
+      "title": "A node listens on [::1] and on an IPv4 address at once from one [listener] host list, a TLS client reaches each, and a wildcard, mapped or duplicate address is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_listener_v6",
+        "cases": [
+          "test_every_address_serves_plain_and_implicit_tls",
+          "test_refusals_are_named_before_any_listener"
+        ],
+        "native": true,
+        "log": "planning/evidence/listener-v6-2026-09-26/native-listener-v6-r2.log",
+        "record": "planning/evidence/listener-v6-2026-09-26.md"
+      },
+      "requirements": [
+        "NNT-041"
+      ],
+      "steps": [
+        "fn.toml [listener] host = \"[::1], 127.0.0.1\" with tls_cert, tls_key and tls_port; start the node on a copy with loopback paths.",
+        "Connect over implicit TLS to [::1]:TLS_PORT and to 127.0.0.1:TLS_PORT; each answers the RFC 3977 greeting and CAPABILITIES.",
+        "Replace host with \"::\", \"::ffff:127.0.0.1\" and \"::1,[::1]\" in turn: the operator's load refuses with listener-unspecified, listener-mapped and listener-duplicate."
+      ],
+      "evidence": [
+        "tests/acl2/native-config-tests.lisp",
+        "tests/test_native_listener_v6.py"
+      ],
+      "expected": [
+        "Both implicit-TLS connections answer 200 or 201 and a CAPABILITIES list; the owner prints LISTENING and LISTENING-TLS once each and binds four sockets (ss -ltn shows [::1] and 127.0.0.1 on both ports).",
+        "Each refused host is (:refused :listener-unspecified), (:refused :listener-mapped) and (:refused :listener-duplicate) at load; no store is opened."
+      ]
     }
   ]
 }

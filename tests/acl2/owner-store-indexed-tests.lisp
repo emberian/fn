@@ -248,3 +248,21 @@
 (assert-event (not (fn-own-relation (fn-ocfg-owner *osi-cap-owner*))))
 ; The signed-history owner above is inside both.
 (assert-event (fn-own-relation (fn-ocfg-owner *osi-open*)))
+
+; -----------------------------------------------------------------------------
+; PRF-191: the host's open also installs the premise of the POST's view-trie
+; lookups (books/post-identity-index.lisp): fn-ocl-relation and
+; fn-scar-view-indexedp give fn-pidx-view-okp (fn-pidx-view-okp-of-live-owner),
+; and the lookup answers the signed composite's article as the scan does.
+(defconst *osi-open-owner* (fn-ocfg-owner *osi-open*))
+(defconst *osi-open-arts*
+  (fn-state-articles (fn-node-acceptance (fn-sn-node (fn-own-store *osi-open-owner*)))))
+(assert-event
+ (and (fn-ocl-relation *osi-open*)
+      (fn-scar-view-indexedp *osi-open-owner*)
+      (fn-pidx-view-okp (fn-own-view *osi-open-owner*))
+      (consp (fn-find-article *bsb-msgid* *osi-open-arts*))
+      (equal (fn-own-view-raw (fn-own-view *osi-open-owner*)) *osi-open-arts*)
+      (equal (fn-pidx-find-article *bsb-msgid* *osi-open-arts*
+                                   (fn-own-view *osi-open-owner*))
+             (fn-find-article *bsb-msgid* *osi-open-arts*))))

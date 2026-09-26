@@ -171,10 +171,12 @@
                   (t (let ((at (fn-cnode-make
                                 (fn-replay-advance-txid node txid)
                                 (fn-cnode-config cn))))
-                       (if (not (fn-cnode-statep at))
+                       (if (mbe :logic (not (fn-cnode-statep at)) :exec nil)
                            (fn-replay-fault cn position :invalid-node)
-                         (if (not (fn-cnode-record-acceptablep
-                                   at record (fn-cnode-line-ceiling)))
+                         (if (not (mbe :logic (fn-cnode-record-acceptablep
+                                            at record (fn-cnode-line-ceiling))
+                                       :exec (fn-cnode-carried-acceptablep
+                                              at record (fn-cnode-line-ceiling))))
                              (fn-replay-fault cn position :config-refusal)
                            (fn-cpr-loop
                             (fn-cnode-apply-config
@@ -299,7 +301,18 @@
 (verify-guards fn-cpr-loop
   :hints (("Goal"
            :use ((:instance fn-cpr-apply-event-statep-iff-consp
-                            (event (car events))))
+                            (event (car events)))
+                 ;; PRF-186: the config arm's carried checks.
+                 (:instance fn-cnode-advanced-node-is-configured
+                            (txid (fn-cfg-record-txid (car configs))))
+                 (:instance fn-cnode-record-acceptablep-is-the-carried-check
+                            (cn (fn-cnode-make
+                                 (fn-replay-advance-txid
+                                  (fn-cnode-node cn)
+                                  (fn-cfg-record-txid (car configs)))
+                                 (fn-cnode-config cn)))
+                            (record (car configs))
+                            (ceiling (fn-cnode-line-ceiling))))
            :in-theory (e/d (fn-cnode-apply-config-preserves-state)
                            (fn-cnode-statep fn-cpr-config-firstp fn-cpr-apply-event
                             fn-cnode-apply-config fn-cnode-record-acceptablep

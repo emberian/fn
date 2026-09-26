@@ -388,7 +388,7 @@
 
 (defun fn-cfg-value-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 10)))
+  (and (true-listp x) (equal (len x) 11)))
 
 (defun fn-cfg-groups (v)
   (declare (xargs :guard t))
@@ -465,11 +465,98 @@
                                                     (fn-cfg-ag-cdr
                                                      (fn-cfg-ag-cdr v)))))))))))
 
+; The eleventh slot (PRF-195, NNT-039; specs/nntp.md "Group descriptions and
+; the message of the day"): the texts a reader is shown about the node and
+; its groups, rows (NAME PIECE "" 0) written only by :set-group-description
+; (code 20).  NAME is a group name, or "" for the node itself: the pieces
+; keyed on a group concatenate to its LIST NEWSGROUPS description (RFC 3977
+; section 7.6.6), and the pieces keyed on "" are the lines of LIST MOTD
+; (RFC 6048 section 3.1).
+(defun fn-cfg-descriptions (v)
+  (declare (xargs :guard t))
+  (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr v))))))))))))
+
+; The ten-slot constructor builds a value with no descriptions; every
+; transition below uses `fn-cfg-value-make-full', which carries them.
+(defun fn-cfg-value-make-full (groups capacity quotas policies listeners peers
+                                      limits authorities invitations accounts
+                                      descriptions)
+  (declare (xargs :guard t))
+  (list groups capacity quotas policies listeners peers limits authorities
+        invitations accounts descriptions))
+
 (defun fn-cfg-value-make (groups capacity quotas policies listeners peers
                                  limits authorities invitations accounts)
   (declare (xargs :guard t))
-  (list groups capacity quotas policies listeners peers limits authorities
-        invitations accounts))
+  (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                          limits authorities invitations accounts nil))
+
+(defthm fn-cfg-value-shapep-of-value-make-full
+  (fn-cfg-value-shapep
+   (fn-cfg-value-make-full groups capacity quotas policies listeners peers limits authorities
+                      invitations accounts descriptions)))
+(defthm fn-cfg-groups-of-value-make-full
+  (equal (fn-cfg-groups
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         groups))
+(defthm fn-cfg-capacity-of-value-make-full
+  (equal (fn-cfg-capacity
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         capacity))
+(defthm fn-cfg-quotas-of-value-make-full
+  (equal (fn-cfg-quotas
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         quotas))
+(defthm fn-cfg-policies-of-value-make-full
+  (equal (fn-cfg-policies
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         policies))
+(defthm fn-cfg-listeners-of-value-make-full
+  (equal (fn-cfg-listeners
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         listeners))
+(defthm fn-cfg-peers-of-value-make-full
+  (equal (fn-cfg-peers
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         peers))
+(defthm fn-cfg-limits-of-value-make-full
+  (equal (fn-cfg-limits
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         limits))
+(defthm fn-cfg-authorities-of-value-make-full
+  (equal (fn-cfg-authorities
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         authorities))
+(defthm fn-cfg-invitations-of-value-make-full
+  (equal (fn-cfg-invitations
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         invitations))
+(defthm fn-cfg-accounts-of-value-make-full
+  (equal (fn-cfg-accounts
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts descriptions))
+         accounts))
+
+(defthm fn-cfg-descriptions-of-value-make-full
+  (equal (fn-cfg-descriptions
+          (fn-cfg-value-make-full groups capacity quotas policies listeners peers
+                                  limits authorities invitations accounts
+                                  descriptions))
+         descriptions))
+(defthm fn-cfg-descriptions-of-value-make
+  (equal (fn-cfg-descriptions
+          (fn-cfg-value-make groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts))
+         nil))
 
 (defthm fn-cfg-value-shapep-of-value-make
   (fn-cfg-value-shapep
@@ -527,6 +614,7 @@
          accounts))
 
 (in-theory (disable (:d fn-cfg-value-shapep) (:d fn-cfg-value-make)
+                    (:d fn-cfg-value-make-full) (:d fn-cfg-descriptions)
                     (:d fn-cfg-groups) (:d fn-cfg-capacity)
                     (:d fn-cfg-quotas) (:d fn-cfg-policies)
                     (:d fn-cfg-listeners) (:d fn-cfg-peers)
@@ -576,7 +664,8 @@
        (fn-cfg-limits-withinp (fn-cfg-limits v))
        (fn-cfg-row-listp (fn-cfg-authorities v))
        (fn-cfg-row-listp (fn-cfg-invitations v))
-       (fn-cfg-row-listp (fn-cfg-accounts v))))
+       (fn-cfg-row-listp (fn-cfg-accounts v))
+       (fn-cfg-row-listp (fn-cfg-descriptions v))))
 
 (defun fn-cfg-empty-value ()
   ; The fail-closed floor: no groups and zero capacity accepts nothing.
@@ -691,7 +780,8 @@
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
-    :add-peer-rows :remove-peer-rows :set-group-status))
+    :add-peer-rows :remove-peer-rows :set-group-description
+    :set-group-status))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -714,6 +804,7 @@
         ((equal kind :login-binding) 17)
         ((equal kind :add-peer-rows) 18)
         ((equal kind :remove-peer-rows) 19)
+        ((equal kind :set-group-description) 20)
         ((equal kind :set-group-status) 21)
         (t 0)))
 
@@ -738,6 +829,7 @@
         ((equal code 17) :login-binding)
         ((equal code 18) :add-peer-rows)
         ((equal code 19) :remove-peer-rows)
+        ((equal code 20) :set-group-description)
         ((equal code 21) :set-group-status)
         (t nil)))
 
@@ -1170,6 +1262,124 @@
            (fn-cfg-account-verifier-hexp
             (fn-cfg-row-c (fn-cfg-ag-car rows)))))))
 
+;; Group descriptions and the node's message (PRF-195, NNT-039; specs/nntp.md
+;; "Group descriptions and the message of the day").  The eleventh slot's
+;; rows are written only by
+;;
+;;   (:set-group-description NAME "" 0 ((NAME PIECE "" 0) ...))   code 20
+;;
+;; which replaces every row keyed on NAME with the delta's rows, in order; no
+;; rows clears the text.  NAME is a live group, or "" for the node.  A PIECE
+;; is a label (at most *fn-cfg-max-label* octets, the codec's per-field
+;; representation) of printable ASCII, octets 32 to 126.  A group's
+;; description is its pieces concatenated, so its length is bounded only by
+;; what one configuration record represents (*fn-cfg-max-rows* rows and
+;; *fn-cfg-max-octets* octets per record): a work bound on one delta, never a
+;; ceiling below the record codec.  The node's pieces are the lines of LIST
+;; MOTD.  A group's description holds at least one graphic octet, so its
+;; LIST NEWSGROUPS line is never "name TAB" followed by nothing but spaces
+;; (the nntplib measurement in books/nntp-responses.lisp).
+(defun fn-cfg-description-octetp (b)
+  (declare (xargs :guard t))
+  (and (integerp b) (<= 32 b) (<= b 126)))
+
+(defun fn-cfg-description-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-cfg-description-octetp (car xs))
+           (fn-cfg-description-octetsp (cdr xs)))
+    (null xs)))
+
+(defun fn-cfg-description-rows (name pieces)
+  ; The rows a delta carries for NAME's PIECES, in order.
+  (declare (xargs :guard t))
+  (if (consp pieces)
+      (cons (fn-cfg-row-make name (car pieces) "" 0)
+            (fn-cfg-description-rows name (cdr pieces)))
+    nil))
+
+(defun fn-cfg-set-group-description (name pieces)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-group-description name "" 0
+                     (fn-cfg-description-rows name pieces)))
+
+; The pieces of ROWS, in order.
+(defun fn-cfg-row-pieces (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (cons (fn-cfg-row-b (car rows)) (fn-cfg-row-pieces (cdr rows)))
+    nil))
+
+(defun fn-cfg-description-rowsp (rows name)
+  ; Every row is (NAME PIECE "" 0) with PIECE printable ASCII.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (and (equal (car rows)
+                   (fn-cfg-row-make name (fn-cfg-row-b (car rows)) "" 0))
+           (stringp (fn-cfg-row-b (car rows)))
+           (fn-cfg-description-octetsp
+            (fn-record-string-octets (fn-cfg-row-b (car rows))))
+           (fn-cfg-description-rowsp (cdr rows) name))
+    (null rows)))
+
+(defun fn-cfg-some-graphic-octetp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (or (and (integerp (car xs)) (<= 33 (car xs)) (<= (car xs) 126))
+          (fn-cfg-some-graphic-octetp (cdr xs)))
+    nil))
+
+(defun fn-cfg-graphic-piecep (pieces)
+  ; Some piece holds an octet from 33 to 126.
+  (declare (xargs :guard t))
+  (if (consp pieces)
+      (or (and (stringp (car pieces))
+               (fn-cfg-some-graphic-octetp
+                (fn-record-string-octets (car pieces))))
+          (fn-cfg-graphic-piecep (cdr pieces)))
+    nil))
+
+(defun fn-cfg-set-group-description-reason (v gen d)
+  (declare (xargs :guard t))
+  (let ((name (fn-cfg-delta-a d)) (rows (fn-cfg-delta-rows d)))
+    (cond ((not (or (equal name "") (fn-cfg-group-livep v gen name)))
+           :no-such-group)
+          ((not (and (equal (fn-cfg-delta-b d) "")
+                     (equal (fn-cfg-delta-n d) 0)
+                     (fn-cfg-description-rowsp rows name)))
+           :description-row)
+          ((and (not (equal name ""))
+                (consp rows)
+                (not (fn-cfg-graphic-piecep (fn-cfg-row-pieces rows))))
+           :description-blank)
+          (t nil))))
+
+; The octets of the pieces, concatenated.
+(defun fn-cfg-pieces-octets (pieces)
+  (declare (xargs :guard t))
+  (if (consp pieces)
+      (append (fn-record-string-octets (car pieces))
+              (fn-cfg-pieces-octets (cdr pieces)))
+    nil))
+
+(defun fn-cfg-pieces-lines (pieces)
+  (declare (xargs :guard t))
+  (if (consp pieces)
+      (cons (fn-record-string-octets (car pieces))
+            (fn-cfg-pieces-lines (cdr pieces)))
+    nil))
+
+; A group's description as the reader shows it, and the node's message.
+(defun fn-cfg-description-octets (v name)
+  (declare (xargs :guard t))
+  (fn-cfg-pieces-octets
+   (fn-cfg-row-pieces (fn-cfg-rows-with-key (fn-cfg-descriptions v) name))))
+
+(defun fn-cfg-motd-lines (v)
+  (declare (xargs :guard t))
+  (fn-cfg-pieces-lines
+   (fn-cfg-row-pieces (fn-cfg-rows-with-key (fn-cfg-descriptions v) ""))))
+
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
 
@@ -1214,11 +1424,12 @@
 
 (defun fn-cfg-set-groups (v es)
   (declare (xargs :guard t))
-  (fn-cfg-value-make es (fn-cfg-capacity v) (fn-cfg-quotas v)
+  (fn-cfg-value-make-full es (fn-cfg-capacity v) (fn-cfg-quotas v)
                      (fn-cfg-policies v) (fn-cfg-listeners v)
                      (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
 
 (defun fn-cfg-apply-delta (v gen stamp d)
   (declare (xargs :guard t))
@@ -1237,64 +1448,72 @@
       (fn-cfg-set-groups v (fn-cfg-groups-set-policy
                             (fn-cfg-groups v) a (fn-cfg-status-policy-id b))))
      ((equal kind :set-capacity)
-      (fn-cfg-value-make (fn-cfg-groups v) n (fn-cfg-quotas v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) n (fn-cfg-quotas v)
                          (fn-cfg-policies v) (fn-cfg-listeners v)
                          (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :set-quota)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-row-upsert (fn-cfg-quotas v)
                                             (fn-cfg-row-make a b "" n))
                          (fn-cfg-policies v) (fn-cfg-listeners v)
                          (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :set-policy)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v)
                          (fn-cfg-row-replace-key (fn-cfg-policies v)
                                                  (fn-cfg-row-make a b "" 0))
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :set-listeners)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v) rows
                          (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :set-peers)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) rows (fn-cfg-limits v)
                          (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :set-limit)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-row-upsert (fn-cfg-limits v)
                                             (fn-cfg-row-make a "" "" n))
                          (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :set-peer)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                                  rows)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :remove-peer)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :add-peer-rows)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
@@ -1304,9 +1523,10 @@
                                           rows)
                                          rows))
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :remove-peer-rows)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
@@ -1314,55 +1534,71 @@
                                   (fn-cfg-rows-with-key (fn-cfg-peers v) a)
                                   rows))
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :grant-control)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v)
                          (fn-cfg-row-upsert (fn-cfg-authorities v)
                                             (fn-cfg-row-make
                                              a b (fn-cfg-grant-verb rows) 0))
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :revoke-control)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v)
                          (fn-cfg-rows-without-pair (fn-cfg-authorities v)
                                                    a b)
-                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((or (equal kind :issue-invitation) (equal kind :consume-invitation))
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (append (fn-cfg-rows-without-key
                                   (fn-cfg-invitations v) a)
                                  rows)
-                         (fn-cfg-accounts v)))
+                         (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ; An account row replaces the row its digest keys (PRF-164): a pending
      ; row is written by :account-invite, and :account-redeem turns it into
      ; the redeemed row, or rewrites an identical redeemed row (the resume).
      ((or (equal kind :account-invite) (equal kind :account-redeem))
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v)
                          (append (fn-cfg-rows-without-key
                                   (fn-cfg-accounts v) a)
-                                 rows)))
+                                 rows)
+                         (fn-cfg-descriptions v)))
      ; A login binding replaces that login's binding row (PKT-221).
      ((equal kind :login-binding)
-      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v)
                          (append (fn-cfg-rows-without-binding
                                   (fn-cfg-accounts v) a)
-                                 rows)))
+                                 rows)
+                         (fn-cfg-descriptions v)))
+     ; A description replaces every row keyed on its name (PRF-195).
+     ((equal kind :set-group-description)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                              (fn-cfg-quotas v) (fn-cfg-policies v)
+                              (fn-cfg-listeners v) (fn-cfg-peers v)
+                              (fn-cfg-limits v) (fn-cfg-authorities v)
+                              (fn-cfg-invitations v) (fn-cfg-accounts v)
+                              (append (fn-cfg-rows-without-key
+                                       (fn-cfg-descriptions v) a)
+                                      rows)))
      (t v))))
 
 (defun fn-cfg-apply (v gen stamp deltas)
@@ -1518,6 +1754,8 @@
                :account-login-taken)
               (t nil))))
      ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
+     ((equal kind :set-group-description)
+      (fn-cfg-set-group-description-reason v gen d))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)

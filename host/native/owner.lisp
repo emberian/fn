@@ -85,6 +85,23 @@
       (fnn-fault "owner returned non-octets in ~a" name))
     (fnn-octets value)))
 
+;;; PRF-192 (books/served-reply-buffer.lisp; PKT-491): the served read's
+;;; reply is never a list.  ACL2 fills the octet buffer `fn-octets' from the
+;;; step's effects (host/owner-host.lisp fn-owner-reply-buffer ->
+;;; fn-served-reply-to-buffer, whose keystone says the range [0, len) is
+;;; fn-served-reply-octets of the effects), and this copies that range out
+;;; ONCE, a byte copy, under the service mutex.  Why a copy and why this
+;;; buffer: the socket write runs after fnn-owner-handle-chunk returns,
+;;; outside the mutex, and the next locked step (this connection's writer
+;;; drain, fnn-owner-attempt's fnn-octets-fill, or another connection's
+;;; read) refills `fn-octets'; `fn-octets-pub' belongs to the publication
+;;; thread off the mutex and is never touched here.
+(defun fnn-owner-reply-from-buffer ()
+  (unless (eq (fnn-owner-buffer-action 'fn-owner-reply-buffer) :ok)
+    (fnn-fault "owner returned non-octets in its served reply"))
+  (let ((st (fnn-live-octets)))
+    (subseq (the fnn-octets (svref st 0)) 0 (svref st 1))))
+
 (defun fnn-owner-bool-global (name)
   (let ((value (fnn-global name)))
     (unless (member value '(t nil))
@@ -1772,8 +1789,16 @@ EPIPE and the client saw a bare close)."
      ;; 3.4)."  Without this the owner's current observation is whatever the
      ;; process started with, and every article of a run carries one Date.
      (fnn-owner-advance-clock)
-     (unless (eq (fnn-owner-action 'fn-owner-chunk cid
-                                   (fnn-octet-list incoming)) :ok)
+     ;; The observation goes to the core in the octet buffer
+     ;; (books/octets-stobj.lisp): filled once here from the byte vector and
+     ;; read in place by span (books/wire-span.lisp fn-wire-feed-span through
+     ;; books/served-span.lisp fn-scar-ocfg-read-span), never as a list of
+     ;; its octets.  The buffer is free here: the attempt below fills it
+     ;; again for the payload after this read has returned, under the same
+     ;; mutex (fnn-owner-attempt).
+     (fnn-octets-fill incoming)
+     (unless (eq (fnn-owner-buffer-action 'fn-owner-chunk-span cid
+                                          0 (length incoming)) :ok)
        (fnn-refuse "owner no longer knows connection ~d" cid))
      ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
      ;; fn-olog-served-refusal-lines): a POST refused before it became a
@@ -1782,7 +1807,7 @@ EPIPE and the client saw a bare close)."
        (unless (and (listp lines) (every #'fnn-octet-list-p lines))
          (fnn-fault "owner returned malformed refusal log lines"))
        (dolist (line lines) (fnn-log-line line)))
-     (let ((reply (fnn-owner-octets-global 'fn-owner-output))
+     (let ((reply (fnn-owner-reply-from-buffer))
            (closing (fnn-owner-bool-global 'fn-owner-closep))
            (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
            (consumed (fnn-global 'fn-owner-consumed))
@@ -2301,9 +2326,10 @@ here, and written only through fn-owner-sco-publication-done."
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
-(defun fnn-owner-start-tls-accept (service listener)
+(defun fnn-owner-start-tls-accept (service listener &optional (implicit-tls t))
   "PRF-162: accept implicit-TLS clients on LISTENER until the service stops.
-The thread is a worker, so the stop joins it with the clients."
+With IMPLICIT-TLS nil, a further plain listener's clients (NNT-041).  The
+thread is a worker, so the stop joins it with the clients."
   (fnn-with-owner (service)
     (let ((thread
             (sb-thread:make-thread
@@ -2316,7 +2342,7 @@ The thread is a worker, so the stop joins it with the clients."
                             (return))
                           (let ((socket (fnn-accept-observe listener 1)))
                             (unless (eq socket :timeout)
-                              (fnn-owner-launch-client service socket t))))
+                              (fnn-owner-launch-client service socket implicit-tls))))
                       (sb-bsd-sockets:socket-error (condition)
                         (unless (or *fnn-sigterm-requested*
                                     (fnn-owner-service-stopping service))
@@ -2325,7 +2351,7 @@ The thread is a worker, so the stop joins it with the clients."
                    (setf (fnn-owner-service-workers service)
                          (delete sb-thread:*current-thread*
                                  (fnn-owner-service-workers service) :test #'eq)))))
-             :name "fn owner TLS accept")))
+             :name (if implicit-tls "fn owner TLS accept" "fn owner accept"))))
       (push thread (fnn-owner-service-workers service))
       thread)))
 
@@ -2369,10 +2395,12 @@ The thread is a worker, so the stop joins it with the clients."
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
-                        connection-fault-operation tls-port)
-  "Run one service from already-normalized boundary values."
+                        connection-fault-operation tls-port more-addresses)
+  "Run one service from already-normalized boundary values.
+MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
+`[listener] host' list (NNT-041); each gets the same port and TLS port."
   (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-gc-nursery-octets+)
-  (let ((service nil) (listener nil) (tls-listener nil)
+  (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -2390,9 +2418,13 @@ The thread is a worker, so the stop joins it with the clients."
                   (setq service (fnn-owner-install root max-connections fault))
                   ;; PRF-161: the listener this run binds decides the default
                   ;; of every absent exposure row (fn-exp-address-publicp).
-                  (unless (member (fnn-owner-action 'fn-owner-exposure-install
-                                                    family
-                                                    (and address (coerce address 'list)))
+                  (unless (member (fnn-owner-action 'fn-owner-exposure-install-set
+                                                    (cons (list family
+                                                                (and address (coerce address 'list)))
+                                                          (mapcar (lambda (more)
+                                                                    (list (car more)
+                                                                          (coerce (cdr more) 'list)))
+                                                                  more-addresses)))
                                   '(:public :loopback))
                     (fnn-fault "owner refused the exposure install"))
                   (setf (fnn-owner-service-tls-context service) tls-context
@@ -2439,6 +2471,16 @@ The thread is a worker, so the stop joins it with the clients."
                       (progn
                         (dolist (hook (fnn-owner-service-start-hooks service))
                           (funcall hook service))
+                        ;; NNT-041: one more listener per further admitted
+                        ;; address, on the port the first one bound, each
+                        ;; with its own accept worker (as the TLS one).
+                        (unless once
+                          (dolist (more more-addresses)
+                            (let ((extra (fnn-listen bound-port :address (cdr more)
+                                                                :family (car more)
+                                                                :backlog +fnn-owner-listen-backlog+)))
+                              (push extra more-listeners)
+                              (fnn-owner-start-tls-accept service extra nil))))
                         (fnn-out "LISTENING ~d" bound-port)
                         ;; PRF-162: the implicit-TLS listener ACL2 offered
                         ;; (fn-native-operator-result-run-implicit-tls-port),
@@ -2449,6 +2491,12 @@ The thread is a worker, so the stop joins it with the clients."
                                                    :backlog +fnn-owner-listen-backlog+)
                             (setq tls-listener tls-bound)
                             (fnn-owner-start-tls-accept service tls-bound)
+                            (dolist (more more-addresses)
+                              (let ((extra (fnn-listen tls-bound-port :address (cdr more)
+                                                                      :family (car more)
+                                                                      :backlog +fnn-owner-listen-backlog+)))
+                                (push extra more-listeners)
+                                (fnn-owner-start-tls-accept service extra)))
                             (fnn-out "LISTENING-TLS ~d" tls-bound-port)))
                         (fnn-owner-accept service listener once))))
                   (when *fnn-sigterm-requested*
@@ -2474,6 +2522,7 @@ The thread is a worker, so the stop joins it with the clients."
                     (fnn-owner-feed-close-all service)
                     (fnn-store-close (fnn-owner-service-store service)))
                (setq *fnn-sigterm-wakeup-fd* nil)
+               (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
       ;; Drain and stop the writer before the caller closes `[log] path'.
@@ -2497,17 +2546,22 @@ The thread is a worker, so the stop joins it with the clients."
                         (/= tls-port listener-port) (not oncep))))
     (fnn-fault "malformed ACL2 owner run plan"))
   (let* ((root (fnn-octets-string store-octets))
-         (projection
-           (fnn-core 'fn-native-config-host-listener-address
+         (projections
+           (fnn-core 'fn-native-config-host-listener-addresses
                      (fnn-octet-list listener-host-octets))))
-    (unless (and (listp projection) (= (length projection) 2))
+    ;; NNT-041 (PRF-197): ACL2 admitted every address and projected each to
+    ;; the family and octets bound here; the host re-checks only the shape.
+    (unless (and (consp projections) (listp projections)
+                 (every (lambda (projection)
+                          (and (listp projection) (= (length projection) 2)
+                               (member (first projection) '(:inet :inet6))
+                               (fnn-octet-list-p (second projection))
+                               (= (length (second projection))
+                                  (if (eq (first projection) :inet) 4 16))))
+                        projections))
       (fnn-fault "ACL2 listener address projection is malformed"))
-    (let ((family (first projection)) (address-list (second projection)))
-      (unless (or (and (eq family :inet) (fnn-octet-list-p address-list)
-                       (= (length address-list) 4))
-                  (and (eq family :inet6) (fnn-octet-list-p address-list)
-                       (= (length address-list) 16)))
-        (fnn-fault "ACL2 listener address projection is malformed"))
+    (let ((family (first (first projections)))
+          (address-list (second (first projections))))
       ;; The served owner is armed exactly as `store ROOT post' is: the same
       ;; function reads the same selectors into the same store slot, so a
       ;; developer image kills the served owner at every fnn-at coordinate
@@ -2519,7 +2573,11 @@ The thread is a worker, so the stop joins it with the clients."
       (fnn-owner-run root listener-port oncep max-connections
                      (or (fnn-post-entry-fault nil) (fnn-state-checkpoint-test-fault))
                      (fnn-octets address-list)
-                     family tls-context nil tls-port))))
+                     family tls-context nil tls-port
+                     (mapcar (lambda (projection)
+                               (cons (first projection)
+                                     (fnn-octets (second projection))))
+                             (rest projections))))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

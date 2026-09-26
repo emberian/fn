@@ -311,7 +311,8 @@
       "proof_targets": [
         "PRF-010",
         "PRF-067",
-        "PRF-089"
+        "PRF-089",
+        "PRF-189"
       ],
       "verification": [
         "proof",
@@ -1119,7 +1120,8 @@
         "PRF-077",
         "PRF-081",
         "PRF-082",
-        "PRF-114"
+        "PRF-114",
+        "PRF-190"
       ],
       "verification": [
         "proof",
@@ -1158,7 +1160,8 @@
         "planning/evidence/manifests/certify-20260924T034256Z-3866445.json",
         "planning/evidence/manifests/certify-20260924T034935Z-3925833.json",
         "planning/evidence/bp-d1b-deletion-intent-2026-09-23.md",
-        "planning/evidence/ion-observation-binding-2026-09-24.md"
+        "planning/evidence/ion-observation-binding-2026-09-24.md",
+        "planning/evidence/bp-crc-exec-2026-09-26.md"
       ],
       "implementation_note": "Earlier pinned dtn7-rs and development workflow tests retain their recorded scope. Native carrier evidence covers durable allocation, queue/contact/restart/expiry, receive-loop fencing and cross-session evidence retention. The native BP application join now routes request intent through canonical owner Store acceptance, exact committed-record binding and durable receipt decision. Its crash-after-decision/before-receipt witness retries through a fresh process without a second article or retention pin. Full joined trace proof, all physical cuts, authenticated remote evidence, LTP, multi-relay and complete operator integration remain open. The native receipt-decision directory-barrier EIO test also distinguishes visible evidence from durability, fences without emitting a receipt, and replays after recovery barriers. Repeated fn-bpaj retained-state validation remains an active implementation defect; a maintained-invariant successor is assigned. D1a now provides a bounded canonical RFC 9171 status-report codec with whole/fragment and timed-assertion vectors; it does not generate, correlate or consume reports in the node machine. The TCPCL late-disposition planner now replaces a held final END ACK with XFER_REFUSE on definitive refusal and withholds it on uncertainty; its exact native caller and ACL2 proof are source-present, while the A2 FNBS callback and combined-image runtime are pending. The A3 expired-held source checkpoint persists a receive-time age anchor in versioned kind-5 and asks ACL2 for a current pre-Store eligibility decision. The certified A3 local selector now serves a newer live carrier despite an older clock-uncertain carrier, while keeping ambiguous publication globally fenced; affected closure and source-matched native validation remain pending. The D1b kind-10 component now has ACL2-certified exact deletion publication, ordered replay, persisted report payload intent, a recovery outbox selector, administrative outbound authoring and read-only received-report correlation. The native caller is source-present but its source-matched image and death/reopen scenario are still open. A separate offline ION path now has certified bounded observed-v1 decoding, exact current-attempt/application-peer/BP-route binding, append-only FNWF route and observation replay, and an ACL2-authored native caller. Its source-matched image, real death/reopen witness, authenticated returned receipt and comprehensive ION physical-cut model remain open; transport observation never releases acceptance or forwarding obligations.",
       "note": "Status remains specified for the full requirement. Implemented native application composition has focused runtime evidence; broader lifecycle/physical obligations remain PRF-045/046. An application receipt is distinct from carrier completion, and neither a scoped test nor an accepted-branch projection theorem establishes full transport independence."
@@ -1326,7 +1329,8 @@
         "PRF-015",
         "PRF-028",
         "PRF-067",
-        "PRF-074"
+        "PRF-074",
+        "PRF-189"
       ],
       "verification": [
         "proof",
@@ -1444,7 +1448,9 @@
         "PRF-095",
         "PRF-106",
         "PRF-094",
-        "PRF-188"
+        "PRF-188",
+        "PRF-191",
+        "PRF-192"
       ],
       "verification": [
         "proof",
@@ -1461,7 +1467,10 @@
         "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
         "planning/lanes/HANDOFF-w22-native-outbound-feed.md",
-        "planning/lanes/HANDOFF-w23-native-auth-admin.md"
+        "planning/lanes/HANDOFF-w23-native-auth-admin.md",
+        "books/served-reply-buffer.lisp",
+        "tests/acl2/served-reply-buffer-tests.lisp",
+        "planning/evidence/egress-span-2026-09-26.md"
       ],
       "implementation_note": "D07 requires a Python-free deployed Lisp node, operator CLI and helpers calling the executable ACL2 core. The frozen 03eb3ba native default/DTN images build from the recorded certified closure and pass their scoped owner/operator/storage/BP runtime suites, including public operator run and NNTP greeting/QUIT. Python is only an external test driver there. The full installed CLI/service, native outbound feed/protected transport/identity features and Python-free two-peer dependency gate remain open; the development bin/fn still invokes Python. The later native AUTHINFO startup receiver has scoped certified-image login evidence; it is not part of frozen03. Native public control/post is now integrated through fn-owner-control-submit and the shared completion helper, with separate ACL2 closure and exact-raw Darwin runtime evidence. Its clean combined image and complete installed two-peer gate remain open. The native outbound-feed component and credential administrator are integrated but await owner activation and public CLI composition respectively; their component evidence does not qualify the assembled service.",
       "note": "Owner and served components have since certified and the frozen cdbd6b2 Python service matrix ran with recorded disagreements; the earlier owner-does-not-certify blocker is historical. Neither those results nor native component tests establish HST-001 for the full native production service. Required: exact host-called subjects or named refinements, justified execution guards, and SCN-015 native deployment/dependency evidence; no status advancement follows from choosing D07. Selected 2026-09-23, implementation pending: raw store ROOT post is developer-only. Production default and DTN images must reject it with unsupported-entry exit 5 before store/payload I/O; production posting uses normal submission. Inspection/recovery remain available. SCN-015 must witness the profile boundary and ordinary posting; this selection does not advance requirement status."
@@ -1538,7 +1547,8 @@
         "PRF-092",
         "PRF-087",
         "PRF-106",
-        "PRF-144"
+        "PRF-144",
+        "PRF-193"
       ],
       "verification": [
         "proof",
@@ -2742,16 +2752,19 @@
       "specification": "specs/store-refinement.md#abstraction-relation",
       "milestone": "M5",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-201"
+      ],
       "verification": [
         "proof",
         "test",
         "measurement"
       ],
       "evidence": [
-        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+        "planning/evidence/rep-wave-d-2-2026-09-26.md",
+        "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator.",
+      "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator. Partial (catalog-slice, 2026-09-26): the held record fn-held-p carries a natp handle with the byte facts and the context (books/catalog-record.lisp), alpha (fn-held-wire-of) and the two interns are proved (fn-cat-intern-list-materializes); the acceptance state's payloads and the transition over the held record are PKT-585.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
     },
     {
@@ -3252,9 +3265,11 @@
         "books/peer-carriage-rows.lisp",
         "books/checkpoint-publish.lisp",
         "books/checkpoint-pack-retire.lisp",
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "books/store-capacity-config.lisp",
+        "books/native-operator.lisp"
       ],
-      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101). Open: field 7 read by group create and the group-name width 460 (PKT-451)."
+      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101); field 7 governs group names at init and at every configuration publication (PRF-171, SCN-101). Open: the group-name width 460 (PKT-510)."
     },
     {
       "id": "HST-011",
@@ -3372,6 +3387,168 @@
         "planning/evidence/group-policy-2026-09-26.md"
       ],
       "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+    },
+    {
+      "id": "REP-012",
+      "title": "The wire machine's ingress reads the octet buffer in place: the host fills the buffer once from the socket vector and the served read consumes the range by index, proved equal to the reference list read; no per-read cons list on the served hot path",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-181"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "books/served-span.lisp",
+        "books/wire-span.lisp",
+        "tests/acl2/served-span-tests.lisp",
+        "tests/acl2/wire-span-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/ingress-span-2026-09-26.md"
+      ],
+      "implementation_note": "Lane ingress-span (2026-09-26, PKT-302 (iv)). The host (host/native/owner.lisp fnn-owner-handle-chunk) fills fn-octets once from the socket byte vector (fnn-octets-fill) and calls fn-owner-chunk-span, which reads the range via fn-scar-ocfg-read-span; no fnn-octet-list (a 512-element cons list per socket read) on the read path. KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the buffer fold IS the list counted fold over fn-oct-slice-list i end, byte for byte; KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation the span read is fn-ocfg-read-tls-prefix over the range's octets. The wire read fn-wire-feed-span (books/wire-span.lisp, fn-wire-feed-span-is-feed-proper) is the foundation the per-framed-event served fold will call. NOT YET (PKT-479): the served fold still rebuilds the connection per byte (per-framed-event dispatch removes it), and the wire still rebuilds its state per byte (a per-line index scan removes it); both are lemma-engineering, not soundness gaps. Measurement (before/after allocation and CPU) pending.",
+      "note": "Lane ingress-span (2026-09-26), PKT-302 (iv); rep-wave-d's program."
+    },
+    {
+      "id": "STO-025",
+      "title": "Opening a store costs each configuration record its own work: replay carries the configuration invariant and never re-validates the whole configuration per record",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-186"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/node-config.lisp",
+        "books/config-physical-replay.lisp",
+        "books/store-checkpoint-open.lisp",
+        "planning/evidence/caps-to-profile-2026-09-26.md"
+      ],
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). Open: a configuration checkpoint so an open reads only the records after it (PKT-510)."
+    },
+    {
+      "id": "REP-013",
+      "title": "The committed event catalog: one attachable abstract stobj whose logical value is the list of held records and whose executable is the indexed tables, with the cross-field invariants stated once and preserved by every export",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-201",
+        "PRF-202",
+        "PRF-203",
+        "PRF-204"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/catalog.lisp",
+        "books/catalog-record.lisp"
+      ],
+      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585).",
+      "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
+    },
+    {
+      "id": "STO-027",
+      "title": "The catalog is the served store's executable: the Message-ID binding, the local numbers, the visibility of a row to a version and the retained octets are columns read in constant time, never rediscovered by a walk of the history",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-201",
+        "PRF-204"
+      ],
+      "verification": [
+        "proof",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585).",
+      "note": "Lane catalog-slice (wave 5 lane 2, D33)."
+    },
+    {
+      "id": "NNT-038",
+      "title": "HELP lists every command the served dispatcher recognizes, and a command HELP does not list is answered 500",
+      "specification": "specs/nntp.md#help-the-served-command-table-nnt-038",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-194"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-help.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-help-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tests/test_reader.py",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
+    },
+    {
+      "id": "NNT-039",
+      "title": "The operator sets a group's description and the node's message of the day on a running node, and LIST NEWSGROUPS and LIST MOTD show exactly what the configuration holds",
+      "specification": "specs/nntp.md#group-descriptions-and-the-message-of-the-day-nnt-039",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-195"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "tests/acl2/group-descriptions-tests.lisp",
+        "books/owner-descriptions-read.lisp",
+        "books/config-descriptions.lisp",
+        "planning/evidence/usenet-headers-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.6.6 and RFC 6048 section 2.5 are the RFC requirements; the text being the replayed configuration's, published live, is a stronger fn guarantee; printable ASCII, 256-octet row pieces and an empty MOTD rather than 503 are local policy (specs/nntp.md). Gap inventory items R2, R5 and O1."
+    },
+    {
+      "id": "NNT-041",
+      "title": "The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why",
+      "specification": "specs/nntp.md#listener-addresses-nnt-041",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-197"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-config.lisp",
+        "tests/acl2/native-config-tests.lisp",
+        "host/native-config-host.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/listener-v6-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4291 section 2.2 text forms and RFC 3986 section 3.2.2 brackets are RFC requirements; the wildcard and IPv4-mapped refusals and one socket per written address are local policy. The native two-family case (SCN-126) is named for the batch. Status and health do not yet list the bound addresses (PKT-577)."
     }
   ]
 }

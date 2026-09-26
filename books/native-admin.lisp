@@ -169,6 +169,94 @@
        (fn-native-admin-decimalp (cadddr words))
        (fn-native-admin-decimal-value (coerce (cadddr words) 'list))))
 
+;; Group descriptions and the node's message (PRF-195, NNT-039; RFC 3977
+;; section 7.6.6, RFC 6048 section 2.5):
+;;
+;;   group describe NAME [WORD ...]   NAME's description, the WORDs joined by
+;;                                    one space; no WORD clears it
+;;   motd set LINE [LINE ...]         the node's message, one LINE per argv word
+;;   motd clear                       no message
+;;
+;; Each is one :set-group-description delta (code 20, books/config.lisp),
+;; published live like every configuration record.  The text is printable
+;; ASCII (the argv is ASCII; a control octet is refused here by name);
+;; a description is cut into row pieces of at most *fn-cfg-max-label* octets
+;; (`fn-native-admin-text-pieces'), so its length is bounded by the argv
+;; (*fn-native-admin-max-arguments* words of
+;; *fn-native-admin-max-argument-octets*) and not by a row.  A message line is
+;; one row, so a line is at most *fn-cfg-max-label* octets.
+(defun fn-native-admin-text-wordsp (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (fn-cfg-description-octetsp (car words))
+           (fn-native-admin-text-wordsp (cdr words)))
+    (null words)))
+
+(defun fn-native-admin-join-words (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (if (consp (cdr words))
+          (append (true-list-fix (car words))
+                  (cons 32 (fn-native-admin-join-words (cdr words))))
+        (true-list-fix (car words)))
+    nil))
+
+(defun fn-native-admin-lines-fitp (lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (and (<= (len (car lines)) *fn-cfg-max-label*)
+           (fn-native-admin-lines-fitp (cdr lines)))
+    t))
+
+(defun fn-native-admin-describe-plan (words argv)
+  (declare (xargs :guard t))
+  (let ((name (fn-native-admin-arg 2 words))
+        (text (fn-native-admin-join-words (nthcdr 3 (true-list-fix argv)))))
+    (cond ((not (fn-record-group-namep name))
+           (fn-native-admin-result :refused :group-name nil nil 0 nil nil))
+          ((not (fn-native-admin-text-wordsp (nthcdr 3 (true-list-fix argv))))
+           (fn-native-admin-result :refused :description-text nil nil 0 nil nil))
+          ((and (consp text) (not (fn-cfg-some-graphic-octetp text)))
+           (fn-native-admin-result :refused :description-blank nil nil 0 nil nil))
+          (t (fn-native-admin-result :accepted nil :set-group-description
+                                     (fn-native-admin-arg 2 argv) 0 nil text)))))
+
+(defun fn-native-admin-motd-plan (words argv)
+  (declare (xargs :guard t))
+  (let ((lines (nthcdr 2 (true-list-fix argv))))
+    (cond ((and (equal (len words) 2) (equal (fn-native-admin-arg 1 words) "clear"))
+           (fn-native-admin-result :accepted nil :set-motd nil 0 nil nil))
+          ((not (and (<= 3 (len words)) (equal (fn-native-admin-arg 1 words) "set")))
+           (fn-native-admin-result :refused :syntax nil nil nil nil nil))
+          ((not (fn-native-admin-text-wordsp lines))
+           (fn-native-admin-result :refused :description-text nil nil 0 nil nil))
+          ((not (fn-native-admin-lines-fitp lines))
+           (fn-native-admin-result :refused :motd-line nil nil 0 nil nil))
+          (t (fn-native-admin-result :accepted nil :set-motd nil 0 nil lines)))))
+
+; OCTETS as row pieces of at most *fn-cfg-max-label* octets, in order.
+(local
+ (defthm fn-native-admin-len-of-nthcdr
+   (implies (natp n)
+            (equal (len (nthcdr n x)) (nfix (- (len x) n))))
+   :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr len)))))
+
+(defun fn-native-admin-text-pieces (octets)
+  (declare (xargs :guard (true-listp octets) :measure (len octets)))
+  (if (consp octets)
+      (if (< *fn-cfg-max-label* (len octets))
+          (cons (fn-record-octets-string (take *fn-cfg-max-label* octets))
+                (fn-native-admin-text-pieces (nthcdr *fn-cfg-max-label* octets)))
+        (list (fn-record-octets-string octets)))
+    nil))
+
+(defun fn-native-admin-line-pieces (lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (cons (fn-record-octets-string (car lines))
+            (fn-native-admin-line-pieces (cdr lines)))
+    nil))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -319,6 +407,12 @@
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
+       ((and (<= 3 (len words))
+             (equal (car words) "group")
+             (equal (cadr words) "describe"))
+        (fn-native-admin-describe-plan words argv))
+       ((and (consp words) (equal (car words) "motd"))
+        (fn-native-admin-motd-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
         (fn-native-admin-bp-boundary-plan words))
        ((and (consp words) (equal (car words) "bp-route"))
@@ -382,6 +476,15 @@
                     name
                     (fn-record-octets-string (fn-native-admin-result-peer plan))
                     (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :set-group-description)
+             (list (fn-cfg-set-group-description
+                    name
+                    (fn-native-admin-text-pieces
+                     (true-list-fix (fn-native-admin-result-value plan))))))
+            ((equal kind :set-motd)
+             (list (fn-cfg-set-group-description
+                    "" (fn-native-admin-line-pieces
+                        (fn-native-admin-result-value plan)))))
             ((equal kind :revoke-control)
              (list (fn-cfg-revoke-control
                     name
