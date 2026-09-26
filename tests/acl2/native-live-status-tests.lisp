@@ -431,3 +431,16 @@ open-cost replay-records=")
           (fn-native-admin-query-report plan (fn-cfg-value cfg)))
    :hints (("Goal" :in-theory (disable fn-native-admin-control-report
                                        fn-native-admin-peer-report)))))
+
+; PRF-164: `account list' is the third query kind; the status path renders
+; books/accounts.lisp's report (empty over a configuration with no account)
+; and the live request carries its kind, code 7.
+(defconst *nlst-account-list* (fn-native-admin-plan (nlst-argv '("account" "list"))))
+(assert-event (fn-native-admin-result-queryp *nlst-account-list*))
+(assert-event (equal (fn-native-admin-result-report-kind *nlst-account-list*) :accounts))
+(assert-event (equal (fn-nls-code-kind (fn-nls-kind-code :accounts)) :accounts))
+(assert-event
+ (equal (fn-nls-report :accounts *nlst-profile* *nlst-s* 0 *nlst-granted-config*
+                       nil *nlst-obs*)
+        (fn-nls-query-report *nlst-account-list*
+                             (fn-cfg-value *nlst-granted-config*))))

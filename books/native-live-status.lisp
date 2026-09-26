@@ -471,12 +471,22 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 ; configuration: for `control list' the rendered authority rows
 ; (`fn-cfg-authorities', the eighth slot), for `peer list' the peers.  The
 ; host no longer names a report kind for a query.
+; PRF-164: `account list' is the third query kind; its report is
+; books/accounts.lisp's, which books/native-admin.lisp does not include (D26),
+; so the query report of all three kinds is named here.
+(defun fn-nls-query-report (plan value)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-admin-result-kind plan) :list-accounts)
+      (fn-acct-list-report value)
+    (fn-native-admin-query-report plan value)))
+
 (defthm fn-nls-report-of-query-kind-is-query-report
   (equal (fn-nls-report (fn-native-admin-result-report-kind plan)
                         profile s bytes cfg pins obs)
-         (fn-native-admin-query-report plan (fn-cfg-value cfg)))
+         (fn-nls-query-report plan (fn-cfg-value cfg)))
   :hints (("Goal" :in-theory '(fn-nls-report fn-native-admin-result-report-kind
-                               fn-native-admin-query-report))))
+                               fn-native-admin-query-report
+                               fn-nls-query-report))))
 
 ; -----------------------------------------------------------------------------
 ; The exchange: FNLS frames on the owner's control socket
