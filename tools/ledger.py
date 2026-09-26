@@ -30,8 +30,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -2532,6 +2534,34 @@ def apply_events(regenerated: dict[str, list[str]]) -> str:
 # --------------------------------------------------------------------------
 
 
+def lane_generated(relative: str, expected: str) -> bool:
+    """Under `make check-lane`, write a generated file aside instead of comparing.
+
+    A lane must not commit planning/ledger.* or planning/current.md (the
+    deputy regenerates them at merge), so in a lane they are stale by
+    design and `make check` was red in every lane that touched a book: 112
+    runs in 70 lanes regenerated and reverted by hand (friction review
+    2026-09-26 section 6).  With FN_LANE_CHECK set, the regenerated text goes
+    to $FN_LANE_CHECK_DIR (or a temporary directory), the comparison with the
+    committed file is printed, and only generation itself can fail.  The
+    proofs.json event arrays are not in this set: a lane owns its registry
+    rows and commits them regenerated.
+    """
+    if not os.environ.get("FN_LANE_CHECK"):
+        return False
+    directory = Path(os.environ.get("FN_LANE_CHECK_DIR")
+                     or tempfile.mkdtemp(prefix="fn-lane-check-"))
+    target = directory / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(expected, encoding="utf-8")
+    committed = ROOT / relative
+    same = committed.is_file() and committed.read_text(encoding="utf-8") == expected
+    print(f"lane check: {relative} regenerated to {target} "
+          f"({'same as' if same else 'differs from'} the committed file; "
+          f"the deputy regenerates it at merge)", file=sys.stderr)
+    return True
+
+
 def check_problems(tree: "Tree | None" = None) -> list[str]:
     """Everything `make check` must fail on.
 
@@ -2555,6 +2585,8 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
                            (LEDGER_MD, ledger_markdown(ledger)),
                            (PROOFS, apply_events(regenerated))):
         relative = path.relative_to(ROOT).as_posix()
+        if path != PROOFS and lane_generated(relative, expected):
+            continue
         if not path.is_file():
             problems.append(f"{relative}: missing; run `python3 tools/ledger.py --write`")
         elif path.read_text(encoding="utf-8") != expected:
