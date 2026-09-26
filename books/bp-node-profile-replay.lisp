@@ -16,7 +16,8 @@
 ; A kind-5 row that replay admits at this point in every respect but the
 ; profile's bounds.
 (defun fn-bpnpf-kind-five-row-fitsp (row held prior next-arrival)
-  (declare (xargs :guard t))
+  ; A statement predicate: the host never calls it.
+  (declare (xargs :guard t :verify-guards nil))
   (let* ((record (fn-bpnf-family-replay-row-record row))
          (epoch (fn-bpn-nth 1 record))
          (op (fn-bpn-nth 2 record))
