@@ -82,35 +82,6 @@
   (declare (xargs :guard t))
   (fn-ncfg-ipv4-address-aux host-octets 0 0 nil))
 
-(defun fn-native-config-listener-hostp (host)
-  "A numeric IPv4 listener, or one of the two explicit loopback aliases."
-  (declare (xargs :guard t))
-  (and (stringp host)
-       (or (let ((ipv4 (fn-native-config-ipv4-address
-                         (fn-record-string-octets host))))
-             (and (not (equal ipv4 :bad))
-                  (not (equal ipv4 '(0 0 0 0)))))
-           (member-equal host '("::1" "localhost")))))
-
-(defun fn-native-config-listener-address (host-octets)
-  "ACL2's complete address projection for an admitted listener host.
-
-The raw owner receives its existing host-octets callback argument, asks this
-subject for the concrete loopback family/address, and never resolves a name.
-`localhost' is deliberately the IPv4 loopback projection, matching the prior
-host resolver's intended deployment behavior.
-"
-  (declare (xargs :guard t))
-  (let ((ipv4 (fn-native-config-ipv4-address host-octets)))
-    (cond ((and (not (equal ipv4 :bad))
-                (not (equal ipv4 '(0 0 0 0))))
-           (list :inet ipv4))
-        ((equal host-octets (fn-record-string-octets "localhost"))
-         (list :inet *fn-ncfg-listener-ipv4-loopback*))
-        ((equal host-octets (fn-record-string-octets "::1"))
-         (list :inet6 *fn-ncfg-listener-ipv6-loopback*))
-        (t :bad))))
-
 (defun fn-ncfg-ws-p (x)
   (declare (xargs :guard t))
   (or (equal x 32) (equal x 9) (equal x 13)))
@@ -294,6 +265,302 @@ host resolver's intended deployment behavior.
   (if (consp xs)
       (or (equal item (car xs)) (fn-ncfg-memberp item (cdr xs)))
     nil))
+
+; -----------------------------------------------------------------------------
+; The listener address grammar (NNT-041, PRF-197).
+;
+; `[listener] host' is one address or a comma-separated list of them; the
+; owner binds one listener per address (and one implicit-TLS listener per
+; address when `tls_port' is set).  Each address is exactly one of:
+;   - an IPv4 dotted quad without leading zeros, not 0.0.0.0;
+;   - an IPv6 literal in RFC 4291 section 2.2's text forms (hex groups of one
+;     to four digits, one "::" at most, an embedded dotted quad last),
+;     optionally bracketed as RFC 3986 section 3.2.2's IP-literal (the port
+;     is `[listener] port', never inside the host), not "::" and not an
+;     IPv4-mapped ::ffff:0:0/96 address (write the IPv4 address instead:
+;     OpenBSD's AF_INET6 sockets never carry IPv4);
+;   - the name `localhost', which is the IPv4 loopback (never resolved).
+; The refusal names which of these an address failed.  The wildcard and
+; mapped refusals are fn's local policy, not an RFC requirement: a listener
+; reachable off the box is named explicitly (docs/operator.md).
+
+(defconst *fn-ncfg-ipv6-unspecified*
+  '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+(defconst *fn-ncfg-ipv6-mapped-prefix* '(0 0 0 0 0 0 0 0 0 0 255 255))
+(defconst *fn-ncfg-localhost-octets* '(108 111 99 97 108 104 111 115 116))
+
+(defun fn-ncfg-split-on (xs sep)
+  ; The fields of XS between SEP octets; always at least one field.
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (let ((rest (fn-ncfg-split-on (cdr xs) sep)))
+        (if (equal (car xs) sep)
+            (cons nil rest)
+          (cons (cons (car xs) (fn-ncfg-first rest)) (fn-ncfg-rest rest))))
+    (list nil)))
+
+(defun fn-ncfg-has-octetp (x xs)
+  (declare (xargs :guard t))
+  (and (consp xs) (or (equal (car xs) x) (fn-ncfg-has-octetp x (cdr xs)))))
+
+(defun fn-ncfg-hex-value (c)
+  ; A hex digit's value (either case), or nil.
+  (declare (xargs :guard t))
+  (cond ((not (natp c)) nil)
+        ((and (<= 48 c) (<= c 57)) (- c 48))
+        ((and (<= 97 c) (<= c 102)) (- c 87))
+        ((and (<= 65 c) (<= c 70)) (- c 55))
+        (t nil)))
+
+(defthm fn-ncfg-hex-value-type
+  (or (null (fn-ncfg-hex-value c)) (natp (fn-ncfg-hex-value c)))
+  :rule-classes :type-prescription)
+
+(defthm fn-ncfg-hex-value-is-a-digit
+  (implies (fn-ncfg-hex-value c) (< (fn-ncfg-hex-value c) 16))
+  :rule-classes :linear)
+
+(defun fn-ncfg-hex-listp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-ncfg-hex-value (car xs)) (fn-ncfg-hex-listp (cdr xs)))
+    (null xs)))
+
+(defun fn-ncfg-hex-at (i rev)
+  ; The value of the digit I places from the right, 0 past the left end.
+  (declare (xargs :guard t))
+  (let ((d (fn-ncfg-hex-value (fn-ncfg-nth i rev)))) (if d d 0)))
+
+(defthm fn-ncfg-hex-at-type
+  (natp (fn-ncfg-hex-at i rev))
+  :rule-classes :type-prescription)
+
+(defthm fn-ncfg-hex-at-is-a-digit
+  (< (fn-ncfg-hex-at i rev) 16)
+  :rule-classes :linear)
+
+(defun fn-ncfg-app (xs ys)
+  (declare (xargs :guard t))
+  (if (consp xs) (cons (car xs) (fn-ncfg-app (cdr xs) ys)) ys))
+
+(defun fn-ncfg-octet-listp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (natp (car xs)) (< (car xs) 256) (fn-ncfg-octet-listp (cdr xs)))
+    (null xs)))
+
+(defthm fn-ncfg-app-shape
+  (and (equal (len (fn-ncfg-app xs ys)) (+ (len xs) (len ys)))
+       (implies (and (fn-ncfg-octet-listp xs) (fn-ncfg-octet-listp ys))
+                (fn-ncfg-octet-listp (fn-ncfg-app xs ys)))))
+
+(defun fn-ncfg-v6-group-octets (field)
+  ; One to four hex digits: the group's two octets, big-endian, or :bad.
+  (declare (xargs :guard t))
+  (if (and (consp field) (<= (len field) 4) (fn-ncfg-hex-listp field))
+      (let ((rev (fn-ncfg-reverse field)))
+        (list (+ (* 16 (fn-ncfg-hex-at 3 rev)) (fn-ncfg-hex-at 2 rev))
+              (+ (* 16 (fn-ncfg-hex-at 1 rev)) (fn-ncfg-hex-at 0 rev))))
+    :bad))
+
+(defthm fn-ncfg-v6-group-octets-shape
+  (implies (not (equal (fn-ncfg-v6-group-octets f) :bad))
+           (and (fn-ncfg-octet-listp (fn-ncfg-v6-group-octets f))
+                (equal (len (fn-ncfg-v6-group-octets f)) 2)))
+  :hints (("Goal" :in-theory (e/d (fn-ncfg-v6-group-octets)
+                                  (fn-ncfg-reverse fn-ncfg-hex-at fn-ncfg-hex-listp)))))
+
+(in-theory (disable fn-ncfg-v6-group-octets))
+
+(defthm fn-ncfg-octet-listp-of-append
+  (implies (and (fn-ncfg-octet-listp a) (fn-ncfg-octet-listp b))
+           (fn-ncfg-octet-listp (append a b))))
+
+(defthm fn-ncfg-len-of-append
+  (equal (len (append a b)) (+ (len a) (len b))))
+
+(defthm fn-ncfg-ipv4-reverse-shape
+  (implies (fn-ncfg-octet-listp xs)
+           (and (fn-ncfg-octet-listp (fn-ncfg-ipv4-reverse xs))
+                (equal (len (fn-ncfg-ipv4-reverse xs)) (len xs)))))
+
+(defthm fn-ncfg-ipv4-address-aux-shape
+  (implies (and (fn-ncfg-octet-listp parts-rev) (<= (len parts-rev) 3)
+                (natp value) (< value 256)
+                (not (equal (fn-ncfg-ipv4-address-aux xs value digits parts-rev) :bad)))
+           (and (fn-ncfg-octet-listp (fn-ncfg-ipv4-address-aux xs value digits parts-rev))
+                (equal (len (fn-ncfg-ipv4-address-aux xs value digits parts-rev)) 4))))
+
+(defthm fn-native-config-ipv4-address-shape
+  (implies (not (equal (fn-native-config-ipv4-address xs) :bad))
+           (and (fn-ncfg-octet-listp (fn-native-config-ipv4-address xs))
+                (equal (len (fn-native-config-ipv4-address xs)) 4))))
+
+(in-theory (disable fn-native-config-ipv4-address))
+
+(defun fn-ncfg-v6-part (fields tailp)
+  ; Octets of colon-separated FIELDS; with TAILP the last may be a dotted quad.
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (if (and tailp (not (consp (cdr fields)))
+               (fn-ncfg-has-octetp 46 (car fields)))
+          (fn-native-config-ipv4-address (car fields))
+        (let ((g (fn-ncfg-v6-group-octets (car fields)))
+              (rest (fn-ncfg-v6-part (cdr fields) tailp)))
+          (if (or (equal g :bad) (equal rest :bad))
+              :bad
+            (fn-ncfg-app g rest))))
+    nil))
+
+(defthm fn-ncfg-v6-part-shape
+  (implies (not (equal (fn-ncfg-v6-part fields tailp) :bad))
+           (fn-ncfg-octet-listp (fn-ncfg-v6-part fields tailp))))
+
+(in-theory (disable fn-ncfg-v6-part))
+
+(defun fn-ncfg-v6-fields (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (fn-ncfg-split-on xs 58) nil))
+
+(defun fn-ncfg-v6-double-colon (xs)
+  ; (LEFT . RIGHT) around the first "::" in XS, or nil when there is none.
+  (declare (xargs :guard t))
+  (cond ((not (consp xs)) nil)
+        ((and (equal (car xs) 58) (consp (cdr xs)) (equal (cadr xs) 58))
+         (cons nil (cddr xs)))
+        (t (let ((r (fn-ncfg-v6-double-colon (cdr xs))))
+             (and r (cons (cons (car xs) (car r)) (cdr r)))))))
+
+(defun fn-ncfg-zeros (n)
+  (declare (xargs :guard t :measure (nfix n)))
+  (if (and (natp n) (< 0 n)) (cons 0 (fn-ncfg-zeros (1- n))) nil))
+
+(defthm fn-ncfg-zeros-shape
+  (and (fn-ncfg-octet-listp (fn-ncfg-zeros n))
+       (equal (len (fn-ncfg-zeros n)) (nfix n))))
+
+(defun fn-ncfg-ipv6-unbracketed (xs)
+  (declare (xargs :guard t))
+  (let ((dc (fn-ncfg-v6-double-colon xs)))
+    (if dc
+        (let ((left (fn-ncfg-v6-part (fn-ncfg-v6-fields (car dc)) nil))
+              (right (fn-ncfg-v6-part (fn-ncfg-v6-fields (cdr dc)) t)))
+          (if (or (equal left :bad) (equal right :bad)
+                  (fn-ncfg-v6-double-colon (cdr dc))
+                  (< 14 (+ (len left) (len right))))
+              :bad
+            (fn-ncfg-app left (fn-ncfg-app (fn-ncfg-zeros (- 16 (+ (len left) (len right))))
+                                           right))))
+      (let ((all (fn-ncfg-v6-part (fn-ncfg-split-on xs 58) t)))
+        (if (and (not (equal all :bad)) (equal (len all) 16)) all :bad)))))
+
+(defthm fn-ncfg-ipv6-unbracketed-shape
+  (implies (not (equal (fn-ncfg-ipv6-unbracketed xs) :bad))
+           (and (fn-ncfg-octet-listp (fn-ncfg-ipv6-unbracketed xs))
+                (equal (len (fn-ncfg-ipv6-unbracketed xs)) 16))))
+
+(in-theory (disable fn-ncfg-ipv6-unbracketed))
+
+(defun fn-native-config-ipv6-literal (xs)
+  ; RFC 4291 section 2.2 text, bare or bracketed (RFC 3986 section 3.2.2).
+  (declare (xargs :guard t))
+  (if (and (consp xs) (equal (car xs) 91))
+      (let ((inner-rev (fn-ncfg-reverse (cdr xs))))
+        (if (and (consp inner-rev) (equal (car inner-rev) 93))
+            (fn-ncfg-ipv6-unbracketed (fn-ncfg-reverse (cdr inner-rev)))
+          :bad))
+    (fn-ncfg-ipv6-unbracketed xs)))
+
+(defthm fn-native-config-ipv6-literal-shape
+  (implies (not (equal (fn-native-config-ipv6-literal xs) :bad))
+           (and (fn-ncfg-octet-listp (fn-native-config-ipv6-literal xs))
+                (equal (len (fn-native-config-ipv6-literal xs)) 16))))
+
+(in-theory (disable fn-native-config-ipv6-literal))
+
+(defun fn-ncfg-prefixp (p xs)
+  (declare (xargs :guard t))
+  (if (consp p)
+      (and (consp xs) (equal (car p) (car xs)) (fn-ncfg-prefixp (cdr p) (cdr xs)))
+    t))
+
+(defun fn-ncfg-listener-element (text)
+  ; (:ok PROJECTION) or (:refused REASON) for one trimmed address.
+  (declare (xargs :guard t))
+  (let ((ipv4 (fn-native-config-ipv4-address text)))
+    (cond ((not (equal ipv4 :bad))
+           (if (equal ipv4 '(0 0 0 0))
+               (list :refused :listener-unspecified)
+             (list :ok (list :inet ipv4))))
+          ((equal text *fn-ncfg-localhost-octets*)
+           (list :ok (list :inet *fn-ncfg-listener-ipv4-loopback*)))
+          (t (let ((ipv6 (fn-native-config-ipv6-literal text)))
+               (cond ((equal ipv6 :bad) (list :refused :listener-address))
+                     ((equal ipv6 *fn-ncfg-ipv6-unspecified*)
+                      (list :refused :listener-unspecified))
+                     ((fn-ncfg-prefixp *fn-ncfg-ipv6-mapped-prefix* ipv6)
+                      (list :refused :listener-mapped))
+                     (t (list :ok (list :inet6 ipv6)))))))))
+
+(defun fn-ncfg-listener-plan (elements)
+  ; (:ok PROJECTIONS) in the written order, or the first address's refusal.
+  (declare (xargs :guard t))
+  (if (consp elements)
+      (let ((r (fn-ncfg-listener-element (fn-ncfg-trim (car elements)))))
+        (if (equal (fn-ncfg-first r) :refused)
+            r
+          (let ((rest (fn-ncfg-listener-plan (cdr elements))))
+            (cond ((equal (fn-ncfg-first rest) :refused) rest)
+                  ((fn-ncfg-memberp (fn-ncfg-second r) (fn-ncfg-second rest))
+                   (list :refused :listener-duplicate))
+                  (t (list :ok (cons (fn-ncfg-second r)
+                                     (fn-ncfg-second rest))))))))
+    (list :ok nil)))
+
+(defun fn-native-config-listener-plan (host-octets)
+  (declare (xargs :guard t))
+  (fn-ncfg-listener-plan (fn-ncfg-split-on host-octets 44)))
+
+(defun fn-native-config-listener-addresses (host-octets)
+  "ACL2's complete projection of an admitted `[listener] host': the list of
+(FAMILY ADDRESS-OCTETS) the owner binds, in the written order, or :bad.  The
+raw owner binds exactly these octets and never resolves a name."
+  (declare (xargs :guard t))
+  (let ((plan (fn-native-config-listener-plan host-octets)))
+    (if (equal (fn-ncfg-first plan) :ok) (fn-ncfg-second plan) :bad)))
+
+(defun fn-native-config-listener-address (host-octets)
+  "The projection of one address (the single-address form of the list)."
+  (declare (xargs :guard t))
+  (let ((r (fn-ncfg-listener-element host-octets)))
+    (if (equal (fn-ncfg-first r) :ok) (fn-ncfg-second r) :bad)))
+
+(defun fn-native-config-listener-hostp (host)
+  "One or more listener addresses, each admitted by the grammar above."
+  (declare (xargs :guard t))
+  (and (stringp host)
+       (not (equal (fn-native-config-listener-addresses
+                    (fn-record-string-octets host))
+                   :bad))))
+
+(defun fn-native-config-listener-projectionp (p)
+  ; What the owner may bind: an AF_INET dotted quad that is not the wildcard,
+  ; or an AF_INET6 address that is neither the wildcard nor IPv4-mapped.
+  (declare (xargs :guard t))
+  (and (consp p) (consp (cdr p)) (null (cddr p))
+       (fn-ncfg-octet-listp (cadr p))
+       (or (and (equal (car p) :inet) (equal (len (cadr p)) 4)
+                (not (equal (cadr p) '(0 0 0 0))))
+           (and (equal (car p) :inet6) (equal (len (cadr p)) 16)
+                (not (equal (cadr p) *fn-ncfg-ipv6-unspecified*))
+                (not (fn-ncfg-prefixp *fn-ncfg-ipv6-mapped-prefix* (cadr p)))))))
+
+(defun fn-native-config-listener-projection-listp (ps)
+  (declare (xargs :guard t))
+  (if (consp ps)
+      (and (fn-native-config-listener-projectionp (car ps))
+           (fn-native-config-listener-projection-listp (cdr ps)))
+    (null ps)))
 
 (defun fn-ncfg-pair-seenp (pairs table key)
   (declare (xargs :guard t))
@@ -535,13 +802,97 @@ host resolver's intended deployment behavior.
                              mission unit scope keep-releases log-max-bytes
                              log-keep memory-max tls-port))))
 
+(defthm fn-ncfg-listener-element-ok-is-a-projection
+  (implies (equal (fn-ncfg-first (fn-ncfg-listener-element text)) :ok)
+           (fn-native-config-listener-projectionp
+            (fn-ncfg-second (fn-ncfg-listener-element text)))))
+
+(defthm fn-ncfg-memberp-is-member-equal
+  (iff (fn-ncfg-memberp x xs) (member-equal x xs)))
+
+(defthm fn-ncfg-first-of-cons (equal (fn-ncfg-first (cons a b)) a))
+(defthm fn-ncfg-second-of-cons (equal (fn-ncfg-second (cons a b)) (fn-ncfg-first b)))
+
+(defthm fn-ncfg-listener-element-tag-ok
+  (implies (not (equal (fn-ncfg-first (fn-ncfg-listener-element text)) :refused))
+           (equal (fn-ncfg-first (fn-ncfg-listener-element text)) :ok)))
+
+(defthm fn-ncfg-listener-plan-tag-ok
+  (implies (not (equal (fn-ncfg-first (fn-ncfg-listener-plan elements)) :refused))
+           (equal (fn-ncfg-first (fn-ncfg-listener-plan elements)) :ok))
+  :hints (("Goal" :in-theory (disable fn-ncfg-listener-element fn-ncfg-trim))))
+
+(defthm fn-ncfg-listener-plan-ok-shape
+  (implies (equal (fn-ncfg-first (fn-ncfg-listener-plan elements)) :ok)
+           (and (fn-native-config-listener-projection-listp
+                 (fn-ncfg-second (fn-ncfg-listener-plan elements)))
+                (no-duplicatesp-equal
+                 (fn-ncfg-second (fn-ncfg-listener-plan elements)))
+                (equal (len (fn-ncfg-second (fn-ncfg-listener-plan elements)))
+                       (len elements))))
+  :hints (("Goal" :in-theory (disable fn-ncfg-listener-element fn-ncfg-trim
+                                      fn-native-config-listener-projectionp
+                                      fn-ncfg-first fn-ncfg-second)
+           :induct (fn-ncfg-listener-plan elements))))
+
+(defthm fn-ncfg-split-on-is-nonempty
+  (consp (fn-ncfg-split-on xs sep))
+  :rule-classes :type-prescription)
+
+(defthm fn-ncfg-split-on-has-a-field
+  (< 0 (len (fn-ncfg-split-on xs sep)))
+  :rule-classes :linear)
+
+;  KEYSTONE (PRF-197; NNT-041).  The subject is
+; `fn-native-config-listener-addresses', which the owner calls through
+; host/native-config-host.lisp `fn-native-config-host-listener-addresses'
+; (host/native/owner.lisp `fnn-owner-run-normalized') and binds octet for
+; octet: every admitted `[listener] host' projects to a nonempty,
+; duplicate-free list of bindable addresses, each an AF_INET dotted quad
+; other than 0.0.0.0 or an AF_INET6 literal other than :: and ::ffff:0:0/96.
+(defthm fn-native-config-listener-addresses-are-bindable-projections
+  (let ((ps (fn-native-config-listener-addresses host-octets)))
+    (implies (not (equal ps :bad))
+             (and (consp ps)
+                  (fn-native-config-listener-projection-listp ps)
+                  (no-duplicatesp-equal ps))))
+  :hints (("Goal" :in-theory (disable fn-ncfg-listener-plan-ok-shape
+                                      fn-ncfg-listener-plan fn-ncfg-first fn-ncfg-second)
+           :use ((:instance fn-ncfg-listener-plan-ok-shape
+                            (elements (fn-ncfg-split-on host-octets 44)))))))
+
+; Which of the three forms each admitted address is: a dotted quad, the
+; name `localhost' (the IPv4 loopback), or an IPv6 literal.
+(defthm fn-ncfg-listener-element-classifies-by-definition
+  (let ((r (fn-ncfg-listener-element text)))
+    (implies (equal (fn-ncfg-first r) :ok)
+             (or (equal (fn-ncfg-second r)
+                        (list :inet (fn-native-config-ipv4-address text)))
+                 (and (equal text *fn-ncfg-localhost-octets*)
+                      (equal (fn-ncfg-second r)
+                             (list :inet *fn-ncfg-listener-ipv4-loopback*)))
+                 (equal (fn-ncfg-second r)
+                        (list :inet6 (fn-native-config-ipv6-literal text))))))
+  :rule-classes nil)
+
 (defthm fn-native-config-listener-address-of-admitted-host
   (implies (fn-native-config-listener-hostp host)
-           (not (equal (fn-native-config-listener-address
+           (not (equal (fn-native-config-listener-addresses
                         (fn-record-string-octets host))
                        :bad)))
-  :hints (("Goal" :in-theory (enable fn-native-config-listener-hostp
-                                     fn-native-config-listener-address))))
+  :rule-classes nil)
+
+(defun fn-ncfg-listener-refusal (pairs)
+  ; Why `[listener] host' is refused, or nil when it is admitted or absent.
+  (declare (xargs :guard t))
+  (let ((host (fn-ncfg-string-value (fn-ncfg-value pairs "listener" "host")
+                                    *fn-ncfg-default-listener-host*
+                                    *fn-ncfg-max-text* nil)))
+    (and (stringp host)
+         (let ((plan (fn-native-config-listener-plan
+                      (fn-record-string-octets host))))
+           (and (equal (fn-ncfg-first plan) :refused)
+                (fn-ncfg-second plan))))))
 
 (defun fn-native-config-load (octets)
   ; The public semantic subject called by the native host wrapper.
@@ -554,7 +905,10 @@ host resolver's intended deployment behavior.
             (if (equal pairs :bad)
                 (list :refused :syntax)
               (let ((config (fn-ncfg-normalize pairs)))
-                (if (equal config :bad) (list :refused :invalid) (list :accepted config)))))))
+                (if (equal config :bad)
+                    (let ((why (fn-ncfg-listener-refusal pairs)))
+                      (list :refused (or why :invalid)))
+                  (list :accepted config)))))))
     (list :refused :bounds-or-encoding)))
 
 ;; What the native owner consumes, and the one key it cannot.

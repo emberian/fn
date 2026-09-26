@@ -3425,6 +3425,27 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-126",
+      "title": "A node listens on [::1] and on an IPv4 address at once from one [listener] host list, a TLS client reaches each, and a wildcard, mapped or duplicate address is refused by name",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-041"
+      ],
+      "steps": [
+        "fn.toml [listener] host = \"[::1], 127.0.0.1\" with tls_cert, tls_key and tls_port; start the node on a copy with loopback paths.",
+        "Connect over implicit TLS to [::1]:TLS_PORT and to 127.0.0.1:TLS_PORT; each answers the RFC 3977 greeting and CAPABILITIES.",
+        "Replace host with \"::\", \"::ffff:127.0.0.1\" and \"::1,[::1]\" in turn: the operator's load refuses with listener-unspecified, listener-mapped and listener-duplicate."
+      ],
+      "evidence": [
+        "tests/acl2/native-config-tests.lisp"
+      ],
+      "expected": [
+        "Both implicit-TLS connections answer 200 or 201 and a CAPABILITIES list; the owner prints LISTENING and LISTENING-TLS once each and binds four sockets (ss -ltn shows [::1] and 127.0.0.1 on both ports).",
+        "Each refused host is (:refused :listener-unspecified), (:refused :listener-mapped) and (:refused :listener-duplicate) at load; no store is opened."
+      ]
     }
   ]
 }

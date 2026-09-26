@@ -232,7 +232,7 @@
 (defun fnn-core (name &rest args)
   (declare (ignore args))
   (case name
-    (fn-native-config-host-listener-address (list :inet (list 127 0 0 1)))
+    (fn-native-config-host-listener-addresses (list (list :inet (list 127 0 0 1))))
     (t (error "unexpected core call ~a" name))))
 (defvar *owner-run-fault* :unset)
 (defun fnn-owner-run (root port once max &optional fault &rest more)

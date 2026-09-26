@@ -904,11 +904,17 @@ it again. The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
 books/feed-connection.lisp) and lasts one owner process: a restart spends
 one `MODE STREAM` exchange again.
 
-`[listener] host` accepts loopback aliases or an explicit numeric IPv4
-address. ACL2 parses the literal and supplies the exact bind address; the host
-does not resolve or reinterpret it. The wildcard `0.0.0.0` remains refused so
-an operator must name the interface placed in service. General IPv6 literals
-remain open; `::1` is the admitted IPv6 spelling.
+`[listener] host` is one address or a comma-separated list of them: IPv4
+dotted quads, IPv6 literals (`::1`, `2001:db8::7`, or bracketed `[::1]`) and
+the name `localhost`. The owner binds each on `port` (and on `tls_port` when
+set), so `host = "[::1], 192.0.2.7"` serves both families. ACL2 parses every
+literal and supplies the exact bind address; the host does not resolve or
+reinterpret it. The wildcards `0.0.0.0` and `::` stay refused so an operator
+names each interface placed in service, and an IPv4-mapped `::ffff:a.b.c.d`
+is refused in favour of the IPv4 address. A refusal names the reason:
+`listener-address`, `listener-unspecified`, `listener-mapped` or
+`listener-duplicate` (specs/nntp.md "Listener addresses", NNT-041). A
+changed `host` takes effect when the node restarts.
 
 ## Run it as a service
 
