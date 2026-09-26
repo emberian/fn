@@ -165,6 +165,8 @@ order, and the names it found handed straight back."
                (fnn-operator-optional-path
                 result 'fn-native-operator-host-result-run-log-path-octets))
              (tls-context nil))
+        (setq *fnn-health-min-percent*
+              (fnn-core 'fn-native-operator-host-result-health-min-percent result))
         (unwind-protect
             (progn
               ;; Append-only, created 0640 if absent, never through a
@@ -425,6 +427,65 @@ observation into the outcome and this function only carries it out."
           (return code))
         (sleep watch)))))
 
+;;; The health verdict (`health', PRF-112).
+;;;
+;;; The running owner renders it over its control socket from the Store,
+;;; configuration and feed table it carries; with none, the Store is opened
+;;; read-only unless the host's observations say it is fenced.  ACL2 decides
+;;; which (fn-nls-route, fn-nh-fence-of), renders every word
+;;; (books/native-health.lisp), and reads the exit code back from the octets
+;;; the host prints (fn-nh-report-exit-of-render).
+
+(defun fnn-operator-health-report (root control-path min)
+  "The health report's octets, or :refused when the owner refused to answer."
+  (let* ((socket-present
+           (and control-path
+                (not (fnn-image-omits-p :control))
+                (fnn-control-socket-path-p
+                 (fnn-lstat (fnn-octets-string control-path)))))
+         (answer (if socket-present
+                     (fnn-control-live-status control-path :health)
+                   :none)))
+    (if (and (consp answer) (eq (first answer) :done))
+        (second answer)
+      (let ((route (fnn-core 'fn-native-live-status-host-route socket-present answer)))
+        (if (eq route :refused)
+            :refused
+          (or (fnn-core 'fn-native-health-host-fenced route
+                        (fnn-store-owner-observation root)
+                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t))
+              (multiple-value-bind (store records) (fnn-open-live-store root nil)
+                (declare (ignore records))
+                (unwind-protect
+                     (fnn-core 'fn-native-health-host-offline
+                               (fnn-store-config store) min *the-live-state*)
+                  (fnn-store-close store)))))))))
+
+(defun fnn-operator-execute-health (result)
+  (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+         (path-list (fnn-core
+                     'fn-native-operator-host-result-status-control-path-octets
+                     result))
+         (control-path (and (fnn-octet-list-p path-list) (consp path-list)
+                            (fnn-octets path-list)))
+         (min (fnn-core 'fn-native-operator-host-result-health-min-percent result)))
+    (handler-case
+        (let ((report (fnn-operator-health-report root control-path min)))
+          (if (eq report :refused)
+              (progn (fnn-operator-emit-status :refused "health")
+                     +fnn-exit-refused+)
+            (let ((code (fnn-core 'fn-native-health-host-exit report)))
+              (unless (and (integerp code) (<= 0 code 99))
+                (fnn-fault "ACL2 health report carries no exit code"))
+              (fnn-write-report report)
+              (fnn-operator-emit-status :accepted "health")
+              code)))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "health" condition)
+          code)))))
+
 (defun fnn-operator-store-max-credentials (root)
   "The store profile's max-credentials (D27, PRF-102), read from config.json
 without the writer lock: principal administration does not open the store.
@@ -495,6 +556,7 @@ configuration usage result."
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
           (:status (fnn-operator-execute-status result))
+          (:health (fnn-operator-execute-health result))
           ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
             :rollback-check)
            (fnn-operator-execute-store-action result action))

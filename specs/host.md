@@ -467,3 +467,26 @@ carries that the offline command renders from the Store, and answering changes
 no state. The operator guide's
 [status section](../docs/operator.md#status-while-the-owner-runs) describes the
 verbs.
+
+## Operator health
+
+HST-007: The operator's health verdict names which of eight things is wrong,
+never one red bit. `operator CONFIG health` prints one line per state in a
+fixed order: fenced, exhausted, unqualified-profile, space-pressure,
+no-route, stranded-transfer, unavailable-peer, receipt-debt; each line says
+`held` (with the figures that hold it), `clear`, or `unobserved` (the source
+was not observed: offline there is no feed table, a fenced store is not
+opened). The exit code is 20 plus the index of the first held state, 19 when
+none is held and some state is unobserved, and 0 when every state is clear.
+One ACL2 verdict (`fn-nh-verdict`, books/native-health.lisp) decides every
+line from the sources the status report reads: the headroom and profile the
+`status` report prints, the retention ledger's forwarding obligations, the
+configuration's BP route table, the running owner's outbound feed table, and
+the host's observation of a fence (a clone fence file, a writer lock held by
+a process the configured socket does not reach, or a socket that accepted and
+did not answer). The running owner renders the same verdict over the state it
+carries (FNLS kind 6); the exit code the host returns is read back from the
+rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
+[health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
+describes the verb.
+
