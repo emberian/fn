@@ -177,3 +177,104 @@ runpath check is a static and file-level inspection, not a theorem.
 e241585b3 (link-following launcher, rc.d /var/fn), 963657361 (merge
 crypto-deps), a04213276 (docs; the tarball's revision), then the record and
 HST-015.
+
+## Continuation: openbsd-feed (2026-09-26, ~19:05-19:40Z)
+
+Evidence on hbox under `/tank/fn/scratch/release-openbsd/feed/` (with a
+`SHA256SUMS` of every log and article file) and
+`.../evidence/feed-tests/`.
+
+### SCN-136: articles over the protected feed, Linux <-> OpenBSD
+
+The two nodes of §3 (Linux fn-cde3986a5c78 on hbox, OpenSSL 3.3.1; OpenBSD
+fn-a04213276edf in the guest under rc.d, LibreSSL 4.3.0, 1 vCPU / 2 GiB),
+already peered by invite/accept/confirm, were given docs/peering-with-a-friend.md
+§3 each way: a login bound to the other node's principal (`bsd-node` on
+Linux for 5bb9e50c..., `linux-node` on OpenBSD for 590dad59...), an FNAUTH1
+profile, and `peer add` of the same name with `starttls NAME ANCHOR`,
+`local.*` both halves (`setup-linux.log` e1287fa8..., `setup-openbsd.log`
+377069009f...), then both restarted (the new logins are read at start).
+The guest's container cannot reach the host's docker bridge address
+(172.17.0.1), so OpenBSD reaches the Linux node through an ssh reverse
+tunnel (`systemd-run --user` unit fn-rob-tunnel, guest 127.0.0.1:11990 ->
+172.17.0.1:11990; `setup-openbsd-2.log` 30c4b9b8...); the name check is on
+the certificate's CN either way.
+
+| Direction | Origin log | Receiver log | Read back over STARTTLS (TLSv1.3) |
+| --- | --- | --- | --- |
+| Linux -> OpenBSD, `<node-probe.20260926T191651Z.c8998084@probe.invalid>` | `accepted feed peer=fnbsd ... code=239` | `accepted transit ... code=239 decision=want ... verdict=unsigned` | Linux ae748d2d... (477 B), OpenBSD f6676afe... (503 B) |
+| OpenBSD -> Linux, `<node-probe.20260926T191652Z.f2e05471@probe.invalid>` | `accepted feed peer=hbox-linux.friends.fn.invalid ... code=239` | `accepted transit ... code=239 decision=want ... verdict=unsigned` | OpenBSD 2d63ff89... (467 B), Linux 21c12f3d... (498 B) |
+| OpenBSD -> Linux, hybrid-signed `<openbsd-signed-1@fnbsd.friends.fn.invalid>` | `accepted post path=control`, `accepted feed ... code=239` | `accepted transit ... code=239 decision=want ... verdict=verified` | OpenBSD 1ea7889b... (7846 B), Linux 5ff2f176... (7877 B) |
+
+In each pair the bytes differ only in the Path line: the receiver prepends
+its own path identity with the `!!` diagnostic (RFC 5537 §3.2.1, RFC 5536
+§3.1.5). Everything after the Path line is byte-identical: SHA-256
+ce3b9ad1..., 96ec6ba3..., 980251e2... on both nodes respectively. `peer
+pull` each way: `pull peer=... round=done cursor=advanced transport=tls`
+on both (`pull-openbsd-3.log`, `pull-linux-3.log`; the logs:
+`linux-fn-log-excerpt.log` 8c6ae471..., `openbsd-fn-log-excerpt.log`
+bfa24660...).
+
+The signed carrier: `hybrid-author` with keyring generation 1 was refused
+`SIGNED-EVENT-NOT-FORMED` (generation 1 on the OpenBSD node is the Linux
+principal `accept` enrolled; the article was signed with the OpenBSD keys),
+2 and 3 `AUTHOR-NOT-ENROLLED`; after `hybrid-enroll` of the OpenBSD node's
+own keys at generation 2 it was accepted (`signed-openbsd-generations.log`
+0355918a...). `peer keygen` does not enrol a node's own keys at its own
+node; the peering doc does not say to. Linux verified it under the
+OpenBSD principal `peer confirm` had enrolled.
+
+**A stop, not reproduced.** At 19:18:39Z, during the first pulls after the
+tunnel, the OpenBSD node stopped: `owner core/store fault; process stopped:
+ACL2 refused FNFD peer filename` (syslog, `openbsd-fault-daemon.log`
+af0daa13...), and the Linux node's inbound TLS read ended in EOF the same
+second (`linux-journal.log` c877c6a4...). Both peer names are legacy-safe
+and both FNFD files existed under them, so the refused string was some
+other value. After `rcctl start fn`, the same pulls in each direction were
+`round=done` and nothing stopped. Classification: implementation, cause
+unknown; PKT-591 (a).
+
+### The two LibreSSL test expectations (repaired)
+
+- tests/test_native_starttls.py `assertClosedAfterFailedHandshake`: after a
+  malformed ClientHello the server closes with no bytes (OpenSSL 3) or with
+  exactly one fatal alert record and then closes (LibreSSL:
+  `15 03 01 00 02 02 46`). Still refuted: any plaintext NNTP reply, a
+  handshake or other non-alert record, a warning-level alert, a second
+  record, a connection left open.
+- tests/native_tls_transport.lisp: the loaded library's text names
+  `OpenSSL N` or `LibreSSL N` with N >= 3, checked from the text rather than
+  through `fnn-tls-supported-version-p` (the function under test). Still
+  refuted: no library loaded, OpenSSL 1.x, LibreSSL 2.x, any other name.
+
+### Protocol floor and SNI on LibreSSL (two native cases)
+
+Both in tests/test_native_starttls.py:
+`test_protocol_floor_refuses_tls_1_1` sends a hand-built TLS 1.1-only
+ClientHello after 382 (so the refusal is the server's, not the client
+library's) and requires no handshake record back, at most one fatal
+`protocol_version` alert, and close; then a TLS 1.2 client is served
+(`DATE` 111). Teeth: the same hello against `openssl s_server -tls1_2`
+draws `15030200020246`, against `-tls1_1` a ServerHello `160302...`
+(`evidence/feed-tests/teeth.log` c0a42dbd...).
+`test_sni_answered_with_the_configured_certificate`: a client sending
+`server_name` completes, gets the configured certificate (the DER equal to
+the one a client without SNI gets) and NNTP after it.
+
+| Where | Module | Result | Log SHA-256 |
+| --- | --- | --- | --- |
+| OpenBSD guest, LibreSSL 4.3.0, the release image (`FN_NATIVE_HOST=/usr/local/fn-a04213276edf/libexec/fn/fn-host`) | tests.test_native_starttls | OK (4) | 3137f489... |
+| OpenBSD guest | tests.test_native_tls_transport | OK (2) | a2802ef9... |
+| OpenBSD guest, the build tree's image, no libsodium package | tests.test_native_starttls | environment: `libsodium cannot be loaded` (4 of 4); rerun above | 23c63a5a... |
+| hbox, OpenSSL 3.3.1, `tools/hbox_native.sh --images developer,production .` (native-wt-20260926T192502Z) | tests.test_native_starttls | OK (4 ran, 0 skipped) | d5403e4d... |
+| hbox | tests.test_native_tls_transport | OK (2 ran, 0 skipped) | 92deb8fd... (run.log b8e29f8b...) |
+
+The client path's SNI and floor on LibreSSL were observed in §2
+(`tls-client-probe.log` 805f1b20...).
+
+### Filed
+
+PKT-589 (`store clone` needs Linux renameat2), PKT-590 (app-journal in the
+production image, docs say developer), PKT-591 (the unreproduced stop, the
+tunnel, SCN-136 not a module). docs/operator.md "On OpenBSD": the rc.d
+script starts the node in `/var/fn` itself.
