@@ -2,7 +2,7 @@
 
 `operator CONFIG store checkpoint` and the developer `store ROOT checkpoint`
 open the store as `recover` does, ask ACL2 for the checkpoint file
-(host/store-node-host.lisp `fn-store-sco-publish-octets`: the open's
+(host/store-node-host.lisp `fn-store-sco-publish-plan`: the open's
 checkpoint extended over the records after it, or the capture of the whole
 history) and write it through `fnn-state-checkpoint-write`, the byte program
 `fn-bs-scp-program`.  Every later open reads it range by range, selects it
@@ -49,8 +49,14 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # off it once (fn-store-sn-open-extended, fn-sco-store-open).
         self.assertIn("(fn-sco-extend checkpoint config-records records)", recover)
         self.assertIn("(fn-store-sn-open-extended", recover)
+        # The open the host takes is fn-sco-store-open over the same
+        # arguments, called directly or through the one ACL2 function the
+        # host calls in its place (since 2e25e21b fn-sopc-classified-open,
+        # books/store-open-pre-c1.lisp, which refuses a pre-C1 control
+        # record first and otherwise answers fn-sco-store-open's open).
         extended = native_cuts.host_function(node_host, "fn-store-sn-open-extended")
-        self.assertIn("(fn-sco-store-open e config-records frontier)", extended)
+        self.assertTrue(native_cuts.calls_through_book(
+            extended, "fn-sco-store-open", "e config-records frontier"), extended[:400])
         opened = native_cuts.host_function(io, "fnn-recover-from-state-checkpoint")
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("'fn-store-sn-recover-from-checkpoint", opened)
