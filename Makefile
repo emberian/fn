@@ -128,6 +128,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-operator \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
+	tests/acl2/docs-operator-grammar-tests \
 	books/native-mission \
 	tests/acl2/native-mission-tests \
 	books/native-control \
@@ -280,6 +281,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-compaction-tests \
 	books/checkpoint-compaction-preservation \
 	tests/acl2/checkpoint-compaction-preservation-tests \
+	books/checkpoint-pack-chain \
+	tests/acl2/checkpoint-pack-chain-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
@@ -339,6 +342,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-budget-article-tests \
 	books/store-maintenance-reserve \
 	tests/acl2/store-maintenance-reserve-tests \
+	books/store-capacity-vector \
+	tests/acl2/store-capacity-vector-tests \
+	books/store-capacity-config \
+	tests/acl2/store-capacity-config-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -659,6 +666,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-auth-tests \
 	books/served \
 	books/served-tls-prefix \
+	books/served-implicit-tls \
+	tests/acl2/served-implicit-tls-tests \
 	books/owner-tls-prefix \
 	books/owner-config-observe \
 	books/peer-offer-indexed \
@@ -856,6 +865,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-control-read \
 	books/login-binding \
 	tests/acl2/login-binding-tests \
+	books/public-exposure \
+	tests/acl2/public-exposure-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
@@ -954,6 +965,12 @@ check-lane:
 
 check:
 	$(PYTHON) tools/check_scaffold.py
+# Every command the docs name exists with the grammar the docs give (NNT-032):
+# operator invocations are judged by ACL2's grammar in the generated book
+# tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
+# not what the docs say now; the Python tools' invocations by their own
+# argparse parsers; quoted reply lines against the source that prints them.
+	$(PYTHON) tools/docs_check.py --check
 # A certified registry row must name existing ACL2 events whose defining
 # books have source- and include-closure-compatible manifest evidence, and
 # must itself cite an archived manifest that certified each event book at its
@@ -969,6 +986,12 @@ check:
 # planning/proof-cost-baseline.json: a new slow book, or one 25% over its
 # baseline, fails. Installed pairs have no proof time.
 	$(PYTHON) tools/proof_cost.py
+# The throughput gate (PKT-407): the newest hbox run under
+# planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
+# against planning/throughput-baseline.json per operation (25% or the
+# metric's floor); a regression fails unless planning/throughput-causes.json
+# names the run's revision with a reason.  No run: NOT MEASURED, passes.
+	$(PYTHON) tools/throughput_gate.py check
 # Every host file loaded alone in its own ACL2: the dynamic half of the
 # host-names lint.  Needs FN_ACL2 and installed certificates; without
 # FN_ACL2 it prints that it did not run and exits 0.
@@ -1148,9 +1171,9 @@ model-test: certify
 tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
+	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers -v
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check -v
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module

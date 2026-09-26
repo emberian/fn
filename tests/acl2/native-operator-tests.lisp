@@ -1038,27 +1038,93 @@
                       (fn-nop-usage :flag-word-as-group "init" nil nil))
                      (fn-nop-help-text "init")))
 
-; The rollback sentence's count (fn-native-operator-snapshot-loss-counts-the-suffix).
-(defconst *fn-nop-snap* '((1 . 440) (2 . 512)))
-(defconst *fn-nop-cur* '((1 . 440) (2 . 512) (3 . 300) (4 . 280) (5 . 610)))
-(assert-event (equal (fn-native-operator-snapshot-loss *fn-nop-snap* *fn-nop-cur*)
-                     '(:loses 3)))
-(assert-event (equal (fn-native-operator-snapshot-loss *fn-nop-cur* *fn-nop-cur*)
+;; The rollback verb's history claim (PRF-141,
+;; fn-native-operator-history-loss-is-ancestry).  Events are committed
+;; records' octets; *fn-nop-a* and *fn-nop-b* have the same length and the same
+;; leading sequence octet and differ in content.
+;; The composition the host runs and PRF-141 is stated over, spelled out.
+(defmacro fn-nop-t-loss (snap cur)
+  `(fn-native-operator-history-verdict
+    (fn-nop-history-run (fn-native-operator-history-start) ,snap ,cur)
+    (len ,cur)))
+(defconst *fn-nop-a* '(0 0 0 0 0 0 0 0 65 65 65 65))
+(defconst *fn-nop-b* '(0 0 0 0 0 0 0 0 66 66 66 66))
+(defconst *fn-nop-c* '(0 0 0 0 0 0 0 1 67 67 67 67 67))
+(defconst *fn-nop-d* '(0 0 0 0 0 0 0 2 68 68))
+
+; Reachable positive witness: the store's history is the snapshot's records
+; followed by two more; the antecedent and both conclusions hold.
+(assert-event
+ (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
+   (and (equal (append snap (nthcdr (len snap) cur)) cur)
+        (equal (car (fn-nop-t-loss snap cur)) :loses)
+        (equal (cadr (fn-nop-t-loss snap cur))
+               (len (nthcdr (len snap) cur)))
+        (equal (fn-nop-t-loss snap cur) '(:loses 2)))))
+(assert-event (equal (fn-nop-t-loss (list *fn-nop-a* *fn-nop-c*)
+                                                      (list *fn-nop-a* *fn-nop-c*))
                      '(:loses 0)))
-; A snapshot whose history diverged (record 2 differs) is refused, not counted.
-(assert-event (equal (fn-native-operator-snapshot-loss '((1 . 440) (2 . 999)) *fn-nop-cur*)
-                     '(:refused :snapshot-not-a-prefix)))
-; A snapshot ahead of the store is not a prefix either.
-(assert-event (equal (car (fn-native-operator-snapshot-loss *fn-nop-cur* *fn-nop-snap*))
-                     :refused))
+; The host's call sequence, as `fnn-command-rollback-snapshot' makes it.
+(assert-event
+ (equal (fn-native-operator-history-verdict
+         (fn-native-operator-history-step
+          (fn-native-operator-history-start) *fn-nop-a* t *fn-nop-a*)
+         3)
+        '(:loses 2)))
+
+;; gpt-6's counterexample (§7), the removed hypothesis: the old observation's
+;; (SEQUENCE . LENGTH) descriptors agree as a prefix, and the old verdict over
+;; them said one transaction is lost; the histories differ in their first
+;; record, the ancestry premise is false, and the verb refuses.
+(defun fn-nop-test-descriptors (events sequence)
+  (if (consp events)
+      (cons (cons sequence (len (car events)))
+            (fn-nop-test-descriptors (cdr events) (+ 1 sequence)))
+    nil))
+(assert-event
+ (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
+   (and (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
+                                (fn-nop-test-descriptors cur 0))
+        (equal (fn-native-operator-snapshot-loss (fn-nop-test-descriptors snap 0)
+                                                 (fn-nop-test-descriptors cur 0))
+               '(:loses 1))
+        (not (equal (append snap (nthcdr (len snap) cur)) cur))
+        (equal (fn-nop-t-loss snap cur)
+               '(:refused :snapshot-not-a-prefix)))))
+(must-fail
+ (thm (implies (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
+                                       (fn-nop-test-descriptors cur 0))
+               (equal (car (fn-nop-t-loss snap cur)) :loses))
+      :hints (("Goal" :do-not-induct t))))
+; The count's premise removed: over the same pair the count is not the
+; suffix's length.
+(assert-event
+ (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
+   (not (equal (cadr (fn-nop-t-loss snap cur))
+               (len (nthcdr (len snap) cur))))))
+(must-fail
+ (thm (equal (cadr (fn-nop-t-loss snap cur))
+             (len (nthcdr (len snap) cur)))
+      :hints (("Goal" :do-not-induct t))))
+; The list-level lemma (fn-native-operator-snapshot-loss-counts-the-suffix)
+; without its prefix hypothesis.
 (must-fail
  (thm (equal (cadr (fn-native-operator-snapshot-loss snap cur))
-             (- (len cur) (len snap)))))
+             (- (len cur) (len snap)))
+      :hints (("Goal" :do-not-induct t))))
+; A snapshot ahead of the store, and one that diverges later, are refused.
+(assert-event (equal (car (fn-nop-t-loss
+                           (list *fn-nop-a* *fn-nop-c*) (list *fn-nop-a*)))
+                     :refused))
+(assert-event (equal (car (fn-nop-t-loss
+                           (list *fn-nop-a* *fn-nop-d*)
+                           (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
+                     :refused))
 (assert-event (equal (fn-native-operator-snapshot-loss-report '(:loses 3) 2 5)
                      (concatenate 'string
                                   "rollback snapshot loses transactions=3 snapshot-transactions=2 store-transactions=5"
                                   (coerce '(#\Newline) 'string)
-                                  "restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back")))
+                                  "the snapshot's committed records are this store's first 2, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back")))
 ; The parse: an absolute snapshot path, and nothing else.
 (assert-event (equal (fn-native-operator-result-native-action
                       (fn-native-operator-run *fn-nop-minimal-config*
@@ -1068,3 +1134,85 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("store" "rollback-check" "--snapshot" "snap"))))
                      :usage))
+
+; ---------------------------------------------------------------------------
+; PRF-162: the implicit-TLS listener's port.
+(defconst *fn-nop-implicit-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 1119"
+                       "tls_cert = \"/etc/fn/cert.pem\"" "tls_key = \"/etc/fn/key.pem\""
+                       "tls_port = 1563")))
+(defconst *fn-nop-implicit-run*
+  (fn-native-operator-run *fn-nop-implicit-config* (fn-nop-test-argv '("run"))))
+; fn-native-operator-implicit-tls-listener-needs-its-certificate: the
+; reachable witness, every conjunct of the conclusion.
+(assert-event (equal (fn-native-operator-result-run-implicit-tls-port *fn-nop-implicit-run*)
+                     1563))
+(assert-event (fn-native-operator-result-run-planp *fn-nop-implicit-run*))
+(assert-event (not (fn-native-operator-result-run-oncep *fn-nop-implicit-run*)))
+(assert-event (equal (fn-native-operator-result-run-tls-cert-octets *fn-nop-implicit-run*)
+                     (fn-record-string-octets "/etc/fn/cert.pem")))
+(assert-event (equal (fn-native-operator-result-run-tls-key-octets *fn-nop-implicit-run*)
+                     (fn-record-string-octets "/etc/fn/key.pem")))
+(assert-event (equal (fn-native-operator-result-run-listener-port *fn-nop-implicit-run*)
+                     1119))
+; `run --once' serves one client on the plaintext listener: no TLS port.
+(assert-event (fn-native-operator-result-run-oncep
+               (fn-native-operator-run *fn-nop-implicit-config*
+                                       (fn-nop-test-argv '("run" "--once")))))
+(assert-event (null (fn-native-operator-result-run-implicit-tls-port
+                     (fn-native-operator-run *fn-nop-implicit-config*
+                                             (fn-nop-test-argv '("run" "--once"))))))
+; A plan that is not `run' offers none, even over the same configuration.
+(assert-event (null (fn-native-operator-result-run-implicit-tls-port
+                     (fn-native-operator-run *fn-nop-implicit-config*
+                                             (fn-nop-test-argv '("status"))))))
+; The hypothesis (a port is offered) removed: over a result that offers
+; none, the conclusion fails (no plan, no certificate).
+(assert-event (not (fn-native-operator-result-run-planp *fn-nop-post*)))
+(must-fail
+ (thm (let ((port (fn-native-operator-result-run-implicit-tls-port result)))
+        (declare (ignorable port))
+        (fn-native-operator-result-run-planp result))))
+; Without the certificate the loader refuses tls_port, so no plan exists.
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run
+          (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "tls_port = 1563"))
+          (fn-nop-test-argv '("run"))))
+        :usage))
+
+; ---------------------------------------------------------------------------
+; NNT-032: `store inspect MESSAGE-ID'.
+(defconst *fn-nop-inspect*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "inspect" "<a@fn.example.invalid>"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-inspect*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-inspect*) :inspect))
+(assert-event (fn-native-operator-result-needs-storep *fn-nop-inspect*))
+(assert-event (equal (fn-native-operator-result-inspect-msgid-octets *fn-nop-inspect*)
+                     (fn-record-string-octets "<a@fn.example.invalid>")))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("store" "inspect" "not-a-message-id"))))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("store" "inspect"))))
+        :usage))
+; fn-native-operator-inspect-report-is-the-lookup: both answers, the lines
+; the host prints.
+(assert-event
+ (equal (fn-native-operator-inspect-report (fn-record-string-octets "<a@fn.example.invalid>") t)
+        (list 0 :accepted
+              "accepted <a@fn.example.invalid> an article is stored here under this Message-ID")))
+(assert-event
+ (equal (fn-native-operator-inspect-report (fn-record-string-octets "<a@fn.example.invalid>") nil)
+        (list 1 :absent
+              "absent <a@fn.example.invalid> nothing is stored here under this Message-ID")))
+; The answer follows the lookup and nothing else: the verdict of a found
+; lookup is not the verdict of a missing one.
+(must-fail
+ (thm (equal (cadr (fn-native-operator-inspect-report m t))
+             (cadr (fn-native-operator-inspect-report m nil)))))

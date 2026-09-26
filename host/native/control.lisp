@@ -539,7 +539,7 @@ transition."
 
 (defun fnn-control-owner-run-normalized
     (store-octets listener-host-octets listener-port oncep max-connections
-     control-path-octets posting-enabledp &optional tls-context)
+     control-path-octets posting-enabledp &optional tls-context tls-port)
   "Add composable lifecycle hooks while leaving owner normalization intact."
   (unless (and (typep control-path-octets 'fnn-octets)
                (> (length control-path-octets) 0)
@@ -578,7 +578,7 @@ transition."
     ;; a durable submission.
     (fnn-control-stop-cut-armed-p)
     (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                              oncep max-connections tls-context)))
+                              oncep max-connections tls-context tls-port)))
 
 (defun fnn-control-connect (path)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket

@@ -1,0 +1,9 @@
+test_nonzero_fragment_then_restart_offset_zero_dispatches_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once) ... ok
+test_rotation_with_a_family_in_flight_loses_no_fragment (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_rotation_with_a_family_in_flight_loses_no_fragment) ... ok
+test_seventy_fragments_across_a_kill_reassemble_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_seventy_fragments_across_a_kill_reassemble_once) ... ok
+test_sixty_four_fragments_across_a_kill_reassemble_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_sixty_four_fragments_across_a_kill_reassemble_once) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 23.117s
+
+OK

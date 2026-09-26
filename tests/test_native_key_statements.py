@@ -308,11 +308,13 @@ class NativeKeyStatementTests(unittest.TestCase):
     def test_a_decline_across_a_restart_with_a_grant_added(self):
         """Packet 7 (PRF-124): a statement that declined for want of a `keys'
         grant, then a grant added live, then a restart.  Under the recorded
-        disposition (books/key-statements.lisp *fn-ks-reopen-policy*
-        :recorded) the open decides the statement under the grants in force at
-        its txid and it declines again; under the pre-packet behaviour the
-        open's live grant made it act.  FN_KS_REOPEN_EXPECT=acts runs the
-        trace against an image of the old behaviour."""
+        disposition (books/key-statements.lisp fn-ks-statement-rows, no
+        policy switch) the open decides the statement under the grants in
+        force at its txid and it declines again; under the pre-packet
+        behaviour the open's live grant made it act.  FN_KS_REOPEN_EXPECT=acts
+        runs the trace against a pre-packet image (the old behaviour is not a
+        supported configuration; its model is the counterexample fixture in
+        tests/acl2/key-statements-tests.lisp)."""
         expect = os.environ.get("FN_KS_REOPEN_EXPECT", "declines")
         d = self.node("d")
         self.start(d)
@@ -358,6 +360,62 @@ class NativeKeyStatementTests(unittest.TestCase):
             witness("log after a second restart", again)
             self.assertEqual(again[2:], [lines[1]])
             self.assertEqual(self.history(d), history)
+
+    def test_an_accepted_statement_cut_then_its_grant_revoked(self):
+        """PRF-140 (books/key-statements.lisp
+        fn-ks-accepted-statement-finishes-under-its-admission-context): a
+        succession accepted under a `keys' grant, the process killed at the
+        cut (statement durable, key change not), the grant revoked while the
+        node is down, a restart.  The open finishes the change under the
+        configuration at the statement's txid (the grant), not today's (no
+        grant): `enrol-successor committed at-open'."""
+        e = self.node("e")
+        self.start(e)
+        try:
+            self.enrol_and_grant(e)
+        finally:
+            self.stop(e)
+        env = dict(self.env)
+        env["FN_NATIVE_KEY_STATEMENT_FAULT"] = "statement-committed:kill"
+        proc = self.start(e, env)
+        old, new = self.keys["old"], self.keys["new"]
+        statement = self.carrier(self.principal_file, old,
+                                 self.succession("<admitted@keys.invalid>", P, old, new),
+                                 "admitted")
+        reply = self.post(e, statement, expect_reply=False)
+        proc.wait(timeout=60)
+        witness("cut POST reply", reply, "owner exit", proc.returncode)
+        self.assertEqual(proc.returncode, -9)
+        self.assertNotIn("key-statement", self.log(e))
+        self.assertEqual(self.history(e), ["generation=1 state=active principal=" + P.hex()])
+        # Today's configuration: the grant the statement was accepted under
+        # is revoked (a configuration record later than the statement),
+        # offline.  The killed owner left its control socket behind, and the
+        # operator hands a plan to a socket it finds (refused: nobody
+        # listens), so the harness removes the dead owner's socket first
+        # (recorded in planning/evidence/key-replay-fixture-2026-09-26.md).
+        self.assertTrue(e["control"].is_socket())
+        e["control"].unlink()
+        self.fn("operator", e["config"], "control", "revoke", P.hex(), "keys", "fn.keys")
+        listing = self.fn("operator", e["config"], "control", "list")
+        witness("control list after the revoke", listing.stdout.decode("utf-8", "replace").strip())
+        self.start(e)
+        self.stop(e)
+        lines = [line for line in self.log(e).splitlines() if "key-statement" in line]
+        history = self.history(e)
+        witness("log after the restart", lines)
+        witness("history after the restart", history)
+        self.assertEqual(lines, ["key-statement enrol-successor committed at-open"])
+        self.assertEqual(history, ["generation=2 state=active principal=" + P.hex(),
+                                   "generation=1 state=retired principal=" + P.hex()])
+        # A second open: the change is the newest record; nothing runs, and
+        # today's missing grant never undoes or re-decides it.
+        self.start(e)
+        self.stop(e)
+        again = [line for line in self.log(e).splitlines() if "key-statement" in line]
+        witness("log after a second restart", again)
+        self.assertEqual(again, lines)
+        self.assertEqual(self.history(e), history)
 
 
 if __name__ == "__main__":

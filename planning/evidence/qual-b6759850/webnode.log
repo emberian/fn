@@ -1,0 +1,32 @@
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml init fn.agents rc 0 initialized /tank/fn/scratch/qual-b6759850/webnode/store
+accepted operator init
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml group create rc 0 configured generation=2 record=00000002.cfg verification=VERIFIED
+accepted operator group
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml principal set-password rc 0 ember principal=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee posting=true
+Password: Confirm password: accepted operator principal set-password effective-at-next-start
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml principal set-password rc 0 guest principal=45d5ebf23ae82e66c1a1e789d7f52c95af520ca17148467cb6bbb1d44d78915b posting=true
+Password: Confirm password: accepted operator principal set-password effective-at-next-start
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml principal bind rc 0 ember principal=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee posting=true signing=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+accepted operator principal bind effective-at-next-start
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml policy set rc 0 configured generation=3 record=00000003.cfg verification=VERIFIED
+accepted operator policy
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml principal list rc 0 ember principal=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee posting=true signing=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+guest principal=45d5ebf23ae82e66c1a1e789d7f52c95af520ca17148467cb6bbb1d44d78915b posting=true
+accepted operator principal list
+OWNER 386733 LISTENING 46703
+RUN hybrid-enroll /tank/fn/scratch/qual-b6759850/webnode/control.sock 1 /tank/fn/scratch/qual-b6759850/webnode/keys/principal.bin rc 0 
+RUN hybrid-enroll /tank/fn/scratch/qual-b6759850/webnode/control.sock 2 /tank/fn/scratch/qual-b6759850/webnode/keys-q/principal.bin rc 0 
+RUN hybrid-author /tank/fn/scratch/qual-b6759850/webnode/control.sock 1 /tank/fn/scratch/qual-b6759850/webnode/root.eml rc 0 accepted hybrid-author ACCEPTED
+RUN hybrid-author /tank/fn/scratch/qual-b6759850/webnode/control.sock 1 /tank/fn/scratch/qual-b6759850/webnode/mid.eml rc 0 accepted hybrid-author ACCEPTED
+POST as guest -> 240 article received OK
+POST as guest -> 240 article received OK
+RUN hybrid-author /tank/fn/scratch/qual-b6759850/webnode/control.sock 1 /tank/fn/scratch/qual-b6759850/webnode/cancel.eml rc 0 accepted hybrid-author ACCEPTED
+READY PORT 46703 CERT /tank/fn/scratch/qual-b6759850/webnode/cert.pem
+owner exit 0 stdout after LISTENING: 
+RUN operator /tank/fn/scratch/qual-b6759850/webnode/fn.toml status rc 0 arge-reserved=31 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 held
+open=full-replay reason=absent
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file=absent
+pins=13 reserved=31 connections=0
+accepted operator status

@@ -1,0 +1,7 @@
+# tree2 (adbf4c9c + dev's b5f7340d replay files), before the host prepare/finish change; stores on /tmp (tmpfs)
+N=250
+{"host":"native","transactions":250,"payload_bytes":2048,"commit_seconds":5.2375,"reopen_seconds":0.2550,"status":"passed"}
+N=500
+{"host":"native","transactions":500,"payload_bytes":2048,"commit_seconds":19.2277,"reopen_seconds":0.5421,"status":"passed"}
+N=1000
+{"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":77.4366,"reopen_seconds":1.5061,"status":"passed"}

@@ -199,3 +199,5 @@ spec §4.1. Continues without it: everything in this record.
    a Store-rendered FN-Authorship carrier is refused at the destination (the
    signed mission); rerun `run_mission_four_node.py` (signed) on the new image.
 2. Stale test expectations C1 in test_bp_service_native/test_bp_contact_native.
+
+Harvested by assurance-triage (2026-09-26) as the scenario catalog's evidence log: [`unsigned.out`](mission-four-node/unsigned.out), the unsigned run's output, extracted from mission-four-node/mission-abbd8aef.tgz, sha256 `c41e4c412af28b15096c1fa538c1dc234826eb811af81499e3c82a08b5f49694`.

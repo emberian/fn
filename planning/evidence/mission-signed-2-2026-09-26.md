@@ -229,3 +229,5 @@ fn-host.core c70ffaddbba249d2…. Runs in
 - The BP books are still not guard-verified (as before this lane).
 - `make check` is green in the worktree with planning/ledger.*,
   planning/current.md regenerated locally and not committed (the deputy's).
+
+Harvested by assurance-triage (2026-09-26) as the scenario catalog's evidence log: [`signed-r2.out`](mission-signed-2-2026-09-26/signed-r2.out), signed-r2.out, copied from hbox /tank/fn/scratch/mission-signed-2/native-aa0f6c16/ with its report.json (mission-signed-2-2026-09-26/report.json), sha256 `ff9cf70ceed0498164a04fa185de7187e6629b2cb3b21872451a724e7387e4e1`.

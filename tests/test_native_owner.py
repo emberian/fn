@@ -65,8 +65,11 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         self.assertEqual(len(body[2:]), 1)
         protected = body[2]
         self.assertEqual(head(protected), "unwind-protect")
+        # Cleanup: the owner close (CID), the exposure release (the id
+        # fn-exp-open registered, kept even when a fault path cleared CID;
+        # PRF-161), the TLS channel, then the socket.
         self.assertEqual([head(form) for form in protected[1:]],
-                         ["handler-case", "when", "when", "fnn-socket-shut"])
+                         ["handler-case", "when", "when", "when", "fnn-socket-shut"])
         handler = protected[1]
         self.assertEqual(head(handler[1]), "progn")
         clauses = handler[2:]

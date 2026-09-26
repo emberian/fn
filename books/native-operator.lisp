@@ -366,6 +366,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; `store reclaim [--dry-run]': content reclamation's durable step (D13,
 ; STO-017, books/store-reclaim-pack.lisp).  What it removes is
 ; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
+; A Message-ID as a command word: "<", printable US-ASCII, ">" (RFC 3977
+; section 3.6), within the store's Message-ID bound (fn-record-msgidp).
+(defun fn-nop-msgid-wordp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (fn-record-msgidp word)
+       (<= 3 (length word))
+       (equal (char word 0) #\<)
+       (equal (char word (1- (length word))) #\>)))
+
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
   (cond ((and (consp words) (equal (car words) "upgrade-profile"))
@@ -405,6 +415,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                         (list :rollback-snapshot (caddr words))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
+        ; NNT-032: the operator's settling lookup.  Whether this store holds
+        ; an article under MESSAGE-ID (fn-native-operator-inspect-report),
+        ; the one privileged answer to a client left unresolved when a
+        ; re-send meets the login or posting gate (PKT-164).
+        ((and (consp words) (equal (car words) "inspect")
+              (consp (cdr words)) (null (cddr words))
+              (fn-nop-msgid-wordp (cadr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :inspect (cadr words))))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
@@ -449,7 +468,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
@@ -457,15 +476,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; spec peering 9)")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer budget NAME OCTETS COUNT | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
          "usage: fn operator CONFIG bp-route {add PATTERN BOUNDARY [PRIORITY] | remove PATTERN BOUNDARY} (PATTERN is a BP EID, or one ending in * for every EID with that prefix; the next hop of held transit, spec bp-node-machine 4.7)")
         ((equal subject "policy")
-         "usage: fn operator CONFIG policy set path-identity IDENTITY")
+         "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; restart to apply)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
         (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
 
@@ -487,7 +506,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ;; values and absolute paths; what the documents say, and whether they are
 ;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
 (defconst *fn-nop-peering-arity*
-  '(("genesis" . 1) ("invite" . 7) ("accept" . 5) ("confirm" . 2)))
+  '(("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)))
 
 (defun fn-nop-peering-verbp (word)
   (declare (xargs :guard t))
@@ -781,6 +800,51 @@ is installed into the owner for both served and control submission."
   (if (fn-native-operator-result-run-planp result)
       (fn-ncfg-nth 2 (fn-native-operator-result-arguments result))
     nil))
+
+; The implicit-TLS listener (`[listener] tls_port', PRF-162): the port a
+; served `run' opens beside the plaintext listener, or nil for none.  It is
+; offered only when the host will load the TLS context the handshake needs
+; (both certificate and key octets, which host/native/operator.lisp opens
+; with fnn-tls-open-context), on a port of its own, and not for `run
+; --once', which serves one client on the plaintext listener.  The
+; connections it accepts run the STARTTLS session machine after its
+; handshake (books/served-implicit-tls.lisp).
+(defun fn-native-operator-result-run-implicit-tls-port (result)
+  (declare (xargs :guard t))
+  (let* ((c (fn-native-operator-result-config result))
+         (port (fn-native-config-listener-tls-port c)))
+    (if (and (fn-native-operator-result-run-planp result)
+             (not (fn-native-operator-result-run-oncep result))
+             (natp port) (< 0 port) (<= port 65535)
+             (fn-ncfg-tls-port-okp port (fn-native-config-listener-port c)
+                                   (fn-native-config-tls-cert c))
+             (fn-native-operator-result-run-tls-cert-octets result)
+             (fn-native-operator-result-run-tls-key-octets result))
+        port
+      nil)))
+
+; KEYSTONE.  An implicit-TLS listener is offered only beside a loaded
+; certificate and key, on a valid port that is not the plaintext one, for a
+; served run.  The subject is the accessor host/native/operator.lisp reads
+; (fn-native-operator-host-result-run-implicit-tls-port) to decide whether
+; fnn-owner-run binds the second listener.
+(defthm fn-native-operator-implicit-tls-listener-needs-its-certificate
+  (let ((port (fn-native-operator-result-run-implicit-tls-port result)))
+    (implies port
+             (and (fn-native-operator-result-run-planp result)
+                  (not (fn-native-operator-result-run-oncep result))
+                  (fn-native-operator-result-run-tls-cert-octets result)
+                  (fn-native-operator-result-run-tls-key-octets result)
+                  (natp port) (< 0 port) (<= port 65535)
+                  (not (equal port
+                              (fn-native-operator-result-run-listener-port result))))))
+  :hints (("Goal" :in-theory (e/d (fn-ncfg-tls-port-okp
+                                   fn-native-operator-result-run-listener-port)
+                                  (fn-native-operator-result-run-tls-cert-octets
+                                   fn-native-operator-result-run-tls-key-octets
+                                   fn-native-operator-result-run-oncep
+                                   fn-native-operator-result-run-planp))))
+  :rule-classes nil)
 
 (defun fn-native-operator-result-run-max-connections (result)
   (declare (xargs :guard t))
@@ -1089,6 +1153,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rollback-snapshot)
                   :rollback-snapshot)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :inspect)
+                  :inspect)
                  (t :upgrade-profile)))
           ((and (equal (fn-native-operator-result-command result) "peer")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1745,7 +1812,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
     :reclaim-dry-run :needs-upgrade :rollback-check :rollback-snapshot
-    :upgrade-profile :admin
+    :upgrade-profile :admin :inspect
     :peering :principal))
 
 (defun fn-native-operator-result-needs-storep (result)
@@ -1839,11 +1906,19 @@ OBSERVED (the markers found beside the store root) is empty."
 ; -----------------------------------------------------------------------------
 ; What restoring a snapshot loses (mandate 5.6: "Restoring a pre-migration
 ; snapshot can lose later accepted articles; operational instructions must say
-; so plainly").  The host observes each store's committed transaction files as
-; (SEQUENCE . OCTET-LENGTH) pairs in sequence order (host/native/io.lisp
-; `fnn-command-rollback-snapshot'); ACL2 decides.  The snapshot is a rollback
-; point for this store only when its history is a prefix of the store's; the
-; loss is then every committed transaction after that prefix.
+; so plainly").  The host (host/native/io.lisp `fnn-command-rollback-snapshot')
+; acquires both stores under their shared writer locks, reads each one's
+; committed history as the open reads it (`fnn-rollback-history': the selected
+; pack's records, then the suffix files, the committed-history marker checked),
+; and hands ACL2 the records one pair at a time.  An event is a committed
+; record's exact octets.  The snapshot is an earlier state of this store only
+; when its records are this store's first records; the loss is then every
+; committed record after them.
+;
+; Until 2026-09-26 the host handed (SEQUENCE . FILE-LENGTH) pairs instead, and
+; two histories whose records agree in number and length but not in content
+; passed as one history (gpt-6's answers §7).  Counters and lengths are not
+; compared here at all: not as a filter, not as a count.
 
 (defun fn-nop-history-prefixp (snap cur)
   (declare (xargs :guard t))
@@ -1860,8 +1935,8 @@ OBSERVED (the markers found beside the store root) is empty."
     cur))
 
 (defun fn-native-operator-snapshot-loss (snap cur)
-  "(:loses N) when SNAP's history is a prefix of CUR's, N the transactions
-committed after it; else (:refused :snapshot-not-a-prefix)."
+  "(:loses N) when SNAP's events are a prefix of CUR's, N the events committed
+after it; else (:refused :snapshot-not-a-prefix)."
   (declare (xargs :guard t))
   (if (fn-nop-history-prefixp snap cur)
       (list :loses (len (fn-nop-history-suffix snap cur)))
@@ -1872,19 +1947,111 @@ committed after it; else (:refused :snapshot-not-a-prefix)."
            (equal (len (fn-nop-history-suffix snap cur))
                   (- (len cur) (len snap)))))
 
-; KEYSTONE (the rollback sentence's count).  The subject is
-; `fn-native-operator-snapshot-loss', which `fnn-command-rollback-snapshot'
-; (host/native/io.lisp) calls through `fn-native-operator-host-snapshot-loss'.
-; The verb answers :loses exactly when the snapshot's committed history is a
-; prefix of the store's, and the count it prints is the number of committed
-; transactions the store holds beyond the snapshot: the ones restoring the
-; snapshot throws away.
 (defthm fn-native-operator-snapshot-loss-counts-the-suffix
   (and (iff (equal (car (fn-native-operator-snapshot-loss snap cur)) :loses)
             (fn-nop-history-prefixp snap cur))
        (implies (fn-nop-history-prefixp snap cur)
                 (equal (cadr (fn-native-operator-snapshot-loss snap cur))
                        (- (len cur) (len snap))))))
+
+; The comparison the host drives: one call per snapshot record, with the
+; store's record at the same position (CUR-PRESENT nil when the store has no
+; record there), then the verdict over the store's record count.
+(defun fn-native-operator-history-start ()
+  (declare (xargs :guard t))
+  (list :matching 0))
+
+(defun fn-native-operator-history-step (acc snap-event cur-present cur-event)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-ncfg-first acc) :matching)
+           cur-present
+           (equal snap-event cur-event))
+      (list :matching (+ 1 (nfix (fn-ncfg-second acc))))
+    (list :diverged)))
+
+(defun fn-native-operator-history-verdict (acc ncur)
+  (declare (xargs :guard t))
+  (if (equal (fn-ncfg-first acc) :matching)
+      (list :loses (nfix (- (nfix ncur) (nfix (fn-ncfg-second acc)))))
+    (list :refused :snapshot-not-a-prefix)))
+
+; The host's loop, as a function: `fnn-command-rollback-snapshot' calls
+; `fn-native-operator-history-step' once per snapshot record in order, with
+; the store's records consumed alongside, from
+; `fn-native-operator-history-start', and then
+; `fn-native-operator-history-verdict' with the store's record count: the
+; composition the two theorems below are stated over.
+(defun fn-nop-history-run (acc snap cur)
+  (declare (xargs :guard t))
+  (if (consp snap)
+      (fn-nop-history-run (fn-native-operator-history-step
+                           acc (car snap) (consp cur) (fn-ncfg-first cur))
+                          (cdr snap) (fn-ncfg-rest cur))
+    acc))
+
+(local
+ (defthm fn-nop-history-run-diverged
+   (equal (fn-nop-history-run '(:diverged) snap cur)
+          '(:diverged))))
+
+(local
+ (defun fn-nop-history-run-ind (k snap cur)
+   (if (consp snap)
+       (fn-nop-history-run-ind (+ 1 k) (cdr snap) (fn-ncfg-rest cur))
+     (list k cur))))
+
+(local
+ (defthm fn-nop-history-run-matching
+   (implies (natp k)
+            (equal (fn-nop-history-run (list :matching k) snap cur)
+                   (if (fn-nop-history-prefixp snap cur)
+                       (list :matching (+ k (len snap)))
+                     '(:diverged))))
+   :hints (("Goal" :induct (fn-nop-history-run-ind k snap cur)
+            :in-theory (enable fn-ncfg-rest)))))
+
+(local
+ (defthm fn-nop-history-prefixp-len
+   (implies (fn-nop-history-prefixp snap cur)
+            (<= (len snap) (len cur)))
+   :rule-classes :linear))
+
+; The streamed comparison is the list-level one: the host's calls compute
+; `fn-native-operator-snapshot-loss' of the two record lists.
+(defthm fn-native-operator-history-loss-is-snapshot-loss
+  (equal (fn-native-operator-history-verdict
+          (fn-nop-history-run (fn-native-operator-history-start) snap cur)
+          (len cur))
+         (fn-native-operator-snapshot-loss snap cur)))
+
+(local
+ (defthm fn-nop-history-prefixp-is-append
+   (iff (fn-nop-history-prefixp snap cur)
+        (equal (append snap (nthcdr (len snap) cur)) cur))))
+
+(local
+ (defthm fn-nop-history-suffix-is-nthcdr
+   (implies (fn-nop-history-prefixp snap cur)
+            (equal (fn-nop-history-suffix snap cur)
+                   (nthcdr (len snap) cur)))))
+
+; KEYSTONE (PRF-141, the rollback verb's history claim).  The subject is the
+; composition `fnn-command-rollback-snapshot' (host/native/io.lisp) runs
+; through `fn-native-operator-host-history-start', `-step' and `-verdict'
+; over the two stores' committed records.  The verb answers :loses exactly when the store's history is the
+; snapshot's records followed by more records, and the count it prints is the
+; number of those later records: the ones restoring the snapshot throws away.
+; Two histories that agree in record counts and lengths but differ in any
+; record's octets are refused.
+(defthm fn-native-operator-history-loss-is-ancestry
+  (let ((verdict (fn-native-operator-history-verdict
+                  (fn-nop-history-run (fn-native-operator-history-start) snap cur)
+                  (len cur))))
+    (and (iff (equal (car verdict) :loses)
+              (equal (append snap (nthcdr (len snap) cur)) cur))
+         (implies (equal (append snap (nthcdr (len snap) cur)) cur)
+                  (equal (cadr verdict)
+                         (len (nthcdr (len snap) cur)))))))
 
 (defun fn-nop-nat-text (n)
   (declare (xargs :guard t))
@@ -1901,7 +2068,79 @@ committed after it; else (:refused :snapshot-not-a-prefix)."
                      " snapshot-transactions=" (fn-nop-nat-text nsnap)
                      " store-transactions=" (fn-nop-nat-text ncur)
                      (coerce '(#\Newline) 'string)
+                     "the snapshot's committed records are this store's first "
+                     (fn-nop-nat-text nsnap)
+                     ", compared record by record (packed records included); "
                      "restoring this snapshot loses every transaction committed after it: "
                      n
                      ", the articles accepted since it among them; the snapshot cannot give them back"))
-    "rollback snapshot refused snapshot-not-a-prefix (this snapshot is not an earlier state of this store)"))
+    (concatenate 'string
+                 "rollback snapshot refused snapshot-not-a-prefix"
+                 (coerce '(#\Newline) 'string)
+                 "this snapshot is not an earlier state of this store's history: "
+                 "its committed records, compared record by record, are not this store's first records "
+                 "(equal transaction counts or file sizes do not make them so); "
+                 "restoring it would replace this history, not shorten it")))
+
+; -----------------------------------------------------------------------------
+; `store inspect MESSAGE-ID' (NNT-032, PRF-162): the operator's settling
+; lookup.  The host opens the stopped store (the same exclusive open as
+; `recover'), asks the store node whether it binds MESSAGE-ID
+; (fn-store-sn-lookup-foundp, host/native/io.lisp fnn-bridge-lookup-found-p),
+; and prints this report.  "accepted" means an article is stored under the
+; Message-ID -- committed, whatever its visibility now (a cancel or a reclaim
+; does not unbind it); "absent" means none is.  It does not compare the
+; stored article with the client's copy: that is the re-send's question
+; (D25), which a client that lost its posting right can no longer ask.
+
+(defun fn-native-operator-result-inspect-msgid-octets (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :inspect)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-record-string-octets
+       (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-nop-octets-text (octets)
+  (declare (xargs :guard t))
+  (if (fn-cbor-octet-listp octets) (fn-record-octets-string octets) ""))
+
+; (EXIT-CODE VERDICT LINE).  FOUNDP is the store node's lookup; the line is
+; the verdict word, the Message-ID and the sentence the verdict names.
+(defun fn-nop-inspect-verdict (foundp)
+  (declare (xargs :guard t))
+  (if foundp :accepted :absent))
+
+(defun fn-nop-inspect-line (verdict msgid)
+  (declare (xargs :guard t))
+  (if (equal verdict :accepted)
+      (concatenate 'string "accepted " (if (stringp msgid) msgid "")
+                   " an article is stored here under this Message-ID")
+    (concatenate 'string "absent " (if (stringp msgid) msgid "")
+                 " nothing is stored here under this Message-ID")))
+
+(defun fn-native-operator-inspect-report (msgid-octets foundp)
+  (declare (xargs :guard t))
+  (let ((verdict (fn-nop-inspect-verdict foundp)))
+    (list (if (equal verdict :accepted) 0 1)
+          verdict
+          (fn-nop-inspect-line verdict (fn-nop-octets-text msgid-octets)))))
+
+(in-theory (disable fn-nop-inspect-line))
+
+; KEYSTONE.  The report is the lookup: verdict :accepted and exit 0 exactly
+; when the store binds the Message-ID, :absent and exit 1 exactly when it
+; does not; the printed line is the verdict's.  The subject is the function
+; host/native/io.lisp fnn-command-operator-inspect calls (through
+; fn-native-operator-host-inspect-report) with the boolean
+; fnn-bridge-lookup-found-p returned.
+(defthm fn-native-operator-inspect-report-is-the-lookup
+  (let ((report (fn-native-operator-inspect-report msgid-octets foundp)))
+    (and (equal (car report) (if foundp 0 1))
+         (equal (cadr report) (if foundp :accepted :absent))
+         (equal (caddr report)
+                (fn-nop-inspect-line (if foundp :accepted :absent)
+                                     (fn-nop-octets-text msgid-octets))))))

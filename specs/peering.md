@@ -1575,9 +1575,29 @@ the statement changes what the open does with it
 (`fn-ks-reopen-is-blind-to-later-configuration`), and the cut still completes
 as the uninterrupted acceptance would
 (`fn-ks-recorded-recovery-completes-the-cut`). Re-evaluation under today's
-grants is an explicit act (a new statement), never a restart. The selection
-is `*fn-ks-reopen-policy*` (`:recorded`; `:current` restores the old
-behaviour), a one-line switch.
+grants is an explicit act (a new statement), never a restart. The reopen is
+recorded by definition (`fn-ks-statement-rows`, which the host's
+`fn-owner-key-statement-rows` calls): no supported switch restores the old
+behaviour, which survives only as a counterexample fixture in
+`tests/acl2/key-statements-tests.lisp`. A statement the node accepted whose
+key change was cut before its effect finishes at the restart under its
+original admission context, the configuration at its txid, even when a later
+record revoked the grant it was accepted under
+(`fn-ks-accepted-statement-finishes-under-its-admission-context`, PRF-140).
+
+The reconstruction reads exactly the configuration journal the open installs
+(`fn-sn-config-history`): every configuration record from the first, in
+sequence, or the open faults (`:config-sequence` in `fn-cpr-loop`). No
+transition removes a configuration record (checkpoint, compaction and
+reclaim write none), and the profile's `max-config-generations` refuses a new
+record rather than dropping an old one, so the journal prefix through any
+statement's txid is present whenever the Store opens. The replay rule is part
+of the Store format's meaning: a change to it is a format version with its
+own reader, never an edit that reinterprets records already written. An
+explicit re-evaluation under today's grants, `operator CONFIG keys redecide
+MSGID`, is specified (PKT-325) and not built: decided by ACL2 under the grants
+at the redecide's own txid, and filed as its own record, never an effect of
+open.
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
@@ -1609,7 +1629,9 @@ sources (From, Date, Newsgroups `fn.peering`, Subject, Message-ID) carried by
 FN-Authorship, whose body is `Key: value` lines of printable ASCII. The
 invitation names `FN-Peering: invitation fn-peering-v1`, `Nonce` (16 octets,
 hex), `Principal`, `Genesis-Token`, `Ed25519`, `ML-DSA-65` (hex), and the
-informational `Invitee`, `Inviter-Path`, `Groups`, `Host`, `Port`. The
+informational `Invitee`, `Inviter-Path`, `Groups`, `Host`, `Port`, then
+`Inviter-Host` and `Inviter-Port` (PRF-160; `-` when the inviter names no
+address, absent in invitations written before them). The
 acceptance names `FN-Peering: acceptance fn-peering-v1`, the invitation's
 `Nonce`, its `Invitation-Source-Id` (the 48-octet ACL2 authored-source
 identity, hex) and `Inviter-Principal`, then its own `Principal`,
@@ -1641,8 +1663,8 @@ control requests 9, 10 and 11, each carrying one carrier):
 | verb | host I/O | ACL2 decision | effect |
 | --- | --- | --- | --- |
 | `genesis KEYDIR` | read the two public keys; draw a 16-octet token if `token.bin` is absent | `fn-pinv-genesis-principal` | writes `principal.bin` |
-| `invite NAME GROUPS HOST PORT PATH KEYDIR OUT` | nonce from the CSPRNG, wall clock, sign | `fn-pinv-invitation-source`; at the owner `fn-pinv-issue-plan` | one `:issue-invitation` record, then `OUT` |
-| `accept FILE KEYDIR PATH REACHABLE OUT` | observe, sign | at the owner `fn-pinv-accept-step`; then `fn-pinv-acceptance-source` | a kind-3 enrolment of the inviter at ACL2's next generation, then `OUT` |
+| `invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST MY-PORT` | nonce from the CSPRNG, wall clock, sign | `fn-pinv-invitation-source`; at the owner `fn-pinv-issue-plan` | one `:issue-invitation` record, then `OUT` |
+| `accept FILE KEYDIR PATH REACHABLE OUT` | observe, sign | at the owner `fn-pinv-accept-record-plan`, then `fn-pinv-accept-step`; then `fn-pinv-acceptance-source` | when the invitation names its address, one record `:set-peer` of the inviter; then a kind-3 enrolment of the inviter at ACL2's next generation, then `OUT` |
 | `confirm ACCEPTANCE INVITATION` | observe | at the owner `fn-pinv-confirm-record-plan`, then `fn-pinv-confirm-step` | one record `:consume-invitation` + `:set-peer`, then a kind-3 enrolment of the acceptor |
 
 **The confirm configures the peer (PRF-124).** `confirm ACCEPTANCE
@@ -1664,10 +1686,35 @@ table holding exactly the confirmed peer
 (`fn-pinv-confirm-record-fold-consumes-and-configures`); a crash leaves
 neither or both. The invitation carries no TLS words: a protected transport
 is the operator's `peer add` of the same name, which replaces the record.
-The accepting side gets no peer record from `accept` (the invitation does
-not carry the inviter's address).
+The accepting side's peer record is the accept's (PRF-160, below).
 
-NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided
+**The accept configures the inviter (PRF-160).** `peer invite ... OUT
+MY-HOST MY-PORT` writes two more signed body lines, `Inviter-Host` and
+`Inviter-Port`: the inviter's own reachable address (`- -` writes `-` in
+both and names none). The lines are additive: the kind line stays
+`fn-peering-v1`, and an invitation without them (or with `-`) is accepted
+exactly as before, enrolling the inviter and configuring nothing. For an
+invitation that names a port, the owner's accept plan
+(`fn-pinv-accept-record-plan`, called by `fnn-pinv-owner-accept`) publishes
+ONE configuration record `(:set-peer INVITER ...)` before the kind-3
+enrolment: the peer is named and path-identified by the invitation's
+`Inviter-Path`, its transport is `(:nntp 1 Inviter-Host Inviter-Port
+(:clear))`, inbound `Groups` (the inviter may feed them here), no outbound
+half, and the role binding `(:principal INVITER)` of the principal whose
+carrier verified. It is the mirror of the confirm's peer. An inviter already
+enrolled here refuses the accept before any record (`already-enrolled`); a
+peer of that name with other rows refuses it (`peer-name-taken`); a peer
+record the words do not make refuses it (`peer-record`). Over the fold
+`fn-cfg-apply` the record leaves the peers table holding exactly the
+inviter peer's rows (`fn-pinv-accept-record-fold-configures-the-inviter`),
+and a death between the record and the enrolment is resumed by the next
+accept of the same invitation, which finds those rows and enrols without a
+second record. As with the confirm, TLS words and an outbound feed are the
+operator's `peer add` of the same name.
+
+NNT-030: A friend's node and this one become peers from one invitation each way of the exchange: the accept configures the inviter at the invitee from the invitation's signed address in one record before the enrolment, the confirm configures the invitee at the inviter, and a crash between record and enrolment is resumed without a second record
+
+NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context
 
 **Crash between consumption and enrolment.** The consuming record is
 published before the enrolment. A process death between the two leaves a row

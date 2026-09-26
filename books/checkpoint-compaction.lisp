@@ -8,6 +8,11 @@
 
 (defconst *fn-cc-magic* '(102 110 45 120)) ; "fn-x"
 (defconst *fn-cc-version* 0)
+; One pack file (one chain link, books/checkpoint-pack-chain) is one
+; scheduling quantum of compaction and the open's largest single pack read:
+; work bounds, not a bound on the history.  A summary (a whole chain's
+; records, `fn-ccc-chain-summary') carries no event limit; the capture and
+; the codec of one link do.
 (defconst *fn-cc-max-events* 4096)
 (defconst *fn-cc-max-octets* 4194304)
 
@@ -59,7 +64,6 @@
        (fn-record-uint32p (fn-cc-frontier summary))
        (<= (fn-cc-sequence summary) (fn-cc-frontier summary))
        (equal (len (fn-cc-events summary)) (fn-cc-sequence summary))
-       (<= (fn-cc-sequence summary) *fn-cc-max-events*)
        (fn-cc-octet-event-listp (fn-cc-events summary) 0 0
                                 (fn-cc-frontier summary))))
 

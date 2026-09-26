@@ -505,7 +505,9 @@
 ;                                    and it writes nothing)
 ;   (:dry-run MSGIDS FREED COUNTS)   what a run would reclaim; nothing written
 ;   (:reclaim STEPS MSGIDS FREED SUMMARY-OCTETS COUNTS)
-;   (:refused REASON)                nothing written
+;   (:refused REASON)                nothing written; REASON is :profile,
+;                                    :observation, :spans-links,
+;                                    :temporary-space or :capture
 ;
 ; STEPS are `*fn-rclp-steps*': drop the derived state checkpoint (it holds
 ; payload octets and would be opened in place of the history), publish the
@@ -542,13 +544,23 @@
            (list :compact-first))
           (t
            (let ((new (fn-rclp-events records ctx)))
-             (if (not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets new)))
-                 (list :refused :temporary-space)
+             (cond
+              ; The reclaiming pack is one link: the first link of a new
+              ; chain covering what the selected chain covers.  A rewritten
+              ; history past one scheduling quantum would need a chain of
+              ; rewritten links published before one selection, which is
+              ; not built (PKT-332); it is refused by name, nothing written.
+              ((or (< *fn-cc-max-events* (len new))
+                   (< *fn-cc-max-octets* (fn-cc-event-octets-size new)))
+               (list :refused :spans-links))
+              ((not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets new)))
+               (list :refused :temporary-space))
+              (t
                (let ((captured (fn-cc-capture new frontier)))
                  (if (not (equal (car captured) :ok))
                      (list :refused :capture)
                    (list :reclaim *fn-rclp-steps* msgids (fn-rclp-freed records ctx)
-                         (fn-cc-encode (cadr captured)) counts)))))))))
+                         (fn-cc-encode (cadr captured)) counts))))))))))
 
 ;  KEYSTONE (the decision publishes the rewrite and nothing else).  When the
 ; verb reclaims, the pack it publishes is the encoded summary of exactly
@@ -604,6 +616,47 @@
                             fn-cverb-older-count
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-transactions)))))
+
+(local
+ (defthm fn-rclp-rewritten-msgids-need-events
+   (implies (consp (fn-rclp-rewritten-msgids events ctx)) (consp events))
+   :rule-classes :forward-chaining))
+
+;  KEYSTONE (the reclaiming pack of a chained history is a link).  The
+; summary the verb hands the host (`fn-cc-encode' of it is what
+; host/native/checkpoint.lisp `fnn-pack-publish-generation' seals) is a
+; version-0 pack, which books/checkpoint-pack-chain.lisp decodes as a first
+; link (`fn-ccc-link-of-summary'): a valid link, no predecessor, covering
+; exactly what the selected chain covered (its boundary is LOWER, the
+; chain's coverage, and the whole committed history).  Selecting it makes a
+; one-link chain; `fn-ccc-retire-plan' then retires every link of the old one.
+(defthm fn-rclp-reclaiming-pack-is-a-first-link
+  (let ((d (fn-rclp-decide profile rule now s records frontier lower names
+                           generations selected disk-free dry))
+        (summary (cadr (fn-cc-capture (fn-rclp-events records (fn-rclp-ctx rule now s))
+                                      frontier))))
+    (implies (equal (car d) :reclaim)
+             (let ((l (fn-ccc-link-of-summary summary)))
+               (and (fn-ccc-linkp l)
+                    (equal (fn-ccc-lower l) 0)
+                    (equal (fn-ccc-pred-digest l) nil)
+                    (equal (fn-ccc-boundary l) lower)
+                    (equal (fn-ccc-boundary l) (len records))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cc-capture fn-cc-make fn-cc-sequence
+                                   fn-cc-frontier fn-cc-events fn-cc-nth
+                                   fn-ccc-link-of-summary fn-ccc-make fn-ccc-linkp
+                                   fn-ccc-lower fn-ccc-boundary fn-ccc-lower-frontier
+                                   fn-ccc-frontier fn-ccc-pred-generation
+                                   fn-ccc-pred-digest fn-ccc-events)
+                                  (fn-rclp-events fn-rclp-freed
+                                   fn-rclp-rewritten-msgids
+                                   fn-cc-octet-event-listp fn-cc-event-octets-size
+                                   fn-rcl-store-counts fn-rclp-ctx
+                                   fn-bs-pack-reclaim-plan fn-cverb-pack-octets
+                                   fn-cverb-disk-admitsp fn-cverb-older-count
+                                   fn-bs-profile-admittedp
+                                   fn-bs-profile-max-transactions)))))
 
 (local
  (defthm rewritten-msgids-under-keep-forever

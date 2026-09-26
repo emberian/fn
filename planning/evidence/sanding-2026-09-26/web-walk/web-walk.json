@@ -1,0 +1,25 @@
+[
+ {
+  "name": "01-home",
+  "url": "http://127.0.0.1:8931/",
+  "text": "fn / news\nguest at 127.0.0.1:32031 · TLSv1.3, certificate verified\nlocal reader\nGroups\nfn.agents 5 unread\nLocal article numbers 1–6 · 5 articles · posting allowed\nfn.test nothing unread\nNo local articles yet · 0 articles · posting allowed\ncontrol.cancel 2 unread\nLocal article numbers 1–2 · 2 articles · posting allowed\nResume from a (group, local number, Message-ID)"
+ },
+ {
+  "name": "02-group",
+  "url": "http://127.0.0.1:8931/g?name=fn.agents",
+  "text": "fn / news\nguest at 127.0.0.1:32031 · TLSv1.3, certificate verified\nlocal reader\nGroupsWrite a post\nfn.agents\nLocal article numbers 1–6 · group currently spans 1–6 · viewing does not acknowledge processing\nSearch fn.agents (a wildmat the node matches: * any text, ? one character, a,b either; case-sensitive)\nSubject\nAuthor\nSearch\nThreaded by References within this window. Unread marks are this client's, not the node's.\nMark read through local #6\n● Daily walk: where do we keep the notes? verified\nember <ember@fn.example.invalid> · Fri, 25 Sep 2026 23:00:00 +0000 · local #1\n● Re: Daily walk: where do we keep the notes? absent\n<hbox@example.org> · Sat, 26 Sep 2026 00:25:36 +0000 · local #3 · parent withdrawn reply to <walk-mid@fn.example.invalid>, which the node answers 430 withdrawn · conversation\n● Re: Daily walk: where do we keep the notes? absent\nember <ember@127.0.0.1> · Sat, 26 Sep 2026 00:27:22 +0000 · local #5 · conversation\n● tin walk: a new thread absent\n<hbox@example.org> · Sat, 26 Sep 2026 00:25:59 +0000 · local #4\n● walk: posted while the node was unreachable absent\nember <ember@127.0.0.1> · Sat, 26 Sep 2026 00:28:20 +0000 · local #6\n1 local number(s) in this window serve no article\nThe node's answer to STAT for each, as it sent it. A withdrawn article existed and was cancelled; a number with no article was never assigned here or its article was released.\nwithdrawn local #2 · 423 withdrawn"
+ },
+ {
+  "name": "pills",
+  "count": 1
+ },
+ {
+  "name": "03-flagged-card-conversation",
+  "url": "http://127.0.0.1:8931/t?group=fn.agents&number=3",
+  "text": "fn / news\nguest at 127.0.0.1:32031 · TLSv1.3, certificate verified\nlocal reader\nfn.agentsThe articleReply\nConversation\nStarted by <walk-root@fn.example.invalid>. Earlier messages are the article's References, each asked of the node by Message-ID. Replies are the node's answer to XPAT References 1-6 *<walk-root@fn.example.invalid>* over local numbers 1–6 of fn.agents: the node decides which served articles match; replies outside this window or this group are not shown.\nDaily walk: where do we keep the notes?\nember <ember@fn.example.invalid> · Fri, 25 Sep 2026 23:00:00 +0000 · local #1\nwithdrawn an earlier message, <walk-mid@fn.example.invalid>; the node answered 430 withdrawn\n▸ Re: Daily walk: where do we keep the notes?\n<hbox@example.org> · Sat, 26 Sep 2026 00:25:36 +0000 · local #3\nRe: Daily walk: where do we keep the notes?\nember <ember@127.0.0.1> · Sat, 26 Sep 2026 00:27:22 +0000 · local #5"
+ },
+ {
+  "name": "agree",
+  "conversationWithdrawn": true
+ }
+]

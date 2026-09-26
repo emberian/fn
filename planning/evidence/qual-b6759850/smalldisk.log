@@ -1,0 +1,4 @@
+{"tag": "built", "name": "tight", "n": 400, "posted": 399, "refused": [[188, "441 posting failed; the store has no capacity for this article"]], "wall_s": 49.9}
+compact (0, 'compacted steps=pack,select,reclaim,retire records=188 generation=0 reclaimed=188 retired=0\n')
+reclaim small disk (1, '', 'refused operator reclaim reclaim refused: temporary-space\n')
+files before 8 after 8

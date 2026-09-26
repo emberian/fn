@@ -1,0 +1,11 @@
+test_carried_budget_and_refusal_classes (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_carried_budget_and_refusal_classes) ... ok
+test_carrying_boundary_without_budget_carries_nothing (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_carrying_boundary_without_budget_carries_nothing) ... ok
+test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies) ... ok
+test_d23_unlisted_relay_refuses_439_and_logs_it (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_d23_unlisted_relay_refuses_439_and_logs_it) ... ok
+test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it)
+A receiver without its own enrollment of the principal refuses. ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 15.544s
+
+OK

@@ -1,0 +1,40 @@
+Sat, 26 Sep 2026 03:57:19                                     fn.test                                           Thread    1 of    1
+Lines 1                                                tin over TLS, the root                                          No responses
+ember <ember@fn.example.invalid>
+
+Newsgroups: fn.test
+
+A root for tin to follow up.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                             <n>=set current to n; <TAB>=next unread; /=search pattern; ^K=kill/select
+                                 a=author search; B=body search; c=catchup; f=followup; K=mark read
+                                |=pipe; m=mail; o=print; q=quit; r=reply mail; s=save; t=tag; w=post
+
+                                                                                                                -- Last response --

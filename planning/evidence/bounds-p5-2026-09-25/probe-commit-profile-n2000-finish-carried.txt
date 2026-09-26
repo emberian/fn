@@ -1,0 +1,104 @@
+at 0 0.000
+at 250 1.355
+at 500 3.878
+at 750 7.357
+at 1000 12.054
+at 1250 17.497
+at 1500 23.867
+at 1750 31.104
+
+Number of samples:   3952
+Sample interval:     0.01 seconds
+Total sampling time: 39.52 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3604483 "main thread" RUNNING {1200068003}> (365704/1048576 bytes, 1116 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      0   0.0   3944  99.8      0   0.0        -  PROF-COMMITS
+   4      0   0.0   3944  99.8      0   0.0        -  top level form
+   6      0   0.0   3944  99.8      0   0.0        -  (FLET "G" :IN SB-C::%COMPILE-IN-LEXENV)
+   8      0   0.0   3944  99.8      0   0.0        -  SB-C::%COMPILE-IN-LEXENV
+  10      0   0.0   3944  99.8      0   0.0        -  SB-C:EVAL-WITH-COMPILE-IN-LEXENV
+  12      0   0.0   3944  99.8      0   0.0        -  SB-IMPL::%SIMPLE-EVAL
+  14      0   0.0   3944  99.8      0   0.0        -  SB-INT:SIMPLE-EVAL-IN-LEXENV
+  16      0   0.0   3944  99.8      0   0.0        -  SB-EXT:EVAL-TLF
+  18      0   0.0   3944  99.8      0   0.0        -  (LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE)
+  20      0   0.0   3944  99.8      0   0.0        -  (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE)
+  22      0   0.0   3944  99.8      0   0.0        -  SB-C::%DO-FORMS-FROM-INFO
+  24      0   0.0   3944  99.8      0   0.0        -  SB-INT:LOAD-AS-SOURCE
+  26      0   0.0   3944  99.8      0   0.0        -  (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD)
+  28      0   0.0   3944  99.8      0   0.0        -  SB-FASL::CALL-WITH-LOAD-BINDINGS
+  30      0   0.0   3944  99.8      0   0.0        -  LOAD
+  32      0   0.0   3944  99.8      0   0.0        -  SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS
+  34      0   0.0   3944  99.8      0   0.0        -  SB-IMPL::TOPLEVEL-INIT
+  36      0   0.0   3944  99.8      0   0.0        -  (FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP)
+  38      0   0.0   3944  99.8      0   0.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP)
+  40      0   0.0   3944  99.8      0   0.0        -  SB-IMPL::%START-LISP
+  42      0   0.0   3944  99.8      0   0.0        -  foreign function call_into_lisp_
+  44      0   0.0   3895  98.6      0   0.0        -  FNN-CALL
+  46      0   0.0   3852  97.5      0   0.0        -  FNN-CORE-STATE
+  48      0   0.0   3772  95.4      0   0.0        -  FN-STORE-SN-PREPARE
+  50      0   0.0   3772  95.4      0   0.0        -  FNN-BRIDGE-PREPARE
+  52      0   0.0   3753  95.0      0   0.0        -  FN-SPC-PREPARE
+  54      0   0.0   3702  93.7      0   0.0        -  FN-SPC-STAGE-RECORD
+  56      1   0.0   3701  93.6      1   0.0        -  FN-SF-CANDIDATEP
+  58      2   0.1   3679  93.1      3   0.1        -  FN-STORE-EVENT-TXID
+  60      6   0.2   3671  92.9      9   0.2        -  FN-SF-NEXT-LOWER
+  62     12   0.3   3205  81.1     21   0.5        -  FN-RECORD-P
+  64    974  24.6   1941  49.1    995  25.2        -  FN-RECORD-STRING-OCTETS-AUX
+  66    621  15.7   1917  48.5   1616  40.9        -  FN-RECORD-PAYLOADP
+  68    885  22.4   1367  34.6   2501  63.3        -  FN-CBOR-OCTET-LISTP
+  70     13   0.3    861  21.8   2514  63.6        -  FN-RECORD-METADATA-BYTES-P
+  72    583  14.8    583  14.8   3097  78.4        -  FN-CBOR-OCTETP
+  74      0   0.0    524  13.3   3097  78.4        -  SB-SPROF::UNAVAILABLE-FRAMES
+  76     13   0.3    384   9.7   3110  78.7        -  FN-RECORD-OCTET-STRINGP
+  78    330   8.4    339   8.6   3440  87.0        -  FN-RECORD-STRING-OCTETS
+  80      3   0.1    180   4.6   3443  87.1        -  FN-RECORD-MSGIDP
+  82      5   0.1    146   3.7   3448  87.2        -  FN-RECORD-GROUPSP
+  84      4   0.1    138   3.5   3452  87.3        -  FN-RECORD-GROUP-LISTP
+  86      4   0.1    110   2.8   3456  87.4        -  FN-RECORD-GROUP-NAMEP
+  88      7   0.2     95   2.4   3463  87.6        -  FN-RECORD-ASCII-STRINGP
+  90     82   2.1     84   2.1   3545  89.7        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  92     14   0.4     61   1.5   3559  90.1        -  FN-RECORD-ASCII-OCTET-LISTP
+  94      0   0.0     57   1.4   3559  90.1        -  FNN-PUBLISH
+  96     34   0.9     54   1.4   3593  90.9        -  FN-RECORD-ASCII-OCTETP
+  98     53   1.3     53   1.3   3646  92.3        -  %DATA-VECTOR-AND-INDEX
+ 100      0   0.0     51   1.3   3646  92.3        -  FN-CCAR-SN-FINISH
+ 102      0   0.0     51   1.3   3646  92.3        -  FN-STORE-SN-FINISH
+ 104      0   0.0     51   1.3   3646  92.3        -  FNN-BRIDGE-FINISH
+ 106      0   0.0     51   1.3   3646  92.3        -  FNN-FINISH
+ 108      0   0.0     50   1.3   3646  92.3        -  FN-RCON-RECORD-P
+ 110      0   0.0     43   1.1   3646  92.3        -  FNN-CORE
+------------------------------------------------------------------------
+         13   0.3                                     elsewhere
+
+Number of samples:   3952
+Sample interval:     0.01 seconds
+Total sampling time: 39.52 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3604483 "main thread" RUNNING {1200068003}> (365704/1048576 bytes, 1116 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    974  24.6   1941  49.1    974  24.6        -  FN-RECORD-STRING-OCTETS-AUX
+   4    885  22.4   1367  34.6   1859  47.0        -  FN-CBOR-OCTET-LISTP
+   6    621  15.7   1917  48.5   2480  62.8        -  FN-RECORD-PAYLOADP
+   8    583  14.8    583  14.8   3063  77.5        -  FN-CBOR-OCTETP
+  10    330   8.4    339   8.6   3393  85.9        -  FN-RECORD-STRING-OCTETS
+  12     82   2.1     84   2.1   3475  87.9        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  14     53   1.3     53   1.3   3528  89.3        -  %DATA-VECTOR-AND-INDEX
+  16     34   0.9     54   1.4   3562  90.1        -  FN-RECORD-ASCII-OCTETP
+  18     20   0.5     20   0.5   3582  90.6        -  foreign function pthread_sigmask
+  20     17   0.4     17   0.4   3599  91.1        -  TRUE-LISTP
+  22     17   0.4     17   0.4   3616  91.5        -  SB-KERNEL:TWO-ARG-<=
+  24     16   0.4     25   0.6   3632  91.9        -  FN-RECORD-GROUP-NAME-OCTETS-AUX
+  26     15   0.4     15   0.4   3647  92.3        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  28     14   0.4     61   1.5   3661  92.6        -  FN-RECORD-ASCII-OCTET-LISTP
+  30     13   0.3    861  21.8   3674  93.0        -  FN-RECORD-METADATA-BYTES-P
+------------------------------------------------------------------------
+         13   0.3                                     elsewhere

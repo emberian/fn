@@ -1,0 +1,361 @@
+# rehearsal start 2026-09-26T05:18:57Z
+STEP copy-live-store files=25 (auth.toml excluded from the digest list)
+  | 964bfec9a95e334136eda8806c8e99fd75138424b93ab5b974ff1726724c3626  allocation-frontier.json
+  | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  auth.toml.lock
+  | 7ece7a044ebe36fbf780b514b949136908489de6671ae3d9caa181f0fc8fefdd  committed-history.json
+  | b7c2fa8b1de716d32f8e4fcc662c5f42c19d24fba35ff3c8fe08044de4bf7835  config/00000001.cfg
+  | b387d299ffa7d600d72b153f43794f9b95d3a32de2b98111c2719ad354eb022a  config/00000002.cfg
+  | 2220bd680c008c69d73b2c03fc83be917a0d33dde6c6742a687d863fb4254732  config/00000003.cfg
+  | bd404129f233ff77711ee7a7cf73dabfee99b0bcaa3048986e5217027aba3fb4  config/00000004.cfg
+  | 323c74ce6e7e6f1377775afe0f025aa2d6e0b70595d04b4d3a2c3991aa714b1c  config/00000005.cfg
+  | 55960f4b130ea01fd0c730b7a1eb5b93f21a15a19c0779b53ff97d7a69a8a598  config.json
+  | bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9  config.json.format-7
+  | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  control.sock.lock
+  | 38b74fed9a7d173da040d42b06e3489c824a01f1ae58300858a74d412a5279c3  transactions/00000000000000000000.txn
+  | 5aaa4422f56917f53e74fc09bc7423df8c9a48da701a73538b7294bd51d14e2a  transactions/00000000000000000001.txn
+  | b91f25c75bda4d3a911788f724f38cfeb9f599b556069ede1abaa6e4665e46f8  transactions/00000000000000000002.txn
+  | 693416909ab3d4db4fca1948de78a9b28896273b15ec30a9065d32b9460582a0  transactions/00000000000000000003.txn
+  | 55cd95ba777e2519b74db91270e02d7de44d38411efbd3a186abc23d7f3a83f6  transactions/00000000000000000004.txn
+  | 04dd2b9ad7dadb1e91cb90a0f288fc6d1aabfbbcf618e31f83f27b853c816419  transactions/00000000000000000005.txn
+  | a69a2a428a0dfa73d8c6139d9cc1d8fad91468a38eb28ce30f3cefe7e0ea9f8e  transactions/00000000000000000006.txn
+  | 1074dac7d379baeb9557275df41c81eb7f9b8cc41ba099fd49aa9cfdf8c9b0f0  transactions/00000000000000000007.txn
+  | 41a69c2f9f14ee902b29480e09268986fa6aca8a1424898da5768b523bd9d683  transactions/00000000000000000008.txn
+  | 17c2b977d1aa3eba4c4aeb0b2fa5ce1d6dfdc8ac39f48080308836a6c23b2988  transactions/00000000000000000009.txn
+  | 585783ae5b42aa3e231f1d64afc2d63f22fbbe926a7922be671273295a2506d2  transactions/00000000000000000010.txn
+  | baffe1cefddbb5309d0d2015cbdca104086ff2a9561096f0663c233f79f40806  transactions/00000000000000000011.txn
+  | c4d400d156bbcc19cdc20c67a23a2545c7e488a30e2f80d43b7c922661c61372  transactions/00000000000000000012.txn
+  | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  writer.lock
+  frontier file (pristine): b'FNSM\x01\x02\x00\x00\x00\x01\r\xfc\xf5\xd26M^3f\xd1fO\xc8i\xd8\x96\x9dvV\xca5AI\x9c\xd16\x05\x87\xa1\x0f\xb1\x08C'
+STEP install-native b6759850 rc=0 OK
+  | installed native fn under /tank/fn/scratch/qual-b6759850/upgrade-live/fn-b6759850
+  installed bin/fn sha256 61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; bbf52159 bin/fn sha256 ae1e2f486c93ac89bb04d189f6c5f9215903f963cb8d07f693e5a41489435142
+CONFIG /tank/fn/scratch/qual-b6759850/upgrade-live/w/fn.toml:
+[store]
+path = "/tank/fn/scratch/qual-b6759850/upgrade-live/w/store"
+
+[listener]
+host = "127.0.0.1"
+port = 38209
+tls_cert = "/tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem"
+tls_key = "/tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/key.pem"
+
+[auth]
+required = true
+protected_only = true
+path = "/tank/fn/scratch/qual-b6759850/upgrade-live/w/store/auth.toml"
+
+[posting]
+enabled = true
+
+[control]
+path = "/tank/fn/scratch/qual-b6759850/upgrade-live/w/store/control.sock"
+
+
+[log]
+path = "/tank/fn/scratch/qual-b6759850/upgrade-live/w/log/fn.log"
+
+STEP bbf52159 status offline (the deployed accounting) rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | accepted operator status
+STEP b6759850 status offline (per-article accounting) rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | accepted operator status
+  1b transactions           bbf52159=13 b6759850=13
+  1b articles               bbf52159=13 b6759850=13
+  1b transactions-used      bbf52159=13 b6759850=13
+  1b transactions-budget    bbf52159=4096 b6759850=4096
+  1b bytes-used             bbf52159=10960 b6759850=10960
+  1b history-bound          bbf52159=805306368 b6759850=805306368
+  1b charge-reserved        bbf52159=26 b6759850=26
+  1b charge-capacity        bbf52159=1048576 b6759850=1048576
+  1b max-transactions       bbf52159=4096 b6759850=4096
+  1b max-history-octets     bbf52159=805306368 b6759850=805306368
+  1b max-article-octets     bbf52159=32768 b6759850=32768
+  1b max-open-suffix        bbf52159=4096 b6759850=4096
+  1b history-marker         bbf52159=unmarked b6759850=unmarked
+  1b format                 bbf52159=8 b6759850=8
+FACT-1b opens=True bytes-used=10960 history-bound=805306368 below-H=True headroom-octets=805295408 transactions=13/4096 headroom-transactions=4083
+  1b line| profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  1b line| open-cost replay-records=4096 list-memory-octets=25769803776
+  1b line| headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  1b line| maintenance-reserve octets=4096 transactions=1 held
+  1b line| open=full-replay reason=absent
+STEP b6759850 health offline rc=19
+  | health exit=19 state=none-held (some states unobserved)
+  | fenced clear
+  | exhausted clear
+  | unqualified-profile clear
+  | space-pressure clear
+  | no-route clear
+  | stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+  | unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+  | receipt-debt clear
+  | accepted operator health
+STEP b6759850 store needs-upgrade (format 8 unmarked) rc=0
+  | current
+  | accepted operator needs-upgrade
+STEP b6759850 store rollback-check KEPT format-7 config (in the live store) rc=0
+  | rollback sound transactions=13
+  | accepted operator rollback-check
+STEP b6759850 store rollback-check --snapshot of itself (nothing lost) rc=0
+  | rollback snapshot loses transactions=0 snapshot-transactions=13 store-transactions=13
+  | restoring this snapshot loses every transaction committed after it: 0, the articles accepted since it among them; the snapshot cannot give them back
+  | accepted operator rollback-snapshot
+OWNER b675-open-only pid=375103 announce='LISTENING 32907'
+OWNER b675-open-only pid=375103 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+  frontier after an open with no commit: b'FNSM\x01\x02\x00\x00\x00\x01\r\xfc\xf5\xd26M^3f\xd1fO\xc8i\xd8\x96\x9dvV\xca5AI\x9c\xd16\x05\x87\xa1\x0f\xb1\x08C' (pristine b'FNSM\x01\x02\x00\x00\x00\x01\r\xfc\xf5\xd26M^3f\xd1fO\xc8i\xd8\x96\x9dvV\xca5AI\x9c\xd16\x05\x87\xa1\x0f\xb1\x08C')
+STEP bbf52159 status after b6759850 opened with no commit rc=0
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | accepted operator status
+STEP snapshot-pre-deploy (cp -a of the stopped store copy)
+STEP principal set-password qual --principal P --posting rc=0
+  | qual principal=5555555555555555555555555555555555555555555555555555555555555555 posting=true
+  | Password: Confirm password: accepted operator principal set-password effective-at-next-start
+STEP group create control.cancel rc=0
+  | configured generation=6 record=00000006.cfg verification=VERIFIED
+  | accepted operator group
+OWNER b675-deploy pid=375652 announce='LISTENING 38209'
+STEP status live (owner running) rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | accepted operator status
+STEP health live rc=0
+  | health exit=00 state=healthy
+  | fenced clear
+  | exhausted clear
+  | unqualified-profile clear
+  | space-pressure clear
+  | no-route clear
+  | stranded-transfer clear
+  | unavailable-peer clear
+  | receipt-debt clear
+  | accepted operator health
+  wrong channel: AUTHINFO on the clear connection
+  (clear) greeting 201 fn-nntp experimental reader ready
+  (clear) > GROUP fn.agents  -> 480 authentication required
+  (clear) > AUTHINFO USER qual  -> 483 a protected channel is required; use STARTTLS
+  (clear) > QUIT  -> 205 closing connection
+  wrong secret over TLS:
+  > AUTHINFO USER qual  -> 381 password required
+  > AUTHINFO PASS (wrong)  -> 481 authentication failed
+  > QUIT  -> 205 closing connection
+STEP fn_client groups rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client read fn.agents --all rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client post fn.agents --subject rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client show <qual-b675-ordinary@example.invalid> rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client post fn.agents --subject rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client read fn.agents --new rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client post fn.agents --subject rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+STEP fn_client read fn.agents --new rc=1
+  | refused the certificate 127.0.0.1:38209 presented did not verify against --cafile /tank/fn/scratch/qual-b6759850/upgrade-live/w/tls/cert.pem (IP address mismatch, certificate is not valid for '127.0.0.1'.); nothing was s
+  resume: the second --new read lists only what came after the first
+STEP fn_client reconcile /tank/fn/scratch/qual-b6759850/upgrade-live/draft-ordinary.json rc=1
+  | refused the original post was refused; nothing to reconcile
+STEP hybrid-enroll p.bin gen 1 (production image) rc=0
+STEP hybrid-enroll q.bin gen 2 (production image) rc=0
+  > AUTHINFO USER qual  -> 381 password required
+  greeting 201 fn-nntp experimental reader ready / STARTTLS 382 continue with TLS negotiation / AUTHINFO 281 authentication accepted
+  > GROUP fn.agents  -> 211 12 1 12 fn.agents
+  > POST  -> 340 send article to be posted
+  > POST <281 octets>  -> 240 article received OK
+  > ARTICLE <qual-b675-tin@example.invalid>  -> 220 13 <qual-b675-tin@example.invalid> article follows
+  tin article Path: ['Path: hbox.ember.software!not-for-mail']
+  > POST  -> 340 send article to be posted
+  > POST <281 octets>  -> 441 posting failed; this article is already stored here
+  tin resend: 441 posting failed; this article is already stored here
+  > POST  -> 340 send article to be posted
+  > POST <300 octets>  -> 441 posting failed; a different article with this Message-ID is stored here
+  tin changed source, same Message-ID: 441 posting failed; a different article with this Message-ID is stored here
+STEP hybrid-sign-carrier signed rc=0
+  > POST  -> 340 send article to be posted
+  > POST <7717 octets>  -> 240 article received OK
+  > HDR :fn-verified <qual-b675-signed@example.invalid>  -> 225 headers follow
+    ['0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1']
+  > POST  -> 340 send article to be posted
+  > POST <7717 octets>  -> 441 posting failed; this article is already stored here
+  signed resend: 441 posting failed; this article is already stored here
+STEP hybrid-sign-carrier qsigned rc=0
+  > POST  -> 340 send article to be posted
+  > POST <7726 octets>  -> 240 article received OK
+  WRONG PRINCIPAL (signed by Q, login bound to P): 240 article received OK
+  > GROUP fn.agents  -> 211 15 1 15 fn.agents
+  > XPAT Subject 1- *qual rehearsal*  -> 221 header follows
+    ['13 qual rehearsal tin-shaped', '14 qual rehearsal signed', '15 qual rehearsal signed by Q']
+STEP hybrid-sign-carrier cancel rc=0
+  > POST  -> 340 send article to be posted
+  > POST <7789 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+  > AUTHINFO USER qual  -> 381 password required
+  fresh reader after the cancel:
+  > ARTICLE <qual-b675-signed@example.invalid>  -> 430 withdrawn
+  > LISTGROUP control.cancel  -> 211 1 1 1 control.cancel list follows
+    ['1']
+  > QUIT  -> 205 closing connection
+OWNER b675-deploy pid=375652 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP status offline after the deploy owner rc=0 OK
+  | transactions=19 articles=17 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=19 transactions-budget=4096 bytes-used=41689 history-bound=805306368 charge-reserved=37 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=17 reserved=37 connections=0
+  | accepted operator status
+  frontier after commits: b"FNSM\x01\x02\x00\x00\x00\x01\x13\x11W@\x97[\x15\xa6A7\x0b_\x83{\x1234?0cO\xb8/\x9a\x80M\xddV\xf5\xe1\xe6'#"
+STEP recover after the deploy owner rc=0 OK
+  | recovered transactions=19 articles=17 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP bbf52159 status on the store b6759850 wrote (expected refusal) rc=0
+  | transactions=19 articles=17 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=19 transactions-budget=4096 bytes-used=41689 history-bound=805306368 charge-reserved=37 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=17 reserved=37 connections=0
+  | accepted operator status
+STEP bbf52159 recover on the store b6759850 wrote (expected refusal) rc=0
+  | recovered transactions=19 articles=17 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP b6759850 store rollback-check KEPT format-7 config after the writes rc=0
+  | rollback sound transactions=19
+  | accepted operator rollback-check
+STEP b6759850 store rollback-check --snapshot SNAPSHOT (the loss count) rc=0
+  | rollback snapshot loses transactions=6 snapshot-transactions=13 store-transactions=19
+  | restoring this snapshot loses every transaction committed after it: 6, the articles accepted since it among them; the snapshot cannot give them back
+  | accepted operator rollback-snapshot
+QUOTE-VERB rollback snapshot loses transactions=6 snapshot-transactions=13 store-transactions=19 / restoring this snapshot loses every transaction committed after it: 6, the articles accepted since it among them; the snapshot cannot give them back / accepted operator rollback-snapshot
+QUOTE-DOC Restoring a pre-migration snapshot loses every article accepted after it.** `rollback-ch
+  docs/operator.md mentions frontier format 3 / bbf52159 unreadable: False
+STEP rollback-check --snapshot of an unrelated store (expected refusal snapshot-not-a-prefix) rc=0
+  | rollback snapshot loses transactions=6 snapshot-transactions=13 store-transactions=19
+  | restoring this snapshot loses every transaction committed after it: 6, the articles accepted since it among them; the snapshot cannot give them back
+  | accepted operator rollback-snapshot
+STEP bbf52159 recover on the restored snapshot rc=0 OK
+  | recovered transactions=13 articles=13 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP bbf52159 status on the restored snapshot rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | accepted operator status
+OWNER bbf5-rollback-snapshot pid=376405 announce='LISTENING 51587'
+  > GROUP fn.agents  -> 480 authentication required
+  > QUIT  -> 205 closing connection
+OWNER bbf5-rollback-snapshot pid=376405 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+  restored snapshot transactions equal the pristine ones: True
+STEP store upgrade-profile --history-marker required rc=0 OK
+  | upgraded profile=current transactions-used=19 transactions-budget=4096 previous-budget=4096
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+  | accepted operator upgrade-profile
+STEP status after required rc=0 OK
+  | transactions=19 articles=17 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=19 transactions-budget=4096 bytes-used=41689 history-bound=805306368 charge-reserved=37 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=17 reserved=37 connections=0
+  | accepted operator status
+STEP store needs-upgrade (required) rc=0
+  | current
+  | accepted operator needs-upgrade
+STEP rollback-check KEPT format-7 config after required (expected refused) rc=1
+  | rollback refused history-marker-required-dropped
+  | refused operator rollback-check
+STEP rollback-check --snapshot pre-marker rc=0
+  | rollback snapshot loses transactions=0 snapshot-transactions=19 store-transactions=19
+  | restoring this snapshot loses every transaction committed after it: 0, the articles accepted since it among them; the snapshot cannot give them back
+  | accepted operator rollback-snapshot
+STEP rollback-check --snapshot pre-deploy rc=0
+  | rollback snapshot loses transactions=6 snapshot-transactions=13 store-transactions=19
+  | restoring this snapshot loses every transaction committed after it: 6, the articles accepted since it among them; the snapshot cannot give them back
+  | accepted operator rollback-snapshot
+STEP downgrade --history-marker unmarked (expected refusal) rc=1
+  | refused operator upgrade-profile store profile upgrade refused: not-an-upgrade history-marker
+STEP bbf52159 status on the required store (expected refusal: frontier) rc=0
+  | transactions=19 articles=17 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=19 transactions-budget=4096 bytes-used=41689 history-bound=805306368 charge-reserved=37 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=17 reserved=37 connections=0
+  | accepted operator status
+OWNER b675-required pid=377079 announce='LISTENING 42513'
+  > AUTHINFO USER qual  -> 381 password required
+  > GROUP fn.agents  -> 211 14 1 15 fn.agents
+  > POST  -> 340 send article to be posted
+  > POST <199 octets>  -> 240 article received OK
+  > QUIT  -> 205 closing connection
+OWNER b675-required pid=377079 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP recover after a commit on the required store rc=0 OK
+  | recovered transactions=20 articles=18 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP required: newest transaction file removed, recover (expected refusal) rc=4
+  | fault operator recover committed history refused at open: history-short-of-marker marker=20 records=19
+STEP required: newest transaction file removed, status (expected refusal) rc=4
+  | fault operator status committed history refused at open: history-short-of-marker marker=20 records=19
+STEP required: marker removed, recover (expected refusal) rc=4
+  | fault operator recover committed history refused at open: marker-missing records=20
+STEP required: marker removed, status (expected refusal) rc=4
+  | fault operator status committed history refused at open: marker-missing records=20
+  live store digest unchanged by this run (read before/after, auth.toml excluded): True
+# rehearsal end 2026-09-26T05:20:14Z
+rc=0

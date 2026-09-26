@@ -1,0 +1,1817 @@
+{
+  "all_steps_held": true,
+  "authors": {
+    "author-a": "4141414141414141414141414141414141414141414141414141414141414141",
+    "author-b": "4242424242424242424242424242424242424242424242424242424242424242"
+  },
+  "case": "mission",
+  "dtn7_revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+  "dtn_time_ms": "843708394923",
+  "dtnd_processes": {
+    "dtn7-r1": [
+      {
+        "at": "23:26:52",
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r1",
+          "-W",
+          "/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/dtn7-r1",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=47171",
+          "-w",
+          "36325",
+          "-i",
+          "0",
+          "-j",
+          "5s",
+          "-p",
+          "1h",
+          "--disable_nd",
+          "-d",
+          "-r",
+          "static",
+          "-R",
+          "static.routes=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/dtn7-r1/static.routes",
+          "-s",
+          "tcp://127.0.0.1:43745/dtn7-r2",
+          "-s",
+          "tcp://127.0.0.1:42869/fn-x"
+        ],
+        "log": "/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/dtn7-r1/dtnd-0.log",
+        "pid": 240225,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ],
+    "dtn7-r2": [
+      {
+        "at": "23:26:59",
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r2",
+          "-W",
+          "/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/dtn7-r2",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=43745",
+          "-w",
+          "33495",
+          "-i",
+          "0",
+          "-j",
+          "5s",
+          "-p",
+          "1h",
+          "--disable_nd",
+          "-d",
+          "-r",
+          "static",
+          "-R",
+          "static.routes=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/dtn7-r2/static.routes",
+          "-s",
+          "tcp://127.0.0.1:47171/dtn7-r1",
+          "-s",
+          "tcp://127.0.0.1:53569/fn-y"
+        ],
+        "log": "/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/dtn7-r2/dtnd-0.log",
+        "pid": 241329,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ]
+  },
+  "findings": [],
+  "identity": {
+    "a_obligation_after_receipt": "BP obligation owner work=work-a-report status=receipted pinned=no",
+    "a_receipt_outcome": "receipt-accepted",
+    "a_request_attempt": [
+      "BP obligation request durable attempt work=work-a-report attempt=work-a-report-a1 generation=0 destination=dtn://fn-b/ adu=13143",
+      "BP queue route destination=dtn://fn-b/ port=56305",
+      "BP queue accepted work=work-a-report attempt=work-a-report-a1 generation=0 status=durable",
+      "BP obligation request carrier durable work=work-a-report attempt=work-a-report-a1 generation=0",
+      "BP queued job routed peer=dtn://fn-b/ expected=dtn://fn-x/"
+    ],
+    "a_stored_report_sha256": "d6e45d607f0a8b3a18d4cb436c03238d552377185fa93f651528d64c653c01ee",
+    "authored_source_reply_sha256": "96ff22ffd2610d953d1acc8228c96dc397d174b6a423a951bc09baa5252b00e8",
+    "authored_source_report_sha256": "f7fe359ead3d05938b6b3cf6110f214680daabc10b8046dcbb8841f50b209066",
+    "b_delivered_report_sha256": "3e2f965c28f1b953ab62995ca6465ec9984c387555795cd2216ee4885d33f645",
+    "b_obligation_after_receipt": "BP obligation owner work=work-b-reply status=receipted pinned=no",
+    "b_receipt_outcome": "receipt-accepted",
+    "b_request_attempt": [
+      "BP obligation request durable attempt work=work-b-reply attempt=work-b-reply-a1 generation=0 destination=dtn://fn-a/ adu=8359",
+      "BP queue route destination=dtn://fn-a/ port=42823",
+      "BP queue accepted work=work-b-reply attempt=work-b-reply-a1 generation=0 status=durable",
+      "BP obligation request carrier durable work=work-b-reply attempt=work-b-reply-a1 generation=0"
+    ],
+    "b_verified_source_sha256": "f7fe359ead3d05938b6b3cf6110f214680daabc10b8046dcbb8841f50b209066",
+    "bundles_as_logged_by_dtn7": {
+      "dtn7-r1/dtnd-0.log": [
+        "dtn://fn-a/-843708394923-0",
+        "dtn://fn-a/-843708394923-1",
+        "dtn://fn-b/-843708394923-0",
+        "dtn://fn-b/-843708394923-1"
+      ],
+      "dtn7-r2/dtnd-0.log": [
+        "dtn://fn-a/-843708394923-0",
+        "dtn://fn-a/-843708394923-1",
+        "dtn://fn-b/-843708394923-0",
+        "dtn://fn-b/-843708394923-1"
+      ]
+    },
+    "channel_admission_refusals": {
+      "a-serve-1": 0,
+      "a-serve-2": 0,
+      "a-serve-3": 0,
+      "a-serve-4": 0,
+      "b-serve-1": 0,
+      "b-serve-1b": 0,
+      "b-serve-2": 0,
+      "x-serve-1": 0,
+      "x-serve-2": 0,
+      "x-serve-3": 0,
+      "x-serve-4": 0,
+      "y-serve-1": 0,
+      "y-serve-2": 0,
+      "y-serve-3": 0
+    },
+    "fnbs_lifecycle_frames": {
+      "a": 12,
+      "b": 12,
+      "x": 20,
+      "y": 16
+    },
+    "forwarding_attempts": {
+      "x-serve-1": [
+        "BP forwarding route hop=r1-boundary port=47171"
+      ],
+      "x-serve-2": [
+        "BP forwarding route hop=r1-boundary port=47171",
+        "BP forwarding attempt durable key=((97 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 97 47) 843708394923 0 NIL NIL))  [bundle source dtn://fn-a/]",
+        "BP forwarding result durable arrival=4 status=sent"
+      ],
+      "x-serve-3": [
+        "BP forwarding route hop=a-boundary port=41481",
+        "BP forwarding attempt durable key=((114 49 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 98 47) 843708394923 0 NIL NIL))  [bundle source dtn://fn-b/]",
+        "BP forwarding result durable arrival=5 status=sent",
+        "BP forwarding route hop=a-boundary port=41481",
+        "BP forwarding attempt durable key=((114 49 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 98 47) 843708394923 1 NIL NIL))  [bundle source dtn://fn-b/]",
+        "BP forwarding result durable arrival=6 status=sent"
+      ],
+      "x-serve-4": [
+        "BP forwarding route hop=r1-boundary port=47171",
+        "BP forwarding attempt durable key=((97 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 97 47) 843708394923 1 NIL NIL))  [bundle source dtn://fn-a/]",
+        "BP forwarding result durable arrival=7 status=sent"
+      ],
+      "y-serve-1": [
+        "BP forwarding route hop=b-boundary port=60493",
+        "BP forwarding attempt durable key=((114 50 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 97 47) 843708394923 0 NIL NIL))  [bundle source dtn://fn-a/]",
+        "BP forwarding result durable arrival=0 status=sent"
+      ],
+      "y-serve-2": [
+        "BP forwarding route hop=r2-boundary port=43745",
+        "BP forwarding attempt durable key=((98 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 98 47) 843708394923 0 NIL NIL))  [bundle source dtn://fn-b/]",
+        "BP forwarding result durable arrival=1 status=sent",
+        "BP forwarding route hop=r2-boundary port=43745",
+        "BP forwarding attempt durable key=((98 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 98 47) 843708394923 1 NIL NIL))  [bundle source dtn://fn-b/]",
+        "BP forwarding result durable arrival=2 status=sent"
+      ],
+      "y-serve-3": [
+        "BP forwarding route hop=b-boundary port=60493",
+        "BP forwarding attempt durable key=((114 50 45 98 111 117 110 100 97 114 121) (:FN-BP-BUNDLE-ID (:DTN 47 47 102 110 45 97 47) 843708394923 1 NIL NIL))  [bundle source dtn://fn-a/]",
+        "BP forwarding result durable arrival=3 status=sent"
+      ]
+    },
+    "work": {
+      "a": {
+        "attempt": "work-a-report-a1",
+        "message_id": "<mission-report@fn-a.invalid>",
+        "work": "work-a-report"
+      },
+      "b": {
+        "attempt": "work-b-reply-a1",
+        "message_id": "<mission-reply@fn-b.invalid>",
+        "work": "work-b-reply"
+      }
+    }
+  },
+  "image": "/tank/fn/gates/mission-signed-2-img-aa0f6c16/build/images/aa0f6c16435c1b4a47fefd76563a1b421df68e64/fn-host-dtn-developer",
+  "image_sha256": "4986f14bf4ebc34fccf54f4bfea0e7007222f96c477a9f0519faad6c59c19c88",
+  "incarnations": {
+    "a": [
+      {
+        "at": 65.6,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 242645,
+        "port": 41481,
+        "stopped": "SIGKILL rc=-9",
+        "tag": "a-serve-1"
+      },
+      {
+        "at": 74.2,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 242758,
+        "port": 41481,
+        "stopped": "SIGTERM rc=143",
+        "tag": "a-serve-2"
+      },
+      {
+        "at": 93.9,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 243539,
+        "port": 41481,
+        "stopped": "SIGTERM rc=143",
+        "tag": "a-serve-3"
+      },
+      {
+        "at": 115.4,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 243685,
+        "port": 41481,
+        "stopped": "SIGTERM rc=143",
+        "tag": "a-serve-4"
+      }
+    ],
+    "b": [
+      {
+        "at": 11.0,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-a/",
+        "pid": 239956,
+        "port": 60493,
+        "stopped": "SIGTERM rc=143",
+        "tag": "b-serve-1"
+      },
+      {
+        "at": 67.2,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-a/",
+        "pid": 242707,
+        "port": 60493,
+        "stopped": "SIGTERM rc=143",
+        "tag": "b-serve-1b"
+      },
+      {
+        "at": 112.8,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-a/",
+        "pid": 243664,
+        "port": 60493,
+        "stopped": "SIGTERM rc=143",
+        "tag": "b-serve-2"
+      }
+    ],
+    "x": [
+      {
+        "at": 11.4,
+        "listening": true,
+        "mru": 4096,
+        "peer": "dtn://fn-b/",
+        "pid": 239964,
+        "port": 56305,
+        "stopped": "SIGKILL rc=-9",
+        "tag": "x-serve-1"
+      },
+      {
+        "at": 21.8,
+        "listening": true,
+        "mru": 4096,
+        "peer": "dtn://fn-b/",
+        "pid": 240664,
+        "port": 56305,
+        "stopped": "SIGTERM rc=143",
+        "tag": "x-serve-2"
+      },
+      {
+        "at": 75.4,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-a/",
+        "pid": 242762,
+        "port": 42869,
+        "stopped": "SIGTERM rc=143",
+        "tag": "x-serve-3"
+      },
+      {
+        "at": 114.0,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 243673,
+        "port": 56305,
+        "tag": "x-serve-4"
+      }
+    ],
+    "y": [
+      {
+        "at": 11.2,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 239960,
+        "port": 53569,
+        "stopped": "SIGTERM rc=143",
+        "tag": "y-serve-1"
+      },
+      {
+        "at": 66.0,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-a/",
+        "pid": 242701,
+        "port": 42823,
+        "stopped": "SIGTERM rc=143",
+        "tag": "y-serve-2"
+      },
+      {
+        "at": 122.9,
+        "listening": true,
+        "mru": 1048576,
+        "peer": "dtn://fn-b/",
+        "pid": 243852,
+        "port": 53569,
+        "tag": "y-serve-3"
+      }
+    ]
+  },
+  "log_sha256": {
+    "a-1-request": "5e82a104f794ebb562929f1a4d1397d4c80b4e3759195bd4326152542755ba63",
+    "a-6-ack-0": "71c5adf24e64f55c8ba163fe70eccaa65f70436c7fefa02da3afc22561875a4d",
+    "a-6-ack-1": "70f22324cf600db6bc2a3f65cc0db14474547e54ebbf007ba6ccad73762e0087",
+    "a-6-consumer-status": "d8beb4fc47dff416fef2aa152b661f5769c7db1910821a6d110dd8891a1f1ebd",
+    "a-6-owner": "55c62e88d0848eb1038a3ba104505e34ddbec110ffc03a06bb9f560c99818092",
+    "a-6-poll-0": "b7b226911bc864fc17891512b9b88d2025be1d15e930daeb23d07275bbd200ad",
+    "a-6-poll-1": "fcb76b9ba56b960002f26f4a91624c48efb0d24470b1b4858e47d188c2311d7e",
+    "a-serve-1": "5856844e75a11bcc23f8f2d07eb33c9f386d2270672d5f97b6e2956a9a614285",
+    "a-serve-2": "eaeb7ff2902dd07b1f7ed5ab6a1d89d93142023e7965655d3eb0236a11f5652b",
+    "a-serve-3": "8329f53d1ad74e9b372244559efa774c24e32e770060ad39f70f86248e421698",
+    "a-serve-4": "6679ec775e6052d468f3dfdc043efc054e82675d6021e55be7ea2fa7af7a0e4d",
+    "a-status-0": "c66bbff6f9b98627bcb0e55bbd954af348018ec65164b75581628f76550ea936",
+    "a-status-4": "3b50a33508632d99f78177511bf640e00cf286726c2c18c48e6d97e9298c3dbf",
+    "b-5-ack-0": "591130f37e3baaf17e17b9766c843dc9152e5be100a487ce3fce9d4bf7a79eff",
+    "b-5-author-reply": "534e0b6f8d805aeaa08ce99ddfab597ccaa6234de9182ffc2be96bf9fcbe0ae4",
+    "b-5-enqueue": "e948734351fccee0d0f59b7d993df99ab7fc4dbfd6fc9f546facf0aa47b202b3",
+    "b-5-owner": "c4042f946f3a3172144737d736327f9ad13378e05e1178f0e7a445197208ab0a",
+    "b-5-poll-0": "1ce47904949ca82f9df6a9b85c69707d69120b8e4025149d9d6114448d7a80ff",
+    "b-5-request": "2f69865f5dfef4a2d448d578968480e8740e992b6b3fd714d6fba784f30763cf",
+    "b-5-sign-reply": "b81a32f32aacc8826e662c3029ab7d66d3302147c50b8823a1c4270e135c0aed",
+    "b-5-undertake": "1afd658c9215265d0c47de2db160e160e9446b9e78b3a2dd8c05603329f30d09",
+    "b-5-verify-source": "7760cc5562455916f29a9e0bd28bdac86eec6d69cdbe6592d6f069926b315e9b",
+    "b-6-status": "a6deab1de0bebca63a9fd427ec46abfde2148b327cc97c5299bc7302a6b0270a",
+    "b-serve-1": "252ecd79484887f9c3b6dbfafc7636d6967565bc9d0313127b831dea3d2e4bdb",
+    "b-serve-1b": "05b0471e76ee68aa320b69bb6521f88cd5b09616adba7f487739a59a6ebdf7b9",
+    "b-serve-2": "dd5c98a07a9ccc2e971842e85763f2bebb3a5069d062fa50c6c3c63006287086",
+    "dtn7-r1/dtnd-0.log": "ae7dbe28f438a53e7f0327afec15aa4efd6f6fb1acb91b0de415dbad059a3c0c",
+    "dtn7-r2/dtnd-0.log": "39556f4b1d5bbdc3c0e1911c921aa29c529a5595c64f6ca9975e39c1572b74e0",
+    "setup-a-author": "ae29659b5d400eafa8c9ceade8b02bda7fba2a78a04af8900c6b5013a6bdb0f6",
+    "setup-a-b-author": "3e039ed29c75a65b5d2ecd710d1d6b89047772b9e484136d4420f253f6120873",
+    "setup-a-bootstrap": "84d05d26b30af54b29ab3704a6e26d3833249849bec37fd1ac0c2291ea624330",
+    "setup-a-enroll-author-a": "5550b248760bfde9164e5a69a9fff49f8ed537f9ab9d801141beb60678749ec5",
+    "setup-a-enroll-author-b": "f5f2b3a76f26ab77c4c2dddf2f97132613ba9deb0e4bf6705992c4f72ba4a9ee",
+    "setup-a-owner": "55c62e88d0848eb1038a3ba104505e34ddbec110ffc03a06bb9f560c99818092",
+    "setup-a-register": "1c207134746a716af730c57edfc228e1c30bad4460c9a259c2f1151e86af11ff",
+    "setup-a-route-x-boundary": "4d04192d75c8cf784624275cf41eaa4c55798cb1bdea25cce5f4be374574579c",
+    "setup-a-sign": "9c93093bcd7f67e5e3d6967b5cb293af13fb6b6b8dcbb3c0b84ae7c560a3419d",
+    "setup-a-undertake": "ec187f26249751fd488f50c2916c6a9b1d820c8a1f74f4dda7849350866d55c9",
+    "setup-a-wf-enqueue": "0084de155ec10df8eb7802f6b93f66b57df5ade9cccf55e642bb0452c961b1b0",
+    "setup-a-wf-init": "8a641595fc4928b31fb9f47c7c286408c57469f14d613533afc422cd4c1979bf",
+    "setup-a-x-boundary": "1be2f8b1ad8ce60205687afe64ae61591fe640fa6efe6c81de243c44f6e2890c",
+    "setup-b-a-author": "9157ca0d77f51241f6c270d6d2808c6325087e2c70882cc8a734050c991db316",
+    "setup-b-bootstrap": "8fe1ffee32f4729107a6e6057a5d17331ab2218acdeec5c9edd972b8b29da0b1",
+    "setup-b-enroll-author-a": "e3428e6cea4f421b93b3d580ee6ecd72ae74390f5f89a90a010bb13d3ecd8e45",
+    "setup-b-enroll-author-b": "8e1a0281cc6713f7111e9d4faf5714e2a1281b9644a6b7b86ab4c1d6fd71e6bd",
+    "setup-b-owner": "c4042f946f3a3172144737d736327f9ad13378e05e1178f0e7a445197208ab0a",
+    "setup-b-register": "24036a7c37938a5adb75a5eb026d6fbb8b1d191da43d53494006c78bdc30eab1",
+    "setup-b-route-y-boundary": "84c4807c2ec074bc31da03bc5032bc7d4544d10a49efec667d48a14d2a71c354",
+    "setup-b-wf-init": "cd04e950b1b5d0dfceed738bd02e9d4d7aaf37b0fc9f078999fb445ee7d2b230",
+    "setup-b-y-boundary": "dcbb9e67b81516f314ddce87337c749969e520a0c3accf2bd6fcf313e1794fab",
+    "setup-init-a": "c2a9269716a699cb9b6b2639c41adcfb25e09a110237485405234de9f8a16db2",
+    "setup-init-b": "8ac325b662482b4f102178c4ed145b19ddf2c2f16ddc39ea8587bcbaf15464c6",
+    "setup-init-x": "7e5f5c01ae01925104d54a13686960cc80b4bab5e6bb97e1d590c514cf6a3242",
+    "setup-init-y": "be380a80e1682af4cb47d9761fd8f79d242b7535754c20653f3d92a8ecf9ba91",
+    "setup-path-a": "f3c9e8d1e6169765b09407d8cb5f46d753c2b4ebbd19063ddf9ce058c4acb6c1",
+    "setup-path-b": "de22cd71ce3c82a451cd0a712755381307486ff1a3d4a7343fec7bb00b38e834",
+    "setup-path-x": "e6d88eb8ee892310709eff770d5e7e216c9e886a260cb6d6dc711a073feab256",
+    "setup-path-y": "86259e2bba07f91b893c344169274e466fee5cea830cb336edb039e502849a67",
+    "setup-x-a-boundary": "c4086ec85e9b5676e06b96ac3f481f8106ad409d41919eec0e6531e51d7896a5",
+    "setup-x-r1-boundary": "2d02eb95fc966038d909ee03813af54c41c179de3de5e1c6cb089366d2ffcb84",
+    "setup-x-route-a-boundary": "44518d14e1fd1501389f9d2beb4b3c6efa3646173fcc1c34ca876c771cfaf0a0",
+    "setup-x-route-r1-boundary": "b5a5c029b4af7f32e8abe10a5498f14329e43cb4262d01f1898cc9f76d9f1056",
+    "setup-y-b-boundary": "b2ddd03d413f547c984ee7754a4810be2c63f466623f6cbce6d6bf22d9366636",
+    "setup-y-r2-boundary": "5436cb51aed6d6b65d2789a9a4e2c6fd6e61ad0fd1630859d2ef57156c41e1a8",
+    "setup-y-route-b-boundary": "e450f661e6366a0accbe451cb8542147e0a2d89d3ec264e6c90976226050ff7e",
+    "setup-y-route-r2-boundary": "314d258753863e4d4f43d3cd80da00b7851851b2ba937cf96ed1335da0f97edc",
+    "x-serve-1": "1c931e7d97d24a9fd616d0b7c19ac7750898f1772412212462c2d026afd211a0",
+    "x-serve-2": "7b046a0ba82ee4b454f69c8fe6b8e8d83f77ac9ccc1e167f8465278a671e6559",
+    "x-serve-3": "a9b6e3ec02046f8e7ce9a27365a102d5313442fa022dbf2cc2e5a4b6c1db4360",
+    "x-serve-4": "6bae01a462e810e07985c355f589d24ab7ab67acbced3b5114259af49fedc01c",
+    "y-serve-1": "50feb769010bdba6fb360e134dfee459465e3afc8ae7a4abec6e3ff019fb2e91",
+    "y-serve-2": "366a881524e6d27a9d7186cfa6cc4e40e2f880544f8b68e3569a8bdc561de818",
+    "y-serve-3": "a8764150bd6d1f01343d69a13b51540685f3fb6ff69227fed2acbcdd21cdfd7e"
+  },
+  "owner_image": "/tank/fn/gates/mission-signed-2-img-aa0f6c16/build/images/aa0f6c16435c1b4a47fefd76563a1b421df68e64/fn-host-developer",
+  "owner_image_sha256": "e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18",
+  "ports": {
+    "a": 41481,
+    "b": 60493,
+    "r1": [
+      47171,
+      36325
+    ],
+    "r2": [
+      43745,
+      33495
+    ],
+    "x": 56305,
+    "x_far": 42869,
+    "y": 42823,
+    "y_far": 53569
+  },
+  "processes": [
+    {
+      "pid": 239693,
+      "stopped": "SIGTERM rc=0",
+      "tag": "setup-a-owner"
+    },
+    {
+      "pid": 239850,
+      "stopped": "SIGTERM rc=0",
+      "tag": "setup-b-owner"
+    },
+    {
+      "pid": 239956,
+      "stopped": "SIGTERM rc=143",
+      "tag": "b-serve-1"
+    },
+    {
+      "pid": 239960,
+      "stopped": "SIGTERM rc=143",
+      "tag": "y-serve-1"
+    },
+    {
+      "pid": 239964,
+      "stopped": "SIGKILL rc=-9",
+      "tag": "x-serve-1"
+    },
+    {
+      "pid": 240664,
+      "stopped": "SIGTERM rc=143",
+      "tag": "x-serve-2"
+    },
+    {
+      "pid": 242645,
+      "stopped": "SIGKILL rc=-9",
+      "tag": "a-serve-1"
+    },
+    {
+      "pid": 242701,
+      "stopped": "SIGTERM rc=143",
+      "tag": "y-serve-2"
+    },
+    {
+      "pid": 242707,
+      "stopped": "SIGTERM rc=143",
+      "tag": "b-serve-1b"
+    },
+    {
+      "pid": 242758,
+      "stopped": "SIGTERM rc=143",
+      "tag": "a-serve-2"
+    },
+    {
+      "pid": 242762,
+      "stopped": "SIGTERM rc=143",
+      "tag": "x-serve-3"
+    },
+    {
+      "pid": 243498,
+      "stopped": "SIGTERM rc=0",
+      "tag": "b-5-owner"
+    },
+    {
+      "pid": 243539,
+      "stopped": "SIGTERM rc=143",
+      "tag": "a-serve-3"
+    },
+    {
+      "pid": 243664,
+      "stopped": "SIGTERM rc=143",
+      "tag": "b-serve-2"
+    },
+    {
+      "pid": 243673,
+      "stopped": "SIGTERM rc=143",
+      "tag": "x-serve-4"
+    },
+    {
+      "pid": 243685,
+      "stopped": "SIGTERM rc=143",
+      "tag": "a-serve-4"
+    },
+    {
+      "pid": 243852,
+      "stopped": "SIGTERM rc=143",
+      "tag": "y-serve-3"
+    },
+    {
+      "pid": 244488,
+      "stopped": "SIGTERM rc=0",
+      "tag": "a-6-owner"
+    }
+  ],
+  "reply_signed": true,
+  "report_signed": true,
+  "setup_rcs": {
+    "b-5-sign-reply": 0,
+    "setup-a-b-author": 0,
+    "setup-a-bootstrap": 0,
+    "setup-a-enroll-author-a": 0,
+    "setup-a-enroll-author-b": 0,
+    "setup-a-inspect": 0,
+    "setup-a-owner-ready": 0,
+    "setup-a-register": 0,
+    "setup-a-route-x-boundary": 0,
+    "setup-a-sign": 0,
+    "setup-a-undertake": 0,
+    "setup-a-wf-enqueue": 0,
+    "setup-a-wf-init": 0,
+    "setup-a-x-boundary": 0,
+    "setup-b-a-author": 0,
+    "setup-b-bootstrap": 0,
+    "setup-b-enroll-author-a": 0,
+    "setup-b-enroll-author-b": 0,
+    "setup-b-owner-ready": 0,
+    "setup-b-register": 0,
+    "setup-b-route-y-boundary": 0,
+    "setup-b-wf-init": 0,
+    "setup-b-y-boundary": 0,
+    "setup-init-a": 0,
+    "setup-init-b": 0,
+    "setup-init-x": 0,
+    "setup-init-y": 0,
+    "setup-path-a": 0,
+    "setup-path-b": 0,
+    "setup-path-x": 0,
+    "setup-path-y": 0,
+    "setup-x-a-boundary": 0,
+    "setup-x-r1-boundary": 0,
+    "setup-x-route-a-boundary": 0,
+    "setup-x-route-r1-boundary": 0,
+    "setup-y-b-boundary": 0,
+    "setup-y-r2-boundary": 0,
+    "setup-y-route-b-boundary": 0,
+    "setup-y-route-r2-boundary": 0
+  },
+  "steps": [
+    {
+      "a_status": "BP obligation owner work=work-a-report status=outstanding pinned=yes",
+      "a_stored_report": {
+        "octets": 12940,
+        "rc": 0,
+        "sha256": "d6e45d607f0a8b3a18d4cb436c03238d552377185fa93f651528d64c653c01ee"
+      },
+      "consumers": {
+        "a-6-ack-0": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "a-6-ack-1": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "a-6-consumer-status": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer status accepted committed-ack=8 committed-journal-frontier=10 journal-event-distance=2"
+        },
+        "a-6-poll-0": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "a-6-poll-1": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "b-5-ack-0": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "b-5-poll-0": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "setup-a-bootstrap": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "setup-a-register": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "setup-b-bootstrap": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        },
+        "setup-b-register": {
+          "outcome": "accepted",
+          "rc": 0,
+          "stdout": "consumer accepted"
+        }
+      },
+      "held": true,
+      "logs": {
+        "a-status-0": {
+          "file": "a-status-0.log",
+          "lines": [
+            "BP obligation owner work=work-a-report status=outstanding pinned=yes"
+          ],
+          "sha256": "c66bbff6f9b98627bcb0e55bbd954af348018ec65164b75581628f76550ea936"
+        },
+        "setup-a-author": {
+          "file": "setup-a-author.log",
+          "lines": [],
+          "sha256": "ae29659b5d400eafa8c9ceade8b02bda7fba2a78a04af8900c6b5013a6bdb0f6"
+        },
+        "setup-a-b-author": {
+          "file": "setup-a-b-author.log",
+          "lines": [],
+          "sha256": "3e039ed29c75a65b5d2ecd710d1d6b89047772b9e484136d4420f253f6120873"
+        },
+        "setup-a-bootstrap": {
+          "file": "setup-a-bootstrap.log",
+          "lines": [],
+          "sha256": "84d05d26b30af54b29ab3704a6e26d3833249849bec37fd1ac0c2291ea624330"
+        },
+        "setup-a-enroll-author-a": {
+          "file": "setup-a-enroll-author-a.log",
+          "lines": [],
+          "sha256": "5550b248760bfde9164e5a69a9fff49f8ed537f9ab9d801141beb60678749ec5"
+        },
+        "setup-a-enroll-author-b": {
+          "file": "setup-a-enroll-author-b.log",
+          "lines": [],
+          "sha256": "f5f2b3a76f26ab77c4c2dddf2f97132613ba9deb0e4bf6705992c4f72ba4a9ee"
+        },
+        "setup-a-owner": {
+          "file": "setup-a-owner.log",
+          "lines": [],
+          "sha256": "55c62e88d0848eb1038a3ba104505e34ddbec110ffc03a06bb9f560c99818092"
+        },
+        "setup-a-register": {
+          "file": "setup-a-register.log",
+          "lines": [],
+          "sha256": "1c207134746a716af730c57edfc228e1c30bad4460c9a259c2f1151e86af11ff"
+        },
+        "setup-a-route-x-boundary": {
+          "file": "setup-a-route-x-boundary.log",
+          "lines": [],
+          "sha256": "4d04192d75c8cf784624275cf41eaa4c55798cb1bdea25cce5f4be374574579c"
+        },
+        "setup-a-sign": {
+          "file": "setup-a-sign.log",
+          "lines": [],
+          "sha256": "9c93093bcd7f67e5e3d6967b5cb293af13fb6b6b8dcbb3c0b84ae7c560a3419d"
+        },
+        "setup-a-undertake": {
+          "file": "setup-a-undertake.log",
+          "lines": [
+            "BP obligation owner durable undertaking work=work-a-report charge=3"
+          ],
+          "sha256": "ec187f26249751fd488f50c2916c6a9b1d820c8a1f74f4dda7849350866d55c9"
+        },
+        "setup-a-wf-enqueue": {
+          "file": "setup-a-wf-enqueue.log",
+          "lines": [],
+          "sha256": "0084de155ec10df8eb7802f6b93f66b57df5ade9cccf55e642bb0452c961b1b0"
+        },
+        "setup-a-wf-init": {
+          "file": "setup-a-wf-init.log",
+          "lines": [],
+          "sha256": "8a641595fc4928b31fb9f47c7c286408c57469f14d613533afc422cd4c1979bf"
+        },
+        "setup-a-x-boundary": {
+          "file": "setup-a-x-boundary.log",
+          "lines": [],
+          "sha256": "1be2f8b1ad8ce60205687afe64ae61591fe640fa6efe6c81de243c44f6e2890c"
+        },
+        "setup-b-a-author": {
+          "file": "setup-b-a-author.log",
+          "lines": [],
+          "sha256": "9157ca0d77f51241f6c270d6d2808c6325087e2c70882cc8a734050c991db316"
+        },
+        "setup-b-bootstrap": {
+          "file": "setup-b-bootstrap.log",
+          "lines": [],
+          "sha256": "8fe1ffee32f4729107a6e6057a5d17331ab2218acdeec5c9edd972b8b29da0b1"
+        },
+        "setup-b-enroll-author-a": {
+          "file": "setup-b-enroll-author-a.log",
+          "lines": [],
+          "sha256": "e3428e6cea4f421b93b3d580ee6ecd72ae74390f5f89a90a010bb13d3ecd8e45"
+        },
+        "setup-b-enroll-author-b": {
+          "file": "setup-b-enroll-author-b.log",
+          "lines": [],
+          "sha256": "8e1a0281cc6713f7111e9d4faf5714e2a1281b9644a6b7b86ab4c1d6fd71e6bd"
+        },
+        "setup-b-owner": {
+          "file": "setup-b-owner.log",
+          "lines": [],
+          "sha256": "c4042f946f3a3172144737d736327f9ad13378e05e1178f0e7a445197208ab0a"
+        },
+        "setup-b-register": {
+          "file": "setup-b-register.log",
+          "lines": [],
+          "sha256": "24036a7c37938a5adb75a5eb026d6fbb8b1d191da43d53494006c78bdc30eab1"
+        },
+        "setup-b-route-y-boundary": {
+          "file": "setup-b-route-y-boundary.log",
+          "lines": [],
+          "sha256": "84c4807c2ec074bc31da03bc5032bc7d4544d10a49efec667d48a14d2a71c354"
+        },
+        "setup-b-wf-init": {
+          "file": "setup-b-wf-init.log",
+          "lines": [],
+          "sha256": "cd04e950b1b5d0dfceed738bd02e9d4d7aaf37b0fc9f078999fb445ee7d2b230"
+        },
+        "setup-b-y-boundary": {
+          "file": "setup-b-y-boundary.log",
+          "lines": [],
+          "sha256": "dcbb9e67b81516f314ddce87337c749969e520a0c3accf2bd6fcf313e1794fab"
+        },
+        "setup-init-a": {
+          "file": "setup-init-a.log",
+          "lines": [],
+          "sha256": "c2a9269716a699cb9b6b2639c41adcfb25e09a110237485405234de9f8a16db2"
+        },
+        "setup-init-b": {
+          "file": "setup-init-b.log",
+          "lines": [],
+          "sha256": "8ac325b662482b4f102178c4ed145b19ddf2c2f16ddc39ea8587bcbaf15464c6"
+        },
+        "setup-init-x": {
+          "file": "setup-init-x.log",
+          "lines": [],
+          "sha256": "7e5f5c01ae01925104d54a13686960cc80b4bab5e6bb97e1d590c514cf6a3242"
+        },
+        "setup-init-y": {
+          "file": "setup-init-y.log",
+          "lines": [],
+          "sha256": "be380a80e1682af4cb47d9761fd8f79d242b7535754c20653f3d92a8ecf9ba91"
+        },
+        "setup-path-a": {
+          "file": "setup-path-a.log",
+          "lines": [],
+          "sha256": "f3c9e8d1e6169765b09407d8cb5f46d753c2b4ebbd19063ddf9ce058c4acb6c1"
+        },
+        "setup-path-b": {
+          "file": "setup-path-b.log",
+          "lines": [],
+          "sha256": "de22cd71ce3c82a451cd0a712755381307486ff1a3d4a7343fec7bb00b38e834"
+        },
+        "setup-path-x": {
+          "file": "setup-path-x.log",
+          "lines": [],
+          "sha256": "e6d88eb8ee892310709eff770d5e7e216c9e886a260cb6d6dc711a073feab256"
+        },
+        "setup-path-y": {
+          "file": "setup-path-y.log",
+          "lines": [],
+          "sha256": "86259e2bba07f91b893c344169274e466fee5cea830cb336edb039e502849a67"
+        },
+        "setup-x-a-boundary": {
+          "file": "setup-x-a-boundary.log",
+          "lines": [],
+          "sha256": "c4086ec85e9b5676e06b96ac3f481f8106ad409d41919eec0e6531e51d7896a5"
+        },
+        "setup-x-r1-boundary": {
+          "file": "setup-x-r1-boundary.log",
+          "lines": [],
+          "sha256": "2d02eb95fc966038d909ee03813af54c41c179de3de5e1c6cb089366d2ffcb84"
+        },
+        "setup-x-route-a-boundary": {
+          "file": "setup-x-route-a-boundary.log",
+          "lines": [],
+          "sha256": "44518d14e1fd1501389f9d2beb4b3c6efa3646173fcc1c34ca876c771cfaf0a0"
+        },
+        "setup-x-route-r1-boundary": {
+          "file": "setup-x-route-r1-boundary.log",
+          "lines": [],
+          "sha256": "b5a5c029b4af7f32e8abe10a5498f14329e43cb4262d01f1898cc9f76d9f1056"
+        },
+        "setup-y-b-boundary": {
+          "file": "setup-y-b-boundary.log",
+          "lines": [],
+          "sha256": "b2ddd03d413f547c984ee7754a4810be2c63f466623f6cbce6d6bf22d9366636"
+        },
+        "setup-y-r2-boundary": {
+          "file": "setup-y-r2-boundary.log",
+          "lines": [],
+          "sha256": "5436cb51aed6d6b65d2789a9a4e2c6fd6e61ad0fd1630859d2ef57156c41e1a8"
+        },
+        "setup-y-route-b-boundary": {
+          "file": "setup-y-route-b-boundary.log",
+          "lines": [],
+          "sha256": "e450f661e6366a0accbe451cb8542147e0a2d89d3ec264e6c90976226050ff7e"
+        },
+        "setup-y-route-r2-boundary": {
+          "file": "setup-y-route-r2-boundary.log",
+          "lines": [],
+          "sha256": "314d258753863e4d4f43d3cd80da00b7851851b2ba937cf96ed1335da0f97edc"
+        }
+      },
+      "outcome": "accepted",
+      "rcs": {
+        "b-5-sign-reply": 0,
+        "setup-a-b-author": 0,
+        "setup-a-bootstrap": 0,
+        "setup-a-enroll-author-a": 0,
+        "setup-a-enroll-author-b": 0,
+        "setup-a-inspect": 0,
+        "setup-a-owner-ready": 0,
+        "setup-a-register": 0,
+        "setup-a-route-x-boundary": 0,
+        "setup-a-sign": 0,
+        "setup-a-undertake": 0,
+        "setup-a-wf-enqueue": 0,
+        "setup-a-wf-init": 0,
+        "setup-a-x-boundary": 0,
+        "setup-b-a-author": 0,
+        "setup-b-bootstrap": 0,
+        "setup-b-enroll-author-a": 0,
+        "setup-b-enroll-author-b": 0,
+        "setup-b-owner-ready": 0,
+        "setup-b-register": 0,
+        "setup-b-route-y-boundary": 0,
+        "setup-b-wf-init": 0,
+        "setup-b-y-boundary": 0,
+        "setup-init-a": 0,
+        "setup-init-b": 0,
+        "setup-init-x": 0,
+        "setup-init-y": 0,
+        "setup-path-a": 0,
+        "setup-path-b": 0,
+        "setup-path-x": 0,
+        "setup-path-y": 0,
+        "setup-x-a-boundary": 0,
+        "setup-x-r1-boundary": 0,
+        "setup-x-route-a-boundary": 0,
+        "setup-x-route-r1-boundary": 0,
+        "setup-y-b-boundary": 0,
+        "setup-y-r2-boundary": 0,
+        "setup-y-route-b-boundary": 0,
+        "setup-y-route-r2-boundary": 0
+      },
+      "step": "0 setup: stores, D23 boundaries, routes, signed report, consumers asleep, A's obligation undertaken",
+      "t": 10.6
+    },
+    {
+      "fragmenting": [
+        "BP fragmenting length=13240 peer-mru=4096 fragments=4"
+      ],
+      "fragments_accepted": [
+        "BP fragment 2 transfer accepted",
+        "BP fragment 3 transfer accepted",
+        "BP fragment 4 transfer accepted"
+      ],
+      "held": true,
+      "logs": {
+        "a-1-request": {
+          "file": "a-1-request.log",
+          "lines": [
+            "BP obligation request durable attempt work=work-a-report attempt=work-a-report-a1 generation=0 destination=dtn://fn-b/ adu=13143",
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP queue route destination=dtn://fn-b/ port=56305",
+            "BP queue accepted work=work-a-report attempt=work-a-report-a1 generation=0 status=durable",
+            "BP obligation request carrier durable work=work-a-report attempt=work-a-report-a1 generation=0",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)",
+            "BP fragmenting length=13240 peer-mru=4096 fragments=4",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1034)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1036)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "BP fragment 2 transfer accepted",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1036)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "BP fragment 3 transfer accepted",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 279)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "BP fragment 4 transfer accepted",
+            "BP transport work=work-a-report status=forwarded",
+            "BP queued job routed peer=dtn://fn-b/ expected=dtn://fn-x/"
+          ],
+          "sha256": "5e82a104f794ebb562929f1a4d1397d4c80b4e3759195bd4326152542755ba63"
+        },
+        "x-serve-1": {
+          "file": "x-serve-1.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 56305",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 4088)",
+            "BP accepted xfer=0 adu=3987 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 4090)",
+            "BP accepted xfer=0 adu=3987 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000001.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000001.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 4090)",
+            "BP accepted xfer=0 adu=3987 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000002.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000002.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 1285)",
+            "BP fragment family durable",
+            "BP accepted xfer=0 adu=1182 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000003.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000001-00000000000000000003.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP received carrier dispatch durable",
+            "BP forwarding route hop=r1-boundary port=47171",
+            "BP forwarding session unavailable: [Errno 111] Connection refused"
+          ],
+          "sha256": "1c931e7d97d24a9fd616d0b7c19ac7750898f1772412212462c2d026afd211a0"
+        }
+      },
+      "outcome": "accepted",
+      "step": "1 A requests via X; X's MRU forces fragments; X reassembles and holds (r1 down)",
+      "t": 17.9,
+      "x_family": true,
+      "x_forward_unavailable": true,
+      "x_frames": [
+        "00000000000000000001-00000000000000000000.fnb",
+        "00000000000000000001-00000000000000000001.fnb",
+        "00000000000000000001-00000000000000000002.fnb",
+        "00000000000000000001-00000000000000000003.fnb",
+        "00000000000000000001-00000000000000000004.fnb",
+        "00000000000000000001-00000000000000000005.fnb"
+      ]
+    },
+    {
+      "held": true,
+      "logs": {
+        "x-serve-2": {
+          "file": "x-serve-2.log",
+          "lines": [
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP forwarding route hop=r1-boundary port=47171",
+            "TCPCL bp-node-forward aux (:SEND :CONTACT 6)",
+            "TCPCL bp-node-forward event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node-forward event (:SESSION-UP 10 64000 64000 NIL)",
+            "BP forwarding attempt durable key=((97 45 98 111 117 110 100 97 114 121)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 13264)",
+            "TCPCL bp-node-forward event (:OUTBOUND-SENT 0 \"bp-node-forward\")",
+            "TCPCL bp-node-forward accepted outbound xfer=0",
+            "TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node-forward event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node-forward event (:CLOSE)",
+            "BP forwarding result durable arrival=4 status=sent",
+            "BP NODE LISTENING 56305"
+          ],
+          "sha256": "7b046a0ba82ee4b454f69c8fe6b8e8d83f77ac9ccc1e167f8465278a671e6559"
+        }
+      },
+      "outcome": "accepted",
+      "step": "2 X SIGKILLed while holding; r1 starts; X restarts from FNBS and forwards to r1; r2 starts later",
+      "t": 27.3,
+      "x_attempts": [
+        "BP forwarding attempt durable key=((97 45 98 111 117 110 100 97 114 121)"
+      ],
+      "x_killed": {
+        "at": 11.4,
+        "listening": true,
+        "mru": 4096,
+        "peer": "dtn://fn-b/",
+        "pid": 239964,
+        "port": 56305,
+        "stopped": "SIGKILL rc=-9",
+        "tag": "x-serve-1"
+      },
+      "x_recovered": "BP FNBS recovered held=1",
+      "x_results": [
+        "BP forwarding result durable arrival=4 status=sent"
+      ],
+      "x_route": [
+        "BP forwarding route hop=r1-boundary port=47171"
+      ]
+    },
+    {
+      "b_application": [
+        "BP application handoff durable",
+        "BP node delivery request-accepted"
+      ],
+      "b_frames": [
+        "00000000000000000000.fnb",
+        "00000000000000000001-00000000000000000000.fnb",
+        "00000000000000000001-00000000000000000002.fnb",
+        "00000000000000000001.fnb",
+        "00000000000000000002.fnb"
+      ],
+      "b_receipt": [
+        "BP queue accepted work=bp-receipt:receipt:work-a-report:0 attempt=return generation=0 status=durable",
+        "BP node receipt queued id=receipt:work-a-report",
+        "BP node receipt contact peer=dtn://fn-a/",
+        "BP transport work=bp-receipt:receipt:work-a-report:0 status=attempted",
+        "BP node receipt transfer failed peer=dtn://fn-a/ (connection-local; the job stays owed and is offered again on the next contact)"
+      ],
+      "b_source": [
+        "BP node source carried carrier=y-boundary author=a-author"
+      ],
+      "b_transport": [
+        "BP accepted xfer=0 adu=13143 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/b-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb"
+      ],
+      "held": true,
+      "logs": {
+        "b-serve-1": {
+          "file": "b-serve-1.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 60493",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 13258)",
+            "BP accepted xfer=0 adu=13143 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/b-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/b-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP node source carried carrier=y-boundary author=a-author",
+            "BP application handoff durable",
+            "BP node delivery request-accepted",
+            "BP queue route destination=dtn://fn-a/ port=42823",
+            "BP queue accepted work=bp-receipt:receipt:work-a-report:0 attempt=return generation=0 status=durable",
+            "BP node receipt queued id=receipt:work-a-report",
+            "BP node receipt contact peer=dtn://fn-a/",
+            "BP transport work=bp-receipt:receipt:work-a-report:0 status=attempted",
+            "BP forwarding retained reason=failed",
+            "BP queued job routed peer=dtn://fn-a/ expected=dtn://fn-y/",
+            "BP node receipt transfer failed peer=dtn://fn-a/ (connection-local; the job stays owed and is offered again on the next contact)"
+          ],
+          "sha256": "252ecd79484887f9c3b6dbfafc7636d6967565bc9d0313127b831dea3d2e4bdb"
+        },
+        "y-serve-1": {
+          "file": "y-serve-1.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 53569",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 64000 64000 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 1 13261)",
+            "BP accepted xfer=1 adu=13143 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/y-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=1 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/y-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 1)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP received carrier dispatch durable",
+            "BP forwarding route hop=b-boundary port=60493",
+            "TCPCL bp-node-forward aux (:SEND :CONTACT 6)",
+            "TCPCL bp-node-forward event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node-forward event (:SESSION-UP 10 1024 1048576 NIL)",
+            "BP forwarding attempt durable key=((114 50 45 98 111 117 110 100 97 114 121)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1059)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 988)",
+            "TCPCL bp-node-forward aux (:SEND-REFUSED \"bp-node-forward\" :BUSY)",
+            "TCPCL bp-node-forward aux (:SEND-REFUSED \"bp-node-forward\" :BUSY)",
+            "TCPCL bp-node-forward aux (:SEND-REFUSED \"bp-node-forward\" :BUSY)",
+            "TCPCL bp-node-forward aux (:SEND-REFUSED \"bp-node-forward\" :BUSY)",
+            "TCPCL bp-node-forward event (:OUTBOUND-SENT 0 \"bp-node-forward\")",
+            "TCPCL bp-node-forward accepted outbound xfer=0",
+            "TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node-forward event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node-forward event (:CLOSE)",
+            "BP forwarding result durable arrival=0 status=sent"
+          ],
+          "sha256": "50feb769010bdba6fb360e134dfee459465e3afc8ae7a4abec6e3ff019fb2e91"
+        }
+      },
+      "outcome": "request-accepted",
+      "step": "3 B admits (D23 carried), kind-5 custody, Store delivery, receipt queued toward fn-a via Y",
+      "t": 44.7,
+      "y_forward": [
+        "BP forwarding route hop=b-boundary port=60493",
+        "BP forwarding attempt durable key=((114 50 45 98 111 117 110 100 97 114 121)",
+        "BP forwarding result durable arrival=0 status=sent"
+      ]
+    },
+    {
+      "a_frames": [
+        "00000000000000000000.fnb",
+        "00000000000000000001-00000000000000000000.fnb",
+        "00000000000000000001-00000000000000000002.fnb",
+        "00000000000000000001.fnb",
+        "00000000000000000002.fnb"
+      ],
+      "a_receipt": [
+        "BP node budgets owner-backoff=5000 retry-budget=3",
+        "BP node source carried carrier=x-boundary author=b-author",
+        "BP node release listed-issuer carrier=x-boundary issuer=dtn://fn-b/",
+        "BP node delivery receipt-accepted"
+      ],
+      "a_status": "BP obligation owner work=work-a-report status=receipted pinned=no",
+      "held": true,
+      "logs": {
+        "a-serve-1": {
+          "file": "a-serve-1.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=1",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 41481"
+          ],
+          "sha256": "5856844e75a11bcc23f8f2d07eb33c9f386d2270672d5f97b6e2956a9a614285"
+        },
+        "a-serve-2": {
+          "file": "a-serve-2.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=1",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 41481",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 336)",
+            "BP accepted xfer=0 adu=222 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/a-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/a-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP node source carried carrier=x-boundary author=b-author",
+            "BP node release listed-issuer carrier=x-boundary issuer=dtn://fn-b/",
+            "BP application handoff durable",
+            "BP node delivery receipt-accepted"
+          ],
+          "sha256": "eaeb7ff2902dd07b1f7ed5ab6a1d89d93142023e7965655d3eb0236a11f5652b"
+        },
+        "a-status-4": {
+          "file": "a-status-4.log",
+          "lines": [
+            "BP obligation owner work=work-a-report status=receipted pinned=no"
+          ],
+          "sha256": "3b50a33508632d99f78177511bf640e00cf286726c2c18c48e6d97e9298c3dbf"
+        },
+        "b-serve-1b": {
+          "file": "b-serve-1b.log",
+          "lines": [
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=1",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP node receipt contact peer=dtn://fn-a/",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 340)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "BP transport work=bp-receipt:receipt:work-a-report:0 status=forwarded",
+            "BP queued job routed peer=dtn://fn-a/ expected=dtn://fn-y/",
+            "BP NODE LISTENING 60493"
+          ],
+          "sha256": "05b0471e76ee68aa320b69bb6521f88cd5b09616adba7f487739a59a6ebdf7b9"
+        },
+        "x-serve-3": {
+          "file": "x-serve-3.log",
+          "lines": [
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 42869",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 64000 64000 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 1 339)",
+            "BP accepted xfer=1 adu=222 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000003-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=1 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000003-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 1)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP received carrier dispatch durable",
+            "BP forwarding route hop=a-boundary port=41481",
+            "TCPCL bp-node-forward aux (:SEND :CONTACT 6)",
+            "TCPCL bp-node-forward event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node-forward event (:SESSION-UP 10 1024 1048576 NIL)",
+            "BP forwarding attempt durable key=((114 49 45 98 111 117 110 100 97 114 121)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 358)",
+            "TCPCL bp-node-forward event (:OUTBOUND-SENT 0 \"bp-node-forward\")",
+            "TCPCL bp-node-forward accepted outbound xfer=0",
+            "TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node-forward event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node-forward event (:CLOSE)",
+            "BP forwarding result durable arrival=5 status=sent"
+          ],
+          "sha256": "752d1536629db18262077f266145369be40ea8e92693ba2df62f94a62a6623bb"
+        },
+        "y-serve-2": {
+          "file": "y-serve-2.log",
+          "lines": [
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 42823",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 318)",
+            "BP accepted xfer=0 adu=222 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/y-fnbs/lifecycle/00000000000000000002-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/y-fnbs/lifecycle/00000000000000000002-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP received carrier dispatch durable",
+            "BP forwarding route hop=r2-boundary port=43745",
+            "TCPCL bp-node-forward aux (:SEND :CONTACT 6)",
+            "TCPCL bp-node-forward event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node-forward event (:SESSION-UP 10 64000 64000 NIL)",
+            "BP forwarding attempt durable key=((98 45 98 111 117 110 100 97 114 121)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 342)",
+            "TCPCL bp-node-forward event (:OUTBOUND-SENT 0 \"bp-node-forward\")",
+            "TCPCL bp-node-forward accepted outbound xfer=0",
+            "TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node-forward event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node-forward event (:CLOSE)",
+            "BP forwarding result durable arrival=1 status=sent"
+          ],
+          "sha256": "50b72332223606ab7dcd0ea26da2c6dbd5facd9e762401ea20e63bdd0982c096"
+        }
+      },
+      "outcome": "receipt-accepted",
+      "step": "4 B's receipt crosses its own outage (X down, A SIGKILLed) and settles at A before B's consumer wakes",
+      "t": 91.6,
+      "x_forward": [
+        "BP forwarding route hop=a-boundary port=41481",
+        "BP forwarding attempt durable key=((114 49 45 98 111 117 110 100 97 114 121)",
+        "BP forwarding result durable arrival=5 status=sent"
+      ],
+      "y_first_held_receipt": false,
+      "y_forwarded": true
+    },
+    {
+      "b_inspect": {
+        "octets": 12959,
+        "rc": 0
+      },
+      "event_contains_authored_source": true,
+      "held": true,
+      "logs": {
+        "b-5-ack-0": {
+          "file": "b-5-ack-0.log",
+          "lines": [],
+          "sha256": "591130f37e3baaf17e17b9766c843dc9152e5be100a487ce3fce9d4bf7a79eff"
+        },
+        "b-5-author-reply": {
+          "file": "b-5-author-reply.log",
+          "lines": [],
+          "sha256": "534e0b6f8d805aeaa08ce99ddfab597ccaa6234de9182ffc2be96bf9fcbe0ae4"
+        },
+        "b-5-enqueue": {
+          "file": "b-5-enqueue.log",
+          "lines": [],
+          "sha256": "e948734351fccee0d0f59b7d993df99ab7fc4dbfd6fc9f546facf0aa47b202b3"
+        },
+        "b-5-owner": {
+          "file": "b-5-owner.log",
+          "lines": [],
+          "sha256": "c4042f946f3a3172144737d736327f9ad13378e05e1178f0e7a445197208ab0a"
+        },
+        "b-5-poll-0": {
+          "file": "b-5-poll-0.log",
+          "lines": [],
+          "sha256": "1ce47904949ca82f9df6a9b85c69707d69120b8e4025149d9d6114448d7a80ff"
+        },
+        "b-5-request": {
+          "file": "b-5-request.log",
+          "lines": [
+            "BP obligation request durable attempt work=work-b-reply attempt=work-b-reply-a1 generation=0 destination=dtn://fn-a/ adu=8359",
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=1",
+            "BP queue route destination=dtn://fn-a/ port=42823",
+            "BP queue accepted work=work-b-reply attempt=work-b-reply-a1 generation=0 status=durable",
+            "BP obligation request carrier durable work=work-b-reply attempt=work-b-reply-a1 generation=0",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 282)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "BP transport work=work-b-reply status=forwarded",
+            "BP queued job routed peer=dtn://fn-a/ expected=dtn://fn-y/"
+          ],
+          "sha256": "2f69865f5dfef4a2d448d578968480e8740e992b6b3fd714d6fba784f30763cf"
+        },
+        "b-5-sign-reply": {
+          "file": "b-5-sign-reply.log",
+          "lines": [],
+          "sha256": "b81a32f32aacc8826e662c3029ab7d66d3302147c50b8823a1c4270e135c0aed"
+        },
+        "b-5-undertake": {
+          "file": "b-5-undertake.log",
+          "lines": [
+            "BP obligation owner durable undertaking work=work-b-reply charge=3"
+          ],
+          "sha256": "1afd658c9215265d0c47de2db160e160e9446b9e78b3a2dd8c05603329f30d09"
+        },
+        "b-5-verify-source": {
+          "file": "b-5-verify-source.log",
+          "lines": [],
+          "sha256": "7760cc5562455916f29a9e0bd28bdac86eec6d69cdbe6592d6f069926b315e9b"
+        }
+      },
+      "outcome": "accepted",
+      "polls": [
+        {
+          "ack": "accepted",
+          "message_id": "<mission-report@fn-a.invalid>",
+          "octets": 18853,
+          "poll": "accepted",
+          "sha256": "3f7f04708ea72457e8fee1b80a55aa9d081cb31767319885442da71300aac3c0"
+        }
+      ],
+      "reply_author_rc": 0,
+      "reply_request": [
+        "BP obligation request durable attempt work=work-b-reply attempt=work-b-reply-a1 generation=0 destination=dtn://fn-a/ adu=8359",
+        "BP FNBS recovered held=1",
+        "BP queue recovered jobs=1",
+        "BP queue route destination=dtn://fn-a/ port=42823",
+        "BP queue accepted work=work-b-reply attempt=work-b-reply-a1 generation=0 status=durable",
+        "BP obligation request carrier durable work=work-b-reply attempt=work-b-reply-a1 generation=0",
+        "TCPCL bp-service aux (:SEND :CONTACT 6)",
+        "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+        "TCPCL bp-service event (:SESSION-UP 10 1024 1048576 NIL)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)",
+        "TCPCL bp-service aux (:SEND :XFER-SEGMENT 282)",
+        "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+        "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+        "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+        "TCPCL bp-service aux (:SEND-REFUSED \"bp-service\" :BUSY)",
+        "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+        "TCPCL bp-service accepted outbound xfer=0",
+        "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+        "TCPCL bp-service event (:PEER-TERMINATING 0)",
+        "TCPCL bp-service event (:CLOSE)",
+        "BP transport work=work-b-reply status=forwarded",
+        "BP queued job routed peer=dtn://fn-a/ expected=dtn://fn-y/"
+      ],
+      "reply_signed": true,
+      "report_event": {
+        "ack": "accepted",
+        "message_id": "<mission-report@fn-a.invalid>",
+        "octets": 18853,
+        "poll": "accepted",
+        "sha256": "3f7f04708ea72457e8fee1b80a55aa9d081cb31767319885442da71300aac3c0"
+      },
+      "step": "5 B's consumer wakes after A settled: verify, poll, ack; B signs a reply and requests it toward fn-a",
+      "t": 95.6,
+      "verify": {
+        "exported_equals_authored": true,
+        "line": "fn-portable-v1 4141414141414141414141414141414141414141414141414141414141414141 666e2f7375626a6563742f7631000101aff68c2662d82b3fd20f976fe30e113054a50797056b4229",
+        "rc": 0
+      }
+    },
+    {
+      "a_application": [
+        "BP node budgets owner-backoff=5000 retry-budget=3",
+        "BP node source carried carrier=x-boundary author=b-author",
+        "BP node delivery request-accepted",
+        "BP node receipt queued id=receipt:work-b-reply",
+        "BP node receipt contact peer=dtn://fn-b/",
+        "BP node receipt transfer failed peer=dtn://fn-b/ (connection-local; the job stays owed and is offered again on the next contact)"
+      ],
+      "a_receipt_contact": true,
+      "a_receipt_queued": true,
+      "b_receipt": [
+        "BP node budgets owner-backoff=5000 retry-budget=3",
+        "BP node source carried carrier=y-boundary author=a-author",
+        "BP node release listed-issuer carrier=y-boundary issuer=dtn://fn-a/",
+        "BP node delivery receipt-accepted"
+      ],
+      "b_status": "BP obligation owner work=work-b-reply status=receipted pinned=no",
+      "consumer_status": {
+        "outcome": "accepted",
+        "rc": 0,
+        "stdout": "consumer status accepted committed-ack=8 committed-journal-frontier=10 journal-event-distance=2"
+      },
+      "event_contains_reply_source": true,
+      "held": true,
+      "logs": {
+        "a-6-ack-0": {
+          "file": "a-6-ack-0.log",
+          "lines": [],
+          "sha256": "71c5adf24e64f55c8ba163fe70eccaa65f70436c7fefa02da3afc22561875a4d"
+        },
+        "a-6-ack-1": {
+          "file": "a-6-ack-1.log",
+          "lines": [],
+          "sha256": "70f22324cf600db6bc2a3f65cc0db14474547e54ebbf007ba6ccad73762e0087"
+        },
+        "a-6-consumer-status": {
+          "file": "a-6-consumer-status.log",
+          "lines": [],
+          "sha256": "d8beb4fc47dff416fef2aa152b661f5769c7db1910821a6d110dd8891a1f1ebd"
+        },
+        "a-6-owner": {
+          "file": "a-6-owner.log",
+          "lines": [],
+          "sha256": "55c62e88d0848eb1038a3ba104505e34ddbec110ffc03a06bb9f560c99818092"
+        },
+        "a-6-poll-0": {
+          "file": "a-6-poll-0.log",
+          "lines": [],
+          "sha256": "b7b226911bc864fc17891512b9b88d2025be1d15e930daeb23d07275bbd200ad"
+        },
+        "a-6-poll-1": {
+          "file": "a-6-poll-1.log",
+          "lines": [],
+          "sha256": "fcb76b9ba56b960002f26f4a91624c48efb0d24470b1b4858e47d188c2311d7e"
+        },
+        "a-serve-3": {
+          "file": "a-serve-3.log",
+          "lines": [
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=1",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 41481",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 8474)",
+            "BP accepted xfer=0 adu=8359 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/a-fnbs/lifecycle/00000000000000000002-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/a-fnbs/lifecycle/00000000000000000002-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP node source carried carrier=x-boundary author=b-author",
+            "BP application handoff durable",
+            "BP node delivery request-accepted",
+            "BP queue route destination=dtn://fn-b/ port=56305",
+            "BP queue accepted work=bp-receipt:receipt:work-b-reply:1 attempt=return generation=0 status=durable",
+            "BP node receipt queued id=receipt:work-b-reply",
+            "BP node receipt contact peer=dtn://fn-b/",
+            "BP transport work=bp-receipt:receipt:work-b-reply:1 status=attempted",
+            "BP forwarding retained reason=failed",
+            "BP queued job routed peer=dtn://fn-b/ expected=dtn://fn-x/",
+            "BP node receipt transfer failed peer=dtn://fn-b/ (connection-local; the job stays owed and is offered again on the next contact)"
+          ],
+          "sha256": "8329f53d1ad74e9b372244559efa774c24e32e770060ad39f70f86248e421698"
+        },
+        "a-serve-4": {
+          "file": "a-serve-4.log",
+          "lines": [
+            "BP FNBS recovered held=2",
+            "BP queue recovered jobs=2",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP node receipt contact peer=dtn://fn-b/",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-service event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 338)",
+            "TCPCL bp-service event (:OUTBOUND-SENT 0 \"bp-service\")",
+            "TCPCL bp-service accepted outbound xfer=0",
+            "TCPCL bp-service aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-service event (:PEER-TERMINATING 0)",
+            "TCPCL bp-service event (:CLOSE)",
+            "BP transport work=bp-receipt:receipt:work-b-reply:1 status=forwarded",
+            "BP queued job routed peer=dtn://fn-b/ expected=dtn://fn-x/",
+            "BP NODE LISTENING 41481"
+          ],
+          "sha256": "6679ec775e6052d468f3dfdc043efc054e82675d6021e55be7ea2fa7af7a0e4d"
+        },
+        "b-6-status": {
+          "file": "b-6-status.log",
+          "lines": [
+            "BP obligation owner work=work-b-reply status=receipted pinned=no"
+          ],
+          "sha256": "a6deab1de0bebca63a9fd427ec46abfde2148b327cc97c5299bc7302a6b0270a"
+        },
+        "b-serve-2": {
+          "file": "b-serve-2.log",
+          "lines": [
+            "BP FNBS recovered held=1",
+            "BP queue recovered jobs=2",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 60493",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 334)",
+            "BP accepted xfer=0 adu=220 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/b-fnbs/lifecycle/00000000000000000002-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/b-fnbs/lifecycle/00000000000000000002-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP node source carried carrier=y-boundary author=a-author",
+            "BP node release listed-issuer carrier=y-boundary issuer=dtn://fn-a/",
+            "BP application handoff durable",
+            "BP node delivery receipt-accepted"
+          ],
+          "sha256": "dd5c98a07a9ccc2e971842e85763f2bebb3a5069d062fa50c6c3c63006287086"
+        },
+        "x-serve-4": {
+          "file": "x-serve-4.log",
+          "lines": [
+            "BP FNBS recovered held=3",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 56305",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 0 316)",
+            "BP accepted xfer=0 adu=220 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000004-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=0 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/x-fnbs/lifecycle/00000000000000000004-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP received carrier dispatch durable",
+            "BP forwarding route hop=r1-boundary port=47171",
+            "TCPCL bp-node-forward aux (:SEND :CONTACT 6)",
+            "TCPCL bp-node-forward event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node-forward event (:SESSION-UP 10 64000 64000 NIL)",
+            "BP forwarding attempt durable key=((97 45 98 111 117 110 100 97 114 121)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 340)",
+            "TCPCL bp-node-forward event (:OUTBOUND-SENT 0 \"bp-node-forward\")",
+            "TCPCL bp-node-forward accepted outbound xfer=0",
+            "TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node-forward event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node-forward event (:CLOSE)",
+            "BP forwarding result durable arrival=7 status=sent"
+          ],
+          "sha256": "6bae01a462e810e07985c355f589d24ab7ab67acbced3b5114259af49fedc01c"
+        },
+        "y-serve-3": {
+          "file": "y-serve-3.log",
+          "lines": [
+            "BP FNBS recovered held=3",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 53569",
+            "TCPCL bp-node event (:SEND :CONTACT 6)",
+            "TCPCL bp-node event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node event (:SESSION-UP 10 64000 64000 NIL)",
+            "TCPCL bp-node event (:SEND :XFER-ACK 18)",
+            "TCPCL bp-node event (:BUNDLE-RECEIVED 1 337)",
+            "BP accepted xfer=1 adu=220 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/y-fnbs/lifecycle/00000000000000000003-00000000000000000000.fnb",
+            "TCPCL bp-node accepted xfer=1 path=/tank/fn/scratch/mission-signed-2/native-aa0f6c16/signed-r2/y-fnbs/lifecycle/00000000000000000003-00000000000000000000.fnb",
+            "TCPCL bp-node event (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node event (:PEER-TERMINATING 1)",
+            "TCPCL bp-node event (:CLOSE)",
+            "TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed",
+            "BP received carrier dispatch durable",
+            "BP forwarding route hop=b-boundary port=60493",
+            "TCPCL bp-node-forward aux (:SEND :CONTACT 6)",
+            "TCPCL bp-node-forward event (:SEND :SESS-INIT 36)",
+            "TCPCL bp-node-forward event (:SESSION-UP 10 1024 1048576 NIL)",
+            "BP forwarding attempt durable key=((114 50 45 98 111 117 110 100 97 114 121)",
+            "TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 356)",
+            "TCPCL bp-node-forward event (:OUTBOUND-SENT 0 \"bp-node-forward\")",
+            "TCPCL bp-node-forward accepted outbound xfer=0",
+            "TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)",
+            "TCPCL bp-node-forward event (:PEER-TERMINATING 0)",
+            "TCPCL bp-node-forward event (:CLOSE)",
+            "BP forwarding result durable arrival=3 status=sent"
+          ],
+          "sha256": "a8764150bd6d1f01343d69a13b51540685f3fb6ff69227fed2acbcdd21cdfd7e"
+        }
+      },
+      "outcome": "request-accepted",
+      "polls": [
+        {
+          "ack": "accepted",
+          "message_id": "<mission-report@fn-a.invalid>",
+          "octets": 18872,
+          "poll": "accepted",
+          "sha256": "6319de4e01373a93b738492b4a82aa0702309b41622d0d3b5f6cb0faafdae7bd"
+        },
+        {
+          "ack": "accepted",
+          "message_id": "<mission-reply@fn-b.invalid>",
+          "octets": 9285,
+          "poll": "accepted",
+          "sha256": "00962bf2b67e24c57897744cec50f427f3c43872d1b5cc5543fa7380f133266e"
+        }
+      ],
+      "reply_event": {
+        "ack": "accepted",
+        "message_id": "<mission-reply@fn-b.invalid>",
+        "octets": 9285,
+        "poll": "accepted",
+        "sha256": "00962bf2b67e24c57897744cec50f427f3c43872d1b5cc5543fa7380f133266e"
+      },
+      "step": "6 the reply crosses back; A delivers; A's receipt releases B's pin; A's consumer wakes, polls and acks",
+      "t": 153.8,
+      "x_forward": [
+        "BP forwarding route hop=r1-boundary port=47171",
+        "BP forwarding attempt durable key=((97 45 98 111 117 110 100 97 114 121)",
+        "BP forwarding result durable arrival=7 status=sent"
+      ],
+      "y_forward": [
+        "BP forwarding route hop=b-boundary port=60493",
+        "BP forwarding attempt durable key=((114 50 45 98 111 117 110 100 97 114 121)",
+        "BP forwarding result durable arrival=3 status=sent"
+      ]
+    }
+  ],
+  "topology": "A -> X -> dtn7 r1 -> dtn7 r2 -> Y -> B and back",
+  "wall_seconds": 153.9,
+  "x_request_mru": 4096
+}

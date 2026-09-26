@@ -1,0 +1,64 @@
+test_acl2_namespace_codec_rejects_alias_overflow_and_excess (tests.test_native_checkpoint.NativeCheckpointTests.test_acl2_namespace_codec_rejects_alias_overflow_and_excess) ... ok
+test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin (tests.test_native_checkpoint.NativeCheckpointTests.test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin) ... ok
+test_arbitrary_covered_deletion_image_recovers_and_resumes (tests.test_native_checkpoint.NativeCheckpointTests.test_arbitrary_covered_deletion_image_recovers_and_resumes) ... ok
+test_clone_refuses_canonical_parent_alias_above_path_bound (tests.test_native_checkpoint.NativeCheckpointTests.test_clone_refuses_canonical_parent_alias_above_path_bound) ... skipped 'run only against a combined E2/checkpoint developer image'
+test_clone_reopens_historical_authorship_verdict (tests.test_native_checkpoint.NativeCheckpointTests.test_clone_reopens_historical_authorship_verdict) ... skipped 'run only against a combined E2/T10/checkpoint developer image'
+test_corrupt_unselected_generation_is_invisible (tests.test_native_checkpoint.NativeCheckpointTests.test_corrupt_unselected_generation_is_invisible) ... ok
+test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes (tests.test_native_checkpoint.NativeCheckpointTests.test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes) ... ok
+test_differential_mismatch_is_always_corruption (tests.test_native_checkpoint.NativeCheckpointTests.test_differential_mismatch_is_always_corruption) ... ok
+test_fenced_clone_rollover_after_selected_pack_reclaim (tests.test_native_checkpoint.NativeCheckpointTests.test_fenced_clone_rollover_after_selected_pack_reclaim) ... skipped 'run only against a combined E2/checkpoint developer image'
+test_known_and_ambiguous_failures_keep_distinct_exit_codes (tests.test_native_checkpoint.NativeCheckpointTests.test_known_and_ambiguous_failures_keep_distinct_exit_codes) ... ok
+test_missing_retained_suffix_gap_fails_closed_without_reclamation (tests.test_native_checkpoint.NativeCheckpointTests.test_missing_retained_suffix_gap_fails_closed_without_reclamation) ... ok
+test_native_and_python_frames_cross_open_byte_identically (tests.test_native_checkpoint.NativeCheckpointTests.test_native_and_python_frames_cross_open_byte_identically) ... ok
+test_pack_generation_retirement_death_reopens_and_retries (tests.test_native_checkpoint.NativeCheckpointTests.test_pack_generation_retirement_death_reopens_and_retries) ... ok
+test_pack_prefix_reclaim_process_death_recovers_from_selected_pack (tests.test_native_checkpoint.NativeCheckpointTests.test_pack_prefix_reclaim_process_death_recovers_from_selected_pack) ... ok
+test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack (tests.test_native_checkpoint.NativeCheckpointTests.test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack) ... ok
+test_process_death_at_every_native_checkpoint_cut_reopens (tests.test_native_checkpoint.NativeCheckpointTests.test_process_death_at_every_native_checkpoint_cut_reopens) ... ok
+test_process_death_at_every_selection_cut_preserves_event_bytes (tests.test_native_checkpoint.NativeCheckpointTests.test_process_death_at_every_selection_cut_preserves_event_bytes) ... ok
+test_reclaim_cuts_keep_served_view_and_next_number (tests.test_native_checkpoint.NativeCheckpointTests.test_reclaim_cuts_keep_served_view_and_next_number) ... ok
+test_reclaim_keeps_served_view_watermarks_and_next_number (tests.test_native_checkpoint.NativeCheckpointTests.test_reclaim_keeps_served_view_watermarks_and_next_number) ... ok
+test_retiring_old_pack_generations_keeps_exact_retained_sources (tests.test_native_checkpoint.NativeCheckpointTests.test_retiring_old_pack_generations_keeps_exact_retained_sources) ... ok
+test_selected_corruption_is_reported_without_rollback_or_lost_replay (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_corruption_is_reported_without_rollback_or_lost_replay) ... ok
+test_selected_lossless_pack_splices_before_generic_replay (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_lossless_pack_splices_before_generic_replay) ... ok
+test_selected_pack_missing_or_corrupt_fails_closed (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_pack_missing_or_corrupt_fails_closed) ... ok
+test_selected_pack_reclaims_physical_prefix_and_replays_suffix (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_pack_reclaims_physical_prefix_and_replays_suffix) ... ok
+test_surviving_covered_transaction_conflict_fails_closed (tests.test_native_checkpoint.NativeCheckpointTests.test_surviving_covered_transaction_conflict_fails_closed) ... ok
+test_chain_reclaim_retire_and_suffix_cuts_resume (tests.test_native_pack_chain.NativePackChainTests.test_chain_reclaim_retire_and_suffix_cuts_resume)
+Interrupted covered-file reclaim across a multi-link chain, ... ok
+test_eio_at_each_link_publication_cut_from_both_entries (tests.test_native_pack_chain.NativePackChainTests.test_eio_at_each_link_publication_cut_from_both_entries) ... ok
+test_every_chain_publication_cut_from_both_entries (tests.test_native_pack_chain.NativePackChainTests.test_every_chain_publication_cut_from_both_entries) ... ok
+test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain) ... ERROR
+test_actual_reclaim_calls_logical_plan_subject (tests.test_native_compaction_crash_map.NativeCompactionCrashMapTests.test_actual_reclaim_calls_logical_plan_subject) ... ok
+test_each_native_cut_is_a_model_program_cut (tests.test_native_compaction_crash_map.NativeCompactionCrashMapTests.test_each_native_cut_is_a_model_program_cut) ... ok
+test_recovery_calls_exact_observation_subject (tests.test_native_compaction_crash_map.NativeCompactionCrashMapTests.test_recovery_calls_exact_observation_subject) ... ok
+test_saved_image_loads_reclaim_plan_definition (tests.test_native_compaction_crash_map.NativeCompactionCrashMapTests.test_saved_image_loads_reclaim_plan_definition) ... ok
+
+======================================================================
+ERROR: test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_pack_chain.py", line 100, in test_scale_store_compacts_into_a_chain
+    store, config, port = self.scale_store("scale-chain", N)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_pack_chain.py", line 85, in scale_store
+    self.native("store", store, "probe", str(n), "article")
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_checkpoint.py", line 41, in native
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/scratch/bounds-p5/tree5/build/fn-host-developer', '--fn', 'store', '/tank/fn/scratch/bounds-p5/tmp/fn-native-checkpoint-3diuljxs/scale-chain', 'probe', '20000', 'article']' timed out after 1800 seconds
+
+----------------------------------------------------------------------
+Ran 33 tests in 12489.928s
+
+FAILED (errors=1, skipped=3)
+exit=1

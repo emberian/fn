@@ -1,0 +1,1 @@
+persvati path-identity=persvati.friends.fn.invalid address=192.168.50.120 port=11990 security=starttls inbound=local.*,control.cancel outbound=local.*,control.cancel auth=principal:607792851af81f99899a21cb728087edcb137e42883e11d83e9fc458d4d33033
