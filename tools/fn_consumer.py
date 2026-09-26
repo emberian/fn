@@ -65,8 +65,13 @@ current permission is fn's to decide, e.g. a revoked enrolment answers
 before D25 is consulted (PKT-322) -- the submission stays uncertain until
 fn's Store serves the artifact back.
 
+One process per database: the consumer holds an exclusive flock on
+`<db>.lock` from before it opens the database until it exits; a second
+process is refused (exit 1, `database in use by pid N`) before it reads
+anything.
+
 Exit codes: 0 finished, 1 refused (an fn or application refusal it cannot
-settle), 3 stopped on an uncertain fn outcome (wake again to settle), 4 fault.
+settle, or the database held by another process), 3 stopped on an uncertain fn outcome (wake again to settle), 4 fault.
 Developer cuts (`FN_CONSUMER_CUT`) stop the process with os._exit(97):
 `in-transaction`, `after-commit`, `after-ack` (the consumer transaction and
 its ack); `before-post` (no attempt recorded), `attempt-recorded` (in-flight
@@ -77,6 +82,7 @@ before COMMIT).
 import argparse
 import datetime
 import email.utils
+import fcntl
 import hashlib
 import json
 import os
@@ -186,6 +192,32 @@ def reconcile_due(attempts):
                    for state, code in attempts[last_open + 1:])
 
 
+class InUse(Exception):
+    """Another live process holds this database's lock."""
+
+
+def lock_database(db_path):
+    """Hold an exclusive flock on DB_PATH + '.lock' for the process lifetime.
+
+    One consumer process per database is a rule the client enforces, not a
+    comment: the in-flight attempts a process finds on opening belong to a
+    dead process only if no live one holds the lock.  flock rather than
+    sqlite's `locking_mode=EXCLUSIVE`: the kernel releases it when the holder
+    dies (os._exit, SIGKILL), it is taken before the database is read at all
+    rather than at sqlite's first write, and the holder writes its pid into
+    the file so the refusal names it."""
+    fd = os.open(str(db_path) + ".lock", os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        holder = os.pread(fd, 32, 0).decode("ascii", "replace").strip()
+        os.close(fd)
+        raise InUse(holder if holder.isdigit() else "unknown")
+    os.ftruncate(fd, 0)
+    os.pwrite(fd, b"%d\n" % os.getpid(), 0)
+    return fd
+
+
 class Stop(Exception):
     def __init__(self, code, why):
         super().__init__(why)
@@ -207,6 +239,7 @@ class Consumer:
         self.name = self.config["consumer"]
         self.work = Path(self.config["work"])
         self.work.mkdir(parents=True, exist_ok=True)
+        self.lock = lock_database(self.config["db"])
         self.db = sqlite3.connect(self.config["db"], isolation_level=None)
         self.db.execute("PRAGMA synchronous=FULL")
         tables = {r[0] for r in self.db.execute(
@@ -218,9 +251,9 @@ class Consumer:
         self.db.executescript(SCHEMA)
         self.db.execute("BEGIN IMMEDIATE")
         self.set_meta("schema", SCHEMA_VERSION)
-        # One consumer process per database: an attempt still in flight when
-        # a process opens it belonged to a process that died with the
-        # native call outstanding or its answer unrecorded.
+        # This process holds the database's lock, so an attempt still in
+        # flight belonged to a process that died with the native call
+        # outstanding or its answer unrecorded.
         self.db.execute("UPDATE attempts SET state='unanswered' WHERE state='in-flight'")
         self.db.execute("COMMIT")
 
@@ -745,7 +778,11 @@ def build_parser():
 def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
-    consumer = Consumer(args.config)
+    try:
+        consumer = Consumer(args.config)
+    except InUse as busy:
+        sys.stderr.write("fn_consumer: database in use by pid %s\n" % busy)
+        return 1
     try:
         if args.command == "report":
             consumer.originate(args.operation_id, args.payload)
