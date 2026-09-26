@@ -68,9 +68,9 @@ named.
 | 11 | a BP bundle (encode, decode) | 1 MiB: encode 8.0 s, decode 15.4 s; 48 KiB: 0.37 / 0.71 s; SCN-077's receiver open of 1,311 held rows 51.9 s, of it encode 23.5 s and decode 15.7 s (bp-lifecycle-5) | `fn-bpp-crc32c-scan` 99.4 % of encode, 95.4 % of decode: `fn-bpp-xor` by `floor`, 32 recursions per XOR, 288 per octet | codec (an `:exec` twin: `logxor`, a table-driven CRC-32C) | **fix lane 2** (PKT-414) | codec to about 1 % of today; the 51.9 s open to about 13 s |
 | 12 | `store checkpoint` (offline) | 24.5 s, 2.7 GB peak at 10,402 (17.5 s service-envelope); 154 s, 22.5 GB at 10,000 x 32 KiB | the replay first, then the buffer writer (0.12 µs per octet export call, PKT-315) | codec | checkpoint-capture-stream (PKT-315 in its LANEDUMP) | the replay dominates |
 | 13 | offline `operator` request | 9 to 10 s at 700 to 800 records; O(N^2) over N requests (8,336 s for 1,100) | the whole configuration log replayed at every open (PKT-501) | carried invariant (a configuration checkpoint) | caps-to-profile-2 (running) | flat per request |
-| 14 | `store compact` | 523 s at 20,000 (pack-chain-open, 8cc3cd4c: before served-path-scale; its open was then the quadratic freshness walk) | not re-measured on dev | — | unmeasured (PKT-A below) | — |
+| 14 | `store compact` | 523 s at 20,000 (pack-chain-open, 8cc3cd4c: before served-path-scale; its open was then the quadratic freshness walk) | not re-measured on dev | — | unmeasured (PKT-554 below) | — |
 | 15 | consumer poll | 127 ms median at ACK 0, 135 ms at ACK 96 (118 events; 58 ms on a quieter box, 2026-09-24) | CLI-inclusive: the process start of a 32 GB-dynamic-space image dominates; flat in the position | — | none needed at this size | — |
-| 16 | `store reclaim` | 2.6 s for 300 reclaimed (reclaim-lifecycle-2) | no scale figure | — | unmeasured (PKT-A) | — |
+| 16 | `store reclaim` | 2.6 s for 300 reclaimed (reclaim-lifecycle-2) | no scale figure | — | unmeasured (PKT-554) | — |
 
 **Heap.** Live: sixteen bytes per retained octet (5.55 GB at 10,000 x 32 KiB,
 rep-wave-d), and a checkpoint-opened owner holds each payload twice (19.3 GB
@@ -212,7 +212,7 @@ a default-profile store with `--max-article-octets 4194304`, N < 30):
 ARTICLE's wall is mostly not owner CPU (3 MiB: 15.3 s wall, 2.7 s owner CPU
 over the three profiled); the samples show `clock_nanosleep` and `poll` in
 the owner, and the client reads line by line, so the remaining wall is the
-writer's pacing or the client, not yet separated (PKT-B below). The owner
+writer's pacing or the client, not yet separated (PKT-555 below). The owner
 CPU is the reply built as lists: `fn-ag-rev-onto` 19.4, `fn-nntp-crlf-lines-aux`
 31.5, `revappend` 11.7, `fn-octet-listp` 8.4 percent. POST's is the ingress
 byte machine (ingress-span).
@@ -269,7 +269,7 @@ term; its "three scans encode every candidate" multiplies it. 10 MiB
 (bp-lifecycle-5): authored as 2,622 fragments in 27.3 s, 1,311 received in
 90.2 s (under 70 ms a fragment), and the receiver's open of those rows
 51.9 s, 39.2 s of it `fn-bpb-encode` and `fn-bpb-decode`. A 1 MiB transfer
-end to end was not run (PKT-A).
+end to end was not run (PKT-554).
 
 ### Consumer poll (this lane: `consumer-poll.json`)
 
@@ -278,7 +278,7 @@ and 135 ms at ACK 96 of 118 events (58 ms on 2026-09-24's quieter box). A
 poll answers at most one 16-event cursor window, so "a 1,000-entry page" is
 about 63 polls; each is a CLI process, and the process start is the cost.
 The fixture's development profile caps the journal at 128 events: a poll at
-depth 1,000 or 10,000 is not measured (PKT-A).
+depth 1,000 or 10,000 is not measured (PKT-554).
 
 ## Measurements taken here
 
@@ -318,26 +318,26 @@ depth 1,000 or 10,000 is not measured (PKT-A).
 The brief assigned PKT-500 to 509, but every one of them was already taken
 on dev (PKT-500 live `bp-obligation status`, 501 the configuration replay,
 502 to 509 sweep 19 and 20's). This lane therefore takes no id; its packets
-are named A to E here for the deputy to number, and none is in the backlog
-file.
+were named A to E; the deputy numbered them PKT-554 to PKT-558 at the merge
+(the backlog carries them).
 
-- **PKT-A: rows not measured on dev.** `store compact` at 20,000 (523 s on
+- **PKT-554 (was PKT-A): rows not measured on dev.** `store compact` at 20,000 (523 s on
   8cc3cd4c predates served-path-scale); `store reclaim` at scale; a 1 MiB and
   a 10 MiB BP transfer end to end; a consumer poll at journal depth 1,000 and
   10,000 (the fixture's profile caps it at 128); signed POST's profile;
   anything on the pool (every row here is tmpfs); a quiet box.
-- **PKT-B: ARTICLE 3 MiB's wall is not owner CPU.** 15.3 s wall against 2.7 s
+- **PKT-555 (was PKT-B): ARTICLE 3 MiB's wall is not owner CPU.** 15.3 s wall against 2.7 s
   owner CPU over three; `clock_nanosleep` and `poll` in the owner's samples.
   Separate the writer's pacing from the client's line reads before
   egress-span claims a wall-time gain.
-- **PKT-C: the chain open decodes every link.** `fn-ccc-decode-link` is 29.8
+- **PKT-556 (was PKT-C): the chain open decodes every link.** `fn-ccc-decode-link` is 29.8
   percent of the checkpoint open at 20,000 (PKT-168 (3)); a checkpoint open
   needs only the links past its sequence.
-- **PKT-D: PKT-041 retired as a cost.** `fn-store-sco-prefix-octets` has 3
+- **PKT-557 (was PKT-D): PKT-041 retired as a cost.** `fn-store-sco-prefix-octets` has 3
   samples in each checkpoint-open profile; the checkpoint open's cost is
   `fn-record-p` and `fn-sf-record-listp` re-recognizing what the decode
   produced (fold into PKT-455 (2)).
-- **PKT-E: the POST's per-connection group index.**
+- **PKT-558 (was PKT-E): the POST's per-connection group index.**
   `fn-served-make-conn-group-indexed` is 15.6 percent of a POST's bytes at
   10,000; examine whether it rebuilds per request.
 - The five fix lanes above are the packets for the unowned rows (PKT-476 (3),
