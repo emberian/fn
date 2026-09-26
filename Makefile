@@ -140,6 +140,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-list-counts-read \
 	books/config-descriptions \
 	books/owner-descriptions-read \
+	books/owner-xref-read \
+	books/posting-account \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -692,6 +694,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-list-counts \
 	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/group-descriptions-tests \
+	tests/acl2/nntp-xref-tests \
+	tests/acl2/posting-account-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
