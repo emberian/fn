@@ -470,6 +470,22 @@ STO-009: a committed-history boundary is written after each commit and before
 its acknowledgement, and every open refuses, by name, a record history
 shorter than it; a burned allocation never trips it.
 
+STO-022: The durable reply's barrier cost is the publication program's and
+nothing less: every fence of a served commit fences an object A <= M <= D
+reads, and a cheaper program is admitted only through the byte model's
+discipline and crash theorems and the history model's invariant. A served
+commit makes seven fsyncs (the frontier's stage and root, the record's stage,
+transactions directory and staging directory, the marker's stage and root);
+the marker's two fence different objects, its stage inode and the root entry,
+and neither can move before the record's barrier or after the
+acknowledgement. The three cheaper programs PKT-079 and PKT-143 allowed are
+stated and refused in `books/byte-store-marker-candidates.lisp` (PRF-169):
+the deferred marker leaves A <= M, an unfenced stage is refused by discipline
+D1 and its garbled crash image, an in-place overwrite by D2 and the same
+image. The one sound sharing, the next reservation's frontier renamed under
+the marker's root barrier before the acknowledgement, is a file-kernel and
+K0 change (PKT-441). Measured: `planning/evidence/publish-program-2026-09-26.md`.
+
 The namespace gate admits a history and every proper prefix of it
 (`fn-cverb-open-history-gate-admits-a-lost-suffix`). The allocation frontier
 cannot tell a lost newest record from a burned reservation, because the

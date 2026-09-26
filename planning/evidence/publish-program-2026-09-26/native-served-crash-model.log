@@ -1,0 +1,8 @@
+test_five_served_recovery_barriers_are_distinct_model_cuts (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_five_served_recovery_barriers_are_distinct_model_cuts) ... ok
+test_served_prepare_publish_finish_cuts (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_served_prepare_publish_finish_cuts) ... ok
+test_the_served_frame_is_the_injected_articles_not_anothers (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_the_served_frame_is_the_injected_articles_not_anothers) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 217.818s
+
+OK

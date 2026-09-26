@@ -1,0 +1,46 @@
+{
+ "n": 10000,
+ "octets": 2048,
+ "profile": "default",
+ "image": "/tank/fn/scratch/publish-program/native-base-17ff24aa/tree/build/fn-host-developer",
+ "prof": "/tank/fn/scratch/publish-program/step1/prof-post-n10000-p2048.txt",
+ "core_sha256": "002089cd0a4c440317b87398389d3de3d8580890f17b5e6b513d1a8ccb32ffeb",
+ "filesystem": "tmpfs",
+ "load_before": [
+  "7.29",
+  "6.75",
+  "5.84"
+ ],
+ "rss_after_load_kib": 808804,
+ "completed": 10000,
+ "load_s": 63.718,
+ "owner_cpu_s": 61.98,
+ "owner_cpu_ms_per_post": 6.198,
+ "first_quarter": {
+  "n": 2500,
+  "median_ms": 2.529,
+  "p95_ms": 4.558,
+  "max_ms": 16.875,
+  "argmax": 170
+ },
+ "last_quarter": {
+  "n": 2500,
+  "median_ms": 11.669,
+  "p95_ms": 19.363,
+  "max_ms": 120.028,
+  "argmax": 2374
+ },
+ "all": {
+  "n": 10000,
+  "median_ms": 5.3,
+  "p95_ms": 14.663,
+  "max_ms": 134.895,
+  "argmax": 5245
+ },
+ "stalled": null,
+ "load_after": [
+  "9.72",
+  "7.46",
+  "6.14"
+ ]
+}

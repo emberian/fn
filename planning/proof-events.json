@@ -5989,6 +5989,23 @@
           "name": "fn-auth-account-creds-find-the-row"
         }
       ]
+    },
+    {
+      "id": "PRF-169",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-deferred-commit-leaves-the-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-deferred-commit-admits-a-lost-answered-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-deferred-commit-is-not-caught-up"
+        }
+      ]
     }
   ]
 }
