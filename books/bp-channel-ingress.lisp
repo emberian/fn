@@ -1,8 +1,11 @@
 ; One executable ACL2 boundary for a TCPCL session's announced octets,
 ; observed socket address, durable peer configuration, and FNBS ingress.
-; A refused trust profile still yields a typed anonymous ingress so custody
-; remains distinct from Store/receipt authority.  A malformed announced EID
-; yields no ingress and therefore no custody event.
+; A refused trust profile still yields a typed anonymous ingress (the
+; provenance a refusal is reported with), but D23 binds carriage to the
+; admitted channel's actual policy: `fn-bpaj-admitted-receive-event', the
+; receive decision the host calls, refuses custody of every bundle whose
+; channel admission was refused (PRF-128).  A malformed announced EID yields
+; no ingress and therefore no custody event.
 (in-package "ACL2")
 (include-book "bp-session-admission")
 (include-book "bp-node-receive-boundary")
@@ -121,3 +124,84 @@
                                       fn-bpnf-tcpcl-ingress
                                       fn-bpnf-cl-ingressp
                                       fn-bpnf-ingress-principal))))
+
+;; ---------------------------------------------------------------------------
+;; PRF-128 (D23: carriage is bound to the admitted channel's actual policy).
+;; host/native/bp-service.lisp `fnn-bps-receive' calls
+;; `fn-bpaj-admitted-receive-event' with ADMISSION, the answer
+;; `fn-owner-bp-tcpcl-ingress' (host/bp-native-app-host.lisp) gave for this
+;; transfer, i.e. `fn-bpaj-tcpcl-ingress-result' over the live owner
+;; configuration.  Only a :ready answer becomes the :receive-bundle event the
+;; host hands `fnn-bps-foundation-step'; anything else is returned to the
+;; convergence layer as a refusal before any FNBS step, so a refused channel
+;; leaves no kind-5 custody row, hence no forwarding job, no :attempting
+;; record, no fragment family and no owed receipt.  An admitted channel is
+;; decided exactly as before, under the admitted ingress.
+;; A nil ADMISSION (no owner or no observed channel) has no ingress, which
+;; `fn-bpnf-receive-wire-event' refuses as :receive-boundary, as it did.
+
+(defun fn-bpaj-channel-refusal-reason (admission)
+  (declare (xargs :guard t))
+  (let ((r (fn-bpn-nth 1 admission)))
+    (if (and r (symbolp r)) r :channel)))
+
+(defun fn-bpaj-admitted-receive-event (admission config wire observation)
+  (declare (xargs :guard t))
+  (if (equal (fn-cbor-ag-car admission) :refused)
+      (list :refused (fn-bpaj-channel-refusal-reason admission))
+    (fn-bpnf-receive-wire-event config wire observation
+                                (fn-bpn-nth 2 admission))))
+
+(verify-guards fn-bpaj-channel-refusal-reason)
+(verify-guards fn-bpaj-admitted-receive-event)
+
+(local (defthm fn-bpaj-tcpcl-ingress-result-is-admitted-or-refused
+  (or (equal (car (fn-bpaj-tcpcl-ingress-result
+                   cfg st channel uri counter xfer)) :admitted)
+      (equal (car (fn-bpaj-tcpcl-ingress-result
+                   cfg st channel uri counter xfer)) :refused))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bpaj-tcpcl-ingress-result)))))
+
+; KEYSTONE (PRF-128): a bundle arriving over a channel whose admission verdict
+; is not :admitted is refused with the verdict's own reason and is never a
+; :ready receive event, so the host takes no custody of it.
+(defthm fn-bpaj-refused-channel-takes-no-custody
+  (let* ((admission (fn-bpaj-tcpcl-ingress-result
+                     cfg st channel uri counter xfer))
+         (answer (fn-bpaj-admitted-receive-event
+                  admission config wire observation)))
+    (implies (not (equal (car admission) :admitted))
+             (and (equal answer
+                         (list :refused
+                               (fn-bpaj-channel-refusal-reason admission)))
+                  (not (fn-bpnf-receive-wire-readyp answer)))))
+  :hints (("Goal" :use fn-bpaj-tcpcl-ingress-result-is-admitted-or-refused
+           :in-theory (e/d (fn-bpaj-admitted-receive-event fn-cbor-ag-car
+                            fn-bpnf-receive-wire-readyp)
+                           (fn-bpaj-tcpcl-ingress-result
+                            fn-bpaj-channel-refusal-reason)))))
+
+(local (defthm fn-bpaj-bpn-nth-2-is-caddr
+  (equal (fn-bpn-nth 2 x) (caddr x))
+  :hints (("Goal" :expand ((fn-bpn-nth 2 x) (fn-bpn-nth 1 (cdr x))
+                           (fn-bpn-nth 0 (cddr x)))
+           :in-theory (enable fn-cbor-ag-car)))))
+
+; KEYSTONE (PRF-128, the admitted half): an admitted channel's bundle is
+; decided by the unchanged receive boundary under the admitted ingress, whose
+; principal is the policy's selection
+; (fn-bpaj-admitted-ingress-binds-announcement-and-selection).
+(defthm fn-bpaj-admitted-channel-receives-under-its-ingress
+  (let ((admission (fn-bpaj-tcpcl-ingress-result
+                    cfg st channel uri counter xfer)))
+    (implies (equal (car admission) :admitted)
+             (equal (fn-bpaj-admitted-receive-event
+                     admission config wire observation)
+                    (fn-bpnf-receive-wire-event
+                     config wire observation (caddr admission)))))
+  :hints (("Goal" :in-theory (e/d (fn-bpaj-admitted-receive-event
+                                   fn-cbor-ag-car)
+                                  (fn-bpaj-tcpcl-ingress-result
+                                   fn-bpnf-receive-wire-event
+                                   fn-bpn-nth)))))

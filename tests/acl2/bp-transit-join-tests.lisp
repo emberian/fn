@@ -337,3 +337,56 @@
                 (list (fn-cfg-row-make "dtnB2" "bp-trust" "network" 0)))))))
 (assert-event (fn-cfgp *btj-ambiguous-cfg*))
 (assert-event (btj-unenrolledp *btj-ambiguous-cfg* *btj-relay-ingress*))
+
+; mission-signed (the signed four-node mission's refusal): an INJECTED
+; article, one carrying the injecting node's Injection-Info as every
+; Store-rendered hybrid-signed carrier does, is a valid transit article.  The
+; plan takes it (the relaying agent's check), and the transit lookup over a
+; Store without its Message-ID answers (:absent), so the dispatcher submits
+; it.  The injecting agent's check, which the transit lookup used before,
+; refuses it; that answer made the lookup (:conflict) and the plan :intent.
+(defconst *btj-injected-lines*
+  (pt-lines '("Path: inn.hbox.test!not-for-mail" "From: poster@example.invalid"
+              "Newsgroups: fn.letters,alt.test" "Subject: hello"
+              "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+              "Injection-Info: inn.hbox.test"
+              "Message-ID: <a1@example.invalid>" "" "Hello, news.")))
+(defconst *btj-injected* (fn-post-body-octets *btj-injected-lines*))
+(make-event
+ `(defconst *btj-injected-request*
+    ',(fn-bpa-make-request
+       "work-btj-i"
+       (fn-record-octets-string
+        (fn-id-text (fn-id-subject-of-payload *btj-injected*)))
+       "dtn://b/" "dtn://local/" "policy" "incarnation" "auth" "terms"
+       *btj-injected*)))
+(defconst *btj-injected-octets* (fn-bpa-encode *btj-injected-request*))
+(make-event
+ `(defconst *btj-injected-plan*
+    ',(fn-bpaj-transit-plan *pt-node0* *btj-cfg* *btj-ingress* "dtn://b/"
+                              *btj-injected-octets* *pt-obs*)))
+(make-event
+ `(defconst *btj-injected-intent*
+    ',(fn-bpaj-transit-intent-from-plan
+       *btj-cfg* "bundle-btj-i" *btj-injected-octets* 1 0
+       :accepted *btj-injected-plan*)))
+(defconst *btj-empty-store* (fn-sn-initial '("fn.letters" "fn.test") 10))
+(assert-event (equal (car *btj-injected-plan*) :submit))
+(assert-event (fn-bpaj-transit-intentp *btj-injected-intent*))
+(assert-event
+ (equal (car (fn-bpaj-article-fields *btj-injected-request*)) :refused))
+(assert-event
+ (equal (car (fn-bpaj-transit-article-fields *btj-injected-request*)) :ok))
+(assert-event
+ (equal (fn-bpaj-transit-record-lookup-fast
+         *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
+        '(:absent)))
+(assert-event
+ (equal (fn-bpaj-transit-record-lookup
+         *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
+        '(:absent)))
+(must-fail
+ (assert-event
+  (equal (fn-bpaj-transit-record-lookup-fast
+          *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
+         '(:conflict))))

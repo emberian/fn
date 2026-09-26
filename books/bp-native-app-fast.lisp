@@ -89,7 +89,7 @@
   (declare (xargs :guard t))
   (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 context)))
          (record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record))
-         (fields (fn-bpaj-article-fields request)))
+         (fields (fn-bpaj-transit-article-fields request)))
     (and (fn-bpaj-transit-contextp context)
          (fn-bpaj-transit-intentp intent)
          (equal (fn-bpaj-nth 1 context) (fn-bpaj-nth 1 intent))
@@ -388,7 +388,7 @@
 
 (defun fn-bpaj-transit-record-lookup-fast (store request intent)
   (declare (xargs :guard t))
-  (let ((fields (fn-bpaj-article-fields request)))
+  (let ((fields (fn-bpaj-transit-article-fields request)))
     (if (not (and (equal (car fields) :ok)
                   (fn-bpaj-transit-intentp intent)))
         (list :conflict)
@@ -614,7 +614,7 @@
                  fn-bpaj-transit-context-matches-intentp
                  fn-bpaj-transit-record-matchp)
                 (fn-bpaj-transit-intentp fn-bpaj-transit-contextp
-                 fn-bpaj-request fn-bpaj-article-fields
+                 fn-bpaj-request fn-bpaj-transit-article-fields
                  fn-bprr-decode-value
                  fn-bpr-store-record-acceptedp)))))
 
@@ -713,7 +713,7 @@
            (e/d (fn-bpaj-transit-record-lookup-fast
                  fn-bpaj-transit-record-lookup
                  fn-bpaj-transit-record-matchp)
-                (fn-bpaj-transit-intentp fn-bpaj-article-fields
+                (fn-bpaj-transit-intentp fn-bpaj-transit-article-fields
                  fn-bpaj-record-for-msgid fn-bpr-store-record-acceptedp)))))
 
 (defthm fn-bpaj-dispatch-fast-is-checked
