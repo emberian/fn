@@ -448,3 +448,171 @@ native node; the must-fails owed for fn-lb-a-connection-opened-after-a-publicati
 beyond its durable hypothesis; a succession-era inviter known to the invitee (still
 `already-enrolled` at the accept); a succession chain carried with the document for nodes that
 never enrolled the principal; the dead fn-acct-list-report. The hybrid_author failure is dev's (above).
+
+## Continuation 3: keys-and-accounts-4 (PKT-473)
+
+Lane keys-and-accounts-4 (Opus 5.5), from dev 9cace143. Ids taken: PRF-184 (new: the served POST's
+word, the accepted transit verdict and the accept of a current inviter are subjects PRF-179 does not
+name), SCN-113, PKT-497 (what remains), PKT-473 (narrowed to PKT-497). No PKT-498: no decision arose.
+
+### What a friend can now do
+
+- A POST whose key statement is durable while the Store refused the key change it carries is answered
+  `240 article received OK; the key change it carries was refused (key-change-refused)`, never the plain
+  240 and never a 441. Every other accepted POST's reply is unchanged. A peer still gets its 235/239.
+- The transit log names the verdict on accepted arms too: `detail=none verdict=verified`,
+  `detail=carried verdict=carried`, `detail=revoked verdict=revoked`, `detail=none verdict=unsigned`,
+  `detail=key-change-refused verdict=verified`. Refusals print `detail=CLASS verdict=VERDICT` as before.
+- A friend's node that already holds the inviter at exactly the invitation's keys (a friend known from
+  before, whose keys may have succeeded) accepts the invitation by name: the inviter is configured as a
+  peer, nothing is enrolled, the log says `peer accept: the inviter's current keys; nothing to enrol`,
+  and the keyring-less CLI still writes the acceptance. A replay (no address, or the peer already
+  configured exactly) stays `already-enrolled`.
+- `tools/fn_verify.py` reports `revoked` against a running node: an article under a principal's last
+  keys that arrives by transit after the node revoked it is stored as a revoked composite and fn_verify
+  exits 1, `not verified: the node revoked P`.
+
+### PRF-184 (books/peer-authored-accept.lisp, nntp-post, owner, owner-signed-post, peer-carriage, owner-log, peer-invite)
+
+The assurance chain for the reply: native entry served POST -> host/native/owner.lisp
+fnn-owner-attempt-served -> fnn-owner-statement-committed sets the detail :key-change-refused only after
+a :durable kind-4 commit whose executor's kind-3 commit the Store refused -> ACL2
+fn-pa-served-post-word (host/owner-host.lisp fn-owner-served-post-word) -> fnn-owner-drain-one feeds it
+to fn-owner-outcome, which calls books/owner-advance-carried.lisp fn-acar-own-outcome (equal to
+fn-own-outcome, fn-acar-own-outcome-is-own-outcome) -> fn-own-outcome-completion treats the word as
+durable (fn-own-durable-wordp), fn-own-post-rendering keeps it -> fn-nntp-post-outcome's line ->
+observed: SCN-113's reply. The relation maintained is the owner's (fn-own-relation / fn-ocl-relation);
+this slice adds a word, not a state.
+
+1. fn-pa-served-post-word-names-a-refused-key-change-only-when-durable (hypothesis: the attempt's word is
+   not the new word itself).
+2. fn-post-outcome-names-a-refused-key-change-only-for-its-completion: the line is the reply of that
+   completion and of no other.
+3. fn-own-consumed-completion-is-240-or-uncertain RESTATED with the word's arm (after a consumed
+   completion: :durable -> the 240, :durable-key-change-refused -> its 240, every other word uncertain).
+4. fn-osp-served-post-names-a-refused-key-change (KEYSTONE): consumed completion, the connection's
+   submission, attempt :durable and detail :key-change-refused -> the reply is that line and the owner
+   state is exactly :durable's (re-pin, feeds).
+5. fn-osp-key-change-reply-only-for-a-consumed-refused-key-change (KEYSTONE, converse): the reply is that
+   line only for a :durable attempt with the executor's refusal and a consumed completion.
+6. fn-pcb-transit-verdict-names-the-accepted-arm (no hypotheses; host fn-owner-transit-verdict read by
+   fnn-owner-attempt-transit on each accepted arm before the kind-4 commit): unsigned, carried, verified,
+   revoked name their arms; off the :revoked arm it is the admission verdict. FINDING: the admission
+   verdict (off-transit plan) calls a revoked composite `unenrolled`; that is why the accepted arm has
+   its own verdict. fn-olog-detail-fields-print-an-accepted-arms-verdict prints it.
+7. books/peer-invite.lisp: fn-pinv-accept-step-current-only-for-a-bound-current-inviter,
+   fn-pinv-accept-of-a-current-inviter-configures-it (host fnn-pinv-owner-accept),
+   fn-pinv-accept-words-are-the-owners-plan and fn-pinv-accepted-step-is-an-enrolling-plan (host
+   fnn-pinv-accept: fn-pinv-acceptance-source now reads fn-pinv-accept-words, so a succession-era inviter
+   the owner accepted is not refused `genesis` by the keyring-less CLI). PRF-160's
+   fn-pinv-accept-record-configures-the-verified-inviter lost its "not yet enrolled" conjunct (a current
+   inviter is now configured too; the new keystone says what happens then), and
+   fn-pinv-accept-record-fold-configures-the-inviter's resumed plan is `already-enrolled` for a current
+   inviter (nothing left to do) and the enrolment otherwise. Not cited: fn-pa-served-post-word-is-the-served-word-otherwise
+   (the ledger flags it a branch of the definition).
+
+Teeth: tests/acl2/nntp-post-tests.lisp (the line, three other completions differ, no session -> 403),
+peer-authored-accept-tests (both arms; the hypothesis dropped), owner-tests (the word after a consumed
+completion; before one it is the uncertain line; the must-fail over the unconsumed owner),
+owner-signed-post-tests (the conclusion on *ospt-finished*; one must-fail per hypothesis: unconsumed,
+attempt :refused, detail :carried, another connection; the converse's hypothesis dropped),
+peer-carriage-tests (each arm on transit, the off-transit refusal, a failed observation, the last
+conjunct and its must-fail on the revoked arm), owner-log-tests (the accepted line; must-fails for both
+hypotheses), peer-invite-tests (the witness; each hypothesis dropped: unknown inviter, no address, name
+taken, tampered; the moved keyring; the words under three keyrings).
+
+### The owed teeth of fn-lb-a-connection-opened-after-a-publication-is-bound-anew
+
+tests/acl2/login-binding-live-tests.lisp: counter-witnesses (every retained hypothesis asserted, the
+omitted one failing, the conclusion false) for nothing staged (OC already staging ember -> P: the
+durable record binds P), the fresh pin (a stale pin for the next identifier survives the open) and the
+opened connection (the owner at max-conns). NOT separated: the history relation and pairs-okp. Every
+violating value tried also made the publication non-durable (a store one record ahead: :recovery-required;
+a 31-octet principal or an unbindable login: staging and publication refused), so the durable hypothesis
+already fails there; whether either is implied by the others is open (PKT-497). No weakened theorem is
+claimed.
+
+### PKT-487 (the coordinator's decision, not implemented)
+
+A signer refusal of a carrier the target node would refuse needs: the bound as a signer argument
+(`hybrid-sign-carrier ... --max-article-octets N`, or read from the target's `operator CFG status`),
+fn-hc-render-at-most called with it (it already takes one), a refusal word by name when the carrier
+exceeds it, and a theorem over fnn-command-hybrid-sign-carrier that an emitted carrier is within the
+named bound. Default in force: none; the node refuses the POST with its 441 size line.
+
+### Removed
+
+books/accounts.lisp fn-acct-list-report, fn-acct-list-lines and fn-acct-string-join (no caller since
+PKT-391's books/account-list.lisp); the tests that exercised them now read fn-acct-kinds-list-report.
+
+### Certification
+
+REPL first on persvati: nntp-post (74 forms) and its test book (117), peer-authored-accept and its
+tests (89), peer-carriage (the keystone needed fn-pcb-transit-plan-off-its-revoked-arm) and its tests
+(117), peer-invite (149) and its tests (254); login-binding-live-tests on a dev-base tree (151); on hbox
+over the native tree's certificates: owner-invariants from the failing keystone on, owner-log-tests,
+account-list-tests, owner-advance-carried from fn-acar-own-outcome on. The owner books above
+owner-invariants could not be REPLed before their dependencies were certified: that is what r1 and r2
+found.
+
+- r1: persvati run-20260926T142304Z-9304 (`--affected-by` the eleven changed books) at 2d8e526e: passed
+  205, failed 120; root failures owner-invariants (a hint named fn-own-outcome-rendering),
+  owner-signed-post (the converse needed that a session's reply is never empty), owner-log-tests (the
+  accepted TAKETHIS line is 239); the rest their includers. Manifest
+  planning/evidence/manifests/certify-20260926T142333Z-2824718.json.
+- r2: run-20260926T142942Z-8974 at 2630024b: passed 109, failed 11; the one root failure
+  owner-advance-carried: host/owner-host.lisp fn-owner-outcome calls fn-acar-own-outcome, the D27 twin,
+  which still rendered through fn-own-outcome-rendering, so the SERVED reply would have stayed the
+  plain 240 (the proof caught it). No book over 10 s (owner-invariants 10.9 s in r1 under load, under 10
+  s in r2). Manifest planning/evidence/manifests/certify-20260926T143014Z-2889632.json.
+- r3: run-20260926T143416Z-6e51 at b5729975 (`--affected-by` owner-advance-carried, login-binding-live):
+  passed 11, failed 0, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T143442Z-2931565.json. green_check: 981 of 981 green at
+  their current digest, none owed.
+
+### Native (hbox /tank/fn/scratch/keys-and-accounts-4/)
+
+- native-n3 (b5729975, developer and production images): tests.test_native_hybrid_author OK (11 ran, 0
+  skipped), including test_portable_carrier_verifies_exact_source_and_keyset (green since PKT-485,
+  bb7b2994; nothing to fix here) and `NATIVE-TRANSIT-VERDICT accepted transit ... code=239 ...
+  detail=carried verdict=carried ... | accepted transit ... detail=none verdict=verified`. peer_invite's
+  two crash cases failed there for a HARNESS reason: with both images built FN_NATIVE_HOST is the
+  production image, which refuses the developer selectors FN_PEER_TEST_STOP_AFTER_*. n4 (developer only)
+  SKIPPED peer_invite (no FN_NATIVE_HOST at all): the same trap, PKT-490's. n5 passes
+  `--env FN_NATIVE_HOST=build/fn-host-developer`.
+- native-n4: the refused-key-change case found the composite needs USED + 2 (at USED + 1 the POST is
+  refused whole, `441 ... the article was refused`); fixed to search the smallest admitting budget.
+- native-n5 (d7b2c1c5, developer image): tests.test_native_peer_invite OK (6 ran), including
+  test_a_succeeded_inviter_known_here_is_accepted_by_name (B5 accept 0, B5's peer list names
+  a5.example with A's principal, the second accept 1 already-enrolled, B's history for A unchanged at
+  generations 2 and 1); tests.test_native_key_statements OK (6 ran): `key-change-refused POST by budget
+  [(2, 441 ... the article was refused), (3, 240 article received OK; the key change it carries was
+  refused (key-change-refused))]`, the next POST 441, history generation 1 only; and (in n3 and n5)
+  `revoked-transit HDR 0 revoked 5555... keyring 3`, `accepted transit ... detail=revoked
+  verdict=revoked`, `fn_verify revoked 1 unverified ... not verified: the node revoked 5555... (keyring
+  3); the independent check says the signature is that principal's`.
+
+```
+a7abbce6f7508400a2db29c7f458ff1e21aa00461d60544a848d30c2c164d56c  native-n3/tree/build/fn-host-developer
+b3d5bade9784e0c7f48ba7c3985e5f878e340598b4facd02b07f894a2af032d4  native-n3/tree/build/fn-host
+5ce8223a2b26b60d3249df329a9a918fec2b6970b2ce4fb131ff2a5c80048a2b  native-n3/logs/test-tests.test_native_hybrid_author.log
+e656f0c9e6b7af406861b8fc0c2fcfa1598ec2f9c52b02c1eccba7f12eb82c44  native-n3/logs/test-tests.test_native_key_statements.log (revoked row; the kc case failed there)
+cfec1abd5ecf4b5b15a257ba2e322e05a20fd4f4bd31cede2bf6c7d3f5de2055  native-n5/tree/build/fn-host-developer
+119152840f2fe3f11551646ce64cbd26823148ddc5f96f60f093602c367e3403  native-n5/logs/test-tests.test_native_peer_invite.log
+043bb8ddaa929d6e5ff2e6ba8736bc8af3a0916ec12cf62703d6e2056590bc01  native-n5/logs/test-tests.test_native_key_statements.log
+```
+
+### Not done (PKT-497)
+
+- The history relation and pairs-okp hypotheses of fn-lb-a-connection-opened-after-a-publication-is-bound-anew:
+  not separated (above); a proof that durability implies them would retire both.
+- A succession chain carried with the invitation: a node that never enrolled the principal still refuses
+  current keys `genesis`.
+- A current inviter's accept that dies after its configuration record is answered `already-enrolled` on
+  retry (indistinguishable from a replay) and writes no acceptance; the friend asks for a new invitation.
+- Finding (native n4/n5): at USED + 1 of the transaction budget a signed POST is refused with the generic
+  `441 posting failed; the article was refused`, not the capacity line, and the next POST after the
+  budget likewise; the composite needs two transactions of headroom and the key change is refused with
+  one left. Which check answers, and why its word is not :unaffordable, is unexplained here.
+- The served POST's log line (fn-olog-served-post-line) says `accepted` for the key-change word and does
+  not name the refusal; the owner's `key-statement ... refused` line does.
