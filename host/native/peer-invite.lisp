@@ -115,6 +115,9 @@ carrier to observe."
                                 (second plan))))))))))
 
 (defun fnn-pinv-owner-accept (service received)
+  "PRF-160: an invitation that names the inviter's address configures the
+inviter as a peer in one configuration record (books/peer-invite.lisp
+fn-pinv-accept-record-plan); the enrolment follows it."
   (fnn-owner-serialized
    service nil
    (lambda ()
@@ -122,6 +125,31 @@ carrier to observe."
        (unless observed
          (return-from fnn-pinv-owner-accept
            (fnn-pinv-refused :accept '(:refused :carrier))))
+       (let ((plan (apply #'fnn-core 'fn-pinv-host-accept-record-plan received
+                          (append observed
+                                  (list (fnn-owner-core
+                                         'fn-owner-hybrid-snapshots)
+                                        (fnn-owner-core
+                                         'fn-pinv-host-owner-peers))))))
+         (case (first plan)
+           (:configure
+            (let ((published
+                    (fnn-owner-live-reconfigure-locked
+                     service
+                     (lambda (cid)
+                       (fnn-owner-action 'fn-pinv-host-owner-reconfigure-deltas
+                                         cid (second plan))))))
+              (unless (eq published :accepted)
+                (return-from fnn-pinv-owner-accept published))
+              ;; The model's crash point between the configuration record and
+              ;; the kind-3 record (fn-pinv-accept-record-fold-configures-the-
+              ;; inviter); a developer image dies here on request.
+              (when (fnn-developer-selector "FN_PEER_TEST_STOP_AFTER_CONFIGURE")
+                (fnn-err "peer accept: developer stop after the peer record")
+                (sb-ext:exit :code 137 :abort t))))
+           (:enrol nil)
+           (t (return-from fnn-pinv-owner-accept
+                (fnn-pinv-refused :accept plan)))))
        (destructuring-bind (sequence txid generation)
            (fnn-owner-core 'fn-owner-next-store-coordinates)
          (let ((step (apply #'fnn-core 'fn-pinv-host-accept-step
@@ -247,7 +275,8 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
       +fnn-exit-ok+)))
 
 (defun fnn-pinv-invite (control-path words)
-  (destructuring-bind (name groups host port path directory out) words
+  (destructuring-bind (name groups host port path directory out inviter-host
+                       inviter-port) words
     (let* ((keys (fnn-pinv-public-keys directory))
            (principal (fnn-pinv-principal directory))
            (nonce (fnn-octet-list
@@ -257,7 +286,8 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
                              (fnn-pinv-token directory) keys
                              (fnn-pinv-text name) (fnn-pinv-text path)
                              (fnn-pinv-text groups) (fnn-pinv-text host)
-                             (fnn-pinv-text port))))
+                             (fnn-pinv-text port) (fnn-pinv-text inviter-host)
+                             (fnn-pinv-text inviter-port))))
       (unless (and (fnn-octet-list-p source) (consp source))
         (fnn-refuse "ACL2 refused the invitation's words"))
       (let* ((signed (fnn-pinv-sign directory source principal keys))
