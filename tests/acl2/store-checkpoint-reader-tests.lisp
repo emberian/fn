@@ -305,6 +305,7 @@
 ; witness; the hypothesis is the codec's own (fn-scc-decode-segments-of-segments)
 ; and the `must-fail' below records the prover's refusal of the weakened
 ; statement, which is not a counterexample.
+; teeth: prover-refusal the counter-witness is a program of 2^64 octets or more
 (must-fail
  (defthm sccrt-r-decode-of-plan-without-length-width
    (implies (and (fn-sccb-treep c)
@@ -375,6 +376,7 @@
 ; on the executable path.  In the logic a non-octet buffer value makes
 ; fn-sccr-cell's `nfix' and `nth' differ; the `must-fail' records the
 ; prover's refusal, which is not a counterexample.
+; teeth: prover-refusal the stobj recogniser holds of every executable buffer; no evaluated non-octet buffer exists
 (must-fail
  (defthm sccrt-r-twin-without-octets-p
    (implies (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets)

@@ -573,6 +573,14 @@ def macro_teeth_totals(macro_teeth: dict[str, list[MacroTooth]]) -> dict[str, in
             "macros": macros, "books": len(macro_teeth)}
 
 
+def prover_refusals() -> list[tuple[str, int, str]]:
+    """(book, line, reason) for each `must-fail' its test book labels
+    `; teeth: prover-refusal REASON' (ledger.PROVER_REFUSAL, PKT-341)."""
+    tree = ledger.load_tree()
+    return [(path, line, reason) for path, book in sorted(tree.books.items())
+            for line, reason in book.prover_refusals]
+
+
 def literal_must_fails(book: str, generated_lines: set[int]) -> list[tuple[int, str]]:
     """This book's own top-level `must-fail` forms that no local macro
     produced, for `--table` to set beside the macro-generated ones."""
@@ -1611,6 +1619,12 @@ def main(argv: list[str] | None = None) -> int:
                   f"{macro_totals['books']} test book(s), invisible to a "
                   f"literal count of `must-fail`; --table marks them apart "
                   f"from literal ones")
+        refusals = prover_refusals()
+        literal = sum(book.must_fails for book in ledger.load_tree().books.values())
+        print(f"teeth: {literal} must-fail(s), of which {len(refusals)} labelled "
+              f"prover-refusal (proof search refused; no counter-witness, so not "
+              f"a necessity witness){': ' if refusals else ''}"
+              + ", ".join(f"{book}:{line}" for book, line, _ in refusals))
         total, cited = hypothesis_coverage()
         print(f"teeth: {total} keystones have two or more hypotheses and a "
               f"test book names {cited} of them, so one-must-fail-per-"
