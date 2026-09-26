@@ -400,6 +400,11 @@ class Client:
             return Result(ACCEPTED, "%s %s %s" % (self.node, msgid, status), data, msgid)
         if status.startswith("441") and UNCERTAIN_POST in status.lower():
             return Result(UNCERTAIN, unsettled(msgid, "the node said %s" % status), data, "")
+        if status.startswith(DIFFERENT_STORED):
+            # D25's conflict (PKT-246): a refusal, exit 1, named CONFLICT so a
+            # caller changes the Message-ID or resends the saved bytes rather
+            # than retrying the same request.
+            return Result(REFUSED, "CONFLICT " + status, dict(data, reason="conflict"), "")
         if status.startswith("441"):
             return Result(REFUSED, status, data, "")
         # Neither 240 nor either 441: the node did not say it refused the
@@ -835,8 +840,10 @@ def main(argv=None) -> int:
 
 def report(args, result: Result) -> int:
     if args.json:
+        # "scope": whose state an uncertain or unresolved outcome is about --
+        # the server's, never a local Store (specs/host.md "CLI exit codes").
         document = {"node": node_name(args.host, args.port), "command": args.command,
-                    "outcome": result.word, "exit": EXIT[result.word],
+                    "outcome": result.word, "exit": EXIT[result.word], "scope": "server",
                     "detail": result.detail, "status_lines": result.status_lines}
         document.update(result.data)
         sys.stdout.write(json.dumps(document, indent=1) + "\n")

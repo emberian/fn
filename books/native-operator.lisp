@@ -12,6 +12,7 @@
 (include-book "native-admin")
 (include-book "native-auth-admin")
 (include-book "byte-store-frame")
+(include-book "outcome-class")
 
 (defconst *fn-nop-max-arguments* 32)
 (defconst *fn-nop-max-argument-octets* 512)
@@ -53,24 +54,34 @@
        (member-equal (fn-native-operator-result-status result)
                      '(:accepted :refused :uncertain :fault :usage))))
 
-;  HST-008 (the operator walk): "no store here" is a refusal with its own
-; exit code, distinct from every other refusal (1) and from a host fault (4),
-; so a script can tell a node that was never initialized from one that
-; declined a well-formed request.  Six is otherwise unused by the operator.
-(defconst *fn-nop-no-store-exit* 6)
+;  HST-008 (the operator walk) and HST-009 (PRF-143): the operator family's
+; outcome class is its result's status through the fn-wide classifier
+; (books/outcome-class.lisp), and its code is the fn-wide map's.  "No store
+; here" is an ordinary refusal, exit 1, like every other known refusal: its
+; reason word (NO-STORE) and its "run init" line are what tell a script and
+; an operator a node that was never initialized from one that declined a
+; well-formed request (PKT-295: a code is a class, never a reason).
+(defun fn-native-operator-outcome-class (result)
+  (declare (xargs :guard t))
+  (fn-outcome-of-status (fn-native-operator-result-status result)))
 
 (defun fn-native-operator-exit-code (result)
   "The tagged result, not a raw host condition, owns the CLI codes."
   (declare (xargs :guard t))
-  (cond ((and (equal (fn-native-operator-result-status result) :refused)
-              (equal (fn-native-operator-result-reason result) :no-store))
-         *fn-nop-no-store-exit*)
-        ((equal (fn-native-operator-result-status result) :accepted) 0)
-        ((equal (fn-native-operator-result-status result) :refused) 1)
-        ((equal (fn-native-operator-result-status result) :uncertain) 3)
-        ((equal (fn-native-operator-result-status result) :fault) 4)
-        ((equal (fn-native-operator-result-status result) :usage) 5)
-        (t 4)))
+  (fn-outcome-code (fn-native-operator-outcome-class result)))
+
+; KEYSTONE (PRF-143, operator family).  The host exits with
+; fn-native-operator-exit-code (host/native-operator-host.lisp
+; fn-native-operator-host-result-exit-code, called by
+; host/native/operator.lisp fnn-operator-dispatch-plan): 3 exactly when the
+; result is uncertain, so an uncertain result is never masked and no refusal
+; (NO-STORE included) is ever reported as a fence.
+(defthm fn-native-operator-exit-is-fenced-iff-uncertain
+  (equal (equal (fn-native-operator-exit-code result) 3)
+         (equal (fn-native-operator-result-status result) :uncertain))
+  :hints (("Goal" :in-theory '(fn-native-operator-exit-code
+                                fn-native-operator-outcome-class
+                                fn-outcome-of-status-fences-iff-uncertain))))
 
 (defun fn-nop-usage (reason command config arguments)
   (declare (xargs :guard t))
@@ -1847,7 +1858,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 ; `*fn-nop-store-markers*' exist beside the configured store root (lstat
 ; only, no lock; host/native/operator.lisp `fnn-operator-init-observed').
 ; With none of them there is no store to open, and the outcome is the
-; refusal :no-store (exit `*fn-nop-no-store-exit*'), not the host fault the
+; refusal :no-store (the refusal code 1, HST-009), not the host fault the
 ; open would otherwise raise ("missing store directory").  A partial store
 ; (some markers, e.g. an interrupted init) is not "no store": it proceeds to
 ; the open, which recovers or refuses it.
@@ -1882,8 +1893,9 @@ OBSERVED (the markers found beside the store root) is empty."
 ; `fn-native-operator-host-store-outcome' on every accepted plan before it
 ; executes the action.  For a plan that needs a store and an observation that
 ; found none of the store's entries, the outcome is a refusal named
-; :no-store whose exit code is 6: never accepted (so no action runs and no
-; open is attempted), never the fault code 4, never the usage code 5.
+; :no-store whose exit code is the refusal code 1 (HST-009; PKT-295): never
+; accepted (so no action runs and no open is attempted), never the fault code
+; 4, never the usage code 5, never the fenced code 3.
 (local
  (defthm fn-nop-native-action-of-refused
    (equal (fn-native-operator-result-native-action (list :refused r c g a)) :none)
@@ -1898,13 +1910,15 @@ OBSERVED (the markers found beside the store root) is empty."
              (and (equal (fn-native-operator-result-status outcome) :refused)
                   (equal (fn-native-operator-result-reason outcome) :no-store)
                   (equal (fn-native-operator-exit-code outcome)
-                         *fn-nop-no-store-exit*)
+                         (fn-outcome-code :refused))
                   (equal (fn-native-operator-result-native-action outcome) :none))))
   :hints (("Goal" :in-theory '(fn-native-operator-store-outcome
                                 fn-nop-refused fn-nop-result
                                 fn-native-operator-result-status
                                 fn-native-operator-result-reason
                                 fn-native-operator-exit-code
+                                fn-native-operator-outcome-class
+                                fn-outcome-of-status
                                 fn-ncfg-first fn-ncfg-second fn-ncfg-rest
                                 (:e fn-native-operator-result-native-action)
                                 fn-nop-native-action-of-refused

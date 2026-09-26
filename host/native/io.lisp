@@ -56,13 +56,17 @@
 
 ;;; ---------------------------------------------------------------------------
 ;;; Outcomes.  Uncertain, refused, accepted and fault stay distinct to the exit
-;;; code (specs/host.md "CLI exit codes").
+;;; code (specs/host.md "CLI exit codes", HST-009).  The numbers are ACL2's:
+;;; each constant is the fn-wide map's code for its class
+;;; (books/outcome-class.lisp fn-outcome-code, PRF-143), read once when the
+;;; image is built, which is after every book is included (host/native/
+;;; build.lisp).  The host writes no exit number of its own.
 
-(defconstant +fnn-exit-ok+ 0)
-(defconstant +fnn-exit-refused+ 1)
-(defconstant +fnn-exit-uncertain+ 3)
-(defconstant +fnn-exit-fault+ 4)
-(defconstant +fnn-exit-usage+ 5)
+(defconstant +fnn-exit-ok+ (fn-outcome-code :accepted))
+(defconstant +fnn-exit-refused+ (fn-outcome-code :refused))
+(defconstant +fnn-exit-uncertain+ (fn-outcome-code :fenced))
+(defconstant +fnn-exit-fault+ (fn-outcome-code :fault))
+(defconstant +fnn-exit-usage+ (fn-outcome-code :usage))
 
 (define-condition fnn-store-error (error)
   ((message :initarg :message :reader fnn-message))
@@ -100,13 +104,19 @@
   (error 'fnn-os-error :errno errno :path path))
 
 (defun fnn-exit-code-for (condition)
-  (typecase condition
-    (fnn-store-indeterminate +fnn-exit-uncertain+)
-    (fnn-store-fault +fnn-exit-fault+)
-    (fnn-usage-error +fnn-exit-usage+)
-    (fnn-store-error +fnn-exit-refused+)
-    (fnn-os-error +fnn-exit-fault+)
-    (t +fnn-exit-fault+)))
+  "ACL2's code for the condition that ended a command: the host names the
+condition's type (an observation) and books/outcome-class.lisp
+fn-outcome-host-condition-exit-code classifies it (PRF-143,
+fn-outcome-host-condition-fences-iff-indeterminate).  It runs in handlers,
+so it calls the guard-t function directly rather than through fnn-core,
+whose own failure would raise a new condition here."
+  (fn-outcome-host-condition-exit-code
+   (typecase condition
+     (fnn-store-indeterminate :indeterminate)
+     (fnn-store-fault :fault)
+     (fnn-usage-error :usage)
+     (fnn-store-error :refusal)
+     (t :fault))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Octets, text, hex.

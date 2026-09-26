@@ -48,10 +48,16 @@
 
 ; A retry names a durable prior admission, so its control command succeeds
 ; without publishing a second event. Keep this outcome distinct on the wire.
+; Its outcome class (HST-009, PRF-143): a replay of a durable admission is
+; already satisfied, every other status is the control family's.
+(defun fn-thlc-outcome-class (status)
+  (declare (xargs :guard t))
+  (if (equal status :replayed-historical) :accepted
+    (fn-native-control-outcome-class status)))
+
 (defun fn-thlc-status-exit-code (status)
   (declare (xargs :guard t))
-  (if (equal status :replayed-historical) 0
-    (fn-native-control-status-exit-code status)))
+  (fn-outcome-code (fn-thlc-outcome-class status)))
 
 (defun fn-thlc-reply-encode (status)
   (declare (xargs :guard t))

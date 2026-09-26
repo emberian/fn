@@ -22,6 +22,8 @@
 ; Build it with:  FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 ;                 FN_NATIVE_IMAGE=build/fn-host-dtn sh tools/build_native_host.sh
 
+; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
+(include-book "books/outcome-class")
 (include-book "books/replay")
 ; The hybrid-store constructors that call the injecting agent; the raw
 ; host/native/signatures.lisp calls one of them (books/hybrid-store-injected).
