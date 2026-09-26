@@ -128,3 +128,80 @@ Teeth:
   and the index accessor open, invisible in a REPL session whose world held
   the old definitions (redefinition), which is why r2 was needed.
 - `make check-lane` green in the worktree.
+
+## Measured (hbox, before and after, same conditions)
+
+Harness `planning/evidence/signed-history-index-2026-09-26/measure_signed.py`
+driven by `meas.sh` under `systemd-run --user -p MemoryMax=40G`, run
+2026-09-26 07:33 to 08:10Z, the four rows interleaved (before then after at
+N=1,000, then at N=10,000). Store on tmpfs (`/dev/shm`), profile `scale`
+with `--max-transactions 1048576 --max-article-octets 16384`; history of N
+POSTs of about 2 KiB, **32 of them hybrid-signed carriers** spread evenly,
+N − 32 unsigned; then 7 rounds of one unsigned and one signed POST, each on
+a fresh connection, timed from the terminating line to the reply (the
+owner's whole commit). Before: dev ancestor 8d4ea42c's developer image
+(commit-regression's build; nothing on the identity prepare or the BP
+lookups changed between it and 197b3437). After: a888b104's developer image
+(`native-after-a888b104`, built by tools/hbox_native.sh). The box carried
+other lanes' loads (load average 6 to 8); tmpfs removes the storage
+barrier, so the rows are the owner's CPU term, not a deployment latency.
+
+| row | N | unsigned POST, median | signed POST, median | signed POST in the preload: first / middle / last |
+| --- | ---: | ---: | ---: | --- |
+| before | 1,000 | 0.043 s | **0.355 s** | 0.092 / 0.183 / 0.337 s |
+| after | 1,000 | 0.043 s | **0.101 s** | 0.104 / 0.101 / 0.100 s |
+| before | 10,000 | 0.047 s | **18.92 s** | 0.097 / 4.41 / 17.42 s |
+| after | 10,000 | 0.048 s | **0.241 s** | 0.094 / 0.154 / 0.231 s |
+
+Operation counts per signed POST's prepare (from the code, witnessed by the
+theorems): before, `fn-sf-history-recoverablep` replays all N + 1 records
+(every record re-recognized, each of the 32 + 1 composites decoded and
+prepared through `fn-node-prepare`); after, no record of the history is
+replayed or decoded. The before rows grow with N (0.355 → 18.9 s, ×53 for ×10
+history: the replay is superlinear here). **The after rows are not flat**:
+0.101 → 0.241 s (×2.4 for ×10 history). What remains grows linearly and
+decodes nothing: the prepare's `fn-sf-candidatep` still takes `(len records)`
+and `fn-sf-next-lower` of the history, the D25 existing-action and the
+node-record check walk the node's article list, and the unsigned POST grows
+the same way (0.043 → 0.048 s). These are PKT-330 (2).
+
+The signed-record lookup, at the function level (hbox REPL over
+tests/acl2/bp-signed-binding-tests: histories of N events, 32 of them the
+test's signed composite, the rest plain article records with distinct
+Message-IDs; the walk decodes every composite, the index none):
+
+| lookup | N = 1,000 | N = 10,000 | counts |
+| --- | ---: | ---: | --- |
+| `fn-bpaj-record-for-msgid` (before), absent Message-ID | 12.5 ms | 36.5 ms | N events visited, 32 composites decoded |
+| same, the signed Message-ID (32 matches) | 11.3 ms | 34.7 ms | N visited, 32 decoded |
+| `fn-cei-msgid-records` (after), absent | 0.2 µs | 0.2 µs | one trie path, 0 events, 0 decodes |
+| same, the signed Message-ID | 0.4 µs | 0.4 µs | one path, the 32 stored records |
+| same, a plain Message-ID | — | 0.5 µs | one path |
+
+(100 walks and 100,000 index lookups per figure; `fn-cei-build` of the
+index: 0.01 s at N = 1,000 and 0.08 s at N = 10,000, paid once at open.) The
+native BP receive path was not driven: the four-node mission lab is the only
+native harness for it, and a 10,000-entry history there is not a lab this
+lane could build inside its budget; the function-level rows are that path's
+lookup, the one the dispatcher calls.
+
+Logs (sha256): before-1000.log b3ca6c44…, after-1000.log b4b3aeb1…,
+before-10000.log bcfeafac…, after-10000.log a655b10a…, summary.log
+5336a310…; copies in planning/evidence/signed-history-index-2026-09-26/.
+
+## Not done, and why
+
+- **The loaded greeting (PKT-190)**: not started; the budget went to the
+  index's certification and the matched native rows. PKT-330 (1).
+- **Flat signed POST**: the replay is gone; a linear term that decodes
+  nothing remains (above). PKT-330 (2) names each walk; the prepare's
+  `(len records)` is hot-path-scans' byte-count seam.
+- **An owner-level theorem for the index premise**: `fn-bpaj-store-indexedp`
+  is established at every open and kept by the named Store transitions; the
+  ones that keep it by construction have no named theorem, and no theorem
+  states it of the host's live owner at every dispatch. PKT-330 (3).
+- **The reconfigured owner**: the identity prepare's premise is the article
+  prepare's; whether `fn-own-relation` holds of a live owner after a
+  reconfiguration that drops a group is open for both (the corrupted-state
+  witness shows exactly that state). PKT-330 (4).
+- No deployment; the live node was not touched.
