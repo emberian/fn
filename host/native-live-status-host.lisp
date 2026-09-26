@@ -76,13 +76,17 @@
                                          (append (take 5 obs)
                                                  (list (fn-owner-sco-deferred state)))
                                          min)
-                    (if (equal kind :health)
-                        ;; PKT-508 (PRF-187): the log sink's line last;
-                        ;; fn-nh-report-exit-of-render-and-more: the exit is
-                        ;; the verdict's whatever follows the eight states.
-                        (append (fn-owner-exposure-health state)
-                                (if log-sink (fn-nh-log-sink-line log-sink) nil))
-                      nil)))))))
+                    (cond ((equal kind :health)
+                           ;; PKT-508 (PRF-187): the log sink's line last;
+                           ;; fn-nh-report-exit-of-render-and-more: the exit is
+                           ;; the verdict's whatever follows the eight states.
+                           (append (fn-owner-exposure-health state)
+                                   (if log-sink (fn-nh-log-sink-line log-sink) nil)))
+                          ;; PRF-211: `status' ends with the capacity line
+                          ;; (books/public-exposure.lisp fn-exp-capacity-line).
+                          ((equal kind :status)
+                           (fn-owner-exposure-capacity state))
+                          (t nil))))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 

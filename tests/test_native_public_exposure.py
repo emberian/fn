@@ -226,7 +226,9 @@ class NativePublicExposureTests(unittest.TestCase):
                      stdin=(PASSWORD + "\n" + PASSWORD + "\n").encode())
         # Rows before the start: the test's timers are short so the campaign
         # runs in minutes; the public defaults are the record's table.
-        for slot, value in (("exposure-connections", "32"),
+        # PRF-211: the row is now the capacity itself; 31 is the figure the
+        # run's fixed 32 (less the operator's one) gave this campaign before.
+        for slot, value in (("exposure-connections", "31"),
                             ("exposure-per-address", "8"),
                             ("exposure-steps-per-second", "20"),
                             ("exposure-idle-seconds", "8"),
@@ -275,7 +277,7 @@ class NativePublicExposureTests(unittest.TestCase):
         sources = ["127.0.1.{}".format(n) for n in range(1, 51)]
         counts, held = self.flood(sources, 10)
         report["flood_50_addresses"] = counts
-        # 32 is the run's bound; one is the operator's, one the legit reader's.
+        # 31 is the capacity; one is the legit reader's.
         self.assertLessEqual(counts.get("admitted", 0), 30, counts)
         self.assertGreater(counts.get("400-address", 0), 0, counts)
         self.assert_alive()

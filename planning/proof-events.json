@@ -7012,6 +7012,31 @@
           "name": "fn-post-reader-env-closed"
         }
       ]
+    },
+    {
+      "id": "PRF-211",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-exp-owner-bound-exceeds-every-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-limits-total-is-the-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-refuses-exactly-at-the-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-trusted-address-is-never-refused-by-address"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-untrusted-address-is-refused-exactly-at-its-limit"
+        }
+      ]
     }
   ]
 }

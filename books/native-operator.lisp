@@ -945,11 +945,15 @@ is installed into the owner for both served and control submission."
                                    fn-native-operator-result-run-planp))))
   :rule-classes nil)
 
+; PRF-211 (NNT-043): the owner a run installs is bounded one past the width
+; of a limit row, so the connection capacity is the `exposure-connections'
+; row the operator sets (books/public-exposure.lisp
+; fn-exp-open-refuses-exactly-at-the-capacity), not fn.toml's fixed 32
+; (fn-native-config-owner-max-connections, which no run reads now).
 (defun fn-native-operator-result-run-max-connections (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-run-planp result)
-      (fn-native-config-owner-max-connections
-       (fn-native-operator-result-config result))
+      *fn-exp-owner-connection-bound*
     0))
 
 (defun fn-native-operator-result-run-auth-path-octets (result)

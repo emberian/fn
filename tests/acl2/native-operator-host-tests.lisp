@@ -35,7 +35,10 @@
                      (fn-record-string-octets "127.0.0.1")))
 (assert-event (equal (fn-native-operator-host-result-run-listener-port *fn-nop-host-run-result*) 1119))
 (assert-event (equal (fn-native-operator-host-result-run-oncep *fn-nop-host-run-result*) t))
-(assert-event (equal (fn-native-operator-host-result-run-max-connections *fn-nop-host-run-result*) 32))
+; PRF-211: a run's owner is bounded one past a limit row's width; the capacity
+; is the exposure-connections row (books/public-exposure-rows.lisp).
+(assert-event (equal (fn-native-operator-host-result-run-max-connections *fn-nop-host-run-result*)
+                     *fn-exp-owner-connection-bound*))
 
 (defconst *fn-nop-host-preflight-help*
   (fn-native-operator-host-preflight

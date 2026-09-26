@@ -3707,6 +3707,35 @@
         "planning/evidence/group-policy-2026-09-26.md"
       ],
       "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+    },
+    {
+      "id": "NNT-043",
+      "title": "The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule",
+      "specification": "specs/nntp.md#connection-capacity-and-the-trusted-range-nnt-043",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-211"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-host-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_public_limits.py",
+        "docs/operator.md",
+        "planning/evidence/public-limits-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 5.1.1 (400 then close) is the RFC requirement; the capacity, its default of 31 and the trusted range are local policy. The capacity is the existing exposure-connections :set-limit row (config delta code 8) and the range an exposure-trusted :set-policy row (code 5): no new delta code, no store format change, no fn.toml key. SCN-142 is the native case on both images. Sizing the capacity against the machine's memory and thread stacks is PKT-605."
     }
   ]
 }

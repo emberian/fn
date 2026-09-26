@@ -1397,16 +1397,27 @@ fn operator /etc/fn/fn.toml policy set exposure-idle-seconds 600
 fn operator /etc/fn/fn.toml policy set exposure-auth-failures 10
 fn operator /etc/fn/fn.toml policy set exposure-posts-per-minute 60
 fn operator /etc/fn/fn.toml policy set anonymous none
+fn operator /etc/fn/fn.toml policy set exposure-trusted 192.168.1.0/24
 ```
 
 What each does, what the client sees and the default off loopback is the
 table in `specs/nntp.md` ("Public exposure"). In short:
 
-- **Connections.** One fewer than the run's `max_connections` (32) is the
-  most sockets can hold: the last is kept for your own `policy set`, which
-  stages through the owner. Past the total a client reads `400 too many
-  connections; try again later` and is closed; past the per-address limit,
-  `400 too many connections from this address; try again later`. Under a
+- **Connections.** `exposure-connections` is the capacity: the owner holds
+  exactly that many connections at once, whatever the number (up to the
+  limit rows' width, 4,294,967,295), and it takes effect live. With no row
+  it is 31, the figure every node ran with before. Each connection is a
+  thread and its buffers, so size it to the machine (PKT-605). The
+  connection your own `policy set` stages through never counts against it.
+  Past the capacity a client reads `400 too many connections; try again
+  later` and is closed; past the per-address limit, `400 too many
+  connections from this address; try again later`.
+- **Trusted range.** `exposure-trusted` names one or more address ranges
+  (`192.168.1.0/24`, `fd00::/8`, comma-separated; `none` clears it) that
+  the per-address limit does not apply to. Behind a home router whose NAT
+  loopback hands every LAN reader the router's own address, name the LAN
+  here, or those readers share one address's allowance. The capacity, the
+  step budget and the failed-login limit still apply to them. Under a
   flood of 500 connections from one address the owner admitted 8 and sent
   the 400 to the other 492; from 50 addresses with the per-address limit at
   1, it admitted 30 and refused 470, and a fresh connection of yours got the
@@ -1434,12 +1445,15 @@ table in `specs/nntp.md` ("Public exposure"). In short:
   behaviour, and it lets an anonymous client POST if `[posting]` is
   enabled: there is no read-only anonymous level yet (PKT-405).
 
-`operator CONFIG health` prints three `exposure` lines after its eight
+`operator CONFIG health` prints four `exposure` lines after its eight
 states: `exposure pressure held|clear` (held at nine tenths of the total or
 after any refusal, wait or close in the current minute), the counts
 (`admitted`, `refused-busy`, `refused-address`, `refused-auth`, `deferred`,
-`idle-closed`, `auth-closed`) and the limits in force. They do not change
-the exit code.
+`idle-closed`, `auth-closed`), the limits in force, and `exposure capacity
+connections=N capacity=C per-address=P trusted=RANGES`, the connections
+held against the capacity, which `operator CONFIG status` also prints at the
+end of its report, before the `heap=` line. They do not change the exit
+code.
 
 Before you open the port: set `[auth] required = true` and `protected_only
 = true` and a TLS pair (see "Require a login"), choose the certificate

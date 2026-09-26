@@ -337,6 +337,17 @@
              (fn-exp-anonymous-wordp (cadddr words)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; PRF-211: the trusted range exempt from exposure-per-address, a
+       ; durable `:set-policy' row applied live; the word is admitted only
+       ; when every range in it parses (fn-exp-trusted-wordp), and `none'
+       ; clears it.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-exp-trusted-slot*)
+             (fn-exp-trusted-wordp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
        ; PRF-161: a limit of the public reader port, a `:set-limit' row
        ; (SLOT, "") staged, published and replayed like the retention rule.
        ((and (equal (len words) 4)
