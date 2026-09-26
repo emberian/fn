@@ -304,6 +304,21 @@
              (fn-clock-observationp (fn-own-clock o)))
          (fn-own-facts-okp (fn-own-facts o)))))
 
+; The two conjuncts of the relation that the connection and ledger proofs
+; read, so those proofs keep the relation closed (fn-own-durable-reply-names-
+; a-durable-record: 1.6 s to 0.6 s with it).
+(local
+ (defthm fn-own-relation-conns-and-ledger
+   (implies (fn-own-relation o)
+            (and (fn-own-conns-okp (fn-own-conns o)
+                                   (fn-sn-groups (fn-own-store o))
+                                   (fn-sn-capacity (fn-own-store o))
+                                   (fn-sf-records (fn-sn-files (fn-own-store o))))
+                 (fn-own-ledger-durablep (fn-own-ledger o)
+                                         (fn-sf-records (fn-sn-files (fn-own-store o))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-own-relation) (theory 'minimal-theory))))))
+
 ; -----------------------------------------------------------------------------
 ; Growth of the durable history keeps every pin, the view and the ledger.
 
@@ -1725,13 +1740,15 @@
                       octets)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
+                 fn-own-relation-conns-and-ledger
                  (:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
-           :in-theory (e/d (fn-own-relation)
-                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
+           :in-theory (e/d ()
+                           (fn-own-relation fn-own-conns-okp
+                            fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-read-is-served-step-on-pinned-prefix-after-any-trace
   (implies (and (fn-own-relation o)
@@ -1802,13 +1819,15 @@
                       event)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
+                 fn-own-relation-conns-and-ledger
                  (:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
-           :in-theory (e/d (fn-own-relation)
-                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
+           :in-theory (e/d ()
+                           (fn-own-relation fn-own-conns-okp
+                            fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-reader-sees-pinned-prefix-replay-after-any-trace
   (implies (and (fn-own-relation o)
@@ -2639,20 +2658,6 @@
 ; session is answered 403, the fourth outcome, so the two sides differ at
 ; every connection-free state and the equality now carries the connection
 ; itself.  The separation is asserted in `tests/acl2/owner-tests.lisp'.
-; The two conjuncts of the relation the durable-reply proof reads.  Opening
-; the whole relation in that proof cost 1.0 s of 1.6 s.
-(local
- (defthm fn-own-relation-conns-and-ledger
-   (implies (fn-own-relation o)
-            (and (fn-own-conns-okp (fn-own-conns o)
-                                   (fn-sn-groups (fn-own-store o))
-                                   (fn-sn-capacity (fn-own-store o))
-                                   (fn-sf-records (fn-sn-files (fn-own-store o))))
-                 (fn-own-ledger-durablep (fn-own-ledger o)
-                                         (fn-sf-records (fn-sn-files (fn-own-store o))))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (union-theories '(fn-own-relation) (theory 'minimal-theory))))))
-
 (defthm fn-own-durable-reply-names-a-durable-record
   (implies (and (fn-own-relation o)
                 (equal (car (fn-own-outcome o id word))
