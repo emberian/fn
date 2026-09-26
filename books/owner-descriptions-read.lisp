@@ -25,6 +25,19 @@
    (equal (fn-nntp-env-listing (fn-nntp-env-listed o f p l)) l)
    :hints (("Goal" :in-theory (enable fn-nntp-env-listing fn-nntp-env-listed)))))
 
+; The served step's environment is books/nntp-post.lisp `fn-post-reader-env'
+; (the listing and the closed groups of the pinned configuration, PRF-196);
+; LIST MOTD reads only its listing, which is the configuration's.
+(local
+ (defthm fn-odr-list-motd-of-reader-env
+   (equal (fn-nntp-list-motd s (fn-post-reader-env config observation) args)
+          (fn-nntp-list-motd s (fn-nntp-env-listed
+                                observation nil
+                                (and (fn-inj-config-allow config) t)
+                                (fn-inj-config-listing config))
+                             args))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-list-motd) (fn-nntp-motd-lines))))))
+
 ; The dispatcher the served step calls: LIST NEWSGROUPS and LIST MOTD are
 ; the archive command's, with no pinned arm between (neither is COUNTS, a
 ; retrieval, LISTGROUP, OVER or HDR).
@@ -178,10 +191,8 @@
                   (archive (fn-served-conn-archive conn))
                   (index (fn-served-conn-pinned-index conn))
                   (verdicts (fn-served-conn-verdicts conn))
-                  (env (fn-nntp-env-listed (fn-served-conn-observation conn) nil
-                                    (and (fn-inj-config-allow
-                                          (fn-served-conn-config conn)) t)
-                                    (fn-inj-config-listing (fn-served-conn-config conn))))
+                  (env (fn-post-reader-env (fn-served-conn-config conn)
+                                           (fn-served-conn-observation conn)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))))))
 
@@ -246,10 +257,8 @@
                   (archive (fn-served-conn-archive conn))
                   (index (fn-served-conn-pinned-index conn))
                   (verdicts (fn-served-conn-verdicts conn))
-                  (env (fn-nntp-env-listed (fn-served-conn-observation conn) nil
-                                    (and (fn-inj-config-allow
-                                          (fn-served-conn-config conn)) t)
-                                    (fn-inj-config-listing (fn-served-conn-config conn))))
+                  (env (fn-post-reader-env (fn-served-conn-config conn)
+                                           (fn-served-conn-observation conn)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))))))
 

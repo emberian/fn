@@ -3891,6 +3891,38 @@
         "log": "planning/evidence/heap-from-profile-2026-09-26/native-heap.log",
         "record": "planning/evidence/heap-from-profile-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-125",
+      "title": "A read-only group, set offline and live: POST refused by name, LIST ACTIVE status n, a pinned connection unchanged, a restart replays it; and (SEC-006, specified) an unsigned post cancelled by its own login only",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-040",
+        "SEC-006"
+      ],
+      "steps": [
+        "`init fn.test`; `group create fn.ro`; offline `group policy fn.absent n` (refused), `group policy fn.ro m` (not accepted), `group policy fn.ro n`.",
+        "Start the owner; a reader lists LIST ACTIVE, POSTs to fn.ro, to fn.test,fn.ro and to fn.test, and STATs the refused Message-ID.",
+        "Live `group policy fn.ro y`: a new connection lists and POSTs to fn.ro; live `group policy fn.ro n`: another new connection POSTs to fn.ro.",
+        "Stop, restart; a reader lists LIST ACTIVE and POSTs to fn.ro.",
+        "(SEC-006, specified, not implemented: PKT-575) Logins ember and guest; ember POSTs an unsigned article to fn.test; guest, then ember, POST a cancel of it; a second node relays ember's article and ember's cancel."
+      ],
+      "expected": [
+        "The two offline refusals exit non-zero; `group policy fn.ro n` exits 0.",
+        "LIST ACTIVE shows fn.ro n and fn.test y; both POSTs naming fn.ro answer `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)`; fn.test answers 240; STAT of the refused article answers 430.",
+        "After `y` a new connection lists fn.ro y and its POST answers 240; after `n` a new connection's POST to fn.ro answers the read-only 441.",
+        "After the restart LIST ACTIVE shows fn.ro n and a POST to fn.ro answers the read-only 441.",
+        "(SEC-006, specified) guest's cancel is refused by name and the article stays 220; ember's cancel is accepted and the article answers 430 withdrawn on both nodes, in either arrival order."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_policy",
+        "cases": [
+          "GroupPolicyImageTests.test_read_only_group_offline_live_and_after_restart"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-policy-2026-09-26.md"
+      }
     }
   ]
 }

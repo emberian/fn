@@ -3661,6 +3661,52 @@
         "planning/evidence/heap-from-profile-2026-09-26.md"
       ],
       "implementation_note": "The installed bin/fn runs `heap -- ARGV` in the same image first (a boot figure of the core's size plus 128 MB, a bound on the probe's work), where ACL2 decides the figure from the command's store profile (config.json, or the init request's target) and the least of the machine's observations (sysconf physical pages; Linux cgroup memory.max up the hierarchy and RLIMIT_AS; RLIMIT_DATA), then execs the command with --dynamic-space-size MB through SBCL_USER_ARGS; a refusal is exit 1 with `refused machine-cannot-hold-profile heap=MB MB machine=M MB` and nothing else runs. `status` and `health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with a bare request on a machine under 4 GiB writes the small preset. A checkout's packaging/fn takes FN_TEST_HEAP_MB (the tests' figure), which the installed launcher ignores."
+    },
+    {
+      "id": "NNT-040",
+      "title": "A group the operator sets read-only refuses a local POST that names it with a 441 naming the reason, and LIST ACTIVE lists it with status n, from the same configured list on the same connection",
+      "specification": "specs/nntp.md#read-only-groups-nnt-040",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-196"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/group-status.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/owner-agent.lisp",
+        "books/native-admin.lisp",
+        "host/owner-host.lisp",
+        "host/native-admin-host.lisp",
+        "tests/acl2/group-status-tests.lisp",
+        "tests/test_native_group_policy.py",
+        "planning/evidence/group-policy-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS still reports y (PKT-575)."
+    },
+    {
+      "id": "SEC-006",
+      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
+      "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "planning/evidence/group-policy-2026-09-26.md"
+      ],
+      "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
     }
   ]
 }

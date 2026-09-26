@@ -99,6 +99,73 @@
                 (fn-cfg-entry-livep (fn-cfg-group-find es name) gen))
            (fn-cfg-group-listp (fn-cfg-groups-retire es gen name))))
 
+(defthm fn-cfg-groups-set-policy-keeps-the-names
+  (equal (fn-cfg-group-all-names (fn-cfg-groups-set-policy es name policy))
+         (fn-cfg-group-all-names es)))
+
+(defthm fn-cfg-groups-set-policy-preserves-group-listp
+  (implies (and (fn-cfg-group-listp es) (fn-cfg-labelp policy))
+           (fn-cfg-group-listp (fn-cfg-groups-set-policy es name policy))))
+
+(defthm fn-cfg-labelp-of-status-policy-id
+  (fn-cfg-labelp (fn-cfg-status-policy-id status))
+  :hints (("Goal" :in-theory (enable fn-cfg-status-policy-id))))
+
+(defthm fn-cfg-group-find-of-groups-set-policy
+  (implies (fn-cfg-group-listp es)
+  (equal (fn-cfg-group-find (fn-cfg-groups-set-policy es name policy) x)
+         (let ((e (fn-cfg-group-find es x)))
+           (if (and (equal x name) (consp e))
+               (fn-cfg-group-make name (fn-cfg-group-created-gen e)
+                                  (fn-cfg-group-created-stamp e)
+                                  (fn-cfg-group-retired-gen e)
+                                  policy (fn-cfg-group-next e))
+             e)))))
+
+; KEYSTONE (O2, PRF-196).  An admitted `group policy NAME STATUS'
+; (:set-group-status, code 21) sets NAME's LIST ACTIVE status to STATUS, and
+; changes no other group's.  Subject: `fn-cfg-apply-delta', the fold replay
+; and live publication both run (books/config.lisp `fn-cfg-apply'); the
+; delta is staged by books/native-admin.lisp `fn-native-admin-plan-deltas'.
+; The last two hypotheses are what `fn-cfg-delta-reason' admits; the first
+; is the typed value every replayed configuration is
+; (`fn-cfg-apply-delta-preserves-valuep').
+(defthm fn-cfg-set-group-status-sets-the-status
+  (implies (and (fn-cfg-valuep v)
+                (fn-cfg-group-livep v gen name)
+                (member-equal status '("y" "n")))
+           (and (equal (fn-cfg-group-status
+                        (fn-cfg-apply-delta v gen stamp
+                                            (fn-cfg-set-group-status name status))
+                        gen name)
+                       status)
+                (implies (not (equal other name))
+                         (equal (fn-cfg-group-status
+                                 (fn-cfg-apply-delta
+                                  v gen stamp
+                                  (fn-cfg-set-group-status name status))
+                                 gen other)
+                                (fn-cfg-group-status v gen other)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-group-status fn-cfg-group-livep
+                                     fn-cfg-status-policy-id))))
+
+; The closed list is exactly the served groups whose status is "n".
+(defthm fn-cfg-closed-filter-member
+  (iff (member-equal x (fn-cfg-closed-filter names v gen))
+       (and (member-equal x names)
+            (equal (fn-cfg-group-status v gen x) "n")))
+  :hints (("Goal" :induct (fn-cfg-closed-filter names v gen)
+           :in-theory (e/d (fn-cfg-closed-filter) (fn-cfg-group-status)))))
+
+(defthm fn-cfg-live-names-has-a-live-find
+  (implies (fn-cfg-entry-livep (fn-cfg-group-find es x) gen)
+           (member-equal x (fn-cfg-live-names es gen))))
+
+(defthm fn-cfg-closed-names-are-the-n-groups
+  (iff (member-equal x (fn-cfg-closed-names v gen))
+       (equal (fn-cfg-group-status v gen x) "n"))
+  :hints (("Goal" :in-theory (enable fn-cfg-group-status fn-cfg-group-names))))
+
 (defthm fn-cfg-groups-create-preserves-group-listp
   (implies (and (fn-cfg-group-listp es)
                 (fn-record-group-namep name)
