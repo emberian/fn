@@ -221,3 +221,5 @@ Both campaigns' logs: `bp-lifecycle-3-2026-09-26/native-logs.tgz`
 
 - The codec half of P5 (item 1 above) and so SCN-077.
 - A native `held-beyond-profile` case (item 6).
+
+Harvested by assurance-triage (2026-09-26) as the scenario catalog's evidence log: [`test_bp_fragment_node_native.log`](bp-lifecycle-3-2026-09-26/test_bp_fragment_node_native.log), logs-bfb8a8d7/test_bp_fragment_node_native.log, extracted from native-logs.tgz, sha256 `fc37d711a5a066817dfde2b110268858b03f73e82d9cd0debc3e0b3dbaafedbd`.

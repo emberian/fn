@@ -221,3 +221,5 @@ wire, settled `accepted` by the client.
   with it: 2 tests OK, the same witnesses; log
   `fa7898087fe1db468c6d08774cd2b132c1fee875feec7d6b05f567e49c808ec2`.
 - `planning/ledger.*` regenerate on merge (not committed by the lane).
+
+Harvested by assurance-triage (2026-09-26) as the scenario catalog's evidence log: [`tests.test_native_visibility_join.log`](visibility-join-2026-09-25/tests.test_native_visibility_join.log), the log left on hbox, copied from /tank/fn/scratch/visibility-join/tree-061e8854/build/lane/, sha256 `f5cbf08a668ec74de97a9b41eaa23d83145d9096a39cc392dfea5ed95f5a4a48`.
