@@ -471,7 +471,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-047: spike-only artefact: three scratch patches for bounds-p3's image; P3 merged long ago and checkpoint-cost and rep-wave-d-3 replaced its figures
 - PKT-049: superseded umbrella: the reclaim lifecycle is PKT-263 (capacity-vector) with PKT-193, 194, 196
 - PKT-065: superseded: deploy and qualification go through the coordinator on ember's go (mandate reconciliation); what the labs owe a qualification is PKT-226
-- PKT-073: superseded umbrella: friends-peer (PKT-400..403, running) with PKT-236, 211, 213
+- PKT-073: superseded umbrella: friends-peer (PKT-400..403; friends-peer-2 retired PKT-400 and PKT-402, narrowed PKT-403 to the mission TLS pair, left PKT-401 open with its design) with PKT-236, 211, 213
 - PKT-114: superseded by ember's ten-second ruling (07:00 UTC: over 10 s only under load is not a problem) and the baseline 04372f7e; owner-invariants is at 10.3 s under load (2e9dc981); a book over 10 s on a quiet box gets a fresh packet
 - PKT-225: superseded, as PKT-114: the names were measured under load; five were retired as improved at 04372f7e; assurance-triage (running) takes the four books for-gpt6 §7 names
 - PKT-205: superseded, as PKT-114: bp-node-progress-guards and bp-node-retire at 10.9 s were load figures

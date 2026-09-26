@@ -740,6 +740,25 @@
                        (fn-nop-test-argv '("peer" "list" "far"))))
                      5))
 
+; PKT-402: `peer keygen KEYDIR' is a peering plan over one absolute path;
+; a relative path or a second word is a usage error (5), never a plan.
+(defconst *fn-nop-peer-keygen*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("peer" "keygen" "/home/friend/keys"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-peer-keygen*) :accepted))
+(assert-event (equal (fn-native-operator-result-peering-words *fn-nop-peer-keygen*)
+                     '("keygen" "/home/friend/keys")))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("peer" "keygen" "keys"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("peer" "keygen" "/k" "/l"))))
+                     5))
+
 ; Help names both new subjects, and only from the ACL2 subject table.
 (assert-event (fn-nop-help-subjectp "init"))
 (assert-event (equal (fn-nop-help-text "init")
@@ -1216,3 +1235,9 @@
 (must-fail
  (thm (equal (cadr (fn-native-operator-inspect-report m t))
              (cadr (fn-native-operator-inspect-report m nil)))))
+
+; PKT-403: bare `help' (what bare `fn' runs) answers the command list.
+(assert-event (equal (fn-native-operator-command-preflight (fn-nop-test-argv '("help")))
+                     (list :accepted :plan "help" nil
+                           (list :help "help" (fn-nop-help-text nil)))))
+(assert-event (not (equal (fn-nop-help-text nil) (fn-nop-help-text "help"))))

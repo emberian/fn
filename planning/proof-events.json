@@ -5729,6 +5729,23 @@
           "name": "fn-rclp-reclaiming-pack-is-a-first-link"
         }
       ]
+    },
+    {
+      "id": "PRF-163",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-target-of-a-control-article-is-in-its-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-sub-feed-groups-of-an-ordinary-article"
+        }
+      ]
     }
   ]
 }

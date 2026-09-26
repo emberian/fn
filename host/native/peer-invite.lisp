@@ -274,6 +274,107 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
       (fnn-out "principal ~a" (fnn-hex principal))
       +fnn-exit-ok+)))
 
+;;; `peer keygen KEYDIR' (PKT-402): the key directory the runbook needs,
+;;; drawn through the image's own libsodium and OpenSSL 3.5, so a friend
+;;; whose system has no `openssl' 3.5 command can make an ML-DSA-65 key.
+;;; KEYDIR must not exist; it is made mode 0700 and every file 0600, each
+;;; created O_EXCL.  No key is ever an argument, an environment value or a
+;;; URL: the secret halves exist only in this process and in their files.
+;;; Then `peer genesis' runs over the new directory (token.bin,
+;;; principal.bin), so the directory is complete for invite and accept.
+(sb-alien:define-alien-routine ("crypto_sign_keypair" fnn-%pinv-ed-keypair)
+    sb-alien:int
+  (public-key (* sb-alien:unsigned-char)) (secret-key (* sb-alien:unsigned-char)))
+(sb-alien:define-alien-routine
+    ("EVP_PKEY_CTX_new_from_name" fnn-%pinv-context-new-from-name) (* t)
+  (library-context (* t)) (name sb-alien:c-string) (properties (* t)))
+(sb-alien:define-alien-routine ("EVP_PKEY_keygen_init" fnn-%pinv-keygen-init)
+    sb-alien:int (context (* t)))
+(sb-alien:define-alien-routine ("EVP_PKEY_generate" fnn-%pinv-generate)
+    sb-alien:int (context (* t)) (key (* (* t))))
+(sb-alien:define-alien-routine ("BIO_s_mem" fnn-%pinv-bio-s-mem) (* t))
+(sb-alien:define-alien-routine ("BIO_new" fnn-%pinv-bio-new) (* t) (method (* t)))
+(sb-alien:define-alien-routine ("BIO_ctrl" fnn-%pinv-bio-ctrl) sb-alien:long
+  (bio (* t)) (command sb-alien:int) (larg sb-alien:long)
+  (parg (* (* sb-alien:unsigned-char))))
+(sb-alien:define-alien-routine
+    ("PEM_write_bio_PrivateKey" fnn-%pinv-write-private-key) sb-alien:int
+  (bio (* t)) (key (* t)) (cipher (* t)) (password (* t))
+  (password-length sb-alien:int) (callback (* t)) (userdata (* t)))
+(sb-alien:define-alien-routine ("PEM_write_bio_PUBKEY" fnn-%pinv-write-public-key)
+    sb-alien:int (bio (* t)) (key (* t)))
+
+(defconstant +fnn-pinv-bio-ctrl-info+ 3)
+
+(defun fnn-pinv-pem-of (key privatep)
+  "KEY's PKCS#8 (private) or SubjectPublicKeyInfo (public) PEM, unencrypted."
+  (let ((bio (fnn-%pinv-bio-new (fnn-%pinv-bio-s-mem))))
+    (when (fnn-hsig-null-p bio)
+      (error 'fnn-hsig-fault :detail "cannot allocate a memory BIO"))
+    (unwind-protect
+         (progn
+           (unless (= 1 (if privatep
+                            (fnn-%pinv-write-private-key
+                             bio key (fnn-hsig-null) (fnn-hsig-null) 0
+                             (fnn-hsig-null) (fnn-hsig-null))
+                          (fnn-%pinv-write-public-key bio key)))
+             (error 'fnn-hsig-fault :detail "ML-DSA-65 PEM encoding failed"))
+           (sb-alien:with-alien ((data (* sb-alien:unsigned-char)))
+             (let ((n (fnn-%pinv-bio-ctrl bio +fnn-pinv-bio-ctrl-info+ 0
+                                          (sb-alien:addr data))))
+               (unless (and (plusp n) (< n 65536))
+                 (error 'fnn-hsig-fault :detail "ML-DSA-65 PEM has no octets"))
+               (let ((out (make-array n :element-type '(unsigned-byte 8))))
+                 (dotimes (i n out) (setf (aref out i) (sb-alien:deref data i)))))))
+      (fnn-%hsig-bio-free bio))))
+
+(defun fnn-pinv-ml-dsa-65-keypair ()
+  "A fresh ML-DSA-65 pair from the image's OpenSSL: (private-pem . public-pem)."
+  (fnn-hsig-initialize)
+  (let ((context (fnn-%pinv-context-new-from-name (fnn-hsig-null) "ML-DSA-65"
+                                                  (fnn-hsig-null))))
+    (when (fnn-hsig-null-p context)
+      (error 'fnn-hsig-unsupported :detail "ML-DSA-65 key generation unavailable"))
+    (unwind-protect
+         (sb-alien:with-alien ((key (* t) (fnn-hsig-null)))
+           (unless (and (= 1 (fnn-%pinv-keygen-init context))
+                        (= 1 (fnn-%pinv-generate context (sb-alien:addr key)))
+                        (not (fnn-hsig-null-p key)))
+             (error 'fnn-hsig-fault :detail "ML-DSA-65 key generation failed"))
+           (unwind-protect
+                (cons (fnn-pinv-pem-of key t) (fnn-pinv-pem-of key nil))
+             (fnn-%hsig-pkey-free key)))
+      (fnn-%hsig-context-free context))))
+
+(defun fnn-pinv-ed25519-keypair ()
+  "A fresh Ed25519 pair from libsodium: (public . seed||public)."
+  (fnn-crypto-initialize)
+  (let ((public (make-array 32 :element-type '(unsigned-byte 8)))
+        (secret (make-array 64 :element-type '(unsigned-byte 8))))
+    (sb-sys:with-pinned-objects (public secret)
+      (unless (zerop (fnn-%pinv-ed-keypair (fnn-hsig-pointer public)
+                                           (fnn-hsig-pointer secret)))
+        (error 'fnn-hsig-fault :detail "Ed25519 key generation failed")))
+    (cons public secret)))
+
+(defun fnn-pinv-keygen (directory)
+  "Make DIRECTORY (absent before) with both key pairs, then run genesis."
+  (when (fnn-lstat directory)
+    (fnn-refuse "~a exists; keygen never overwrites keys" directory))
+  (let ((ed (fnn-pinv-ed25519-keypair))
+        (ml (fnn-pinv-ml-dsa-65-keypair)))
+    (fnn-mkdir directory #o700)
+    (flet ((put (name octets)
+             (fnn-write-staged (fnn-pinv-path directory name) octets)))
+      (put "ed-public.bin" (car ed))
+      (put "ed-secret.bin" (cdr ed))
+      (put "ml-private.pem" (car ml))
+      (put "ml-public.pem" (cdr ml)))
+    (fill (cdr ed) 0)
+    (fill (car ml) 0)
+    (fnn-fsync-dir directory)
+    (fnn-pinv-genesis directory)))
+
 (defun fnn-pinv-invite (control-path words)
   (destructuring-bind (name groups host port path directory out inviter-host
                        inviter-port) words
@@ -335,7 +436,7 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
     (fnn-pinv-status-code (fnn-hybrid-control-send control-path request))))
 
 (defun fnn-pinv-execute (result)
-  "Execute an accepted `peer genesis|invite|accept|confirm' plan."
+  "Execute an accepted `peer keygen|genesis|invite|accept|confirm' plan."
   (let* ((words (fnn-core 'fn-native-operator-host-result-peering-words result))
          (verb (first words))
          (control (fnn-core
@@ -346,6 +447,7 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
     (handler-case
         (let ((code
                 (cond ((equal verb "genesis") (fnn-pinv-genesis (second words)))
+                      ((equal verb "keygen") (fnn-pinv-keygen (second words)))
                       ((null control-path)
                        (fnn-refuse "the configuration names no control socket"))
                       ((equal verb "invite")

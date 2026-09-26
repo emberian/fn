@@ -476,7 +476,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer budget NAME OCTETS COUNT | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; spec peering 9)")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
@@ -486,7 +486,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; restart to apply)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -506,7 +506,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ;; values and absolute paths; what the documents say, and whether they are
 ;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
 (defconst *fn-nop-peering-arity*
-  '(("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)))
+  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)))
 
 (defun fn-nop-peering-verbp (word)
   (declare (xargs :guard t))
@@ -522,7 +522,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 (defun fn-nop-peering-paths-okp (verb args)
   ; The positions of the path words for each verb.
   (declare (xargs :guard (true-listp args)))
-  (cond ((equal verb "genesis") (fn-nop-absolute-pathp (nth 0 args)))
+  (cond ((equal verb "keygen") (fn-nop-absolute-pathp (nth 0 args)))
+        ((equal verb "genesis") (fn-nop-absolute-pathp (nth 0 args)))
         ((equal verb "invite") (and (fn-nop-absolute-pathp (nth 5 args))
                                     (fn-nop-absolute-pathp (nth 6 args))))
         ((equal verb "accept") (and (fn-nop-absolute-pathp (nth 0 args))
@@ -572,9 +573,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
       (cond ((equal command "help")
              (if (or (null rest)
                      (and (equal (len rest) 1) (fn-nop-help-subjectp (car rest))))
+                 ; PKT-403: bare `help' (and so bare `fn') answers the
+                 ; command list, not the grammar of `help' itself.
                  (let ((subject (if (consp rest) (car rest) "help")))
                    (fn-nop-result :accepted :plan "help" config
-                                  (list :help subject (fn-nop-help-text subject))))
+                                  (list :help subject
+                                        (fn-nop-help-text
+                                         (if (consp rest) subject nil)))))
                (fn-nop-usage :invalid-help "help" config rest)))
             ((equal command "run")
              (let ((arguments (fn-nop-parse-run rest nil)))
@@ -1095,7 +1100,7 @@ formed and the operator asked for something the node declined to do."
     nil))
 
 (defun fn-native-operator-result-peering-words (result)
-  "The verb and words of an accepted `peer genesis|invite|accept|confirm'."
+  "The verb and words of an accepted `peer keygen|genesis|invite|accept|confirm'."
   (declare (xargs :guard t))
   (if (and (equal (fn-native-operator-result-status result) :accepted)
            (equal (fn-native-operator-result-command result) "peer")

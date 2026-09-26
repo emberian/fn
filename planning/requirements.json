@@ -2902,6 +2902,30 @@
         "planning/evidence/bounds-p5-2026-09-25.md"
       ],
       "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
+    },
+    {
+      "id": "NNT-033",
+      "title": "A control article is offered to every peer whose outbound wildmat matches a group its Newsgroups names or its filing group, so a friend's ordinary group filter receives the cancel of an article it carries",
+      "specification": "specs/peering.md#321-a-control-articles-scope-prf-163",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-163"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner.lisp",
+        "books/owner-feed-subject.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_friends_feed.py",
+        "docs/peering-with-a-friend.md",
+        "planning/evidence/friends-peer-2-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 relays by Newsgroups and section 5.3 gives a cancel its target's Newsgroups; section 3.7 files it under control.cancel (fn-pa-filing-plan). Offering under the filing group as well is a stronger fn guarantee (a peer that asked for control.cancel by name keeps receiving it). PKT-400 retired."
     }
   ]
 }
