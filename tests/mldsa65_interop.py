@@ -240,6 +240,9 @@ def main(argv=None):
     ap.add_argument("library")
     ap.add_argument("--openssl", default=os.environ.get("FN_INTEROP_OPENSSL", "openssl"))
     ap.add_argument("--json")
+    ap.add_argument("--extra", action="append", default=[],
+                    help="also every file under this directory holding a carrier "
+                         "(a fixture store); absolute or relative paths")
     args = ap.parse_args(argv)
     seam = Seam(args.library)
     findings, report = [], {"implementation": seam.implementation()}
@@ -343,6 +346,13 @@ def main(argv=None):
         files = [f for f in git_files(["grep", "-l", "-i", "-a", "fn-authorship:", "--",
                                        "tests", "planning"])
                  if not f.endswith((".py", ".lisp", ".md"))]
+        for extra in args.extra:
+            for base, _, names in os.walk(extra):
+                for name in sorted(names):
+                    path = os.path.join(base, name)
+                    with open(path, "rb") as fh:
+                        if re.search(rb"(?i)fn-authorship:", fh.read()):
+                            files.append(os.path.abspath(path))
         # Plain articles first, so containers can be matched against them.
         files.sort(key=lambda f: (not f.endswith((".eml", ".txt", ".log")), f))
         seen, per_file, unextracted, copies, verified_articles = set(), [], [], [], set()
