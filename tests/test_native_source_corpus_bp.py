@@ -540,8 +540,17 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                 seen = 0
             seen += 1
             self.wait_count(b_log, verdict_rx, seen, 60)
-            verdicts = re.findall(verdict_rx, b_log.read_text(errors="replace"))
+            lines = re.findall(r"BP node delivery .*", b_log.read_text(errors="replace"))
+            verdicts = [line for line in lines if re.match(verdict_rx, line)]
             facts[name]["b_verdict"] = verdicts[seen - 1] if len(verdicts) >= seen else None
+            # ACL2's reason line (fn-owner-bp-request-refusal-line) precedes
+            # a verdict that is not accepted or duplicate.
+            if len(verdicts) >= seen:
+                at = [i for i, line in enumerate(lines) if re.match(verdict_rx, line)][seen - 1]
+                before = lines[at - 1] if at > 0 else ""
+                facts[name]["b_reason"] = (before[len("BP node delivery "):]
+                                           if not re.match(verdict_rx, before) and before
+                                           else None)
         self.stop(b_serve)
         frames = self.b_frames(b_fnbs)
         # --- the records -----------------------------------------------------------
@@ -568,6 +577,7 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                 "operation": "POST at A, bp-obligation request, dtn7, bp-node serve at B",
                 "a_post": f["post"], "source_sha256": f["source_sha256"],
                 "kind8_attempt": f.get("attempt"), "b_verdict": f.get("b_verdict"),
+                "b_reason": f.get("b_reason"),
                 "bundle": f["bundle"], "b_frame": f["frame"],
                 "a_stored_sha256": sha(a_octets) if a_octets else None,
                 "b_stored_sha256": sha(b_octets) if b_octets else None,
