@@ -1,0 +1,22 @@
+{
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "first_plaintext_command": [
+  "STARTTLS"
+ ],
+ "fnpl_octets": [
+  65,
+  65
+ ],
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "kind": "tls-wrong-principal",
+ "log_sha256_A": "e1369f01ef5dc7decdb6e4aedbb9511f4fd2171892bf730cf603415b854a8e0d",
+ "log_sha256_B": "85fb0246c3b1effa4b3960e9bb9a588b6027e7992d57095088f440f7a1f4b487",
+ "plaintext_private": [],
+ "proxy_connections": 3,
+ "pull_lines": [
+  "pull peer=A round=failed cursor=held at=preamble",
+  "pull peer=A round=failed cursor=held at=preamble",
+  "pull peer=A round=failed cursor=held at=preamble"
+ ],
+ "stored": false
+}

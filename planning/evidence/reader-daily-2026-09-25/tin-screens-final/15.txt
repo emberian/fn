@@ -1,0 +1,40 @@
+                                                 Check Prepared Article
+
+Read carefully!
+
+  You are about to cancel an article seemingly written by you. This will wipe
+  the article from most  news servers  throughout the world,  but there is no
+  guarantee that it will work.
+
+This is the article you are about to cancel:
+
+Subject: tin walk: a new thread
+Date: Sat, 26 Sep 2026 00:25:59 +0000
+Message-ID: <00000000843697559841.00000000000000072887.fn@fn.example.invalid>
+Newsgroups: fn.agents
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+e=edit cancel message, q=quit, d=delete (cancel) [tin walk: a new thread]: d

@@ -47,19 +47,24 @@
 ; -----------------------------------------------------------------------------
 ; Bounds.
 
-; A canonical block's block-type-specific data.  One mebibyte is well above the
-; largest ADU fn produces and well below what a peer could use to make a single
-; `take` expensive.
-(defconst *fn-bpb-max-data* 1048576)
+; A canonical block's block-type-specific data: a codec width, not a data
+; bound (D27; PRF-134).  It is the ceiling every field of the BP node profile
+; already has (`fn-bpn-machine-limitp', 2^24, books/bp-node-machine), so no
+; ADU a profile admits is refused by the codec; the node's own bounds are the
+; profile's ADU octets and bundle octets (books/bp-node-profile).  Before P5
+; it was 1 MiB.  The declared length is still checked before any `take'.
+(defconst *fn-bpb-max-data* 16777216)
 
 ; Section 4.1: a bundle is a primary block, zero or more canonical blocks and a
 ; payload block.  fn accepts at most this many canonical blocks in one bundle.
 (defconst *fn-bpb-max-blocks* 32)
 
-; The default whole-bundle limit, when a caller has no tighter one.  The
-; convergence layer's transfer MRU is the tighter one in practice and
-; `fn-bpn-receive` passes it.
-(defconst *fn-bpb-max-input* 1048576)
+; The decoder's input ceiling: a codec width (D27; PRF-134), the largest
+; bundle octets any BP node profile can name (`fn-bpn-machine-limitp', 2^24).
+; The bound a node applies is the profile's bundle octets (the admission of
+; books/bp-node-profile-admission) and, per transfer, the convergence layer's
+; transfer MRU, which `fn-bpn-receive` passes.  Before P5 it was 1 MiB.
+(defconst *fn-bpb-max-input* 16777216)
 
 ; Section 4.3.3 and 4.1: the payload block is type 1 and MUST be block number 1.
 (defconst *fn-bpb-block-type-payload* 1)

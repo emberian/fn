@@ -1,0 +1,7 @@
+From: poster@example.invalid
+Newsgroups: fn.test
+Subject: corpus dual signature
+Date: Fri, 25 Sep 2026 12:00:00 +0000
+Message-ID: <sc-signed@example.invalid>
+
+signed with Ed25519 and ML-DSA-65

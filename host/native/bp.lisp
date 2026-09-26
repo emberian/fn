@@ -95,7 +95,28 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
 (defstruct fnn-bp-tally
   (accepted 0) (refused 0) (uncertain 0) (config nil) (wall nil) (wall-error nil)
   (journal nil) (spool-lock nil) (evidence-dir nil) (evidence-state nil)
-  (last-adu nil) (last-reason nil))
+  (last-adu nil) (last-reason nil)
+  ;; ACL2's evidence record of this run (fn-bprc-note,
+  ;; books/bp-run-class.lisp): what the exit code is computed from.
+  (evidence (list 0 0 0 0)))
+
+(defun fnn-bp-note (tally word)
+  "Record WORD, an evidence word ACL2 named, in TALLY's evidence record."
+  (setf (fnn-bp-tally-evidence tally)
+        (fnn-core 'fn-bprc-note (fnn-bp-tally-evidence tally) word))
+  tally)
+
+(defun fnn-bp-verb (dispatch)
+  "A BP verb's dispatcher.  A publication whose outcome is unknown anywhere in
+the verb (fnn-store-indeterminate) is a fence: ACL2's class :fenced and its
+code (fn-bprc-run-exit-code), distinct from a connection lost after it existed
+(specs/host.md \"BP run classes\")."
+  (lambda (command args)
+    (handler-case (funcall dispatch command args)
+      (fnn-store-indeterminate (e)
+        (fnn-err "store: ~a" e)
+        (fnn-core 'fn-bprc-run-exit-code
+                  (fnn-core 'fn-bprc-note (fnn-core 'fn-bprc-empty) :fenced))))))
 
 (defun fnn-bp-journal-dir (root)
   ;; FNN-SAFE-DIRECTORY barriers the parent only when it creates ROOT.  The
@@ -407,6 +428,9 @@ may or may not be durable."
         (fnn-octet-list
          (fnn-string-octets (format nil "~(~a~)~%" reason))))
        (incf (fnn-bp-tally-uncertain tally))
+       ;; ACL2 could not decide the article's verdict.  The delivery plan
+       ;; withholds the ACK and the connection raises the indeterminate the
+       ;; BP verb renders as a fence (fnn-bp-verb).
        (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
        (list :uncertain reason)))))
 
@@ -416,11 +440,11 @@ may or may not be durable."
   (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
     (fnn-fault "bp: injected receive core fault"))
   (let* ((tally (fnn-bps-tally service))
-         (ingress (fnn-bps-tcpcl-ingress
-                   (fnn-bps-state service) conn session-counter xfer-id
-                   owner channel)))
+         (admission (fnn-bps-tcpcl-admission
+                     (fnn-bps-state service) conn session-counter xfer-id
+                     owner channel)))
     (multiple-value-bind (result adu)
-        (fnn-bps-receive service ingress octets)
+        (fnn-bps-receive service admission octets)
       (case (first result)
         (:accepted
          (incf (fnn-bp-tally-accepted tally))
@@ -449,17 +473,25 @@ may or may not be durable."
          (fnn-indeterminate "bp: invalid foundation callback result")))
       result)))
 
+(defun fnn-bp-session-word (conn)
+  "ACL2's evidence word for the TCPCL session CONN, or nil without one."
+  (and conn (fnn-core 'fn-bprc-session-evidence
+                      (fnn-tclc-outcome conn) (fnn-tclc-fenced conn))))
+
+(defun fnn-bp-run-evidence (tally)
+  "ACL2's evidence record of TALLY's run: its noted evidence with the article
+verdicts it counted (fn-bprc-with-articles)."
+  (fnn-core 'fn-bprc-with-articles (fnn-bp-tally-evidence tally)
+            (fnn-bp-tally-refused tally) (fnn-bp-tally-uncertain tally)))
+
 (defun fnn-bp-exit-code (tally conn)
-  "Three outcomes, three codes.  Uncertain dominates a refusal, and a refusal
-dominates an acceptance: a run that saw one of each did not succeed."
-  (case (fnn-core 'fn-bpn-host-run-outcome
-                  (fnn-bp-tally-accepted tally)
-                  (fnn-bp-tally-refused tally)
-                  (fnn-bp-tally-uncertain tally)
-                  (and conn (fnn-tclc-outcome conn)))
-    (:accepted +fnn-exit-ok+)
-    (:refused +fnn-exit-refused+)
-    (t +fnn-exit-uncertain+)))
+  "The run's code: ACL2's class of TALLY's evidence with CONN's session
+outcome (books/bp-run-class.lisp; specs/host.md \"BP run classes\").  TALLY
+is not changed: a per-connection code does not become the service's
+evidence."
+  (fnn-core 'fn-bprc-run-exit-code
+            (fnn-core 'fn-bprc-note (fnn-bp-run-evidence tally)
+                      (fnn-bp-session-word conn))))
 
 (defun fnn-bp-summary (tally)
   (fnn-out "BP summary accepted=~d refused=~d uncertain=~d"
@@ -557,13 +589,18 @@ only refuses a name that is not a plain file name before it reads it."
                         (fnn-bp-summary tally)
                         (fnn-bp-exit-code tally conn)))
                  (when socket (fnn-socket-shut socket)))
-             ;; A severed contact leaves the durable attempt unresolved: the
-             ;; peer may or may not hold it.  That is uncertain, as `bp
-             ;; receive' and `bp-service run' report it, never a fault.
+             ;; A contact severed after the connection existed leaves the
+             ;; durable attempt unresolved: the peer may or may not hold it
+             ;; (:uncertain, connection-local, never a fault).  A connect that
+             ;; never produced a socket sent nothing (:failed): the durable
+             ;; attempt is re-offered with RETRY.  ACL2 names the class.
              ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
-               (fnn-out "BP send uncertain path=~a reason=contact: ~a" path e)
+               (let ((word (if socket :uncertain :failed)))
+                 (fnn-bp-note tally word)
+                 (fnn-out "BP send ~a path=~a reason=contact: ~a"
+                          (if socket "uncertain" "not-connected") path e))
                (fnn-bp-summary tally)
-               +fnn-exit-uncertain+)))
+               (fnn-core 'fn-bprc-run-exit-code (fnn-bp-run-evidence tally)))))
       (fnn-bps-release service))))
 
 ;;; ---------------------------------------------------------------------------
@@ -635,10 +672,14 @@ admitted and ACL2 refuses every inbound bundle at the receive boundary."
                               (fnn-store-fault (e) (error e))
                               (fnn-store-error (e)
                                 (fnn-err "bp: ~a" e)
-                                (setq code +fnn-exit-refused+))
+                                (fnn-bp-note tally :refused)
+                                (setq code (fnn-bp-exit-code tally nil)))
+                              ;; The accepted connection was lost: connection-
+                              ;; local (ACL2's :uncertain).
                               ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
                                 (fnn-err "bp: ~a" e)
-                                (setq code +fnn-exit-uncertain+)))
+                                (fnn-bp-note tally :uncertain)
+                                (setq code (fnn-bp-exit-code tally nil))))
                          (fnn-socket-shut socket))))
                    once)
                   (fnn-bp-summary tally)
@@ -741,4 +782,4 @@ admitted and ACL2 refuses every inbound bundle at the receive boundary."
       (t (error 'fnn-usage-error
                 :message (format nil "unknown bp command ~a" command))))))
 
-(fnn-register-verb "bp" #'fnn-dispatch-bp)
+(fnn-register-verb "bp" (fnn-bp-verb #'fnn-dispatch-bp))

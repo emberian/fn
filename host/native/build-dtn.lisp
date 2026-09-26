@@ -85,6 +85,9 @@
 (include-book "books/bp-node-receipt-send")
 ;; Routed queued jobs, offered once per contact (PRF-103).
 (include-book "books/bp-node-contact-driver")
+;; The fair base job offer, the named attempt result and the status-report
+;; effect join (PRF-120): fnn-bps-foundation-step calls fn-bpnj-step.
+(include-book "books/bp-node-job-offer")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -133,6 +136,13 @@
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
+;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
+;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+(include-book "books/store-checkpoint-buffer")
+;; The state checkpoint read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
+;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+(include-book "books/store-checkpoint-reader")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file

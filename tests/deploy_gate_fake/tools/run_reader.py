@@ -26,6 +26,8 @@ def load(root):
 
 
 class Server:
+    greeting = "201 fn-nntp experimental reader ready"
+
     def __init__(self, root, allow_post):
         self.root = root
         self.allow_post = allow_post
@@ -70,7 +72,7 @@ def serve(server, sock):
     current = None
     reader = sock.makefile("rb")
     send = lambda text: sock.sendall(text if isinstance(text, bytes) else text.encode())
-    send("201 fn-nntp experimental reader ready" + "\r\n")
+    send(server.greeting + "\r\n")
     while True:
         line = reader.readline()
         if not line:

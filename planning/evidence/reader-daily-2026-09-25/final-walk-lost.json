@@ -1,0 +1,12 @@
+[
+ {
+  "name": "01-compose",
+  "url": "http://127.0.0.1:8968/c?id=HVaoe1yxl0RNqq0nYBR5Nm8b_ERfbtBw",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nfn.agents\nWrite a post\nOne form sends one exact article. If the reply is uncertain, keep its Message-ID and check it before trying again.\nSubject\nFrom (optional)\nMessage\nSave draft Post to fn.agents"
+ },
+ {
+  "name": "02-post-node-unreachable",
+  "url": "http://127.0.0.1:8968/result?id=HVaoe1yxl0RNqq0nYBR5Nm8b_ERfbtBw",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nGroups\nOutcome: uncertain\nThe article may or may not have been accepted. Do not post a new copy while its status is unknown.\nMessage-ID: <fn-client.20260926T002808Z.a669e32e@ember.invalid>\ncould not connect to 127.0.0.1:21968: [Errno 61] Connection refused\nDo not write this again as a new post: a new post gets a new Message-ID, and the node could then hold both. Your article is kept below exactly as prepared, and in the local outbox across restarts. A lookup shows only what this reader is served now: an article can be accepted and then withdrawn or reclaimed, and answer 430. To settle it, re-send this same article under the same Message-ID; the node answers from what it stored and never stores it twice.\nunresolved Whether the node accepted this article is not settled.\nRe-send this same article to settle it\nThis sends the exact text above under the same Message-ID. It never creates a second article.\nCheck whether the node serves this Message-ID\nThe exact article sent\nFrom: ember <ember@127.0.0.1>\nNewsgroups: fn.agents\nSubject: walk: posted while the node was unreachable\nMessage-ID: <fn-client.20260926T002808Z.a669e32e@ember.invalid>\nsent with the tunnel down\nNode response and diagnostic detail\nRefresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart."
+ }
+]

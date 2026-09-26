@@ -147,6 +147,8 @@ their own conventions and are outside this table.
 | 3 | Uncertain: the outcome of a publication is unknown and recovery is required before further mutation. | `StoreIndeterminate` |
 | 4 | Fault: invalid durable state or an I/O fault. Corrupt or ungapped committed history, a store whose core cannot replay it, a barrier or descriptor failure, a poisoned ACL2 bridge. | `StoreFault`, `OSError` |
 | 5 | Usage: the invocation itself is wrong. | `UsageParser`, `UnicodeError` on arguments |
+| 6 | BP verbs only: a connection lost after it existed. The peer may or may not hold the bundle; the job stays durable and is re-offered under its own identity. No recovery is required. | ACL2 `fn-bprc-exit-code` (:interrupted) |
+| 7 | BP verbs only: no connection existed. Nothing left the node; the job stays queued. | ACL2 `fn-bprc-exit-code` (:not-connected) |
 
 A reader whose ACL2 bridge is poisoned exits 4 rather than answering the next
 client from a pipe whose replies can no longer be matched to its commands.
@@ -154,6 +156,32 @@ Native conditions use the same outcome distinctions through `fnn-exit-code-for`;
 the operator plan's code projection is ACL2-owned. Successful queries and an
 article accepted with a retention obligation both use code 0, so callers must
 also interpret the named operation and its result.
+
+### BP run classes
+
+The BP verbs (`bp`, `bp-service`, `bp-contact`, `bp-node`, `bp-app`,
+`bp-obligation`) answer one of five classes, which ACL2 computes from the
+evidence the host records (books/bp-run-class.lisp, PRF-131): the reason of
+each `:forward-refused` effect (the durable `:requeued` record's), each TCPCL
+session's outcome and whether a publication in its delivery callback was
+uncertain, each article verdict, and each publication program's
+classification. A fence dominates everything, then a connection lost after
+it existed, then a refusal, then a connection that never existed:
+
+| Class | Code | The question to ask |
+| --- | --- | --- |
+| `:accepted` | 0 | none |
+| `:fenced` | 3 | a publication's outcome is unknown: stop and recover, as for every fn command |
+| `:refused` | 1 | why the request was refused (named on stdout) |
+| `:interrupted` | 6 | when the contact returns; the job is re-offered with its identity |
+| `:not-connected` | 7 | whether the peer or route is reachable; nothing was sent |
+
+The codes separate the classes (`fn-bprc-exit-code-separates-the-classes`);
+no later or earlier evidence masks a fence (`fn-bprc-fence-is-never-masked`);
+connection-local evidence never fences (`fn-bprc-connection-local-never-fences`).
+Every `fnn-store-indeterminate` a BP verb raises is rendered as the fenced
+code (`fnn-bp-verb`). `bp decode` answers an article verdict, not a run: 0,
+1 or 3.
 
 ## ACL2 bridge correlation
 
@@ -467,3 +495,53 @@ carries that the offline command renders from the Store, and answering changes
 no state. The operator guide's
 [status section](../docs/operator.md#status-while-the-owner-runs) describes the
 verbs.
+
+## Operator health
+
+HST-007: The operator's health verdict names which of eight things is wrong,
+never one red bit. `operator CONFIG health` prints one line per state in a
+fixed order: fenced, exhausted, unqualified-profile, space-pressure,
+no-route, stranded-transfer, unavailable-peer, receipt-debt; each line says
+`held` (with the figures that hold it), `clear`, or `unobserved` (the source
+was not observed: offline there is no feed table, a fenced store is not
+opened). The exit code is 20 plus the index of the first held state, 19 when
+none is held and some state is unobserved, and 0 when every state is clear.
+One ACL2 verdict (`fn-nh-verdict`, books/native-health.lisp) decides every
+line from the sources the status report reads: the headroom and profile the
+`status` report prints, the retention ledger's forwarding obligations, the
+configuration's BP route table, the running owner's outbound feed table, and
+the host's observation of a fence (a clone fence file, a writer lock held by
+a process the configured socket does not reach, or a socket that accepted and
+did not answer). The running owner renders the same verdict over the state it
+carries (FNLS kind 6); the exit code the host returns is read back from the
+rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
+[health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
+describes the verb.
+
+## Operator walk
+
+HST-008: One installed `fn` (packaging/fn, which locates the saved image and
+forwards every argument, deciding nothing) takes an operator from nothing to
+a recovered node, and each verb answers every store state with a distinct,
+documented outcome. On an **absent** store (none of the store's five entries
+beside `[store] path`), every verb that opens a store answers `refused` with
+exit 6 and ACL2's line naming `init`, never a fault (4): the decision is
+`fn-native-operator-store-outcome` over the host's `lstat` observation, made
+before any open (PRF-130). `init` creates the store (0), refuses an existing
+one (1) and, under a mission's `fn.toml`, takes group words only: a profile
+word is a usage error (5) whose line says what it accepts. On a **fenced**
+store (a writer lock held with no answering owner, a clone fence) `health`
+answers 20 and the offline verbs refuse (1) without opening it. On a
+**running** store the status, health and administrative verbs are answered
+by the owner over its control socket; offline administration refuses (1).
+On a **recovered** store (after a process death) `recover` reports the
+replayed history (0) and `run` serves it. Usage errors print ACL2's accepted
+form before the tagged result line. An outbound peer that refuses `MODE
+STREAM` (RFC 4644 section 2.3) is stopped by name for the owner's run, never
+re-dialled with it. `store rollback-check --snapshot SNAPSHOT` states what
+restoring a pre-migration snapshot loses: ACL2 counts the committed
+transactions after the snapshot's history (PRF-130). The operator guide's
+[native component entry](../docs/operator.md#native-component-entry) and
+[upgrade section](../docs/operator.md#upgrade-and-what-a-rollback-loses)
+describe the verbs.
+

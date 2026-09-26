@@ -336,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:
         target.write_text(text, encoding="utf-8")
         print(f"wrote {OUTPUT}")
         return 0
+    if ledger.lane_generated(OUTPUT, text):
+        print(f"Current view generated (lane check): {SIDECAR} and the tree build.")
+        return 0
     if not target.is_file() or target.read_text(encoding="utf-8") != text:
         print(f"current view: {OUTPUT} is stale; run `python3 tools/current_view.py --write`",
               file=sys.stderr)

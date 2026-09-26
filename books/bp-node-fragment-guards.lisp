@@ -71,11 +71,9 @@
  (defthm fn-bpnfg-fragment-query-true-listp
    (true-listp (fn-bpnf-fragment-query st anchor))
    :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-bpnf-fragment-query
-                             fn-bpf-reassemble-fast)
-                            (fn-bpnf-fragment-query-is-reference
-                             fn-bpnf-active-set fn-bpnf-fragment-cells
-                             fn-bpf-inputsp fn-bpf-canvas))))))
+            :in-theory (e/d (fn-bpnf-fragment-query)
+                            (fn-bpnf-active-set fn-bpnf-fragment-cells
+                             fn-bpfw-spec fn-bpf-canvas))))))
 
 (verify-guards fn-bpnf-arrival-count)
 (verify-guards fn-bpnf-find-arrival)
@@ -204,5 +202,18 @@
            :in-theory (disable fn-bpn-machine-statep
                                fn-bpn-machine-recordp
                                fn-bpnf-family-plan))))
-(verify-guards fn-bpnf-family-next)
+(verify-guards fn-bpnf-family-tried-p)
+(verify-guards fn-bpnf-family-next-memo
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpn-machine-recordp
+                               fn-bpnf-family-plan))))
+(verify-guards fn-bpnf-family-next
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-family-next-memo-is-aux
+                            (held (fn-bpnf-held-list st)) (tried nil)))
+           :in-theory (union-theories
+                       '(fn-bpnf-subsetp-equal-reflexive
+                         fn-bpnf-family-tried-okp)
+                       (theory 'minimal-theory)))))
 (verify-guards fn-bpnf-fragment-step)

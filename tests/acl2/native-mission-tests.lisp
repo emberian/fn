@@ -104,3 +104,8 @@
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run *nmt-text* (nmt-argv '("show" "ops" "nope"))))
                      :usage))
+
+; HST-008 (the walk, finding a): the usage line under a mission says what init
+; accepts there.
+(assert-event (stringp (fn-native-operator-result-hint
+                        (fn-native-operator-run *nmt-text* (nmt-argv '("init" "--profile" "scale" "x"))))))

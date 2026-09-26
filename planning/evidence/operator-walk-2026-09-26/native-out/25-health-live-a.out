@@ -1,0 +1,9 @@
+health exit=00 state=healthy
+fenced clear
+exhausted clear
+unqualified-profile clear
+space-pressure clear
+no-route clear
+stranded-transfer clear
+unavailable-peer clear
+receipt-debt clear

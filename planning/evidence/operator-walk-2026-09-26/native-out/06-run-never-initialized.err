@@ -1,0 +1,2 @@
+no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)
+refused operator run NO-STORE

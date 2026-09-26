@@ -717,6 +717,10 @@
 (defun fn-sco-select (status sequence count k)
   (declare (xargs :guard t))
   (cond ((eq status :absent) (list :full-replay :absent))
+        ; A file the reader refused to read within the profile's bounds
+        ; (books/store-checkpoint-reader.lisp fn-sccr-admit-segment): named,
+        ; so that `status' says which, and replayed from the journal.
+        ((eq status :exceeds-bound) (list :full-replay :checkpoint-exceeds-bound))
         ((not (eq status :ok)) (list :full-replay :corrupt))
         ((not (and (natp sequence) (natp count) (<= sequence count)))
          (list :full-replay :ahead-of-history))

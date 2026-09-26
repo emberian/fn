@@ -6,7 +6,15 @@
 (include-book "bp-adu")
 (include-book "bp-signed-receipt")
 (set-verify-guards-eagerness 0)
-(defconst *fn-bpnf-max-held-image* 131072)
+; The held image's codec width (D27; PRF-134): the ceiling every field of the
+; BP node profile has (`fn-bpn-machine-limitp', 2^24), so no image within a
+; profile's held octets is refused by the codec.  The bound a node applies to
+; a held image is the profile's held octets: the step's held-octet check
+; below (and the family plan's) is against the machine state's max-octets,
+; which is the profile's (fn-bpnpf-valid-profile-opens).  Kind 5 and kind 18
+; carry the image in a `(:blob . W)' field of this width.  Before P5 it was
+; 131,072, the plain frame `:blob'.
+(defconst *fn-bpnf-max-held-image* 16777216)
 
 ; A partition is assigned from the admitted ingress principal before looking
 ; up an RFC 9171 bundle identity.  Nil is its own unauthenticated partition.
@@ -543,7 +551,14 @@
                          (list :restart-ready
                                (len (fn-bpn-machine-state-jobs
                                      (fn-bpn-answer-state base-answer)))))))
-        (fn-bpnf-answer st (list (list :restart-fault :fnbs-or-base)))
+        ;; The profile's named replay verdict reaches the operator
+        ;; (PRF-134): a journal past its profile fences with it, not with
+        ;; the generic reason.
+        (fn-bpnf-answer st (list (list :restart-fault
+                                       (if (equal replay-result
+                                                  '(:fault :held-beyond-profile))
+                                           :held-beyond-profile
+                                         :fnbs-or-base))))
       (fn-bpnf-answer
        (fn-bpnf-state-with-arrival (fn-bpn-answer-state base-answer)
                       (fn-bpn-nth 1 replay-result)

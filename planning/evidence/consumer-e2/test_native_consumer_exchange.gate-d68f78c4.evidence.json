@@ -1,0 +1,359 @@
+{
+ "a": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "operation_id": "r1",
+    "source_id": "666e2f7375626a6563742f7631000101457d7e1b98e45381cd9791aedea4feae58c594c65c050c34b7734ba171b25ef4"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "operation_id": "reply-r1",
+    "source_id": "666e2f7375626a6563742f76310001018c4cbb0295a298282b11fc45d831cfc5c201de18a1f5fd07b8d7151775bd2282"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "conflict",
+    "message_id": "<fn-e1.r1@agent-m.invalid>",
+    "operation_id": "r1",
+    "source_id": "666e2f7375626a6563742f7631000101790aff80caccc87c3a2020cb8e53f7278ca44bf298908a6e15feb712a74a3e97"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "kind": "originated",
+    "operation_id": "r1",
+    "result": "replied"
+   },
+   {
+    "application_id": "fn-e1",
+    "kind": "reply",
+    "operation_id": "reply-r1",
+    "result": "correlated"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 1,
+    "last_exit": 0,
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "settled_by": "post-answer",
+    "sha256": "e9fe7e6bd86a4eef6036e803a78f45d024d5c687414b615fd355e5a1b399225d",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {
+   "replies": "1"
+  },
+  "transitions": [
+   [
+    "fn-e1",
+    "reply-r1"
+   ]
+  ],
+  "unattributed": 0
+ },
+ "b": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "operation_id": "r1",
+    "source_id": "666e2f7375626a6563742f7631000101457d7e1b98e45381cd9791aedea4feae58c594c65c050c34b7734ba171b25ef4"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "operation_id": "reply-r1",
+    "source_id": "666e2f7375626a6563742f76310001018c4cbb0295a298282b11fc45d831cfc5c201de18a1f5fd07b8d7151775bd2282"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "conflict",
+    "message_id": "<fn-e1.r1@agent-m.invalid>",
+    "operation_id": "r1",
+    "source_id": "666e2f7375626a6563742f7631000101790aff80caccc87c3a2020cb8e53f7278ca44bf298908a6e15feb712a74a3e97"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "kind": "originated",
+    "operation_id": "reply-r1",
+    "result": "reply"
+   },
+   {
+    "application_id": "fn-e1",
+    "kind": "report-receipt",
+    "operation_id": "r1",
+    "result": "replied"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 2,
+    "last_exit": 1,
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "settled_by": "store-observation",
+    "sha256": "1e1d869ae139c5cecbfd3104039b7c01bd310a3e3d8ec941fbac092f9184b596",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {
+   "ledger": "f791fb98ebae2f839087b19c590534983620b11126013ad52f2888e7a5385b0e",
+   "reports": "1"
+  },
+  "transitions": [
+   [
+    "fn-e1",
+    "r1"
+   ]
+  ],
+  "unattributed": 0
+ },
+ "log": [
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "dregg-receipt-0001"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "in-transaction",
+   97,
+   "CONSUMER-CUT in-transaction\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "after-commit",
+   97,
+   "CONSUMER-CUT after-commit\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "owner-after-submit",
+   3,
+   "consumer stopped: ack uncertain; position settles it on the next wake\n"
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "before-post",
+   97,
+   "CONSUMER-CUT before-post\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "owner-after-submit",
+   3,
+   "consumer stopped: reply POST uncertain; re-POST of the same source settles it\n"
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   "after-ack",
+   97,
+   "CONSUMER-CUT after-ack\n"
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-m",
+   [
+    "report",
+    "r1",
+    "a different receipt"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ],
+ "positions": {
+  "agent-a": 18,
+  "agent-b": 16
+ },
+ "q_settlement": "store-observation"
+}

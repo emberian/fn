@@ -41,14 +41,36 @@
       (incf *fnn-bpnode-test-busy-answers*)
       t)))
 
+(defun fnn-bpnode-refusal-line (view result)
+  "Print ACL2's line for a request VIEW answered RESULT (not accepted):
+its reason class, which ACL2 already returned; the host classifies nothing."
+  (let ((line (fnn-owner-core 'fn-owner-bp-request-refusal-line view result
+                              *fnn-owner-transit-detail*)))
+    (when (stringp line)
+      (fnn-out "BP node ~a" line))))
+
 (defun fnn-bpnode-request-result
+    (owner receipt-root destination policy issuer view node-id)
+  (setq *fnn-owner-transit-detail* nil)
+  (multiple-value-bind (answer adu)
+      (fnn-bpnode-request-result-1 owner receipt-root destination policy
+                                   issuer view node-id)
+    (unless (member answer '(:request-accepted :request-duplicate))
+      (fnn-bpnode-refusal-line
+       view (case answer
+              (:request-refused :refused)
+              (:busy :busy)
+              (otherwise :uncertain))))
+    (values answer adu)))
+
+(defun fnn-bpnode-request-result-1
     (owner receipt-root destination policy issuer view node-id)
   (fnn-bpnode-source-decision view)
   (unless (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
-    (return-from fnn-bpnode-request-result
+    (return-from fnn-bpnode-request-result-1
       (values :request-refused '(0))))
   (when (fnn-bpnode-test-busy-p)
-    (return-from fnn-bpnode-request-result (values :busy '(0))))
+    (return-from fnn-bpnode-request-result-1 (values :busy '(0))))
   (let ((journal nil))
     (unwind-protect
          (progn
@@ -233,7 +255,7 @@ observations back.  Nil when there is nothing to observe."
            (fnn-bp-observation (fnn-bp-tally-wall tally)
                                 (fnn-bp-tally-wall-error tally)))
          (node (fnn-bp-eid node-id)))
-    (when (eq (fnn-bps-outcome bp) :uncertain)
+    (when (eq (fnn-bps-outcome bp) :fenced)
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
     (let ((effects
             (fnn-bps-foundation-step
@@ -309,7 +331,7 @@ observations back.  Nil when there is nothing to observe."
 (defun fnn-bpnode-dispatch-pending
     (bp owner receipt-root workflow-root destination policy issuer node-id
      configured-peer)
-  (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+  (loop repeat (fnn-bps-max-rows bp)
         while (fnn-bpnode-dispatch-one
                bp owner receipt-root workflow-root destination policy issuer
                node-id configured-peer))
@@ -418,7 +440,7 @@ observations back.  Nil when there is nothing to observe."
           (cond
             ((not sent)
              (fnn-out "BP forwarding session unavailable: ~a" e))
-            ((eq (fnn-bps-outcome bp) :uncertain)
+            ((eq (fnn-bps-outcome bp) :fenced)
              ;; A publication inside the session was uncertain: that is a
              ;; shared-owner fault, not a connection-local one.
              (fnn-indeterminate
@@ -501,6 +523,46 @@ observations back.  Nil when there is nothing to observe."
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
 
+;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE]': raise the
+;;; node's profile: the held rows and held octets its FNBS machine may hold,
+;;; the largest ADU it admits and the largest bundle it decodes (D27; books/
+;;; bp-node-profile.lisp, PRF-131, PRF-134).  ADU and BUNDLE omitted keep the
+;;; values in force.  ACL2 reads the profile in force and answers the frame to
+;;; publish, or refuses a write that lowers a field or leaves the machine's
+;;; limits (fn-bpnpf-profile-write-octets).  The next open of the journal runs
+;;; under it.  Run it with the node stopped: it takes the FNBS lifecycle lock
+;;; as `bp-node serve' does.
+(defun fnn-command-bp-node-profile (journal-root node-id rows octets
+                                    &optional adu bundle)
+  (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
+                                +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
+         (bp (fnn-bps-open journal-root config nil 0)))
+    (unwind-protect
+         (let* ((root (fnn-bps-root bp))
+                (in-force (fnn-bps-profile bp))
+                (adu (or adu (third in-force)))
+                (bundle (or bundle (fourth in-force)))
+                (frame (fnn-core 'fn-bpnpf-profile-write-octets in-force
+                                 rows octets adu bundle))
+                (final (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
+                (stage (fnn-join root (format nil ".bp-node-profile-~d-~a"
+                                              (sb-posix:getpid)
+                                              (fnn-random-hex 12)))))
+           (unless frame
+             (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a max-adu-octets=~a max-bundle-octets=~a (in force ~{~a~^ ~})"
+                         rows octets adu bundle in-force))
+           (fnn-write-staged stage (fnn-octets frame))
+           (fnn-replace stage final)
+           ;; The rename is visible: from here a failed barrier leaves the
+           ;; profile's durability unknown.
+           (handler-case (fnn-fsync-dir root)
+             (fnn-os-error (e)
+               (fnn-indeterminate "bp-node profile: directory barrier failed: ~a" e)))
+           (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d max-adu-octets=~d max-bundle-octets=~d"
+                    rows octets adu bundle)
+           +fnn-exit-ok+)
+      (fnn-bps-release bp))))
+
 (defvar *fnn-bpnode-receipt-signer* nil
   "Directory of B's receipt-signing material, or nil for bare receipts:
 principal (32 octets), ed25519.public (32), ed25519.secret (64),
@@ -554,7 +616,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
     (bp owner receipt-root destination policy issuer node-id peer-id view
      contact-host contact-port transfer-mru wall wall-error)
   (let ()
-    (when (eq (fnn-bps-outcome bp) :uncertain)
+    (when (eq (fnn-bps-outcome bp) :fenced)
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
     (unless (eq (fnn-core 'fn-bpah-outbox-peer-matchp view peer-id) t)
       (fnn-refuse "BP node owed receipt has a different configured peer"))
@@ -609,7 +671,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
                   bp (fnn-bps-step
                       bp (list :enqueue work attempt generation sequence
                                route peer payload observation)))
-                 (when (eq (fnn-bps-outcome bp) :uncertain)
+                 (when (eq (fnn-bps-outcome bp) :fenced)
                    (fnn-indeterminate
                     "BP node receipt queue publication is uncertain"))
                  (when (eq (fnn-bps-outcome bp) :refused)
@@ -643,7 +705,7 @@ an operator's `bp-route' change applies to the next queue and contact."
      contact-host contact-port transfer-mru wall wall-error)
   (fnn-bpnode-route-by-owner bp)
   (let ((after nil))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows bp)
           for view = (fnn-core 'fn-bpah-outbox-view-after
                                (fnn-bps-state bp) after)
           while view
@@ -656,7 +718,7 @@ an operator's `bp-route' change applies to the next queue and contact."
 (defun fnn-bpnode-delete-expired (bp reports-enabled)
   ;; The persisted kind-5 anchor and this same-boot observation are interpreted
   ;; by ACL2. A refusal/uncertainty stops this bounded progression.
-  (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+  (loop repeat (fnn-bps-max-rows bp)
         while (eq (fnn-bps-outcome bp) :accepted)
         for tally = (fnn-bps-tally bp)
         for observation =
@@ -675,7 +737,7 @@ an operator's `bp-route' change applies to the next queue and contact."
 (defun fnn-bpnode-queue-report
     (bp peer-id node-id view contact-host contact-port transfer-mru
      wall wall-error)
-  (when (eq (fnn-bps-outcome bp) :uncertain)
+  (when (eq (fnn-bps-outcome bp) :fenced)
     (fnn-indeterminate "BP node status report lifecycle is uncertain"))
   (unless (eq (fnn-core 'fn-bpn-report-outbox-peer-matchp
                         view (fnn-bp-eid peer-id)) t)
@@ -701,7 +763,7 @@ an operator's `bp-route' change applies to the next queue and contact."
       (fnn-bps-drive-effects
        bp (fnn-bps-foundation-step
            bp (list :queue-report (second view) sequence route observation)))
-      (when (eq (fnn-bps-outcome bp) :uncertain)
+      (when (eq (fnn-bps-outcome bp) :fenced)
         (fnn-indeterminate "BP status report queue publication uncertain"))
       (when (eq (fnn-bps-outcome bp) :refused)
         (fnn-refuse "BP status report queue refused"))
@@ -717,7 +779,7 @@ an operator's `bp-route' change applies to the next queue and contact."
     (bp peer-id node-id contact-host contact-port transfer-mru wall wall-error)
   (fnn-bpnode-route-by-owner bp)
   (let ((after nil))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows bp)
           for view = (fnn-core 'fn-bpn-report-outbox-next
                                (fnn-bps-state bp) after)
           while view
@@ -731,7 +793,7 @@ an operator's `bp-route' change applies to the next queue and contact."
   ;; Diagnostic only. ACL2 parses and correlates the received administrative
   ;; payload; this caller neither advances retry nor releases an obligation.
   (let ((after nil))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows bp)
           for observation =
             (fnn-core 'fn-bpn-report-observe-next
                       (fnn-bps-state bp) (fnn-bp-eid node-id) after)
@@ -751,7 +813,7 @@ an operator's `bp-route' change applies to the next queue and contact."
   "Send the owed receipts `fnn-bpnode-queue-outboxes' queued for PEER-ID on
 this node's own base contact, so `bp-contact tick' is not the only path
 (spec bp-node-machine 9.4).  ACL2 decides each offer of the contact
-(fn-bpnp-contact-next, books/bp-node-contact-driver.lisp): a queued job for
+(fn-bpnj-contact-next, books/bp-node-job-offer.lisp): a queued job for
 the peer with nothing issued, fenced or pending, routed by the owner's table
 to the hop its durable route names, not yet offered on this contact.  The
 send drives the same effects as `bp-contact tick', with one difference of
@@ -762,11 +824,11 @@ owed) and the next contact offers it again (fn-bpnp-receipt-reoffer-after-
 uncertain), so the pass logs it and continues.  Only an uncertain
 publication (:bundle-queue-uncertain, the persist arm) makes the pass
 uncertain, as it does everywhere else."
-  (when (eq (fnn-bps-outcome bp) :uncertain)
+  (when (eq (fnn-bps-outcome bp) :fenced)
     (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
   (fnn-bpnode-route-by-owner bp)
   (let* ((peer (fnn-bp-eid peer-id))
-         (first-answer (fnn-core 'fn-bpnp-contact-next (fnn-bps-state bp)
+         (first-answer (fnn-core 'fn-bpnj-contact-next (fnn-bps-state bp)
                                  peer (fnn-bps-routing bp) nil)))
     (unless (eq (first first-answer) :close)
       (fnn-out "BP node receipt contact peer=~a" peer-id)
@@ -793,7 +855,7 @@ uncertain, as it does everywhere else."
          (bp (fnn-bps-open journal-root config wall wall-error))
          (owner nil)
          (listener nil)
-         (code +fnn-exit-ok+))
+         (session-word nil))
     (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
     (unwind-protect
          (progn
@@ -850,12 +912,12 @@ uncertain, as it does everywhere else."
                                  +fnn-tcl-segment-mru+ transfer-mru)
                                 "bp-node" (fnn-bps-root bp))))
                          (fnn-tcl-summary conn)
-                         (setq code (fnn-bp-exit-code (fnn-bps-tally bp) conn)))
+                         (setq session-word (fnn-bp-session-word conn)))
                     (fnn-socket-shut socket)))
                 ;; This is after the TCPCL transfer disposition.  The final
                 ;; XFER_ACK speaks only for durable kind-5 custody; application
                 ;; Store/FNRJ/FNWF commitment follows in a separate cut.
-                (when (eq (fnn-bps-outcome bp) :uncertain)
+                (when (eq (fnn-bps-outcome bp) :fenced)
                   (fnn-indeterminate
                    "BP node custody publication uncertain; recovery required"))
                 (fnn-bpnode-pause-at-durable-cut
@@ -878,11 +940,12 @@ uncertain, as it does everywhere else."
                  bp peer-id node-id contact-host contact-port transfer-mru
                  wall wall-error))
               once))
-           (if (eq (fnn-bps-outcome bp) :uncertain)
-               +fnn-exit-uncertain+
-             (if (eq (fnn-bps-outcome bp) :refused)
-                 +fnn-exit-refused+
-               code)))
+           ;; ACL2's code for the node's evidence with the last session's
+           ;; (fn-bprc-run-exit-code; specs/host.md "BP run classes").
+           (fnn-core 'fn-bprc-run-exit-code
+                     (fnn-core 'fn-bprc-note
+                               (fnn-bp-run-evidence (fnn-bps-tally bp))
+                               session-word)))
       (when listener (fnn-socket-shut listener))
       (when owner
         (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
@@ -901,6 +964,18 @@ uncertain, as it does everywhere else."
        (first args) (second args) (parse-integer (third args))
        (and (fourth args) (parse-integer (fourth args)))
        (if (fifth args) (parse-integer (fifth args)) 0))))
+  (when (string= command "profile")
+    ;; JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE]
+    (unless (member (length args) '(4 6))
+      (error 'fnn-usage-error
+             :message "bp-node profile: JOURNAL NODE-ID MAX-HELD-ROWS MAX-HELD-OCTETS [MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]"))
+    (return-from fnn-dispatch-bp-node
+      (fnn-command-bp-node-profile
+       (first args) (second args)
+       (fnn-bpc-u64-argument (third args) "max held rows")
+       (fnn-bpc-u64-argument (fourth args) "max held octets")
+       (and (fifth args) (fnn-bpc-u64-argument (fifth args) "max ADU octets"))
+       (and (sixth args) (fnn-bpc-u64-argument (sixth args) "max bundle octets")))))
   (when (string= command "checkpoint")
     ;; JOURNAL NODE-ID [WALL WALL-ERROR]
     (when (< (length args) 2)
@@ -912,7 +987,7 @@ uncertain, as it does everywhere else."
        (and (third args) (parse-integer (third args)))
        (if (fourth args) (parse-integer (fourth args)) 0))))
   (unless (member command '("serve" "dispatch") :test #'string=)
-    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch or resume"))
+    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch, resume, checkpoint or profile"))
   (let ((offset (if (string= command "serve") 1 0)))
     (when (< (length args) (+ offset 11))
       (error 'fnn-usage-error
@@ -936,4 +1011,4 @@ uncertain, as it does everywhere else."
        (string= (arg 18 "0") "1")
        (arg 19)))))
 
-(fnn-register-verb "bp-node" #'fnn-dispatch-bp-node)
+(fnn-register-verb "bp-node" (fnn-bp-verb #'fnn-dispatch-bp-node))

@@ -1,0 +1,9 @@
+health exit=26 state=unavailable-peer
+fenced clear
+exhausted clear
+unqualified-profile clear
+space-pressure clear
+no-route clear
+stranded-transfer clear
+unavailable-peer held peers: b nostream
+receipt-debt clear

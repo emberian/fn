@@ -38,6 +38,8 @@
 (include-book "native-control")
 (include-book "native-admin")
 (include-book "store-budget")
+; PKT-169: the maintenance reservation `status' prints.
+(include-book "store-maintenance-reserve")
 (include-book "owner-config")
 (include-book "store-reclaim-holders")
 (include-book "records-stamp")
@@ -302,6 +304,18 @@ freed-octets=N'."
                         (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                                    (fn-ag-cdr headroom)))))))))
 
+; `maintenance-reserve octets=R transactions=1 held|short' (PKT-169,
+; books/store-maintenance-reserve.lisp `fn-smr-report'): the room admission
+; keeps for one release record, and whether the committed state has it.
+(defun fn-nls-reserve-words (report)
+  (declare (xargs :guard t))
+  (append (fn-nls-text "maintenance-reserve")
+          (fn-nls-field "octets" (fn-ag-car report))
+          (fn-nls-field "transactions" (fn-ag-car (fn-ag-cdr report)))
+          (if (equal (fn-ag-car (fn-ag-cdr (fn-ag-cdr report))) :held)
+              (fn-nls-text " held")
+            (fn-nls-text " short"))))
+
 (defun fn-nls-connection-lines (pins)
   "One `connection id=I config-generation=G' line per open connection's pin
 (books/owner-config.lisp: the generation it opened at, or advanced to)."
@@ -350,7 +364,7 @@ freed-octets=N'."
           *fn-nls-lf*
           (fn-nls-connection-lines pins)))
 
-(defconst *fn-nls-kinds* '(:status :pins :peers :obligations :control))
+(defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health)))
 
 (defun fn-nls-report (kind profile s bytes cfg pins obs)
   "The octets `operator CONFIG KIND' prints.
@@ -381,6 +395,8 @@ configuration pins (nil with no owner), OBS the host's open observation."
             (fn-nls-profile-words (fn-bs-profile-report profile)) *fn-nls-lf*
             (fn-nls-open-cost-words profile) *fn-nls-lf*
             (fn-nls-headroom-words (fn-sbud-headroom-at profile s bytes)) *fn-nls-lf*
+            (fn-nls-reserve-words (fn-smr-report profile (fn-sbud-used s) bytes))
+            *fn-nls-lf*
             (fn-nls-open-words obs) *fn-nls-lf*
             (fn-nls-reclaim-words s cfg obs) *fn-nls-lf*
             (fn-nls-checkpoint-file-words obs) *fn-nls-lf*
@@ -482,13 +498,13 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
   (declare (xargs :guard t))
   (cond ((equal kind :status) 1) ((equal kind :pins) 2)
         ((equal kind :peers) 3) ((equal kind :obligations) 4)
-        ((equal kind :control) 5) (t 0)))
+        ((equal kind :control) 5) ((equal kind :health) 6) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
         ((equal code 3) :peers) ((equal code 4) :obligations)
-        ((equal code 5) :control) (t nil)))
+        ((equal code 5) :control) ((equal code 6) :health) (t nil)))
 
 (defun fn-nls-seal (kind payload)
   (declare (xargs :guard t))

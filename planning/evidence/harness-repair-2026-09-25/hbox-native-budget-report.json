@@ -1,0 +1,454 @@
+[
+  {
+    "module": "tests.test_native_raw_scripts",
+    "seconds": 6.267,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_raw_scripts.log",
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_every_raw_script_has_a_case_here",
+        0.0
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_consumer_peer_raw",
+        5.858
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_consumer_poll_cli_raw",
+        0.027
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_feed_service_raw",
+        0.091
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_live_config_cache_raw",
+        0.046
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_owner_bound_commit_raw",
+        0.053
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_owner_consumer_local_raw",
+        0.041
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_owner_consumer_raw",
+        0.036
+      ],
+      [
+        "tests.test_native_raw_scripts.RawScriptTests.test_native_owner_group_codes_raw",
+        0.032
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_native_bp_app_clock",
+    "seconds": 0.101,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_bp_app_clock.log",
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_bp_app_clock.NativeBpAppClockTests.test_submit_observes_fresh_clock_and_replay_needs_none",
+        0.043
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_native_bp_channel_admission",
+    "seconds": 0.101,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_bp_channel_admission.log",
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_bp_channel_admission.NativeBpChannelAdmissionTests.test_raw_eid_and_acl2_ingress_result",
+        0.022
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_native_live_reconfiguration",
+    "seconds": 9.573,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 1,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_live_reconfiguration.log",
+    "tests": 11,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart",
+        6.785
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable",
+        0.358
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives",
+        1.209
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_the_live_verb_answers_and_the_owner_keeps_serving",
+        1.161
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_a_request_being_answered_is_not_shut_by_the_stop_it_caused",
+        0.0
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_actual_native_open_and_completion_call_the_physical_history_model",
+        0.001
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_completion_publishes_what_recovery_replays",
+        0.0
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_publication_is_authorized_on_the_stores_own_lock_observation",
+        0.0
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_is_the_event_sequence_the_theorem_names",
+        0.0
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_reads_the_open_connection_id_as_an_id",
+        0.0
+      ],
+      [
+        "tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_stages_acls_delta_list_and_builds_none",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": false
+  },
+  {
+    "module": "tests.test_native_auth_admin_fidelity",
+    "seconds": 12.738,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_auth_admin_fidelity.log",
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers",
+        6.274
+      ],
+      [
+        "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process",
+        6.415
+      ],
+      [
+        "tests.test_native_auth_admin_fidelity.NativeAuthAdminSourceMapTests.test_each_model_cut_is_on_the_actual_raw_executor",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_native_owner",
+    "seconds": 15.642,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_owner.log",
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body",
+        0.04
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously",
+        0.202
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerHandlerStructureTests.test_no_os_error_after_publication_is_classified_as_a_refusal",
+        0.035
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step",
+        1.156
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_served_listener_passes_a_documented_accept_queue",
+        0.0
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome",
+        0.0
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives",
+        0.248
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault",
+        0.145
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_configured_source_address_opens_native_transit_session",
+        8.188
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading",
+        1.548
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence",
+        0.133
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault",
+        0.131
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients",
+        0.168
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_once_sigterm_closes_client_with_incomplete_post",
+        0.145
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit",
+        1.272
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader",
+        0.275
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation",
+        0.289
+      ],
+      [
+        "tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart",
+        1.577
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_native_control",
+    "seconds": 29.579,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 1,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_control.log",
+    "tests": 14,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_control.NativeControlCutGateTests.test_every_selector_is_read_only_through_the_accessor",
+        0.002
+      ],
+      [
+        "tests.test_native_control.NativeControlCutGateTests.test_feed_stop_follows_fnfd_flush_and_precedes_socket_send",
+        0.0
+      ],
+      [
+        "tests.test_native_control.NativeControlCutGateTests.test_the_gate_runs_before_dispatch",
+        0.0
+      ],
+      [
+        "tests.test_native_control.NativeControlCutGateTests.test_the_reply_is_the_owners_status",
+        0.0
+      ],
+      [
+        "tests.test_native_control.NativeControlCutGateTests.test_the_stop_is_directed_at_the_calling_thread",
+        0.0
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_control_worker_ceiling_returns_busy",
+        2.175
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_disabled_posting_refuses_cli_and_served_post",
+        1.169
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers",
+        1.374
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses",
+        0.376
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_partial_frame_has_one_absolute_deadline",
+        11.155
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens",
+        1.233
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store",
+        2.331
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_the_production_image_refuses_every_selector_at_startup",
+        6.136
+      ],
+      [
+        "tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart",
+        3.544
+      ]
+    ],
+    "slow_tests": [],
+    "passed": false
+  },
+  {
+    "module": "tests.test_native_operator_verbs",
+    "seconds": 9.429,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/harness-repair/budget-logs/tests.test_native_operator_verbs.log",
+    "tests": 22,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_bare_init_is_the_default_profile",
+        0.155
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_refuses_a_profile_by_the_relation_it_breaks",
+        0.149
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them",
+        0.247
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_development_profile_budget_is_reported_and_refused_by_name",
+        2.554
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_scale_profile_is_reachable_from_init",
+        0.254
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorInitTests.test_a_locked_store_is_refused_without_the_lock_being_touched",
+        0.236
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorInitTests.test_help_names_init",
+        0.075
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_creates_the_configured_store_and_then_refuses_it",
+        0.221
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_without_a_group_is_usage_and_writes_nothing",
+        0.232
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_an_added_peer_reads_back_in_the_grammar_that_wrote_it",
+        0.493
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_listing_a_locked_store_refuses_and_publishes_nothing",
+        0.25
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_peer_list_takes_no_argument",
+        0.161
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_the_d23_rows_are_listed_one_word_per_row",
+        0.338
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorReservedGroupSourceTests.test_reserved_names_are_refused_by_acl2_at_init_and_create",
+        0.004
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorReservedGroupTests.test_group_create_poster_is_refused_and_publishes_nothing",
+        0.234
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorReservedGroupTests.test_init_of_a_reserved_name_is_refused_and_writes_nothing",
+        0.158
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorUncertainOutcomeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it",
+        2.33
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorUncertainOutcomeTests.test_the_production_image_refuses_the_selector",
+        1.247
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_init_outcome_is_acl2s_and_the_host_only_observes",
+        0.0
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_peer_list_is_a_query_and_the_host_asks_acl2_which",
+        0.0
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_the_uncertain_word_is_acl2s_control_vocabulary",
+        0.001
+      ],
+      [
+        "tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_uncertain_fault_is_gated_on_the_saved_image_profile",
+        0.001
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  }
+]

@@ -73,12 +73,37 @@
           (coerce (fn-bpa-test-repeat 257 #\x) 'string)
           "s" "a" "b" "p" "i" "c" "t" nil))
         nil))
+; PRF-134 (the codec half of P5): the article's width is the ADU codec's,
+; *fn-bpa-max-article* (2^24 - 2106), not 32,768.  A 70,000-octet article --
+; past the pre-P5 ADU record of 65,538 octets, which refused it -- encodes
+; with the u32 byte-string head and round-trips; the node's bound is its
+; profile's ADU octets (books/bp-node-profile-admission).
+(defconst *bpa-wide-request*
+  (fn-bpa-make-request "w" "s" "a" "b" "p" "i" "c" "t"
+                       (make-list 70000 :initial-element 65)))
+(assert-event (fn-bpa-requestp *bpa-wide-request*))
+(assert-event (< 65538 (len (fn-bpa-encode *bpa-wide-request*))))
+(assert-event (equal (fn-bpa-decode-exact (fn-bpa-encode *bpa-wide-request*))
+                     (list :ok *bpa-wide-request*)))
+; An article at exactly the old bound keeps the bytes the generic CBOR entry
+; wrote (a three-octet head), so ADUs written before P5 are unchanged.
 (assert-event
  (equal (fn-bpa-encode
-         (fn-bpa-make-request
-          "w" "s" "a" "b" "p" "i" "c" "t"
-          (fn-bpa-test-repeat 32769 65)))
-        nil))
+         (fn-bpa-make-request "w" "s" "a" "b" "p" "i" "c" "t"
+                              (make-list 32768 :initial-element 65)))
+        (append (fn-cbor-encode (cons :bytes *fn-bpa-magic*))
+                (fn-cbor-encode (cons :uint *fn-bpa-version*))
+                (fn-cbor-encode (cons :uint *fn-bpa-request-kind*))
+                (fn-cbor-encode (cons :uint *fn-bpa-field-count*))
+                (fn-cbor-encode (cons :bytes (list 119)))
+                (fn-cbor-encode (cons :bytes (list 115)))
+                (fn-cbor-encode (cons :bytes (list 97)))
+                (fn-cbor-encode (cons :bytes (list 98)))
+                (fn-cbor-encode (cons :bytes (list 112)))
+                (fn-cbor-encode (cons :bytes (list 105)))
+                (fn-cbor-encode (cons :bytes (list 99)))
+                (fn-cbor-encode (cons :bytes (list 116)))
+                (fn-cbor-encode (cons :bytes (make-list 32768 :initial-element 65))))))
 
 ; The portable wrapper contains no local Store transaction, generation, BPA
 ; identifier, or NNTP article-number field; exact article bytes remain one

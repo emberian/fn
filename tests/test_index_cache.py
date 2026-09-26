@@ -6,6 +6,7 @@ Every answer checked here comes from `fn-index-host-query`, which calls
 same recovered archive.
 """
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -123,13 +124,14 @@ class IndexCacheTests(unittest.TestCase):
         cls.temporary.cleanup()
 
     @classmethod
-    def post(cls, msgid, payload, groups):
+    def post(cls, msgid, payload, groups, store=None):
+        store = cls.store if store is None else store
         cls.payload.write_bytes(payload)
         args = ["--message-id", msgid, "--payload", str(cls.payload)]
         for group in groups:
             args.extend(["--group", group])
         result = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(cls.store), "post",
+            [sys.executable, "tools/run_store.py", "--store", str(store), "post",
              *args], cwd=ROOT, capture_output=True)
         if result.returncode != 0:
             raise AssertionError("post failed: {}".format(result.stderr))
@@ -180,7 +182,14 @@ class IndexCacheTests(unittest.TestCase):
             reader.close()
 
     def test_post_between_two_reader_commands_gives_post_generation_truth(self):
-        reader = IndexReader(self.store)
+        # This test posts, so it works on its own copy of the class's store:
+        # posting into the shared one made every later test see generation 3
+        # (found by tools/test_budget.py --order reverse; harness-repair).
+        copy = tempfile.TemporaryDirectory(prefix="fn-index-cache-post-")
+        self.addCleanup(copy.cleanup)
+        store = Path(copy.name) / "store"
+        shutil.copytree(self.store, store, symlinks=True)
+        reader = IndexReader(store)
         try:
             reader.open_index()
             self.assertEqual(reader.query("count", "fn.letters"), ("ok", 2))
@@ -190,9 +199,9 @@ class IndexCacheTests(unittest.TestCase):
 
         self.post("<three@example.invalid>",
                   b"Message-ID: <three@example.invalid>\r\n\r\nthree\r\n",
-                  ("fn.letters",))
+                  ("fn.letters",), store=store)
 
-        reader = IndexReader(self.store)
+        reader = IndexReader(store)
         try:
             self.assertEqual(reader.generation, 3)
             # A cache opened at the pre-post generation is refused, never served.

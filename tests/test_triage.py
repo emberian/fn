@@ -156,9 +156,17 @@ def digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+# The synthetic repository must not read the machine's git configuration:
+# with the user's global `commit.gpgsign=true` every commit here waited on the
+# signing agent for ~35 s and then failed (exit 128), and the class ran past
+# its budget (harness-repair, 2026-09-25).
+GIT_ENVIRONMENT = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+
+
 def git(root: Path, *arguments: str) -> None:
     subprocess.run(["git", "-C", str(root), *arguments], check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   env=GIT_ENVIRONMENT)
 
 
 def write_manifest(root: Path, run_id: str, *, passed: dict[str, str],
@@ -603,6 +611,9 @@ class NeverPublishTests(unittest.TestCase):
                                   lambda *a, **k: "python3 certify_books.py"), \
                 contextlib.redirect_stderr(io.StringIO()), \
                 tempfile.TemporaryDirectory() as directory:
+            # submit checks the book exists before it mirrors anything.
+            (Path(directory) / "books").mkdir()
+            (Path(directory) / "books/a.lisp").write_text("", encoding="utf-8")
             with self.assertRaises(farm.FarmError) as refused:
                 farm.submit("persvati", Path(directory), ["books/a"], 4, 300,
                             [], no_publish=True)

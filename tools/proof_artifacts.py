@@ -95,13 +95,13 @@ class LoadResult:
 def validate(root: Path, acl2: Path, roots: list[str], timeout: int = 1800,
              run=subprocess.run) -> LoadResult:
     """Load the roots; ACL2 errors and uncertified-book warnings are fatal."""
-    environment = dict(os.environ)
-    environment.update({"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL"})
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
+    import acl2_slots  # noqa: PLC0415 (tools/ is on sys.path above)
     try:
-        completed = run([str(acl2)], cwd=root, input=load_driver(roots).encode(),
-                        env=environment, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT, timeout=timeout)
+        # The machine's ACL2 pool (and, on the laptop, its heap cap) (PKT-162).
+        with acl2_slots.tree_slot("proof_artifacts validate"):
+            completed = run([str(acl2)], cwd=root, input=load_driver(roots).encode(),
+                            env=acl2_slots.acl2_environment(), stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, timeout=timeout)
     except subprocess.TimeoutExpired as error:
         output = (error.stdout or b"").decode("utf-8", "replace")
         return LoadResult(False, output, 124,

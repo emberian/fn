@@ -66,6 +66,16 @@
 ; Operator logging is a side effect after the ACL2 outcome. It does not make
 ; or persist the decision; count the deployed call without replacing either.
 (defun fnn-owner-log () (incf *bound-logs*))
+;; operator-config (7c80e4f6) put ACL2's file-first gate in front of the
+;; commit callback (PKT-069, fn-owner-bound-commit-gate, KEYSTONE
+;; fn-obc-commit-only-after-filing).  The ACL2 side is a recording stub here
+;; like fnn-owner-action; *bound-gate* is its answer.
+(defparameter *bound-gate* :commit)
+(defparameter *bound-gate-calls* nil)
+(defun fnn-owner-core (name &rest args)
+  (ecase name
+    (fn-owner-bound-commit-gate
+     (push args *bound-gate-calls*) *bound-gate*)))
 (defun fnn-owner-attempt (&rest ignored)
   (declare (ignore ignored)) (error "default commit unexpectedly called"))
 (defun fnn-owner-action (name &rest args)
@@ -147,5 +157,34 @@
                       (lambda () (error condition))) nil)
             (error (caught) (typep caught condition)))
     (error "bound callback changed the ~a fault class" condition)))
+
+; The gate's refusal is the outcome and the callback never runs: a payload
+; ACL2's filing plan does not file in exactly GROUPS never reaches the Store.
+(setq *bound-gate* '(:refused :groups-not-filed) *bound-resolutions* nil
+      *bound-gate-calls* nil)
+(flet ((submit () :submitted)
+       (commit () (error "commit callback ran after the gate refused")))
+  (unless (eq (fnn-owner-complete-bound-submission
+               :service #'submit *bound-msgid* *bound-payload* *bound-groups*
+               #(9) 7 12 #'commit)
+              :refused)
+    (error "gate refusal was not the outcome")))
+(unless (and (not *bound-inflight*)
+             (equal *bound-resolutions* '(:refused))
+             (equal *bound-gate-calls*
+                    (list (list (coerce *bound-payload* 'list)
+                                (mapcar (lambda (g) (coerce g 'list)) *bound-groups*)))))
+  (error "gate refusal left the submission unresolved or gated other octets: ~s"
+         *bound-gate-calls*))
+(setq *bound-gate* :malformed)
+(flet ((submit () :submitted)
+       (commit () (error "commit callback ran after a malformed gate")))
+  (unless (handler-case
+              (progn (fnn-owner-complete-bound-submission
+                      :service #'submit *bound-msgid* *bound-payload* *bound-groups*
+                      #(9) 7 13 #'commit)
+                     nil)
+            (error () t))
+    (error "malformed gate answer was not a fault")))
 
 (format t "native owner bound commit settlement passed~%")

@@ -1665,6 +1665,141 @@ contact; an accepted one is `:forwarded`, which no record returns to
   without STORE) keep the queued address.
 - The contact host is loopback.
 
+### 4.9 The fair base job offer and the report effect join (2026-09-25, lane mission-four-node)
+
+REP-009: A base job is offered while it is ready even when an older job for the same peer is held, and a status report or receipt counts as sent only when its own attempt's transfer completed and the completion is durable
+
+The served step is `fn-bpnj-step` (`books/bp-node-job-offer.lisp`), which
+`host/native/bp-service.lisp` `fnn-bps-foundation-step` calls. It is
+`fn-bpnp-step` on every event (`fn-bpnj-step-delegates-every-other-event`)
+except three:
+
+- `(:contact-job PEER KEY)`: open PEER's base contact and propose the
+  `:attempting` record of exactly the queued job KEY names, under the gate
+  that opens any base contact (`fn-bpnp-receipt-contact-event`).
+- `(:job-result KEY TOKEN OUTCOME)`: the transport result of one attempt.
+  TOKEN is the job's attempt token (`fn-bpnj-attempt-token`: the token of
+  its durable `:attempting` record), which the host reads before the
+  transfer. A TOKEN that is not the job's current attempt settles nothing
+  (`fn-bpnj-stale-job-result-settles-nothing`); the current one is the lower
+  machine's `(:forward-result KEY OUTCOME)`, whose proposal is `:finished`
+  for `:accepted` and `:requeued` otherwise
+  (`fn-bpnj-named-result-is-the-transport-outcome`).
+- a base `:forward-result` that names no attempt: the host's event check
+  refuses it (`fn-bpnj-host-refuses-an-unnamed-transport-result`).
+
+The contact loop asks `fn-bpnj-contact-next` before every offer. It offers
+the first queued job for the peer, in job-list order, that the contact has
+not offered and whose routing decision sends it on its durable route; it
+answers `(:held KEY DECISION)` only when no job is ready, and `(:close)`
+otherwise. The previous question (`fn-bpnp-contact-next`, §4.8) ended the
+contact at the first queued job when it was held or already offered, so one
+job with a changed route, or one refused transfer, stopped every younger job
+for that peer (the witness is in `tests/acl2/bp-node-job-offer-tests.lisp`).
+`fn-bpnj-contact-offers-while-a-ready-job-remains` states that a ready job
+keeps the contact offering. Under A-BP-CONTACT (`books/assumptions.lisp`) a
+contact offers a ready job within the number of jobs at or ahead of it
+(`fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact`).
+
+The status report effect join (mandate §5.7). A kind-10 deletion record
+carries the report intent; `:report-due` is logged as "intent durable;
+outbound queue pending" and is not a sent report. `bp-node` queues the
+intent as a base job (`fn-bpn-report-queue-step`): a durable `:queued`
+record, still not sent. It leaves only through the contact offer above, and
+`:forwarded` is reported only when the durable `:finished` record of an
+`:attempting` job is answered durable
+(`fn-bpnj-step-forwarded-needs-a-durable-finished-record`), which only the
+named `:accepted` result of that attempt proposes. A TCPCL acknowledgement
+is a transport fact: it is never a retention receipt and releases nothing.
+An encoder refusal of a pending lifecycle record is answered `:refused`,
+which clears the pending record and answers its refusal effect
+(`fn-bpnj-encoder-refusal-settles-the-pending-record`); the host no longer
+faults there.
+
+Not covered: the monotonicity of the journal token across every served
+event (a stale result from an earlier process cannot arrive after a
+restart; within a process a fresh attempt's token is the next token at its
+proposal, strictly above every earlier record's); the non-base events'
+effects are not shown free of `:finished` proposals by a theorem.
+
+#### 4.9.1 Custody only over an admitted channel (2026-09-26, lane mission-signed, PRF-128)
+
+D23 binds carriage to the admitted channel's actual policy. A bundle that
+arrives over a TCPCL session whose channel admission
+(`fn-bpaj-session-principal`, through `fn-bpaj-tcpcl-ingress-result`) is
+refused is refused at reception, with the admission's reason, before any
+FNBS step: no kind-5 custody row, so no forwarding job, no `:attempting`
+record, no fragment family and no owed receipt. `host/native/bp-service.lisp`
+`fnn-bps-receive` calls `fn-bpaj-admitted-receive-event`
+(`books/bp-channel-ingress.lisp`) with the admission answer of
+`fnn-bps-tcpcl-admission`, and hands `fnn-bps-foundation-step` only its
+`:ready` answer. The refusal is `(:refused REASON)` with the admission's
+reason (`fn-bpaj-refused-channel-takes-no-custody`), logged as
+`BP channel admission refused reason=R` and `BP refused xfer=N reason=R`
+and kept as receive evidence; an admitted channel's bundle is decided by the
+unchanged receive boundary under its admitted ingress
+(`fn-bpaj-admitted-channel-receives-under-its-ingress`). Before this rule a
+refused admission still stamped an anonymous ingress and the relay took
+custody of the transit (PKT-170); the destination's D23 source decision then
+refused its application, but the relay had carried it.
+
+The loopback policy names the neighbour by the listener the session arrives
+on, and the announced EID never selects among boundaries
+(`fn-bpaj-announced-eid-never-selects-a-peer`). Two boundaries on one
+listener are therefore `ambiguous-peer`, refused. A relay needs one listener
+per boundary; `bp-node serve` listens on one port, so a relay listens on the
+boundary of the neighbour that sends toward it (PKT-291).
+
+A delivered request the node does not accept prints ACL2's reason on one
+line, `BP node delivery refused result=R reason=C`
+(`fn-owner-bp-request-refusal-line`, `host/bp-native-app-host.lisp`): the D23
+source decision's refusal, the planner's or dispatcher's reason, the
+transfer decision's reason, or the Store attempt's plan reason.
+
+A transit request's Message-ID and fields are the relaying agent's (RFC 5537
+section 3.6 step 1, `fn-bpaj-transit-article-fields`), the check the transit
+plan's Message-ID already came from: an injected article carries its
+injecting node's Injection-Info, which the injecting agent's check (section
+3.4.1) refuses. The transit lookups used that check until 2026-09-26, so
+every Store-rendered hybrid-signed carrier was refused as
+`intent-store-conflict` at its destination.
+
+#### 4.9.2 A signed article binds once, under the receiving Store's verdict (2026-09-26, lane mission-signed-2, PRF-132)
+
+A signed article is committed at its destination as a kind-4 acceptance
+composite (`fn-stxa-p`), not as a plain article record: the composite
+carries the article record and the receiving Store's own kind-2 verdict,
+which `fn-hsig-authorized-article-event` builds from the receiving node's
+enrolled keyring snapshot and its own two primitive observations over the
+authored source (D23: the carrier's presence is not the author's
+verification). The BP receiver's Store binding reads a history's article
+records (`fn-bpr-article-records`, `books/bp-receipt.lisp`): a plain record,
+or the record a composite carries, decoded as replay decodes and installs
+it. `fn-bpaj-dispatch-fast`, which `fn-bprj-request-action`
+(`host/bp-receipt-journal-host.lisp`) calls for `fnn-bpapp-action`
+(`host/native/bp-app.lisp`), therefore binds the committed signed record:
+
+- `fn-bpaj-dispatch-never-resubmits-a-stored-article`: once the Store's
+  article records hold an article record with the Message-ID the dispatcher
+  reads, it never answers `(:submit)`. The first durable commit is the only
+  submission; a repeated delivery of the same signed record is the D25
+  duplicate (bound, never refused as `history`).
+- `fn-bpaj-dispatch-binds-the-stores-own-record`: what it binds is the
+  article record of an event of the Store's own history, for that
+  Message-ID, accepted by the receiver's Store check; when the event is a
+  signed composite, the composite binds its verdict to exactly that record
+  (`fn-stxa-bindsp`). The request carries no verdict.
+
+Before this rule the binding read plain records only: after the commit the
+lookup answered `(:absent)`, the dispatcher submitted again and the owner's
+transfer decision refused the second submission as `(:have :history)`
+(`BP node delivery refused result=refused reason=history`, PKT-247). The
+receiver invariants (`specs/bp-evolving-store.md`) ground contexts in the
+same article records; the replay loop installs a composite's record
+(`fn-bprv-apply-composite-installs-record`). Cost: a lookup decodes every
+composite of the history before its end once (the article record's
+octets); a Message-ID index over events is owed (PKT-291).
+
 ## 5. The theorems
 
 Notation, fixed for every statement:
@@ -2718,24 +2853,60 @@ trust rule. A signed article's verification against the author's enrollment
 
 ### 7.1 Limits that compose (§12, D-9)
 
-`*fn-bpf-max-length*` is now 65538, equal to `*fn-bpa-max-octets*`.
-`fn-bpn-limits-compose` in `books/bp-limits.lisp` proves the relationships
-among the limits in the current finite machine: ADU/reassembly equality,
-image capacity, lifecycle-record headroom and aggregate capacity for 64
-maximum-size images. The machine still checks each actual encoded image.
+**Codec widths under the profile (2026-09-26, lane bp-lifecycle-4,
+PRF-134).** The ADU record (`*fn-bpa-max-octets*`, with the article width
+`*fn-bpa-max-article*` = 2^24 - 2106), the bundle codec's block data and
+decoder input (`*fn-bpb-max-data*`, `*fn-bpb-max-input*`) and the held
+image (`*fn-bpnf-max-held-image*`) are codec widths of 2^24, the ceiling of
+every node-profile field; kind 5 and kind 18 carry the image in a
+`(:blob . 2^24)` field (the same octets as `:blob` for every image at most
+131,072) and a lifecycle record's payload width is 2^24 + 3,072. The bounds
+a node applies are its profile's (below). The ADU's fields are record
+items: byte-identical to the generic CBOR entry at or below 65,535 octets,
+a u32 head above. `fn-bpn-limits-compose-at-the-codec-widths`
+(`books/bp-limits.lisp`) states how the widths nest; it replaces
+`fn-bpn-limits-compose`, whose content (an ADU of 65,538 octets plus 65,534
+octets of header fits one sender job image of 131,072) is the finite
+machine P5 removes. The sender machine's job image
+(`*fn-bpn-machine-max-job-octets*`, the plain `:blob`) is not widened: a
+sender cannot yet hold an ADU above about 64 KiB as one job (PKT-294).
 The planned explicit header cap, stage slots and stage octets are not yet
-machine fields, so their rows below remain obligations for the family-plan
-batch. The limit equality alone does not establish maximum-size ADU service.
+machine fields.
+
+**The node's profile (2026-09-26, lane bp-lifecycle-3, PRF-131).** The
+held rows (`max-jobs`) and held octets (`max-octets`) the machine holds are
+the operator's `bp-node-profile` (specs/storage.md, "Authority and
+layout"), read by `fnn-bps-open` through `fn-bpnpf-read` and installed by
+`fn-bpnf-initial-state`; the default is 64 rows and 16 MiB. Every host loop
+that walks held rows in one step is bounded by the profile's rows. Recovery
+replay refuses a well-formed received row past the profile with
+`(:fault :held-beyond-profile)` (`fn-bpnpf-replay-past-the-profile-is-refused`;
+for an image past the held octets, `fn-bpnpf-replay-past-the-octets-is-refused`)
+and the restart fences with that reason. Profile 2 (PRF-134) adds
+`max-adu-octets` and `max-bundle-octets`. The host's receive entry is
+`fn-bpnpf-admitted-receive-event` (`fnn-bps-receive`): a wire past
+`max-bundle-octets` is refused `:bundle-beyond-profile` before it is decoded
+(the check walks at most that many conses plus one), a bundle whose ADU (a
+fragment's total ADU length) is past `max-adu-octets` is refused
+`:adu-beyond-profile` before custody, and anything else is PRF-128's channel
+answer unchanged (`fn-bpnpf-admission-within-profile-is-the-channel-answer`).
+A family therefore never grows an ADU its profile does not admit. The held
+image's bound is `max-held-octets`: the step and the family plan check the
+machine state's max-octets. The lifecycle-record count between rotations is
+a work bound.
 
 | Limit | Value today | Must satisfy |
 | --- | --- | --- |
-| request and receipt ADU | `*fn-bpa-max-octets*` 65538 | ≤ reassembly length |
-| reassembly length | `*fn-bpf-max-length*` 65538 | = ADU max; proved in current constants |
-| bundle image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | ADU max + `*fn-bpn-max-header-octets*` ≤ it |
-| record payload | `*fn-bpn-lifecycle-max-payload*` 134144 | bundle image + held-record overhead ≤ it |
+| held rows | the profile's `max-held-rows` (default 64; at most 2^24) | a row past it is refused at receive and at replay, by name |
+| request and receipt ADU | the profile's `max-adu-octets` (default 65538; codec width 2^24) | refused past it at receive, by name |
+| decoded bundle | the profile's `max-bundle-octets` (default 1 MiB; codec width 2^24) | refused past it before decoding, by name |
+| held image | the profile's `max-held-octets` (codec width 2^24) | the step's and the plan's held-octet check |
+| reassembly length | uncapped (`fn-bpfw-reassemble`); the capped reference `*fn-bpf-max-length*` 65538 | ≤ ADU width |
+| sender job image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | not widened (PKT-294) |
+| record payload | `*fn-bpn-lifecycle-max-payload*` 2^24 + 3072 | held image width + held-record overhead ≤ it |
 | fragment count | `*fn-bpf-max-fragments*` 64 | count × (per-fragment image) ≤ stage-octets; count ≤ stage-slots + 1 |
 | TCPCL transfer | the route's transfer MRU and the session's negotiated MRU | a whole image or a fragment image ≤ it (§7.3) |
-| aggregate | `max-octets` 16777216 | max-held × bundle image ≤ it, or the byte budget is the binding one and says so |
+| aggregate | the profile's `max-held-octets` (default 16777216) | max-held × bundle image ≤ it, or the byte budget is the binding one and says so |
 | execution | fast reassembly and cutting | cost linear in output length plus fragment bytes (§7.4) |
 
 ### 7.2 Reassembly as a family replacement (F-F)
@@ -2948,6 +3119,50 @@ sorted-interval linear algorithm and machine/native call-site connection
 remain C2 work. Slice C measures (BP-R22) payload size and held-set size
 independently on the native image: allocations, time and latency for
 success, gap, overlap and conflict.
+
+Landed 2026-09-25 (PRF-121, lane bp-lifecycle): the sorted linear algorithm
+and its call-site connection, without the two data caps.
+`books/bp-fragment-sweep.lisp` defines `fn-bpfw-reassemble`: a merge sort
+of the fragments by offset, then one tail-recursive sweep over positions
+that keeps, at each position, only the suffixes of the extents covering it.
+Its work is O(n log n) for the sort plus O(total + the sum of the fragment
+lengths). `fn-bpfw-reassemble-is-spec` equates it, on every input, with
+`fn-bpfw-spec`, which is the reference's own definition with
+`*fn-bpf-max-length*` and `*fn-bpf-max-fragments*` removed from the input
+recognizer. `fn-bpf-reassemble-is-capped-spec` shows the old reference is
+that spec restricted to the caps. `fn-bpnf-fragment-query`, the query that
+`fn-bpnf-family-plan` calls, now calls the sweep. The family selector
+`fn-bpnf-family-next` (host: `fnn-bps-fragment-progress`) runs a memo that
+plans each family once per call, not once per member.
+`fn-bpnf-family-next-memo-is-aux` equates the memo with the per-member
+selector, anchor included. Measured once in a proof session on persvati
+(not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
+twice and in no particular order, reassembles in 0.62 s with 673 MB
+allocated as octet lists.
+A family is bounded by the node's profile (PRF-134): its ADU by
+`max-adu-octets` (checked on every fragment's total ADU length), its whole
+image and held fragments by `max-held-octets`, its rows by `max-held-rows`.
+Before PRF-134 the held image (131,072), the bundle decoder (1 MiB) and the
+ADU record (65,538) were constants. The job slots bind
+first on the image: `*fn-bpn-machine-max-jobs*` (64) held rows, so the
+receiver refuses the 65th held fragment of one family with XFER_REFUSE No
+Resources (observed 2026-09-26 on the 0069b282 image); a family of 64
+fragments across a SIGKILL reassembles once.
+
+Landed 2026-09-26 (PRF-121, lane bp-lifecycle-2): the family's rows and the
+job table agree. The job table is the held list: slots 10 to 13 of a row are
+its dispatch record, next hop, job state and kind-8 attempt. The progress
+selector never dispatches a fragment row, so its one job is reassembly.
+`fn-bpnf-family-jobs-agreep` states it: every active fragment row carries
+`(:dispatch-pending)` with no dispatch record, next hop or attempt. Under it,
+kind-18 replacement consumes only such rows and installs the whole row with
+`(:dispatch-pending)`, so discarding the carriers erases no unfinished job
+(`fn-bpnf-family-apply-conserves-jobs`). `fn-bpnp-step` keeps the relation on
+the two events of `fnn-bps-fragment-progress`: `(:family A OBS)` and the
+kind-18 `(:persist-result ...)` (`fn-bpnp-step-family-events-keep-jobs-agreeing`).
+The relation holds at a cold start (empty held list). Its establishment by
+recovery replay and its preservation by the dispatch, forward, delivery and
+deletion arms are not yet proved.
 
 ### 7.5 The routing table's configuration home (F-I, §12 D-3)
 
@@ -3365,7 +3580,11 @@ tick` does. Over `fn-bpnp-step`, the event's one proposal is the
 (`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
 produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
 any failure after the connection exists stays `:uncertain`, and that
-reading is connection-local (§4.3.2): the pass logs it and continues. Not
+reading is connection-local (§4.3.2): the pass logs it and continues. A
+one-shot verb that asked for the transfer renders the durable `:requeued`
+record's reason as its run class (specs/host.md "BP run classes",
+`fn-bpnrc-job-result-class-is-the-transport-class`): `:failed` is exit 7,
+`:uncertain` exit 6, `:refused` exit 1. Not
 claimed as a theorem: once per contact (the host stops the contact at the
 first transfer or outcome that is not accepted; a durable `:attempting`
 makes the job not `:queued`).

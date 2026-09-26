@@ -89,7 +89,10 @@ Message-ID, local membership and historical verdict reference separately.
 It does not assert application verification or processing. A page is a read;
 its return does not mutate the recorded ack.
 
-This interface creates no article retention pin. A committed article that was
+This interface creates no article retention pin (the selected
+no-implicit-pin profile; [storage](storage.md)'s lifetimes table says the
+same, and a retaining consumer mode would be a separately charged durable
+hold, not a reading of this position). A committed article that was
 visible but has been reclaimed before polling is an explicit `unavailable`
 gap at its record position: poll stops there and does not issue a continuation
 past it. A consumer cannot claim at-least-once delivery of content that its
@@ -162,6 +165,80 @@ Whether the consumer regards an identical source reimported in a new store
 incarnation as the same application operation is its own policy; the five-part
 inbox key preserves provenance while the separate operation index makes the
 deduplication/conflict choice atomic.
+
+## Submission attempts and the saved artifact
+
+A consumer's reply (or report) crosses fn's native boundary as a
+submission, and a crash can separate fn's acceptance from the consumer's
+record of it. The consumer therefore keeps three kinds of record, never one
+mutable outbox row (gpt-6's review of wave 2, section 2):
+
+- the **submission artifact**, immutable once committed: the authored
+  source, both signatures, the author's principal, Ed25519 key, ML-DSA-65
+  key and keyring generation, and the original context. A retry sends
+  exactly these bytes under this key context; a later key-file or
+  configuration change cannot alter it. Current permission is fn's to
+  decide at each attempt and is recorded on that attempt; it never edits
+  the artifact.
+- **attempts**, each committed as in flight *before* the native boundary is
+  crossed and answered afterwards in its own transaction. An attempt still
+  in flight when a consumer process opens its database is unanswered:
+  potentially successful, whether or not the dead process reached the
+  socket.
+- **observations** that the operation is stored: fn's answer to an attempt
+  (accepted, or D25's duplicate) or fn's Store serving the exact artifact
+  back through `poll` (the same authored source and the same two
+  signatures, checked by the consumer itself).
+
+The operation's state is derived: stored once any observation exists;
+pending with no attempt; refused only when every attempt has a durable
+refusal; otherwise uncertain. A later refusal settles the attempt it
+answers and never an earlier attempt without a durable answer. An
+uncertain submission is reconciled, not retried blindly: the saved
+artifact is resent once per open attempt (D25 answers the same carrier
+"already stored here", fn-sr-a-signed-retry-is-already-stored; NNT-019's
+contract), and if that resend is refused the submission stays uncertain
+until fn's Store serves the artifact back. Nothing is re-signed:
+randomized ML-DSA-65 signing gives new signatures, and so a new carrier,
+for an unchanged authored source, which D25 answers as a conflict
+(fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137). "Changed authored
+source" is reserved for a changed message; a re-signed one has a changed
+signature and carrier.
+
+The consumer verifies every received report itself: the article fn's poll
+served is checked by `tools/fn_verify.py check-article`, a separate process
+importing nothing of fn's, against a keyring the consumer was given (never
+fn's keyring), and the consumer's verdict is recorded beside fn's. A report
+it cannot verify (unverified, an author it does not trust, or a principal
+or authored source other than fn's projection) is kept as evidence and not
+consumed: no operation, transition or reply; the cursor still progresses
+over it. Who may claim an operation identity is the application's rule
+(operation-id prefix to principal), not the signature's: a correctly signed
+claim by another principal is conflict evidence in either arrival order and
+does not occupy the identity.
+
+| Cut | Consumer record after the cut | Settled by |
+| --- | --- | --- |
+| Death before the attempt is recorded | pending, no attempt | the next wake's first attempt |
+| Death after the in-flight record, before sending | uncertain, one unanswered attempt | one resend of the saved artifact (a first acceptance) |
+| fn committed, consumer killed before the answer arrived | uncertain, one unanswered attempt | one resend; if refused (e.g. revoked), fn's Store serving the artifact back |
+| fn answered, consumer died before recording it | uncertain, one unanswered attempt | as above |
+| Death inside the answer's transaction | rolled back: uncertain, one unanswered attempt | one resend (D25 duplicate) |
+| fn's reply lost (exit 3) | uncertain, one answered-uncertain attempt | one resend (D25 duplicate) |
+| A resend refused after an open attempt | uncertain; the refusal settles only that resend | fn's Store serving the artifact back |
+
+CNS-003: a consumer never records an operation refused while one of its
+submission attempts lacks a durable answer; it persists each attempt before
+crossing the native boundary, resends only the immutable saved artifact
+(source, both signatures and the author's key context), settles an
+uncertain submission by D25's answer to that artifact or by fn's Store
+serving it back, and consumes a received report only after verifying its
+signatures itself with its own trusted keys and the application's rule for
+who may claim that operation identity.
+`tools/fn_consumer.py` is the client, `tests/test_native_consumer_exchange.py`
+the native scenario (SCN-080) and `tests/test_fn_consumer_journal.py` the
+stand-in journal test; the fn side it relies on is PRF-137
+([evidence](../planning/evidence/consumer-e2-2-2026-09-26.md)).
 
 ## Executable seam and obligations
 
@@ -342,6 +419,40 @@ The repaired `1d26e01f` image passed signed poll and advancing-ack recovery,
 as recorded in [the native campaign](../planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md).
 The Mini durable inbox/outbox-to-ACK join remains an open evidence obligation.
 
+The local profile's page contract is proved over the selector the host calls
+(`fn-col-poll-scan-page-contract`, books/consumer-owner-local-progress,
+PRF-116): the continuation lies between the recorded position and the
+smaller of the pinned frontier and position plus the scan bound; an empty
+page scanned only non-matching events and, when anything was scannable,
+progressed past at least one; a nonempty page is the first matching event of
+its window, just before the continuation. So a continuation never passes a
+matching event that the page did not return. `fn-col-poll` answers a page or a
+refusal, never a Store write proposal, and `fn-cp-ack`, which `fn-col-ack` calls, writes only the declared
+cursor, forward, within the frontier and the recorded scope; an equal
+position is a no-op and, after the committed ack, the same ack is a no-op.
+The local profile has no reachable unavailable case: no native caller
+reclaims article content (only the exact-prefix pack reclaims transaction
+files, and it keeps every event byte), so the unavailable-gap rule above is
+the general contract, unexercised here. The scan bound (16) and item bound
+(one event) are in that theorem; the reply byte ceiling and the 346-octet
+cursor are codec ceilings, not proved independent of the scan. A single
+article larger than the poll reply ceiling has no retrieval contract yet.
+
+CNS-002: two consumers with independent durable state exchange a signed
+report and a reply through one fn node, each running the consumer
+transaction above and acknowledging only after it commits. Each uncertain
+fact at an ownership boundary is settled by its owner: an uncertain consumer
+transaction by the consumer's database, an uncertain `ack` by `position`, an
+uncertain reply POST by the identical source's resend or by fn serving that
+exact source back through `poll`, never by an fn acknowledgement. The same
+operation with a changed source is conflict evidence with no second
+transition or reply. `tools/fn_consumer.py` is the external consumer and
+`tests/test_native_consumer_exchange.py` the native scenario (SCN-061).
+An identical resend over the local control route (`hybrid-author` or
+`operator post`) is answered D25's duplicate (PKT-166); if that answer is
+lost too, the consumer settles such a POST by the
+served exact source ([evidence](../planning/evidence/consumer-e2-2026-09-25.md)).
+
 The read-only `consumer-project CURSOR.fncu ACCEPTED.fn-e` command calls
 `fn-cpj-project` to check a supplied v1 cursor against a schema-1 accepted
 event, its bound article and historical verified verdict. The current ACL2
@@ -388,5 +499,5 @@ cursor decision kernel, durable local declarations and bounded one-group poll
 source are implemented. Prior native declaration and independent clone checks
 passed in their stated scopes, followed by native signed poll, advancing
 ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
-multi-group selection, the consumer application transaction/ACK join, and the
-two-store trace remain open.
+multi-group selection and the two-store trace remain open; the one-node
+two-consumer transaction/ACK join is CNS-002.

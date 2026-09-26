@@ -51,6 +51,7 @@ from tests.campaign import child as child_module  # noqa: E402
 from tests.campaign import cuts as cuts_module
 from tests.campaign import model_images as model_images_module  # noqa: E402
 from tools import run_bp_ingress, run_bp_receive, run_store, workflow_journal  # noqa: E402
+from tools import frame_bridge  # noqa: E402
 from tools import deploy_gate  # noqa: E402
 from tools.deploy_gate import evidence_path  # noqa: E402
 from tools.workflow_bridge import Acl2WorkflowReplay  # noqa: E402
@@ -167,20 +168,30 @@ class Campaign:
         if bound is None:
             yield
             return
-        # The bound is ACL2's (`fn-sbud-verdict`); the scenario stands in a
-        # verdict that refuses after BOUND admissions.
+        # The bound is ACL2's (the article verdict, `fn-sbud-article-verdict-at`,
+        # asked by `store post` and by BP ingress/receive); the scenario stands
+        # in a verdict that refuses after BOUND admissions.  ACL2 still answers
+        # first, so a word other than :admissible passes through unchanged.
         admitted = [0]
-        original = run_store.publication_admissible
+        originals = (frame_bridge.FrameSession.article_verdict,
+                     run_bp_ingress.Acl2BpIngress.article_verdict)
 
-        def publication_admissible(store, bridge=None, kind="article"):
-            admitted[0] += 1
-            return admitted[0] <= bound
+        def bounded(original):
+            def article_verdict(self, *arguments):
+                verdict = original(self, *arguments)
+                if verdict != "admissible":
+                    return verdict
+                admitted[0] += 1
+                return "admissible" if admitted[0] <= bound else "unaffordable"
+            return article_verdict
 
-        run_store.publication_admissible = publication_admissible
+        frame_bridge.FrameSession.article_verdict = bounded(originals[0])
+        run_bp_ingress.Acl2BpIngress.article_verdict = bounded(originals[1])
         try:
             yield
         finally:
-            run_store.publication_admissible = original
+            (frame_bridge.FrameSession.article_verdict,
+             run_bp_ingress.Acl2BpIngress.article_verdict) = originals
 
     # -- host entry points --------------------------------------------------
     @staticmethod

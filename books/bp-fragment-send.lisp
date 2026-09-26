@@ -31,14 +31,16 @@
 ;                                         with the parent's extension blocks
 ;                                         whose primary unfragments to the
 ;                                         parent's (a whole parent).
-; The receiver's executable reassembler `fn-bpf-reassemble` keeps its caps
-; (*fn-bpf-max-length*, *fn-bpf-max-fragments*, in `fn-bpf-inputsp` and the
-; held-row recognizer `fn-bpf-fragmentp`); within them it answers (:ok
-; payload) on these fragments (fn-bpfs-plan-fragments-reassemble-within-caps).
+; The capped reference `fn-bpf-reassemble` answers (:ok payload) on these
+; fragments within its caps (fn-bpfs-plan-fragments-reassemble-within-caps);
+; the uncapped reassembler `fn-bpfw-reassemble` (bp-fragment-sweep, work
+; linear in the octets received) answers (:ok payload) for every payload
+; length and fragment count (fn-bpfs-plan-fragments-reassemble-uncapped).
 
 (in-package "ACL2")
 
 (include-book "bp-fragment-invariants")
+(include-book "bp-fragment-sweep")
 (include-book "bp-bundle-invariants")
 
 ; -----------------------------------------------------------------------------
@@ -1119,6 +1121,76 @@
                             (from 0) (marker :gap)))
            :in-theory (union-theories (theory 'ground-zero)
                                       '(fn-bpf-reassemble fn-bpf-inputsp
+                                        fn-bpfs-octets-are-a-true-list
+                                        fn-bpfs-len-positive)))))
+
+;; The receiver's reassembler without a family-size ceiling
+;; (bp-fragment-sweep): a whole parent's fragments reassemble to exactly its
+;; payload for every payload length and every fragment count.
+
+(defthm fn-bpfs-extents-are-uncapped-fragments
+  (implies (and (fn-cbor-octet-listp payload) (natp from) (posp chunk)
+                (natp total) (<= (+ from (len payload)) total))
+           (fn-bpfw-fragment-listp (fn-bpfs-extents payload from chunk total)))
+  :hints (("Goal" :induct (fn-bpfs-extents payload from chunk total)
+           :in-theory (union-theories
+                       (theory 'ground-zero)
+                       '(fn-bpfs-extents-step fn-bpfs-extents-of-atom
+                         fn-bpfw-fragment-listp fn-bpfw-fragmentp fn-bpf-make
+                         fn-bpf-offset fn-bpf-bytes fn-bpf-total
+                         fn-bpfs-take-of-octets fn-bpfs-len-of-take
+                         fn-bpfs-nthcdr-of-octets fn-bpfs-len-of-nthcdr fn-bpfs-consp-of-take fn-bpfs-len-positive
+                         (:induction fn-bpfs-extents))))))
+
+(defthm fn-bpfs-plan-fragments-reassemble-uncapped
+  (implies (and (equal (car (fn-bpfs-plan wire mru)) :fragments)
+                (not (fn-bpp-fragmentp
+                      (fn-bpp-flags (fn-bpb-bundle-primary (fn-bpfs-parent wire))))))
+           (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (fn-bpfs-plan wire mru)))
+                                      (len (fn-bpb-payload (fn-bpfs-parent wire))))
+                  (list :ok (fn-bpb-payload (fn-bpfs-parent wire)))))
+  :hints (("Goal"
+           :use ((:instance fn-bpfs-plan-fragments-unfold)
+                 (:instance fn-bpfs-views-of-cut
+                            (b (fn-bpfs-parent wire))
+                            (payload (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (off 0) (chunk (fn-bpfs-chunk (fn-bpfs-parent wire) mru)))
+                 (:instance fn-bpfs-whole-parent-coordinates
+                            (p (fn-bpb-bundle-primary (fn-bpfs-parent wire)))
+                            (n (len (fn-bpb-payload (fn-bpfs-parent wire)))))
+                 (:instance fn-bpfs-canvas-of-extents
+                            (payload (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (from 0)
+                            (chunk (fn-bpfs-chunk (fn-bpfs-parent wire) mru))
+                            (total (len (fn-bpb-payload (fn-bpfs-parent wire)))))
+                 (:instance fn-bpfs-extents-are-uncapped-fragments
+                            (payload (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (from 0)
+                            (chunk (fn-bpfs-chunk (fn-bpfs-parent wire) mru))
+                            (total (len (fn-bpb-payload (fn-bpfs-parent wire)))))
+                 (:instance fn-bpfs-extents-consp
+                            (payload (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (from 0)
+                            (chunk (fn-bpfs-chunk (fn-bpfs-parent wire) mru))
+                            (total (len (fn-bpb-payload (fn-bpfs-parent wire)))))
+                 (:instance fn-bpfs-extents-same-total
+                            (payload (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (from 0)
+                            (chunk (fn-bpfs-chunk (fn-bpfs-parent wire) mru))
+                            (total (len (fn-bpb-payload (fn-bpfs-parent wire)))))
+                 (:instance fn-bpfs-payload-is-octets (b (fn-bpfs-parent wire)))
+                 (:instance fn-bpfw-reassemble-is-spec
+                            (fs (fn-bpfs-views (cdr (fn-bpfs-plan wire mru))))
+                            (total (len (fn-bpb-payload (fn-bpfs-parent wire)))))
+                 (:instance fn-bpf-no-marker-in-octet-list
+                            (cells (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (from 0) (marker :conflict))
+                 (:instance fn-bpf-no-marker-in-octet-list
+                            (cells (fn-bpb-payload (fn-bpfs-parent wire)))
+                            (from 0) (marker :gap)))
+           :in-theory (union-theories (theory 'ground-zero)
+                                      '(fn-bpfw-spec fn-bpfw-inputsp fn-bpfw-outcome
+                                        fn-bpfw-same-total-is-the-reference
                                         fn-bpfs-octets-are-a-true-list
                                         fn-bpfs-len-positive)))))
 

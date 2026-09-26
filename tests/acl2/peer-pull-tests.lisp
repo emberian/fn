@@ -212,7 +212,9 @@
 
 ; -----------------------------------------------------------------------------
 ; The plan read from configuration rows: interval, clear NNTP transport,
-; inbound wildmat; a TLS transport is not pulled.
+; inbound wildmat; a TLS transport without its server name and trust anchor
+; rows denotes no security and is not pulled (the TLS plans are
+; tests/acl2/peer-pull-session-tests.lisp's).
 (defconst *pp-rows*
   (list (fn-cfg-row-make "innA" "path-identity" "inn.example" 0)
         (fn-cfg-row-make "innA" "transport-nntp" "127.0.0.1" 119)
@@ -221,7 +223,7 @@
         (fn-cfg-row-make "innA" "pull-interval" "" 60)))
 (assert-event (equal (fn-pull-plans *pp-rows*)
                      (list (list *pp-peer* (fn-record-string-octets "127.0.0.1") 119
-                                 *pp-wildmat* 60000))))
+                                 *pp-wildmat* 60000 (list :clear) nil))))
 (assert-event (null (fn-pull-plans
                      (append *pp-rows*
                              (list (fn-cfg-row-make "innA" "transport-security"

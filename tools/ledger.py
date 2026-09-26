@@ -28,9 +28,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -2101,9 +2104,134 @@ def resolve(relative: str) -> str:
     return "/".join(parts)
 
 
+_TREE_CACHE: "tuple[str, Tree] | None" = None
+
+# The analysed tree, shared across processes: `make check` runs six checkers
+# that each analysed the same bytes (~5.5 s apiece).  An entry is named by
+# the digest of everything the analysis is a function of -- the analyser's
+# own source, the Python that ran it, the tree root, every input file's
+# path and bytes, and the root list -- so an entry is valid exactly when its
+# name matches, and nothing is invalidated by time.  Only the directory's
+# size is bounded (oldest entries evicted).  FN_LEDGER_TREE_CACHE=0 turns it
+# off; a directory path moves it.
+TREE_CACHE_DIR = Path(__file__).resolve().parents[1] / "build" / "cache" / "ledger-tree"
+TREE_CACHE_ENTRIES = 4
+_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-1"
+
+
+def _tree_cache_dir() -> "Path | None":
+    """Where analysed trees persist, or None when this call must not persist.
+
+    Not when a caller has substituted any function the analysis runs (a
+    test's mock would otherwise outlive its process), and not for a tree
+    other than this file's own (a test's temporary repository).
+    """
+    import os
+    setting = os.environ.get("FN_LEDGER_TREE_CACHE", "")
+    if setting == "0":
+        return None
+    genuine = (book_paths, host_paths, makefile_roots, analyze_book, analyze_host, Tree)
+    if genuine != _GENUINE_ANALYSIS or ROOT != Path(__file__).resolve().parents[1]:
+        return None
+    return Path(setting) if setting else TREE_CACHE_DIR
+
+
+def _tree_cache_read(directory: Path, key: str) -> "Tree | None":
+    import gc
+    import pickle
+    path = directory / (key + ".pickle")
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return None
+    # The tree is ~1.3 million small objects; collecting while they are
+    # being created costs five times the load itself.
+    enabled = gc.isenabled()
+    gc.disable()
+    try:
+        stored_key, tree = pickle.loads(data)
+    except Exception:
+        return None
+    finally:
+        if enabled:
+            gc.enable()
+    if stored_key != key or not isinstance(tree, Tree):
+        return None
+    try:
+        path.touch()
+    except OSError:
+        pass
+    return tree
+
+
+def _tree_cache_write(directory: Path, key: str, tree: Tree) -> None:
+    import os
+    import pickle
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        temporary = directory / ".{}.{}.tmp".format(key, os.getpid())
+        temporary.write_bytes(pickle.dumps((key, tree), protocol=pickle.HIGHEST_PROTOCOL))
+        os.replace(temporary, directory / (key + ".pickle"))
+        entries = sorted(directory.glob("*.pickle"), key=lambda one: one.stat().st_mtime)
+        for stale in entries[:-TREE_CACHE_ENTRIES]:
+            stale.unlink(missing_ok=True)
+    except OSError:
+        # A cache that cannot be written is a slower run, never a wrong one.
+        pass
+
+
 def load_tree() -> Tree:
-    books = {relative: analyze_book(path, relative) for path, relative in book_paths()}
-    return Tree(books, makefile_roots(), load_hosts())
+    """The analysed tree, computed once per content of its inputs.
+
+    One `make check` process asked for it up to five times (teeth_check:
+    static findings, macro names, the recogniser, hypothesis coverage and
+    teeth, the registry), and each call re-parsed every book and re-derived
+    every theorem's suspect reasons: 5 x ~9 s of teeth_check's 33 s
+    (harness-repair, 2026-09-25).  The key is the bytes of every book, host
+    and tools file the analysis reads and the Makefile, so an edit between
+    calls (a test's temporary tree) is a new analysis, never a stale one.
+    Across processes the same key names an entry in TREE_CACHE_DIR, with the
+    analyser's source, the Python version and the root list added to it.
+    Callers read the Tree; none mutates it.
+    """
+    global _TREE_CACHE
+    books = book_paths()
+    hosts = host_paths()
+    digest = hashlib.sha256(str(ROOT).encode())
+    for path, relative in books + hosts + [(ROOT / "Makefile", "Makefile")]:
+        digest.update(relative.encode() + b"\0")
+        try:
+            digest.update(path.read_bytes())
+        except OSError:
+            digest.update(b"\1unreadable")
+        digest.update(b"\0")
+    key = digest.hexdigest()
+    if _TREE_CACHE is not None and _TREE_CACHE[0] == key:
+        return _TREE_CACHE[1]
+    roots = makefile_roots()
+    directory = _tree_cache_dir()
+    persistent = None
+    if directory is not None:
+        shared = hashlib.sha256(_TREE_CACHE_FORMAT + b"\0")
+        shared.update(sys.version.encode() + b"\0")
+        # Pickled classes are named by module: `python3 tools/ledger.py`
+        # writes __main__.Tree, which an importer of `ledger` cannot load.
+        shared.update(__name__.encode() + b"\0")
+        shared.update(Path(__file__).resolve().read_bytes() + b"\0")
+        shared.update(key.encode() + b"\0")
+        shared.update("\n".join(roots).encode())
+        persistent = shared.hexdigest()
+        tree = _tree_cache_read(directory, persistent)
+        if tree is not None:
+            _TREE_CACHE = (key, tree)
+            return tree
+    tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
+                roots,
+                {relative: analyze_host(path, relative) for path, relative in hosts})
+    _TREE_CACHE = (key, tree)
+    if directory is not None:
+        _tree_cache_write(directory, persistent, tree)
+    return tree
 
 
 # --------------------------------------------------------------------------
@@ -2406,6 +2534,34 @@ def apply_events(regenerated: dict[str, list[str]]) -> str:
 # --------------------------------------------------------------------------
 
 
+def lane_generated(relative: str, expected: str) -> bool:
+    """Under `make check-lane`, write a generated file aside instead of comparing.
+
+    A lane must not commit planning/ledger.* or planning/current.md (the
+    deputy regenerates them at merge), so in a lane they are stale by
+    design and `make check` was red in every lane that touched a book: 112
+    runs in 70 lanes regenerated and reverted by hand (friction review
+    2026-09-26 section 6).  With FN_LANE_CHECK set, the regenerated text goes
+    to $FN_LANE_CHECK_DIR (or a temporary directory), the comparison with the
+    committed file is printed, and only generation itself can fail.  The
+    proofs.json event arrays are not in this set: a lane owns its registry
+    rows and commits them regenerated.
+    """
+    if not os.environ.get("FN_LANE_CHECK"):
+        return False
+    directory = Path(os.environ.get("FN_LANE_CHECK_DIR")
+                     or tempfile.mkdtemp(prefix="fn-lane-check-"))
+    target = directory / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(expected, encoding="utf-8")
+    committed = ROOT / relative
+    same = committed.is_file() and committed.read_text(encoding="utf-8") == expected
+    print(f"lane check: {relative} regenerated to {target} "
+          f"({'same as' if same else 'differs from'} the committed file; "
+          f"the deputy regenerates it at merge)", file=sys.stderr)
+    return True
+
+
 def check_problems(tree: "Tree | None" = None) -> list[str]:
     """Everything `make check` must fail on.
 
@@ -2429,6 +2585,8 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
                            (LEDGER_MD, ledger_markdown(ledger)),
                            (PROOFS, apply_events(regenerated))):
         relative = path.relative_to(ROOT).as_posix()
+        if path != PROOFS and lane_generated(relative, expected):
+            continue
         if not path.is_file():
             problems.append(f"{relative}: missing; run `python3 tools/ledger.py --write`")
         elif path.read_text(encoding="utf-8") != expected:
@@ -2496,6 +2654,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if problems else 0
     report(load_tree())
     return 0
+
+
+# What _tree_cache_dir compares against: the functions as this file defines them.
+_GENUINE_ANALYSIS = (book_paths, host_paths, makefile_roots, analyze_book, analyze_host, Tree)
 
 
 if __name__ == "__main__":

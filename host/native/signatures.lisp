@@ -114,7 +114,7 @@
                (fnn-tls-initialize)
                (unless (>= (fnn-%hsig-version-num) +fnn-hsig-openssl-3-5+)
                  (error 'fnn-hsig-unsupported
-                        :detail "OpenSSL 3.5 or newer is required for ML-DSA"))
+                        :detail "OpenSSL 3.5 or newer is required for ML-DSA (set FN_OPENSSL_PREFIX)"))
                (let ((algorithm (fnn-%hsig-fetch (fnn-hsig-null)
                                                   "ML-DSA-65" nil)))
                  (when (fnn-hsig-null-p algorithm)

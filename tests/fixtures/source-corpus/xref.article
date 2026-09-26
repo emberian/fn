@@ -1,0 +1,8 @@
+From: poster@example.invalid
+Newsgroups: fn.test
+Subject: corpus xref
+Date: Fri, 25 Sep 2026 12:00:00 +0000
+Xref: elsewhere.example.invalid fn.test:7
+Message-ID: <sc-xref@example.invalid>
+
+a supplied Xref is the server's

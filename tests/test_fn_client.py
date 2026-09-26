@@ -325,6 +325,107 @@ class FnClientTests(unittest.TestCase):
         self.assertEqual(len(sent), 0, "the fake stored nothing; the client cannot know that")
         self.assertRegex(err, r"<fn-client\.\d{8}T\d{6}Z\.[0-9a-f]{8}@yue\.invalid>")
 
+    # ---- NNT-019: a lost reply is settled by re-sending the same article --
+
+    def lost_post(self, node, draft):
+        code, out, err = self.run_client(
+            node, ["post", "fn.agents", "--subject", "hi", "--draft", str(draft)],
+            stdin="the exact body\n")
+        self.assertEqual(code, 3, err)
+        return json.loads(draft.read_text())
+
+    def test_a_lost_reply_then_withdrawal_reconciles_to_already_stored(self):
+        node = self.serve(d25=True, commit_then_drop=True)
+        draft = self.work / "draft.json"
+        kept = self.lost_post(node, draft)
+        msgid = kept["message_id"]
+        self.assertEqual(kept["original"]["outcome"], "uncertain")
+        self.assertIn(msgid, node.articles)                  # it WAS stored
+        node.withdrawn.add(msgid)
+        code, out, err = self.run_client(node, ["show", msgid, "--json"])
+        self.assertEqual(code, 1)
+        self.assertEqual(self.document(out)["visibility"], "not-visible")
+        self.assertIn("not evidence about acceptance", err)
+        held = dict(node.articles)
+        code, out, err = self.run_client(node, ["reconcile", str(draft), "--json"])
+        self.assertEqual(code, 0, err)
+        document = self.document(out)
+        self.assertEqual((document["outcome"], document["settled"]),
+                         ("accepted", "already-stored"))
+        self.assertEqual(document["message_id"], msgid)
+        self.assertEqual(node.articles, held)                 # nothing stored twice
+        final = json.loads(draft.read_text())
+        self.assertEqual(final["original"]["outcome"], "uncertain")   # never rewritten
+        self.assertEqual([r["settled"] for r in final["reconciliations"]], ["already-stored"])
+
+    def test_a_reconcile_where_nothing_was_stored_is_the_one_acceptance(self):
+        node = self.serve(d25=True, drop_after_article=True)
+        draft = self.work / "draft.json"
+        kept = self.lost_post(node, draft)
+        self.assertNotIn(kept["message_id"], node.articles)
+        node.drop_after_article = False
+        code, out, err = self.run_client(node, ["reconcile", str(draft), "--json"])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.document(out)["settled"], "accepted-now")
+        self.assertEqual(node.articles[kept["message_id"]], kept["lines"])
+
+    def test_a_different_article_under_the_message_id_settles_as_refused(self):
+        node = self.serve(d25=True, drop_after_article=True)
+        draft = self.work / "draft.json"
+        kept = self.lost_post(node, draft)
+        node.drop_after_article = False
+        node.inject("fn.agents", [line.replace("the exact body", "someone else's")
+                                  for line in kept["lines"]])
+        code, out, err = self.run_client(node, ["reconcile", str(draft), "--json"])
+        self.assertEqual(code, 1, err)
+        self.assertEqual(self.document(out)["settled"], "conflict")
+
+    def test_a_resend_refused_for_another_reason_is_unresolved_and_never_absent(self):
+        node = self.serve(d25=True, commit_then_drop=True)
+        draft = self.work / "draft.json"
+        self.lost_post(node, draft)
+        node.accept_post = False            # the login lost its posting permission
+        code, out, err = self.run_client(node, ["reconcile", str(draft), "--json"])
+        self.assertEqual(code, 4, err)
+        document = self.document(out)
+        self.assertEqual((document["outcome"], document["settled"]),
+                         ("unresolved", "unresolved"))
+        self.assertIn("440", err)
+        final = json.loads(draft.read_text())
+        self.assertEqual(final["original"]["outcome"], "uncertain")
+        self.assertEqual(final["reconciliations"][-1]["outcome"], "unresolved")
+
+    def test_a_lost_reconcile_reply_is_unresolved(self):
+        node = self.serve(d25=True, drop_after_article=True)
+        draft = self.work / "draft.json"
+        self.lost_post(node, draft)
+        code, out, err = self.run_client(node, ["reconcile", str(draft)])
+        self.assertEqual(code, 4, err)
+        self.assertTrue(err.startswith("unresolved"), err)
+
+    def test_an_accepted_draft_is_not_resent(self):
+        node = self.serve(d25=True)
+        draft = self.work / "draft.json"
+        code, out, err = self.run_client(
+            node, ["post", "fn.agents", "--subject", "hi", "--draft", str(draft)],
+            stdin="body\n")
+        self.assertEqual(code, 0, err)
+        seen = len(node.seen)
+        code, out, err = self.run_client(node, ["reconcile", str(draft)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("nothing to reconcile", err)
+        self.assertEqual(len(node.seen), seen)
+
+    def test_an_existing_draft_path_is_a_usage_error_and_nothing_is_sent(self):
+        node = self.serve(d25=True)
+        draft = self.work / "draft.json"
+        draft.write_text("{}")
+        with self.assertRaises(SystemExit) as stopped:
+            self.run_client(node, ["post", "fn.agents", "--subject", "hi",
+                                   "--draft", str(draft)], stdin="body\n")
+        self.assertEqual(stopped.exception.code, 2)
+        self.assertEqual(node.articles, {})
+
     # ---- the watermark ---------------------------------------------------
 
     def test_the_watermark_is_written_only_after_the_articles_have_been_printed(self):

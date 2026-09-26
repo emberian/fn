@@ -1,0 +1,1 @@
+/tank/fn/scratch/operator-walk/prefix/bin/fn operator /tank/fn/scratch/operator-walk/run/a/fn.toml post --message-id <walk-big@example.invalid> --payload /tank/fn/scratch/operator-walk/run/p/big --group local.test

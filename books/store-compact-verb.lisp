@@ -5,9 +5,9 @@
 ; store it opened and carries out the answer and nothing else:
 ;
 ;   (:compact (:pack :select :reclaim :retire))
-;       capture the whole committed history into one lossless pack
-;       (books/checkpoint-compaction.lisp `fn-cc-capture'), publish it,
-;       select it, unlink the transaction files it covers
+;       extend the selected chain of lossless packs one link at a time
+;       over the uncovered history (books/checkpoint-pack-chain.lisp
+;       `fn-ccc-capture-link'), publishing and selecting each link, unlink the transaction files it covers
 ;       (`fn-bs-pack-reclaim-plan', whose preservation theorem is
 ;       books/checkpoint-compaction-preservation.lisp) and retire the older
 ;       pack generations (`fn-cprt-retire-plan');
@@ -22,14 +22,26 @@
 ; The host (host/native/checkpoint.lisp `fnn-command-compact') performs the
 ; observation and the I/O; the decision, its budget and its bounds are here.
 ;
-; Temporary space.  At the verb's peak the store holds every transaction file
-; and pack generation it held at open plus the new pack.  The persisted
-; profile's aggregate history bound (field 3, `max_recovery_record_bytes':
-; 24 MiB for development, 768 MiB for scale) is the budget that sum must fit;
-; the pack is refused before any byte is written when it would not.  The pack
-; octets are accounted by `fn-cverb-pack-octets', which
-; `fn-cverb-capture-within-pack-octets' shows is at least the file the host
-; seals.
+; Temporary space (PKT-169, decided 2026-09-26).  At the verb's peak the
+; disk holds every file the store held at open plus the new pack; the files
+; present are already on the disk, so the verb's added demand is the pack.
+; The host reports the free octets of the store's filesystem
+; (host/native/checkpoint.lisp `fnn-disk-free-octets', statvfs f_bavail *
+; f_frsize) and ACL2 refuses the next link by name (:temporary-space) before
+; any byte of it is written when its accounted octets
+; (`fn-cverb-link-octets') exceed them, or when the host observed no
+; natural.  The host asks again, with a fresh observation, before every
+; link, so a chain of many links never needs its whole size free at once.
+; The persisted profile's history bound H is not the budget here: H bounds
+; the open's replay input (the transaction files past the selected chain,
+; host/native/io.lisp `fnn-durable-records'), not the disk, and each link
+; is read under `fn-ccc-link-octet-bound'.  The former check (the files
+; present plus the pack within H) refused every store past half its history
+; bound, so a store refused for history headroom could never compact or
+; reclaim (reclaim-lifecycle F2).  The reclaiming pack (a whole-history
+; summary, books/store-reclaim-pack.lisp) is accounted by
+; `fn-cverb-pack-octets', which `fn-cverb-capture-within-pack-octets' shows
+; is at least the file the host seals.
 ;
 ; The compaction unit is gone (P5).  One pack file is one link of a chain
 ; (books/checkpoint-pack-chain.lisp): at most `*fn-cc-max-events*' events and
@@ -68,12 +80,24 @@ plus the frame trailer the host's seal appends."
   (declare (xargs :guard t :verify-guards nil))
   (+ (fn-cc-event-octets-size records) *fn-frame-trailer-octets*))
 
-(defun fn-cverb-space-budget (profile)
-  "The persisted profile's aggregate history bound, in octets."
+(defun fn-cverb-disk-admitsp (disk-free octets)
+  "The disk the host observed has room for OCTETS more: DISK-FREE, the free
+octets the host reported, is a natural at least OCTETS."
   (declare (xargs :guard t))
-  (if (fn-bs-profile-admittedp profile)
-      (fn-bs-profile-max-history-octets profile)
-    0))
+  (and (natp disk-free) (natp octets) (<= octets disk-free)))
+
+;; The octets the next link of the chain is accounted at: the link header
+;; bound, the summary size of the records one quantum takes above the chain's
+;; boundary LOWER (`fn-ccc-fit', the capture's own choice), and the frame
+;; trailer the host's seal appends.  One link is what one pack step writes
+;; (host/native/checkpoint.lisp `fnn-pack-extend-chain' asks this decision
+;; again before every link), so the disk is asked for one link at a time.
+(defun fn-cverb-link-octets (records lower)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((rest (nthcdr (nfix lower) records)))
+    (+ *fn-ccc-link-header-octets*
+       (fn-cc-event-octets-size (take (fn-ccc-fit rest) rest))
+       *fn-frame-trailer-octets*)))
 
 (defun fn-cverb-older-count (generations selected)
   (declare (xargs :guard t))
@@ -84,9 +108,9 @@ plus the frame trailer the host's seal appends."
 ; open reconstructed (pack plus suffix).  LOWER: the selected pack's coverage
 ; boundary (0 without one).  NAMES: the sorted transaction namespace.
 ; GENERATIONS and SELECTED: the pack namespace plan and the selected
-; generation (nil without one).  FOOTPRINT: the sizes of every transaction
-; file and pack generation present.
-(defun fn-cverb-decide (profile records lower names generations selected footprint)
+; generation (nil without one).  DISK-FREE: the free octets of the store's
+; filesystem, as the host observed them (nil when it could not).
+(defun fn-cverb-decide (profile records lower names generations selected disk-free)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((used (len records))
          (reclaim (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions profile)
@@ -99,8 +123,7 @@ plus the frame trailer the host's seal appends."
            (cond ((zp used) (list :refused :empty-history))
                  ((and (atom reclaim) (zp older)) (list :refused :already-compact))
                  (t (list :compact *fn-cverb-resume-steps*))))
-          ((< (fn-cverb-space-budget profile)
-              (+ (fn-cverb-octet-sum footprint) (fn-cverb-pack-octets records)))
+          ((not (fn-cverb-disk-admitsp disk-free (fn-cverb-link-octets records lower)))
            (list :refused :temporary-space))
           (t (list :compact *fn-cverb-pack-steps*)))))
 
@@ -172,25 +195,128 @@ plus the frame trailer the host's seal appends."
 ; -----------------------------------------------------------------------------
 ; Keystones over the decision the verb carries out
 
-; KEYSTONE (temporary space).  When the verb decides to pack, every file the
-; store held at open plus the pack file the host then seals from the same
-; records fits the persisted profile's aggregate history bound.  For every
-; frontier: the pack's size does not depend on it beyond the encoding bound.
-(defthm fn-cverb-pack-fits-the-profile-budget
+;; A link's encoding is its events' encoding and a header of nine items, the
+;; predecessor digest among them, bounded at a frame trailer's 32 octets (a
+;; longer one encodes to nothing).
+(local
+ (defthm fn-cverb-bounded-bytes-length
+   (implies (fn-cbor-valuep-bounded (cons :bytes x) max)
+            (<= (len x) max))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :do-not-induct t :in-theory (enable fn-cbor-valuep-bounded)))))
+
+(local
+ (defthm fn-cverb-digest-encoding-length
+   (<= (len (fn-cbor-encode-bounded (cons :bytes x) *fn-frame-trailer-octets*))
+       (+ 5 *fn-frame-trailer-octets*))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :cases ((fn-cbor-valuep-bounded (cons :bytes x) *fn-frame-trailer-octets*))
+            :in-theory (enable fn-cbor-encode-bounded fn-cbor-encode-argument
+                               fn-cbor-u16-bytes fn-cbor-u32-bytes)))))
+
+(local
+ (defthm fn-cverb-link-encoding-length
+   (<= (len (fn-ccc-encode-link l))
+       (+ 96 (len (fn-cc-encode-events (fn-ccc-events l)))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-ccc-encode-link)
+                                   (fn-ccc-linkp fn-cc-encode-events
+                                    fn-cbor-encode-bounded))))))
+
+(local
+ (defthm fn-cverb-captured-link-events
+   (implies (and (natp lower)
+                 (equal (car (fn-ccc-capture-link records lower lf gen digest)) :ok))
+            (equal (fn-ccc-events (cadr (fn-ccc-capture-link records lower lf gen digest)))
+                   (take (fn-ccc-fit (nthcdr lower records)) (nthcdr lower records))))
+   :hints (("Goal" :in-theory (e/d (fn-ccc-capture-link fn-ccc-make fn-ccc-events
+                                    fn-cc-nth)
+                                   (fn-ccc-fit fn-ccc-linkp fn-ccc-event-txid))))))
+
+(local
+ (defthm fn-cverb-atom-is-no-link
+   (implies (atom l) (not (fn-ccc-linkp l)))
+   :hints (("Goal" :in-theory (enable fn-ccc-linkp)))))
+
+(local
+ (defthm fn-cverb-uncaptured-link-encodes-nothing
+   (implies (not (equal (car (fn-ccc-capture-link records lower lf gen digest)) :ok))
+            (equal (fn-ccc-encode-link (cadr (fn-ccc-capture-link records lower lf gen digest)))
+                   nil))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-ccc-capture-link fn-ccc-encode-link)
+                            (fn-ccc-linkp fn-ccc-fit fn-ccc-event-txid fn-ccc-make
+                             fn-cc-octet-event-listp))))))
+
+(local
+ (defthm fn-cverb-link-file-within-link-octets
+   (implies (natp lower)
+            (<= (+ (len (fn-ccc-encode-link
+                         (cadr (fn-ccc-capture-link records lower lf gen digest))))
+                   *fn-frame-trailer-octets*)
+                (fn-cverb-link-octets records lower)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :cases ((equal (car (fn-ccc-capture-link records lower lf gen digest)) :ok))
+            :use ((:instance fn-cverb-link-encoding-length
+                             (l (cadr (fn-ccc-capture-link records lower lf gen digest))))
+                  (:instance fn-cverb-encode-events-length
+                             (events (take (fn-ccc-fit (nthcdr lower records))
+                                           (nthcdr lower records)))))
+            :in-theory (e/d (fn-cverb-link-octets)
+                            (fn-ccc-capture-link fn-ccc-encode-link fn-ccc-linkp
+                             fn-ccc-pred-digest fn-ccc-events
+                             fn-cc-encode-events fn-ccc-fit
+                             fn-cc-event-octets-size take nthcdr))))))
+
+;  KEYSTONE (temporary space against the disk, PKT-169, over the link).  When
+; the verb decides to pack, the link the host then captures above the
+; chain's boundary LOWER and seals (`fn-ccc-capture-link' through
+; host/checkpoint-host.lisp `fn-store-checkpoint-chain-capture', called by
+; host/native/checkpoint.lisp `fnn-pack-publish-generation'; its payload
+; plus the frame trailer) fits the free octets the host reported for the
+; store's filesystem.  For every lower frontier, predecessor generation and
+; predecessor digest.
+(defthm fn-cverb-pack-fits-the-disk
   (implies (equal (fn-cverb-decide profile records lower names
-                                   generations selected footprint)
+                                   generations selected disk-free)
                   (list :compact *fn-cverb-pack-steps*))
-           (<= (+ (fn-cverb-octet-sum footprint)
-                  (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture records frontier))))
+           (<= (+ (len (fn-ccc-encode-link
+                        (cadr (fn-ccc-capture-link records lower lf gen digest))))
                   *fn-frame-trailer-octets*)
-               (fn-bs-profile-max-history-octets profile)))
+               disk-free))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-cverb-decide fn-cverb-pack-octets
-                                   fn-cverb-space-budget)
-                                  (fn-cc-capture fn-cc-encode
-                                   fn-cc-event-octets-size
-                                   fn-bs-pack-reclaim-plan
-                                   fn-cverb-older-count
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cverb-link-file-within-link-octets))
+           :in-theory (e/d (fn-cverb-decide fn-cverb-disk-admitsp)
+                           (fn-ccc-capture-link fn-ccc-encode-link
+                            fn-cverb-link-octets
+                            fn-bs-pack-reclaim-plan
+                            fn-cverb-older-count
+                            fn-bs-profile-admittedp)))))
+
+; The refusal is exactly the disk's: a history the verb would otherwise pack
+; is refused :temporary-space when, and only when, the next link's
+; accounted octets exceed the free octets observed.  No size of the history
+; refuses it (P5, D27).  By definition of the decision.
+(defthm fn-cverb-temporary-space-is-the-disk-by-definition
+  (implies (and (fn-bs-profile-admittedp profile)
+                (natp lower) (<= lower (len records))
+                (not (equal (fn-bs-pack-reclaim-plan
+                             names (fn-bs-profile-max-transactions profile) lower)
+                            :invalid))
+                (not (equal lower (len records))))
+           (equal (fn-cverb-decide profile records lower names
+                                   generations selected disk-free)
+                  (if (fn-cverb-disk-admitsp disk-free (fn-cverb-link-octets records lower))
+                      (list :compact *fn-cverb-pack-steps*)
+                    (list :refused :temporary-space))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cverb-decide)
+                                  (fn-cc-event-octets-size fn-cverb-link-octets
+                                   fn-cverb-disk-admitsp
+                                   fn-bs-pack-reclaim-plan fn-cverb-older-count
                                    fn-bs-profile-admittedp)))))
 
 ; A history of exact Store events below the frontier has fewer events than
@@ -228,7 +354,7 @@ plus the frame trailer the host's seal appends."
 ;; least one record (books/checkpoint-pack-chain, P5).
 (defthm fn-cverb-pack-decision-capture-succeeds
   (implies (and (equal (fn-cverb-decide profile records lower names
-                                        generations selected footprint)
+                                        generations selected disk-free)
                        (list :compact *fn-cverb-pack-steps*))
                 (fn-record-uint32p (len records))
                 (fn-record-uint32p lf) (fn-record-uint32p frontier)
@@ -251,7 +377,7 @@ plus the frame trailer the host's seal appends."
 (defthm fn-cverb-covered-history-writes-no-pack-by-definition
   (implies (equal lower (len records))
            (not (equal (fn-cverb-decide profile records lower names
-                                        generations selected footprint)
+                                        generations selected disk-free)
                        (list :compact *fn-cverb-pack-steps*))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cverb-decide)
@@ -305,5 +431,6 @@ plus the frame trailer the host's seal appends."
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-observed-historyp))))
 
-(in-theory (disable fn-cverb-decide fn-cverb-pack-octets fn-cverb-space-budget
+(in-theory (disable fn-cverb-decide fn-cverb-pack-octets fn-cverb-link-octets
+                    fn-cverb-disk-admitsp
                     fn-cverb-older-count fn-cverb-octet-sum))

@@ -1040,14 +1040,15 @@ reason before any Store call.  An ordinary article's groups are unchanged."
          (ed (first observations))
          (ml (and (consp ml-observation) (first ml-observation)))
          (plan (fnn-owner-core 'fn-owner-key-statement-plan event
-                               observed-ml-key ed ml)))
+                               observed-ml-key ed ml (and at-open t))))
     (when plan
       (let* ((acting (and (consp plan) (member (first plan) '(:enroll :revoke))))
              (coordinates (and acting
                                (fnn-owner-core 'fn-owner-next-store-coordinates)))
              (kind3 (and acting
                          (fnn-owner-core 'fn-owner-key-statement-event event
-                                         observed-ml-key ed ml coordinates)))
+                                         observed-ml-key ed ml coordinates
+                                         (and at-open t))))
              (outcome
                (and kind3
                     (handler-case
@@ -1084,12 +1085,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (setq *fnn-owner-transit-detail* :key-change-refused)))
   word)
 
-;;; The open's recovery (books/key-statements.lisp fn-ks-recover): the newest
-;;; record the open read, when it is a statement, is executed exactly as at
-;;; acceptance.  A change the cut lost is made; a change already made is the
-;;; newest record, which is no statement; a declined statement declines again
-;;; unless the open's configuration or observations differ, and then it is
-;;; the decision an acceptance now would make.
+;;; The open's recovery (books/key-statements.lisp fn-ks-recover-recorded):
+;;; the newest record the open read, when it is a statement, is decided
+;;; under the grants in force at its own txid (packet 7,
+;;; *fn-ks-reopen-policy*), so a change the cut lost is made exactly as the
+;;; acceptance would have made it, a change already made is the newest
+;;; record (no statement), and a declined statement declines again whatever
+;;; grants were added since.
 (defun fnn-owner-key-statement-recover (service records)
   (when records
     (let ((pending (fnn-owner-core 'fn-owner-key-statement-pending
@@ -1556,6 +1558,8 @@ Every other caller submits exact authored octets and names them."
                                       (fnn-octet-list actual-id)
                                       (fnn-octet-list actual-subject))))
           (unless (eq kind :want)
+            (fnn-owner-transit-refused
+             (list :refused (fnn-owner-core 'fn-owner-transit-reason)))
             (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)
             (return-from fnn-owner-complete-bp-transit-submission :refused))
           (unless (and (equalp stored
@@ -1574,6 +1578,7 @@ Every other caller submits exact authored octets and names them."
                   (fnn-owner-action 'fn-owner-submission-intent
                                     (fnn-octet-list evidence) generation txid)))
             (unless (eq intent :ready)
+              (setq *fnn-owner-transit-detail* :submission-intent)
               (return-from fnn-owner-complete-bp-transit-submission
                 (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
             (fnn-owner-feed-flush service)

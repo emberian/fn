@@ -1767,6 +1767,511 @@
         "tests/test_native_pack_chain.py",
         "planning/evidence/bounds-p5-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-069",
+      "title": "Two strangers become peers with one confirm, and a declined key statement stays declined across a restart that adds the grant",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "A and B run `peer genesis`; A: `peer invite nodeB fn.* HOST PORT a.example KEYS INV`; B: `peer accept INV KEYS b.example - ACC`; A: `peer confirm ACC INV`; A: `peer list`.",
+        "A: `peer confirm ACC INV-OTHER` with another invitation A issued; A2 with FN_PEER_TEST_STOP_AFTER_CONSUME: confirm, restart, `peer list`, confirm again.",
+        "Node D: enrol P, POST a succession statement with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The confirm exits 0 and `peer list` shows nodeB with auth principal B.",
+        "Another invitation is refused another-invitation and configures nothing; after the stop A2 already lists nodeB2, and the retry enrols once.",
+        "The statement logs `key-statement declined no-grant`; after each restart the log adds `key-statement declined ... at-open` and the key history is unchanged (the pre-packet image instead logs `enrol-successor committed at-open`)."
+      ]
+    },
+    {
+      "id": "SCN-060",
+      "title": "a POST whose reply was lost, then withdrawn by an authorized cancel, is settled by re-sending the same article: already stored, no new Message-ID, no new number",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-019"
+      ],
+      "steps": [
+        "A developer node with fn.test and control.cancel; the owner runs with FN_NATIVE_POST_FAULT=finish-durable:kill. fn_client posts with --draft and the owner dies after the commit is durable, before the reply (exit 3, uncertain); fn_web posts through its outbox under the same cut.",
+        "The owner restarts; both targets answer 220. A principal granted cancel over fn.test files a signed cancel of each target.",
+        "A fresh reader asks ARTICLE <target> for both; fn_client show <target>.",
+        "fn_client reconcile DRAFT and fn_web POST /reconcile re-send the exact stored lines; then reconcile again.",
+        "On a protected node the poster's login loses posting permission after a lost reply; fn_client reconcile."
+      ],
+      "expected": [
+        "Both lookups answer 430 withdrawn; show exits 1 and says the answer is not evidence about acceptance.",
+        "Both reconciliations draw 441 posting failed; this article is already stored here and settle accepted (already-stored); the transaction files and GROUP fn.test are unchanged; the draft and outbox keep the original outcome uncertain beside the reconciliation.",
+        "The authorization case answers 440 and settles unresolved (exit 4); the article is still served (220) and nothing is stored."
+      ],
+      "evidence": [
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/visibility-join-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-062",
+      "title": "One authored article keeps one identity through every route, and the node shows the table",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-020"
+      ],
+      "steps": [
+        "Two developer-image nodes A and B, A feeding B, each with a path identity",
+        "POST each corpus element to A, retry it at a later second, and POST it with one authored byte changed",
+        "Post three elements again through the operator route; author a signed article through hybrid-author and POST a dual-signature carrier",
+        "Await each accepted article at B and re-offer it by IHAVE",
+        "SIGKILL and reopen A; reread every article and retry four elements",
+        "Stop both nodes and read every record with store inspect",
+        "On one node: target then cancel with a pinned reader, cancel then target, a Supersedes; SIGKILL and reopen"
+      ],
+      "expected": [
+        "Xref refused; every other element 240; a retry 441 already stored; a changed byte 441 a different article; a legacy post without Message-ID is a new article on retry",
+        "The operator route answers DUPLICATE and adds no article; the supplied Path tail is kept behind A's identity; every source and the carrier are stored verbatim after the injected block",
+        "B stores A's octets with its identity and an empty diagnostic spliced into Path; the re-offer is 435; numbers and octets are unchanged across reopen; store inspect equals the served octets",
+        "Both cancel orders withdraw their targets from every fresh view, live and after replay; the pinned reader keeps 220; the superseding article stays visible",
+        "hybrid-author's resend of the same signed carrier is DUPLICATE, exit 0; the same source signed afresh (hedged ML-DSA-65) or changed is REFUSED, exit 1; no article is added"
+      ],
+      "evidence": [
+        "tests/test_native_source_corpus.py",
+        "tests/acl2/source-routes-tests.lisp",
+        "planning/evidence/source-corpus-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-068",
+      "title": "A person reads a conversation across a withdrawn message, searches a stated window, and resends an uncertain post only on request",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-021"
+      ],
+      "steps": [
+        "On a scratch developer-image node, post a root, a signed reply and a further reply; withdraw the signed reply with its author's signed cancel.",
+        "Open the group, the withdrawn number, the conversation of the last reply, and a search of the group in the web reader; reply with a double-click, go Back and press Post again; post while the node is unreachable, restart the client, and press Re-send this same article to settle it."
+      ],
+      "expected": [
+        "The group window lists the withdrawn number with the node's 423 withdrawn; the conversation lists the withdrawn reply with the node's 430 withdrawn and shows the root and the last reply from the node's XPAT References answer.",
+        "The search page names the node's XPAT command and window; the article page shows claimed From, carriers, the node's historical verdict, current enrollment as not served and no independent verification, separately.",
+        "Back after posting shows that the form was already posted and sends nothing; after restart the intent is uncertain and nothing is sent until the button; the reconciliation answer is recorded beside the unchanged original (NNT-019)."
+      ],
+      "evidence": [
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-daily-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-061",
+      "title": "Two sleeping consumers exchange a signed report and reply through one node across every ownership cut",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-002"
+      ],
+      "steps": [
+        "A authors signed report R through its outbox and sleeps.",
+        "B wakes three times, dying inside its transaction, after its commit, and while the owner loses its ack reply; then dies after settling the ack before posting Q; then the owner loses Q's POST reply.",
+        "B wakes and settles Q; A wakes after Q is durable; a third author reuses R's operation id with a different source; both consumers wake."
+      ],
+      "expected": [
+        "B's database holds nothing after the in-transaction death and exactly one transition and one outbox Q after the commit; fn's position moves only with the ack and the lost ack is settled by position.",
+        "Q is stored once and settled by the owner of that fact; A records exactly one reply transition; the reused operation id is conflict evidence at both consumers with no second transition or reply."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-e2-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-066",
+      "title": "A signed report crosses four native fn nodes and two dtn7-rs relays with outages and restarts; its receipt settles before the receiver's consumer wakes; the reply returns",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-009",
+        "REP-007"
+      ],
+      "steps": [
+        "A holds a signed report with a durable obligation; B's consumer is registered and asleep.",
+        "A requests it toward B through fn relay X (small Transfer MRU: fragmented, reassembled at X), dtn7 relays r1 and r2, and fn relay Y, with links down and every node restarted at least once.",
+        "B takes custody, delivers to its Store and queues the application receipt; the receipt crosses its own outage back to A.",
+        "B's consumer wakes, verifies, acknowledges and replies; the reply crosses back; A's consumer wakes and consumes it."
+      ],
+      "expected": [
+        "A answers receipt-accepted and its obligation is receipted with pinned=no before B's consumer polls.",
+        "B's poll returns the report with its authored source; the reply is delivered at A and A's receipt releases B's pin.",
+        "Every boundary names its identities (work, attempt, Message-ID, authored-source digest, bundle, attempts, receipt)."
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-four-node-2026-09-25.md",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
+      ],
+      "note": "Passes on the lane image aa0f6c16 (not deployed; loopback on hbox): the signed report and the signed reply, all seven steps, 153.9 s (native-aa0f6c16/signed-r2, report.json 55580c3b36fb66dd...), and the unsigned control, all seven steps (unsigned-r2, 25bcafe453675d7e...). Relays listen per boundary, so the driver turns a relay's listener and restarts the node whose receipt is owed (PKT-291). planning/evidence/mission-signed-2-2026-09-26.md."
+    },
+    {
+      "id": "SCN-071",
+      "title": "A node pulls over TLS as its own principal; a wrong principal and a clear-transport credential are refused, and the cut campaign holds over TLS",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-023"
+      ],
+      "steps": [
+        "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
+        "The same with PROFILE naming a login A does not hold.",
+        "The same with no security arguments (a clear transport) and the permission false.",
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+      ],
+      "expected": [
+        "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
+        "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
+        "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+      ],
+      "evidence": [
+        "planning/evidence/peering-tls-pull-2026-09-26.md",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log"
+      ]
+    },
+    {
+      "id": "SCN-067",
+      "title": "A family of more fragments than the old 64-fragment ceiling, interrupted by a receiver kill, reassembles once and is delivered once",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-008"
+      ],
+      "steps": [
+        "Raise the receiving node's profile to 128 held rows (`bp-node profile JOURNAL NODE 128 16777216`); a write that lowers it again is refused (exit 1).",
+        "Author one request ADU and cut it into 70 fragments (fn-bpf-cut).",
+        "Serve the receiver continuously; send 35 fragments, highest offset first; kill the receiver with SIGKILL.",
+        "Restart the receiver on the same journal and send the other 35, offset zero last."
+      ],
+      "expected": [
+        "Before the kill no family is published and the Store holds no article.",
+        "After the restart the receiver logs `BP fragment family durable` once and `BP application handoff durable` once, and the Store holds one article."
+      ],
+      "evidence": [
+        "tests/test_bp_fragment_node_native.py",
+        "tests/acl2/bp-fragment-sweep-tests.lisp",
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "books/bp-node-profile.lisp",
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-065",
+      "title": "`store reclaim` returns released payload octets and inodes to the file system, survives a cut at every step, and a reclaimed article never comes back",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Build a store of N articles in one group (one pack: N up to about 4,000), keep-forever: run `store reclaim`.",
+        "`retention set release-after 1`: `store reclaim --dry-run`. `retention set released-by-all-holders`: `store reclaim --dry-run`, `store compact`.",
+        "On a copy per cut, stop or kill `store reclaim` at every publication, selection and retirement cut and kill and EIO at each reclaim-* cut; reopen with `status`, rerun `store reclaim`.",
+        "Run `store reclaim`; record files, octets and du before and after, and `status` headroom; rerun it.",
+        "Serve: GROUP, ARTICLE by Message-ID and number, OVER, STAT, NEWNEWS; re-POST a reclaimed article's original bytes.",
+        "On a store refused for history headroom, run `store compact` and `store reclaim`."
+      ],
+      "expected": [
+        "keep-forever writes nothing (reclaimed=0, exit 0).",
+        "release-after 1 reclaims nothing (too recent); the dry run names every article and writes nothing.",
+        "Every reopen exits 0 and every rerun exits 0 with the clean run's selected pack bytes.",
+        "Files and octets fall by the old generation; bytes-used falls by the freed octets; a rerun reclaims 0.",
+        "GROUP is unchanged; ARTICLE answers 430 and 423 article reclaimed; OVER 423; NEWNEWS lists no reclaimed article; the re-POST is 441 (a duplicate).",
+        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169)."
+      ],
+      "evidence": [
+        "tests/reclaim_lifecycle_native.py",
+        "planning/evidence/reclaim-lifecycle-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-070",
+      "title": "Operator health names each of its states on a scratch node, with its own line and exit code",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-007"
+      ],
+      "steps": [
+        "Initialize a scratch node with the development profile and run `health` offline.",
+        "Upgrade the profile, start the owner, add an outbound peer on a closed port and post into its groups; run `health`.",
+        "Raise [alerts] headroom_min_percent to 100; run `health`.",
+        "Undertake a BP forwarding obligation with no bp-route; run `health`; add a route; run `health`.",
+        "Remove the control socket of a running owner; run `health`."
+      ],
+      "expected": [
+        "Each run prints eight lines in the fixed order and exits with the code of the first held state: 22 unqualified-profile, 26 unavailable-peer, 23 space-pressure, 24 no-route then 27 receipt-debt, 20 fenced (store-held); offline the feed states are unobserved, never clear."
+      ],
+      "evidence": [
+        "planning/evidence/operator-health-2026-09-25/native.sh",
+        "planning/evidence/operator-health-2026-09-25.md",
+        "tests/acl2/native-health-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-072",
+      "title": "the served POST charges an article its own worst case before a transaction ID is reserved: an article past the remaining history is refused 441 and the store reopens, where the fixed-figure gate accepted it and left the store unopenable",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-013",
+        "STO-018"
+      ],
+      "steps": [
+        "On hbox, a developer store initialised with T 4, H 250 000, R 196 608, A 150 000, G 8 (fn.test), served by `operator run` on loopback.",
+        "POST a 148 112-octet article, then a second one of the same size (planning/evidence/width-producers-2-nntp-post.py).",
+        "Stop the node; `store recover` and `store status`.",
+        "The same on the image before the article gate (bbf52159)."
+      ],
+      "expected": [
+        "The first POST answers 240; the second 441 posting failed; the store has no capacity for this article (the owner's :unaffordable from fn-sbud-article-budget-for), with one transaction file of 148 613 octets.",
+        "The reopen succeeds (recovered transactions=1, exit 0).",
+        "Before the gate both POSTs answer 240, 297 226 record octets are committed past H, and every reopen refuses: transaction recovery input exceeds configured bound (exit 4)."
+      ],
+      "evidence": [
+        "planning/evidence/width-producers-2-gate-served.sh",
+        "planning/evidence/width-producers-2-nntp-post.py",
+        "planning/evidence/width-producers-2-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-076",
+      "title": "The operator walk: one installed fn from nothing to a recovered node on two scratch nodes",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-008"
+      ],
+      "steps": [
+        "Install the production image with packaging/install-native.sh into a scratch prefix; every later command is PREFIX/bin/fn.",
+        "Write a small-community fn.toml with `mission`; ask status, health and run before init; init with a profile word, then init.",
+        "Enrol a login; peer two nodes; start both; status and health live; post; post over the article bound.",
+        "Add a peer that answers 501 to MODE STREAM; post; watch the dial.",
+        "Stop, back up, post two more; on a copy with rewritten paths upgrade the profile, rollback-check the kept config and the snapshot, restore the snapshot and recover.",
+        "SIGKILL the owner; status, recover, run, health."
+      ],
+      "expected": [
+        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store."
+      ],
+      "evidence": [
+        "planning/evidence/operator-walk-2026-09-26/walk.sh",
+        "planning/evidence/operator-walk-2026-09-26.md",
+        "tests/acl2/native-operator-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-075",
+      "title": "A store filled to its history bound keeps the room for a release, compacts and reclaims on the disk's free space, refuses a pack the disk cannot hold by name, and admits again after the reclaim",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-019"
+      ],
+      "steps": [
+        "Init a store with max_history_octets 300,000 and POST 1 KiB articles until the first refusal; `retention set released-by-all-holders`; read `status`.",
+        "On a copy, with the developer image's observed free space capped at 1,000 octets (FN_NATIVE_DISK_FREE), run `store compact`.",
+        "Run `store compact` on the store; on a copy, with the same cap, run `store reclaim`.",
+        "Run `store reclaim`; read `status`; POST another article."
+      ],
+      "expected": [
+        "The refused POST is 441 (no capacity); `status` shows `maintenance-reserve octets=4096 transactions=1 held` at the bound.",
+        "`compaction refused: temporary-space`, exit 1, the copy's files unchanged.",
+        "`store compact` exits 0 on the full store; the capped `store reclaim` is refused temporary-space, exit 1, unchanged.",
+        "`store reclaim` exits 0 and frees octets on disk and in bytes-used; the reservation is held; the next POST is 240."
+      ],
+      "evidence": [
+        "tests/reclaim_lifecycle_native.py",
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-074",
+      "title": "The signed mission: A's hybrid-signed report crosses four fn nodes and two dtn7-rs relays to B, B's signed reply comes back, every refusal names its reason, and a relay takes no custody from a channel its policy refused",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-009",
+        "REP-007"
+      ],
+      "steps": [
+        "A's author signs the report (Ed25519 + ML-DSA-65) and hybrid-author stores its portable carrier; both authors are enrolled at A and B through hybrid-enroll.",
+        "The SCN-066 sequence runs with the signed report: fragmentation at X, the relays each listening on the boundary of the neighbour that sends toward them, restarts of all four nodes.",
+        "B verifies the delivered copy with hybrid-verify-source, consumes it and returns a signed reply the same way.",
+        "The ambiguous-peer case: X's two boundaries on one listener; A's transfer to X."
+      ],
+      "expected": [
+        "B answers request-accepted for the signed report and A for the signed reply; both receipts release their pins (pinned=no); all seven steps hold.",
+        "Every refused delivered request prints `BP node delivery refused result=... reason=...` with ACL2's reason.",
+        "In the ambiguous-peer case X logs `BP refused xfer=N reason=ambiguous-peer`, takes no kind-5 custody, and A's obligation stays pinned."
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-signed-2026-09-26.md",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
+      ],
+      "note": "Passes on the lane image aa0f6c16 (not deployed): B answers request-accepted for A's hybrid-signed report and its copy verifies with hybrid-verify-source (authored source f7fe359e...), A's receipt-accepted releases A's pin (pinned=no) before B's consumer wakes, B's signed reply is request-accepted at A and A's receipt releases B's pin; all seven steps (signed-r2). The ambiguous-peer case holds (X refuses with reason=ambiguous-peer, no BP accepted, A's obligation stays pinned). PRF-132 closed the layer-2 refusal (reason=history, PKT-247). planning/evidence/mission-signed-2-2026-09-26.md."
+    },
+    {
+      "id": "SCN-063",
+      "title": "A pinned reader's payload handle reads the same octets after later commits, and an opened store's arena is its history's payloads in order",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010"
+      ],
+      "steps": [
+        "Seal three payloads into a live local arena (a list, the octet buffer's contents, the empty payload) and read every handle back; seal 3,000 octets three times through the byte array's doubling and the handle arrays' growth.",
+        "Read handle 1 before and after a later seal, and after a sequence of seals; read the handle at the count after a seal.",
+        "Build a two-record history, seal a third record's payload as a commit would, and seal every record's payload from the empty arena as an open would."
+      ],
+      "expected": [
+        "Every handle reads back the payload sealed under it; the count is the number of seals; a clear empties the arena.",
+        "Handle 1 is unchanged by every later seal; the handle at the old count is the new payload; a negative handle or a handle at the count is not covered and reads otherwise (the must-fail witnesses).",
+        "The arena after the commit's seal is the appended history's payloads; the arena after the open's seals equals the history's payloads; an arena with the payloads in the wrong order or one payload missing does not satisfy the relation."
+      ],
+      "evidence": [
+        "tests/acl2/payload-arena-tests.lisp",
+        "planning/evidence/rep-wave-d-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-077",
+      "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "steps": [
+        "Raise the receiving node's profile (`bp-node profile JOURNAL NODE ROWS OCTETS ADU BUNDLE`) to at least 2,623 held rows, 16 MiB of held octets and an ADU of at least 10,486,094 octets, and the Store profile's max-article-octets to at least 10 MiB.",
+        "Author one 10 MiB request ADU and send it through a route whose Transfer MRU is 4 KiB, so the sender cuts it into fragments (RFC 9171 5.8).",
+        "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
+      ],
+      "expected": [
+        "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
+        "Blocked today by per-arrival cost, not by a cap (PRF-134 made the ADU, bundle-decoder and held-image bounds the profile's; the adu-beyond-profile and held-beyond-profile cases pass natively): each arrival costs about 45 ms per held row (0.7 s at 20 held, 6.3 s at 140; the 2,622-fragment family projects to about 43 hours), consistent with the family selector re-validating every held row (fn-bpnf-heldp re-encodes the bundle) on each call. PKT-294."
+      ],
+      "evidence": [
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md",
+        "books/bp-node-profile.lisp",
+        "planning/evidence/bp-lifecycle-4-2026-09-26.md",
+        "books/bp-node-profile-admission.lisp"
+      ]
+    },
+    {
+      "id": "SCN-073",
+      "title": "The corpus carried by BP through a dtn7 relay arrives at B as A's record with B's Path splice",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-020"
+      ],
+      "steps": [
+        "Two nodes on the lane's developer and DTN developer images, A and B, with path identities; B's carried-author boundary names A (D23)",
+        "POST every corpus element to A's owner; enroll the signing author at both nodes",
+        "Undertake a forwarding obligation per accepted element; bp-obligation request each through one dtn7-rs relay (sled) to B's bp-node serve",
+        "Hold the last transfer into B mid-bundle, SIGKILL B, restart B and the relay",
+        "Read both nodes' records by Message-ID; SIGKILL B idle, reopen, read B again"
+      ],
+      "expected": [
+        "Xref refused at A (441); every other element 240 and carried",
+        "Each carried element has A's kind-8 attempt line and a distinct bundle identity (dtn://sender/, creation time, sequence) in B's kind-5 frame",
+        "B accepts each request; B's record is A's with receiver identity and an empty diagnostic spliced after Path: and nothing else changed; unchanged across SIGKILL and reopen"
+      ],
+      "evidence": [
+        "tests/test_native_source_corpus_bp.py",
+        "tests/acl2/relay-source-routes-tests.lisp",
+        "planning/evidence/source-corpus-2-2026-09-26.md",
+        "planning/evidence/source-corpus-2-2026-09-26/native-7.log"
+      ]
+    },
+    {
+      "id": "SCN-078",
+      "title": "The state checkpoint is published as a plan over the octet buffer, the file the list codec specified, and `store checkpoint` completes at N = 10,000 x 32 KiB",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010",
+        "REP-011"
+      ],
+      "steps": [
+        "On a live local buffer, plan a ground checkpoint-shaped value at segment sizes 7 (eight frames), 0 and 1000 (one frame), 56 and 55 (a chunk boundary at the end), and the empty value; compare the plan's octets with fn-scc-file-octets, the buffer with fn-scc-encode, and read the segments back with fn-scc-decode-segments; plan a value the codec refuses.",
+        "On hbox, copies of the wave-d stores (N = 1,000 x 32 KiB, N = 10,000 x 2 KiB, N = 10,000 x 32 KiB; planning/evidence/rep-wave-d-2026-09-25.md section 1) under the same 40G scope: `store checkpoint` timed with GNU time -v (the baseline's conditions), then the owner opened from the checkpoint to its LISTENING line with VmRSS and VmHWM read from /proc.",
+        "tests.test_native_state_checkpoint on the image built from the lane's tree: the corrupt checkpoint falls back to full replay, a running owner refuses the verb, the checkpoint open equals the full replay, and the host's source calls the plan subject.",
+        "For REP-011 (the record's payload as an arena handle), the same harness rows the wave-d baseline has (live heap after collection, allocation per POST, peak residency, reopen, checkpoint, OVER, ARTICLE) at N = 1,000 and N = 10,000 x 2 KiB and x 32 KiB, once the freeze lands under PKT-293's answer."
+      ],
+      "expected": [
+        "Every plan's octets equal fn-scc-file-octets of the value; the buffer holds fn-scc-encode; the reader recovers the value from the plan's segments; the refused value is :unencodable on both sides.",
+        "The N = 10,000 x 32 KiB publication completes inside the 40G scope where the baseline died by heap exhaustion at 32,000 MB after 253 s; the two smaller points publish files of the same octets as before; the numbers are in the record's table.",
+        "The native module passes on both images.",
+        "REP-011's rows are not run in this lane (the freeze did not start: planning/evidence/rep-wave-d-2-2026-09-26.md section 1 and PKT-293); the target stays the brief's: ten thousand 32 KiB articles in well under a gigabyte of live heap."
+      ],
+      "evidence": [
+        "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-079",
+      "title": "The state checkpoint is read from the octet buffer: the node reopens from the N = 10,000 x 32 KiB checkpoint it published, and a file past the profile's bounds is refused by name",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010"
+      ],
+      "steps": [
+        "On a live local buffer, plan the ground checkpoint-shaped value at segment sizes 7, 0, 1000, 56 and 55 and decode each plan back with fn-sccr-decode-plan; compare with fn-scc-decode-segments over the frames' octets; corrupt the buffer (a flipped octet) and the plan (a dropped frame, a broken first header, frames sealed under the wrong sequence, a non-contiguous plan, a short header) and compare the verdicts; run the index machine against the list machine on the program and its every suffix; admit a header at, one short of, and past the segment bound and the file bound.",
+        "On hbox, copies of rep-wave-d-2's measured stores with the checkpoint files that lane published (N = 1,000 x 32 KiB: 70,877,827 octets; N = 10,000 x 2 KiB: 52,080,773; N = 10,000 x 32 KiB: 670,413,555), under the same 40G scope: the owner opened from the checkpoint to its LISTENING line, timed, VmRSS and VmHWM read from /proc, `status' read for the open it served; before = the same on rep-wave-d-2's image in the same hour.",
+        "tests.test_native_state_checkpoint on the image built from the lane's tree: a corrupt checkpoint falls back to full replay (reason=corrupt), a checkpoint whose first segment claims a length past the profile's segment bound is refused by name (reason=checkpoint-exceeds-bound) and the journal replays, the checkpoint open equals the full replay, and the host's source calls the reader's subjects."
+      ],
+      "expected": [
+        "Every plan decodes to its value; every corrupted plan draws the same verdict from the reader and the list decoder, except the mis-shaped plans, which the reader alone refuses as :layout; the admission refuses exactly past either bound.",
+        "The N = 10,000 x 32 KiB reopen completes inside the 40G scope where the untouched reader died by heap exhaustion after 56 s, within the full replay's residency (22.5 GB VmHWM at that point); the numbers are in the record's table.",
+        "The native module passes on both images; `status' names checkpoint-exceeds-bound."
+      ],
+      "evidence": [
+        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-080",
+      "title": "A consumer that dies between fn's acceptance and its own record never records the operation refused, resends only its saved artifact, and consumes only reports it verified itself",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-003"
+      ],
+      "steps": [
+        "A reports R; fn accepts R; A's consumer dies after fn answered and before its result transaction (and, separately, is killed while the owner that committed R withholds the answer); A's enrolment is revoked; A's consumer restarts.",
+        "A reports R1 and dies inside the answer's transaction, and R2 and dies after the in-flight record before sending; each consumer restarts.",
+        "U (enrolled at fn, not in B's keyring) and A (in B's keyring) report; M (trusted, not entitled to report ids) claims r1 before A and r2 after A; B wakes."
+      ],
+      "expected": [
+        "After each death the submission is uncertain with one unanswered attempt; the restarted consumer resends the saved artifact once, fn refuses it (revoked), and that refusal settles only the resend: R is stored by fn's Store serving the exact artifact back, never refused.",
+        "R1's resend is D25's duplicate and R2's a first acceptance; both are stored with the same artifact bytes.",
+        "B keeps U's report with its own verdict undecided beside fn's verified, with no operation, transition or reply; A's reports are applied; M's claims are conflict evidence (unentitled) in both arrival orders."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange.py",
+        "tests/test_fn_consumer_journal.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
+      ]
     }
   ]
 }

@@ -81,3 +81,59 @@ def runtime_sbcl(image):
         return runtime.group(1), env
     found = shutil.which("sbcl")
     return (found, env) if found else None
+
+
+class AcceptThenClosePeer:
+    """A loopback peer that accepts each connection and closes it at once.
+
+    The outage a contact meets after its connection exists: a socket was
+    produced, no transfer completed, so the host reads the transfer
+    `:uncertain` (host/native/bp-service.lisp, specs/bp-node-machine.md
+    "any failure after the connection exists stays `:uncertain`").  A port
+    with nothing listening is the other outage, a connect that never
+    produced a socket, which reads `:failed`; see `refused_port`.
+    `accepted` counts the connections, so a test can assert that the outage
+    it staged is the one it meant.
+    """
+
+    def __init__(self):
+        import socket
+        import threading
+        self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(16)
+        self.listener.settimeout(0.2)
+        self.port = self.listener.getsockname()[1]
+        self.accepted = 0
+        self._stopped = threading.Event()
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self):
+        import socket
+        while not self._stopped.is_set():
+            try:
+                connection, _ = self.listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            self.accepted += 1
+            connection.close()
+
+    def close(self):
+        self._stopped.set()
+        self._thread.join(timeout=5)
+        self.listener.close()
+
+
+def refused_port():
+    """A loopback socket bound and never listening, and its port.
+
+    Connecting to it is refused (no socket is produced) for as long as the
+    caller holds the socket open, and no other process can take the port.
+    """
+    import socket
+    reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    reservation.bind(("127.0.0.1", 0))
+    return reservation, reservation.getsockname()[1]

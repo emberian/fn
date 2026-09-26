@@ -2,9 +2,13 @@
 ;;; (PRF-100; books/peer-pull.lisp, books/scheduler-peers.lisp).
 ;;;
 ;;; ACL2 owns which peers are pulled and when (fn-owner-pull-plans,
-;;; fn-pull-schedule, fn-sched-pull-due/-start/-finish), every command sent to
-;;; either side and what every reply means (fn-pull-step), whether the cursor
-;;; moves (fn-pull-close), the FNPL record and its envelope (fn-pull-cursor-
+;;; fn-pull-schedule, fn-sched-pull-due/-start/-finish), whether a peer may be
+;;; dialled with its transport and credential and whether its secret is read
+;;; at all (fn-pull-plan-verdict, fn-pull-plan-profile-path,
+;;; fn-pull-session-begin), every command sent to either side, when the TLS
+;;; handshake happens and what every reply means (fn-pull-session-step: the
+;;; feed-connection machine's preamble, then fn-pull-step), whether the
+;;; cursor moves (fn-pull-close), the FNPL record and its envelope (fn-pull-cursor-
 ;;; frame, fn-pull-journal-wrap) and what a journal read means at open
 ;;; (fn-pull-journal-scan, fn-pull-replay).  This file dials, moves octets,
 ;;; appends and fsyncs, and carries the ACL2 values it is handed back to ACL2
@@ -121,17 +125,42 @@
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
 
+;;; Packet 5 (PRF-124): the cursor publication's crash cuts.  A developer
+;;; image started with FN_PULL_TEST_KILL=CUT:N dies by SIGKILL at CUT of this
+;;; process's Nth FNPL append: before-write (nothing of it on disk),
+;;; after-write (written, not fenced) or after-fsync (durable, before the
+;;; round goes on).  Production has no injection branch.
+(defvar *fnn-pull-append-count* 0)
+
+(defun fnn-pull-test-cut (cut)
+  (let ((raw (fnn-developer-selector "FN_PULL_TEST_KILL")))
+    (when raw
+      (let* ((colon (position #\: raw))
+             (name (and colon (subseq raw 0 colon)))
+             (n (and colon (parse-integer raw :start (1+ colon) :junk-allowed t))))
+        (unless (and n (member name '("before-write" "after-write" "after-fsync")
+                               :test #'string=))
+          (fnn-fault "invalid FN_PULL_TEST_KILL (expected CUT:N)"))
+        (when (and (string= name cut) (= n *fnn-pull-append-count*))
+          (fnn-err "pull: developer kill at ~a of append ~d" cut n)
+          (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+          (fnn-fault "test SIGKILL did not terminate the process"))))))
+
 (defun fnn-pull-journal-append (journal cursor)
+  (incf *fnn-pull-append-count*)
   (handler-case
       (let* ((frame (fnn-core 'fn-pull-cursor-frame cursor))
              (envelope (fnn-core 'fn-pull-journal-wrap frame)))
         (unless (fnn-octet-list-p envelope)
           (fnn-fault "owner refused FNPL envelope"))
+        (fnn-pull-test-cut "before-write")
         (fnn-owner-feed-phase journal :append)
         (fnn-write-all (fnn-owner-feed-journal-fd journal) (fnn-octets envelope))
         (fnn-owner-feed-phase journal :written)
+        (fnn-pull-test-cut "after-write")
         (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable))
+        (fnn-owner-feed-phase journal :append-durable)
+        (fnn-pull-test-cut "after-fsync"))
     (error (e)
       (ignore-errors (fnn-owner-feed-phase journal :failed))
       (fnn-owner-feed-close journal)
@@ -166,71 +195,118 @@
         (setq pending (subseq pending consumed))))
     (values reply closing)))
 
+;;; The credential profile ACL2 names for PLAN (`fn-pull-plan-profile-path':
+;;; nil for a plan without a credential and for a refused plan), read and
+;;; decoded exactly as the push feed reads its own (`fnn-feed-auth-profile',
+;;; ACL2's `fn-fap-decode').  An unreadable profile is NIL, which
+;;; `fn-pull-session-begin' refuses; the host never dials without it.
+(defun fnn-pull-profile (plan)
+  (let ((path (fnn-core 'fn-pull-plan-profile-path plan)))
+    (when (stringp path)
+      (handler-case
+          (multiple-value-bind (user pass) (fnn-feed-auth-profile (list :authinfo path nil))
+            (list user pass))
+        (error ()
+          (fnn-err "pull: the credential profile of peer ~a is unreadable"
+                   (fnn-pull-peer-string (fnn-core 'fn-pull-plan-peer plan)))
+          nil)))))
+
 (defun fnn-pull-round (runtime plan journal cursor)
-  "Drive one ACL2 round; return the cursor after its close."
+  "Drive one ACL2 pull session; return the cursor after its close."
   (let* ((service (fnn-pull-runtime-service runtime))
          (peer (fnn-core 'fn-pull-plan-peer plan))
          (wall (fnn-owner-wall-milliseconds))
-         (round (fnn-core 'fn-pull-begin cursor (fnn-core 'fn-pull-plan-wildmat plan) wall))
-         (socket nil) (fd nil) (cid nil) (events nil))
-    (labels ((perform (effects)
+         (begun (fnn-core 'fn-pull-session-begin-pair plan cursor wall
+                          (fnn-pull-profile plan)))
+         (session (first begun))
+         (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (events nil))
+    (labels ((enqueue (event) (setq events (append events (list event))))
+             (send-remote (octets)
+               (if channel
+                   (fnn-tls-send-all channel octets 10)
+                 (fnn-send-all fd octets 10)))
+             (perform (effects)
                (dolist (effect effects)
                  (case (car effect)
                    (:journal (fnn-pull-journal-append journal (cdr effect)))
-                   (:remote (handler-case (fnn-send-all fd (fnn-octets (cdr effect)) 10)
-                              (error () (setq events (append events (list (list :lost)))))))
+                   (:dial
+                    (handler-case
+                        (setq socket (fnn-connect (fnn-pull-peer-string
+                                                   (fnn-core 'fn-pull-plan-host plan))
+                                                  (fnn-core 'fn-pull-plan-port plan)
+                                                  :timeout 10)
+                              fd (fnn-socket-fd socket))
+                      (error () (enqueue (list :lost))))
+                    (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
+                      (setf (fnn-pull-runtime-socket runtime) socket)))
+                   ;; (:tls SERVER-NAME TRUST-ANCHOR): the handshake ACL2 asked
+                   ;; for, verified against exactly that name and anchor; only a
+                   ;; verified handshake is reported (:tls-up).
+                   (:tls
+                    (if (null fd)
+                        (enqueue (list :lost))
+                      (handler-case
+                          (progn
+                            (setq context (fnn-tls-open-client-context (third effect)))
+                            (setq channel (fnn-tls-connect context fd (second effect) 10))
+                            (enqueue (list :tls-up)))
+                        (error (e)
+                          (fnn-err "pull: TLS to peer ~a failed: ~a"
+                                   (fnn-pull-peer-string peer) e)
+                          (enqueue (list :lost))))))
+                   (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
+                              (error () (enqueue (list :lost)))))
                    (:open-local
                     (multiple-value-bind (opened greeting)
                         (fnn-pull-local-open service peer)
                       (setq cid opened)
-                      (setq events (append events
-                                           (list (cons :local (fnn-octet-list greeting)))))))
+                      (enqueue (cons :local (fnn-octet-list greeting)))))
                    (:local
                     (multiple-value-bind (reply closing)
                         (fnn-pull-local-send service cid (cdr effect))
                       (when (> (length reply) 0)
-                        (setq events (append events (list (cons :local (fnn-octet-list reply))))))
+                        (enqueue (cons :local (fnn-octet-list reply))))
                       (when closing
                         (setq cid nil)
-                        (setq events (append events (list (list :lost)))))))
+                        (enqueue (list :lost)))))
                    (:close nil)
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
              (advance (event)
-               (let ((pair (fnn-core 'fn-pull-step-pair round event)))
-                 (setq round (first pair))
-                 (perform (second pair)))))
-      (perform (fnn-core 'fn-pull-begin-effects cursor wall))
+               (let ((pair (fnn-core 'fn-pull-session-step-pair session event)))
+                 (setq session (first pair))
+                 (perform (second pair))))
+             (receive ()
+               (let ((limit (or (fnn-core 'fn-pull-session-read-limit session)
+                                +fnn-max-read+)))
+                 (handler-case
+                     (if channel
+                         (fnn-tls-read channel +fnn-pull-read-seconds+ limit)
+                       (fnn-recv fd +fnn-pull-read-seconds+ limit))
+                   (error () :lost)))))
       (unwind-protect
            (progn
-             (handler-case
-                 (setq socket (fnn-connect (fnn-pull-peer-string
-                                            (fnn-core 'fn-pull-plan-host plan))
-                                           (fnn-core 'fn-pull-plan-port plan)
-                                           :timeout 10)
-                       fd (fnn-socket-fd socket))
-               (error () (advance (list :lost))))
-             (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
-               (setf (fnn-pull-runtime-socket runtime) socket))
-             (loop until (or (fnn-core 'fn-pull-done-p round)
+             (perform (second begun))
+             (loop until (or (fnn-core 'fn-pull-session-done-p session)
                              (fnn-pull-stoppingp runtime)) do
-               (if events
-                   (advance (pop events))
-                 (let ((incoming (handler-case (fnn-recv fd +fnn-pull-read-seconds+)
-                                   (error () :lost))))
+               (if (or events (null fd))
+                   (advance (if events (pop events) (list :lost)))
+                 (let ((incoming (receive)))
                    (advance (if (or (eq incoming :timeout) (eq incoming :lost)
-                                 (zerop (length incoming)))
-                             (list :lost)
-                           (cons :remote (fnn-octet-list incoming))))))))
+                                    (zerop (length incoming)))
+                                (list :lost)
+                              (cons :remote (fnn-octet-list incoming))))))))
         (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
           (setf (fnn-pull-runtime-socket runtime) nil))
         (when cid
           (ignore-errors
            (fnn-owner-serialized service nil
                                  (lambda () (fnn-owner-action 'fn-owner-close cid)))))
+        (when channel (ignore-errors (fnn-tls-close-channel channel)))
+        (when context (ignore-errors (fnn-tls-close-context context)))
         (when socket (ignore-errors (fnn-socket-shut socket))))
-      (perform (fnn-core 'fn-pull-close-effects round))
-      (fnn-log-line (fnn-core 'fn-pull-log-line round))
-      (fnn-core 'fn-pull-close round))))
+      (perform (fnn-core 'fn-pull-session-close-effects session))
+      (fnn-log-line (fnn-core 'fn-pull-session-log-line session))
+      (fnn-core 'fn-pull-session-close session))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The worker

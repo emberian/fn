@@ -705,20 +705,83 @@
                          fn-bprv-apply-store-event-keeps-committed fn-bprv-node-statep-consp
                          fn-bprv-committed-implies-node-statep)
                        (theory 'minimal-theory)))))
-; `record' is an article record (`fn-record-p').  The history also carries
-; retention and statement events, which install no article under their own
-; name, so the conclusion is false of them: the hypothesis restates what the
-; theorem always meant, and it is registered with PRF-007 (planning/proofs.json).
+; A signed article is committed as a kind-4 composite (`fn-stxa-p'); replay's
+; article arm installs the article record it carries
+; (`fn-replay-composite-record').  Its dispatch passes every other arm.
+(local
+(defthm fn-bprv-composite-is-no-other-store-event
+  (implies (fn-stxa-p e)
+           (and (not (fn-record-p e))
+                (not (fn-store-retention-event-p e))
+                (not (fn-stxe-p e))
+                (not (fn-stxk-p e))
+                (not (fn-cpe-eventp e))
+                (not (fn-th-topic-eventp e))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
+                                   (:d fn-store-retention-event-p)
+                                   (:d fn-stxe-p) (:d fn-stxe-shapep)
+                                   (:d fn-stxk-p) (:d fn-stxk-shapep)
+                                   (:d fn-stxa-p) (:d fn-stxa-shapep)
+                                   (:d fn-cpe-eventp) (:d fn-th-topic-eventp))
+                                  ())))))
+(defthm fn-bprv-apply-composite-installs-record
+  (implies (and (fn-node-statep node) (fn-bprv-node-idlep node) (fn-stxa-p e)
+                (fn-record-p (fn-replay-composite-record e))
+                (consp (fn-replay-apply-record node e)))
+           (and (fn-bpi-node-record-committedp (fn-replay-apply-record node e)
+                                               (fn-replay-composite-record e))
+                (fn-bprv-node-idlep (fn-replay-apply-record node e))))
+  :hints (("Goal"
+           :use ((:instance fn-replay-advance-preserves-node-statep
+                            (recorded-txid (fn-store-event-txid e)))
+                 (:instance fn-replay-apply-record-non-nil-is-node-state (record e))
+                 fn-bprv-composite-is-no-other-store-event)
+           :in-theory (union-theories
+                       '(car-cons cdr-cons fn-replay-apply-record fn-node-pending-matchesp
+                         fn-store-event-p
+                         fn-bpi-node-record-committedp
+                         fn-bprv-node-make-state-fields fn-bprv-make-pending-fields
+                         fn-bprv-make-binding-fields
+                         fn-bprv-node-statep-acceptance fn-bprv-advance-keeps-idle
+                         fn-bprv-staged-prepare-facts fn-bprv-changed-accept-prepare-facts
+                         fn-bprv-durable-complete-unfolds
+                         fn-bprv-durable-accept-complete-installs
+                         fn-bprv-install-pending-facts fn-bprv-article-from-pending-fields
+                         fn-bprv-find-binding-of-new fn-prepare-preserves-state)
+                       (theory 'minimal-theory)))))
+
+; The article record an event commits (`fn-bpr-event-article', books/bp-receipt):
+; the plain record's own, or the composite's.
+(defthm fn-bprv-apply-event-installs-article
+  (implies (and (fn-node-statep node) (fn-bprv-node-idlep node)
+                (fn-record-p (fn-bpr-event-article e))
+                (consp (fn-replay-apply-record node e)))
+           (and (fn-bpi-node-record-committedp (fn-replay-apply-record node e)
+                                               (fn-bpr-event-article e))
+                (fn-bprv-node-idlep (fn-replay-apply-record node e))))
+  :hints (("Goal"
+           :use ((:instance fn-bprv-apply-record-installs-record (record e))
+                 fn-bprv-apply-composite-installs-record)
+           :in-theory (union-theories '(fn-bpr-event-article)
+                                      (theory 'minimal-theory)))))
+
+; `record' is an article record (`fn-record-p') of the history: a plain
+; record, or the article record of a signed kind-4 composite
+; (`fn-bpr-article-records').  Retention and statement events install no
+; article under their own name, so the conclusion is false of them: the
+; hypothesis restates what the theorem always meant, and it is registered
+; with PRF-007 (planning/proofs.json).
 (defthm fn-bprv-replay-loop-installs-every-record
   (implies (and (fn-bprv-node-idlep node)
                 (fn-replay-okp (fn-replay-loop node records sequence))
                 (fn-record-p record)
-                (member-equal record records))
+                (member-equal record (fn-bpr-article-records records)))
            (fn-bpi-node-record-committedp
             (fn-replay-result-node (fn-replay-loop node records sequence)) record))
   :hints (("Goal" :induct (fn-replay-loop node records sequence)
            :in-theory (union-theories '(car-cons cdr-cons fn-replay-loop member-equal fn-bprv-replay-fault-is-not-ok
-                         fn-bprv-replay-ok-node fn-bprv-apply-record-installs-record
+                         fn-bpr-article-records
+                         fn-bprv-replay-ok-node fn-bprv-apply-event-installs-article
                          fn-bprv-apply-store-event-keeps-idle
                          fn-bprv-replay-loop-keeps-committed fn-bprv-node-statep-consp
                          fn-bprv-committed-implies-node-statep)
@@ -741,7 +804,7 @@
 (defthm fn-bprv-replay-node-commits-history-record
   (implies (and (consp (fn-sf-replay-node groups capacity history frontier))
                 (fn-record-p record)
-                (member-equal record history))
+                (member-equal record (fn-bpr-article-records history)))
            (fn-bpi-node-record-committedp
             (fn-sf-replay-node groups capacity history frontier) record))
   :hints (("Goal"
@@ -760,7 +823,7 @@
   (implies (and (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
                 (fn-record-p record)
-                (member-equal record (fn-bprv-history store)))
+                (member-equal record (fn-bpr-article-records (fn-bprv-history store))))
            (fn-bpi-node-record-committedp (fn-sn-node store) record))
   :hints (("Goal"
            :use ((:instance fn-snt-relation-implies-structural-state (s store))
@@ -786,7 +849,7 @@
              (fn-bpr-state-config st)
              (fn-bpr-find-context (fn-bpa-request-work-id request)
                                   (fn-bpr-state-contexts st))
-             (fn-bprv-history store))))
+             (fn-bpr-article-records (fn-bprv-history store)))))
   :hints (("Goal"
            :use (fn-bprv-evolving-output-is-history-grounded
                  (:instance fn-bprv-history-record-is-node-committed-when-idle
@@ -794,7 +857,7 @@
                                      (fn-bpr-state-config st)
                                      (fn-bpr-find-context (fn-bpa-request-work-id request)
                                                           (fn-bpr-state-contexts st))
-                                     (fn-bprv-history store)))))
+                                     (fn-bpr-article-records (fn-bprv-history store))))))
            :in-theory (theory 'minimal-theory))))
 
 ; -----------------------------------------------------------------------------
@@ -811,8 +874,11 @@
   :hints (("Goal"
            :use ((:instance fn-bprv-history-record-is-node-committed-when-idle (store s2))
                  (:instance fn-snt-relation-implies-structural-state (s s2))
+                 (:instance fn-bprv-article-records-prefix
+                            (h1 (fn-bprv-history s1)) (h2 (fn-bprv-history s2)))
                  (:instance fn-bprv-prefix-preserves-member
-                            (h1 (fn-bprv-history s1)) (h2 (fn-bprv-history s2)) (x record)))
+                            (h1 (fn-bpr-article-records (fn-bprv-history s1)))
+                            (h2 (fn-bpr-article-records (fn-bprv-history s2))) (x record)))
            :in-theory (union-theories '(car-cons cdr-cons fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp
                          fn-bprv-history fn-bprv-phase member-equal)
                        (theory 'minimal-theory)))))
