@@ -25,6 +25,18 @@ is taken on tmpfs (/dev/shm), in one unit, on a box checked quiet.
               article 100 ARTICLEs of those identifiers on a fresh connection,
               reopen stop and start the owner on that store: seconds to the
                      LISTENING line.
+              signed (PKT-377) a second store of the same profile with A =
+                     16,384 (a hybrid carrier of a 2,048-octet source is about
+                     6.5 KiB, past the served store's 4,096; the unsigned rows
+                     keep their store and stay comparable with earlier runs):
+                     one hybrid author enrolled through the control socket, a
+                     history of 1,000 articles of which 32 are hybrid-signed
+                     carriers spread evenly (measure_signed.py's), then 100
+                     signed POSTs on one connection, timed as the unsigned
+                     POSTs are (median, p95; owner CPU per signed POST).  The
+                     history is 1,000 so that a return of the whole-history
+                     replay (signed-history-index: 0.101 s against 0.355 s a
+                     signed POST at N = 1,000) is a step past every floor.
               checkpoint  a development-profile store (K = T = 128): POSTs of
                      31,744 octets (A less 1 KiB for the injected fields)
                      until the owner publishes at K/2 (`CHECKPOINT auto ...
@@ -78,7 +90,7 @@ HOST = os.environ.get("FN_HBOX", "hbox")
 BOX_ROOT = "/tank/fn/scratch/throughput-gate"
 OPENSSL = "/tank/fn/toolchains/openssl-3.5.8"
 CLIENT_FILES = ("tools/throughput_gate.py", "tools/msgid_measure.py", "tools/rep_measure.py",
-                "tests/__init__.py", "tests/native_process.py")
+                "tools/signed_carriers.py", "tests/__init__.py", "tests/native_process.py")
 # Metrics the gate compares (all: lower is better).  The floor is the
 # absolute slack: a loopback millisecond figure on a shared box moves by
 # more than 25% of itself between repetitions of one image (commit-
@@ -98,11 +110,25 @@ METRICS = {
     "article_p95_ms": 2.0,
     "reopen_s": 0.5,
     "checkpoint_publish_ms": 50.0,
+    # A signed POST at N = 1,000 costs about 0.1 s of owner work
+    # (signed-history-index); the replay it removed cost 0.25 s more.
+    "post_signed_median_ms": 25.0,
+    "post_signed_p95_ms": 50.0,
+    "post_signed_owner_cpu_ms": 25.0,
 }
-# CPU seconds and allocation of the measured process: to first order
-# independent of other tenants on a 24-core box that is not saturated.  A run
-# taken on a busy box (--under-load) is compared on these only.
-LOAD_INSENSITIVE = ("probe_cpu_s", "probe_bytes_consed_per_commit", "post_owner_cpu_ms")
+# Metrics a run may carry that an older release run predates: `baseline`
+# takes the dev run's figure alone for these, and says so.
+NEW_METRICS = ("post_signed_median_ms", "post_signed_p95_ms", "post_signed_owner_cpu_ms")
+# A run taken on a busy box (--under-load) is compared on the deterministic
+# counters only (PKT-477 (1), the coordinator, 2026-09-26): bytes consed per
+# commit is a property of the code path, not of the box.  CPU seconds are
+# NOT: post_owner_cpu_ms read 1.9 and 3.1 ms for the same image twelve
+# minutes apart under different load, and 3.5 at bb7b2994 where the same
+# bytes read 2.2 on the bisect (a 60 percent swing against a 25 percent
+# tolerance).  A CPU or wall figure taken under load never gates; it is
+# re-measured at the next quiet window, which `check` prefers.
+DETERMINISTIC = ("probe_bytes_consed_per_commit",)
+LOAD_INSENSITIVE = DETERMINISTIC  # the old name; the old tuple held CPU figures too
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +362,62 @@ def measure_served(image, work, env, posts, octets, out):
     out["reopen_last_stat"] = reply.decode("ascii", "replace").strip()
 
 
+def measure_signed(image, work, env, history, preload, signed_posts, octets, out):
+    import msgid_measure as m
+    import rep_measure as r
+    import signed_carriers as sc
+    author = sc.HybridAuthor(image, env, work / "author", OPENSSL + "/bin/openssl")
+    carriers = signed_carriers_for(author, 0, history, preload, signed_posts, octets)
+    port = m.free_port()
+    config = write_config(work, port, work / "store")
+    init_store(image, config, env, ["--profile", "scale", "--max-transactions", "1048576",
+                                    "--max-article-octets", "16384", "fn.letters", "fn.test"])
+    proc, _, err = r.start_owner(Path(image), config, env, work / "owner.stderr")
+    try:
+        measure_signed_posts(author, carriers, proc, port, work / "c.sock", 0, history, octets, out)
+    finally:
+        r.stop_owner(proc, err)
+
+
+def signed_carriers_for(author, posts, history, preload, signed_posts, octets):
+    """The preload's carriers by history position (PRELOAD of them spread
+    evenly over POSTS..HISTORY-1) and the SIGNED_POSTS probe carriers."""
+    span = max(1, history - posts)
+    at = {posts + (i * span) // max(1, preload): author.sign("tg-signed-pre-%d" % i, octets)
+          for i in range(preload)}
+    probes = [author.sign("tg-signed-probe-%d" % i, octets) for i in range(signed_posts)]
+    return at, probes
+
+
+def measure_signed_posts(author, carriers, proc, port, control, posts, history, octets, out):
+    import msgid_measure as m
+    import rep_measure as r
+    import signed_carriers as sc
+    at, probes = carriers
+    author.enroll(control)
+    c = m.Conn(port)
+    t0 = time.perf_counter()
+    for i in range(posts, history):
+        if i in at:
+            sc.post_octets(c, at[i])
+        else:
+            r.post(c, i, octets)
+    out["signed_history_load_s"] = round(time.perf_counter() - t0, 3)
+    c0 = owner_cpu(proc.pid)
+    times = [sc.post_octets(c, octets_)[0] for octets_ in probes]
+    out["post_signed_owner_cpu_ms"] = round(1000.0 * (owner_cpu(proc.pid) - c0) / len(probes), 3)
+    _, reply = c.timed("GROUP fn.test")
+    c.close()
+    s = m.summary(times)
+    out["post_signed_n"], out["post_signed_history"] = len(probes), history
+    out["post_signed_history_signed"] = len(at)
+    out["post_signed_octets"] = len(probes[0])
+    out["post_signed_median_ms"], out["post_signed_p95_ms"] = round(s["median_ms"], 3), round(s["p95_ms"], 3)
+    out["post_signed_group"] = reply.decode("ascii", "replace").strip()
+    signs = sorted(author.sign_seconds)
+    out["carrier_sign_median_s"] = round(signs[len(signs) // 2], 3)
+
+
 CHECKPOINT_LINE = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+) ms=(\d+)")
 
 
@@ -408,7 +490,7 @@ def box(a):
         print(out["refused"], file=sys.stderr)
         return 3
     if quiet["busy"]:
-        print("under load: wall-clock metrics will not be compared", flush=True)
+        print("under load: only the deterministic counters will be compared (PKT-477 (1))", flush=True)
     env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env["LD_LIBRARY_PATH"] = OPENSSL + "/lib" + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
@@ -421,6 +503,8 @@ def box(a):
         for name, fn in (("probe", lambda w: measure_probe(image, w, env, a.probe_n, out)),
                          ("alloc", lambda w: measure_alloc(image, w, env, a.probe_n, out)),
                          ("served", lambda w: measure_served(image, w, env, a.posts, a.octets, out)),
+                         ("signed", lambda w: a.signed_posts and measure_signed(
+                             image, w, env, a.signed_history, a.signed_preload, a.signed_posts, a.octets, out)),
                          ("checkpoint", lambda w: measure_checkpoint(image, w, env, out))):
             w = base / name
             w.mkdir(parents=True)
@@ -508,7 +592,7 @@ def limit(base, floor):
 def compared(run_doc, baseline):
     names = list(baseline.get("metrics", {}))
     if run_doc.get("quiet") is False:
-        names = [n for n in names if n in LOAD_INSENSITIVE]
+        names = [n for n in names if n in DETERMINISTIC]
     return names
 
 
@@ -594,7 +678,7 @@ def check(a):
     print("throughput_gate: %s measures %s (%s), %d of %d metrics compared%s, box cpu busy median %s"
           % (path.name, rev[:12], scope, len(names), len(baseline.get("metrics", {})),
              "" if doc.get("quiet") is not False else
-             " (under load: %s busy; wall-clock figures not compared)" % ", ".join(u["unit"] for u in busy),
+             " (under load: %s busy; CPU and wall-clock figures not compared, PKT-477 (1))" % ", ".join(u["unit"] for u in busy),
              load.get("box_cpu_busy_median")))
     if failures and named:
         print("throughput_gate: named cause for %s: %s" % (rev[:12], named[0].get("reason")))
@@ -612,9 +696,13 @@ def write_baseline(a):
     metrics, raised = {}, []
     for metric, floor in METRICS.items():
         values = [d.get(metric) for d in (release, dev)]
-        if any(v is None for v in values):
+        if values[0] is None and values[1] is not None and metric in NEW_METRICS:
+            print("%s: the release run predates it; the dev run's %s alone" % (metric, values[1]))
+            value = values[1]
+        elif any(v is None for v in values):
             raise SystemExit("%s missing from a run" % metric)
-        value = min(values)
+        else:
+            value = min(values)
         prior = old.get("metrics", {}).get(metric, {}).get("value")
         if prior is not None and value > prior and not a.allow_regression:
             raised.append(metric)
@@ -658,9 +746,13 @@ def main(argv=None):
     b.add_argument("--probe-n", type=int, default=1000)
     b.add_argument("--posts", type=int, default=100)
     b.add_argument("--octets", type=int, default=2048)
+    b.add_argument("--signed-history", type=int, default=1000,
+                   help="articles in the signed store before the signed POSTs")
+    b.add_argument("--signed-preload", type=int, default=32, help="hybrid carriers among them")
+    b.add_argument("--signed-posts", type=int, default=100, help="signed POSTs timed; 0 skips the row")
     b.add_argument("--wait-quiet", type=int, default=0, help="seconds to wait for a quiet box before refusing")
     b.add_argument("--under-load", action="store_true",
-                   help="measure on a busy box anyway; the check then compares only " + ", ".join(LOAD_INSENSITIVE))
+                   help="measure on a busy box anyway; the check then compares only the deterministic counters: " + ", ".join(DETERMINISTIC))
     b.add_argument("--quiet-cpu", type=float, default=QUIET_CPU,
                    help="busy threshold in cores; a run above the default is a smoke run the check ignores")
     r = sub.add_parser("run")

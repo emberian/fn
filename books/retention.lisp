@@ -129,6 +129,48 @@
   (or (member-equal id (fn-retain-obligation-ids pins))
       (member-equal id (fn-retain-release-ids releases))))
 
+; The admission test the host executes (served-path-scale, PRF-173): the same
+; question asked by walking the pins and the releases, without consing their
+; identity lists first.  `fn-retain-known-idp' built both lists on every
+; admission -- every POST and every step of a full replay -- which was 26.8
+; percent of the 20,000-article fixture's full-replay open (sb-sprof,
+; planning/evidence/served-path-scale-2026-09-26.md).  Equal as a truth value
+; by `fn-retain-known-id-scanp-is-known-idp'; `fn-retain-admissiblep' runs it
+; through `mbe', so no logical definition changes.
+(defun fn-retain-pin-id-scanp (id pins)
+  (declare (xargs :guard (fn-retain-obligation-listp pins)))
+  (if (consp pins)
+      (or (equal id (fn-retain-obligation-id (car pins)))
+          (fn-retain-pin-id-scanp id (cdr pins)))
+    nil))
+
+(defun fn-retain-release-id-scanp (id releases)
+  (declare (xargs :guard (fn-retain-release-listp releases)))
+  (if (consp releases)
+      (or (equal id (fn-retain-release-id (car releases)))
+          (fn-retain-release-id-scanp id (cdr releases)))
+    nil))
+
+(defun fn-retain-known-id-scanp (id pins releases)
+  (declare (xargs :guard (and (fn-retain-obligation-listp pins)
+                              (fn-retain-release-listp releases))))
+  (or (fn-retain-pin-id-scanp id pins)
+      (fn-retain-release-id-scanp id releases)))
+
+(local
+ (defthm fn-retain-pin-id-scanp-is-member
+   (iff (fn-retain-pin-id-scanp id pins)
+        (member-equal id (fn-retain-obligation-ids pins)))))
+
+(local
+ (defthm fn-retain-release-id-scanp-is-member
+   (iff (fn-retain-release-id-scanp id releases)
+        (member-equal id (fn-retain-release-ids releases)))))
+
+(defthm fn-retain-known-id-scanp-is-known-idp
+  (iff (fn-retain-known-id-scanp id pins releases)
+       (fn-retain-known-idp id pins releases)))
+
 ; -----------------------------------------------------------------------------
 ; Ledger state and transitions
 
@@ -175,8 +217,10 @@
        (fn-retain-kindp kind)
        (fn-provp evidence)
        (posp charge)
-       (not (fn-retain-known-idp id (fn-retain-pins s)
-                                 (fn-retain-releases s)))
+       (mbe :logic (not (fn-retain-known-idp id (fn-retain-pins s)
+                                             (fn-retain-releases s)))
+            :exec (not (fn-retain-known-id-scanp id (fn-retain-pins s)
+                                                 (fn-retain-releases s))))
        (<= (+ (fn-retain-reserved s) charge)
            (fn-retain-capacity s))))
 
@@ -260,6 +304,9 @@
 (verify-guards fn-retain-release-listp)
 (verify-guards fn-retain-release-ids)
 (verify-guards fn-retain-known-idp)
+(verify-guards fn-retain-pin-id-scanp)
+(verify-guards fn-retain-release-id-scanp)
+(verify-guards fn-retain-known-id-scanp)
 (verify-guards fn-retain-state-shapep)
 (verify-guards fn-retain-capacity)
 (verify-guards fn-retain-reserved)

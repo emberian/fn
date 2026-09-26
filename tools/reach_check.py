@@ -44,6 +44,12 @@ the count a FLOOR --- every orphan it reports is real, and it misses some.
 A gate that cries wolf gets switched off, and this one is meant to stay on.
 It also cannot see a function reached only through a macro this reader does
 not expand, or named in a Python string it does not recognize as a symbol.
+The one macro it does expand is `fn-defrecord' (books/defrecord.lisp): its
+generated recognizer is a definition here, whose body is the record's
+`:fields' types, `:extra' conjuncts and `:recognizer-formals' (PKT-394: fn-node-statep's
+field conjuncts call fn-statep and fn-node-articles-have-archive-bindingsp,
+which fn-sco-finalize-from executes at every open, and without the expansion
+three PRF-173 keystones read as orphans).
 
 A flag is a question for a human, never a verdict.  Being unreachable is not
 by itself a defect: a book can legitimately run ahead of its host.  What the
@@ -147,6 +153,74 @@ def definitions(paths, pattern=DEFUN):
     return found
 
 
+SEXP_TOKEN = re.compile(r'\s+|;[^\n]*|"(?:\\.|[^"\\])*"|[()]|[^\s()";]+')
+
+
+def read_sexp(text: str):
+    """The first s-expression of TEXT as nested lists of atom strings
+    (strings and comments dropped): enough to read a macro's keywords."""
+    stack: list[list] = [[]]
+    for token in SEXP_TOKEN.findall(text):
+        if not token.strip() or token.startswith((";", '"')):
+            continue
+        if token == "(":
+            stack.append([])
+        elif token == ")":
+            done = stack.pop()
+            stack[-1].append(done)
+            if len(stack) == 1:
+                return done
+        else:
+            stack[-1].append(token.lower())
+    return stack[-1][0] if stack[-1] else None
+
+
+def flatten(tree) -> str:
+    if isinstance(tree, list):
+        return "(" + " ".join(flatten(t) for t in tree) + ")"
+    return str(tree)
+
+
+def record_definitions(paths):
+    """name -> (file, body) for the recognizer each `(fn-defrecord NAME ...)'
+    generates (books/defrecord.lisp): `:recognizer', default NAMEp, none for
+    `:recognizer nil'.  Its body is the record's field types (a unary
+    predicate applied to the accessor, or a term), `:extra' and
+    `:recognizer-formals'.  The shape predicate, constructor and accessors
+    are not made definitions: they are the record's plumbing, and counting
+    them would host every theorem that merely reads a field (PRF-088's
+    fn-rcl-reclaim-keeps-the-numbering would be hosted by fn-state-groups)."""
+    found = {}
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = str(path.relative_to(ROOT))
+        for form in forms(text):
+            if not re.match(r"\(fn-defrecord\s", form, re.I):
+                continue
+            tree = read_sexp(form)
+            if not tree or len(tree) < 2 or not isinstance(tree[1], str):
+                continue
+            name, rest = tree[1], tree[2:]
+            keys = {rest[i]: rest[i + 1] for i in range(0, len(rest) - 1, 2)
+                    if isinstance(rest[i], str) and rest[i].startswith(":")}
+            recognizer = keys.get(":recognizer", ":default")
+            if recognizer == "nil":
+                continue
+            recp = name + "p" if recognizer == ":default" else flatten(recognizer)
+            conjuncts = []
+            for field in keys.get(":fields") or []:
+                if isinstance(field, list) and len(field) > 1 and field[1] != "t":
+                    conjuncts.append(flatten(field[1]))
+            conjuncts += [flatten(keys.get(":extra", [])),
+                          flatten(keys.get(":recognizer-formals", []))]
+            found[recp] = (rel, "(fn-defrecord-recognizer %s %s)" % (
+                recp, " ".join(conjuncts)))
+    return found
+
+
 class Graph:
     """The call graph, and what a host line can reach through it."""
 
@@ -154,9 +228,13 @@ class Graph:
         self.books = sorted(ROOT.glob("books/*.lisp"))
         self.hosts = (sorted(ROOT.glob("host/*.lisp"))
                       + sorted(ROOT.glob("host/native/*.lisp")))
-        self.bridges = sorted(ROOT.glob("tools/*.py"))
+        # Not this file: its prose names book functions as examples, and a
+        # checker's own docstring is not a host line.
+        self.bridges = [p for p in sorted(ROOT.glob("tools/*.py"))
+                        if p.name != pathlib.Path(__file__).name]
 
-        self.book_defs = definitions(self.books)
+        self.book_defs = {**record_definitions(self.books),
+                          **definitions(self.books)}
         host_defs = definitions(self.hosts)
         attached = attachments(self.books)
         self.known = set(self.book_defs) | set(host_defs) | set(attached)
@@ -258,14 +336,15 @@ def unexplained(accepted: dict) -> list[str]:
 
 
 def write_baseline(findings) -> None:
-    existing = load_baseline().get("accepted", {})
+    current = load_baseline()
+    existing = current.get("accepted", {})
     accepted = {}
     for finding in sorted(findings, key=Finding.key):
         accepted[finding.key()] = existing.get(
             finding.key(),
             "no host line reaches this subject and " + PLACEHOLDER)
     BASELINE.write_text(json.dumps(
-        {"note": ("Registry events whose subject no host line reaches, that "
+        {"note": current.get("note") or ("Registry events whose subject no host line reaches, that "
                   "the tree accepts for now.  tools/reach_check.py --strict "
                   "fails on any orphan NOT listed here, so the number can "
                   "shrink and cannot grow silently.  Remove an entry by "

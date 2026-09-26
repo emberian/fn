@@ -4,65 +4,9 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/native-admin": {
-      "seconds": 15.948,
-      "run": "certify-20260926T112155Z-967430",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/native-operator": {
-      "seconds": 11.837,
-      "run": "certify-20260926T112155Z-967430",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/owner-invariants": {
-      "seconds": 16.236,
-      "run": "certify-20260926T110838Z-807334",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/peer-authored-accept": {
-      "seconds": 11.487,
-      "run": "certify-20260926T110838Z-807334",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/peer-pull": {
-      "seconds": 10.284,
-      "run": "certify-20260926T112155Z-967430",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/peer-pull-session": {
-      "seconds": 11.684,
-      "run": "certify-20260926T112155Z-967430",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/public-exposure": {
-      "seconds": 10.633,
-      "run": "certify-20260926T110838Z-807334",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/topic-history-store-invariants": {
-      "seconds": 11.379,
-      "run": "certify-20260926T110838Z-807334",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "tests/acl2/source-routes-tests": {
-      "seconds": 10.234,
-      "run": "certify-20260926T110838Z-807334",
+      "seconds": 11.185,
+      "run": "certify-20260926T123922Z-1828132",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"

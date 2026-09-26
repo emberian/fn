@@ -5661,6 +5661,18 @@
         {
           "kind": "theorem",
           "name": "fn-exp-idle-closes-only-silence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-481-scan-counts-the-481-replies"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-effects-scan-is-the-reply-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-observe-effects-is-the-observation-of-the-reply"
         }
       ]
     },
@@ -6089,6 +6101,22 @@
         {
           "kind": "theorem",
           "name": "fn-native-control-liveness-decides"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-starting-clears-on-listening"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-printed-reason-is-the-decisions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-reasoned-read-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-reason-word-of-a-reason-is-not-none"
         }
       ]
     },
@@ -6233,6 +6261,265 @@
         {
           "kind": "theorem",
           "name": "fn-scar-ocfg-read-span-preserves-node-premise"
+        }
+      ]
+    },
+    {
+      "id": "PRF-176",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-listener-session-is-admitted-under-its-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-admitted-session-arrives-on-a-bound-listener"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-listener-ports-are-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-progress-dispatch-names-the-routed-hop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-table-route-peer-is-the-routed-hop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-plan-has-one-session-per-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-plan-offers-a-row-on-one-session"
+        }
+      ]
+    },
+    {
+      "id": "PRF-173",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-articles-freshp-is-one-pass"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-articles-have-archive-bindingsp-is-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-known-id-scanp-is-known-idp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-refresh-is-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fr-disjointp-commutes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-build-of-cons"
+        }
+      ]
+    },
+    {
+      "id": "PRF-179",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-document-binds-a-known-principal-only-at-its-current-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-document-of-a-current-enrolment-is-accepted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-an-enrolling-accept-is-the-clis-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-peer-budget-decode-reads-the-configured-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-peer-extra-decode-reads-past-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-peer-budget-row-octets-extends-the-older-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-transit-refusal-detail-is-the-class-and-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-list-word-is-pending-only-for-a-pending-row"
+        }
+      ]
+    },
+    {
+      "id": "PRF-178",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-valid-record-fits-a-poll-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-stays-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-report-of-an-admitted-payload-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-page-refuses-exactly-past-the-total-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
+        }
+      ]
+    },
+    {
+      "id": "PRF-171",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-add-peer-rows-extends-the-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-apply-delta-adds-at-most-the-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-apply-adds-at-most-the-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-extend-deltas-apply-as-the-extend-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-185",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cev-evidence-decision-is-in-the-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-decision-line-is-a-log-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-journal-holds-each-articles-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-journal-records-are-withdrawals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cevg-parse-kind-is-a-kind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-obligations-figures-are-the-retention-figures"
+        }
+      ]
+    },
+    {
+      "id": "PRF-180",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cei-count-of-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-count-is-used"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-lookup-of-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-octets-advance-is-the-suffix-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-bytes-carried-is-the-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-octets-cache-valid-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-headroom-carried-is-headroom-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-debt-advance-is-the-suffix-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-debt-carried-is-the-record-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-tally-advance-is-the-suffix-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scf-usage-carried-is-the-projection"
         }
       ]
     }

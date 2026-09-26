@@ -79,8 +79,32 @@ profile's `max-consumers` (field 9): the owner's registration
 field takes effect at the next open with no migration; replay re-runs the
 registration's validity, not the admission bound, because the profile only
 rises. Open: the group-name bound (field 7) is not yet read on the served
-path and the name width is 256, below the NNTP wire's 460; a peer's
-configuration rows are one record's data (PKT-435, PKT-436).
+path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
+peer's configuration rows are now data (STO-023).
+
+STO-023: stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant.
+Two constants that capped data are gone (D27;
+planning/evidence/caps-to-profile-2026-09-26.md). A peer's row group grows
+by requests: `peer carries` and `peer budget` publish only the rows they
+change, `(:add-peer-rows NAME ROWS)` and `(:remove-peer-rows NAME ROWS)`
+(configuration delta codes 18 and 19, books/config.lisp), and
+`*fn-cfg-max-rows*` (1,024) bounds the work of one delta, not the rows one
+peer holds (`fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound`,
+`fn-cfg-apply-delta-adds-at-most-the-work-bound`); the published deltas
+apply as the whole-group extension did
+(`fn-pcb-extend-deltas-apply-as-the-extend-delta`), and the record count is
+the profile's `max-config-generations`. A checkpoint or pack generation
+number is a uint32, the width of its name and selection codec, and the
+generations a store retains are the profile's capacity, `max-transactions`
+plus one: the allocator refuses exactly at that capacity
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`,
+`fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), so
+`store upgrade-profile` raises it and a store no longer meets a lifetime
+figure of 4,096 publications. No store format changed: an older image
+refuses a configuration log holding codes 18 or 19 and a checkpoint
+directory holding more than 4,096 names or a name at or above 4096, the
+rollback consequence of these two steps. Open: the group-name width and
+field 7's reader (PKT-451).
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store
@@ -793,6 +817,18 @@ committed octets (`fn-cvec-admitted-history-keeps-the-vector`). The article
 premise is PRF-126's (a u32 charge); every other kind's record must be within
 its publication ceiling, which its codec bounds: the signed composite and
 peer-carried producers are outside the producer-width proof.
+
+The served owner reads the figures the gate compares without walking the
+history (PRF-180). The committed count is the count the Store's derived event
+index keeps (every put adds one; the index is built at every open and extended
+by the commit's record-directory append); the committed record octets, the
+completion debt and the peer carriage usage are the owner's (K . VALUE) caches,
+advanced over the records committed since through the index's fixed-depth
+lookup. Each equals its fold over the history while the index is the index of
+that history, which holds of every owner the host reaches (PRF-144). A POST
+therefore costs one lookup and one record's length, debt step and carriage step
+per record committed since the previous query; the octets are folded once, at
+open.
 
 The disk is an environmental assumption, not a reservation: the observed free
 octets are not owned, and a concurrent writer can take them. The pack write

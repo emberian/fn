@@ -121,23 +121,170 @@
         (fn-node-find-binding msgid (cdr xs)))
     nil))
 
+;; ---------------------------------------------------------------------------
+;; The archive-binding check in one pass (served-path-scale, PRF-173).
+;;
+;; The :logic body of `fn-node-articles-have-archive-bindingsp' searches the
+;; bindings and the pins linearly for each article: quadratic, and 20 percent
+;; of the 20,000-article fixture's open (fn-retain-find-id 13.9 percent,
+;; fn-node-find-binding 5.9 percent; pack-chain-open's profile).  Its :exec
+;; path indexes both lists once in two hash tables, the FIRST element with a
+;; key kept (the linear searches' answer), and looks each article up there.
+;; Equal on every value by `fn-node-articles-have-archive-bindingsp-is-indexed'.
+
+(defstobj fn-nab
+  (fn-nab-bindings :type (hash-table equal))
+  (fn-nab-pins :type (hash-table equal)))
+
+(defun fn-nab-fill-bindings (xs fn-nab)
+  (declare (xargs :stobjs fn-nab :guard t))
+  (if (consp xs)
+      (let ((fn-nab (if (fn-nab-bindings-boundp (fn-node-binding-msgid (car xs))
+                                                fn-nab)
+                        fn-nab
+                      (fn-nab-bindings-put (fn-node-binding-msgid (car xs))
+                                           (car xs) fn-nab))))
+        (fn-nab-fill-bindings (cdr xs) fn-nab))
+    fn-nab))
+
+(defun fn-nab-fill-pins (xs fn-nab)
+  (declare (xargs :stobjs fn-nab :guard t))
+  (if (consp xs)
+      (let ((fn-nab (if (fn-nab-pins-boundp (fn-retain-obligation-id (car xs))
+                                            fn-nab)
+                        fn-nab
+                      (fn-nab-pins-put (fn-retain-obligation-id (car xs))
+                                       (car xs) fn-nab))))
+        (fn-nab-fill-pins (cdr xs) fn-nab))
+    fn-nab))
+
+(defun fn-nab-check (articles fn-nab)
+  (declare (xargs :stobjs fn-nab :guard t))
+  (if (consp articles)
+      (let ((binding (fn-nab-bindings-get (fn-article-msgid (car articles))
+                                          fn-nab)))
+        (and (consp binding)
+             (let ((pin (fn-nab-pins-get (fn-node-binding-id binding) fn-nab)))
+               (fn-retain-matching-releasep
+                pin
+                (fn-node-binding-id binding)
+                (fn-node-binding-subject binding)
+                :archive
+                (fn-retain-obligation-evidence pin)))
+             (fn-nab-check (cdr articles) fn-nab)))
+    t))
+
+(defun fn-nab-articles-boundp (articles bindings pins)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-nab
+    (mv-let (ok fn-nab)
+      (let* ((fn-nab (fn-nab-fill-bindings bindings fn-nab))
+             (fn-nab (fn-nab-fill-pins pins fn-nab)))
+        (mv (fn-nab-check articles fn-nab) fn-nab))
+      ok)))
+
 (defun fn-node-articles-have-archive-bindingsp (articles bindings pins)
   (declare (xargs :guard (fn-retain-obligation-listp pins)
                   :verify-guards nil))
-  (if (consp articles)
-      (let ((binding (fn-node-find-binding (fn-article-msgid (car articles))
-                                           bindings)))
-        (and (consp binding)
-             (fn-retain-matching-releasep
-              (fn-retain-find-id (fn-node-binding-id binding) pins)
-              (fn-node-binding-id binding)
-              (fn-node-binding-subject binding)
-              :archive
-              (fn-retain-obligation-evidence
-               (fn-retain-find-id (fn-node-binding-id binding) pins)))
-             (fn-node-articles-have-archive-bindingsp (cdr articles)
-                                                       bindings pins)))
-    t))
+  (mbe :logic
+       (if (consp articles)
+           (let ((binding (fn-node-find-binding (fn-article-msgid (car articles))
+                                                bindings)))
+             (and (consp binding)
+                  (fn-retain-matching-releasep
+                   (fn-retain-find-id (fn-node-binding-id binding) pins)
+                   (fn-node-binding-id binding)
+                   (fn-node-binding-subject binding)
+                   :archive
+                   (fn-retain-obligation-evidence
+                    (fn-retain-find-id (fn-node-binding-id binding) pins)))
+                  (fn-node-articles-have-archive-bindingsp (cdr articles)
+                                                            bindings pins)))
+         t)
+       :exec (fn-nab-articles-boundp articles bindings pins)))
+
+(local
+ (defthm fn-nab-find-binding-when-absent
+   (implies (not (member-equal k (fn-node-binding-msgids xs)))
+            (equal (fn-node-find-binding k xs) nil))))
+
+(local
+ (defthm fn-nab-find-id-when-absent
+   (implies (not (member-equal k (fn-retain-obligation-ids xs)))
+            (equal (fn-retain-find-id k xs) nil))))
+
+(local
+ (defthm fn-nab-fill-bindings-keeps-pins
+   (equal (nth 1 (fn-nab-fill-bindings xs st)) (nth 1 st))
+   :hints (("Goal" :in-theory (disable nth update-nth)))))
+
+(local
+ (defthm fn-nab-fill-pins-keeps-bindings
+   (equal (nth 0 (fn-nab-fill-pins xs st)) (nth 0 st))
+   :hints (("Goal" :in-theory (disable nth update-nth)))))
+
+(local
+ (defthm fn-nab-fill-bindings-lookup
+   (equal (hons-assoc-equal k (nth 0 (fn-nab-fill-bindings xs st)))
+          (if (consp (hons-assoc-equal k (nth 0 st)))
+              (hons-assoc-equal k (nth 0 st))
+            (if (member-equal k (fn-node-binding-msgids xs))
+                (cons k (fn-node-find-binding k xs))
+              nil)))
+   :hints (("Goal" :induct (fn-nab-fill-bindings xs st)
+            :in-theory (disable nth update-nth)))))
+
+(local
+ (defthm fn-nab-fill-pins-lookup
+   (equal (hons-assoc-equal k (nth 1 (fn-nab-fill-pins xs st)))
+          (if (consp (hons-assoc-equal k (nth 1 st)))
+              (hons-assoc-equal k (nth 1 st))
+            (if (member-equal k (fn-retain-obligation-ids xs))
+                (cons k (fn-retain-find-id k xs))
+              nil)))
+   :hints (("Goal" :induct (fn-nab-fill-pins xs st)
+            :in-theory (disable nth update-nth)))))
+
+(local
+ (defthm fn-nab-bindings-get-when-filled
+   (implies (not (consp (nth 0 st)))
+            (equal (fn-nab-bindings-get
+                    k (fn-nab-fill-pins ps (fn-nab-fill-bindings xs st)))
+                   (fn-node-find-binding k xs)))
+   :hints (("Goal" :in-theory (disable nth update-nth fn-nab-fill-pins
+                                       fn-nab-fill-bindings)))))
+
+(local
+ (defthm fn-nab-pins-get-when-filled
+   (implies (not (consp (nth 1 st)))
+            (equal (fn-nab-pins-get
+                    k (fn-nab-fill-pins ps (fn-nab-fill-bindings xs st)))
+                   (fn-retain-find-id k ps)))
+   :hints (("Goal" :in-theory (disable nth update-nth fn-nab-fill-pins
+                                       fn-nab-fill-bindings)))))
+
+(local
+ (defthm fn-nab-check-is-archive-bindings
+   (implies (and (not (consp (nth 0 st))) (not (consp (nth 1 st))))
+            (equal (fn-nab-check articles
+                                 (fn-nab-fill-pins
+                                  pins (fn-nab-fill-bindings bindings st)))
+                   (fn-node-articles-have-archive-bindingsp
+                    articles bindings pins)))
+   :hints (("Goal" :induct (fn-node-articles-have-archive-bindingsp
+                            articles bindings pins)
+            :expand ((fn-nab-check articles
+                                   (fn-nab-fill-pins
+                                    pins (fn-nab-fill-bindings bindings st))))
+            :in-theory (disable fn-nab-fill-pins fn-nab-fill-bindings
+                                fn-retain-matching-releasep nth
+                                fn-nab-bindings-get fn-nab-pins-get)))))
+
+; The refinement: the indexed check the host executes is the archive-binding
+; relation, on every value.
+(defthm fn-node-articles-have-archive-bindingsp-is-indexed
+  (equal (fn-nab-articles-boundp articles bindings pins)
+         (fn-node-articles-have-archive-bindingsp articles bindings pins)))
 
 ; State: (committed-acceptance committed-retention pending-retention-stage
 ;         committed-article-to-archive-bindings).
@@ -292,7 +439,8 @@
 (verify-guards fn-node-binding-listp
   :hints (("Goal" :use fn-node-binding-listp-is-shape-and-distinct)))
 (verify-guards fn-node-find-binding)
-(verify-guards fn-node-articles-have-archive-bindingsp)
+(verify-guards fn-node-articles-have-archive-bindingsp
+  :hints (("Goal" :use fn-node-articles-have-archive-bindingsp-is-indexed)))
 (verify-guards fn-node-statep
   :hints (("Goal" :in-theory (enable fn-retain-statep))))
 (verify-guards fn-node-initial-state)

@@ -1,6 +1,12 @@
 {
  "_comment": "tools/spec_cite_check.py. exemptions: a name that is not a Lisp definition, with the reason. stale: citations of names no book, test book or host file defines, found when the check landed (tooling-velocity, 2026-09-26, dev 17ff24aa); each is a repair owed under its packet (correct the name, or move it to exemptions with a reason). --strict fails on a new one and on an entry no longer cited.",
- "exemptions": {},
+ "exemptions": {
+  "fn-feed-parse-response": "retired name kept as history: specs/peering.md's closure notes name the w6 ACL2-side parser beside what replaced it, fn-own-feed-parse-response (books/owner-feed.lisp)",
+  "fn-feed-offerablep": "a specification name mapped to its implementation: specs/peering.md's correspondence table sets section 3.2's fn-feed-offerablep beside fn-own-feed-offerablep (books/owner-feed.lisp)",
+  "fn-store-cfg-peer-name-list": "retired name kept as history: specs/peering.md records that host/store-node-host.lisp's :program copy of that name was removed in favour of fn-cfg-peer-names",
+  "fn-record-decode-exact-refuses-another-header": "retired name kept as history: specs/acceptance-stamp.md records that T1's derived theorem of that name became fn-record-decode-exact-refuses-another-magic",
+  "fn-nntp-hdr-labelled-line-is-block-text": "retired name kept as history: specs/nntp-audit.md records that books/nntp-effects' message-id lemma was rerouted off that open lemma onto fn-nntp-xpat-msgid-block-is-block-text"
+ },
  "stale": {
   "PKT-446": {
    "fn-ag-car-is-car": [
@@ -58,9 +64,6 @@
     "specs/bp-design.md"
    ],
    "fn-bpb-block-numbers-unique": [
-    "specs/bp-design.md"
-   ],
-   "fn-bpb-bundle": [
     "specs/bp-design.md"
    ],
    "fn-bpb-decode-allocates-within-limit": [
@@ -127,9 +130,6 @@
    ],
    "fn-bpn-ids-unique": [
     "specs/bp-design.md"
-   ],
-   "fn-bpn-job": [
-    "specs/bp-node-machine.md"
    ],
    "fn-bpn-local-destinationp": [
     "specs/bp-node-machine.md"
@@ -269,12 +269,6 @@
    "fn-bpnp-step-busy-delivery-defers": [
     "specs/bp-node-machine.md"
    ],
-   "fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type": [
-    "specs/bp-primary.md"
-   ],
-   "fn-bpp-adu-key-separates-source-and-timestamp": [
-    "specs/bp-primary.md"
-   ],
    "fn-bpp-hop-count-round-trip": [
     "specs/bp-primary.md"
    ],
@@ -286,9 +280,6 @@
    ],
    "fn-bprl-store-join": [
     "specs/bp-node-machine.md"
-   ],
-   "fn-bprv-replay-installs-every-record": [
-    "specs/bp-evolving-store.md"
    ],
    "fn-bprx-handoff-adu-is-the-committed-receipt": [
     "specs/bp-node-machine.md"
@@ -405,15 +396,6 @@
    "fn-feed-journal-okp": [
     "specs/peering.md"
    ],
-   "fn-feed-never-offers-a-loop": [
-    "specs/peering.md"
-   ],
-   "fn-feed-offerablep": [
-    "specs/peering.md"
-   ],
-   "fn-feed-parse-response": [
-    "specs/peering.md"
-   ],
    "fn-feed-peer-idlep": [
     "specs/peering.md"
    ],
@@ -487,9 +469,6 @@
    "fn-nntp-group-numbers": [
     "specs/nntp-audit.md"
    ],
-   "fn-nntp-hdr-labelled-line-is-block-text": [
-    "specs/nntp-audit.md"
-   ],
    "fn-nntp-newnews-field-value": [
     "specs/acceptance-stamp.md"
    ],
@@ -518,9 +497,6 @@
    ],
    "fn-node-shapep": [
     "specs/node-functionality.md"
-   ],
-   "fn-node-state": [
-    "specs/substrate-transport.md"
    ],
    "fn-node-state-is-single-generation": [
     "specs/reconfiguration.md"
@@ -616,9 +592,6 @@
    "fn-record-accepted-input-header": [
     "specs/acceptance-stamp.md"
    ],
-   "fn-record-decode-exact-refuses-another-header": [
-    "specs/acceptance-stamp.md"
-   ],
    "fn-replay-result": [
     "docs/proof-style.md"
    ],
@@ -645,15 +618,6 @@
     "specs/encoding.md",
     "specs/storage.md"
    ],
-   "fn-store-cfg-generation/-served/-domain": [
-    "specs/host.md"
-   ],
-   "fn-store-cfg-peer-name-list": [
-    "specs/peering.md"
-   ],
-   "fn-store-cfg-served/-domain/-generation": [
-    "specs/host.md"
-   ],
    "fn-store-experiment-4": [
     "specs/encoding.md",
     "specs/reconfiguration.md"
@@ -661,9 +625,6 @@
    "fn-store-experiment-5": [
     "specs/encoding.md",
     "specs/reconfiguration.md"
-   ],
-   "fn-store-frame-constants/-store-protected/-store-decode": [
-    "specs/host.md"
    ],
    "fn-store-group-code": [
     "specs/reconfiguration.md"
@@ -677,26 +638,11 @@
    "fn-store-groups-1": [
     "specs/store-experiment.md"
    ],
-   "fn-store-metadata-config-frame/-decode": [
-    "specs/host.md"
-   ],
-   "fn-store-metadata-frontier-frame/-decode/-next": [
-    "specs/host.md"
-   ],
-   "fn-store-obligation-preimage/-id": [
-    "specs/host.md"
-   ],
    "fn-store-post-boundary": [
     "specs/reconfiguration.md"
    ],
-   "fn-store-record-sequence/-txid": [
-    "specs/host.md"
-   ],
    "fn-store-sn": [
     "specs/checkpoint.md"
-   ],
-   "fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp": [
-    "specs/host.md"
    ],
    "fn-stx-authored-source-is-octet-list": [
     "specs/substrate-transport.md"
@@ -774,12 +720,6 @@
    ],
    "fn-x-step": [
     "docs/proof-style.md"
-   ],
-   "fnn-metadata-config-frame/-decode": [
-    "specs/host.md"
-   ],
-   "fnn-metadata-frontier-frame/-decode/-next": [
-    "specs/host.md"
    ]
   }
  }

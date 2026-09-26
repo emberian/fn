@@ -283,6 +283,44 @@
 (assert-event (not (equal (fn-nh-fence-of :offline :held nil nil) :starting)))
 
 ; ---------------------------------------------------------------------------
+; fn-nh-starting-clears-on-listening (PKT-454).  Positive, the whole antecedent
+; of the iff: no clone fence, the lock held, a listener expected, the socket
+; node present and the connect failing before submission (route :offline):
+; fenced :starting.  The same lock, fence and listener with the owner
+; answering: its octets, no fence.
+(assert-event (equal (fn-nls-route t :before-submission) :offline))
+(assert-event (equal (fn-nh-health-step t :before-submission :held nil t)
+                     '(:fenced :starting)))
+(assert-event (equal (fn-nh-health-step nil :none :held nil t) '(:fenced :starting)))
+(assert-event (equal (fn-nh-health-step t '(:done (104 101)) :held nil t)
+                     '(:answered (104 101))))
+; Each conjunct of the iff's right side, failed alone, loses :starting.
+(assert-event (equal (fn-nh-health-step t :before-submission :held t t) '(:fenced :clone-fence)))
+(assert-event (equal (fn-nh-health-step t :before-submission :free nil t) '(:offline)))
+(assert-event (equal (fn-nh-health-step t :before-submission :held nil nil) '(:fenced :store-held)))
+(assert-event (equal (fn-nh-health-step t :after-submission :held nil t) '(:fenced :owner-unanswering)))
+(assert-event (equal (fn-nh-health-step t :refused :held nil t) '(:refused)))
+; The second conjunct's hypothesis: with no socket node a (:done ...) outcome
+; is not an answer (the host never produces one; ACL2 does not trust it).
+(assert-event (equal (fn-nh-health-step nil '(:done (104 101)) :held nil t)
+                     '(:fenced :starting)))
+(must-fail
+ (defthm nht-clears-without-socket-present
+   (equal (fn-nh-health-step sp (list :done octets) lock clone listener)
+          (list :answered octets))
+   :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                      fn-nh-fence-of fn-nls-route)))
+   :rule-classes nil))
+; The iff without its route conjunct fails (an uncertain route is unanswering).
+(must-fail
+ (defthm nht-starting-step-without-route
+   (iff (equal (fn-nh-health-step sp outcome lock clone listener) '(:fenced :starting))
+        (and (not clone) (equal lock :held) listener))
+   :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                      fn-nh-fence-of fn-nls-route)))
+   :rule-classes nil))
+
+; ---------------------------------------------------------------------------
 ; fn-nh-exit-code-is-zero-or-past-the-outcome-codes (PKT-329): no hypothesis;
 ; the witnesses: a held verdict (a nonzero code that is no outcome code), an
 ; all-clear one (0, the code of :accepted), one unobserved (19).
@@ -302,3 +340,13 @@
  (defthm nht-exit-code-cases-without-len
    (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27))
    :rule-classes nil))
+
+; PKT-220 (PRF-185) fn-nls-obligations-figures-are-the-retention-figures: a
+; reachable owner with one retention pin and a reserved charge of 2; the
+; offline verb's figures and the live report's first line agree.
+(assert-event (equal (fn-rtf-pin-count *nht-s*) 1))
+(assert-event (equal (fn-rtf-reserved *nht-s*) 2))
+(assert-event
+ (equal (take 25 (fn-nls-live-report :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs*))
+        (fn-record-string-octets "obligations=1 reserved=2
+")))

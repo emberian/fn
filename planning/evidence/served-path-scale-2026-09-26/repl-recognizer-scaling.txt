@@ -1,0 +1,84 @@
+Form:  ( DEFUN OPT-KEYS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ OPT-KEYS
+
+[0.0 s]
+
+[1.9 s]
+ACL2 !>1000
+
+[0.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.00 seconds realtime, 0.00 seconds runtime
+; (1,361,920 bytes allocated).
+T
+
+[0.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.08 seconds realtime, 0.08 seconds runtime
+; (31,965,952 bytes allocated).
+T
+
+[0.1 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.14 seconds realtime, 0.14 seconds runtime
+; (0 bytes allocated).
+T
+
+[0.1 s]
+
+[5.6 s]
+ACL2 !>2000
+
+[0.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.00 seconds realtime, 0.00 seconds runtime
+; (2,703,248 bytes allocated).
+T
+
+[0.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.25 seconds realtime, 0.24 seconds runtime
+; (127,962,064 bytes allocated).
+T
+
+[0.3 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.40 seconds realtime, 0.40 seconds runtime
+; (0 bytes allocated).
+T
+
+[0.4 s]
+
+[21.5 s]
+ACL2 !>4000
+
+[0.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.01 seconds realtime, 0.01 seconds runtime
+; (5,421,008 bytes allocated).
+T
+
+[0.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 0.98 seconds realtime, 0.98 seconds runtime
+; (511,848,256 bytes allocated).
+T
+
+[1.0 s]
+NIL
+ACL2 !>; (EV-REC *RETURN-LAST-ARG3* ...) took 
+; 2.24 seconds realtime, 2.24 seconds runtime
+; (0 bytes allocated).
+T
+
+[2.2 s]

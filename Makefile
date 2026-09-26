@@ -142,9 +142,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
 	tests/acl2/native-control-tests \
+	books/native-control-reason \
+	tests/acl2/native-control-reason-tests \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
+	books/retention-figures \
+	books/control-evidence-grammar \
+	books/control-evidence \
+	tests/acl2/control-evidence-tests \
 	books/native-health \
 	tests/acl2/native-health-tests \
 	books/feed-filename \
@@ -183,9 +189,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
 	tests/acl2/store-budget-tests \
+	books/store-carried-folds \
+	tests/acl2/store-carried-folds-tests \
 	books/store-profile-upgrade \
 	books/byte-store-profile-program \
 	tests/acl2/store-profile-upgrade-tests \
+	books/store-profile-open \
+	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
 	tests/acl2/store-profile-namespace-tests \
 	books/store-checkpoint-open \
@@ -196,6 +206,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/linear-recognizers-tests \
+	tests/acl2/open-one-pass-tests \
 	books/byte-store-state-checkpoint-program \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
@@ -389,6 +400,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-session-admission-tests \
 	books/bp-channel-ingress \
 	tests/acl2/bp-channel-ingress-tests \
+	books/bp-listener-set \
+	tests/acl2/bp-listener-set-tests \
+	books/bp-node-forward-plan \
+	tests/acl2/bp-node-forward-plan-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
 	books/owner-store-indexed \
@@ -882,8 +897,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/login-binding-tests \
 	books/login-binding-live \
 	tests/acl2/login-binding-live-tests \
+	tests/acl2/native-admin-peer-budget-tests \
+	tests/acl2/account-list-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \
+	books/public-exposure-reply \
+	tests/acl2/public-exposure-reply-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
@@ -988,6 +1007,11 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	$(PYTHON) tools/docs_check.py --check
+# Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
+# SBCL's compile-file and the Python tests read them with different default
+# encodings; the files that still carry a section sign are listed debt
+# (tools/ascii_debt.json, PKT-496) that may only shrink.
+	$(PYTHON) tools/ascii_check.py --strict
 # A certified registry row must name existing ACL2 events whose defining
 # books have source- and include-closure-compatible manifest evidence, and
 # must itself cite an archived manifest that certified each event book at its
@@ -1193,7 +1217,7 @@ model-test: certify
 	$(PYTHON) tools/run_simulator.py
 
 # The tools' own tests, each module in its own process under tools/test_budget.py's
-# rule (180 s a module, 20 s a test, distinct pass/fail/over-budget exits).
+# rule (180 s a module, 20 s a test, distinct pass/fail/over-budget/all-skipped exits).
 # It was one `unittest` process under a 120 s timeout, which the honest total
 # outgrew: 29 modules take 170 s on the laptop (2026-09-26, tooling-velocity),
 # most of it real-tree reads -- certify_runner 39 s (49 fake-ACL2 runs),
@@ -1203,11 +1227,11 @@ model-test: certify
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate \
+	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 
@@ -1218,10 +1242,14 @@ tooling-test:
 # `--order reverse` runs each module's tests last to first, which is how a
 # test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
 # never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
-# chosen set the same way.
+# chosen set the same way.  A module whose every test skipped is reported
+# SKIPPED (N of N) with its reasons and exits 4 (PKT-437 (2)); --discover
+# includes the native modules, which skip on a machine without their image,
+# so `test` passes --allow-skipped (the report and its SKIPPED count stay;
+# native modules run under tools/hbox_native.sh, where a SKIPPED module fails).
 test: check certify
 	$(PYTHON) tools/run_simulator.py
-	$(PYTHON) tools/test_budget.py --discover --logs build/test-budget --json build/test-budget/report.json
+	$(PYTHON) tools/test_budget.py --allow-skipped --discover --logs build/test-budget --json build/test-budget/report.json
 
 test-modules:
 	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget

@@ -1,0 +1,58 @@
+Prover steps counted:  18591
+ FN-EXP-IDLE-CLOSES-ONLY-SILENCE
+ACL2 !>
+FN-REPL-DONE 114
+NIL
+>>> (with-prover-time-limit 60 (defun ers-mk (n acc) (declare (xargs :mode :program)) (if (zp n) acc (ers-mk (1- n) (cons (if (equal (mod n 80) 0) 10 65) acc)))))
+ACL2 !>
+Summary
+Form:  ( DEFUN ERS-MK ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ ERS-MK
+ACL2 !>
+FN-REPL-DONE 115
+NIL
+>>> (set-debugger-enable :bt)
+ACL2 !><state>
+ACL2 !>
+FN-REPL-DONE 116
+NIL
+>>> (car (fn-exp-observe (fn-exp-register (fn-exp-initial) 5 (quote (1 . 2)) 0) nil 5 100 (fn-served-reply-octets (list (list :reply (ers-mk 2097152 nil)))) 0 nil nil))
+ACL2 !>INFO: Control stack guard page unprotected
+Control stack guard page temporarily disabled: proceed with caution
+
+Backtrace for: #<SB-THREAD:THREAD tid=2469521 "main thread" RUNNING {1200050003}>
+0: (SB-INT:SIMPLE-EVAL-IN-LEXENV (SB-DEBUG:PRINT-BACKTRACE :STREAM *DEBUG-IO*) #<NULL-LEXENV>)
+1: (EVAL (SB-DEBUG:PRINT-BACKTRACE :STREAM *DEBUG-IO*))
+2: (PRINT-CALL-HISTORY)
+3: (OUR-ABORT #<SB-KERNEL::CONTROL-STACK-EXHAUSTED {121860B673}> #<unused argument>)
+4: (SB-DEBUG::RUN-HOOK *DEBUGGER-HOOK* #<SB-KERNEL::CONTROL-STACK-EXHAUSTED {121860B673}>)
+5: (INVOKE-DEBUGGER #<SB-KERNEL::CONTROL-STACK-EXHAUSTED {121860B673}>)
+6: (ERROR SB-KERNEL::CONTROL-STACK-EXHAUSTED)
+7: (SB-KERNEL::CONTROL-STACK-EXHAUSTED-ERROR)
+8: ("foreign function: call_into_lisp_")
+9: ("foreign function: post_signal_tramp")
+10: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+[... frames 11..983: FN-EXP-481-COUNT ...]
+990: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+991: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+992: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+993: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+994: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+995: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+996: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+997: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+998: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+999: (FN-EXP-481-COUNT #<unavailable argument> #<unavailable argument>)
+
+***********************************************
+************ ABORTING from raw Lisp ***********
+********** (see :DOC raw-lisp-error) **********
+Error:  Control stack exhausted (no more space for function call frames).
+This is probably due to heavily nested or infinitely recursive function
+calls, or a tail call that SBCL cannot or has not optimized away.
+
+PROCEED WITH CAUTION.
+NOTE: See above for backtrace.
+***********************************************

@@ -95,6 +95,9 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+;; PKT-261: per-destination dispatch and the forward plan
+;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
+(include-book "books/bp-node-forward-plan")
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")

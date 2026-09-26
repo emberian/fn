@@ -320,12 +320,25 @@
 ; The complete checkpoint namespace is an ACL2 decision: observation bounds,
 ; rendering, canonical parsing, ordering, gap detection and exhaustion.  The
 ; host supplies only the bounded list of directory-entry octets.
-(defconst *fn-cpp-max-generations* 4096)
+;
+; D27, PRF-171: no constant caps the generations.  A generation NUMBER is a
+; uint32, the codec width of the name and of the selection marker (iii, as
+; the transaction frontier's).  The names a store RETAINS are a capacity of
+; the operator's profile: CAPACITY is the profile's max-transactions plus one
+; (`fn-cpp-generation-capacity'; the host passes the opened profile's T), so
+; `store upgrade-profile' raises it with the transaction bound and a store
+; that compacts for years never meets a hidden lifetime figure.  (Until
+; PRF-171 a store got 4,096 publications in its lifetime: the old figure is
+; the instance T = 4095.)
+(defun fn-cpp-generation-capacity (max-transactions)
+  (declare (xargs :guard t))
+  (+ 1 (nfix max-transactions)))
 
 ; One explicit selection marker may coexist with the retained generations.
 ; The host asks for this bound before it starts retaining directory names.
-(defconst *fn-cpp-namespace-observation-limit*
-  (+ 1 *fn-cpp-max-generations*))
+(defun fn-cpp-namespace-observation-limit (capacity)
+  (declare (xargs :guard t))
+  (+ 1 (nfix capacity)))
 
 ; A selection payload is one canonical CBOR uint32, whose longest encoding is
 ; five octets, inside the common frame header and trailer.
@@ -338,20 +351,50 @@
 (defconst *fn-cpp-selection-name*
   '(#\s #\e #\l #\e #\c #\t #\e #\d #\. #\f #\n #\c #\p))
 
-(defun fn-cpp-next-generation-from (names expected)
+(defun fn-cpp-next-generation-from (names expected capacity)
   (declare (xargs :guard t))
   (cond ((or (not (fn-record-uint32p expected))
-             (>= expected *fn-cpp-max-generations*))
+             (>= expected (nfix capacity)))
          :exhausted)
         ((null names) expected)
         ((atom names) :bad)
         ((equal (car names) expected)
-         (fn-cpp-next-generation-from (cdr names) (+ 1 expected)))
+         (fn-cpp-next-generation-from (cdr names) (+ 1 expected) capacity))
         (t :bad)))
 
-(defun fn-cpp-next-generation (names)
+(defun fn-cpp-next-generation (names capacity)
   (declare (xargs :guard t))
-  (fn-cpp-next-generation-from names 0))
+  (fn-cpp-next-generation-from names 0 capacity))
+
+(local
+ (defthm fn-cpp-next-generation-from-at-the-capacity
+   (implies (and (natp expected)
+                 (not (equal (fn-cpp-next-generation-from names expected capacity)
+                             :bad))
+                 (<= (nfix capacity) (+ 1 *fn-cbor-max-uint*)))
+            (equal (fn-cpp-next-generation-from names expected capacity)
+                   (if (<= (nfix capacity) (+ expected (len names)))
+                       :exhausted
+                     (+ expected (len names)))))
+   :hints (("Goal" :induct (fn-cpp-next-generation-from names expected capacity)
+            :in-theory (enable fn-record-uint32p)))))
+
+; KEYSTONE (D27, PRF-171: the generation capacity is the operator's).  On a
+; gap-free namespace the next generation exists exactly while fewer than
+; CAPACITY names are retained, and it is the next number; CAPACITY is the
+; profile's max-transactions plus one (`fn-cpp-generation-capacity'), at
+; most the uint32 width.  Host: host/native/checkpoint.lisp
+; `fnn-checkpoint-publish' through host/checkpoint-host.lisp
+; `fn-store-checkpoint-next-generation' and
+; `fn-store-checkpoint-publication-initial', with the opened profile.
+(defthm fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity
+  (implies (and (not (equal (fn-cpp-next-generation names capacity) :bad))
+                (<= (nfix capacity) (+ 1 *fn-cbor-max-uint*)))
+           (equal (fn-cpp-next-generation names capacity)
+                  (if (<= (nfix capacity) (len names))
+                      :exhausted
+                    (len names))))
+  :hints (("Goal" :in-theory (enable fn-cpp-next-generation))))
 
 ; The filename codec reuses the byte store's one natural-decimal renderer.
 ; Prefix/suffix removal and canonical re-rendering reject aliases such as
@@ -426,10 +469,10 @@
               (t '(:error :name))))
     (if (null names) (list :ok generations) '(:error :names))))
 
-(defun fn-cpp-namespace-plan (names)
+(defun fn-cpp-namespace-plan (names capacity)
   (declare (xargs :guard t))
   (if (and (true-listp names)
-           (<= (len names) *fn-cpp-namespace-observation-limit*))
+           (<= (len names) (fn-cpp-namespace-observation-limit capacity)))
       (fn-cpp-namespace-plan-aux names nil)
     '(:error :bound)))
 
@@ -466,9 +509,9 @@
 ; namespace, and absence of the exact final name.  The raw executor receives
 ; the returned fn-jpub state; it never manufactures authority itself.
 (defun fn-cpp-publication-initial
-  (names proposed-generation exclusivep final-absentp)
+  (names proposed-generation exclusivep final-absentp capacity)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((next (fn-cpp-next-generation names)))
+  (let ((next (fn-cpp-next-generation names capacity)))
     (cond ((equal next :bad) '(:error :namespace))
           ((equal next :exhausted) '(:error :exhausted))
           ((not (equal proposed-generation next)) '(:error :generation))
@@ -721,20 +764,20 @@
 
 (defthm fn-cpp-publication-initial-authorizes-state
   (implies (equal (car (fn-cpp-publication-initial
-                        names proposed-generation exclusivep final-absentp))
+                        names proposed-generation exclusivep final-absentp capacity))
                   :ok)
            (and (equal (car (cdr (fn-cpp-publication-initial
                                   names proposed-generation exclusivep
-                                  final-absentp)))
+                                  final-absentp capacity)))
                        proposed-generation)
                 (fn-jpub-statep
                  (car (cdr (cdr (fn-cpp-publication-initial
                                  names proposed-generation exclusivep
-                                 final-absentp)))))
+                                 final-absentp capacity)))))
                 (fn-jpub-authorityp
                  (car (cdr (cdr (fn-cpp-publication-initial
                                  names proposed-generation exclusivep
-                                 final-absentp)))))))
+                                 final-absentp capacity)))))))
   :hints (("Goal" :in-theory (enable fn-cpp-publication-initial
                                       fn-cpp-next-generation
                                       fn-jpub-initial fn-jpub-state

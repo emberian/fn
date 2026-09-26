@@ -50,10 +50,11 @@
     (unless (fnn-lstat directory) (return-from fnn-pack-generations nil))
     (fnn-safe-directory directory)
     (let* ((names (fnn-list-directory-bounded
-                   directory (fnn-checkpoint-namespace-observation-limit) "pack namespace"))
+                   directory (fnn-checkpoint-namespace-observation-limit store) "pack namespace"))
            (plan (fnn-core 'fn-store-checkpoint-namespace-plan
                            (mapcar (lambda (name)
-                                     (fnn-octet-list (fnn-string-octets name))) names))))
+                                     (fnn-octet-list (fnn-string-octets name))) names)
+                           (fnn-store-config store))))
       (unless (and (listp plan) (eq (first plan) :ok))
         (fnn-fault "ACL2 rejected pack namespace: ~s" plan))
       (second plan))))
@@ -101,7 +102,9 @@ covers (the chain's coverage for SUMMARY)."
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-pack-generations store))
            (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
-                                 generations)))
+                                 generations (fnn-store-config store))))
+      (when (eq generation :exhausted)
+        (fnn-refuse "pack generations at the profile's capacity (max-transactions + 1): retire older generations or raise it with store upgrade-profile"))
       (unless (and (integerp generation) (>= generation 0)
                    (listp captured) (eq (first captured) :ok)
                    (fnn-octet-list-p (second captured))
@@ -114,7 +117,8 @@ covers (the chain's coverage for SUMMARY)."
              (frame (fnn-seal (fnn-octets (second captured)))))
         (let ((authorization
                 (fnn-core 'fn-store-checkpoint-pack-publication-initial
-                          generations generation t (if (fnn-lstat final) nil t))))
+                          generations generation t (if (fnn-lstat final) nil t)
+                          (fnn-store-config store))))
           (unless (and (listp authorization) (eq (first authorization) :ok)
                        (= (second authorization) generation))
             (fnn-fault "ACL2 refused pack publication authority: ~s" authorization))
@@ -360,8 +364,11 @@ and the boundary ACL2 computed over them."
 (setq *fnn-pack-recover-callback* #'fnn-pack-recover-records)
 (setq *fnn-pack-lower-bound-callback* #'fnn-pack-lower-bound)
 
-(defun fnn-checkpoint-namespace-observation-limit ()
-  (let ((limit (fnn-core 'fn-store-checkpoint-namespace-observation-limit)))
+(defun fnn-checkpoint-namespace-observation-limit (store)
+  "D27, PRF-171: the opened profile's retained-generation capacity plus the
+selection marker (`fn-cpp-generation-capacity')."
+  (let ((limit (fnn-core 'fn-store-checkpoint-namespace-observation-limit
+                         (fnn-store-config store))))
     (unless (and (integerp limit) (>= limit 0))
       (fnn-fault "ACL2 returned invalid checkpoint namespace bound"))
     limit))
@@ -378,13 +385,14 @@ and the boundary ACL2 computed over them."
     (unless (fnn-lstat directory) (return-from fnn-checkpoint-generations nil))
     (fnn-safe-directory directory)
     (let* ((names (fnn-list-directory-bounded
-                   directory (fnn-checkpoint-namespace-observation-limit)
+                   directory (fnn-checkpoint-namespace-observation-limit store)
                    "checkpoint namespace"))
            (plan (fnn-core
                   'fn-store-checkpoint-namespace-plan
                   (mapcar (lambda (name)
                             (fnn-octet-list (fnn-string-octets name)))
-                          names))))
+                          names)
+                  (fnn-store-config store))))
       (unless (and (listp plan) (eq (first plan) :ok)
                    (listp (second plan))
                    (every (lambda (generation)
@@ -424,10 +432,10 @@ and the boundary ACL2 computed over them."
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-checkpoint-generations store))
            (generation (let ((answer (fnn-core 'fn-store-checkpoint-next-generation
-                                               generations)))
+                                               generations (fnn-store-config store))))
                          (case answer
                            (:bad (fnn-fault "checkpoint generation namespace is not gap-free"))
-                           (:exhausted (fnn-refuse "checkpoint generation domain exhausted"))
+                           (:exhausted (fnn-refuse "checkpoint generations at the profile's capacity (max-transactions + 1); raise it with store upgrade-profile"))
                            (otherwise (fnn-nat answer)))))
            (frame (fnn-checkpoint-capture records store))
            (stage (fnn-join (fnn-staging store)
@@ -438,12 +446,13 @@ and the boundary ACL2 computed over them."
       ; next-final-absent premise.  The shared effect never replaces FINAL.
       (let ((authorization
               (fnn-core 'fn-store-checkpoint-publication-initial
-                        generations generation t (if (fnn-lstat final) nil t))))
+                        generations generation t (if (fnn-lstat final) nil t)
+                        (fnn-store-config store))))
         (unless (and (listp authorization) (eq (first authorization) :ok)
                      (= (second authorization) generation))
           (case (second authorization)
             (:occupied (fnn-fault "checkpoint next generation is already occupied"))
-            (:exhausted (fnn-refuse "checkpoint generation domain exhausted"))
+            (:exhausted (fnn-refuse "checkpoint generations at the profile's capacity (max-transactions + 1); raise it with store upgrade-profile"))
             (otherwise (fnn-fault "ACL2 refused checkpoint publication authority: ~s"
                                   authorization))))
         (setf (fnn-store-fenced store) t)

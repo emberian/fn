@@ -200,3 +200,120 @@ Laptop: every module this lane touched through tools/test_budget.py (29
 tooling modules, 170 s, all within budget); `make check-lane` (below).
 persvati: the farm run above; proof_repl list/reap. hbox: the two native runs
 (/tank/fn/scratch/tooling-velocity/). /tank/fn/node untouched.
+
+## Continuation (tooling-velocity-2, 2026-09-26)
+
+Brief: build/coordinator/queue/done/w4-tooling-velocity-2.txt. Branch
+lane/tooling-velocity-2 from dev 9cace143. Ids: PKT-493, PKT-379, PKT-394
+ticked; PKT-445 (b), PKT-446 and PKT-490 narrowed; PKT-496 (what this lane
+leaves). No PRF, requirement or scenario; no theorem, host file or budget
+changed. The one book byte change is the generated docs grammar book.
+
+1. **PKT-493, the docs grammar book cites a section, never a line**
+   (46b7d397; certified 295b67be). A row of
+   tests/acl2/docs-operator-grammar-tests.lisp is now
+   `("DOC#SECTION" ORDINAL WORD...)`: the GitHub anchor of the heading the
+   invocation sits under (fence-aware; a repeated heading gets `-1`, `-2`)
+   and its ordinal among that section's operator invocations, e.g.
+   `("docs/operator.md#native-component-entry" 1 "help")`. Chosen over a
+   content digest: the argv words already are the content, and an anchor is
+   a link a reader can follow; it changes only when that section's own
+   invocations change. Book diff: the 49 rows' citation form and the one
+   comment naming it (`git diff --numstat`: 1 file, 50 +, 48 -); no function
+   or assertion changed. persvati run-20260926T140228Z-bd06,
+   certify-20260926T140253Z-2621107 (manifest committed): 1 certified in
+   1.4 s, 152 installed from the cache, no book over 10 s. `--check` still
+   fails whenever an invocation is added or changed, and ACL2's grammar
+   decides the new row at certification. Tests (tests/test_docs_check.py):
+   prose inserted in another section, in the same section and 40 lines at
+   the top leaves the book byte-identical; a new invocation changes it;
+   slugs are fence-aware and numbered on repeat.
+2. **PKT-379, books/ and host/ are ASCII** (e46c3c57). tools/ascii_check.py
+   `--strict` in make check (so check-lane) refuses a non-ASCII byte in any
+   tracked file under books/ or host/ as `REFUSED FILE:LINE:COL: bytes 0xC2
+   0xA7 (U+00A7 SECTION SIGN)`. Today 66 lines in 32 books carry a U+00A7 in
+   a comment; they are DEBT (tools/ascii_debt.json `debt.PKT-496`, exact
+   per-file line counts), not an exemption: no book needs one, but rewriting
+   them changes 32 certified books including books/records and books/cbor,
+   a closure recertification this lane may not run. `--strict` refuses a new
+   character in a debt file (the count must match exactly) and a debt entry
+   whose file got cleaner, so the list only shrinks. Tests:
+   tests/test_ascii_check.py (in tooling-test).
+3. **PKT-394, reach_check expands fn-defrecord** (431e3426).
+   tools/reach_check.py reads each `(fn-defrecord NAME ...)` (the macro is
+   books/defrecord.lisp:223) and makes its generated recognizer a
+   definition whose body is the `:fields` types, `:extra` and
+   `:recognizer-formals`. Only the recognizer: counting the generated
+   accessors too hosted PRF-088 fn-rcl-reclaim-keeps-the-numbering and
+   PRF-118 fn-arn-store-corr-of-commit through a field read
+   (fn-state-groups, fn-record-payload), which is not their subject. The
+   checker's own file is no longer a bridge (its docstring named book
+   functions and seeded them in a first draft). `--strict`: 43 orphans from
+   45, 0 unbaselined. Rows moved: PRF-173 fn-articles-freshp-is-one-pass
+   (host/index-host.lisp names fn-statep -> its :fields -> fn-articles-freshp
+   -> :exec fn-fr-freshp) and PRF-173
+   fn-node-articles-have-archive-bindingsp-is-indexed (host/owner-host.lisp
+   -> fn-node-statep -> fn-node-articles-have-archive-bindingsp ->
+   fn-nab-articles-boundp) LEAVE the baseline by being reached. PRF-173
+   fn-fr-disjointp-commutes STAYS, re-reasoned HOST -> SPEC:
+   fn-fr-disjointp is a proof-only relation that no executed function calls
+   (the :exec path is fn-fr-freshp -> fn-fr-scan -> fn-fr-unboundp); it is
+   the lemma the one-pass theorem is proved with. served-path-scale's
+   "executed at every open" held for the other two, not this one. No other
+   row changed. `--baseline` now keeps the file's note. PKT-376 (the
+   proof-only abbreviation) is not touched. Tests: tests/test_reach_check.py.
+4. **PKT-445 (b), two over-budget native tests** (cb7df15d). bp_node: the two
+   BP-R17 busy tests write the operator's `owner-backoff 500` row into
+   JOURNAL/bp-node-budgets (read by host/native/bp-node.lisp
+   fnn-bpnode-read-budgets, validated by fn-bpnp-configured-budgets) and
+   wait on the node's `deferred busy=N after=M` reading against
+   CLOCK_BOOTTIME (fnn-bp-monotonic-now's clock), asserting M is at most the
+   configured backoff from now. control: every selector is still refused on
+   `operator run`; `store recover` is asked with one (the gate is one call
+   on the whole argv before dispatch, pinned by
+   test_the_gate_runs_before_dispatch). hbox, /tank/fn/scratch/
+   tooling-velocity-2/native-before, images of 431e3426 (fn-host
+   `e256e50c...`, fn-host-developer `118bdbbe...`); after = e24be0f6 on the
+   same images (`--no-build`; no host or book byte differs), both status 0:
+   | test | before s | after s |
+   |---|---|---|
+   | bp_node busy_application_defers_and_redelivers_after_backoff | 7.61 | 2.61 |
+   | bp_node permanently_busy_application_strands_row_until_resume | 22.05 | 6.62 |
+   | control production_image_refuses_every_selector_at_startup | 7.63 | 3.99 |
+   bp_node 27 OK both; control 18 OK both. After-run logs:
+   test_bp_node_native.log `11f93f72...`, test_native_control.log
+   `35267672...` (the before logs were overwritten by the reused label;
+   their timings are quoted from the run's FN_TEST_BUDGET_RESULT lines).
+   The control selector test measured 7.6 s here, not the 125.5 s of
+   harness-repair-2's sweep: the earlier figure was a loaded or developer-
+   image run, so the saving is smaller than the packet assumed. The one
+   test still over 20 s is bp_node's first,
+   test_absent_bp_trust_refuses_custody_with_the_policy_reason (36.1 s
+   before, 20.2 s after, the module's first image start): PKT-496.
+5. **PKT-446, 349 -> 322 stale citations (254 -> 232 names)** (84235bf4).
+   tools/spec_cite_check.py resolves a record's own name
+   (`(fn-defrecord fn-node-state ...)`) and a slash abbreviation
+   (`fnn-metadata-config-frame/-decode`) when every expansion is defined
+   (13 entries, specs/host.md's abbreviations and three record names).
+   Corrected: specs/bp-primary.md's two ADU-key theorems to their
+   `-by-definition` names; specs/peering.md's K2 outbound half to
+   fn-own-feed-never-offers-a-loop; specs/bp-evolving-store.md's L19 to
+   fn-bprv-replay-loop-installs-every-record. Exempted with reasons
+   (history or a spec-to-implementation table): fn-feed-parse-response,
+   fn-feed-offerablep, fn-store-cfg-peer-name-list,
+   fn-record-decode-exact-refuses-another-header,
+   fn-nntp-hdr-labelled-line-is-block-text. The rest: no git history defines
+   most of them (design names never built); their repair is a spec rewrite
+   (e.g. specs/reconfiguration.md's fn-own-* sample against
+   books/owner-config.lisp's fn-ocfg-* signatures), not a rename.
+6. **PKT-490 (3)** (e24be0f6): hbox_native.sh accepts options after REV or a
+   module; test in tests/test_hbox_native.py.
+
+What ran: make check-lane green at 84235bf4; tooling tests of every changed
+tool (docs_check 6, ascii_check 3, reach_check 11, spec_cite_check, hbox_native 9).
+
+PKT-496 (not done): the 66 U+00A7 lines in 32 books (rewrite at the next
+closure recertification, then empty tools/ascii_debt.json); 322 stale spec
+citations (PKT-446 continues); bp_node's first test at 20.2 s (a cold first
+image start, examine); PKT-445 (a), (c), (d), (e) and the five
+one-start-per-cut modules; PKT-490 (1), (2), (4); PKT-376.

@@ -26,6 +26,8 @@
 ; group-name rules, the plan, its deltas and the publication decision.
 (include-book "native-admin-shape")
 (include-book "native-admin-peer")
+; PKT-211: `peer list' renders the carriage budget (its own book, D26).
+(include-book "native-admin-peer-budget")
 ; `bp-route add|remove', the BP route table (books/bp-route.lisp).
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
@@ -172,7 +174,8 @@
   (declare (xargs :guard t
                   :guard-hints
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
-                                               fn-native-admin-decimal-value)))))
+                                               fn-native-admin-decimal-value
+                                               (tau-system))))))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
@@ -372,7 +375,7 @@
 
 ; PRF-099: the deltas over the live peer table.  An :extend-peer plan
 ; (`peer carries', `peer budget') extends the named boundary's rows as the
-; table holds them now (fn-pcb-extend-delta); every other plan is
+; table holds them now (fn-pcb-extend-deltas); every other plan is
 ; fn-native-admin-plan-deltas unchanged.  Host: host/native-admin-host.lisp
 ; fn-native-admin-host-owner-reconfigure (the live owner's table) and
 ; fn-native-admin-host-apply (the replayed store's table).
@@ -380,11 +383,14 @@
   (declare (xargs :guard t))
   (if (and (equal (fn-native-admin-result-status plan) :accepted)
            (equal (fn-native-admin-result-kind plan) :extend-peer))
-      (let ((delta (fn-pcb-extend-delta
-                    (fn-record-octets-string (fn-native-admin-result-name plan))
-                    (fn-native-admin-result-value plan)
-                    peers)))
-        (if delta (list delta) nil))
+      ; PRF-171: the incremental deltas (:add-peer-rows, then
+      ; :remove-peer-rows of a superseded single-valued slot), which apply
+      ; as the whole-group `fn-pcb-extend-delta'
+      ; (`fn-pcb-extend-deltas-apply-as-the-extend-delta').
+      (fn-pcb-extend-deltas
+       (fn-record-octets-string (fn-native-admin-result-name plan))
+       (fn-native-admin-result-value plan)
+       peers)
     (fn-native-admin-plan-deltas plan)))
 
 (defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
@@ -439,7 +445,9 @@
            (fn-record-group-namep
             (fn-record-octets-string (fn-native-admin-result-name (fn-native-admin-plan argv)))))
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  (fn-native-admin-words
+                                  ((tau-system) fn-native-admin-words
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-carries-rows
                                    fn-native-admin-carries-hexp subsetp-equal
                                    fn-native-admin-retention-days
@@ -542,7 +550,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (cond ((equal (fn-native-admin-result-kind plan) :list-control)
          (fn-native-admin-control-report (fn-cfg-authorities value)))
-        (t (fn-native-admin-peer-report (fn-cfg-peers value)))))
+        (t (fn-native-admin-peer-budget-report (fn-cfg-peers value)))))
 
 
 (encapsulate ()
@@ -556,7 +564,9 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                   (fn-native-admin-bp-boundary-plan (fn-native-admin-words argv))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  (fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
+                                  ((tau-system) fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-record-group-namep fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-words))
@@ -863,7 +873,9 @@ recovery observes it under (`fn-nco-observe')."
                   (equal (fn-native-admin-plan-deltas plan) nil))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  (fn-native-admin-group-name-reservedp
+                                  ((tau-system) fn-native-admin-group-name-reservedp
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
                                    fn-native-admin-peer-plan
                                    fn-native-admin-bp-boundary-plan
@@ -889,7 +901,9 @@ recovery observes it under (`fn-nco-observe')."
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan
                                    fn-native-admin-group-name-creatablep)
-                                  (fn-native-admin-group-name-reservedp
+                                  ((tau-system) fn-native-admin-group-name-reservedp
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
                                    fn-native-admin-peer-plan
                                    fn-native-admin-bp-boundary-plan

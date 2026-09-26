@@ -1,0 +1,39 @@
+{
+  "_comment": "PKT-379: tools/ascii_check.py. The files that carried a non-ASCII byte (each a U+00A7 SECTION SIGN in a comment) when the check landed, with their exact count of non-ASCII lines. Debt, not exemption: no book needs a non-ASCII byte. Rewriting them recertifies 32 books including books/records and books/cbor, so it rides the next closure recertification (PKT-496); --strict fails when a count changes or a file is clean, so the list only shrinks.",
+  "debt": {
+    "PKT-496": {
+      "books/article-fields.lisp": 1,
+      "books/article.lisp": 2,
+      "books/assumptions.lisp": 1,
+      "books/bp-node-progress.lisp": 1,
+      "books/bp-release.lisp": 2,
+      "books/byte-store-invariants.lisp": 5,
+      "books/byte-store-programs.lisp": 7,
+      "books/byte-store.lisp": 2,
+      "books/cbor.lisp": 3,
+      "books/checkpoint-publish.lisp": 1,
+      "books/codec-attach.lisp": 1,
+      "books/container-invariants.lisp": 1,
+      "books/container.lisp": 6,
+      "books/lace.lisp": 1,
+      "books/nntp-syntax.lisp": 1,
+      "books/principal.lisp": 1,
+      "books/record-width-producers.lisp": 1,
+      "books/records-canonicality.lisp": 4,
+      "books/records-seam.lisp": 2,
+      "books/records-shape.lisp": 6,
+      "books/records.lisp": 3,
+      "books/scheduler-invariants.lisp": 1,
+      "books/scheduler.lisp": 1,
+      "books/statement-codec.lisp": 1,
+      "books/statement-items.lisp": 1,
+      "books/statement-seam.lisp": 1,
+      "books/statement.lisp": 1,
+      "books/store-budget-article.lisp": 1,
+      "books/store-events.lisp": 2,
+      "books/store-history-required.lisp": 1,
+      "books/transfer-journal-invariants.lisp": 3,
+      "books/transfer-journal.lisp": 1
+    }
+  }
+}

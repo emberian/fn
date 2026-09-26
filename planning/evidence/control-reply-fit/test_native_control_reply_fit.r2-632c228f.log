@@ -1,0 +1,12 @@
+test_the_arm_and_the_named_live_status_refusal_are_carried (tests.test_native_control_reply_fit.ControlReplyFitSourceTests.test_the_arm_and_the_named_live_status_refusal_are_carried) ... ok
+test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling (tests.test_native_control_reply_fit.ControlReplyFitTests.test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling) ... refused operator init MAX-RECORD-OCTETS-ABOVE-THE-POLL-REPLY
+
+ok
+test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it (tests.test_native_control_reply_fit.ControlReplyFitTests.test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it) ... refused operator upgrade-profile store profile upgrade refused: max-record-octets-above-the-poll-reply
+
+ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 4.110s
+
+OK

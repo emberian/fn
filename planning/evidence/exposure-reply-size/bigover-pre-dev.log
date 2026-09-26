@@ -1,0 +1,6 @@
+init 0 initialized /dev/shm/exposure-reply-size/over-pre-dev/store accepted operator init
+posted 2000 (0 refused) in 9.9 s
+GROUP b'211 2000 1 2000 fn.test'
+OVER ->  lines=0 octets=0 none sha256=e3b0c44298fc1c14 2.60 s
+STAT EXC ConnectionRefusedError(111, 'Connection refused')
+owner alive after OVER=False exit=4 | PROCEED WITH CAUTION. / INFO: Control stack guard page reprotected / fault operator run

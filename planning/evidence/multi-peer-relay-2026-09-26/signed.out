@@ -1,0 +1,8 @@
+STEP 0 setup: stores, D23 boundaries, routes, signed report, consumers asleep, A's obligation undertaken held=True outcome=accepted
+STEP 1 A requests via X; X's MRU forces fragments; X reassembles and holds (r1 down) held=True outcome=accepted
+STEP 2 X SIGKILLed while holding; r1 starts; X restarts from FNBS and forwards to r1; r2 starts later held=True outcome=accepted
+STEP 3 B admits (D23 carried), kind-5 custody, Store delivery, receipt queued toward fn-a via Y held=True outcome=request-accepted
+STEP 4 B's receipt crosses its own outage (X down, A SIGKILLed) and settles at A before B's consumer wakes held=True outcome=receipt-accepted
+STEP 5 B's consumer wakes after A settled: verify, poll, ack; B signs a reply and requests it toward fn-a held=True outcome=accepted
+STEP 6 the reply crosses back; A delivers; A's receipt releases B's pin; A's consumer wakes, polls and acks held=True outcome=request-accepted
+REPORT /tank/fn/scratch/multi-peer-relay/mission-e3236a47/signed/report.json all_steps_held=True

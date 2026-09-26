@@ -1,0 +1,14 @@
+test_step_rollback_step_post_3_mib_restart (tests.test_native_bounds_join.DeployRehearsalTests.test_step_rollback_step_post_3_mib_restart) ... skipped 'FN_FORMAT7_IMAGE names a pre-D27 image'
+test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it (tests.test_native_bounds_join.LargeArticleTests.test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it) ... POST 33792 ('240 article received OK', True)
+POST 204800 ('240 article received OK', True)
+POST 3145728 ('240 article received OK', True)
+ok
+test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving (tests.test_native_bounds_join.LargeReplyTests.test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving) ... POST 1048576 ('240 article received OK', True)
+POST 2097152 ('240 article received OK', True)
+POST 3145728 ('240 article received OK', True)
+ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 24.350s
+
+OK (skipped=1)

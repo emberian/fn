@@ -294,9 +294,11 @@
           opened
         (fn-frame-error :control-frame)))))
 
-(defun fn-native-control-request-decode (octets)
+; The request's payload grammar, apart from the frame that carries it: kind
+; 1, and kind 13 (books/native-control-reason.lisp, the request whose reply
+; names its reason) carry the same payload.
+(defun fn-nctrl-request-payload-decode (opened)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-nctrl-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let ((payload (fn-frame-result-payload opened)))
@@ -317,11 +319,15 @@
                 (if (not (and groups
                               (fn-nctrl-requestp msgid groups article)))
                     (list :refused :request)
-                  (list :request msgid groups article))))))))))))
+                  (list :request msgid groups article)))))))))))
 
-(defun fn-native-control-admin-decode (octets)
+(defun fn-native-control-request-decode (octets)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-nctrl-admin-kind*)))
+  (fn-nctrl-request-payload-decode
+   (fn-nctrl-open octets *fn-nctrl-request-kind*)))
+
+(defun fn-nctrl-admin-payload-decode (opened)
+  (declare (xargs :guard t))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let ((parsed (fn-nctrl-admin-argv-decode
@@ -331,7 +337,11 @@
           (let ((argv (fn-record-parse-value parsed)))
             (if (and (consp argv) (fn-native-admin-argvp argv))
                 (list :admin argv)
-              (list :refused :arguments))))))))
+              (list :refused :arguments)))))))
+
+(defun fn-native-control-admin-decode (octets)
+  (declare (xargs :guard t))
+  (fn-nctrl-admin-payload-decode (fn-nctrl-open octets *fn-nctrl-admin-kind*)))
 
 (defun fn-nctrl-reply-encode-with (statuses status)
   (declare (xargs :guard t))

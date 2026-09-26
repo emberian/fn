@@ -1240,7 +1240,7 @@ expected, an fn journal digest before and after, and INN's `news.notice` and
 | S4 | both | duplicate: S2's articles re-offered by a forced backlog replay (`innfeed -y` / re-enqueue in fn) | INN: `438`; fn: `438` at CHECK and, with a client that ignores it, `439` at TAKETHIS (RFC 4644 §2.4.2 advisory rule exercised) |
 | S5 | INN → fn | policy refusal: article in `alt.test` only | `438 <msgid>` at CHECK (`:out-of-scope`); forced `TAKETHIS` → `439`; IHAVE variant: `435` |
 | S6 | INN → fn | `437`: article with neither `Injection-Date` nor `Date` via `IHAVE` | `335` then `437` (`:no-date`); the node unchanged, journal digest equal |
-| S7 | fn → INN | loop, outbound: an article received from INN (Path contains `inn.hbox.test`) | never offered back: no CHECK for it in `innfeed`'s log, and `fn-feed-never-offers-a-loop`'s witness is this transcript |
+| S7 | fn → INN | loop, outbound: an article received from INN (Path contains `inn.hbox.test`) | never offered back: no CHECK for it in `innfeed`'s log, and `fn-own-feed-never-offers-a-loop`'s witness is this transcript |
 | S8 | INN → fn | loop, inbound: an article whose Path names `fnA.hbox.test` in the middle, injected at INN with a hand-built Path | `438` (`:loop`); the tail-entry variant is accepted |
 | S9 | both | `431`/`436` and backoff: `ctlinnd throttle` during S2 and, reversed, a `reconfigure (:set-capacity r)` at fn's current reservation during S3 | fn backs off with the journaled `431` and resumes after `ctlinnd go`; INN's `innfeed` requeues on fn's `431` and delivers after capacity is raised |
 | S10 | fn → INN | restart mid-feed: `SIGKILL` fn after the `(:feed-sent ...)` of article 3 of 5, before its `239` | after restart, the first command for article 3 is `CHECK`, answered `438`; INN's `history` has each of the five exactly once; the feed journal has exactly one `235/239` outcome per msgid |
@@ -1719,7 +1719,7 @@ or the statement's change is already in the keyring at a later generation
 (`already-acted`); a statement that declines again is reported `declined
 REASON`.
 
-SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened
+SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened, and a friend whose keys succeeded since genesis is peered under its current keys, never under a superseded set
 
 **A login's signing binding, live (PKT-221, PRF-175).** The posting policy's
 login-to-principal table (`posting-policy bound-logins`,
@@ -1867,8 +1867,25 @@ acceptance is an enrolment and never a second consumption
 refused (`:already-confirmed`). Any other acceptance of that nonce is refused
 (`:invitation-consumed`).
 
+**Succession-era documents (PRF-179, PKT-211).** Every document is read
+under the reading node's keyring (`fn-owner-hybrid-snapshots`): for a
+principal the keyring holds a generation of, the carrier's key set binds it
+only if it is the principal's current enrolment
+(`fn-pinv-document-binds-a-known-principal-only-at-its-current-keys`,
+`fn-pinv-document-of-a-current-enrolment-is-accepted`); a superseded set is
+refused `not-current-keys`, a revoked principal `revoked`. A principal with no
+generation is decided by its genesis identity exactly as before
+(`fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision`). The
+confirm of an acceptor already current at the acceptance's keys ends with the
+consuming record: the step answers `(:current)` and enrols nothing
+(`fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption`). The
+accept of an inviter already enrolled here is still refused
+`already-enrolled`; the accepting CLI builds its acceptance from the plan
+under the empty keyring, which is the owner's whenever the owner enrolled
+(`fn-pinv-an-enrolling-accept-is-the-clis-plan`).
+
 **Refusals, by name:** `unverified`, `document-kind`, `claimed-keys`,
-`genesis`, `nonce`, `source-id`, `invitation-source-id`,
+`genesis`, `not-current-keys`, `revoked`, `nonce`, `source-id`, `invitation-source-id`,
 `inviter-principal`, `no-such-invitation`, `another-inviter`,
 `another-invitation`, `invitation-consumed`, `already-confirmed`,
 `already-enrolled`, `invitation-nonce-reused`.
@@ -2016,7 +2033,7 @@ Keystones, as certified (statements in `books/peer-inbound-invariants.lisp`):
 | K1 refused transfer leaves the node | `fn-peer-refused-transfer-leaves-the-node` (`-by-definition`, `:rule-classes nil`) | | loop, duplicate and out-of-scope transfers return the node `equal` |
 | K1 "accepted through transit satisfies every acceptance premise" (`fn-peer-accepted-article-is-acceptance-accepted`) | **open** | | not attempted this wave: it is a theorem over `fn-node-complete` after `fn-node-prepare` and needs `fn-node-complete-preserves-state`'s article projection |
 | K2 loop refused at transfer | `fn-peer-loop-is-refused` | the Path names the local identity; `fn-node-statep`, `fn-cfgp` and the parse hypothesis were unnecessary and are dropped | identity second of three: refused `:loop`; tail-entry, `.POSTED` and `.POSTED.<src>` variants accepted; `fnA.hbox.test.old` not a match; unparsable octets are `:proto-article`, not `:loop` |
-| K2 outbound half (`fn-feed-never-offers-a-loop`, `fn-peer-render-prepends-path`) | **open**, feed lane | | |
+| K2 outbound half (`fn-own-feed-never-offers-a-loop`, `fn-peer-render-prepends-path`) | **open**, feed lane | | |
 | K2 general loop-test lemma over an arbitrary identity | **open** (`fn-path-names-p-ignores-the-tail-entry` was attempted and removed; the split/reverse induction did not close in budget) | | witnessed on concrete Paths |
 | K3 (K4 offer/transfer half) duplicate refused at offer and transfer | `fn-peer-history-is-refused-at-offer`, `fn-peer-history-is-have-at-offer`, `fn-peer-history-is-refused-at-transfer`, `fn-peer-history-grows-under-transfer` | history membership; for `-is-have-` also the peer record with an inbound half and a syntactic Message-ID; for `-grows-` `fn-node-statep` | `435`/`438` transcripts after the durable completion; a fresh Message-ID on the same node is `:want`; the binding is a tombstone (`fn-node-find-binding` consp after completion) |
 | K3 after replay (`fn-peer-history-survives-reopen`) | **open**, needs the store-node trace books | | |

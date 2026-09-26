@@ -18,6 +18,9 @@ Not checked, by visible rule (each counted in the summary):
     and images, which prose names without their being Lisp definitions;
   * tag: a `-vN` suffix (`fn-hybrid-v1`, `fn-peering-v1`): a versioned
     domain-separation tag or format name, octets rather than a name.
+Resolved besides a definition (PKT-446): a record's own name
+(`(fn-defrecord fn-node-state ...)`), and a slash abbreviation
+(`fnn-metadata-config-frame/-decode`) whose every expansion is defined.
 Named exemptions (tools/spec_cite_exemptions.json `exemptions`) are names a
 person judged are not definitions, each with a reason.  The `stale` section
 names, per packet, the citations known to be stale and not yet repaired,
@@ -80,6 +83,17 @@ def citations(documents):
                     yield span.lower(), f"{relative}:{number}"
 
 
+def abbreviated(name: str) -> list[str]:
+    """`fn-store-metadata-config-frame/-decode' is prose for two names: the
+    first, and the first with its last segment replaced by each `/-SUFFIX'
+    (`fn-store-metadata-config-decode').  A span without `/-' is itself."""
+    if "/-" not in name:
+        return [name]
+    first, *suffixes = name.split("/-")
+    stem = first.rsplit("-", 1)[0]
+    return [first] + [f"{stem}-{suffix}" for suffix in suffixes]
+
+
 def check(defined: set, documents, exemptions: dict) -> Result:
     named = {name.lower(): reason for name, reason in exemptions.get("exemptions", {}).items()}
     listed = {}  # name -> (packet, set of files)
@@ -91,7 +105,7 @@ def check(defined: set, documents, exemptions: dict) -> Result:
     seen_named: set = set()
     for name, where in citations(documents):
         result.checked += 1
-        if name in defined:
+        if name in defined or all(n in defined for n in abbreviated(name)):
             result.resolved += 1
             continue
         rule = rule_for(name)
@@ -129,6 +143,11 @@ def defined_names() -> set:
         names |= book.definitions
     for host in tree.hosts.values():
         names |= host.defines | host.macros
+    # A record's own name, `(fn-defrecord fn-node-state ...)'
+    # (books/defrecord.lisp): prose names the record kind by it.
+    for path in sorted((ROOT / "books").glob("*.lisp")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        names |= set(re.findall(r"^\(fn-defrecord\s+([^\s()]+)", text, re.M | re.I))
     return {name.lower() for name in names}
 
 

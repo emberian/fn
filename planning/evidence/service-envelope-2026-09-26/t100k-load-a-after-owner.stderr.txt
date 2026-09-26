@@ -1,0 +1,62 @@
+OWNER-OPEN open=full-replay reason=absent
+CHECKPOINT auto sequence=2209 suffix=2209 octets=17407310 ms=4210
+CHECKPOINT auto sequence=4329 suffix=2120 octets=34092378 ms=8649
+CHECKPOINT auto sequence=6459 suffix=2130 octets=50854825 ms=15386
+CHECKPOINT auto sequence=8560 suffix=2101 octets=67393082 ms=21467
+CHECKPOINT auto sequence=10626 suffix=2066 octets=83697857 ms=24190
+CHECKPOINT auto sequence=12723 suffix=2097 octets=100205301 ms=31461
+CHECKPOINT auto sequence=14886 suffix=2163 octets=117222965 ms=35586
+CHECKPOINT auto sequence=16941 suffix=2055 octets=133405729 ms=46963
+CHECKPOINT auto sequence=19000 suffix=2059 octets=149619418 ms=53122
+CHECKPOINT auto sequence=21050 suffix=2050 octets=165763542 ms=54166
+CHECKPOINT auto sequence=23153 suffix=2103 octets=182317376 ms=79362
+CHECKPOINT auto sequence=25237 suffix=2084 octets=198761375 ms=70323
+CHECKPOINT auto sequence=27290 suffix=2053 octets=214928674 ms=82658
+CHECKPOINT auto sequence=29453 suffix=2163 octets=231946348 ms=90146
+Heap exhausted during garbage collection: 0 bytes available, 16 requested.
+     | Immobile Objects |
+ Gen layout symbol   code  Boxed   Cons    Raw   Code  SmMix  Mixed  LgRaw LgCode  LgMix Waste%       Alloc        Trig   Dirty GCs Mem-age
+  3      0      0      0      0 304734     17      0      0      5      0      0      0    0.1  9980962240   335544320  304756   0  0.9946
+  4      0      0      0      0 348045    148      0      2      5      0      0      0    0.1 11403891024   335544320     148   0  0.5239
+  5      5      5      7     13 221031    983      1      2     18      0      0      0    0.1  7271777072     2000000     984   0  0.0000
+  6    861  31194  56559    530   5542   1182      4    207     27    652      0    344    3.0   269693184     2000000       9   0  0.0000
+  7      0      0      0      0 140508      0      0      0      0      0      0      0    0.0  4601918016     2000000  140508   0  0.0000
+Tot    866  31199  56566    5431019860   2330      5    211     55    652      0    344    0.1 33528241120 [99.9% of 33554432000 max]
+GC control variables:
+   *GC-INHIBIT* = true
+   *GC-PENDING* = true
+   *STOP-FOR-GC-PENDING* = false
+Collection trigger variables:
+   dynamic_space_size = 33554432000
+   bytes_allocated = 33528241120
+   auto_gc_trigger = 28939957200
+   bytes_consed_between_gcs = 67108864
+fatal error encountered in SBCL pid 1832198 tid 1893824:
+Heap exhausted, game over.
+
+   0: fp=0x7430ebaee248 pc=0xb80000fdca APPEND
+   1: fp=0x7430ebaee290 pc=0xb801b2a4f3 ACL2::FN-SCC-FRAMES
+   2: fp=0x7430ebaee2d8 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   3: fp=0x7430ebaee320 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   4: fp=0x7430ebaee368 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   5: fp=0x7430ebaee3b0 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   6: fp=0x7430ebaee3f8 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   7: fp=0x7430ebaee440 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   8: fp=0x7430ebaee488 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+   9: fp=0x7430ebaee4d0 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  10: fp=0x7430ebaee518 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  11: fp=0x7430ebaee560 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  12: fp=0x7430ebaee5a8 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  13: fp=0x7430ebaee5f0 pc=0xb801b2a548 ACL2::FN-SCC-FRAMES
+  14: fp=0x7430ebaee600 pc=0xb801b2a9ac ACL2::FN-SCC-FILE-OCTETS
+  15: fp=0x7430ebaee620 pc=0xb801b842fd ACL2::FN-OCK-PUBLICATION
+  16: fp=0x7430ebaee760 pc=0xb801c7052f ACL2::FNN-CALL
+  17: fp=0x7430ebaee790 pc=0xb801c708aa ACL2::FNN-CORE
+  18: fp=0x7430ebaee910 pc=0xb801cc1210 ACL2::FNN-OWNER-PUBLISH-CAPTURED
+  19: fp=0x7430ebaeea00 pc=0xb8024df77c (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  20: fp=0x7430ebaeeaf0 pc=0xb8024e0082 (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  21: fp=0x7430ebaeec48 pc=0xb8024df340 (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  22: fp=0x7430ebaeed38 pc=0xb8024dfa52 (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  23: fp=0x7430ebaeee28 pc=0xb8024df134 SB-THREAD::RUN
+  24: fp=0x7430ebaeee60 pc=0x61a538afca92 Foreign function call_into_lisp_
+  25: fp=0x7430ebaeee80 pc=0x61a538ac04fa Foreign function funcall1

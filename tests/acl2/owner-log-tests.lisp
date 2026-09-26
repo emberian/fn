@@ -462,3 +462,16 @@
                                    (fn-olog-field fn-olog-decimal fn-olog-time
                                     fn-olog-symbol-text
                                     fn-own-operator-decision-of))))))
+
+; PKT-433 (d): a transit refusal relaying (CLASS VERDICT) prints the class
+; word where an older reader finds it and the verdict after it; any other
+; detail prints as before.
+(assert-event
+ (equal (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :refused
+                              '(:signature-failed :cryptographically-invalid))
+        (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=want reason=none detail=signature-failed verdict=cryptographically-invalid time=2026-09-18T00:00:00Z")))
+(assert-event (fn-olog-verdict-detailp '(:no-local-binding :unenrolled)))
+(assert-event (not (fn-olog-verdict-detailp :local-enrollment)))
+(assert-event
+ (equal (fn-olog-detail-fields '(:no-local-binding :unenrolled))
+        (olt-text "detail=no-local-binding verdict=unenrolled")))

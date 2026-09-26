@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "label": "t36k-latency-after",
+  "revision": "1770d68709bb",
+  "image": "/tank/fn/scratch/throughput-gate/native-img-1770d68709bb/tree/build/fn-host-developer",
+  "core_sha256": "f7721cff01b7a92120c5b33a2d87f1f1b660682959fd35827bc8d921412dae00",
+  "launcher_sha256": "8beaeaaa3cf526887b4a29385750f133849e3ec55cd77d36e47b563084061ec0",
+  "client_sha256": {
+    "tools/service_envelope.py": "428ba180db8ecf04f9906385535c558ea3768959433c56bdfe120a716ee35950",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4"
+  },
+  "host": "hbox",
+  "unit": "senv-t36k-latency-after.service",
+  "steps": [
+    "latency"
+  ],
+  "profile": "scale-1m",
+  "init_args": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384",
+    "fn.test"
+  ],
+  "store_dir": "/dev/shm/senv/t100k-after",
+  "filesystem": {
+    "type": "tmpfs"
+  },
+  "n_at_start": 36208,
+  "signed_every": 256,
+  "article_octets": 2048,
+  "groups_per_article": 1,
+  "pins": 0,
+  "relay_debt": 0,
+  "loaded_by_core_sha256": "f7721cff01b7a92120c5b33a2d87f1f1b660682959fd35827bc8d921412dae00",
+  "cloned_from": null,
+  "offered_load": "one sequential client for the latency rows; closed loop for the rate rows",
+  "not_exposed": {
+    "bytes_consed": "needs the heap-hook image (rep_measure.py --heap-dir)",
+    "mutex_held_fraction": "the owner exposes no mutex accounting"
+  },
+  "samples": 100,
+  "started_utc": "2026-09-26T13:38:35Z",
+  "rows": {
+    "greeting": {
+      "n": 12,
+      "min_ms": 743.1257283315063,
+      "median_ms": 3849.4709781371057,
+      "p95_ms": 8481.693378649652,
+      "max_ms": 16682.414413429797,
+      "capped": "12 of 100 samples within 60 s",
+      "owner_cpu_s": 69.9
+    },
+    "group_reply": "211 36208 1 36208 fn.test",
+    "over40": {
+      "n": 31,
+      "min_ms": 976.9286746159196,
+      "median_ms": 1165.4630647972226,
+      "p95_ms": 4178.605902940035,
+      "max_ms": 13884.642648510635,
+      "capped": "31 of 100 samples within 60 s",
+      "width": 40,
+      "octets_read": 130214,
+      "owner_cpu_s": 68.06
+    },
+    "over100": {
+      "n": 20,
+      "min_ms": 2764.4467977806926,
+      "median_ms": 3102.617788594216,
+      "p95_ms": 3404.8102805390954,
+      "max_ms": 3437.1693041175604,
+      "capped": "20 of 100 samples within 60 s",
+      "width": 100,
+      "octets_read": 209270,
+      "owner_cpu_s": 61.98
+    },
+    "post": {
+      "n": 100,
+      "command_to_reply": {
+        "n": 100,
+        "min_ms": 8.081577718257904,
+        "median_ms": 8.95155780017376,
+        "p95_ms": 12.14634906500578,
+        "max_ms": 3613.206942565739
+      },
+      "capped": null,
+      "terminator_to_reply": {
+        "n": 100,
+        "min_ms": 7.87589605897665,
+        "median_ms": 8.76489607617259,
+        "p95_ms": 11.898190714418888,
+        "max_ms": 3612.893638201058
+      },
+      "owner_cpu_ms_per_post": 45.7,
+      "octets": 2048
+    },
+    "signed": {
+      "n": 50,
+      "command_to_reply": {
+        "n": 50,
+        "min_ms": 858.337452635169,
+        "median_ms": 915.8048601821065,
+        "p95_ms": 963.5569136589766,
+        "max_ms": 980.8766040951014
+      },
+      "capped": null,
+      "terminator_to_reply": {
+        "n": 50,
+        "min_ms": 858.1686485558748,
+        "median_ms": 915.4974934644997,
+        "p95_ms": 963.0772210657597,
+        "max_ms": 980.5351989343762
+      },
+      "owner_cpu_ms_per_post": 920.6,
+      "octets": 9542
+    },
+    "memory_after_latency_rows": {
+      "rss_kib": 22744720,
+      "hwm_kib": 29692748
+    }
+  },
+  "opens": [
+    {
+      "n": 36208,
+      "after": "stop",
+      "mode": "open=checkpoint:32730 suffix=3479",
+      "seconds": 51.179,
+      "owner_cpu_s": 51.16,
+      "memory": {
+        "rss_kib": 7229336,
+        "hwm_kib": 8535156
+      }
+    }
+  ],
+  "row_budget_s": 60,
+  "disk_before": {
+    "octets": 407244800,
+    "inodes": 36218
+  },
+  "n": 36358,
+  "signed_in_history": 191,
+  "written_utc": "2026-09-26T13:43:31Z",
+  "box_load": {
+    "samples": 59,
+    "interval_s": 5.0,
+    "cpus": 24,
+    "box_cpu_busy_median": 0.265,
+    "box_cpu_busy_max": 0.357,
+    "loadavg1_median": 9.3,
+    "loadavg1_max": 9.98
+  },
+  "disk_after": {
+    "octets": 435851264,
+    "inodes": 36368
+  },
+  "finished_utc": "2026-09-26T13:43:31Z",
+  "exit": 0
+}

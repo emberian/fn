@@ -39,7 +39,8 @@
 ; Subjects the host calls (host/native-live-status-host.lisp):
 ;   fn-nh-offline-report  `fn-native-health-host-offline'
 ;                         (host/native/operator.lisp fnn-operator-health-offline);
-;   fn-nh-fenced-report   `fn-native-health-host-fenced' (the same caller);
+;   fn-nh-health-step and fn-nh-fenced-report  `fn-native-health-host-step'
+;                         (fnn-operator-health-report, PKT-454);
 ;   fn-nh-live-report     through `fn-nh-answer-report',
 ;                         `fn-native-live-status-host-answer'
 ;                         (host/native/control.lisp fnn-control-live-status-answer);
@@ -58,6 +59,8 @@
 (in-package "ACL2")
 (include-book "native-live-status")
 (include-book "outcome-class")
+; PKT-220: the offline `store retention' figures.
+(include-book "retention-figures")
 
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
@@ -815,7 +818,7 @@ and feed table, with the committed octets extended from the carried sum."
   :hints (("Goal" :in-theory (enable fn-nh-fence-of fn-nh-fence-reasonp))))
 
 ; KEYSTONE (starting is not store-held; PKT-283).  The subject is
-; `fn-nh-fence-of', which the host calls through `fn-native-health-host-fenced'
+; `fn-nh-fence-of', which the host calls through `fn-nh-health-step'
 ; (host/native/operator.lisp fnn-operator-health-report).  With no clone
 ; fence and a route that did not reach an owner, the report says :starting
 ; exactly when the lock is held and an owner would listen; a free or absent
@@ -828,5 +831,77 @@ and feed table, with the committed octets extended from the carried sum."
                          (not (fn-nh-fence-of route lock clone listener)))))
   :hints (("Goal" :in-theory (enable fn-nh-fence-of))))
 
+;; -----------------------------------------------------------------------------
+;; One health observation, decided (PKT-454)
+;;
+;; The host takes its observations once per invocation: whether the configured
+;; control socket node is present (SOCKET-PRESENT), the outcome of asking the
+;; owner for its FNLS kind-6 report (OUTCOME: (:done OCTETS) when the owner
+;; answered, else the transport stage), the writer lock, the clone fence and
+;; whether an owner would listen.  The step names what the host does next:
+;; (:answered OCTETS) prints the owner's report, (:refused) prints the refusal,
+;; (:fenced REASON) prints `fn-nh-fenced-report', (:offline) opens the Store.
+;; `fnn-operator-health-report' (host/native/operator.lisp) calls it through
+;; `fn-native-health-host-step' (host/native-live-status-host.lisp).
+(defun fn-nh-answeredp (socket-present outcome)
+  (declare (xargs :guard t))
+  (and socket-present (consp outcome) (equal (car outcome) :done)
+       (consp (cdr outcome)) t))
+
+(defun fn-nh-health-step (socket-present outcome lock clone-fence-present
+                                         listener-expected)
+  (declare (xargs :guard t))
+  (if (fn-nh-answeredp socket-present outcome)
+      (list :answered (cadr outcome))
+    (let ((route (fn-nls-route socket-present outcome)))
+      (if (equal route :refused)
+          (list :refused)
+        (let ((reason (fn-nh-fence-of route lock clone-fence-present
+                                      listener-expected)))
+          (if reason (list :fenced reason) (list :offline)))))))
+
+;; KEYSTONE (PKT-454: starting is a reason of the fenced state, exit 20, and it
+;; clears on LISTENING).  The subject is `fn-nh-health-step', the host's whole
+;; decision for one `health' invocation.  A fence of :starting is reported
+;; exactly while no clone fence is present, the lock is held, an owner would
+;; listen and nothing answered (the route is :offline: no socket node, or a
+;; connect that failed before anything was sent); and the same lock, fence and
+;; listener with the owner answering on its socket yields the owner's report,
+;; no fence at all: the step from starting to clear is taken on the one
+;; observation LISTENING changes.
+(defthm fn-nh-starting-clears-on-listening
+  (and (iff (equal (fn-nh-health-step sp outcome lock clone listener)
+                   '(:fenced :starting))
+            (and (not clone) (equal lock :held) listener
+                 (equal (fn-nls-route sp outcome) :offline)))
+       (implies sp
+                (equal (fn-nh-health-step sp (list :done octets) lock clone listener)
+                       (list :answered octets))))
+  :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                     fn-nh-fence-of fn-nls-route))))
+
 (in-theory (disable fn-nh-verdict fn-nh-render fn-nh-report-exit fn-nh-exit-code
                     fn-nh-live-report fn-nh-offline-report fn-nh-fenced-report))
+
+; PKT-220 (PRF-185).  `store ROOT retention' is offline only: it takes a
+; store root, not a configuration, so it has no control socket to ask, and
+; while an owner holds the Store its shared lock refuses.  The same two
+; figures are live already: `operator CONFIG obligations' opens with them.
+; KEYSTONE: the report the running owner renders for :obligations
+; (`fn-nls-live-report', from host/native-live-status-host.lisp
+; `fn-native-live-status-host-answer' through `fn-nh-answer-report') opens
+; with exactly `fn-rtf-pin-count' and `fn-rtf-reserved' of the owner's Store
+; node, the functions the offline verb prints (host/store-node-host.lisp
+; `fn-store-sn-pin-count', `fn-store-sn-reserved', from host/native/io.lisp
+; `fnn-command-retention').  On the same Store node the two verbs print the
+; same figures.
+(defthm fn-nls-obligations-figures-are-the-retention-figures
+  (equal (fn-nls-live-report :obligations profile oc cache obs)
+         (let ((s (fn-own-store (fn-ocfg-owner oc))))
+           (append (fn-nls-text "obligations=") (fn-nls-nat (fn-rtf-pin-count s))
+                   (fn-nls-field "reserved" (fn-rtf-reserved s))
+                   *fn-nls-lf*
+                   (fn-nls-obligation-lines
+                    (fn-retain-pins (fn-node-retention (fn-sn-node s)))))))
+  :hints (("Goal" :in-theory '(fn-nls-live-report fn-nls-report fn-nls-retention
+                               fn-rtf-pin-count fn-rtf-reserved))))

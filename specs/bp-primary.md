@@ -108,8 +108,8 @@ The model keeps those two notions apart, because they are not the same thing:
 result for everything the primary block does carry: two valid blocks with the
 same encoding are the same block, hence have the same ADU key and the same
 bundle identity for any payload length.
-`fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type` and
-`fn-bpp-adu-key-separates-source-and-timestamp` pin down that the key is exactly
+`fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type-by-definition` and
+`fn-bpp-adu-key-separates-source-and-timestamp-by-definition` pin down that the key is exactly
 the §4.2.7 projection and nothing more.
 
 A source node ID of `dtn:none` makes a bundle not uniquely identifiable at all

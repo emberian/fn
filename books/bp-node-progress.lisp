@@ -26,18 +26,58 @@
        (fn-bpp-eidp (fn-bpn-nth 0 route))
        (fn-bpp-eidp (fn-bpn-nth 1 route))))
 
-(defun fn-bpnp-routesp (routes)
+(defun fn-bpnp-route-listp (routes)
   (declare (xargs :guard t :measure (acl2-count routes)))
   (if (atom routes) (null routes)
     (and (fn-bpnp-routep (car routes))
-         (fn-bpnp-routesp (cdr routes)))))
+         (fn-bpnp-route-listp (cdr routes)))))
 
-(defun fn-bpnp-route-peer (destination routes)
+(defun fn-bpnp-route-list-peer (destination routes)
   (declare (xargs :guard t :measure (acl2-count routes)))
   (if (atom routes) nil
     (if (equal destination (fn-bpn-nth 0 (car routes)))
         (fn-bpn-nth 1 (car routes))
-      (fn-bpnp-route-peer destination (cdr routes)))))
+      (fn-bpnp-route-list-peer destination (cdr routes)))))
+
+; Per-destination routing (PKT-261, spec 4.8): the :progress event's ROUTES
+; may be (:table TABLE), the configuration's route table (`fn-bprt-table').
+; A held row's next hop is then the EID of the boundary
+; `fn-bprt-outbound-choice' names for its own destination, so a relay routes
+; each destination to its own neighbour.  The explicit list of (DESTINATION
+; PEER) pairs stays: `fn-bpnp-single-peer-routes' is its one-row instance.
+(defun fn-bpnp-table-routingp (routes)
+  (declare (xargs :guard t))
+  (and (true-listp routes) (equal (len routes) 2)
+       (equal (car routes) :table)
+       (fn-bprt-tablep (cadr routes))))
+
+; The EID whose text is TEXT, for a dtn EID; nil otherwise.  The round trip
+; is checked, so a non-nil answer renders exactly TEXT.
+(defun fn-bpnp-text-eid (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (let ((eid (cons :dtn (nthcdr 4 (fn-record-string-octets text)))))
+         (and (fn-bpp-eidp eid)
+              (equal (fn-bpaj-eid-text eid) text)
+              eid))))
+
+(defun fn-bpnp-table-peer (destination table)
+  (declare (xargs :guard t))
+  (let ((choice (fn-bprt-outbound-choice (fn-bpaj-eid-text destination) table)))
+    (if (equal (car choice) :hop)
+        (fn-bpnp-text-eid (fn-bprt-nth 2 choice))
+      nil)))
+
+(defun fn-bpnp-routesp (routes)
+  (declare (xargs :guard t))
+  (or (fn-bpnp-table-routingp routes)
+      (fn-bpnp-route-listp routes)))
+
+(defun fn-bpnp-route-peer (destination routes)
+  (declare (xargs :guard t))
+  (if (fn-bpnp-table-routingp routes)
+      (fn-bpnp-table-peer destination (cadr routes))
+    (fn-bpnp-route-list-peer destination routes)))
 
 ; Slot 11 extends the same :bpnf-state with per-key volatile waits.  Existing
 ; ten-argument state constructors remain compatible and make this slot nil.

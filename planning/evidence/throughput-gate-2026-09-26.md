@@ -228,3 +228,20 @@ Classification of what was found:
   here with tools/hbox_native.sh, /tank/fn/scratch/throughput-gate/native-0d21164752bb
   (core 25913fc3ae2730a980a130505a0cb2b52889b27b89e5fcd26ace8a8affbfd820;
   tests.test_proof_cost OK on it).
+
+## Correction (deputy 4, 2026-09-26 14:05 UTC): the T-X run and PKT-477 (1)
+
+Commit 75eb0dc2's message says the batch T-X run at bb7b2994 showed "no
+regression". It did not under the rule of the day: its JSON
+(`bb7b29942a84-batch-tx-under-load-20260926T133815Z.json`) has
+`post_owner_cpu_ms` 3.5 against 2.6 allowed; the JSON's `passed` is the
+probe's own status, not the check's verdict. The bisect on the same batch
+(the three `*-bisect-{T,U,V}-under-load-*.json` files) read 2.2 ms on every
+image with `probe_bytes_consed_per_commit` identical (1,406,383) across T, U
+and V and 1,406,384 at bb7b2994, against the baseline's 1,651,892: the
+deterministic counter improved, the CPU figure moved with the box (0.36
+busy, three qualification units). PKT-477 (1), the coordinator's decision:
+a run under load compares the deterministic counters only
+(`DETERMINISTIC` in tools/throughput_gate.py; CPU and wall figures are
+re-measured at the next quiet window, which `check` prefers). No cause row
+was written for bb7b2994: the counter that decides the push held.

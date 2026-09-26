@@ -938,6 +938,25 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("obligations"))))
                      :obligations))
+;; PKT-209 (PRF-185): `control log' and `control evidence MSGID' are status
+;; reports the owner answers; `control list' stays an administrative query.
+(defconst *fn-nop-control-log*
+  (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("control" "log"))))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-control-log*) :status))
+(assert-event (equal (fn-native-operator-result-status-kind *fn-nop-control-log*) :control-log))
+(assert-event (consp (fn-native-operator-result-status-control-path-octets *fn-nop-control-log*)))
+(assert-event (equal (fn-native-operator-result-status-kind
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("control" "evidence" "<c@x>"))))
+                     '(:control-evidence . "<c@x>")))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("control" "evidence" "c@x"))))
+                     5))
+(assert-event (equal (fn-native-operator-result-native-action
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("control" "list"))))
+                     :admin))
 ; A zero, a day and a second, and a word that is no number are usage (5).
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-run *fn-nop-minimal-config*

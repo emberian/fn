@@ -104,6 +104,17 @@
 (bsft-refuses ((3 . 196607)) :max-history-octets-below-max-record-octets)
 (bsft-refuses ((4 . 100) (3 . 100)) :max-record-octets-below-an-event-kind)
 (bsft-refuses ((4 . 4294967296) (3 . 4294967296)) :max-record-octets-above-codec)
+; PKT-467: R above the kind-6 poll reply's report ceiling (the Store frame's
+; u32 less the reply's 9 header and 346 cursor octets) is refused by its own
+; name, up to and including the codec's u32; at the ceiling R is valid.
+(assert-event (equal *fn-stxa-max-octets* 4294966940))
+(bsft-refuses ((4 . 4294966941) (3 . 4294966941))
+              :max-record-octets-above-the-poll-reply)
+(bsft-refuses ((4 . 4294967295) (3 . 4294967295))
+              :max-record-octets-above-the-poll-reply)
+(defconst *bsft-poll-top*
+  (fn-bs-profile-set-fields *bsft-free* '((4 . 4294966940) (3 . 4294966940))))
+(assert-event (fn-bs-profile-validp *bsft-poll-top*))
 (bsft-refuses ((5 . 0)) :max-article-octets-outside-codec)
 (bsft-refuses ((5 . 4261412865)) :max-article-octets-outside-codec)
 (bsft-refuses ((6 . 0)) :max-groups-per-article-outside-codec)
@@ -143,6 +154,30 @@
                        (fn-bs-profile-max-record-octets '(1 2 3)))))
 (assert-event (not (<= 1 (fn-bs-profile-max-article-octets '(1 2 3)))))
 (assert-event (not (<= 1 (fn-bs-profile-max-groups-per-article '(1 2 3)))))
+
+;  Teeth for fn-bs-profile-valid-record-fits-a-poll-reply (PKT-467).
+; Reachable and tight: the profile whose R is the poll reply's report ceiling
+; admits a payload of exactly that many octets, which the conclusion bounds.
+(assert-event (fn-bs-publication-admissiblep *bsft-poll-top* 0 4294966940))
+(assert-event (<= 4294966940 *fn-stxa-max-octets*))
+; Every preset and both format-7 translations: R well within the ceiling.
+(assert-event (<= (fn-bs-profile-max-record-octets *fn-bs-profile-development*)
+                  *fn-stxa-max-octets*))
+(assert-event (<= (fn-bs-profile-max-record-octets *fn-bs-profile-scale*)
+                  *fn-stxa-max-octets*))
+(assert-event (<= (fn-bs-profile-max-record-octets *fn-bs-profile-defaults*)
+                  *fn-stxa-max-octets*))
+(assert-event (fn-bs-profile-admittedp *fn-bs-meta-format-7-development-values*))
+(assert-event (fn-bs-profile-admittedp *fn-bs-meta-format-7-scale-values*))
+; The hypothesis: without the gate's admission a payload one octet past the
+; ceiling is a counterexample; and the gate refuses it even under the profile
+; that asks for R one octet past the ceiling (that profile is not admitted).
+(must-fail
+ (thm (implies (equal octets 4294966941) (<= octets *fn-stxa-max-octets*))))
+(assert-event
+ (not (fn-bs-publication-admissiblep
+       (fn-bs-profile-set-fields *bsft-free* '((4 . 4294966941) (3 . 4294966941)))
+       0 4294966941)))
 
 ;  Teeth for fn-bs-profile-admits-every-article-record.  Non-degenerate: the
 ; free profile's R is exactly the article record of its (A, G), so the bound

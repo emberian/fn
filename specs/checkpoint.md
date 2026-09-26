@@ -177,10 +177,16 @@ Both hosts obtain `selected.fncp`, canonical `generation-N.fncp` rendering,
 the inverse filename decoder, the exact 47-octet selection-frame read bound,
 and the checkpoint-directory observation plan from
 `books/checkpoint-publish.lisp`.  The plan sorts decoded generations and
-rejects every other entry.  Hosts call the ACL2-owned 4097-entry observation
-bound before retaining directory names: at most 4096 generation files plus
-the selection marker.  Generation allocation refuses at that retained-set
-limit, before the uint32 codec limit could be reached.
+rejects every other entry.  Hosts call the ACL2-owned observation bound
+before retaining directory names: the opened profile's retained-generation
+capacity, max-transactions + 1 (`fn-cpp-generation-capacity`), plus the
+selection marker.  Generation allocation refuses exactly at that capacity
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`; for packs,
+whose numbers have gaps after retirement,
+`fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), and a
+generation number runs to the uint32 width of its name and selection codec
+(STO-023, PRF-171; until then a store had 4,096 publications in its
+lifetime).
 
 What the host still asserts, outside the proofs:
 

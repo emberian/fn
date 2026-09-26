@@ -13,6 +13,10 @@ Three checks over docs/*.md and docs/nodes/*.md (NNT-032):
    ACL2's own grammar (`fn-native-operator-run', the function
    host/native-operator-host.lisp's fn-native-operator-host-run calls, and
    `fn-native-operator-mission-run' for `mission') accepts each one.  This
+   book cites each row by the heading it sits under and its ordinal among
+   that section's invocations (`("docs/operator.md#install" 2 ...)`), never
+   a line number, so prose moved or inserted leaves the book byte-identical
+   and costs no certification (PKT-493).  This
    script decides nothing about the operator grammar: `--check` only fails
    when the committed book is not what the docs say now, so the ACL2
    verdict certified is the verdict for these docs.
@@ -246,7 +250,9 @@ BOOK_HEAD = """\
                                        (fn-docs-argv words))
      (fn-native-operator-run *fn-docs-config* (fn-docs-argv words)))))
 
-; Rows are (DOC LINE WORD...); the rows whose argv the grammar does not accept.
+; Rows are (DOC#SECTION ORDINAL WORD...): the heading an invocation sits under
+; and its place among that section's operator invocations, never a line number;
+; the rows whose argv the grammar does not accept.
 (defun fn-docs-operator-rejected (rows)
   (if (consp rows)
       (if (equal (fn-docs-operator-status (cddr (car rows))) :accepted)
@@ -276,9 +282,54 @@ def lisp_string(text):
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def slug(heading):
+    """GitHub's anchor for a heading: lower case, punctuation dropped,
+    spaces to hyphens."""
+    text = re.sub(r"[^\w\- ]", "", heading.strip().lower())
+    return text.replace(" ", "-")
+
+
+def section_slugs(text):
+    """{line number: the anchor of the heading it sits under} for one doc.
+    Fence-aware (a `# comment` in a code block is not a heading); a repeated
+    heading gets GitHub's `-1`, `-2` suffix; lines before the first heading
+    sit under `top`."""
+    sections, seen = {}, {}
+    current, fenced = "top", False
+    for number, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        elif not fenced and re.match(r"#{1,6}\s", line):
+            base = slug(line.lstrip("#"))
+            current = base if base not in seen else "%s-%d" % (base, seen[base])
+            seen[base] = seen.get(base, 0) + 1
+        sections[number] = current
+    return sections
+
+
+def anchors(found):
+    """{(doc, line): (doc#section, ordinal)}: each operator invocation's
+    stable citation, the heading it sits under and its place among the
+    operator invocations under that heading.  A line number would change
+    the generated book (and need a certification) whenever prose is
+    inserted above an invocation anywhere in the doc; this changes only
+    when that section's own invocations change (PKT-493)."""
+    slugs, counts, out = {}, {}, {}
+    for kind, rel, number, line, argv, why in found:
+        if kind != "operator" or argv is None:
+            continue
+        if rel not in slugs:
+            slugs[rel] = section_slugs((ROOT / rel).read_text(encoding="utf-8"))
+        section = "%s#%s" % (rel, slugs[rel].get(number, "top"))
+        counts[section] = counts.get(section, 0) + 1
+        out[(rel, number)] = (section, counts[section])
+    return out
+
+
 def argv_file(found):
     rows = []
     seen = set()
+    cite = anchors(found)
     for kind, rel, number, line, argv, why in found:
         if kind != "operator" or argv is None:
             continue
@@ -286,7 +337,8 @@ def argv_file(found):
         if key in seen:
             continue
         seen.add(key)
-        rows.append("    (%s %d %s)" % (lisp_string(rel), number,
+        section, ordinal = cite[(rel, number)]
+        rows.append("    (%s %d %s)" % (lisp_string(section), ordinal,
                                          " ".join(lisp_string(w) for w in argv)))
     return (BOOK_HEAD + "(defconst *fn-docs-operator-argv*\n  '(\n" + "\n".join(rows) +
             "))\n" + BOOK_TAIL)

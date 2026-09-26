@@ -166,6 +166,11 @@ uses ACL2's received-source projection, checks the Ed25519 and ML-DSA-65
 signatures with native libraries, and asks ACL2 for the final conjunction.
 ACL2's `fn-hc-render-at-most` refuses output when carrier expansion pushes the
 complete received article over the same article cap the verifier reads.
+That cap is the record codec's ceiling (`*fn-article-max-octets*`, D27),
+not an operator's: the operator's article bound is the Store profile's
+`max-article-octets`, decided when a node injects the article, so a carrier
+within the codec but over a node's profile is signed and then refused by
+that node (`441 posting failed; the article exceeds the configured size`).
 It reports `verified PRINCIPAL-HEX` (exit 0) or `unverified REASON` (exit 1).
 The caller-supplied ML public key must match the carrier's key set. This is an
 independent portable artifact check, not Store acceptance or a historical

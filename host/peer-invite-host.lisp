@@ -7,9 +7,10 @@
   (declare (xargs :mode :program))
   (fn-pinv-observation-subject received))
 
-(defun fn-pinv-host-issue-plan (received observed-ml ed ml invitations)
+(defun fn-pinv-host-issue-plan (received observed-ml ed ml invitations
+                                         snapshots)
   (declare (xargs :mode :program))
-  (fn-pinv-issue-plan received observed-ml ed ml invitations))
+  (fn-pinv-issue-plan received observed-ml ed ml invitations snapshots))
 
 (defun fn-pinv-host-accept-step (sequence txid generation received observed-ml
                                           ed ml snapshots)
@@ -17,9 +18,9 @@
   (fn-pinv-accept-step sequence txid generation received observed-ml ed ml
                        snapshots))
 
-(defun fn-pinv-host-accept-plan (received observed-ml ed ml)
+(defun fn-pinv-host-accept-plan (received observed-ml ed ml snapshots)
   (declare (xargs :mode :program))
-  (fn-pinv-accept-plan received observed-ml ed ml))
+  (fn-pinv-accept-plan received observed-ml ed ml snapshots))
 
 (defun fn-pinv-host-confirm-plan (received observed-ml ed ml invitations
                                            snapshots)
