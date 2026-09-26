@@ -4643,6 +4643,14 @@
         {
           "kind": "theorem",
           "name": "fn-bpfw-sortedp-of-sort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-apply-conserves-jobs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-family-events-keep-jobs-agreeing"
         }
       ]
     }
