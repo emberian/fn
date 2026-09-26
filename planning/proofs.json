@@ -7581,7 +7581,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served-tls-prefix.lisp",
         "books/served-carried.lisp",
@@ -7590,9 +7590,10 @@
         "tests/acl2/served-pipelining-tests.lisp",
         "host/native/owner.lisp",
         "tests/test_native_peering.py",
-        "planning/evidence/transit-pipelining-2026-09-27.md"
+        "planning/evidence/transit-pipelining-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260926T231119Z-3936095.json"
       ],
-      "progress_note": "Lane transit-pipelining 2026-09-27: REPL-admitted on hbox (sessions big, agt); farm certification run-20260926T231044Z-0b1a.",
+      "progress_note": "Lane transit-pipelining 2026-09-27: REPL-admitted on hbox (sessions big, agt); certified on persvati run-20260926T231044Z-0b1a (manifest certify-20260926T231119Z-3936095: 67 affected roots passed, none over 10 s, 2 jobs, w25 acl2-literal).",
       "events": [
         "fn-served-step-counted-result-is-step-of-consumed-prefix",
         "fn-served-drain-is-step",

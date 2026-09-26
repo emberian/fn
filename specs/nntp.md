@@ -954,9 +954,11 @@ ClientHello behind the STARTTLS line in one kernel observation. This is a
 robustness property and does not relax RFC 4642's client prohibition. The
 sole connection worker observes with `MSG_PEEK`; `fn-ocfg-read-tls-prefix`
 returns the one ACL2 transition, its effects and the exact consumed count.
-`fn-ocfg-read-tls-prefix-is-full-read`, under the configured-owner state
-invariant, proves that the actual host-call result equals the checked full
-observation. The host-called path uses `fn-served-step-counted-fast`: its entry
+`fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix`, under the
+configured-owner state invariant, proves that the actual host-call result
+equals the checked read of the prefix it consumed (the whole observation's,
+since a handshaking connection frames nothing more; a read also yields after
+a submission, NNT-044). The host-called path uses `fn-served-step-counted-fast`: its entry
 predicate examines the fixed eight-cell wire record and scalar counters, never
 the retained current line or article body. `fn-served-step-counted-fast-is-reference`
 equates it to the total checked transition under the full wire invariant, and

@@ -3999,7 +3999,8 @@
           "test_pipelined_post_in_one_read_answers_every_article"
         ],
         "native": true,
-        "record": "planning/evidence/transit-pipelining-2026-09-27.md"
+        "record": "planning/evidence/transit-pipelining-2026-09-27.md",
+        "log": "planning/evidence/transit-pipelining-2026-09-27/native-peering.log"
       },
       "requirements": [
         "NNT-044"
