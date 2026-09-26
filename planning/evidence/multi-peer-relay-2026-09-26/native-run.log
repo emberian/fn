@@ -1,0 +1,4 @@
+== source commit e3236a4794f2c1c598ac2a5e9b59bfcfa5ebee8e
+== test-tests.test_bp_contact_relay_native 12:24:15Z
+   test-tests.test_bp_contact_relay_native exit 0: OK (/tank/fn/scratch/multi-peer-relay/native-e3236a4794f2/logs/test-tests.test_bp_contact_relay_native.log)
+== done status 0; /tank/fn/scratch/multi-peer-relay/native-e3236a4794f2/SHA256SUMS

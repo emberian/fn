@@ -1,0 +1,3 @@
+STEP 0 setup: stores, D23 boundaries, routes, signed report, consumers asleep, A's obligation undertaken held=True outcome=accepted
+STEP 1 ambiguous-peer: X's two boundaries share one listener; X refuses A's transfer with the policy's reason and takes no custody; A keeps its pin held=True outcome=refused
+REPORT /tank/fn/scratch/multi-peer-relay/mission-e3236a47/ambiguous/report.json all_steps_held=True
