@@ -236,6 +236,17 @@ CPU, graph totals: `fn-owner-prepare-buffer` 52.8, `fn-retain-known-id-scanp`
 service-envelope's rows (282 ms p95 tmpfs, 786 ms ZFS at 10,000; 963 ms at
 36,208); not profiled here.
 
+Result (row 4, signed-post-linear, 2026-09-26; PRF-193): the linear term
+was `fn-sf-next-lower` under `fn-ccar-sn-prepare-identity` (the identity
+prepare's candidate test folded every record's txid through `fn-record-p`):
+69.9 percent of a signed POST's owner CPU at N = 10,000, 21.8 percent at
+1,000. The prepare now reads the last record (`fn-pcar-stage-record`).
+Signed POST owner CPU on tmpfs, dev 6407de336 against the lane, two
+interleaved rounds, load average 10 to 11: N = 1,000 84.5 / 108.5 ms
+against 67.0 / 92.5 ms; N = 10,000 260.5 / 293.5 ms against 91.0 / 93.0 ms
+(planning/evidence/signed-post-linear-2026-09-26.md). Flat in N within the
+box's noise; what remains is per-request and constant in N (PKT-552).
+
 ### Automatic checkpoint capture (this lane: `chain20k/chain.json`, `chain20k/sprof-capture-flat.txt`)
 
 The chain fixture's copy, first open (full replay, the fixture's checkpoint
