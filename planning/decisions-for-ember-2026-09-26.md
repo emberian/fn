@@ -292,6 +292,10 @@ The rehearsal on copies gave these results:
 
 **Answer with:** (a) keep the gate order, the stored copy settles it; (b) answer D25 for a source authored before the revocation; (c) a privileged operator query for revoked authors.
 
+## PKT-323: the capacity vector's three defaults (capacity-vector, planning/evidence/capacity-vector-2026-09-26.md)
+
+Taken as defaults by the lane under the mandate's §2, for you to confirm or overrule; each is a one-line switch with its theorem already proved under the default: (a) a release record is reserved at its 4,096-octet codec ceiling per open obligation plus one for maintenance (the alternative, the exact release's size, is not known at admission); (b) `retention set` always has the last `max-config-generations` generation reserved to it (the alternative, no reserved generation, lets an unrelated configuration record take the last slot and leave a release unfilable); (c) disk preallocation REJECTED: the free space observed at compact and reclaim is an environmental assumption stated as such, with the named refusal kept (the alternative, a real preallocation under a platform contract, needs an `encapsulate` and a filesystem that honours it). **Answer with:** (a) confirm all three; (b) name the one to change.
+
 ## For the coordinator
 
 ### PKT-246: a distinct `:conflict` word in the FNCT control reply codec
