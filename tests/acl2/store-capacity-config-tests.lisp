@@ -141,8 +141,8 @@
 (must-fail
  (defthm cvc-group-names-within-without-acceptance
    (fn-cvec-group-names-within
-    (fn-cfg-record-change record)
-    (fn-bs-profile-max-group-name-octets profile))))
+    (fn-cfg-record-change *cvc-create-101*)
+    (fn-bs-profile-max-group-name-octets *cvc-p100*))))
 (assert-event
  (and (not (equal (fn-native-admin-publication-status
                    (cvc-group-authorize *cvc-create-101* *cvc-p100*))
