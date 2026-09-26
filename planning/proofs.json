@@ -5238,7 +5238,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "in-progress",
+      "status": "certified",
       "events": [
         "fn-sccr-decode-of-plan",
         "fn-sccr-decode-plan-is-decode-segments",
@@ -5248,9 +5248,10 @@
       "evidence": [
         "books/store-checkpoint-reader.lisp",
         "tests/acl2/store-checkpoint-reader-tests.lisp",
-        "planning/evidence/rep-wave-d-3-2026-09-26.md"
+        "planning/evidence/rep-wave-d-3-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T051745Z-1490116.json"
       ],
-      "progress_note": "Lane rep-wave-d-3 (2026-09-26): in the REPL on persvati; farm run pending."
+      "progress_note": "Lane rep-wave-d-3 (2026-09-26): certified on persvati (run-20260926T051724Z-bab6, ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s: passed 6, failed 0, no book over 10 s) after every form was admitted in the REPL; the twin fn-sccr-decode-plan-is-decode-segments is the book's one costly proof. The native checkpoint module and the reopen rows are in the record."
     }
   ]
 }
