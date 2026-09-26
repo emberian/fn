@@ -2124,7 +2124,7 @@
       "id": "SCN-073",
       "title": "The corpus carried by BP through a dtn7 relay arrives at B as A's record with B's Path splice",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-020"
       ],
@@ -2144,7 +2144,7 @@
         "tests/test_native_source_corpus_bp.py",
         "tests/acl2/relay-source-routes-tests.lisp",
         "planning/evidence/source-corpus-2-2026-09-26.md",
-        "planning/evidence/source-corpus-2-2026-09-26/native-5.log"
+        "planning/evidence/source-corpus-2-2026-09-26/native-7.log"
       ]
     }
   ]
