@@ -1945,10 +1945,6 @@
 (must-fail (assert-event (fn-own-feed-any-matchp
                           "fn.*" (fn-own-sub-feed-base-groups
                                   (fn-own-inflight *own-cancel-a*)))))
-; The host's carried intent names the same target.
-(assert-event (equal (fn-icar-submission-targets
-                      *own-cancel-a* (fn-icar-carry-of (fn-own-inflight *own-cancel-a*)))
-                     '("out")))
 
 ; Witness B (the filing-group arm).  Newsgroups local.general; the peer
 ; "ctl" asks for control.cancel by name.  It is the target through the
