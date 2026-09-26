@@ -1444,7 +1444,7 @@
    (let* ((o (fn-ocfg-owner oc))
           (conns (fn-own-conns o))
           (owner (fn-own-set-conns o (fn-own-remove-conn id conns)))
-          (next (fn-ocfg-with-read-owner oc id owner)))
+          (next (fn-ocfg-with-read-owner oc id owner repinned)))
      (fn-ocl-conns-historyp next (fn-own-conns (fn-ocfg-owner next)))))
   :hints (("Goal"
            :use ((:instance fn-ocl-read-removal-preserves-surviving-histories
@@ -1710,7 +1710,81 @@
                            (fn-ocl-relation fn-cst-relation fn-cpr-replay
                             fn-cst-replay-node)))))
 
-(defthm fn-ocl-own-read-survivor-has-old-history
+; NNT-042: a read whose GROUP or LISTGROUP advanced the connection pins it to
+; the current configuration (fn-ocfg-with-read-owner: fn-ocfg-pin-set).  The
+; pin table's three invariants survive a pin-set.
+(defthm fn-ocl-pin-set-keeps-conns-pinned
+  (implies (fn-ocfg-conns-pinnedp conns pins)
+           (fn-ocfg-conns-pinnedp conns (fn-ocfg-pin-set id cfg pins)))
+  :hints (("Goal" :induct (fn-ocfg-conns-pinnedp conns pins)
+           :in-theory (e/d (fn-ocfg-conns-pinnedp) (fn-ocfg-pin-set fn-ocfg-pin-find)))
+          ("Subgoal *1/1" :cases ((equal (fn-own-conn-id (car conns)) id)))))
+
+(defthm fn-ocl-pin-set-keeps-pins-pin-conns-only
+  (implies (fn-ocfg-pins-pin-conns-only pins conns)
+           (fn-ocfg-pins-pin-conns-only (fn-ocfg-pin-set id cfg pins) conns))
+  :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
+           :in-theory (enable fn-ocfg-pin-set fn-ocfg-pins-pin-conns-only))))
+
+(defthm fn-ocl-pin-set-keeps-pins-okp
+  (implies (and (fn-ocfg-pins-okp pins) (fn-cfgp cfg))
+           (fn-ocfg-pins-okp (fn-ocfg-pin-set id cfg pins)))
+  :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
+           :in-theory (e/d (fn-ocfg-pin-set fn-ocfg-pins-okp) (fn-cfgp)))))
+
+; The configured read in the owner's vocabulary: the owner read, the flag,
+; and the pin table moved with it.
+(defthm fn-ocl-ocfg-read-unfolds
+  (and (equal (car (fn-ocfg-read oc id octets))
+              (car (fn-own-read (fn-ocfg-owner oc) id octets)))
+       (equal (cdr (fn-ocfg-read oc id octets))
+              (fn-ocfg-with-read-owner oc id
+                                       (cdr (fn-own-read (fn-ocfg-owner oc) id octets))
+                                       (fn-own-read-repinned (fn-ocfg-owner oc) id octets))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-read fn-own-read fn-own-read-repinned)
+                                  (fn-own-read-full fn-ocfg-with-read-owner)))))
+
+; The committed view's archive has the current configuration's domain: the
+; view is replayed under the whole configuration history (fn-ocl-view-historyp)
+; and that replay's node carries the current configuration
+; (fn-ocl-view-configp); the mirror of fn-ocl-connection-archive-has-pinned-domain.
+(defthm fn-ocl-view-archive-has-current-domain
+  (implies (fn-ocl-relation oc)
+           (equal (fn-state-groups (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
+                  (fn-cnode-domain-of (fn-ocfg-config oc))))
+  :hints (("Goal"
+           :use ((:instance fn-cpr-replay-ok-is-configured
+                            (configs (fn-sn-config-history
+                                      (fn-own-store (fn-ocfg-owner oc))))
+                            (events (fn-own-take
+                                     (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                     (fn-sf-records
+                                      (fn-sn-files
+                                       (fn-own-store (fn-ocfg-owner oc)))))))
+                 (:instance fn-ocl-replayed-view-has-successful-physical-prefix
+                            (configs (fn-sn-config-history
+                                      (fn-own-store (fn-ocfg-owner oc))))
+                            (events (fn-own-take
+                                     (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                     (fn-sf-records
+                                      (fn-sn-files
+                                       (fn-own-store (fn-ocfg-owner oc))))))
+                            (frontier (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))))
+           :in-theory (e/d (fn-ocl-projectionp-of-a-visible-state
+                            fn-ocl-projection-keeps-state-fields
+                            fn-ocl-relation fn-ocl-view-historyp fn-ocl-view-configp
+                            fn-cst-replay-node fn-cnode-statep fn-cnode-domain)
+                           (fn-cpr-replay fn-own-take fn-ocl-conns-historyp
+                            fn-ocl-conn-historyp fn-ocl-config-historyp
+                            fn-cst-relation)))))
+
+; NNT-042: the surviving connection has a history in the configured owner
+; AFTER the read: with its old pin and fields when the read moved nothing
+; (fn-own-read-survivor-keeps-historical-fields, first case), or at the
+; committed view under the current configuration, to which
+; fn-ocfg-with-read-owner pinned it (second case;
+; fn-ocl-unchanged-view-new-pin-is-historical is the :advance shape).
+(defthm fn-ocl-own-read-survivor-has-history
   (implies
    (and (fn-ocl-relation oc)
         (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
@@ -1718,24 +1792,51 @@
          id (fn-own-conns
              (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))))
    (fn-ocl-conn-historyp
-    oc
+    (cdr (fn-ocfg-read oc id octets))
     (fn-own-find-conn
      id (fn-own-conns
          (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))))
   :hints (("Goal"
+           :cases ((fn-own-read-repinned (fn-ocfg-owner oc) id octets))
            :use ((:instance fn-ocl-related-found-connection-has-history)
                  (:instance fn-own-read-survivor-is-archive-bounded
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-own-read-survivor-keeps-historical-fields
                             (o (fn-ocfg-owner oc)))
+                 (:instance fn-ocl-ocfg-read-unfolds)
+                 (:instance fn-ocl-own-read-keeps-store (o (fn-ocfg-owner oc)))
+                 (:instance fn-ocl-own-read-keeps-owner-control (o (fn-ocfg-owner oc)))
+                 (:instance fn-ocl-view-archive-has-current-domain)
                  (:instance fn-ocl-connection-history-keeps-replaced-session
                             (old (fn-own-find-conn
                                   id (fn-own-conns (fn-ocfg-owner oc))))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
+                                             (fn-ocfg-owner oc) id octets))))))
+                 (:instance fn-ocl-conn-historyp-under-same-store-and-pin
+                            (next (cdr (fn-ocfg-read oc id octets)))
+                            (conn (fn-own-find-conn
+                                   id (fn-own-conns
+                                       (cdr (fn-own-read
+                                             (fn-ocfg-owner oc) id octets))))))
+                 (:instance fn-ocl-unchanged-view-new-pin-is-historical
+                            (next (cdr (fn-ocfg-read oc id octets)))
+                            (conn (fn-own-find-conn
+                                   id (fn-own-conns
+                                       (cdr (fn-own-read
                                              (fn-ocfg-owner oc) id octets)))))))
-           :in-theory (theory 'minimal-theory))))
+           :in-theory (e/d (fn-ocfg-with-read-owner fn-ocfg-conn-config)
+                           (fn-ocl-relation fn-ocl-conn-historyp fn-ocfg-read
+                            fn-own-read fn-own-read-repinned fn-own-read-full
+                            fn-own-conn-boundedp fn-cst-relation fn-cpr-replay
+                            fn-cst-replay-node fn-ocl-view-historyp
+                            fn-ocl-view-configp fn-ocl-config-historyp
+                            fn-own-read-survivor-keeps-historical-fields
+                            fn-own-read-survivor-is-archive-bounded
+                            fn-ocl-connection-history-keeps-replaced-session
+                            fn-ocl-conn-historyp-under-same-store-and-pin
+                            fn-ocl-view-archive-has-current-domain)))))
 
 (defthm fn-ocl-replace-cannot-create-other-found-id
   (implies (and (not (equal selected (fn-own-conn-id next)))
@@ -1833,7 +1934,8 @@
                     id (fn-own-conns (fn-ocfg-owner oc)))
                    (fn-own-find-conn
                     id (fn-own-conns
-                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))))
+                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
+                   (fn-own-read-repinned (fn-ocfg-owner oc) id octets))
            :use ((:instance fn-ocl-relation-under-same-control-and-valid-connections
                             (next (cdr (fn-ocfg-read oc id octets))))
                  fn-ocl-relation-read-input-facts
@@ -1852,7 +1954,24 @@
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-own-read-nonsurvivor-is-removal
                             (o (fn-ocfg-owner oc)))
-                 fn-ocl-own-read-survivor-has-old-history
+                 fn-ocl-own-read-survivor-has-history
+                 (:instance fn-ocl-ocfg-read-unfolds)
+                 (:instance fn-ocl-pin-set-keeps-conns-pinned
+                            (conns (fn-own-replace-conn
+                                    (fn-own-find-conn
+                                     id (fn-own-conns
+                                         (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
+                                    (fn-own-conns (fn-ocfg-owner oc))))
+                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                 (:instance fn-ocl-pin-set-keeps-pins-pin-conns-only
+                            (conns (fn-own-replace-conn
+                                    (fn-own-find-conn
+                                     id (fn-own-conns
+                                         (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
+                                    (fn-own-conns (fn-ocfg-owner oc))))
+                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                 (:instance fn-ocl-pin-set-keeps-pins-okp
+                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
                  (:instance fn-ocl-own-read-survivor-had-original
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-replace-connection-preserves-histories
@@ -1906,10 +2025,14 @@
                  (:instance fn-own-remove-conn-ids-below-next
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (n (fn-own-next-id (fn-ocfg-owner oc)))))
-           :in-theory (e/d (fn-ocfg-read
-                            fn-ocfg-with-read-owner
+           :in-theory (e/d (fn-ocfg-with-read-owner
                             fn-own-set-conns fn-own-enqueue)
-                           (fn-ocl-relation fn-ocl-view-historyp
+                           (fn-ocfg-read fn-own-read-full fn-own-read-repinned
+                            fn-ocl-ocfg-read-unfolds
+                            fn-ocl-pin-set-keeps-conns-pinned
+                            fn-ocl-pin-set-keeps-pins-pin-conns-only
+                            fn-ocl-pin-set-keeps-pins-okp
+                            fn-ocl-relation fn-ocl-view-historyp
                             fn-ocl-config-historyp fn-ocl-view-configp
                             fn-own-read fn-own-finish-read
                             fn-cst-relation fn-cpr-replay fn-cst-replay-node
@@ -1925,7 +2048,7 @@
                             fn-ocl-own-read-does-not-increase-connections
                             fn-ocl-own-read-survivor-is-replacement
                             fn-ocl-own-read-nonsurvivor-is-removal
-                            fn-ocl-own-read-survivor-has-old-history
+                            fn-ocl-own-read-survivor-has-history
                             fn-ocl-own-read-survivor-had-original
                             fn-ocl-replace-connection-preserves-histories
                             fn-ocl-replace-preserves-conns-pinned

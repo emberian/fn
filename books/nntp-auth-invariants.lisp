@@ -185,7 +185,7 @@
                         (fn-served-dispatch conn event))))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
+           :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
                            (fn-auth-step-pinned fn-auth-sessionp fn-auth-postingp
                             fn-served-conn-pinned-index fn-gidx-pin-correspondencep
                             fn-gidx-pin-trie fn-gidx-pinp
@@ -470,41 +470,7 @@
   (implies (fn-served-connp c) (fn-served-conn-shapep c))
   :hints (("Goal" :in-theory (enable fn-served-connp)))))
 
-(local (defthm fn-served-nine-list-rebuilt
-  (implies (and (true-listp c) (equal (len c) 10))
-           (equal (list (car c) (cadr c) (caddr c) (cadddr c)
-                        (car (cddddr c)) (cadr (cddddr c))
-                        (caddr (cddddr c)) (cadddr (cddddr c))
-                        (car (cddddr (cddddr c)))
-                        (cadr (cddddr (cddddr c))))
-                  c))
-  :hints (("Goal" :in-theory (union-theories
-                              '(len true-listp car-cons cdr-cons
-                                cons-car-cdr fix)
-                              (theory 'ground-zero))))))
-
-(local (defthm fn-served-conn-rebuilt-from-its-fields
-  (implies (fn-served-conn-shapep c)
-           (equal (fn-served-make-conn-group-indexed
-                   (fn-served-conn-wire c) (fn-served-conn-session c)
-                   (fn-served-conn-archive c) (fn-served-conn-config c)
-                   (fn-served-conn-observation c)
-                   (fn-served-conn-injection c) (fn-served-conn-verdicts c)
-                   (fn-served-conn-index c) (fn-served-conn-group-index c) (fn-served-conn-control c))
-                  c))
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-served-conn-shapep
-                                fn-served-make-conn-group-indexed
-                                fn-served-conn-wire fn-served-conn-session
-                                fn-served-conn-archive fn-served-conn-config
-                                fn-served-conn-observation
-                                fn-served-conn-injection
-                                fn-served-conn-verdicts fn-served-conn-index
-                                fn-served-conn-group-index
-                                fn-served-conn-control
-                                fn-ag-car fn-ag-cdr)
-                              (theory 'ground-zero))
-           :use ((:instance fn-served-nine-list-rebuilt))))))
+; fn-served-conn-rebuilt-from-its-fields (books/served.lisp) is the eta law.
 
 (local (defthm fn-served-connp-has-an-auth-session
   (implies (fn-served-connp c)
@@ -529,6 +495,10 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
+           ; NNT-042: GROUP and LISTGROUP are restricted keywords; refused
+           ; (480), their selection failed, and a failed selection keeps
+           ; the previous view and cursor (fn-served-failed-selection-keeps-
+           ; the-connection): the whole connection is still as it was.
            (and (equal (fn-served-result-conn
                         (fn-served-dispatch conn (list :command line)))
                        conn)
@@ -538,7 +508,7 @@
                                        "480 authentication required"))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-served-dispatch)
+           :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-repin)
                            (fn-auth-step-pinned fn-auth-single fn-auth-sessionp
                             fn-auth-config-requiredp fn-auth-restricted-keywordp
                             fn-served-conn-pinned-index fn-served-connp
@@ -571,6 +541,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))
+           ; AUTHINFO moves no pin (fn-served-advance-eventp-of-command,
+           ; fn-nntp-keywordp-exclusive), so the whole connection is kept.
            (and (equal (fn-served-result-conn
                         (fn-served-dispatch conn (list :command line)))
                        conn)
@@ -581,7 +553,7 @@
                         "483 a protected channel is required; use STARTTLS"))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-served-dispatch)
+           :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core)
                            (fn-auth-step-pinned fn-auth-single fn-auth-sessionp
                             fn-auth-config-protected-onlyp
                             fn-served-conn-pinned-index fn-served-connp

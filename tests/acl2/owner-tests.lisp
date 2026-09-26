@@ -125,13 +125,33 @@
   (append (fn-nntp-string-octets "LISTGROUP fn.letters 1-9") '(13 10)))
 (defconst *own-listgroup-old* (fn-own-read *own-c* 0 *own-listgroup-octets*))
 (defconst *own-listgroup-new* (fn-own-read *own-c* 2 *own-listgroup-octets*))
-(assert-event (not (equal (fn-served-reply-octets (car *own-listgroup-old*))
-                          (fn-served-reply-octets (car *own-listgroup-new*)))))
+; NNT-042 (catalog-slice-5, 2026-09-26): LISTGROUP advances the connection
+; to the committed view before it answers, so the reader pinned at version 0
+; now lists the article too -- BY SPECIFICATION (specs/nntp.md "The
+; reader's view is a version"; PKT-571's R1).  This assertion said `not
+; equal' while the pin was fixed for a connection's whole life.
+(assert-event (equal (fn-served-reply-octets (car *own-listgroup-old*))
+                     (fn-served-reply-octets (car *own-listgroup-new*))))
 (assert-event (equal (fn-served-reply-octets (car *own-listgroup-new*))
                      (append (fn-nntp-string-octets
                               "211 1 1 1 fn.letters list follows")
                              '(13 10 49 13 10 46 13 10))))
 (assert-event (fn-own-relation (cdr *own-listgroup-new*)))
+(assert-event (fn-own-relation (cdr *own-listgroup-old*)))
+; The advanced connection is pinned at the view: version 1, the view's
+; archive, trie and buckets (what a connection opened now would pin).
+(assert-event
+ (let ((conn (fn-own-find-conn 0 (fn-own-conns (cdr *own-listgroup-old*))))
+       (view (fn-own-view *own-c*)))
+   (and (equal (fn-own-conn-version conn) (fn-own-view-version view))
+        (equal (fn-own-conn-frontier conn) (fn-own-view-frontier view))
+        (equal (fn-own-conn-archive conn) (fn-own-view-archive view))
+        (equal (fn-own-conn-index conn) (fn-own-view-index view))
+        (equal (fn-own-conn-group-index conn) (fn-own-view-group-index view))
+        (equal (fn-own-conn-control conn) (fn-own-view-control view)))))
+; The flag the configured owner reads (fn-ocfg-with-read-owner): the pin moved.
+(assert-event (equal (fn-own-read-repinned *own-c* 0 *own-listgroup-octets*) t))
+(assert-event (equal (fn-own-read-repinned *own-c* 2 *own-listgroup-octets*) t))
 
 ; A forged tagged pin with an empty bucket has the correct Message-ID trie
 ; but loses the committed membership.  The correspondence premise in the
@@ -153,19 +173,34 @@
         (fn-nntp-string-octets "LISTGROUP")
         (list (fn-nntp-string-octets "fn.letters"))))))
 
-; The same read answers differently on the two pins: A sees an empty group,
-; C sees one article.  This is the two-readers-at-different-versions witness
-; for the served port (fn-own-read-is-served-step-on-pinned-prefix) and for
-; its per-event law (fn-own-reader-sees-pinned-prefix-replay).
+; GROUP on the two connections.  Before NNT-042 the reader pinned at version
+; 0 answered `211 0' here (the two-readers-at-different-versions witness);
+; GROUP now advances it first, so both answer the committed view.  The
+; different-versions witness is STAT below (*own-stat-a*): a command that
+; moves no pin still answers the pinned prefix.
 (defconst *own-read-a* (fn-own-read *own-c* 0 *own-group-octets*))
 (defconst *own-read-c* (fn-own-read *own-c* 2 *own-group-octets*))
-(assert-event (not (equal (car *own-read-a*) (car *own-read-c*))))
+(assert-event (equal (car *own-read-a*) (car *own-read-c*)))
 (assert-event (equal (fn-served-reply-octets (car *own-read-c*))
                      (append (fn-nntp-string-octets "211 1 1 1 fn.letters") (list 13 10))))
-(assert-event (equal (fn-own-take 5 (fn-served-reply-octets (car *own-read-a*)))
-                     (fn-nntp-string-octets "211 0")))
 (assert-event (not (fn-served-closingp (car *own-read-a*))))
 (assert-event (fn-own-relation (cdr *own-read-a*)))
+(assert-event (equal (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns (cdr *own-read-a*)))) 1))
+; C3 within a command and between non-advancing commands: STAT <msgid> on the
+; reader still pinned at version 0 answers 430 (the article is not in its
+; view) and moves no pin; on the reader at version 1 it answers 223.
+(defconst *own-stat-octets*
+  (append (fn-nntp-string-octets "STAT <one@example>") '(13 10)))
+(defconst *own-stat-a* (fn-own-read *own-c* 0 *own-stat-octets*))
+(defconst *own-stat-c* (fn-own-read *own-c* 2 *own-stat-octets*))
+(assert-event (not (equal (car *own-stat-a*) (car *own-stat-c*))))
+(assert-event (equal (fn-own-take 3 (fn-served-reply-octets (car *own-stat-a*)))
+                     (fn-nntp-string-octets "430")))
+(assert-event (equal (fn-own-take 3 (fn-served-reply-octets (car *own-stat-c*)))
+                     (fn-nntp-string-octets "223")))
+(assert-event (equal (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns (cdr *own-stat-a*)))) 0))
+(assert-event (equal (fn-own-read-repinned *own-c* 0 *own-stat-octets*) nil))
+(assert-event (fn-own-relation (cdr *own-stat-a*)))
 ; The served port keeps the wire state: a read cut inside the command line
 ; frames nothing, the rest of the line completes it (fn-served-run-is-the-
 ; concatenated-step, books/served.lisp).
@@ -349,45 +384,74 @@
 
 (defconst *own-reply-a* (car (fn-own-read-step *own-c* 0 *own-group-command*)))
 (defconst *own-reply-c* (car (fn-own-read-step *own-c* 2 *own-group-command*)))
-(assert-event (not (equal *own-reply-a* *own-reply-c*)))
+; NNT-042: the per-event law advances at GROUP too (see *own-read-a*).
+(assert-event (equal *own-reply-a* *own-reply-c*))
 (assert-event (equal *own-reply-c*
                      (list (fn-nntp-reply-effect
                             (append (fn-nntp-string-octets "211 1 1 1 fn.letters") (list 13 10))))))
 (assert-event (equal (car *own-read-c*) *own-reply-c*))
 
-; K1 (served) and K1 (per event) hold on the witness in their stated forms.
+; K1 (served) and K1 (per event) hold on the witness in their stated forms:
+; the served step over the connection pinned at the REPLAYED prefix, with the
+; owner's committed view as the live pin GROUP advances to (NNT-042).  A
+; served connection without the live pin (fn-served-make-conn) still answers
+; the pinned prefix: the last assertion of the three.
 (assert-event
  (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
-        (s (fn-own-store *own-c*)))
+        (s (fn-own-store *own-c*))
+        (archive (fn-node-acceptance
+                  (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                     (fn-own-take (fn-own-conn-version conn)
+                                                  (fn-sf-records (fn-sn-files s)))
+                                     (fn-own-conn-frontier conn)))))
    (equal (car *own-read-a*)
           (fn-served-result-effects
            (fn-served-step
-            (fn-served-make-conn
-             (fn-own-conn-wire conn) (fn-own-conn-session conn)
-             (fn-node-acceptance
-              (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
-                                 (fn-own-take (fn-own-conn-version conn)
-                                              (fn-sf-records (fn-sn-files s)))
-                                 (fn-own-conn-frontier conn)))
+            (fn-served-make-conn-live
+             (fn-own-conn-wire conn) (fn-own-conn-session conn) archive
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-own-clock *own-c*))
+             (fn-own-clock *own-c*) nil
+             (fn-midx-build (fn-state-articles archive)) nil nil
+             (fn-served-pinned-make (fn-own-conn-version conn) (fn-own-conn-frontier conn) nil)
+             (fn-own-view-live (fn-own-view *own-c*)))
             *own-group-octets*)))))
 (assert-event
  (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
-        (s (fn-own-store *own-c*)))
+        (s (fn-own-store *own-c*))
+        (archive (fn-node-acceptance
+                  (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                     (fn-own-take (fn-own-conn-version conn)
+                                                  (fn-sf-records (fn-sn-files s)))
+                                     (fn-own-conn-frontier conn)))))
    (equal *own-reply-a*
           (fn-served-result-effects
            (fn-served-dispatch
-            (fn-served-make-conn
-             (fn-own-conn-wire conn) (fn-own-conn-session conn)
-             (fn-node-acceptance
-              (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
-                                 (fn-own-take (fn-own-conn-version conn)
-                                              (fn-sf-records (fn-sn-files s)))
-                                 (fn-own-conn-frontier conn)))
+            (fn-served-make-conn-live
+             (fn-own-conn-wire conn) (fn-own-conn-session conn) archive
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-own-clock *own-c*))
+             (fn-own-clock *own-c*) nil
+             (fn-midx-build (fn-state-articles archive)) nil nil
+             (fn-served-pinned-make (fn-own-conn-version conn) (fn-own-conn-frontier conn) nil)
+             (fn-own-view-live (fn-own-view *own-c*)))
             *own-group-command*)))))
+(assert-event
+ (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
+        (s (fn-own-store *own-c*)))
+   (equal (fn-own-take 5
+           (fn-served-reply-octets
+            (fn-served-result-effects
+             (fn-served-step
+              (fn-served-make-conn
+               (fn-own-conn-wire conn) (fn-own-conn-session conn)
+               (fn-node-acceptance
+                (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                   (fn-own-take (fn-own-conn-version conn)
+                                                (fn-sf-records (fn-sn-files s)))
+                                   (fn-own-conn-frontier conn)))
+               (fn-own-conn-config conn) (fn-own-conn-observation conn)
+               (fn-own-clock *own-c*))
+              *own-group-octets*))))
+          (fn-nntp-string-octets "211 0"))))
 
 ; Reader A advances and now sees the newest version.
 (defconst *own-advanced* (fn-own-step *own-c* '(:advance 0)))

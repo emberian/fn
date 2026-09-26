@@ -197,8 +197,9 @@
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))
           (fn-own-tls-make-result
-           (fn-served-counted-consumed counted) (car result) (cdr result)))
-      (fn-own-tls-make-result (nfix (- end i)) nil o))))
+           (fn-served-counted-consumed counted) (car result) (cdr result)
+           (fn-own-result-repinned (fn-served-counted-result counted))))
+      (fn-own-tls-make-result (nfix (- end i)) nil o nil))))
 
 (defthm fn-scar-own-read-span-is-own-read-tls-prefix
   (implies (and (natp i) (natp end))
@@ -217,7 +218,9 @@
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)
-     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)))))
+     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
+                              (fn-own-tls-result-repinned result))
+     (fn-own-tls-result-repinned result))))
 
 (defthm fn-scar-ocfg-read-span-is-read-tls-prefix
   (implies (and (natp i) (natp end))

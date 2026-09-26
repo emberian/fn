@@ -1048,6 +1048,91 @@
                                    fn-own-conn-boundedp
                                    fn-served-open-peer-indexed)))))
 
+; NNT-042: the read hands the served connection the owner's committed view as
+; its live pin and takes the pin back (fn-own-finish-read).  What comes back
+; is the connection's own pin or the view's (fn-served-step-pin-is-old-or-live,
+; books/served.lisp), so the rebuilt connection is okp either as the found
+; connection was (its pin) or as an advanced connection is
+; (fn-own-conn-okp-of-view-pin, the :advance argument); its boundedness is
+; the runtime check fn-own-finish-read makes.
+
+; The two cases of a served result's pin against the owner connection it
+; was built from, in the owner's vocabulary.
+(local
+ (defthm fn-own-served-conn-pin-cases
+   (implies (fn-served-pin-old-or-live-p (fn-own-served-conn o conn session) sconn)
+            (or (and (equal (fn-served-conn-archive sconn) (fn-own-conn-archive conn))
+                     (equal (fn-served-conn-verdicts sconn) (fn-own-conn-verdicts conn))
+                     (equal (fn-served-conn-index sconn) (fn-own-conn-index conn))
+                     (equal (fn-served-conn-group-index sconn) (fn-own-conn-group-index conn))
+                     (equal (fn-served-conn-control sconn) (fn-own-conn-control conn))
+                     (equal (fn-served-pinned-version (fn-served-conn-pinned sconn))
+                            (fn-own-conn-version conn))
+                     (equal (fn-served-pinned-frontier (fn-served-conn-pinned sconn))
+                            (fn-own-conn-frontier conn)))
+                (and (equal (fn-served-conn-archive sconn) (fn-own-view-archive (fn-own-view o)))
+                     (equal (fn-served-conn-verdicts sconn) (fn-own-view-verdicts (fn-own-view o)))
+                     (equal (fn-served-conn-index sconn) (fn-own-view-index (fn-own-view o)))
+                     (equal (fn-served-conn-group-index sconn) (fn-own-view-group-index (fn-own-view o)))
+                     (equal (fn-served-conn-control sconn) (fn-own-view-control (fn-own-view o)))
+                     (equal (fn-served-pinned-version (fn-served-conn-pinned sconn))
+                            (fn-own-view-version (fn-own-view o)))
+                     (equal (fn-served-pinned-frontier (fn-served-conn-pinned sconn))
+                            (fn-own-view-frontier (fn-own-view o))))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-served-pin-old-or-live-p-cases
+                             (c0 (fn-own-served-conn o conn session)) (c sconn))
+                  (:instance fn-served-conn-pin-fields
+                             (a sconn) (b (fn-own-served-conn o conn session)))
+                  (:instance fn-served-live-pin-fields
+                             (a sconn) (live (fn-own-view-live (fn-own-view o)))))
+            :in-theory (e/d (fn-own-served-conn)
+                            (fn-served-pin-old-or-live-p fn-served-conn-pin
+                             fn-served-live-pin fn-own-view-live))))))
+
+; The rebuilt connection of fn-own-finish-read is okp in either case.
+(local
+ (defthm fn-own-finish-read-conn-okp
+   (implies (and (fn-own-conn-okp conn groups capacity records)
+                 (fn-own-view-okp (fn-own-view o) groups capacity records)
+                 (fn-served-pin-old-or-live-p (fn-own-served-conn o conn session) sconn)
+                 (fn-own-conn-boundedp
+                  (fn-own-conn-make-group-indexed
+                   (fn-own-conn-id conn)
+                   (fn-served-pinned-version (fn-served-conn-pinned sconn))
+                   (fn-served-pinned-frontier (fn-served-conn-pinned sconn))
+                   wire session2
+                   (fn-served-conn-archive sconn)
+                   (fn-own-conn-config conn) (fn-own-conn-observation conn)
+                   (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+                   (fn-served-conn-group-index sconn) (fn-served-conn-control sconn))
+                  groups))
+            (fn-own-conn-okp
+             (fn-own-conn-make-group-indexed
+              (fn-own-conn-id conn)
+              (fn-served-pinned-version (fn-served-conn-pinned sconn))
+              (fn-served-pinned-frontier (fn-served-conn-pinned sconn))
+              wire session2
+              (fn-served-conn-archive sconn)
+              (fn-own-conn-config conn) (fn-own-conn-observation conn)
+              (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+              (fn-served-conn-group-index sconn) (fn-served-conn-control sconn))
+             groups capacity records))
+   :hints (("Goal"
+            :use ((:instance fn-own-served-conn-pin-cases)
+                  (:instance fn-own-conn-okp-of-view-pin
+                             (view (fn-own-view o)) (id (fn-own-conn-id conn))
+                             (wire wire) (session session2)
+                             (config (fn-own-conn-config conn))
+                             (obs (fn-own-conn-observation conn))))
+            :in-theory (e/d (fn-own-conn-okp)
+                            (fn-own-conn-make-group-indexed fn-own-conn-boundedp
+                             fn-own-view-okp fn-own-conn-okp-of-view-pin
+                             fn-ctl-projectionp fn-midx-correspondencep fn-gidx-build
+                             fn-own-control-okp fn-own-prefix-archive
+                             fn-served-pin-old-or-live-p))))))
+
 (defthm fn-own-read-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-own-read o id octets))))
@@ -1061,10 +1146,47 @@
                  ; identifier, so it keeps its bound below `next-id' too
                  (:instance fn-own-find-conn-id-below-next
                             (conns (fn-own-conns o))
-                            (n (fn-own-next-id o))))
-           :in-theory (e/d (fn-own-relation)
+                            (n (fn-own-next-id o)))
+                 (:instance fn-served-step-pin-is-old-or-live
+                            (conn (fn-own-served-conn
+                                   o (fn-own-find-conn id (fn-own-conns o))
+                                   (fn-own-conn-live-session
+                                    o (fn-own-find-conn id (fn-own-conns o))))))
+                 (:instance fn-own-finish-read-conn-okp
+                            (conn (fn-own-find-conn id (fn-own-conns o)))
+                            (session (fn-own-conn-live-session
+                                      o (fn-own-find-conn id (fn-own-conns o))))
+                            (sconn (fn-served-result-conn
+                                    (fn-served-step
+                                     (fn-own-served-conn
+                                      o (fn-own-find-conn id (fn-own-conns o))
+                                      (fn-own-conn-live-session
+                                       o (fn-own-find-conn id (fn-own-conns o))))
+                                     octets)))
+                            (wire (fn-served-conn-wire
+                                   (fn-served-result-conn
+                                    (fn-served-step
+                                     (fn-own-served-conn
+                                      o (fn-own-find-conn id (fn-own-conns o))
+                                      (fn-own-conn-live-session
+                                       o (fn-own-find-conn id (fn-own-conns o))))
+                                     octets))))
+                            (session2 (fn-served-conn-session
+                                       (fn-served-result-conn
+                                        (fn-served-step
+                                         (fn-own-served-conn
+                                          o (fn-own-find-conn id (fn-own-conns o))
+                                          (fn-own-conn-live-session
+                                           o (fn-own-find-conn id (fn-own-conns o))))
+                                         octets))))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (e/d (fn-own-relation fn-own-read fn-own-read-full fn-own-finish-read)
                            (fn-own-conns-okp fn-own-view-okp fn-own-conn-make-group-indexed
-                            fn-own-conn-boundedp fn-own-find-conn-okp)))))
+                            fn-own-conn-boundedp fn-own-find-conn-okp fn-own-conn-okp
+                            fn-served-step fn-own-served-conn fn-served-pin-old-or-live-p
+                            fn-own-conn-live-session)))))
 
 (defthm fn-own-read-step-preserves-relation
   (implies (fn-own-relation o)
@@ -1075,14 +1197,43 @@
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
-                 ; the rebuilt connection keeps the found connection's
-                 ; identifier, so it keeps its bound below `next-id' too
                  (:instance fn-own-find-conn-id-below-next
                             (conns (fn-own-conns o))
-                            (n (fn-own-next-id o))))
-           :in-theory (e/d (fn-own-relation)
+                            (n (fn-own-next-id o)))
+                 (:instance fn-served-dispatch-pin
+                            (conn (fn-own-served-conn
+                                   o (fn-own-find-conn id (fn-own-conns o))
+                                   (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))))
+                 (:instance fn-own-finish-read-conn-okp
+                            (conn (fn-own-find-conn id (fn-own-conns o)))
+                            (session (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
+                            (sconn (fn-served-result-conn
+                                    (fn-served-dispatch
+                                     (fn-own-served-conn
+                                      o (fn-own-find-conn id (fn-own-conns o))
+                                      (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
+                                     event)))
+                            (wire (fn-served-conn-wire
+                                   (fn-served-result-conn
+                                    (fn-served-dispatch
+                                     (fn-own-served-conn
+                                      o (fn-own-find-conn id (fn-own-conns o))
+                                      (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
+                                     event))))
+                            (session2 (fn-served-conn-session
+                                       (fn-served-result-conn
+                                        (fn-served-dispatch
+                                         (fn-own-served-conn
+                                          o (fn-own-find-conn id (fn-own-conns o))
+                                          (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
+                                         event))))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (e/d (fn-own-relation fn-own-read-step fn-own-read-step-full)
                            (fn-own-conns-okp fn-own-view-okp fn-own-conn-make-group-indexed
-                            fn-own-conn-boundedp fn-own-find-conn-okp)))))
+                            fn-own-conn-boundedp fn-own-find-conn-okp fn-own-conn-okp
+                            fn-served-dispatch fn-own-served-conn fn-served-pin-old-or-live-p)))))
 
 ; The connection `fn-own-advance' re-pins at the view carries the view's
 ; control pin, and that pin is okp against the connection's own prefix
@@ -1722,7 +1873,7 @@
              (equal (car (fn-own-read o id octets))
                     (fn-served-result-effects
                      (fn-served-step
-                      (fn-served-make-conn-group-indexed
+                      (fn-served-make-conn-live
                        (fn-own-conn-wire conn)
                        (fn-own-conn-live-session o conn)
                        (fn-ctl-visible-state-of
@@ -1737,7 +1888,10 @@
                        (fn-own-clock o)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)
+                       (fn-served-pinned-make (fn-own-conn-version conn)
+                                              (fn-own-conn-frontier conn) nil)
+                       (fn-own-view-live (fn-own-view o)))
                       octets)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
@@ -1760,7 +1914,7 @@
              (equal (car (fn-own-read final id octets))
                     (fn-served-result-effects
                      (fn-served-step
-                      (fn-served-make-conn-group-indexed
+                      (fn-served-make-conn-live
                        (fn-own-conn-wire conn)
                        (fn-own-conn-live-session final conn)
                        (fn-ctl-visible-state-of
@@ -1775,7 +1929,10 @@
                        (fn-own-clock final)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)
+                       (fn-served-pinned-make (fn-own-conn-version conn)
+                                              (fn-own-conn-frontier conn) nil)
+                       (fn-own-view-live (fn-own-view final)))
                       octets)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-read-is-served-step-on-pinned-prefix
@@ -1801,7 +1958,7 @@
              (equal (car (fn-own-read-step o id event))
                     (fn-served-result-effects
                      (fn-served-dispatch
-                      (fn-served-make-conn-group-indexed
+                      (fn-served-make-conn-live
                        (fn-own-conn-wire conn)
                        (fn-own-conn-session conn)
                        (fn-ctl-visible-state-of
@@ -1816,7 +1973,10 @@
                        (fn-own-clock o)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)
+                       (fn-served-pinned-make (fn-own-conn-version conn)
+                                              (fn-own-conn-frontier conn) nil)
+                       (fn-own-view-live (fn-own-view o)))
                       event)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
@@ -1839,7 +1999,7 @@
              (equal (car (fn-own-read-step final id event))
                     (fn-served-result-effects
                      (fn-served-dispatch
-                      (fn-served-make-conn-group-indexed
+                      (fn-served-make-conn-live
                        (fn-own-conn-wire conn)
                        (fn-own-conn-session conn)
                        (fn-ctl-visible-state-of
@@ -1854,7 +2014,10 @@
                        (fn-own-clock final)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)
+                       (fn-served-pinned-make (fn-own-conn-version conn)
+                                              (fn-own-conn-frontier conn) nil)
+                       (fn-own-view-live (fn-own-view final)))
                       event)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-reader-sees-pinned-prefix-replay
@@ -2223,26 +2386,65 @@
            :use ((:instance fn-own-find-conn-of-replace-conn-same
                             (conn next))))))
 
+; NNT-042: the survivor keeps its identifier; its pin is the old one or the
+; view's (fn-served-step-pin-is-old-or-live), and which one is what
+; fn-own-read-repinned says.
 (defthm fn-own-read-survivor-keeps-historical-fields
   (implies
    (fn-own-find-conn
     id (fn-own-conns (cdr (fn-own-read o id octets))))
    (let ((old (fn-own-find-conn id (fn-own-conns o)))
          (next (fn-own-find-conn
-                id (fn-own-conns (cdr (fn-own-read o id octets))))))
+                id (fn-own-conns (cdr (fn-own-read o id octets)))))
+         (view (fn-own-view o)))
      (and (fn-own-conn-shapep next)
           (equal (fn-own-conn-id next) (fn-own-conn-id old))
-          (equal (fn-own-conn-version next) (fn-own-conn-version old))
-          (equal (fn-own-conn-frontier next) (fn-own-conn-frontier old))
-          (equal (fn-own-conn-archive next) (fn-own-conn-archive old)))))
+          (if (fn-own-read-repinned o id octets)
+              (and (equal (fn-own-conn-version next) (fn-own-view-version view))
+                   (equal (fn-own-conn-frontier next) (fn-own-view-frontier view))
+                   (equal (fn-own-conn-archive next) (fn-own-view-archive view)))
+            (and (equal (fn-own-conn-version next) (fn-own-conn-version old))
+                 (equal (fn-own-conn-frontier next) (fn-own-conn-frontier old))
+                 (equal (fn-own-conn-archive next) (fn-own-conn-archive old)))))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id
-                            (conns (fn-own-conns o))))
-           :in-theory (e/d (fn-own-read fn-own-finish-read
-                            fn-own-set-conns fn-own-enqueue)
+                            (conns (fn-own-conns o)))
+                 (:instance fn-served-step-pin-is-old-or-live
+                            (conn (fn-own-served-conn
+                                   o (fn-own-find-conn id (fn-own-conns o))
+                                   (fn-own-conn-live-session
+                                    o (fn-own-find-conn id (fn-own-conns o))))))
+                 (:instance fn-own-served-conn-pin-cases
+                            (conn (fn-own-find-conn id (fn-own-conns o)))
+                            (session (fn-own-conn-live-session
+                                      o (fn-own-find-conn id (fn-own-conns o))))
+                            (sconn (fn-served-result-conn
+                                    (fn-served-step
+                                     (fn-own-served-conn
+                                      o (fn-own-find-conn id (fn-own-conns o))
+                                      (fn-own-conn-live-session
+                                       o (fn-own-find-conn id (fn-own-conns o))))
+                                     octets))))
+                 (:instance fn-served-pin-old-or-live-p-cases
+                            (c0 (fn-own-served-conn
+                                 o (fn-own-find-conn id (fn-own-conns o))
+                                 (fn-own-conn-live-session
+                                  o (fn-own-find-conn id (fn-own-conns o)))))
+                            (c (fn-served-result-conn
+                                (fn-served-step
+                                 (fn-own-served-conn
+                                  o (fn-own-find-conn id (fn-own-conns o))
+                                  (fn-own-conn-live-session
+                                   o (fn-own-find-conn id (fn-own-conns o))))
+                                 octets)))))
+           :in-theory (e/d (fn-own-read fn-own-read-full fn-own-read-repinned
+                            fn-own-finish-read fn-own-result-repinned
+                            fn-own-set-conns fn-own-enqueue fn-served-conn-pin
+                            fn-served-live-pin)
                            (fn-served-step fn-own-conn-boundedp
-                            fn-own-conn-make-group-indexed
-                            fn-served-make-conn-group-indexed)))))
+                            fn-own-conn-make-group-indexed fn-own-served-conn
+                            fn-served-make-conn-group-indexed fn-served-make-conn-live
+                            fn-served-pin-old-or-live-p fn-own-conn-live-session)))))
 
 (defthm fn-own-find-conn-of-remove-conn-other
   (implies (not (equal id other))

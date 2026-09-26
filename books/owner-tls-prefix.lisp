@@ -9,10 +9,15 @@
 (include-book "owner-config")
 (include-book "served-tls-prefix")
 
-; (:fn-own-tls-result consumed effects configured-owner).
-(defun fn-own-tls-make-result (consumed effects owner)
+; (:fn-own-tls-result consumed effects configured-owner repinned): REPINNED
+; is whether the read moved the connection's pin (NNT-042; fn-own-result-repinned).
+(defun fn-own-tls-make-result (consumed effects owner &optional repinned)
   (declare (xargs :guard t))
-  (list :fn-own-tls-result consumed effects owner))
+  (list :fn-own-tls-result consumed effects owner repinned))
+
+(defun fn-own-tls-result-repinned (result)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result))))))
 
 (defun fn-own-tls-result-consumed (result)
   (declare (xargs :guard t))
@@ -28,22 +33,14 @@
 
 (defun fn-own-tls-served-conn (o conn)
   (declare (xargs :guard t))
-  (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
-                              (fn-own-conn-live-session o conn)
-                              (fn-own-conn-archive conn)
-                              (fn-own-conn-config conn)
-                              (fn-own-conn-observation conn)
-                              (fn-own-clock o)
-                              (fn-own-conn-verdicts conn)
-                              (fn-own-conn-index conn)
-                              (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
+  (fn-own-served-conn o conn (fn-own-conn-live-session o conn)))
 
 (defthm fn-own-tls-served-conn-keeps-reader-pins
   (and (equal (fn-served-conn-verdicts (fn-own-tls-served-conn o conn))
               (fn-own-conn-verdicts conn))
        (equal (fn-served-conn-index (fn-own-tls-served-conn o conn))
               (fn-own-conn-index conn)))
-  :hints (("Goal" :in-theory (enable fn-own-tls-served-conn))))
+  :hints (("Goal" :in-theory (enable fn-own-tls-served-conn fn-own-served-conn))))
 
 (defun fn-own-read-tls-prefix (o id octets)
   (declare (xargs :guard t))
@@ -56,8 +53,9 @@
                  (fn-own-finish-read
                   o conn (fn-served-counted-result counted))))
           (fn-own-tls-make-result
-           (fn-served-counted-consumed counted) (car result) (cdr result)))
-      (fn-own-tls-make-result (len octets) nil o))))
+           (fn-served-counted-consumed counted) (car result) (cdr result)
+           (fn-own-result-repinned (fn-served-counted-result counted))))
+      (fn-own-tls-make-result (len octets) nil o nil))))
 
 (defun fn-ocfg-read-tls-prefix (oc id octets)
   (declare (xargs :guard (fn-wire-octet-listp octets)))
@@ -65,7 +63,9 @@
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)
-     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)))))
+     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
+                              (fn-own-tls-result-repinned result))
+     (fn-own-tls-result-repinned result))))
 
 (defthm fn-own-read-tls-prefix-consumed-is-bounded
   (<= (fn-own-tls-result-consumed

@@ -526,6 +526,27 @@
                             fn-own-view-withdrawn fn-own-view-withdrawals
                             fn-own-view-keyring)))))
 (in-theory (disable fn-own-view-control))
+; The view as a served connection's LIVE pin (books/served.lisp
+; fn-served-live-make; NNT-042): the seven values fn-own-open pins into a new
+; connection, handed to every read so that GROUP and LISTGROUP can advance
+; the connection to them between commands (fn-served-repin).
+(defun fn-own-view-live (view)
+  (declare (xargs :guard t))
+  (fn-served-live-make (fn-own-view-version view) (fn-own-view-frontier view)
+                       (fn-own-view-archive view) (fn-own-view-verdicts view)
+                       (fn-own-view-index view) (fn-own-view-group-index view)
+                       (fn-own-view-control view)))
+(defthm fn-own-view-live-fields
+  (let ((live (fn-own-view-live view)))
+    (and live
+         (equal (fn-served-live-version live) (fn-own-view-version view))
+         (equal (fn-served-live-frontier live) (fn-own-view-frontier view))
+         (equal (fn-served-live-archive live) (fn-own-view-archive view))
+         (equal (fn-served-live-verdicts live) (fn-own-view-verdicts view))
+         (equal (fn-served-live-index live) (fn-own-view-index view))
+         (equal (fn-served-live-buckets live) (fn-own-view-group-index view))
+         (equal (fn-served-live-control live) (fn-own-view-control view)))))
+(in-theory (disable fn-own-view-live))
 (defun fn-own-view-make-indexed (version frontier archive verdicts index)
   (declare (xargs :guard t))
   (fn-own-view-make-group-indexed version frontier archive verdicts index nil))
@@ -1479,22 +1500,42 @@
         (fn-auth-with-base as (fn-peer-with-node ps (fn-sn-node (fn-own-store o))))
       as)))
 
+; The served connection of an owner connection: its pin, SESSION (the live
+; one for a peer, fn-own-conn-live-session; the connection's own for the
+; per-event law), the owner's clock as the injection reading, its pin
+; identity and the owner's committed view as the live pin GROUP and LISTGROUP
+; advance to (NNT-042, books/served.lisp fn-served-repin).
+(defun fn-own-served-conn (o conn session)
+  (declare (xargs :guard t))
+  (fn-served-make-conn-live (fn-own-conn-wire conn) session
+                            (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                            (fn-own-conn-observation conn) (fn-own-clock o)
+                            (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+                            (fn-own-conn-group-index conn) (fn-own-conn-control conn)
+                            (fn-served-pinned-make (fn-own-conn-version conn)
+                                                   (fn-own-conn-frontier conn) nil)
+                            (fn-own-view-live (fn-own-view o))))
+
+; The read's pin, taken back from the served connection: what it was, or the
+; view's when GROUP or LISTGROUP advanced it (fn-served-step-pin-is-old-or-live).
 (defun fn-own-finish-read (o conn result)
   (declare (xargs :guard t))
   (let* ((effects (fn-served-result-effects result))
          (sconn (fn-served-result-conn result))
          (id (fn-own-conn-id conn))
+         (pinned (fn-served-conn-pinned sconn))
          (next (fn-own-conn-make-group-indexed id
-                                 (fn-own-conn-version conn)
-                                 (fn-own-conn-frontier conn)
+                                 (fn-served-pinned-version pinned)
+                                 (fn-served-pinned-frontier pinned)
                                  (fn-served-conn-wire sconn)
                                  (fn-served-conn-session sconn)
-                                 (fn-own-conn-archive conn)
+                                 (fn-served-conn-archive sconn)
                                  (fn-own-conn-config conn)
                                  (fn-own-conn-observation conn)
-                                 (fn-own-conn-verdicts conn)
-                                 (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
+                                 (fn-served-conn-verdicts sconn)
+                                 (fn-served-conn-index sconn)
+                                 (fn-served-conn-group-index sconn)
+                                 (fn-served-conn-control sconn)))
          (decision (fn-served-submission effects)))
     (cons effects
           (if (and (fn-own-conn-boundedp
@@ -1510,23 +1551,36 @@
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 
-(defun fn-own-read (o id octets)
+; Whether a served result moved the connection's pin (NNT-042): read off the
+; pin identity, never by comparing archives.
+(defun fn-own-result-repinned (result)
+  (declare (xargs :guard t))
+  (and (fn-served-pinned-repinned
+        (fn-served-conn-pinned (fn-served-result-conn result)))
+       t))
+
+; The read with its third answer, whether the pin moved: the configured
+; owner (books/owner-config.lisp fn-ocfg-with-read-owner) moves the
+; connection's configuration pin with it, exactly as it does at :advance.
+(defun fn-own-read-full (o id octets)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
-        (fn-own-finish-read
-         o conn
-         (fn-served-step (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
-                                              (fn-own-conn-live-session o conn)
-                                              (fn-own-conn-archive conn)
-                                              (fn-own-conn-config conn)
-                                              (fn-own-conn-observation conn)
-                                              (fn-own-clock o)
-                                              (fn-own-conn-verdicts conn)
-                                              (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
-                         octets))
-      (cons nil o))))
+        (let* ((result (fn-served-step
+                        (fn-own-served-conn o conn (fn-own-conn-live-session o conn))
+                        octets))
+               (finished (fn-own-finish-read o conn result)))
+          (list (car finished) (cdr finished) (fn-own-result-repinned result)))
+      (list nil o nil))))
+
+(defun fn-own-read (o id octets)
+  (declare (xargs :guard t))
+  (let ((r (fn-own-read-full o id octets)))
+    (cons (car r) (car (cdr r)))))
+
+(defun fn-own-read-repinned (o id octets)
+  (declare (xargs :guard t))
+  (car (cdr (cdr (fn-own-read-full o id octets)))))
 
 ; The per-event law under the served port: one framed wire event is one
 ; fn-served-dispatch (fn-nntp-post-step with the article-mode switch,
@@ -1535,41 +1589,41 @@
 ; event before the next byte is framed; this is that fold's one step with the
 ; owner's bookkeeping around it.  It records no submission: the served port
 ; does that once per read.
-(defun fn-own-read-step (o id event)
+(defun fn-own-read-step-full (o id event)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((result (fn-served-dispatch
-                        (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
-                                             (fn-own-conn-session conn)
-                                             (fn-own-conn-archive conn)
-                                             (fn-own-conn-config conn)
-                                             (fn-own-conn-observation conn)
-                                             (fn-own-clock o)
-                                             (fn-own-conn-verdicts conn)
-                                             (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
+                        (fn-own-served-conn o conn (fn-own-conn-session conn))
                         event))
                (sconn (fn-served-result-conn result))
+               (pinned (fn-served-conn-pinned sconn))
                (next (fn-own-conn-make-group-indexed (fn-own-conn-id conn)
-                                       (fn-own-conn-version conn)
-                                       (fn-own-conn-frontier conn)
+                                       (fn-served-pinned-version pinned)
+                                       (fn-served-pinned-frontier pinned)
                                        (fn-served-conn-wire sconn)
                                        (fn-served-conn-session sconn)
-                                       (fn-own-conn-archive conn)
+                                       (fn-served-conn-archive sconn)
                                        (fn-own-conn-config conn)
                                        (fn-own-conn-observation conn)
-                                       (fn-own-conn-verdicts conn)
-                                       (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
-          (cons (fn-served-result-effects result)
+                                       (fn-served-conn-verdicts sconn)
+                                       (fn-served-conn-index sconn)
+                                       (fn-served-conn-group-index sconn)
+                                       (fn-served-conn-control sconn))))
+          (list (fn-served-result-effects result)
                 (if (and (fn-own-conn-boundedp
                           next (fn-sn-groups (fn-own-store o)))
                          (fn-own-conn-boundedp
                           next (fn-state-groups (fn-own-conn-archive next))))
                     (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
-                  (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o))))))
-      (cons nil o))))
+                  (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o))))
+                (fn-own-result-repinned result)))
+      (list nil o nil))))
+
+(defun fn-own-read-step (o id event)
+  (declare (xargs :guard t))
+  (let ((r (fn-own-read-step-full o id event)))
+    (cons (car r) (car (cdr r)))))
 
 ; Advance re-pins a connection to the newest committed view.  The projection
 ; verdict is recomputed for the new archive (one recognizer run per advance);

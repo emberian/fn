@@ -6827,7 +6827,81 @@
     },
     {
       "id": "PRF-202",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-repin-preserves-connp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-preserves-connp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-effects-are-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-pin-is-old-or-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-successful-selection-is-the-repinned-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-failed-selection-keeps-the-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-effects-are-the-repinned-dispatch-effects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-without-advance-is-core"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-dispatch-is-served-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-step-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-survivor-keeps-historical-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-is-served-step-on-pinned-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-reader-sees-pinned-prefix-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-own-read-survivor-has-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-read-preserves-historical-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-view-cancel-after-target"
+        }
+      ],
+      "pending_subject": "fn-view-apply-is-refresh as registered (the delta equation) is not proved; the events above are the pinned-view semantics (NNT-042) proved over the machine the host calls today (fn-owner-chunk-span -> fn-scar-ocfg-read-span -> fn-scar-dispatch = fn-served-dispatch): the pin moves only to the owner's committed view and only on a successful GROUP/LISTGROUP. The catalog form (fn-view-advance = fn-cat-count) is exercised in tests/acl2/catalog-delta-tests.lisp."
     },
     {
       "id": "PRF-203",

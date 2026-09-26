@@ -203,7 +203,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1379,7 +1379,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1398,7 +1398,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -3219,7 +3219,7 @@
     },
     {
       "id": "NNT-042",
-      "title": "A reader connection's view is a version that advances at GROUP and LISTGROUP between commands and is fixed within a command; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it advances past it",
+      "title": "A reader connection's view is a version (ViewId): a successful GROUP or LISTGROUP acquires a fresh coherent view and performs its normal selection effects; other reads stay on that view until the next refresh boundary; a failed selection leaves the previous view and cursor unchanged; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it acquires a view past it",
       "specification": "specs/nntp.md#sessions-and-framing",
       "milestone": "M5",
       "status": "specified",
@@ -3235,12 +3235,23 @@
       "evidence": [
         "books/catalog-delta.lisp",
         "tests/acl2/catalog-delta-tests.lisp",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/served.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "books/config-owner-live.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_reader_freshness.py"
       ],
       "keystones": [
-        "fn-view-cancel-after-target"
+        "fn-view-cancel-after-target",
+        "fn-served-step-pin-is-old-or-live",
+        "fn-served-successful-selection-is-the-repinned-dispatch",
+        "fn-served-failed-selection-keeps-the-connection",
+        "fn-own-read-preserves-relation",
+        "fn-ocl-read-preserves-historical-relation"
       ],
-      "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
+      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585).",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     },
     {

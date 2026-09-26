@@ -803,17 +803,10 @@
 
 (defun fn-auth-fold-fed-conn (conn byte)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-served-make-conn-group-indexed
+  (fn-served-conn-with-wire
+   conn
    (fn-wire-result-state
-    (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
-   (fn-served-conn-session conn)
-   (fn-served-conn-archive conn)
-   (fn-served-conn-config conn)
-   (fn-served-conn-observation conn)
-   (fn-served-conn-injection conn)
-   (fn-served-conn-verdicts conn)
-   (fn-served-conn-index conn)
-   (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
+    (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))
 
 (defthm fn-auth-fold-fed-conn-is-a-connection
   (implies (fn-served-connp conn)
