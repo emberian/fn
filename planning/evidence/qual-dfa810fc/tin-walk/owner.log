@@ -1,0 +1,11 @@
+accepted reader connection=0 time=2026-09-26T13:14:27Z
+post login=guest unbound
+accepted post path=served connection=0 message-id=<tin-tls-root@fn.example.invalid> agent=fn.example.invalid time=2026-09-26T13:14:28Z
+accepted reader connection=1 time=2026-09-26T13:14:28Z
+post login=guest unbound
+accepted post path=served connection=1 message-id=<00000000843743677606.00000000000000010609.fn@fn.example.invalid> agent=fn.example.invalid time=2026-09-26T13:14:37Z
+post login=guest unbound
+accepted post path=served connection=1 message-id=<00000000843743686553.00000000000000019555.fn@fn.example.invalid> agent=fn.example.invalid time=2026-09-26T13:14:46Z
+post login=guest unbound
+accepted post path=served connection=1 message-id=<00000000843743702010.00000000000000035012.fn@fn.example.invalid> agent=fn.example.invalid time=2026-09-26T13:15:02Z
+accepted reader connection=2 time=2026-09-26T13:15:06Z

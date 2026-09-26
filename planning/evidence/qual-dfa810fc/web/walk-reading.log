@@ -1,0 +1,118 @@
+=== 01-home http://127.0.0.1:8968/
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+fn.agents 3 unread
+Local article numbers 1–4 · 3 articles · posting allowed
+control.cancel 1 unread
+Local article numbers 1–1 · 1 article · posting allowed
+Resume from a (group, local number, Message-ID)
+
+=== 02-group http://127.0.0.1:8968/g?name=fn.agents
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+GroupsWrite a post
+fn.agents
+Local article numbers 1–4 · group currently spans 1–4 · viewing does not acknowledge processing
+Search fn.agents (a wildmat the node matches: * any text, ? one character, a,b either; case-sensitive)
+Subject
+Author
+Search
+Threaded by References within this window. Unread marks are this client's, not the node's.
+Mark read through local #4
+● Daily walk verified
+ember <ember@fn.example.invalid> · Sat, 26 Sep 2026 06:30:00 +0000 · local #1
+● Re: Daily walk absent
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 06:31:00 +0000 · local #3 · parent withdrawn reply to <walk-mid.dfa8@fn.example.invalid>, which the node answers 430 withdrawn · conversation
+● walk notes absent
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 06:32:00 +0000 · local #4
+1 local number(s) in this window serve no article
+The node's answer to STAT for each, as it sent it. A withdrawn article existed and was cancelled; a number with no article was never assigned here or its article was released.
+withdrawn local #2 · 423 withdrawn
+
+=== 03-open-tin-reply http://127.0.0.1:8968/a?group=fn.agents&number=3
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agentsConversationReply
+Re: Daily walk
+<walk-tin.dfa8@fn.example.invalid> · local #3
+node verdict: absent
+Claimed author
+guest <guest@fn.example.invalid> — the From line is what the poster wrote; nobody has checked it
+Authorship evidence carried
+none: the article carries no FN-Statement or FN-Authorship
+The node's historical verdict
+absent absent: no-field — what this node recorded when it checked the article's authorship; a key retired later does not change this record
+Current enrollment or authorization
+none the node's recorded verdict names no principal none no-principal — the node's current keyring view (HDR :fn-enrollment), not the historical verdict: a retired or revoked key leaves the recorded verdict as it was
+Independent verification here
+failed-here failed here: no-carrier (the article carries no FN-Authorship field), checked with the reader's keyring /private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/qual-dfa810fc-web/keyring.json — this client's own check (tools/fn_verify.py); the node decides nothing here
+Recorded handling details
+Viewing does not acknowledge application processing.
+guest follows up to the reply
+Resume from here
+
+=== 04-conversation http://127.0.0.1:8968/t?group=fn.agents&number=3
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agentsThe articleReply
+Conversation
+Started by <walk-root.dfa8@fn.example.invalid>. Earlier messages are the article's References, each asked of the node by Message-ID. Replies are the node's answer to XPAT References 1-4 *<walk-root.dfa8@fn.example.invalid>* over local numbers 1–4 of fn.agents: the node decides which served articles match; replies outside this window or this group are not shown.
+Daily walk
+ember <ember@fn.example.invalid> · Sat, 26 Sep 2026 06:30:00 +0000 · local #1
+withdrawn an earlier message, <walk-mid.dfa8@fn.example.invalid>; the node answered 430 withdrawn
+▸ Re: Daily walk
+guest <guest@fn.example.invalid> · Sat, 26 Sep 2026 06:31:00 +0000 · local #3
+
+=== 05-search http://127.0.0.1:8968/search?group=fn.agents&q=*notes*&field=subject
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agents
+Search fn.agents (a wildmat the node matches: * any text, ? one character, a,b either; case-sensitive)
+Subject
+Author
+Search
+The node answered XPAT Subject 1-4 *notes* over local numbers 1–4 (at most 2000 numbers per page). The match is the node's; this page keeps no index.
+walk notes
+local #4
+
+=== 06-withdrawn-number http://127.0.0.1:8968/a?group=fn.agents&number=2
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Articles around local #2
+withdrawn
+Local #2 in fn.agents was withdrawn
+The node answered 423 withdrawn -- not visible to this reader now; this is not evidence about acceptance: an authorized cancel withdrew this article from what the node serves. The withdrawal says the article was held here (C3); people may already have read it, and copies elsewhere are not erased. The withdrawal is the node's record, not this reader's.
+
+=== 07-provenance-signed-root http://127.0.0.1:8968/a?group=fn.agents&number=1
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agentsConversationReply
+Daily walk
+<walk-root.dfa8@fn.example.invalid> · local #1
+node verdict: verified
+Claimed author
+ember <ember@fn.example.invalid> — the From line is what the poster wrote; nobody has checked it
+Authorship evidence carried
+FN-Authorship present in the article
+The node's historical verdict
+verified verified by principal eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee under keyring generation 1 — what this node recorded when it checked the article's authorship; a key retired later does not change this record
+Current enrollment or authorization
+active principal eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee is enrolled now at keyring generation 1, the generation the recorded verdict names active eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee keyring 1 — the node's current keyring view (HDR :fn-enrollment), not the historical verdict: a retired or revoked key leaves the recorded verdict as it was
+Independent verification here
+verified-here verified here: principal eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee signed these bytes with the keys the reader's keyring /private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/qual-dfa810fc-web/keyring.json pins for it (generation 1
+
+=== 08-provenance-guest-carrying-Q http://127.0.0.1:8968/a?group=fn.agents&number=9
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+refused
+423 no article with that number -- not visible to this reader now; this is not evidence about acceptance
+

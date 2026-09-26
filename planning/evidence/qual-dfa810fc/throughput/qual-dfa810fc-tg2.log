@@ -1,0 +1,10 @@
+started throughput-gate-dfa810fceabe-20260926T152050Z on hbox; /tank/fn/scratch/throughput-gate/run-dfa810fceabe-20260926T152050Z
+0
+phase probe done
+phase alloc done
+phase served done
+phase checkpoint done
+{"probe_wall_s": 1.776, "probe_cpu_s": 1.775, "probe_commit_ms": 0.583, "probe_reopen_s": 1.103, "probe_bytes_consed_per_commit": 1692140, "post_median_ms": 2.03, "post_p95_ms": 4.0, "post_owner_cpu_ms": 2.2, "article_median_ms": 2.878, "article_p95_ms": 3.494, "reopen_s": 0.163, "checkpoint_publish_ms": 810}
+
+wrote planning/evidence/throughput/dfa810fceabe-qual-dfa810fc-20260926T152050Z.json
+rc=0
