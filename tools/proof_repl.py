@@ -37,9 +37,9 @@ A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
 the lane (`--lane`, else $FN_LANE, else the worktree's name under
-build/lanes/) and an idle deadline (`--idle-seconds`, default 7200: longer
-than a farm wait of 3400 s or an hbox_native run of 5400 s between two
-sends, short enough that an abandoned session frees its slot within two
+build/lanes/, or persvati's ~/fn-gates/NAME-repl) and an idle deadline
+(`--idle-seconds`, default 7200: longer than a farm wait of 3400 s or an
+hbox_native run of 5400 s between two sends, short enough that an abandoned session frees its slot within two
 hours); a session with no `send` for that long stops itself.  `list` prints
 each session's lane, age, idle time and deadline; `reap` stops the sessions
 this tool started that are dead, past their own deadline, idle longer than
@@ -284,12 +284,21 @@ def open_session_lock(name: str) -> int | None:
     return fd
 
 
-def default_lane() -> str | None:
-    """$FN_LANE, else this worktree's name when it is build/lanes/NAME."""
+def default_lane(root: Path | None = None) -> str | None:
+    """$FN_LANE, else the lane the tree's path names.
+
+    build/lanes/NAME on the laptop; on persvati a lane's REPL tree is
+    ~/fn-gates/NAME-repl (or NAME-rN, NAME-devrepl), so the suffix goes.
+    """
     configured = os.environ.get("FN_LANE")
     if configured:
         return configured
-    return ROOT.name if ROOT.parent.name == "lanes" else None
+    root = root or ROOT
+    if root.parent.name == "lanes":
+        return root.name
+    if root.parent.name == "fn-gates":
+        return re.sub(r"-(repl|devrepl|dev|r[0-9]+)$", "", root.name) or None
+    return None
 
 
 class _Terminated(Exception):
