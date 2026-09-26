@@ -58,7 +58,7 @@ store, control, config = work / "store", work / "control.sock", work / "fn.toml"
 config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n'
                   % (store, port, control), encoding="ascii")
 fn("operator", config, "init", "--profile", "scale", "--max-transactions", "1048576",
-   "--max-article-octets", "65536", "fn.test")
+   "--max-article-octets", "16384", "fn.test")
 err = open(work / "owner.stderr", "wb")
 owner = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"], cwd=tree,
                          env=env, stdout=subprocess.PIPE, stderr=err)

@@ -5431,6 +5431,31 @@
           "name": "fn-cra-a-re-signed-carrier-is-other-octets"
         }
       ]
+    },
+    {
+      "id": "PRF-144",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-sn-prepare-identity-is-sn-prepare-identity-under-relation",
+          "note": "KEYSTONE (PRF-144 part 2). The identity prepare the host installs stages without the appended-history replay and equals fn-sn-prepare-identity under fn-snt-relation. Bridge: fn-spc-related-identity-candidate-is-recoverable. Teeth: tests/acl2/store-events-carried-tests (reachable reserved owner by fn-own-run: relation, equality, staged composite; hypothesis removal, labelled corrupted state: the reserved store with its groups emptied and its node kept, where fn-snt-relation fails, the specification refuses and the incremental prepare stages)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation",
+          "note": "KEYSTONE for the host line host/owner-host.lisp fn-owner-prepare-identity (PRF-144 part 2), premise fn-own-relation of the configured owner. Teeth: store-events-carried-tests (the reachable reserved owner; fn-own-relation asserted, equality with fn-ocfg-step asserted)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cei-msgid-records-of-correspondence",
+          "note": "KEYSTONE (PRF-144 part 1). Under the Store's maintained index correspondence the Message-ID lookup is the fold over the committed history, composites decoded as replay decodes them. Teeth: bp-signed-binding-tests (the Store committed by its own transitions answers the signed composite's record for its Message-ID; the corrupted stale-index Store does not). The (stringp msgid) hypothesis is not falsifiable (fn-record-p makes every stored Message-ID a string, and every caller passes fn-record-octets-string); kept, not removed, as no weakened theorem was proved."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-indexed-records-are-the-walk",
+          "note": "PRF-144 part 1 at the BP boundary: under fn-bpaj-store-indexedp the index answer is fn-bpaj-record-for-msgid's walk, so the dispatcher's lookups and fn-bpaj-store-record-accepted-fast answer as before. Teeth: bp-signed-binding-tests (hypothesis removal 2b: a stale index makes the dispatcher submit a stored signed article again)."
+        }
+      ]
     }
   ]
 }
