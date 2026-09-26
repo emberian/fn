@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 911 |
-| Certification roots in the Makefile | 894 |
-| Books inside the root closure | 907 |
-| `defthm` and `defthmd` events | 12605 |
-| `defun` events | 8835 |
-| Functions with verified guards | 2181 |
-| Functions declared `:verify-guards nil` and never verified | 668 |
-| Functions left at the default with an explicit guard | 4668 |
+| Books read | 915 |
+| Certification roots in the Makefile | 898 |
+| Books inside the root closure | 911 |
+| `defthm` and `defthmd` events | 12693 |
+| `defun` events | 8869 |
+| Functions with verified guards | 2182 |
+| Functions declared `:verify-guards nil` and never verified | 680 |
+| Functions left at the default with an explicit guard | 4689 |
 | Functions left at the default with no guard | 1318 |
-| `assert-event` checks | 13189 |
-| `must-fail` checks | 1450 |
+| `assert-event` checks | 13229 |
+| `must-fail` checks | 1454 |
 | `encapsulate` events | 64 |
-| Theorems flagged SUSPECT by shape | 109 |
+| Theorems flagged SUSPECT by shape | 111 |
 | Export-hygiene warnings | 150 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 107 |
@@ -148,7 +148,8 @@ that `make certify` requests.
 | `books/bp-forward-image.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 3 |
-| `books/bp-fragment-send.lisp` | root | 92 | 17 | 7/4/6/0 | 0 | 0 | 4 |
+| `books/bp-fragment-send.lisp` | root | 94 | 17 | 7/4/6/0 | 0 | 0 | 4 |
+| `books/bp-fragment-sweep.lisp` | root | 52 | 19 | 1/5/13/0 | 0 | 0 | 0 |
 | `books/bp-fragment.lisp` | root | 6 | 36 | 35/1/0/0 | 0 | 0 | 0 |
 | `books/bp-handoff-status.lisp` | root | 6 | 6 | 6/0/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 23 | 45 | 42/0/3/0 | 0 | 0 | 0 |
@@ -168,11 +169,12 @@ that `make certify` requests.
 | `books/bp-node-forward-retry.lisp` | root | 26 | 4 | 0/0/3/1 | 0 | 0 | 0 |
 | `books/bp-node-foundation.lisp` | root | 17 | 62 | 59/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-expiry.lisp` | root | 1 | 2 | 0/1/1/0 | 0 | 0 | 0 |
-| `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-guards.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-fragment-plan.lisp` | root | 3 | 3 | 0/2/1/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-jobs.lisp` | root | 21 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-plan.lisp` | root | 3 | 3 | 0/2/1/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-replacement.lisp` | root | 1 | 5 | 0/2/3/0 | 0 | 0 | 0 |
-| `books/bp-node-fragment-step.lisp` | root | 3 | 6 | 0/5/1/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-step.lisp` | root | 14 | 9 | 0/7/2/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer.lisp` | root | 45 | 22 | 0/5/17/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
@@ -657,7 +659,8 @@ that `make certify` requests.
 | `tests/acl2/bp-forward-image-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/bp-forward-live-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 13 | 0 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
-| `tests/acl2/bp-fragment-send-tests.lisp` | root | 0 | 11 | 0/0/1/10 | 20 | 8 | 0 |
+| `tests/acl2/bp-fragment-send-tests.lisp` | root | 0 | 11 | 0/0/1/10 | 25 | 10 | 0 |
+| `tests/acl2/bp-fragment-sweep-tests.lisp` | root | 2 | 3 | 0/1/2/0 | 18 | 1 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 0 |
 | `tests/acl2/bp-handoff-status-tests.lisp` | root | 0 | 3 | 0/1/1/1 | 18 | 3 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
@@ -678,6 +681,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-foundation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 7 | 0 |
 | `tests/acl2/bp-node-fragment-expiry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-family-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 27 | 0 | 0 |
+| `tests/acl2/bp-node-fragment-jobs-tests.lisp` | root | 0 | 5 | 0/4/1/0 | 17 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 19 | 2 | 0 |
@@ -1020,10 +1024,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpf-cell-of-uncovered-is-gap` | `books/bp-fragment-invariants.lisp` | 129 | branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value |
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 435 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
 | `fn-bpf-whole-parent-fragments-restore-parent` | `books/bp-fragment-invariants.lisp` | 671 | instance-corollary: the statement is fn-bpf-whole-fragment-primaries-restore-parent instantiated, discharging nothing |
-| `fn-bpfs-cut-of-atom` | `books/bp-fragment-send.lisp` | 685 | branch-of-definition: the hypothesis is a branch test of fn-bpfs-cut and the conclusion is that branch's value |
-| `fn-bpfs-enc-list-atom` | `books/bp-fragment-send.lisp` | 338 | branch-of-definition: the hypothesis negates a branch test of fn-bpc-enc and the conclusion is that branch's value |
-| `fn-bpfs-extents-of-atom` | `books/bp-fragment-send.lisp` | 673 | branch-of-definition: the hypothesis is a branch test of fn-bpfs-extents and the conclusion is that branch's value |
-| `fn-bpfs-views-of-atom` | `books/bp-fragment-send.lisp` | 662 | branch-of-definition: the hypothesis is a branch test of fn-bpfs-views and the conclusion is that branch's value |
+| `fn-bpfs-cut-of-atom` | `books/bp-fragment-send.lisp` | 687 | branch-of-definition: the hypothesis is a branch test of fn-bpfs-cut and the conclusion is that branch's value |
+| `fn-bpfs-enc-list-atom` | `books/bp-fragment-send.lisp` | 340 | branch-of-definition: the hypothesis negates a branch test of fn-bpc-enc and the conclusion is that branch's value |
+| `fn-bpfs-extents-of-atom` | `books/bp-fragment-send.lisp` | 675 | branch-of-definition: the hypothesis is a branch test of fn-bpfs-extents and the conclusion is that branch's value |
+| `fn-bpfs-views-of-atom` | `books/bp-fragment-send.lisp` | 664 | branch-of-definition: the hypothesis is a branch test of fn-bpfs-views and the conclusion is that branch's value |
 | `fn-bpiw-attempt-record-is-the-generic-attempt` | `tests/acl2/bp-request-plan-tests.lisp` | 122 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-apply-inapplicable-record-is-noop` | `books/bp-node-machine-invariants.lisp` | 740 | branch-of-definition: the hypothesis is a branch test of fn-bpn-apply-record and the conclusion is that branch's value |
 | `fn-bpn-machine-invariant-components` | `books/bp-node-machine-invariants.lisp` | 574 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpn-machine-invariantp |
@@ -1033,7 +1037,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpn-sf-host-recover-is-core-recover` | `books/bp-sequence-fidelity.lisp` | 299 | definition-restated: the conclusion is the body of fn-bpn-sf-host-recover; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-sf-host-reserve-is-core-reserve` | `books/bp-sequence-fidelity.lisp` | 278 | definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 997 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
-| `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 146 | definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-bpnf-reassemble-is-not-ready` | `books/bp-node-fragment-plan.lisp` | 67 | instance-corollary: the statement is fn-bpfw-spec-is-never-ready instantiated, discharging nothing |
+| `fn-bpnf-reassemble-ok-covers-zero` | `books/bp-node-fragment-family.lisp` | 197 | instance-corollary: the statement is fn-bpfw-spec-ok-covers-zero instantiated, discharging nothing |
+| `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 144 | definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpnp-primary-of-held` | `books/bp-node-progress-invariants.lisp` | 7 | definition-restated: the conclusion is the body of fn-bpnp-primary |
 | `fn-bpnpp-premises-components` | `books/bp-node-progress-premises.lisp` | 132 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpnp-step-guard-premisesp |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
