@@ -87,6 +87,8 @@
 (include-book "../books/login-binding-live")
 ; PRF-161: the limits of a public reader port (fn-exp-).
 (include-book "../books/public-exposure")
+; fn-exp-observe-effects: the observation without building the reply.
+(include-book "../books/public-exposure-reply")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -2141,16 +2143,20 @@
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
 
 ;; After a served step (fn-owner-chunk below): `fn-owner-exposure-close'
-;; holds the 400 the host appends before it closes, or NIL.
+;; holds the 400 the host appends before it closes, or NIL.  The step's
+;; EFFECTS go in, not its reply octets: fn-exp-observe-effects is
+;; fn-exp-observe of (fn-served-reply-octets effects)
+;; (fn-exp-observe-effects-unfolds) and scans the effects in constant stack
+;; without building that list (books/public-exposure-reply.lisp; PKT-481).
 (defun fn-owner-exposure-observe (id effects consumed state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
          (subject (and conn (fn-auth-session-subject (fn-own-conn-session conn))))
-         (r (fn-exp-observe (fn-owner-exposure-state state)
-                            (fn-owner-exposure-limits state) id
-                            (fn-owner-exposure-now state)
-                            (fn-served-reply-octets effects) consumed subject
-                            (and (fn-served-submission effects) t)))
+         (r (fn-exp-observe-effects (fn-owner-exposure-state state)
+                                    (fn-owner-exposure-limits state) id
+                                    (fn-owner-exposure-now state)
+                                    effects consumed subject
+                                    (and (fn-served-submission effects) t)))
          (state (f-put-global 'fn-owner-exposure (cdr r) state))
          (state (f-put-global 'fn-owner-exposure-close
                               (if (consp (car r)) (cadr (car r)) nil) state)))

@@ -889,6 +889,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/account-list-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \
+	books/public-exposure-reply \
+	tests/acl2/public-exposure-reply-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \

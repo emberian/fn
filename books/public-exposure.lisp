@@ -518,27 +518,29 @@
          (fn-exp-481-count (cdr octets) (equal (car octets) 10)))
     0))
 
-; OUTPUT is the reply octets of the step (fn-served-reply-octets of its
-; effects), CONSUMED the octets it consumed, SUBJECT the session's subject
-; after it, SUBMITTED whether it produced a submission.  The result is
-; (DECISION . XS'): :continue, or (:close LINE) after this address reached
-; its failed-login limit in this step.
-(defun fn-exp-observe (xs lim id now output consumed subject submitted)
+; The observation reads two facts of the step's reply and nothing else:
+; ANSWERED, whether it sent any octet, and FAILURES, how many of its replies
+; are a 481 (fn-exp-481-count).  CONSUMED is the octets the step consumed,
+; SUBJECT the session's subject after it, SUBMITTED whether it produced a
+; submission.  The result is (DECISION . XS'): :continue, or (:close LINE)
+; after this address reached its failed-login limit in this step.
+(defun fn-exp-observe-facts (xs lim id now answered failures consumed subject
+                                submitted)
   (declare (xargs :guard t))
-  (let ((e (fn-exp-find id (fn-exp-conns xs))))
+  (let ((e (fn-exp-find id (fn-exp-conns xs)))
+        (failures (nfix failures)))
     (if (not e)
         (cons :continue xs)
       (let* ((address (fn-exp-entry-address e))
              (w (fn-exp-window now))
              (pending (+ (fn-exp-entry-pending e) (nfix consumed)))
-             (progress (or (consp output)
+             (progress (or answered
                            (<= *fn-exp-significant-octets* pending)))
              (entry (fn-exp-entry id address
                                   (if progress (nfix now) (fn-exp-entry-last e))
-                                  (or (fn-exp-entry-answered e) (consp output))
+                                  (or (fn-exp-entry-answered e) answered)
                                   subject
                                   (if progress 0 pending)))
-             (failures (fn-exp-481-count output t))
              (fails0 (fn-exp-prune w (fn-exp-fails xs)))
              (failed (+ failures (fn-exp-count-in address w fails0)))
              (fails (if (posp failures) (fn-exp-put address w failed fails0) fails0))
@@ -557,6 +559,18 @@
                                   (fn-exp-counters xs)))))
         (cons (if closep (list :close (fn-exp-line *fn-exp-auth-close-line*)) :continue)
               next)))))
+
+; OUTPUT is the reply octets of the step (fn-served-reply-octets of its
+; effects).  The served path does not build this list for the observation:
+; host/owner-host.lisp fn-owner-exposure-observe calls
+; fn-exp-observe-effects (books/public-exposure-reply.lisp), which is this
+; function of the effects' reply octets and computes the two facts by one
+; scan of the effects (exposure-reply-size, 2026-09-26: the recursion of
+; fn-exp-481-count over a 2 MiB reply exhausted the control stack).
+(defun fn-exp-observe (xs lim id now output consumed subject submitted)
+  (declare (xargs :guard t))
+  (fn-exp-observe-facts xs lim id now (consp output) (fn-exp-481-count output t)
+                        consumed subject submitted))
 
 ; -----------------------------------------------------------------------------
 ; On a receive timeout: RFC 3977 section 3.1's autologout
