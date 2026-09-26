@@ -2762,6 +2762,36 @@
       ],
       "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
       "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
+    },
+    {
+      "id": "NNT-032",
+      "title": "Everyday tools over protection: tin over an implicit-TLS listener that is the STARTTLS session, the group view's withdrawn parent, every documented command in the real grammar, and the operator's settling lookup",
+      "specification": "specs/human-client.md#everyday-tools-over-protection",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-162"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-implicit-tls.lisp",
+        "tests/acl2/served-implicit-tls-tests.lisp",
+        "books/native-operator.lisp",
+        "books/native-config.lisp",
+        "tests/test_native_implicit_tls.py",
+        "tools/docs_check.py",
+        "tests/test_docs_check.py",
+        "tests/acl2/docs-operator-grammar-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/sanding-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4642 section 2.2 is STARTTLS; section 1 describes the separate TLS port and discourages it, so the implicit-TLS listener is a local policy for readers (tin 2.6) that speak only that form, and it runs the STARTTLS session machine (PRF-162). The inspect answer is the store node's Message-ID lookup rendered by ACL2; it does not compare article text (D25 is the re-send's).",
+      "note": "store inspect needs the owner stopped (the store lock); a live query through the control socket is PKT-410."
     }
   ]
 }
