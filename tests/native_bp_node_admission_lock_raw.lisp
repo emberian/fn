@@ -1,13 +1,14 @@
 ;;; Exercise the shipped BP application entry with config changing before the
 ;;; serialized decision.  No Store/FNRJ mutation may follow a revoked trust.
+(require :sb-posix)
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
 (defvar *trusted* t)
 (defvar *calls* nil)
+(defvar *refusal-line* nil)
 (defun fnn-owner-core (name &rest arguments)
-  (declare (ignore arguments))
   ;; The D23 decision line is printed, never branched on.
   (when (eq name 'fn-owner-bp-source-decision-line)
     (return-from fnn-owner-core "direct principal=stub"))
@@ -19,6 +20,11 @@
     (return-from fnn-owner-core "issuer-not-released carrier=stub issuer=x"))
   (when (eq name 'fn-owner-bp-receipt-release-detail)
     (return-from fnn-owner-core '(0)))
+  ;; A refused request's line (fnn-bpnode-refusal-line, mission-signed-2):
+  ;; ACL2's text, printed and never branched on; the arguments are kept.
+  (when (eq name 'fn-owner-bp-request-refusal-line)
+    (setq *refusal-line* arguments)
+    (return-from fnn-owner-core "request refused reason=stub"))
   (unless (member name '(fn-owner-bp-request-trustedp
                          fn-owner-bp-receipt-gatep))
     (error "unexpected core call ~s" name))
@@ -65,17 +71,29 @@
 (defun fnn-out (control &rest arguments)
   (apply #'format t control arguments) (terpri))
 
-(with-open-file (stream "host/native/bp-node.lisp")
-  (dolist (wanted (quote (fnn-bpnode-source-decision fnn-bpnode-request-result
-                   fnn-bpnode-receipt-observations fnn-bpnode-release-line
-                   fnn-bpnode-receipt-detail fnn-bpnode-receipt-result)))
-    (file-position stream 0)
-    (let ((found nil))
-      (loop for form = (read stream nil :eof) until (eq form :eof)
-            when (and (consp form) (eq (car form) 'defun)
-                      (eq (cadr form) wanted))
-              do (eval form) (setq found t) (return))
-      (unless found (error "BP function ~s not found" wanted)))))
+(defun load-shipped (path kinds names)
+  "Evaluate PATH's top-level KINDS forms that define one of NAMES."
+  (with-open-file (stream path)
+    (dolist (wanted names)
+      (file-position stream 0)
+      (let ((found nil))
+        (loop for form = (read stream nil :eof) until (eq form :eof)
+              when (and (consp form) (member (car form) kinds)
+                        (eq (cadr form) wanted))
+                do (eval form) (setq found t) (return))
+        (unless found (error "~a: ~s not found" path wanted))))))
+
+;; The global the request entry clears and the refusal line reads is the
+;; owner's own (mission-signed-2), not a stand-in.
+(load-shipped "host/native/owner.lisp" '(defvar) '(*fnn-owner-transit-detail*))
+;; fnn-bpnode-request-result is the deployed wrapper; since mission-signed-2
+;; the decision is fnn-bpnode-request-result-1 and a refusal prints ACL2's
+;; line through fnn-bpnode-refusal-line: all three are the shipped bodies.
+(load-shipped "host/native/bp-node.lisp" '(defun)
+              '(fnn-bpnode-source-decision fnn-bpnode-request-result
+                fnn-bpnode-request-result-1 fnn-bpnode-refusal-line
+                fnn-bpnode-receipt-observations fnn-bpnode-release-line
+                fnn-bpnode-receipt-detail fnn-bpnode-receipt-result))
 
 (let ((view '(nil nil :request (1) :ingress (2) "source" "dest")))
   (setq *trusted* t *calls* nil)
@@ -87,7 +105,11 @@
   (unless (equal (reverse *calls*)
                  '(:trust :open-request-journal :lock :trust
                    :close-request-journal))
-    (error "request authorization/publication order ~s" (reverse *calls*))))
+    (error "request authorization/publication order ~s" (reverse *calls*)))
+  ;; The refusal line was asked of ACL2 for this view, as refused, with the
+  ;; transit detail the entry cleared.
+  (unless (equal *refusal-line* (list view :refused nil))
+    (error "refusal line arguments ~s" *refusal-line*)))
 
 (let ((view '(nil nil :receipt (1) :ingress (2) "source" "dest")))
   (setq *trusted* t *calls* nil)

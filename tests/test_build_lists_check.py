@@ -216,6 +216,44 @@ class BuildListsCheckTests(unittest.TestCase):
                 ("fn-rclb-existing-action", "books/store-reclaim-buffer.lisp"),
                 ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
 
+    def test_served_crash_model_setup_satisfies_the_include_rule(self):
+        self.assertEqual(check.served_findings(), [])
+
+    def test_served_setup_without_the_store_node_books_is_found(self):
+        # qual-b6759850 C18: the served crash model's setup loaded
+        # host/store-node-host.lisp with only books/records-concrete-owner
+        # before it, and every case failed at model setup on FN-OCTETS.  The
+        # same list today is refused for the buffer books and the reader.
+        from tests.test_native_served_crash_model import SERVED_BRIDGE_SETUP
+        stale = tuple(form for form in SERVED_BRIDGE_SETUP
+                      if form not in ('(include-book "books/octets-stobj")',
+                                      '(include-book "books/store-checkpoint-buffer")',
+                                      '(include-book "books/store-checkpoint-reader")'))
+        self.assertEqual(len(stale), len(SERVED_BRIDGE_SETUP) - 3)
+        loader = ("the served crash model's setup "
+                  "(tests/test_native_served_crash_model.py)")
+        self.assertEqual(check.served_findings(setup=stale), [
+            line.replace("host/native/build-dtn.lisp", loader)
+            for line in STORE_NODE_HOST_FINDINGS])
+
+    def test_a_nested_ld_serves_its_loader(self):
+        # host/store-node-host.lisp loads host/store-host.lisp, which includes
+        # books/store-config, before it calls fn-store-group-name; a loader of
+        # store-node-host.lisp alone is not short of that book.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "host").mkdir()
+            (root / "books/a.lisp").write_text('(defun fn-a (x) x)\n')
+            (root / "host/inner.lisp").write_text('(include-book "../books/a")\n')
+            (root / "host/outer.lisp").write_text(
+                '(ld "inner.lisp" :ld-error-action :error)\n(defun fn-o (x) (fn-a x))\n')
+            (root / "host/bare.lisp").write_text('(defun fn-o (x) (fn-a x))\n')
+            self.assertEqual(check.include_findings(
+                root, '(ld "host/outer.lisp" :ld-error-action :error)\n'), [])
+            self.assertEqual(len(check.include_findings(
+                root, '(ld "host/bare.lisp" :ld-error-action :error)\n')), 1)
+
     def test_default_build_satisfies_the_include_rule(self):
         # The same rule over build.lisp: the default image already builds.
         default = (ROOT / check.DEFAULT_BUILD).read_text()

@@ -16,10 +16,33 @@ from tests.campaign.native_operator_campaign import (
 from tests.test_native_crash_model import IMAGE_AVAILABLE, NativeCampaignMixin
 
 
+def _store_node_host_books() -> tuple[str, ...]:
+    """The books the store bridge includes just before it loads
+    host/store-node-host.lisp (tools/bridge_image.STORE_FORMS), in its order.
+
+    That file names book functions and stobjs it does not include itself
+    (rep-wave-d-2's fn-store-sco-publish-plan takes the `fn-octets' buffer
+    and calls fn-sccb-plan; rep-wave-d-3's reader calls fn-sccr-*), and the
+    loaders carry them: host/native/build.lisp and the bridges.  At b6759850
+    this setup lacked books/octets-stobj and books/store-checkpoint-buffer
+    and every case failed at model setup (qual-b6759850 C18).  Taking the
+    list from the bridge keeps one owner for it; tools/build_lists_check.py
+    checks the resulting setup."""
+    from tools import bridge_image
+    forms = bridge_image.STORE_FORMS
+    end = next(i for i, form in enumerate(forms)
+               if form.startswith('(ld "host/store-node-host.lisp"'))
+    start = end
+    while start > 0 and forms[start - 1].startswith("(include-book "):
+        start -= 1
+    return tuple(forms[start:end])
+
+
 # The books and host bridge the stored-octets derivation below needs, loaded
 # as host/native/build.lisp loads them.
 SERVED_BRIDGE_SETUP = (
     '(include-book "books/records-concrete-owner")',
+    *_store_node_host_books(),
     '(ld "host/store-node-host.lisp" :ld-error-action :error)',
     '(include-book "books/config-observed")',
     '(include-book "books/owner")',

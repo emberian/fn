@@ -24,13 +24,20 @@
 (defun fnn-out (format-string &rest arguments)
   (push (list :log format-string arguments) *calls*))
 
+
+;; The deployed ingress caller and, since mission-signed, the admission it
+;; takes the third element of (fnn-bps-tcpcl-admission): both are the shipped
+;; definitions, read out of bp-service.lisp.
 (with-open-file (stream "host/native/bp-service.lisp")
-  (let ((found nil))
+  (let ((wanted '(fnn-bps-tcpcl-ingress fnn-bps-tcpcl-admission))
+        (found nil))
     (loop for form = (read stream nil :eof) until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)
-                    (eq (cadr form) 'fnn-bps-tcpcl-ingress))
-            do (eval form) (setq found t) (return))
-    (unless found (error "TCPCL ingress caller not found"))))
+                    (member (cadr form) wanted))
+            do (eval form) (push (cadr form) found))
+    (dolist (name wanted)
+      (unless (member name found)
+        (error "TCPCL ~(~a~) not found in host/native/bp-service.lisp" name)))))
 
 (let ((channel '(:tcp4 (127 0 0 1) 4556 (127 0 0 1)))
       (ingress '(:cl (1 . 3) 4 (:dtn 47 47 115 101 110 100 101 114 47)
@@ -53,6 +60,15 @@
                  (list (cons :admission
                              (list :fnbs 3 4 channel '(100 116 110)))
                        (list :log "BP channel admission refused reason=~(~a~)"
-                             '(:eid-mismatch))))))
+                             '(:eid-mismatch)))))
+  ;; The admission itself hands the caller ACL2's whole answer.
+  (setq *calls* nil)
+  (assert (equal (fnn-bps-tcpcl-admission :fnbs :conn 3 4 :owner channel)
+                 *admission-answer*))
+  ;; Without an owner no admission is asked and nothing is admitted.
+  (setq *calls* nil)
+  (assert (null (fnn-bps-tcpcl-ingress :fnbs :conn 3 4 nil channel)))
+  (assert (null (remove :log *calls* :key #'first :test-not #'eq)))
+  (assert (null (remove :admission *calls* :key #'car :test-not #'eq))))
 
 (format t "native BP parsed channel admission: PASS~%")
