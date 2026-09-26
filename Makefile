@@ -1107,6 +1107,16 @@ check:
 # and cannot grow silently.  Deliberately generous about what counts as a
 # subject, so every orphan it reports is real and it misses some.
 	$(PYTHON) tools/reach_check.py --summary --strict
+# Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
+# function called once per request that traverses the Store history, the
+# held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the
+# executed path (mbe's :exec under raw Lisp, the guard a counterpart call
+# evaluates, defattach) from every host definition and lists each traversal of
+# a seeded value; planning/hot-path-findings.json names every find's owning
+# packet, and `--strict' fails on an unexpected find not listed there or a
+# listed find that no longer occurs.  Its silence is not a proof: it is
+# path-insensitive and prints the cuts it was told to take.
+	$(PYTHON) tools/hot_path_check.py --summary --strict
 # Whether each book is certified AT THE SOURCE DIGEST IT CARRIES NOW.  On
 # 2026-09-21 `dev` had been red for a day in books/stx-evidence-records,
 # books/checkpoint-compaction, books/hybrid-store and books/feed-connection,
@@ -1170,7 +1180,7 @@ model-test: certify
 
 tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
-	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
+	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check -v

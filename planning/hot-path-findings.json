@@ -1,0 +1,697 @@
+{
+ "findings": {
+  "fn-acar-nntp-projectionp len N": {
+   "class": "unexpected",
+   "packet": "PKT-190"
+  },
+  "fn-acceptedp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-all-article-memberships recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-189"
+  },
+  "fn-article-list-shapep recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-article-msgids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-articles-below-nextsp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-articles-freshp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-189"
+  },
+  "fn-bpah-apply-delivery recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpaj-record-for-msgid recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-330 (2)"
+  },
+  "fn-bpn-append recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-enqueue-step len J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-find-expired recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-find-job recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-324 (7)"
+  },
+  "fn-bpn-find-job*1* recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-324 (7)"
+  },
+  "fn-bpn-find-queued-for-peer recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-job-listp recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-jobs-octets recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-jobs-octets*1* recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-machine-statep len J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-member*1* recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-324 (7)"
+  },
+  "fn-bpn-ready-peers recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-record-applicablep len J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-replace-job recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-report-apply-delete recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-report-correlate-job*1* recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-report-find-expired-held recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-report-observe-next-aux*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-report-outbox-next-aux*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-report-queue-step*1* len J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-restart-step*1* len J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpn-resume-jobs recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnd-held-list-debt recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-active-set-rows*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-arrival-count*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-base-job-count len J": {
+   "class": "cold",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-family-member*1* member-equal F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-family-next-aux*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-family-plan*1* len F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-family-retain-other-rows*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-find-arrival*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-find-held recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-held-octets recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-recover-fnbs-step*1* len J": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnf-step*1* len F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnj-result-step#guard*1* true-listp F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnj-scan*1* recursion J": {
+   "class": "unexpected",
+   "packet": "PKT-324 (7)"
+  },
+  "fn-bpnj-step#guard*1* true-listp F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-attempt-replace*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-deferral-replace*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-find-attempt*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-first-busy-stranded*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-first-stranded*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-forward-result-replace*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-forward-scan*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-has-forward-pendingp*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-oldest-eligible-with-credit*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-oldest-uncertain-local*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-replace-dispatched*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-routed-rows*1* recursion F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-routed-start#guard*1* true-listp F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-routed-start*1* reverse F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-start-one#guard*1* true-listp F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-step#guard*1* true-listp F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-stranded-effects#guard*1* true-listp F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpnp-stranded-effects*1* reverse F": {
+   "class": "unexpected",
+   "packet": "PKT-308"
+  },
+  "fn-bpr-article-records recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (g)"
+  },
+  "fn-bpr-host-find-record recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (g)"
+  },
+  "fn-bpreq-find-record recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (g)"
+  },
+  "fn-ccar-seek recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-cei-build-aux recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn-cpa-last-record recursion N": {
+   "class": "cold",
+   "packet": "PKT-041"
+  },
+  "fn-cpc-legacy-articlesp recursion N": {
+   "class": "cold",
+   "packet": "PKT-041"
+  },
+  "fn-cpc-upgrade-legacy-articles recursion N": {
+   "class": "cold",
+   "packet": "PKT-041"
+  },
+  "fn-cpe-projection-replay recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn-cpo-configure-durable append N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (e)"
+  },
+  "fn-cpo-configure-durable true-listp N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (e)"
+  },
+  "fn-cpr-loop recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (e)"
+  },
+  "fn-ctl-articles-withdrawals recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-configs-through recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-drop-via recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-has-msgid-p recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-lookup-verdict recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-msgid-withdrawn recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-record-txid recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-subseq-diff recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-subseq-diff true-list-fix N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-ctl-visible-filter recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (b)"
+  },
+  "fn-cvec-debt-extend len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-cvec-debt-extend nthcdr N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-cvec-debt-from recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-find-article recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (g)"
+  },
+  "fn-index-build recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (1)"
+  },
+  "fn-midx-build recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (1)"
+  },
+  "fn-nh-forward-charge recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-nh-forward-count recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-nls-obligation-lines recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-nls-pins-line len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-nls-report len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-nntp-available-article recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-find-group-number recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-group-count recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-group-high recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-group-last-number recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-group-low recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-group-next-number recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-group-range-numbers recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-index-config-digest len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-nntp-newnews-scan recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (c)"
+  },
+  "fn-nntp-projectionp len N": {
+   "class": "unexpected",
+   "packet": "PKT-190"
+  },
+  "fn-node-articles-have-archive-bindingsp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-189"
+  },
+  "fn-node-binding-ids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-node-binding-list-shapep recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-node-binding-msgids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-node-find-binding recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-own-refresh len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (1)"
+  },
+  "fn-own-retain-find-id-unguarded recursion N": {
+   "class": "cold",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-own-take recursion N": {
+   "class": "cold",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-owner-article-count len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-owner-carried-usage len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (6)"
+  },
+  "fn-owner-record-debt len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-owner-record-octets len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (5)"
+  },
+  "fn-owner-sco-capture len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-owner-sco-count len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-pcar-candidatep len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (4)"
+  },
+  "fn-pcar-next-lower recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (4)"
+  },
+  "fn-pcb-drop recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (6)"
+  },
+  "fn-pcb-tally-records recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (6)"
+  },
+  "fn-pcb-usage-extend len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (6)"
+  },
+  "fn-pgc-obligation-ids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-pgc-release-ids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-rcl-held-count recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-rcl-summary recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-rcl-verdict-heldp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-rcon-sf-record-dir-result append N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (2)"
+  },
+  "fn-replay-identity-loop recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-223"
+  },
+  "fn-replay-loop recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-223"
+  },
+  "fn-retain-find-id recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-189"
+  },
+  "fn-retain-obligation-ids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-retain-obligation-listp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-retain-release-ids recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-retain-release-listp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-retain-remove-id recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-retain-statep len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-retain-sum recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-sbud-bytes-extend len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (5)"
+  },
+  "fn-sbud-bytes-extend nthcdr N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (5)"
+  },
+  "fn-sbud-record-octets recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (5)"
+  },
+  "fn-sbud-used len N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (8)"
+  },
+  "fn-sco-capture true-list-fix N": {
+   "class": "unexpected",
+   "packet": "PKT-041"
+  },
+  "fn-sco-cpr-prefix recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-041"
+  },
+  "fn-sf-candidatep len N": {
+   "class": "unexpected",
+   "packet": "PKT-330 (2)"
+  },
+  "fn-sf-crash append N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn-sf-crash-imagep append N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn-sf-emit-success append N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (3)"
+  },
+  "fn-sf-next-lower recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-330 (2)"
+  },
+  "fn-sf-prepare-record append N": {
+   "class": "unexpected",
+   "packet": "PKT-223"
+  },
+  "fn-sf-record-dir-result append N": {
+   "class": "unexpected",
+   "packet": "PKT-324 (2)"
+  },
+  "fn-sf-record-has-pairp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-sf-record-listp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-sf-success-listp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-sim-acceptance-durable-okp len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-sn-find-record recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn-sn-verdict-listp recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (a)"
+  },
+  "fn-store-sn-article-count len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-store-sn-finish len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-store-sn-pin-count len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn-stx-index-of-store recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn-stx-reader-lookup recursion N": {
+   "class": "uncalled",
+   "packet": "PKT-448 (h)"
+  },
+  "fn-th-prefix-loop recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (d)"
+  },
+  "fn9p-servable-articles recursion N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fn9p-status-octets len N": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  },
+  "fnn-bp-profile-open length F": {
+   "class": "cold",
+   "packet": "PKT-448 (f)"
+  },
+  "fnn-bp-profile-session length F": {
+   "class": "unexpected",
+   "packet": "PKT-448 (f)"
+  }
+ },
+ "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."
+}

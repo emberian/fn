@@ -1,0 +1,78 @@
+{
+  "note": "Dimension seeds for tools/hot_path_check.py (PKT-334). Each seed names a book function whose value is a LIST that grows in one dimension, whatever its argument: N retained Store history, F held BP fragments, J queued BP jobs, K records or bytes requested for a response, B bytes newly supplied by the request. The checker propagates a seeded value through list-preserving operations (cdr, nthcdr, append, cons onto it, let, if) and through every formal it is bound to, and reports each traversal of it (len, nthcdr, membership, append, recursion, dolist/loop, list conversion, a guard evaluated over it) on a path from a host entry. Adding a seed can only add finds; nothing here hides one.",
+  "dimensions": {
+    "N": "retained Store history: committed records, successes, the configuration journal, the node's accepted article list and its served view",
+    "F": "held BP fragments of the node foundation",
+    "J": "queued BP jobs of the node machine",
+    "K": "records or bytes a response asks for (output-proportional work)",
+    "B": "bytes newly supplied by the request (not seeded: walking the request is input-proportional by design)"
+  },
+  "seeds": {
+    "fn-sf-records": "N",
+    "fn-sf-successes": "N",
+    "fn-sn-config-history": "N",
+    "fn-state-articles": "N",
+    "fn-bpnf-held-list": "F",
+    "fn-bpn-machine-state-jobs": "J",
+    "fn-sn-verdicts": "N",
+    "fn-node-bindings": "N",
+    "fn-retain-pins": "N",
+    "fn-retain-releases": "N"
+  },
+  "host_dispatchers": {
+    "note": "Host wrappers whose first argument is a quoted book function name: (fnn-core 'fn-x a b) calls fn-x on (a b) through its executable counterpart, so the callee's guard is evaluated.",
+    "names": [
+      "fnn-core",
+      "fnn-core-state",
+      "fnn-call",
+      "fnn-core-buffer-state",
+      "fnn-owner-core",
+      "fnn-owner-action",
+      "fnn-owner-buffer-action"
+    ]
+  },
+  "cold_entries": {
+    "note": "A host function is cold when its name contains one of these words (it runs at open, recovery, checkpoint, install, pack or compaction, not per request), or when every host function that calls it is cold. A find is cold only when every host entry that reaches it is cold. A name that also contains a served word (served_words) stays served: opening a connection is per request.",
+    "words": [
+      "open",
+      "recover",
+      "recovery",
+      "replay",
+      "checkpoint",
+      "install",
+      "genesis",
+      "keygen",
+      "compact",
+      "pack",
+      "migrate",
+      "rebuild",
+      "restore",
+      "startup",
+      "boot",
+      "load-store",
+      "init"
+    ],
+    "served_words": [
+      "connection",
+      "conn",
+      "greeting",
+      "accept",
+      "request",
+      "post",
+      "arrival"
+    ]
+  },
+  "resumable": {
+    "note": "Finds whose walk is bounded by a work quantum, each naming the bound. Empty: no find has been shown bounded yet."
+  },
+  "formal_seeds": {
+    "note": "A formal whose list grows in a dimension though no accessor returns it: the host threads it across calls. Function -> {formal name: dimension}.",
+    "fn-bpnj-contact-next": {
+      "offered": "J"
+    }
+  },
+  "cuts": {
+    "note": "Functions the checker does not descend into, each with the reason its walk does not run on the served path. Every cut is printed by --summary; a cut is a named claim, not a proof, and the record lists each.",
+    "fn-scar-node-statep": "(or (equal node live) (fn-node-statep node)): the served session carries the live node itself, so equal answers at the first pointer comparison (fn-scar-node-statep-is-node-statep, books/served-carried.lisp); fn-node-statep runs only on a session whose node is not the live one"
+  }
+}
