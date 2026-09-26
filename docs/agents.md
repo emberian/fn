@@ -146,7 +146,13 @@ above are the same. The same Message-ID with any changed octet -- a word, a
 Date you changed or dropped -- is the conflict line. Without a Message-ID you
 kept, identical text cannot tell a retry from a deliberate second post: each
 post without one gets a fresh Message-ID and is a new article. To post the
-same text again on purpose, give it a new Message-ID. Never map an uncertain
+same text again on purpose, give it a new Message-ID. A signed article's
+retry resends the signature bytes you saved, never a new signature:
+ML-DSA-65 signing is randomized (FIPS 204), so signing the same text again
+yields different signed octets, a changed source under the held Message-ID,
+which the node refuses as the conflict (`hybrid-author` answers REFUSED);
+`post --draft` keeps the exact article, a carrier's signature bytes
+included, beside its Message-ID. Never map an uncertain
 or unresolved outcome onto accepted or refused in a wrapper script.
 
 ### The watermark
