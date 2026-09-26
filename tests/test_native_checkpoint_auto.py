@@ -64,8 +64,8 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # allocation), then the batch loop over the PUBLICATION buffer, never
         # the served one; each step's frames written through the unchanged
         # byte program; the list entry and the whole-file plan are gone.
-        self.assertIn("(fnn-call 'fn-ock-next-checkpoint base configs records)", publish)
-        self.assertIn("(fnn-call 'fn-ockp-setup next frontier revision segment budget free)", publish)
+        self.assertIn("(fnn-core 'fn-ock-next-checkpoint base configs records)", publish)
+        self.assertIn("(fnn-core 'fn-ockp-setup next frontier revision segment budget free)", publish)
         self.assertIn("(fnn-live-octets-pub)", publish)
         self.assertNotIn("(fnn-live-octets)", publish)
         self.assertNotIn("'fn-ock-publication ", publish)

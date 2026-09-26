@@ -2250,9 +2250,12 @@ which the process is killed, or NIL."
       (when (fnn-core 'fn-ockp-donep state) (return steps))
       (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
                               segment sequence segment-bound file-bound st)))
-        (unless (and (consp answer) (= (length answer) 3))
+        ;; fnn-call answers the multiple-value list: VERDICT FRAMES STATE'
+        ;; and the stobj.
+        (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed checkpoint step"))
-        (destructuring-bind (verdict frames next) answer
+        (destructuring-bind (verdict frames next &rest stobj) answer
+          (declare (ignore stobj))
           (unless (eq verdict :ok)
             (fnn-refuse-io "the checkpoint pipeline refused a frame the open would refuse: ~a"
                            verdict))

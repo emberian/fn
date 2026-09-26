@@ -2186,8 +2186,8 @@ the crash keystone) and serving continues."
                       internal-time-units-per-second)))
         (handler-case
             (let ((sequence (length records)))
-              (setq next (fnn-call 'fn-ock-next-checkpoint base configs records))
-              (let ((setup (fnn-call 'fn-ockp-setup next frontier revision segment budget free)))
+              (setq next (fnn-core 'fn-ock-next-checkpoint base configs records))
+              (let ((setup (fnn-core 'fn-ockp-setup next frontier revision segment budget free)))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq verdict (first setup))
