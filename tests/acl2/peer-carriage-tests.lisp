@@ -47,7 +47,7 @@
 
 ; fn-pcb-peer-budget-after-extend-delta over a configuration value.
 (defconst *pcb-value*
-  (fn-cfg-value-make nil 0 nil nil nil *pcb-old-rows* nil nil nil))
+  (fn-cfg-value-make nil 0 nil nil nil *pcb-old-rows* nil nil nil nil))
 (assert-event
  (equal (fn-pcb-peer-budget
          "relay"

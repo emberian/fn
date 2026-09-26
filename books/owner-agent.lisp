@@ -526,7 +526,9 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                                   (fn-own-open fn-own-reader-context
                                    fn-oag-own-open-pins-the-owner-config))
            :use ((:instance fn-oag-own-open-pins-the-owner-config
-                            (o (fn-ocfg-owner oc)))))))
+                            (o (fn-ocfg-owner oc))
+                            (acfg (fn-auth-config-with-accounts
+                                   acfg (fn-cfg-value (fn-ocfg-config oc)))))))))
 
 ; The composition: a connection opened on an owner configured with
 ; fn-oag-post-config of a configuration whose path-identity is set pins that

@@ -3476,7 +3476,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/control-classify.lisp",
         "books/peer-authored-accept.lisp",
@@ -6271,6 +6271,46 @@
         "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment",
         "fn-own-reader-opened-after-completion-pins-the-finished-keyring",
         "fn-enr-item-of-an-enrolled-principal"
+      ]
+    },
+    {
+      "id": "PRF-164",
+      "title": "An invitation code redeems at most one account, once, across a crash: the accounts slot keeps a redeemed row the same row, the redeem plan stages only an admitted delta and resumes as already redeemed, and a redeemed account's credential is in the connection's snapshot",
+      "statement": "Over the configuration the owner replays at open (fn-config-replay-loop; the records fn-owner-reconfigure-complete publishes through fn-ocl-publish), a code's redeemed row in the tenth slot (books/config.lisp fn-cfg-accounts) is the same row after every later acceptable record (fn-acct-redeemed-row-stays-across-replay; per admitted delta list fn-acct-redeemed-row-stays), and fn-cfg-delta-reason refuses a redeem of a redeemed digest unless it carries exactly that row (fn-acct-redeemed-refuses-another-redeem). The redeem plan fn-acct-redeem-plan (books/accounts.lisp; a pure function of the configuration value, the stamp, the code, the login, the password, the host's salt observation and whether the snapshot already names the login) plans :redeem only of a delta the configuration admits at every generation and ledger, which redeems the code under that login with the verifier fn-authsec-enrol computes (fn-acct-redeem-plan-is-admitted-and-redeems); after that delta is applied the same code, login and password plan (:already-redeemed) under any later stamp, salt and snapshot (fn-acct-redeem-plan-after-its-redeem-is-already-redeemed: the crash after the publication's root barrier and before the reply); another login is (:refused :account-redeemed) (fn-acct-redeem-plan-refuses-another-login); an unknown code plans neither (fn-acct-redeem-plan-of-an-unknown-code-stages-nothing). The row keeps the verifier as text and fn-acct-text-verifier-of-verifier-text is the representation's round trip. The connection's credential snapshot fn-auth-config-with-accounts (books/nntp-auth.lisp; host-called through books/owner-config.lisp fn-ocfg-open from host/owner-host.lisp fn-owner-open, and fn-ocfg-open-peer from fn-owner-open-peer) is a configuration, keeps the operator's credential for a login auth.toml names, and otherwise finds the redeemed row's credential (the login's local principal fn-acct-local-principal, the row's verifier, posting); composed with fn-auth-step-principal-login-binds-exactly-the-unique-match (cited) a redeemed account's 281 installs exactly that principal. Not covered: the XREDEEM wire verb and its host publication (PKT-439), the operator's `account invite`/`account list` verbs, the native session; that a guessed code finds no row is the crypto seam's preimage resistance (A-CRYPTO); P6's publication theorems are PRF-028's (uncertified at the current digest: cited, not claimed).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-034"
+      ],
+      "depends_on": [
+        "PRF-097"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/nntp-auth.lisp",
+        "books/owner-config.lisp",
+        "tests/acl2/accounts-tests.lisp",
+        "planning/evidence/friends-accounts-2026-09-26.md",
+        "tests/acl2/accounts-snapshot-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T104052Z-510505.json",
+        "planning/evidence/manifests/certify-20260926T105103Z-617929.json"
+      ],
+      "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot built with teeth; the wire verb, operator verbs and the native case are PKT-439.",
+      "events": [
+        "fn-acct-text-verifier-of-verifier-text",
+        "fn-acct-redeemed-row-stays",
+        "fn-acct-redeemed-row-stays-across-replay",
+        "fn-acct-redeemed-refuses-another-redeem",
+        "fn-acct-redeem-plan-is-admitted-and-redeems",
+        "fn-acct-redeem-plan-after-its-redeem-is-already-redeemed",
+        "fn-acct-redeem-plan-refuses-another-login",
+        "fn-acct-redeem-plan-of-an-unknown-code-stages-nothing",
+        "fn-auth-config-with-accounts-is-a-config",
+        "fn-auth-config-with-accounts-finds-the-redeemed-credential",
+        "fn-auth-config-with-accounts-keeps-the-operators-credential",
+        "fn-auth-account-creds-find-the-row"
       ]
     }
   ]

@@ -11,8 +11,10 @@
 (include-book "anchor-replace")
 
 (defconst *fn-native-auth-admin-max-secret-octets* 256)
+; The local principal is books/accounts.lisp's (one function for a login
+; enrolled here and a login redeemed by XREDEEM).
 (defconst *fn-native-auth-admin-local-principal-tag*
-  (fn-record-string-octets "fn-principal-local-v1"))
+  *fn-acct-local-principal-tag*)
 (defconst *fn-native-auth-admin-header*
   (append
    (fn-record-string-octets
@@ -189,8 +191,7 @@
                (fn-id-hex-listp text))
           (fn-id-unhex text)
         :bad)
-    (fn-digest-tagged *fn-native-auth-admin-local-principal-tag*
-                      (fn-authsec-octets name))))
+    (fn-acct-local-principal name)))
 
 (defun fn-native-auth-admin-upsert (name credential credentials)
   (declare (xargs :guard t))

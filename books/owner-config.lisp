@@ -444,11 +444,21 @@
 ; Every OTHER owner event leaves the table alone, which is the mechanism
 ; behind `fn-ocfg-pin-is-stable-without-advance' below.
 
+; The snapshot is closed for every theorem about an opened connection: the
+; policy argument is free in them, and fn-auth-config-with-accounts-is-a-config
+; carries the one fact they ask of it (books/nntp-auth.lisp).
+(in-theory (disable fn-auth-config-with-accounts))
+
+; The connection's credential snapshot is taken here, against the
+; configuration it pins: the operator's credentials, then the accounts that
+; configuration's redeemed rows name (PRF-164, books/nntp-auth.lisp
+; fn-auth-config-with-accounts).
 (defun fn-ocfg-open (oc acfg)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (id (fn-own-next-id o))
-         (opened (fn-own-open o acfg))
+         (opened (fn-own-open o (fn-auth-config-with-accounts
+                                 acfg (fn-cfg-value (fn-ocfg-config oc)))))
          (raw (cdr opened))
          (o2 (if (fn-own-find-conn id (fn-own-conns raw))
                  (fn-own-reader-context raw id (fn-ocfg-config oc))
@@ -539,7 +549,9 @@
 (defun fn-ocfg-open-peer (oc peer acfg)
   (declare (xargs :guard t))
   (let ((result (fn-own-open-peer (fn-ocfg-owner oc) peer
-                                  (fn-ocfg-config oc) acfg)))
+                                  (fn-ocfg-config oc)
+                                  (fn-auth-config-with-accounts
+                                   acfg (fn-cfg-value (fn-ocfg-config oc))))))
     (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
 
 (defun fn-ocfg-fault (oc id)
