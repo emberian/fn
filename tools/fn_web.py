@@ -1095,9 +1095,10 @@ def answer_kind(answer: str) -> str:
 
 def withdrawn_note(answer: str) -> str:
     return ("The node answered <code>" + e(answer) + "</code>: an authorized cancel "
-            "withdrew this article from what the node serves. It existed and was "
-            "accepted; people may already have read it, and copies elsewhere are not "
-            "erased. The withdrawal is the node's record, not this reader's.")
+            "withdrew this article from what the node serves. The withdrawal says the "
+            "article was held here (C3); people may already have read it, and copies "
+            "elsewhere are not erased. The withdrawal is the node's record, not this "
+            "reader's.")
 
 
 def e(value) -> str:
@@ -1335,6 +1336,8 @@ class Handler(BaseHTTPRequestHandler):
             # headline still said "may or may not have been accepted".
             meaning = ("Settled by re-sending the same article; the first attempt's "
                        "outcome stays recorded as it was.")
+            # (The final walk's leftover: the "to settle it" advice stayed.)
+            said = "<p class='reason'>" + e(result.detail) + "</p>"
         local = ("<span class='badge uncertain'>local record uncertain</span> "
                  if entry.get("record_error") else "")
         self.page("Post " + word, "<nav><a href='/'>Groups</a></nav><article>"
