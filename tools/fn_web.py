@@ -350,9 +350,18 @@ class Backend:
                     found, _ = self.over_row(client, one)
                     if found:
                         rows[one] = found
+            # An earlier message the node does not serve here keeps its place
+            # in the conversation as a placeholder carrying the node's answer,
+            # so a reply to it is shown under it rather than under its parent.
+            placeholders = [
+                {"number": -1 - index, "message_id": entry["message_id"],
+                 "references": " ".join(references[:index]), "subject": "",
+                 "from": "", "date": "", "placeholder": entry["answer"]}
+                for index, entry in enumerate(ancestors) if not entry["row"]]
             return fn_client.Result(fn_client.DONE, status, {
                 "group": group, "row": row, "root": root, "ancestors": ancestors,
-                "rows": [rows[k] for k in sorted(rows)], "hits": len(set(hits)),
+                "rows": placeholders + [rows[k] for k in sorted(rows)],
+                "hits": len(set(hits)),
                 "shown": len(shown), "start": start, "end": end, "low": low,
                 "high": high, "command": command,
                 "approximate": any(c in WILDMAT_SPECIAL for c in root)}, "")
@@ -1295,12 +1304,19 @@ class Handler(BaseHTTPRequestHandler):
         else:
             meaning = ("The article may or may not have been accepted. Do not post a "
                        "new copy while its status is unknown.")
+            # The walk's third finding: "Do not repost" beside a "Send the
+            # same bytes again" button read as a contradiction, and "as it was
+            # sent" was false when the connection never opened.
             said = ("<p class='reason'>" + e(result.detail) + "</p>"
-                    "<p class='hint'>Do not repost. Your text is kept below exactly as it "
-                    "was sent" + (", and in the local outbox across restarts"
-                                   if getattr(self.server.submissions, "durable", False)
-                                   else ", while this process runs") +
-                    ". Check the Message-ID first: if the node serves it, it was accepted.</p>")
+                    "<p class='hint'>Do not write this again as a new post: a new post "
+                    "gets a new Message-ID, and the node could then hold both. Your "
+                    "article is kept below exactly as prepared" +
+                    (", and in the local outbox across restarts"
+                     if getattr(self.server.submissions, "durable", False)
+                     else ", while this process runs") +
+                    ". To settle it, check whether the node serves its Message-ID, or "
+                    "send the same bytes again: a node that already holds it says so and "
+                    "stores nothing new.</p>")
         observed = ""
         if entry["settlement"] is not None:
             found = entry["settlement"]
@@ -1316,9 +1332,16 @@ class Handler(BaseHTTPRequestHandler):
             observed += ("<h3>Sent again at your request (same bytes, same Message-ID)</h3>"
                          "<p class='muted'>The original answer above is unchanged. Each "
                          "line is the node's answer to one re-send, as it sent it.</p><ol>" +
-                         "".join("<li><span class='badge " + e(one.word) + "'>" +
-                                 e(one.word) + "</span> <span class='reason'>" +
-                                 e(one.detail) + "</span></li>" for one in resends) + "</ol>")
+                         "".join("<li><span class='reason'>" + e(one.detail) +
+                                 "</span></li>" for one in resends) + "</ol>")
+            # The walk's fifth finding: after a re-send the node accepted, the
+            # headline still said "may or may not have been accepted", and a
+            # re-send answered "already stored here" wore a "refused" badge.
+            # The answers are shown as the node's lines; one the client
+            # classifies as accepted (a 240) settles the headline.
+            if any(one.word == fn_client.ACCEPTED for one in resends):
+                meaning = ("Settled: the node accepted these exact bytes when you sent "
+                           "them again. The first attempt's outcome stays recorded as it was.")
         hidden = ("<input type='hidden' name='csrf' value='" + e(self.server.token) +
                   "'><input type='hidden' name='submission_id' value='" + e(token) + "'>")
         actions = ("<form class='inline' method='post' action='/settle'>" + hidden +
@@ -1498,27 +1521,28 @@ class Handler(BaseHTTPRequestHandler):
                 " (" + result.data["command"] + ")" if result.data.get("command") else ""))
             return
         data, marks = result.data, self.server.marks
-        missing = [one for one in data["ancestors"] if not one["row"]]
-        gaps = "".join(
-            "<article class='hole'><span class='badge " + e(answer_kind(one["answer"])) +
-            "'>" + e("withdrawn" if answer_kind(one["answer"]) == "withdrawn" else
-                     "served elsewhere" if answer_kind(one["answer"]) == "served" else
-                     "not served here") + "</span> earlier message <code>" +
-            e(one["message_id"]) + "</code> · the node answered <code>" +
-            e(one["answer"]) + "</code>" +
-            (" · <a href='" + e(href("/find", id=one["message_id"])) + "'>look it up</a>"
-             if answer_kind(one["answer"]) == "served" else "") + "</article>"
-            for one in missing)
-        cards = "".join(
-            "<article class='thread' style='margin-left:" + str(min(depth, 8) * 18) +
-            "px'><h2" + ("" if marks.is_read(group, row["number"]) else " class='unread'") +
-            ">" + ("<strong>▸ </strong>" if row["number"] == number else "") +
-            "<a href='" + e(href("/a", group=group, number=row["number"])) + "'>" +
-            e(row["subject"]) + "</a></h2><p class='meta'>" +
-            e(" · ".join(x for x in (row["from"], row["date"], "local #%s" % row["number"],
-                                     "its parent is not shown here" if outside else "")
-                         if x)) + "</p></article>"
-            for row, depth, outside in thread_rows(data["rows"]))
+        def card(row, depth, outside):
+            indent = "style='margin-left:" + str(min(depth, 8) * 18) + "px'"
+            if row.get("placeholder") is not None:
+                kind = answer_kind(row["placeholder"])
+                label = {"withdrawn": "withdrawn", "served": "in another group"}.get(
+                    kind, "not served here")
+                return ("<article class='thread hole' " + indent + "><span class='badge " +
+                        e(kind) + "'>" + e(label) + "</span> an earlier message, <code>" +
+                        e(row["message_id"]) + "</code>; the node answered <code>" +
+                        e(row["placeholder"]) + "</code>" +
+                        (" · <a href='" + e(href("/find", id=row["message_id"])) +
+                         "'>look it up</a>" if kind == "served" else "") + "</article>")
+            return ("<article class='thread' " + indent + "><h2" +
+                    ("" if marks.is_read(group, row["number"]) else " class='unread'") + ">" +
+                    ("<strong>▸ </strong>" if row["number"] == number else "") +
+                    "<a href='" + e(href("/a", group=group, number=row["number"])) + "'>" +
+                    e(row["subject"]) + "</a></h2><p class='meta'>" +
+                    e(" · ".join(x for x in (row["from"], row["date"],
+                                             "local #%s" % row["number"],
+                                             "its parent is not shown here" if outside else "")
+                                 if x)) + "</p></article>")
+        cards = "".join(card(*one) for one in thread_rows(data["rows"]))
         more = data["hits"] - data["shown"]
         older = ("<a rel='prev' href='" + e(href("/t", group=group, number=number,
                                                   before=data["start"] - 1)) +
@@ -1537,7 +1561,6 @@ class Handler(BaseHTTPRequestHandler):
                   (" The Message-ID has characters a wildmat cannot state exactly; the "
                    "pattern stands ? for each, so a near-identical Message-ID could also "
                    "match." if data["approximate"] else "") + "</p>" +
-                  (("<h3>Not in this conversation's served history</h3>" + gaps) if gaps else "") +
                   cards +
                   ("<p class='muted'>" + e(more) + " more matching article(s) in this window "
                    "are not shown; the newest " + e(data["shown"]) + " are.</p>" if more > 0 else "") +
@@ -1633,21 +1656,35 @@ class Handler(BaseHTTPRequestHandler):
                           ("".join(cards) or "<p>No groups are served.</p>") +
                           self.resume_form())
             elif path == "/outbox" and getattr(self.server.submissions, "durable", False):
+                # The walk's fourth finding: a list of bare Message-IDs in
+                # arbitrary order does not tell a person which post is which,
+                # nor which one needs attention.  Uncertain first, then drafts,
+                # then settled records; each with its subject and group.
                 with self.server.submissions.lock:
                     rows = [(token, entry["message_id"],
                              entry["result"].word if entry["result"] else
                              ("local write uncertain" if entry.get("record_error") else "draft"),
-                             entry.get("draft"), entry.get("record_error"))
+                             entry.get("draft"), entry.get("record_error"), entry["group"],
+                             frozen_fields(entry["lines"])["subject"] if entry["lines"] else "",
+                             len(entry.get("resends") or ()))
                             for token, entry in self.server.submissions.entries.items()
                             if entry["message_id"] or entry.get("draft") is not None]
+                rank = {fn_client.UNCERTAIN: 0, "local write uncertain": 0, "draft": 1}
+                rows.sort(key=lambda row: (rank.get(row[2], 2), row[6] or row[1]))
                 cards = "".join(
-                    ("<article><a href='" + e(href("/draft", id=token)) + "'>Draft: " +
-                     e(draft["subject"] or "(untitled)") + "</a>" +
-                     (" · local write uncertain" if error else "") + "</article>"
+                    ("<article><span class='badge'>draft</span> <a href='" +
+                     e(href("/draft", id=token)) + "'>" + e(draft["subject"] or "(untitled)") +
+                     "</a> <span class='meta'>" + e(group) + " · saved here, not posted" +
+                     (" · local write uncertain" if error else "") + "</span></article>"
                      if draft is not None
-                     else "<article><a href='" + e(href("/result", id=token)) +
-                     "'>" + e(msgid) + "</a> · " + e(word) + "</article>")
-                    for token, msgid, word, draft, error in rows)
+                     else "<article><span class='badge " + e(word) + "'>" + e(word) +
+                     "</span> <a href='" + e(href("/result", id=token)) + "'>" +
+                     e(subject or "(no subject)") + "</a> <span class='meta'>" + e(group) +
+                     " · <code>" + e(msgid) + "</code>" +
+                     (" · sent again %d time(s) on request" % resent if resent else "") +
+                     (" · needs settling" if word == fn_client.UNCERTAIN else "") +
+                     "</span></article>")
+                    for token, msgid, word, draft, error, group, subject, resent in rows)
                 self.page("Outbox", "<nav><a href='/'>Groups</a></nav><h2>Local outbox</h2>" +
                           (cards or "<p>No saved drafts or submitted records.</p>"))
             elif path == "/g":
@@ -1800,9 +1837,44 @@ class Handler(BaseHTTPRequestHandler):
                     references, body = fields["references"], fields["body"]
                     if sender == self.server.backend.default_from():
                         sender = ""
+                # The identifier is minted once and the browser is sent to a
+                # page named by it, so Back, refresh and a restored tab return
+                # to the same identifier instead of minting a fresh one (the
+                # walk's second finding: Back then Post posted twice).
                 submission_id = self.server.submissions.new(group)
-                form = self.compose_form(submission_id, group, subject, sender,
-                                         references, body)
+                with self.server.submissions.lock:
+                    entry = self.server.submissions.entries.get(submission_id)
+                    if entry is not None:
+                        entry["form"] = {"subject": subject, "sender": sender,
+                                         "references": references, "body": body}
+                self.redirect(href("/c", id=submission_id))
+            elif path == "/c":
+                token = values.get("id", "")
+                if not token or len(token) > 64:
+                    raise ValueError("invalid submission identifier")
+                with self.server.submissions.lock:
+                    entry = self.server.submissions.entries.get(token)
+                    posted = entry is not None and entry["result"] is not None
+                    fields = dict(entry.get("form") or {}) if entry else {}
+                    group = entry["group"] if entry else ""
+                if entry is None:
+                    self.page("Form expired", "<p>This form's identifier is no longer held "
+                              "by this client (it restarted, or the form was never saved). "
+                              "Nothing was sent from it after that. If you posted it, look "
+                              "for it in the group or by Message-ID.</p>", 410)
+                    return
+                if posted:
+                    self.page("Already posted", "<nav><a href='" + e(href("/g", name=group)) +
+                              "'>" + e(group) + "</a></nav><article><h2>This form was "
+                              "already posted</h2><p>Posting it again would send nothing: "
+                              "one form sends one exact article.</p><p><a href='" +
+                              e(href("/result", id=token)) + "'>See what the node answered"
+                              "</a> · <a href='" + e(href("/compose", group=group)) +
+                              "'>Write a new post</a></p></article>")
+                    return
+                form = self.compose_form(token, group, fields.get("subject", ""),
+                                         fields.get("sender", ""),
+                                         fields.get("references", ""), fields.get("body", ""))
                 self.page("Compose", "<nav><a href='" + e(href("/g", name=group)) +
                           "'>" + e(group) + "</a></nav><h2>Write a post</h2>"
                           "<p class='muted'>One form sends one exact article. If the reply "
