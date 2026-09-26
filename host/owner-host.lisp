@@ -713,9 +713,11 @@
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
 ;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
-      ;; fn-ocfg-step of this event for every configured owner, no hypothesis
-      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step), guard-verified under
-      ;; fn-sn-statep of the store, which fn-ocl-relation carries.
+      ;; fn-ocfg-step of this event on every owner fn-own-relation admits
+      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
+      ;; it stages without replaying the appended history, whose replay the
+      ;; maintained store relation carries.  Guard-verified under fn-sn-statep
+      ;; of the store, which fn-ocl-relation carries.
       (let ((state (fn-owner-install-ocfg
                     (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
                     state)))
