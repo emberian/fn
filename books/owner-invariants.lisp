@@ -360,7 +360,10 @@
   (implies (and (fn-own-conns-okp conns groups capacity records)
                 (fn-own-conn-okp conn groups capacity records))
            (fn-own-conns-okp (fn-own-replace-conn conn conns) groups capacity records))
-  :hints (("Goal" :induct (fn-own-replace-conn conn conns))))
+  ;; Each connection's own okp is a hypothesis or the table's; opening it
+  ;; cost 125,000 steps.
+  :hints (("Goal" :induct (fn-own-replace-conn conn conns)
+           :in-theory (disable fn-own-conn-okp))))
 
 (defthm fn-own-replace-conn-len
   (equal (len (fn-own-replace-conn conn conns)) (len conns))
@@ -710,9 +713,13 @@
                             (verdicts (fn-sn-verdicts (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))
                             (configs (fn-sn-config-history (fn-own-store o)))))
-           :in-theory (e/d (fn-own-relation fn-midx-correspondencep
-                            fn-gidx-build)
+           ;; The index is carried by fn-midx-refresh-preserves-correspondence
+           ;; and the group index by fn-ctl-visible-state-of-fields; opening
+           ;; either builder rebuilt the whole trie (3.4 s to 0.4 s).
+           :in-theory (e/d (fn-own-relation)
                            (fn-own-conns-okp fn-own-view-make-group-indexed
+                            fn-midx-refresh fn-midx-correspondencep fn-gidx-build
+                            fn-snt-ready-or-recovered-node-is-exact-replay
                             fn-own-store-idlep fn-own-idle-node-is-replay
                             fn-own-related-records-true-list
                             fn-own-related-frontier-natural
@@ -872,11 +879,21 @@
            :use ((:instance fn-auth-open-session-is-consistent
                             (tlsp nil))))))
 
+; An open conses one connection onto the table; the old table's
+; fn-own-conns-okp is a hypothesis, so it stays closed (the recursive
+; definition otherwise reopened it 30,000 times in the open-peer proof).
+(local
+ (defthm fn-own-conns-okp-of-cons
+   (equal (fn-own-conns-okp (cons conn conns) groups capacity records)
+          (and (fn-own-conn-okp conn groups capacity records)
+               (fn-own-conns-okp conns groups capacity records)))))
+(local (in-theory (disable fn-own-conns-okp-of-cons)))
+
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-own-open o acfg))))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation)
-                                  (fn-own-conn-make-group-indexed
+  :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-conns-okp-of-cons)
+                                  (fn-own-conns-okp fn-own-conn-make-group-indexed
                                    fn-own-conn-boundedp
                                    fn-served-open-indexed)))))
 
@@ -1011,8 +1028,8 @@
 (defthm fn-own-open-peer-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-own-open-peer o peer cfg acfg))))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation)
-                                  (fn-own-conn-make-group-indexed
+  :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-conns-okp-of-cons)
+                                  (fn-own-conns-okp fn-own-conn-make-group-indexed
                                    fn-own-conn-boundedp
                                    fn-served-open-peer-indexed)))))
 
@@ -2622,6 +2639,20 @@
 ; session is answered 403, the fourth outcome, so the two sides differ at
 ; every connection-free state and the equality now carries the connection
 ; itself.  The separation is asserted in `tests/acl2/owner-tests.lisp'.
+; The two conjuncts of the relation the durable-reply proof reads.  Opening
+; the whole relation in that proof cost 1.0 s of 1.6 s.
+(local
+ (defthm fn-own-relation-conns-and-ledger
+   (implies (fn-own-relation o)
+            (and (fn-own-conns-okp (fn-own-conns o)
+                                   (fn-sn-groups (fn-own-store o))
+                                   (fn-sn-capacity (fn-own-store o))
+                                   (fn-sf-records (fn-sn-files (fn-own-store o))))
+                 (fn-own-ledger-durablep (fn-own-ledger o)
+                                         (fn-sf-records (fn-sn-files (fn-own-store o))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-own-relation) (theory 'minimal-theory))))))
+
 (defthm fn-own-durable-reply-names-a-durable-record
   (implies (and (fn-own-relation o)
                 (equal (car (fn-own-outcome o id word))
@@ -2644,7 +2675,8 @@
                                         (fn-sf-records (fn-sn-files (fn-own-store o))))))
   :rule-classes nil
   :hints (("Goal"
-           :use ((:instance fn-own-find-conn-okp
+           :use ((:instance fn-own-relation-conns-and-ledger)
+                 (:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
@@ -2677,8 +2709,8 @@
                                   (fn-own-conn-session
                                    (fn-own-find-conn id (fn-own-conns o))))))
                             (completion :durable)))
-           :in-theory (e/d (fn-own-relation fn-served-post-outcome)
-                           (fn-own-conn-boundedp fn-own-find-conn-okp
+           :in-theory (e/d (fn-served-post-outcome)
+                           (fn-own-relation fn-own-conn-boundedp fn-own-find-conn-okp
                             fn-own-conns-okp fn-own-conn-group-index
                             fn-own-find-conn last fn-own-facts-okp
                             fn-own-advance fn-own-feed-durable

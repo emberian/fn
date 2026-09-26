@@ -196,6 +196,14 @@
 (defthm fn-bpnj-result-event-is-a-served-event
   (implies (fn-bpn-keyp key)
            (fn-bpnp-host-eventp (list :base (list :forward-result key outcome))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpn-eventp fn-bpn-machine-eventp fn-bpnf-host-eventp
+                                               fn-bpnp-host-eventp fn-cbor-ag-car
+                                               fn-bpn-nth-is-nth-on-true-lists nth-0-cons nth-add1
+                                               car-cons cdr-cons len (:e len) (:e nth) (:e fn-bpn-member)
+                                               (:e zp) (:e equal) (:e binary-+)
+                                               fn-bpn-keyp fn-bpn-machine-textp fn-bpn-machine-u64p
+                                               natp natp-compound-recognizer (:e fn-frame-textp))
+                                             (theory 'minimal-theory))))
   :rule-classes nil)
 
 (defthm fn-bpnj-stale-job-result-settles-nothing
@@ -217,7 +225,10 @@
 (defthm fn-bpnj-found-job-has-its-key
   (implies (fn-bpn-find-job key jobs)
            (equal (fn-bpn-job-key (fn-bpn-find-job key jobs)) key))
-  :hints (("Goal" :in-theory (enable fn-bpn-find-job))))
+  ;; Opening fn-bpn-job-key cost 190,000 prover steps; the induction needs
+  ;; only the search's definition.
+  :hints (("Goal" :induct (fn-bpn-find-job key jobs)
+           :in-theory (union-theories '(fn-bpn-find-job) (theory 'minimal-theory)))))
 (defthm fn-bpnj-ready-job-is-a-queued-job-for-the-peer
   (implies (fn-bpnj-readyp job peer routing offered)
            (and job
@@ -262,8 +273,12 @@
            (and (equal (fn-bpnf-base (fn-bpnj-with-base st b)) b)
                 (equal (fn-bpnf-answer-state (fn-bpnf-answer s e)) s)
                 (equal (fn-bpnf-answer-effects (fn-bpnf-answer s e)) e)))
-  :hints (("Goal" :in-theory (enable fn-bpnj-with-base fn-bpnf-base fn-bpnf-answer
-                                     fn-bpnf-answer-state fn-bpnf-answer-effects fn-bpn-nth))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpnj-with-base fn-bpnf-base fn-bpnf-answer
+                                                fn-bpnf-answer-state fn-bpnf-answer-effects
+                                                fn-bpn-nth-is-nth-on-true-lists nth-update-nth
+                                                true-listp-update-nth nth-0-cons nth-add1
+                                                (:e nfix) (:e natp) (:e zp))
+                                              (theory 'minimal-theory)))))
 (defthm fn-bpnj-contact-offer-starts-the-ready-job
   (let* ((d (fn-bpnj-contact-next st peer routing offered))
          (base (fn-bpnf-base st))
@@ -362,8 +377,11 @@
                 (equal (fn-bpnf-issued (fn-bpnj-with-base st b)) (fn-bpnf-issued st))
                 (equal (fn-bpnf-waits (fn-bpnj-with-base st b)) (fn-bpnf-waits st))
                 (true-listp (fn-bpnj-with-base st b))))
-  :hints (("Goal" :in-theory (enable fn-bpnj-with-base fn-bpnf-held-list fn-bpnp-sessions
-                                     fn-bpnf-issued fn-bpnf-waits fn-bpn-nth))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpnj-with-base fn-bpnf-held-list fn-bpnp-sessions
+                                                fn-bpnf-issued fn-bpnf-waits
+                                                fn-bpn-nth-is-nth-on-true-lists nth-update-nth
+                                                true-listp-update-nth (:e nfix) (:e natp) (:e equal))
+                                              (theory 'minimal-theory)))))
 (defthm fn-bpnj-open-base-preserves-invariants
   (implies (and (fn-bpn-machine-invariantp base)
                 (fn-bpp-eidp peer)
