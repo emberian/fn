@@ -5598,6 +5598,71 @@
           "name": "fn-pinv-accept-record-fold-configures-the-inviter"
         }
       ]
+    },
+    {
+      "id": "PRF-161",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-admits-within-the-limits-in-force"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-never-exceeds-a-limit-in-force"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-refusal-is-a-400-and-opens-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-release-never-raises-a-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-charge-bounds-steps-per-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-charge-waits-and-never-closes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-pinned-acfg-requires-authentication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-pinned-acfg-keeps-the-operators-credentials"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-anonymous-none-gates-every-restricted-command"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-charge-keeps-the-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-idle-keeps-the-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-observe-keeps-the-connection-ids"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-limits-never-drop-a-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-observe-closes-only-on-a-failed-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-idle-closes-only-silence"
+        }
+      ]
     }
   ]
 }

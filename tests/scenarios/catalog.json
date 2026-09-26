@@ -2558,6 +2558,23 @@
         "Each article posted on one node is readable on the other under the same Message-ID and the same content digest (local article numbers are each node's own).",
         "After the restarts the feeds resume from their cursors: each article is stored exactly once on each node and none is skipped."
       ]
+    },
+    {
+      "id": "SCN-091",
+      "title": "A reader port under a connection flood from one and from fifty addresses, a slowloris, oversized lines, an anonymous ARTICLE loop and credential guessing stays within its limits while an authenticated reader keeps working",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-031"
+      ],
+      "steps": [
+        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 32, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
+        "500 concurrent connections from 127.0.0.2; then, per-address lowered live to 1, 10 each from 127.0.1.1-50; then 4 silent and 4 one-octet-a-second connections from 127.0.0.4; lines of 600, 4096 and 65536 octets; an anonymous session under none, then under open (live) a 120-command STAT loop; AUTHINFO guessing at about 100 a second from 127.0.0.7; `operator CONFIG health`."
+      ],
+      "expected": [
+        "At most 8 (then 1 per address, at most 31 in total) connections are admitted; every other gets a 400 line naming the reason; admitted connections that never send a command close after the first-command timer with no reply; a fresh reader is admitted once they have closed.",
+        "Silent and trickling connections close with no reply within the timer; oversized lines are answered by the served machine and the owner stays up; anonymous GROUP, ARTICLE and POST are 480 under none, GROUP is 211 under open and the STAT loop runs at no more than about 20 a second; at most 10 481 answers precede `400 too many authentication failures; closing connection` and the next connection from that address gets the 400 greeting; health prints `exposure pressure held` with the counts; the authenticated reader is answered in every phase (latency table in the record)."
+      ]
     }
   ]
 }

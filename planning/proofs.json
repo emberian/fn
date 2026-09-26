@@ -5735,6 +5735,53 @@
         "fn-pinv-accept-record-configures-the-verified-inviter",
         "fn-pinv-accept-record-fold-configures-the-inviter"
       ]
+    },
+    {
+      "id": "PRF-161",
+      "title": "The limits of a public reader port as the host calls them: admission bounded by the total and per-address rows in force, a step budget per quantum that waits and never refuses, the none anonymous policy gating every reader and posting command 480, and no limit or reconfiguration dropping a connection",
+      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step; fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the run's max_connections, ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total and the address below its per-address limit in force, and leaves the address at most one higher and within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-031"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native-admin-host.lisp",
+        "tests/test_native_public_exposure.py",
+        "planning/evidence/public-exposure-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T074028Z-855253.json",
+        "planning/evidence/manifests/certify-20260926T075324Z-901451.json",
+        "planning/evidence/public-exposure-2026-09-26-report.json",
+        "tests/native_owner_chunk_loop_raw.lisp",
+        "tests/test_native_owner.py",
+        "docs/operator.md"
+      ],
+      "events": [
+        "fn-exp-open-admits-within-the-limits-in-force",
+        "fn-exp-open-never-exceeds-a-limit-in-force",
+        "fn-exp-open-refusal-is-a-400-and-opens-nothing",
+        "fn-exp-release-never-raises-a-count",
+        "fn-exp-charge-bounds-steps-per-quantum",
+        "fn-exp-charge-waits-and-never-closes",
+        "fn-exp-pinned-acfg-requires-authentication",
+        "fn-exp-pinned-acfg-keeps-the-operators-credentials",
+        "fn-exp-anonymous-none-gates-every-restricted-command",
+        "fn-exp-charge-keeps-the-connections",
+        "fn-exp-idle-keeps-the-connections",
+        "fn-exp-observe-keeps-the-connection-ids",
+        "fn-exp-limits-never-drop-a-connection",
+        "fn-exp-observe-closes-only-on-a-failed-login",
+        "fn-exp-idle-closes-only-silence"
+      ]
     }
   ]
 }

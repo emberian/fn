@@ -1133,6 +1133,79 @@ and every login on a node whose policy is `open` (the default: `policy set
 posting-policy open`), posts as before. The service log names the login of
 each decision (`post login=alice bound=...`).
 
+## Expose a node to strangers
+
+Everything below is what runs on the branch and what the SCN-091 campaign
+measured on hbox (`planning/evidence/public-exposure-2026-09-26.md`); no fn
+node is exposed yet, and whether and how one is is PKT-404.
+
+A listener outside 127.0.0.0/8 and `::1` changes the default of every
+exposure row the configuration does not set. Loopback keeps the old
+behaviour. The rows are durable configuration, set with `policy set` like
+`path-identity`, applied to a running owner at once and replayed at every
+start:
+
+```
+fn operator /etc/fn/fn.toml policy set exposure-connections 200
+fn operator /etc/fn/fn.toml policy set exposure-per-address 8
+fn operator /etc/fn/fn.toml policy set exposure-steps-per-second 64
+fn operator /etc/fn/fn.toml policy set exposure-first-seconds 60
+fn operator /etc/fn/fn.toml policy set exposure-idle-seconds 600
+fn operator /etc/fn/fn.toml policy set exposure-auth-failures 10
+fn operator /etc/fn/fn.toml policy set exposure-posts-per-minute 60
+fn operator /etc/fn/fn.toml policy set anonymous none
+```
+
+What each does, what the client sees and the default off loopback is the
+table in `specs/nntp.md` ("Public exposure"). In short:
+
+- **Connections.** One fewer than the run's `max_connections` (32) is the
+  most sockets can hold: the last is kept for your own `policy set`, which
+  stages through the owner. Past the total a client reads `400 too many
+  connections; try again later` and is closed; past the per-address limit,
+  `400 too many connections from this address; try again later`. Under a
+  flood of 500 connections from one address the owner admitted 8 and sent
+  the 400 to the other 492; from 50 addresses with the per-address limit at
+  1, it admitted 30 and refused 470, and a fresh connection of yours got the
+  busy 400 until the flood's silent connections timed out.
+- **Silence.** A connection that sends no command for
+  `exposure-first-seconds`, or answers nothing for `exposure-idle-seconds`
+  after that, is closed with no reply (RFC 3977 §3.1). A client trickling
+  one octet a second is silence too: only an answered command or 512
+  octets resets the timer. With the timer at 5 s, silent and trickling
+  connections closed at 5.0 s.
+- **Work.** Each source address may start `exposure-steps-per-second`
+  served steps a second (a step is one read of at most one buffer). Past it
+  the connection is not refused: the owner stops reading it until the next
+  second, so the client slows down and loses nothing. At 20 a second an
+  anonymous `STAT` loop ran at 22 a second including its first burst.
+- **Failed logins.** After `exposure-auth-failures` 481 answers in a minute
+  from one address, that connection reads `400 too many authentication
+  failures; closing connection`, and new ones from the address read `400
+  too many authentication failures from this address` until the minute
+  ends.
+- **Anonymous readers.** `anonymous none` (the default off loopback, and
+  always when `[auth] required` is set) answers `480` to every reading and
+  posting command until the client logs in; CAPABILITIES, HELP, DATE, MODE,
+  QUIT, AUTHINFO and STARTTLS still answer. `anonymous open` is the old
+  behaviour, and it lets an anonymous client POST if `[posting]` is
+  enabled: there is no read-only anonymous level yet (PKT-405).
+
+`operator CONFIG health` prints three `exposure` lines after its eight
+states: `exposure pressure held|clear` (held at nine tenths of the total or
+after any refusal, wait or close in the current minute), the counts
+(`admitted`, `refused-busy`, `refused-address`, `refused-auth`, `deferred`,
+`idle-closed`, `auth-closed`) and the limits in force. They do not change
+the exit code.
+
+Before you open the port: set `[auth] required = true` and `protected_only
+= true` and a TLS pair (see "Require a login"), choose the certificate
+(a self-signed pair pinned by your readers, or a CA's; PKT-404 compares
+them), and do not put fn behind a TCP proxy unless the proxy limits per
+source itself: fn does not read the PROXY protocol, so behind a proxy every
+client is the proxy's address and one abuser would use up everybody's
+per-address and failed-login allowance.
+
 ## Add a group
 
 ```

@@ -84,6 +84,8 @@
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
 (include-book "../books/login-binding")
+; PRF-161: the limits of a public reader port (fn-exp-).
+(include-book "../books/public-exposure")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -2011,6 +2013,133 @@
 ; fn-pgc-peer-arm (books/peer-guard-carried.lisp, D24), whose guard names no
 ; node recognizer, so no peer event evaluates fn-node-statep either
 ; (fn-pgc-peer-arm-is-peer-step-pinned).
+;; -----------------------------------------------------------------------------
+;; PRF-161: the limits of a public reader port (books/public-exposure.lisp).
+;;
+;; The exposure state lives in `fn-owner-exposure', beside the configured
+;; owner, and only fn-exp- functions change it.  The limits are read from the
+;; LIVE configuration at every call (fn-exp-limits), so a `policy set' the
+;; owner published is in force for the next accept and the next step; no
+;; connection is closed by it (fn-exp-limits-never-drop-a-connection).  The
+;; host passes the kernel's source address, the connection id and nothing it
+;; computed; the clock is the owner's current observation, which the host
+;; advanced just before (fnn-owner-advance-clock).
+
+(defun fn-owner-exposure-state (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-exposure state)
+      (f-get-global 'fn-owner-exposure state)
+    (fn-exp-initial)))
+
+(defun fn-owner-exposure-publicp (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-owner-exposure-public state)
+       (f-get-global 'fn-owner-exposure-public state)))
+
+(defun fn-owner-exposure-now (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-clock-monotonic (fn-own-clock (fn-owner-core state))))
+
+(defun fn-owner-exposure-limits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-limits (fn-cfg-value (fn-owner-config state))
+                 (fn-own-max-conns (fn-owner-core state))
+                 (fn-owner-exposure-publicp state)
+                 (fn-auth-config-requiredp (fn-owner-auth state))))
+
+;; Once per run, after recovery and before listen: the listener the owner is
+;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
+;; defaults of every absent row.
+(defun fn-owner-exposure-install (family address state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
+         (state (f-put-global 'fn-owner-exposure-close nil state))
+         (state (f-put-global 'fn-owner-exposure-public
+                              (fn-exp-address-publicp family address) state)))
+    (value (if (fn-exp-address-publicp family address) :public :loopback))))
+
+;; The accept.  PEER-OCTETS is fn-owner-peer-for-socket-address's answer.
+;; The result is the new connection id, or NIL; `fn-owner-output' holds the
+;; greeting, or the 400 a refused connection is sent before it is closed
+;; (`fn-owner-closep' is then T).
+(defun fn-owner-exposure-open (family address peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((peer (and peer-octets (fn-store-octets->string peer-octets)))
+         (peer (if (equal peer :bad) nil peer))
+         (before (fn-owner-core state))
+         (id (fn-own-next-id before))
+         (r (fn-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
+                         (fn-owner-exposure-limits state) (fn-owner-auth state)
+                         peer (cons family address)
+                         (fn-owner-exposure-now state)))
+         (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
+         (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
+    (if (fn-exp-open-id r)
+        (let* ((state (fn-owner-install-effects (fn-exp-open-effects r) state))
+               (state (f-put-global 'fn-owner-log-line
+                                    (fn-olog-connection-line
+                                     (fn-owner-core state) id
+                                     (and peer peer-octets))
+                                    state)))
+          (value (fn-exp-open-id r)))
+      (let* ((state (f-put-global 'fn-owner-effects nil state))
+             (state (f-put-global 'fn-owner-output
+                                  (fn-exp-open-refusal r) state))
+             (state (f-put-global 'fn-owner-closep
+                                  (and (fn-exp-open-refusal r) t) state))
+             (state (f-put-global 'fn-owner-starttlsp nil state))
+             (state (f-put-global 'fn-owner-submittedp nil state)))
+        (value nil)))))
+
+;; Before a served step: :proceed, or the milliseconds to wait.
+(defun fn-owner-exposure-charge (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((r (fn-exp-charge (fn-owner-exposure-state state)
+                           (fn-owner-exposure-limits state) id
+                           (fn-owner-exposure-now state)))
+         (state (f-put-global 'fn-owner-exposure (cdr r) state)))
+    (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
+
+;; After a served step (fn-owner-chunk below): `fn-owner-exposure-close'
+;; holds the 400 the host appends before it closes, or NIL.
+(defun fn-owner-exposure-observe (id effects consumed state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
+         (subject (and conn (fn-auth-session-subject (fn-own-conn-session conn))))
+         (r (fn-exp-observe (fn-owner-exposure-state state)
+                            (fn-owner-exposure-limits state) id
+                            (fn-owner-exposure-now state)
+                            (fn-served-reply-octets effects) consumed subject
+                            (and (fn-served-submission effects) t)))
+         (state (f-put-global 'fn-owner-exposure (cdr r) state))
+         (state (f-put-global 'fn-owner-exposure-close
+                              (if (consp (car r)) (cadr (car r)) nil) state)))
+    state))
+
+;; On a receive timeout: :keep or :close (RFC 3977 3.1: close, send nothing).
+(defun fn-owner-exposure-idle (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((r (fn-exp-idle (fn-owner-exposure-state state)
+                         (fn-owner-exposure-limits state) id
+                         (fn-owner-exposure-now state)))
+         (state (f-put-global 'fn-owner-exposure (cdr r) state)))
+    (value (car r))))
+
+(defun fn-owner-exposure-release (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-exposure
+                             (fn-exp-release (fn-owner-exposure-state state) id)
+                             state)))
+    (value :released)))
+
+;; The lines `health' appends (host/native-live-status-host.lisp).
+(defun fn-owner-exposure-health (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-health-lines (fn-owner-exposure-state state)
+                       (fn-owner-exposure-limits state)
+                       (len (fn-own-conns (fn-owner-core state)))
+                       (fn-owner-exposure-now state)))
+
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((owner (fn-owner-core state)))
@@ -2024,6 +2153,10 @@
                      (fn-own-tls-result-effects result) state))
              (state (f-put-global 'fn-owner-consumed
                                   (fn-own-tls-result-consumed result) state))
+             ; PRF-161: progress, failed logins and submissions of this step.
+             (state (fn-owner-exposure-observe
+                     id (fn-own-tls-result-effects result)
+                     (fn-own-tls-result-consumed result) state))
              ; One line per 441 the effects send (books/owner-log.lisp
              ; fn-olog-served-refusal-lines-one-per-441).
              (state (f-put-global 'fn-owner-refusal-lines
