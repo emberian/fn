@@ -770,6 +770,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	books/nntp-index-runtime \
+	books/group-number-index \
 	books/group-bucket-index \
 	books/group-bucket-article \
 	books/group-bucket-article-invariants \
@@ -907,6 +908,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-reply-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	tests/acl2/group-number-index-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
