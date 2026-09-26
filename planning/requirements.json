@@ -3222,6 +3222,30 @@
       ],
       "implementation_note": "A client contract over fn's peering; not an RFC requirement. The carriage is RFC 3977/4644 peering (IHAVE/TAKETHIS answered 435/438 for a held article, RFC 3977 section 6.3.2; the NEWNEWS pull, section 7.4, NNT-018); the stored-source guarantee is fn's (PRF-177 (a)). The Python consumer is an external client: its database lock, resend and correlation are its own bookkeeping under CNS-003.",
       "note": "Local-owner profile on each node; NNTP peering with source-address authentication on loopback in the scenario. BP carriage through the relay network is PKT-333 phase 2."
+    },
+    {
+      "id": "HST-011",
+      "title": "An operator reads the owner's withdrawal records and one article's withdrawal decision context, live or offline, in ACL2's words",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-185"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/control-evidence.lisp",
+        "books/control-evidence-grammar.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_control_evidence.py",
+        "planning/evidence/operator-daily-2026-09-26.md",
+        "books/retention-figures.lisp"
+      ],
+      "implementation_note": "`operator CONFIG control log` and `control evidence MESSAGE-ID`: status reports the running owner renders over its committed view (FNLS frame kind 3; no FNCT kind taken), and the offline command over the replayed Store as recovery decides. `store ROOT retention` (offline: it takes a store root, so it has no socket to route by) prints the figures `operator CONFIG obligations` opens with, through the same ACL2 functions (fn-nls-obligations-figures-are-the-retention-figures). Live `bp-obligation status`: PKT-500."
     }
   ]
 }

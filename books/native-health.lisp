@@ -59,6 +59,8 @@
 (in-package "ACL2")
 (include-book "native-live-status")
 (include-book "outcome-class")
+; PKT-220: the offline `store retention' figures.
+(include-book "retention-figures")
 
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
@@ -880,3 +882,26 @@ and feed table, with the committed octets extended from the carried sum."
 
 (in-theory (disable fn-nh-verdict fn-nh-render fn-nh-report-exit fn-nh-exit-code
                     fn-nh-live-report fn-nh-offline-report fn-nh-fenced-report))
+
+; PKT-220 (PRF-185).  `store ROOT retention' is offline only: it takes a
+; store root, not a configuration, so it has no control socket to ask, and
+; while an owner holds the Store its shared lock refuses.  The same two
+; figures are live already: `operator CONFIG obligations' opens with them.
+; KEYSTONE: the report the running owner renders for :obligations
+; (`fn-nls-live-report', from host/native-live-status-host.lisp
+; `fn-native-live-status-host-answer' through `fn-nh-answer-report') opens
+; with exactly `fn-rtf-pin-count' and `fn-rtf-reserved' of the owner's Store
+; node, the functions the offline verb prints (host/store-node-host.lisp
+; `fn-store-sn-pin-count', `fn-store-sn-reserved', from host/native/io.lisp
+; `fnn-command-retention').  On the same Store node the two verbs print the
+; same figures.
+(defthm fn-nls-obligations-figures-are-the-retention-figures
+  (equal (fn-nls-live-report :obligations profile oc cache obs)
+         (let ((s (fn-own-store (fn-ocfg-owner oc))))
+           (append (fn-nls-text "obligations=") (fn-nls-nat (fn-rtf-pin-count s))
+                   (fn-nls-field "reserved" (fn-rtf-reserved s))
+                   *fn-nls-lf*
+                   (fn-nls-obligation-lines
+                    (fn-retain-pins (fn-node-retention (fn-sn-node s)))))))
+  :hints (("Goal" :in-theory '(fn-nls-live-report fn-nls-report fn-nls-retention
+                               fn-rtf-pin-count fn-rtf-reserved))))

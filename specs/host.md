@@ -588,6 +588,31 @@ what it always read; a new client that meets an owner predating kind 13 gets
 that owner's refusal of a frame it could not decode and resends the plain
 request once. PRF-172; the native cases are SCN-102.
 
+HST-011: An operator reads what the owner decided about withdrawing
+articles, in ACL2's words. `operator CONFIG control log` prints the count and
+one line per withdrawal record the owner carries (`withdrawal target=T
+cause=C principal=P scope=S generation=G`, the principal's cancel scope and
+the configuration generation the record was decided under), and `control
+evidence MESSAGE-ID` prints that article's decision context: whether the
+owner holds it, the txid of its acceptance record, its stored verdict, the
+decision its refresh made (`decision=` and the log's line for a withdrawal
+record, `decision=declined reason=R`, or `decision=none` when it names no
+target), and each record naming it as target with that record's effect on it
+(books/control-evidence.lisp `fn-cev-report`). Both are status reports: the
+running owner renders them over its committed view and pages them as FNLS
+frames (request frame kind 3 carries the report kind and its argument; kinds
+1 and 2 are unchanged), and with no owner the offline command renders them
+over the replayed Store, deciding the records as recovery does. Under the
+owner's maintained relation the evidence's decision is a record of the log
+exactly when it is a withdrawal record, and its words are the log's line
+(`fn-cev-evidence-decision-is-in-the-log`, `fn-cev-decision-line-is-a-log-line`).
+`store ROOT retention` takes a store root, not a configuration, so it stays
+offline (its shared lock refuses while an owner holds the Store); its two
+figures are the ones `operator CONFIG obligations` opens with, through the
+same ACL2 functions (books/retention-figures.lisp,
+`fn-nls-obligations-figures-are-the-retention-figures`).
+PRF-185; the native case is SCN-114.
+
 ## Operator walk
 
 HST-008: One installed `fn` (packaging/fn, which locates the saved image and

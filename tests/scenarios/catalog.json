@@ -3159,6 +3159,37 @@
         "record": "planning/evidence/service-envelope-2026-09-26.md",
         "log": "planning/evidence/service-envelope-2026-09-26/driver.log"
       }
+    },
+    {
+      "id": "SCN-114",
+      "title": "An operator reads why an article was withdrawn: `control log` lists the owner's withdrawal record and `control evidence` shows the cancel's decision and the target's withdrawal, live and offline alike",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-011"
+      ],
+      "steps": [
+        "Start an owner with fn.test and control.cancel; enroll a hybrid principal; author a signed target and the same principal's signed cancel of it.",
+        "`operator CONFIG control log`; `control evidence` of the cancel, of the target and of an absent Message-ID; `control evidence not-a-message-id`.",
+        "Stop the owner; run the same three reports offline."
+      ],
+      "expected": [
+        "The target answers 430.",
+        "The log prints `withdrawals=1` and one `withdrawal target=... cause=... principal=... scope=- generation=N` line; the cancel's evidence prints `stored=yes txid=N verdict=verified` and `decision=` followed by the log's line; the target's prints `decision=none` and `withdrawn-by ... effect=author`; the absent one `stored=no`; the malformed argument exits 5.",
+        "The offline words equal the live words."
+      ],
+      "evidence": [
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_control_evidence",
+        "cases": [
+          "test_log_and_evidence_live_and_offline"
+        ],
+        "native": true,
+        "log": "planning/evidence/operator-daily-3/native-control_evidence.log",
+        "record": "planning/evidence/operator-daily-2026-09-26.md"
+      }
     }
   ]
 }
