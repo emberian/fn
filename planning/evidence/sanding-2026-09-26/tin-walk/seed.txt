@@ -1,0 +1,10 @@
+S: 201 fn-nntp experimental reader ready
+C: AUTHINFO USER guest
+S: 381 password required
+C: AUTHINFO PASS [password]
+S: 281 authentication accepted
+C: POST
+S: 340 send article to be posted
+S: 240 article received OK
+C: QUIT
+S: 205 closing connection

@@ -2575,6 +2575,29 @@
         "At most 8 (then 1 per address, at most 31 in total) connections are admitted; every other gets a 400 line naming the reason; admitted connections that never send a command close after the first-command timer with no reply; a fresh reader is admitted once they have closed.",
         "Silent and trickling connections close with no reply within the timer; oversized lines are answered by the served machine and the owner stays up; anonymous GROUP, ARTICLE and POST are 480 under none, GROUP is 211 under open and the STAT loop runs at no more than about 20 a second; at most 10 481 answers precede `400 too many authentication failures; closing connection` and the next connection from that address gets the 400 greeting; health prints `exposure pressure held` with the counts; the authenticated reader is answered in every phase (latency table in the record)."
       ]
+    },
+    {
+      "id": "SCN-092",
+      "title": "tin logs in over the implicit-TLS listener, reads, posts, follows up and cancels; the operator settles a lost post by Message-ID",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-032"
+      ],
+      "steps": [
+        "On a scratch developer-image node with tls_cert, tls_key and tls_port, [auth] required and protected_only, run the owner; connect over TLS on tls_port with a verified certificate; ask CAPABILITIES, AUTHINFO USER, STARTTLS, DATE; connect to the plaintext port and STARTTLS.",
+        "Run tin 2.6.2 built with --with-nntps=openssl against tls_port with the node certificate as its CA: log in, read a group, post, follow up, cancel.",
+        "Post an article, stop the owner, and run store inspect for its Message-ID and for one never posted; configure tls_port without a certificate and run."
+      ],
+      "expected": [
+        "The TLS listener greets after the handshake, lists no STARTTLS, answers AUTHINFO USER 381 and STARTTLS 502; the plaintext listener still answers STARTTLS 382; a client that does not speak TLS on the TLS port ends only itself.",
+        "tin's post, follow-up and cancel are answered 240 over TLS after AUTHINFO.",
+        "store inspect answers accepted (exit 0) for the stored Message-ID and absent (exit 1) for the other, and is refused while the owner holds the store; tls_port without a certificate is a usage refusal (exit 5) with no listener."
+      ],
+      "evidence": [
+        "tests/test_native_implicit_tls.py",
+        "planning/evidence/sanding-2026-09-26.md"
+      ]
     }
   ]
 }

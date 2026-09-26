@@ -54,3 +54,24 @@ again. Local HTTP refuses a request its browser marks as coming from another
 site (`Sec-Fetch-Site`) before any NNTP command or local write; reading never
 posts, and the lookup and the re-send are form POSTs with the per-process
 token.
+
+## Everyday tools over protection
+
+NNT-032: An ordinary reader reaches a protected node with the tools people
+use, and every command the documentation names exists with the grammar it
+gives. The node offers, besides STARTTLS on its listener (RFC 4642 section
+2.2), an implicit-TLS listener (`[listener] tls_port`, the separate-port
+practice RFC 4642 section 1 describes, a local policy) only beside a loaded
+certificate and key, on a port of its own, and a connection on it is the
+STARTTLS session after its handshake: no STARTTLS label, 502 to STARTTLS,
+AUTHINFO under `protected_only` from the first command (PRF-162,
+`books/served-implicit-tls.lisp`). tin, which speaks only that form, logs
+in, reads, posts, follows up and cancels through it. The web reader's group
+view marks a card whose parent the node answers withdrawn with the same
+answer the conversation shows. `tools/docs_check.py` parses every operator
+command quoted in docs/ with the ACL2 grammar (a generated book) and every
+Python tool invocation with that tool's own parser, and requires every
+quoted reply line to be printable by the code. A client left unresolved
+because its re-send met the login or posting gate has one privileged
+resolution: the operator's `store inspect MESSAGE-ID` on the stopped store,
+whose accepted/absent answer is the store node's lookup (PRF-162).

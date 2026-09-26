@@ -5663,6 +5663,27 @@
           "name": "fn-exp-idle-closes-only-silence"
         }
       ]
+    },
+    {
+      "id": "PRF-162",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-implicit-tls-is-the-starttls-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-implicit-tls-session-is-protected"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-implicit-tls-listener-needs-its-certificate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-inspect-report-is-the-lookup"
+        }
+      ]
     }
   ]
 }

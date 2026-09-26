@@ -1,0 +1,40 @@
+                                                       Check Prepared Article
+
+
+Your article:
+  "tin over TLS, a new post"
+will be posted to the following newsgroup:
+  fn.test        (no description)
+
+  If your article contains quoted text  please take some time to pare it down
+  to just the  key points to which you are  responding,  or people will think
+  you are a dweeb!  Many people have the habit of skipping any article  whose
+  first page is largely  quoted material.  Format your article to fit in less
+  then 80 chars,  since that's the conventional size  (72 is a good choice as
+  it allows quoting without exceeding the limit).  If your lines are too long
+  they'll wrap  around  ugly and  people won't  read what you  write.  If you
+  aren't  careful  and considerate  in  formatting  your posting, people  are
+  likely to ignore it completely.  It's a crowded net out there.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Posting article...

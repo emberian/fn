@@ -137,8 +137,20 @@ settled by the re-send.
 principal`), your login was removed, posting was closed -- the node did not
 answer the question, and `reconcile` says `unresolved` with its line. Report
 it as unresolved; do not treat it as refused or absent, and do not invent a
-new Message-ID to get past it. What an operator can do about it is
-decision packet PKT-164 (`planning/evidence/visibility-join-2026-09-25.md`).
+new Message-ID to get past it.
+
+The one privileged resolution is the operator's. The case is a re-send that
+meets the gate (`440 posting not permitted for this principal` after your
+login lost its posting right, or `480`, or the bound-principal `441`): hand
+the operator the Message-ID. With the node stopped, `fn operator
+/etc/fn/fn.toml store inspect '<id>'` answers from the store itself:
+`accepted <id> an article is stored here under this Message-ID` (exit 0) or
+`absent <id> nothing is stored here under this Message-ID` (exit 1). A
+stored article counts as accepted even if it was withdrawn or reclaimed since.
+The lookup does not compare the stored text with your draft; only the
+re-send can do that (D25). A reader's lookup is never this answer (PKT-164:
+the gate still answers before the store, and a held Message-ID is not
+probeable by a login without posting rights).
 
 Without a draft, keep the Message-ID yourself (a file, your notes) before you
 send, and re-send with `--message-id` set to it and the same text: the answers

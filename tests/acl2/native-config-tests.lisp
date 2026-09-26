@@ -172,6 +172,29 @@
 (assert-event (equal (fn-native-config-load
                       (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "tls_cert = \"/x\"")))
                      '(:refused :invalid)))
+;; The implicit-TLS listener (`[listener] tls_port'): offered only with the
+;; certificate and key its handshake needs, on a port of its own.
+(defconst *fn-ncfg-tls-port-lines*
+  '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 1119"
+    "tls_cert = \"/c.pem\"" "tls_key = \"/k.pem\"" "tls_port = 1563"))
+(assert-event (equal (fn-native-config-listener-tls-port
+                      (cadr (fn-native-config-load (fn-ncfg-test-lines *fn-ncfg-tls-port-lines*))))
+                     1563))
+(assert-event (equal (fn-native-config-listener-tls-port
+                      (cadr (fn-native-config-load
+                             (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"")))))
+                     nil))
+(assert-event (equal (fn-native-config-load
+                      (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "tls_port = 1563")))
+                     '(:refused :invalid)))
+(assert-event (equal (fn-native-config-load
+                      (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 1119"
+                                            "tls_cert = \"/c.pem\"" "tls_key = \"/k.pem\"" "tls_port = 1119")))
+                     '(:refused :invalid)))
+(assert-event (equal (fn-native-config-load
+                      (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]"
+                                            "tls_cert = \"/c.pem\"" "tls_key = \"/k.pem\"" "tls_port = 0")))
+                     '(:refused :invalid)))
 ; The theorem's two hypotheses have concrete counter-inputs: invalid UTF-8
 ; octet domain and an over-bound input both return the named refusal.
 (assert-event (equal (fn-native-config-load (list 255)) '(:refused :bounds-or-encoding)))

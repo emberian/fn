@@ -840,6 +840,49 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("XPAT References 1-5 *<a?b?c@fake.invalid>*", self.node.seen)
         self.assertIn("near-identical Message-ID could also match", page)
 
+    def test_group_view_flags_a_reply_whose_parent_was_withdrawn(self):
+        # sanding (NNT-032): the group view asks the node about a reply's
+        # parent by Message-ID, as the conversation page asks about each
+        # ancestor, and the two pages show the node's same answer.
+        self.node.seed("fn.agents", "root", "r", msgid="<root@fake.invalid>")
+        self.node.inject("fn.agents", ["From: yue <yue@fake.invalid>", "Newsgroups: fn.agents",
+                                       "Subject: Re: root", "Message-ID: <mid@fake.invalid>",
+                                       "References: <root@fake.invalid>", "", "m"])
+        self.node.inject("fn.agents", ["From: tulip <t@fake.invalid>", "Newsgroups: fn.agents",
+                                       "Subject: Re: Re: root", "Message-ID: <leaf@fake.invalid>",
+                                       "References: <root@fake.invalid> <mid@fake.invalid>",
+                                       "", "l"])
+        # Before the withdrawal the parent is a row of the window: nothing is asked.
+        status, _, page = self.request("GET", "/g?name=fn.agents")
+        self.assertEqual(status, 200)
+        self.assertNotIn("STAT <mid@fake.invalid>", self.node.seen)
+        self.assertNotIn("parent withdrawn", page)
+        self.node.withdrawn.add("<mid@fake.invalid>")
+        status, _, page = self.request("GET", "/g?name=fn.agents")
+        self.assertEqual(status, 200, page)
+        self.assertIn("STAT <mid@fake.invalid>", self.node.seen)
+        flag = ("<span class='badge withdrawn' title='430 withdrawn'>parent withdrawn</span> "
+                "reply to <code>&lt;mid@fake.invalid&gt;</code>, which the node answers "
+                "<code>430 withdrawn</code>")
+        self.assertIn(flag, page)
+        self.assertEqual(page.count("parent withdrawn"), 1)
+        self.assertLess(page.index("number=3'>Re: Re: root"), page.index(flag))
+        # The root's reply to a served parent carries no flag.
+        self.assertNotIn("reply to <code>&lt;root@fake.invalid&gt;</code>", page)
+        # The conversation page shows the same answer for the same parent.
+        status, _, thread = self.request("GET", "/t?group=fn.agents&number=3")
+        self.assertEqual(status, 200)
+        self.assertIn("<code>&lt;mid@fake.invalid&gt;</code>; the node answered "
+                      "<code>430 withdrawn</code>", thread)
+        # A parent the node does not serve for another reason is not called withdrawn.
+        self.node.inject("fn.agents", ["Newsgroups: fn.agents", "Subject: Re: gone",
+                                       "Message-ID: <orphan@fake.invalid>",
+                                       "References: <never@fake.invalid>", "", "o"])
+        status, _, page = self.request("GET", "/g?name=fn.agents")
+        self.assertIn("STAT <never@fake.invalid>", self.node.seen)
+        self.assertEqual(page.count("parent withdrawn"), 1)
+        self.assertIn("reply to an article outside this window", page)
+
     def test_back_to_the_form_after_posting_returns_the_same_identifier(self):
         # The walk's second finding: Back re-fetched /compose, minted a new
         # identifier, and a second Post sent a second article.

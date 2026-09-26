@@ -5782,6 +5782,41 @@
         "fn-exp-observe-closes-only-on-a-failed-login",
         "fn-exp-idle-closes-only-silence"
       ]
+    },
+    {
+      "id": "PRF-162",
+      "title": "The implicit-TLS listener is offered only beside its certificate and runs the STARTTLS session after the handshake; the operator's inspect answer is the store's lookup",
+      "statement": "Over fn-served-dispatch (books/served.lisp), which books/owner.lisp fn-own-read-step calls for the host's fn-owner-tls-established, on the connection fn-served-open-group-indexed makes, which fn-own-open calls for the host's fn-owner-open (host/native/owner.lisp fnn-owner-serve-client, implicit mode, after SSL_accept): fn-served-implicit-tls-is-the-starttls-session, under a well-formed policy (fn-auth-configp) with TLS available, STARTTLS on the opened connection emits the (:starttls) handshake effect, and the connection after the (:tls-established) event alone equals the connection after STARTTLS and then that event; fn-served-implicit-tls-session-is-protected, the event emits nothing, records the TLS layer and owes no handshake. Over fn-native-operator-result-run-implicit-tls-port (books/native-operator.lisp), which host/native/operator.lisp reads through fn-native-operator-host-result-run-implicit-tls-port to decide whether fnn-owner-run binds the second listener: fn-native-operator-implicit-tls-listener-needs-its-certificate, a port is offered only for an accepted run plan that is not --once, with certificate and key octets present, in 1..65535 and not the plaintext port. Over fn-native-operator-inspect-report, which host/native/operator.lisp fnn-operator-execute-inspect calls with fnn-bridge-lookup-found-p's boolean: fn-native-operator-inspect-report-is-the-lookup, exit 0 and :accepted exactly when the store binds the Message-ID, exit 1 and :absent otherwise, and the printed line is the verdict's. The loader admits tls_port only beside tls_cert and tls_key and on another port (fn-ncfg-tls-port-okp, books/native-config.lisp), and native-config-show's round trip carries it.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-032"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/served-implicit-tls.lisp",
+        "tests/acl2/served-implicit-tls-tests.lisp",
+        "books/native-operator.lisp",
+        "books/native-config.lisp",
+        "books/native-config-show.lisp",
+        "tests/acl2/native-config-tests.lisp",
+        "tests/acl2/native-config-show-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/operator.lisp",
+        "planning/evidence/sanding-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T075222Z-2909445.json",
+        "planning/evidence/manifests/certify-20260926T075416Z-2929730.json",
+        "planning/evidence/manifests/certify-20260926T080341Z-3026258.json"
+      ],
+      "events": [
+        "fn-served-implicit-tls-is-the-starttls-session",
+        "fn-served-implicit-tls-session-is-protected",
+        "fn-native-operator-implicit-tls-listener-needs-its-certificate",
+        "fn-native-operator-inspect-report-is-the-lookup"
+      ],
+      "progress_note": "Certified on persvati (runs of 2026-09-26, manifests above) and observed natively on the r3 images; the live (owner-running) inspect answer is PKT-410."
     }
   ]
 }

@@ -71,6 +71,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-listener-port result))
 
+(defun fn-native-operator-host-result-run-implicit-tls-port (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-implicit-tls-port result))
+
 (defun fn-native-operator-host-result-run-tls-cert-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-tls-cert-octets result))
@@ -248,3 +252,11 @@
 (defun fn-native-operator-host-snapshot-loss-report (verdict nsnap ncur)
   (declare (xargs :mode :program))
   (fn-native-operator-snapshot-loss-report verdict nsnap ncur))
+
+(defun fn-native-operator-host-result-inspect-msgid-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-inspect-msgid-octets result))
+
+(defun fn-native-operator-host-inspect-report (msgid-octets foundp)
+  (declare (xargs :mode :program))
+  (fn-native-operator-inspect-report msgid-octets foundp))

@@ -729,7 +729,8 @@ class Consumer:
         }
 
 
-def main(argv=None):
+def build_parser():
+    """The command line's grammar (tools/docs_check.py parses the docs with it)."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("config")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -738,6 +739,11 @@ def main(argv=None):
     report.add_argument("payload")
     sub.add_parser("wake")
     sub.add_parser("summary")
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
     args = parser.parse_args(argv)
     consumer = Consumer(args.config)
     try:
