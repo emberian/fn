@@ -87,6 +87,8 @@
         agent
       nil)))
 
+(in-theory (disable fn-pb-params-line-agent))
+
 ; The plain line's agent, else the agent of the line with parameters: an
 ; article stored with Injection-Info parameters still names its agent, so
 ; D25 reads its v3 block as before.

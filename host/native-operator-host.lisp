@@ -245,6 +245,19 @@
   (declare (xargs :mode :program))
   (fn-native-operator-inspect-report msgid-octets foundp))
 
+;; PKT-597: `account hash LOGIN' (host/native/operator.lisp): the login the
+;; plan admitted, and the value ACL2 computes from the node secret the host
+;; read (books/injection-info-policy.lisp fn-ipp-account-hash), as text;
+;; nil when the octets the host read are not a node secret.
+(defun fn-native-operator-host-result-account-hash-login (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-account-hash-login result))
+(defun fn-native-operator-host-account-hash-text (secret login)
+  (declare (xargs :mode :program))
+  (if (and (fn-ns-secretp secret) (fn-ipp-login-wordp login))
+      (fn-record-octets-string (fn-ipp-account-hash secret login))
+    nil))
+
 ;; PRF-164: `account invite' (host/native/operator.lisp).
 (defun fn-native-operator-host-result-account-invite-seconds (result)
   (declare (xargs :mode :program))

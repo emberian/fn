@@ -456,6 +456,42 @@ observation into the outcome and this function only carries it out."
                                     "account" condition)
           code)))))
 
+;;; PKT-597: `account hash LOGIN'.  The host reads STORE/keys/node-secret.key
+;;; (the same checks the owner makes at start: a regular file, no group or
+;;; other bits), ACL2 computes the posting-account value of LOGIN under it
+;;; (books/injection-info-policy.lisp fn-ipp-account-hash), and the value is
+;;; printed to stdout.  The secret is never printed; nothing is written.
+(defun fnn-operator-execute-account-hash (result)
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (login (fnn-core 'fn-native-operator-host-result-account-hash-login result)))
+    (handler-case
+        (let* ((store (make-fnn-store root :writable nil))
+               (path (fnn-node-secret-path store))
+               (st (fnn-lstat path)))
+          (unless st
+            (fnn-refuse "node secret ~a is missing: run `store ~a node-secret' once"
+                        path root))
+          (unless (fnn-regular-p st)
+            (fnn-refuse "node secret ~a is not a regular file" path))
+          (unless (zerop (logand (sb-posix:stat-mode st) #o077))
+            (fnn-refuse "node secret ~a is readable or writable by group or others"
+                        path))
+          (let ((text (fnn-core 'fn-native-operator-host-account-hash-text
+                                (fnn-octet-list (fnn-read-regular-bounded path 64))
+                                login)))
+            (unless (stringp text)
+              (fnn-refuse "node secret ~a is not a node secret" path))
+            (write-sequence (fnn-octets (fnn-ascii-octet-list (format nil "~a~%" text)))
+                            *fnn-stdout*)
+            (finish-output *fnn-stdout*)
+            (fnn-operator-emit-status :accepted "account")
+            +fnn-exit-ok+))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "account" condition)
+          code)))))
+
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
@@ -751,6 +787,7 @@ one `init' makes; nothing is opened or locked."
           (:principal (fnn-operator-execute-principal result))
           (:keys (fnn-keys-execute result))
           (:account-invite (fnn-operator-execute-account-invite result))
+          (:account-hash (fnn-operator-execute-account-hash result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)

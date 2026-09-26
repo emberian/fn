@@ -52,12 +52,51 @@
 ; path-identity; no delta code of its own).
 (defconst *fn-ipp-complaints-slot* "complaints-to")
 
+(local
+ (defthm fn-ipp-split-member
+   (implies (fn-ipp-split-at x)
+            (iff (member-equal a x)
+                 (or (equal a 64)
+                     (member-equal a (car (fn-ipp-split-at x)))
+                     (member-equal a (cdr (fn-ipp-split-at x))))))
+   :hints (("Goal" :induct (fn-ipp-split-at x)))))
+
+(local
+ (defthm fn-ipp-dot-atom-excludes
+   (implies (fn-af-dot-atom-text-aux b w)
+            (and (not (member-equal 34 b)) (not (member-equal 92 b))
+                 (not (member-equal 13 b)) (not (member-equal 10 b))
+                 (not (member-equal 59 b))))
+   :hints (("Goal" :induct (fn-af-dot-atom-text-aux b w)
+            :in-theory (enable fn-af-dot-atom-text-aux fn-af-atextp)))))
+
+; The address stands in the header's quoted-string as it is, and on one
+; line: no DQUOTE, backslash, ";", CR or LF.
 (defthm fn-ipp-addr-spec-has-no-quote-or-line-break
   (implies (fn-ipp-addr-specp x)
            (and (not (member-equal 34 x)) (not (member-equal 92 x))
                 (not (member-equal 13 x)) (not (member-equal 10 x))
                 (not (member-equal 59 x))))
-  :hints (("Goal" :in-theory (enable fn-af-dot-atom-textp))))
+  :hints (("Goal" :in-theory (e/d (fn-af-dot-atom-textp) (fn-ipp-split-at))
+           :use ((:instance fn-ipp-dot-atom-excludes
+                            (b (car (fn-ipp-split-at x))) (w t))
+                 (:instance fn-ipp-dot-atom-excludes
+                            (b (cdr (fn-ipp-split-at x))) (w t))))))
+
+; A login as the operator types it: printable ASCII, no space (an
+; AUTHINFO USER argument is one such token, RFC 4643 section 2.3.2), so its
+; octets are its character codes.
+(defun fn-ipp-login-octetsp (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (integerp (car x)) (<= 33 (car x)) (<= (car x) 126)
+           (fn-ipp-login-octetsp (cdr x)))
+    (null x)))
+
+(defun fn-ipp-login-wordp (w)
+  (declare (xargs :guard t))
+  (and (stringp w) (consp (fn-ipp-octets w))
+       (fn-ipp-login-octetsp (fn-ipp-octets w))))
 
 ; The operator's answer for a login (`fn operator CONFIG account hash
 ; LOGIN', books/native-operator.lisp fn-nop-parse-account; the host reads

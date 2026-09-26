@@ -152,7 +152,8 @@
 
 (local
  (defthm fn-ipp-at-stamp-of-a-block
-   (implies (and (true-listp date) (equal (len date) 31))
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (not (equal source :no)))
             (equal (fn-ipp-at-stamp (append (fn-inj-block date msgid agent gid gdate)
                                             source)
                                     agent msgid params)
@@ -176,3 +177,484 @@
           (append (fn-inj-path-line agent)
                   (append (fn-inj-block date msgid agent gid gdate) x)))
    :hints (("Goal" :in-theory (enable fn-inj-prefix fn-inj-block)))))
+
+; -----------------------------------------------------------------------------
+; The rewrite of an injection.
+
+(local
+ (defthm fn-ipp-with-params-of-a-prefix
+   (implies (and (true-listp date) (equal (len date) 31) (consp params) agent
+                 (not (equal source :no))
+                 (equal (fn-pb-path-agent
+                         (append (fn-inj-prefix date msgid agent gid gdate) source)
+                         msgid)
+                        agent))
+            (equal (fn-ipp-with-params
+                    (append (fn-inj-prefix date msgid agent gid gdate) source)
+                    msgid params)
+                   (append (fn-ipp-prefix-with date msgid agent gid gdate params)
+                           source)))
+   :hints (("Goal" :in-theory (e/d (fn-ipp-with-params fn-ipp-prefix-with)
+                                   (fn-ipp-at-stamp fn-inj-prefix fn-inj-block
+                                    fn-pb-path-agent fn-ipp-block-with))))))
+
+(local
+ (defthm fn-ipp-with-params-of-a-block
+   (implies (and (true-listp date) (equal (len date) 31) (consp params) agent
+                 (not (equal rest :no))
+                 (equal (fn-pb-path-agent
+                         (append (fn-inj-block date msgid agent gid gdate) rest)
+                         msgid)
+                        agent))
+            (equal (fn-ipp-with-params
+                    (append (fn-inj-block date msgid agent gid gdate) rest)
+                    msgid params)
+                   (append (fn-ipp-block-with date msgid agent gid gdate params)
+                           rest)))
+   :hints (("Goal" :in-theory (e/d (fn-ipp-with-params)
+                                   (fn-ipp-at-stamp fn-inj-prefix fn-inj-block
+                                    fn-pb-path-agent fn-ipp-block-with))))))
+
+(local
+ (defthm fn-ipp-with-params-of-a-prefix-x
+   (implies (and (equal x (append (fn-inj-prefix date msgid agent gid gdate) source))
+                 (true-listp date) (equal (len date) 31) (consp params) agent
+                 (not (equal source :no))
+                 (equal (fn-pb-path-agent x msgid) agent))
+            (equal (fn-ipp-with-params x msgid params)
+                   (append (fn-ipp-prefix-with date msgid agent gid gdate params)
+                           source)))
+   :rule-classes nil
+   :hints (("Goal" :use fn-ipp-with-params-of-a-prefix
+            :in-theory (disable fn-ipp-with-params-of-a-prefix fn-ipp-with-params
+                                fn-inj-prefix fn-ipp-prefix-with fn-pb-path-agent)))))
+
+(local
+ (defthm fn-ipp-with-params-of-a-block-x
+   (implies (and (equal x (append (fn-inj-block date msgid agent gid gdate) rest))
+                 (true-listp date) (equal (len date) 31) (consp params) agent
+                 (not (equal rest :no))
+                 (equal (fn-pb-path-agent x msgid) agent))
+            (equal (fn-ipp-with-params x msgid params)
+                   (append (fn-ipp-block-with date msgid agent gid gdate params)
+                           rest)))
+   :rule-classes nil
+   :hints (("Goal" :use fn-ipp-with-params-of-a-block
+            :in-theory (disable fn-ipp-with-params-of-a-block fn-ipp-with-params
+                                fn-inj-block fn-ipp-block-with fn-pb-path-agent)))))
+
+(local
+ (defthm fn-ipp-a-configured-agent-is-a-cons
+   (implies (fn-inj-configp config)
+            (consp (fn-inj-config-agent config)))
+   :hints (("Goal" :in-theory (enable fn-inj-configp fn-af-dot-atom-textp)))))
+
+(local
+ (defthm fn-ipp-an-injection-configures-first
+   (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+            (fn-inj-configp config))
+   :hints (("Goal" :in-theory (e/d (fn-inj-decide fn-inj-injectedp fn-inj-refuse)
+                                   (fn-inj-configp fn-inj-mandatory-reason
+                                    fn-inj-groups-admissiblep fn-inj-absentp
+                                    fn-inj-prefix fn-inj-date-octets
+                                    fn-inj-instant-of fn-inj-generated-message-id
+                                    fn-inj-append floor fn-article-parse
+                                    fn-af-proto-article-check fn-article-result-okp
+                                    fn-article-result-article fn-article-syntax-p
+                                    fn-clock-observationp fn-clock-has-wall
+                                    fn-clock-wall))))))
+
+(local
+ (defthm fn-ipp-date-octets-shape
+   (and (true-listp (fn-inj-date-octets inst))
+        (equal (len (fn-inj-date-octets inst)) 31))
+   :hints (("Goal" :in-theory (enable fn-inj-date-octets)))))
+
+; The Injection-Date of an injection, its generated-field flags, and the
+; configured agent, as the structure theorems of
+; books/injection-invariants.lisp name them.
+(defmacro fn-ipp-date (obs)
+  `(fn-inj-date-octets (fn-inj-instant-of (fn-clock-wall ,obs))))
+(defmacro fn-ipp-gid (source)
+  `(not (fn-inj-nth 1 (fn-af-proto-article-check
+                       (fn-article-result-article (fn-article-parse ,source))))))
+(defmacro fn-ipp-gdate (source)
+  `(fn-inj-absentp (fn-article-result-article (fn-article-parse ,source))
+                   *fn-inj-date-name*))
+
+; KEYSTONE (PKT-597, the Injection-Info line with parameters; subject
+; fn-ipp-with-params, which fn-ipp-injected-octets calls on every local
+; submission the owner stages, books/owner-served-invariants.lisp
+; fn-own-sub-stored-octets).  With parameters, an injected article is the
+; injected block with its closing Injection-Info line carrying them,
+; followed by what followed the block before: the source (recipe v2) or
+; the source with AGENT! inserted into its Path (recipe v3).  Nothing else
+; moves, and the line is the article's only Injection-Info
+; (fn-af-proto-article-check refuses a source that carries one).
+(defthm fn-ipp-with-params-of-an-injection
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config obs))
+                (consp params))
+           (equal (fn-ipp-with-params
+                   (fn-inj-decision-octets (fn-inj-decide source config obs))
+                   (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                   params)
+                  (if (fn-inj-supplies-pathp source)
+                      (append (fn-ipp-block-with
+                               (fn-ipp-date obs)
+                               (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                               (fn-inj-config-agent config)
+                               (fn-ipp-gid source) (fn-ipp-gdate source) params)
+                              (fn-inj-splice source (fn-inj-path-offset source)
+                                             (fn-inj-path-insert
+                                              (fn-inj-config-agent config))))
+                    (append (fn-ipp-prefix-with
+                             (fn-ipp-date obs)
+                             (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                             (fn-inj-config-agent config)
+                             (fn-ipp-gid source) (fn-ipp-gdate source) params)
+                            source))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-ipp-inj-append-is-append))
+           :cases ((fn-inj-supplies-pathp source))
+           :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                 (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
+                 (:instance fn-pb-path-agent-of-an-injection)
+                 (:instance fn-inj-the-atom-no-is-never-injected (observation obs))
+                 (:instance fn-inj-an-injected-supplied-path-has-an-offset)
+                 (:instance fn-inj-a-splice-is-a-cons (x source)
+                            (ins (fn-inj-path-insert (fn-inj-config-agent config))))
+                 (:instance fn-ipp-date-octets-shape
+                            (inst (fn-inj-instant-of (fn-clock-wall obs))))
+                 (:instance fn-ipp-an-injection-configures-first)
+                 (:instance fn-ipp-a-configured-agent-is-a-cons)
+                 (:instance fn-ipp-with-params-of-a-prefix-x
+                            (x (fn-inj-decision-octets (fn-inj-decide source config obs)))
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))
+                 (:instance fn-ipp-with-params-of-a-block-x
+                            (x (fn-inj-decision-octets (fn-inj-decide source config obs)))
+                            (rest (fn-inj-splice source (fn-inj-path-offset source)
+                                                 (fn-inj-path-insert
+                                                  (fn-inj-config-agent config))))
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))))))
+
+; -----------------------------------------------------------------------------
+; The inverse reads past the parameters.
+
+(local
+ (defthm fn-ipp-param-rest-of-a-run
+   (implies (fn-ipp-no-crlfp p)
+            (equal (fn-inj-param-rest (append p (cons 13 (cons 10 r)))) r))
+   :hints (("Goal" :induct (fn-ipp-no-crlfp p)
+            :in-theory (enable fn-inj-param-rest)))))
+
+(local
+ (defthm fn-ipp-strip-by-an-append
+   (implies (true-listp a)
+            (equal (fn-inj-strip (append a b) x)
+                   (fn-inj-strip b (fn-inj-strip a x))))
+   :hints (("Goal" :in-theory (enable fn-inj-strip)))))
+
+(local
+ (defthm fn-ipp-true-listp-of-inj-append
+   (equal (true-listp (fn-inj-append a b)) (true-listp b))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-ipp-info-lines-as-head
+   (and (equal (fn-inj-injection-info-line agent)
+               (append (fn-inj-append *fn-inj-injection-info-field* agent) '(13 10)))
+        (equal (fn-inj-injection-info-line-with agent params)
+               (append (fn-inj-append *fn-inj-injection-info-field* agent)
+                       (append params '(13 10)))))
+   :hints (("Goal" :in-theory (enable fn-inj-injection-info-line
+                                      fn-inj-injection-info-line-with)))))
+
+(local
+ (defthm fn-ipp-strip-a-parameter-run
+   (implies (and (true-listp h) (consp params) (equal (car params) 59))
+            (and (equal (fn-inj-strip (append h '(13 10))
+                                      (append h (append params y)))
+                        :no)
+                 (equal (fn-inj-strip h (append h (append params y)))
+                        (append params y))))
+   :hints (("Goal" :in-theory (disable fn-ipp-inj-append-is-append)))))
+
+(local
+ (defthm fn-ipp-strip-info-of-a-parameter-line
+   (implies (and (fn-ipp-params-okp params) (true-listp agent))
+            (equal (fn-inj-strip-info agent
+                                      (append (fn-inj-injection-info-line-with
+                                               agent params)
+                                              r))
+                   r))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-inj-strip-info)
+                            (fn-ipp-inj-append-is-append
+                             fn-inj-injection-info-line
+                             fn-inj-injection-info-line-with))))))
+
+(local (in-theory (disable fn-ipp-info-lines-as-head)))
+
+(local
+ (defthm fn-ipp-strip-info-of-another-line
+   (implies (and (consp b) (not (equal (car b) 73)))
+            (equal (fn-inj-strip-info agent (append b x)) :no))
+   :hints (("Goal" :in-theory (enable fn-inj-strip-info fn-inj-injection-info-line)))))
+
+(local (in-theory (disable fn-inj-strip-info)))
+
+(local
+ (defthm fn-ipp-the-stamp-date-is-read-back
+   (implies (and (true-listp date) (equal (len date) 31))
+            (equal (fn-inj-take 31 (fn-inj-drop 16 (append
+                                                   (fn-inj-injection-date-line date)
+                                                   x)))
+                   date))
+   :hints (("Goal" :in-theory (enable fn-inj-injection-date-line fn-inj-drop)))))
+
+(local
+ (defthm fn-ipp-stamp-field-of-the-lines
+   (and (not (equal (fn-inj-strip *fn-inj-injection-date-field*
+                                  (append (fn-inj-injection-date-line date) x))
+                    :no))
+        (equal (fn-inj-strip *fn-inj-injection-date-field*
+                             (append (fn-inj-injection-info-line-with agent params) x))
+               :no))
+   :hints (("Goal" :in-theory (enable fn-inj-injection-date-line fn-inj-strip
+                                      fn-inj-injection-info-line-with)))))
+
+(local
+ (defthm fn-ipp-source-of-v2-of-a-prefix-with
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (true-listp agent) (fn-ipp-params-okp params)
+                 (not (equal source :no)))
+            (equal (fn-inj-source-of-v2
+                    (append (fn-ipp-prefix-with date msgid agent gid gdate params)
+                            source)
+                    agent msgid)
+                   (cons t source)))
+   :hints (("Goal" :in-theory (e/d (fn-ipp-prefix-with fn-ipp-block-with
+                                    fn-inj-source-of-v2 fn-inj-source-after-stamp
+                                    fn-inj-strip-optional)
+                                   ())
+            :cases ((and gid gdate) (and gid (not gdate))
+                    (and (not gid) gdate))))))
+
+(local
+ (defthm fn-ipp-source-of-a-prefix-with
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (true-listp agent) (fn-ipp-params-okp params)
+                 (not (equal source :no)))
+            (equal (fn-inj-source-of
+                    (append (fn-ipp-prefix-with date msgid agent gid gdate params)
+                            source)
+                    agent msgid)
+                   (cons t source)))
+   :hints (("Goal" :in-theory (e/d (fn-inj-source-of)
+                                   (fn-inj-source-of-v2 fn-ipp-block-with))
+            :use fn-ipp-source-of-v2-of-a-prefix-with
+            :expand ((fn-ipp-prefix-with date msgid agent gid gdate params))))))
+
+(local
+ (defthm fn-ipp-a-block-with-is-not-a-path-line
+   (equal (fn-inj-strip (fn-inj-path-line agent)
+                        (append (fn-ipp-block-with date msgid agent2 gid gdate params)
+                                x))
+          :no)
+   :hints (("Goal" :in-theory (enable fn-ipp-block-with)
+            :cases ((or gid gdate))))))
+
+(local
+ (defthm fn-ipp-source-of-a-v3-record-with
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (true-listp agent) (fn-ipp-params-okp params)
+                 (fn-inj-path-offset source))
+            (equal (fn-inj-source-of
+                    (append (fn-ipp-block-with date msgid agent gid gdate params)
+                            (fn-inj-splice source (fn-inj-path-offset source)
+                                           (fn-inj-path-insert agent)))
+                    agent msgid)
+                   (cons t source)))
+   :hints (("Goal" :in-theory (e/d (fn-inj-source-of fn-ipp-prefix-with)
+                                   (fn-inj-source-of-v2 fn-ipp-block-with
+                                    fn-inj-splice fn-inj-path-offset
+                                    fn-inj-unsplice fn-inj-path-insert))
+            :use ((:instance fn-ipp-source-of-v2-of-a-prefix-with
+                             (source (fn-inj-splice source (fn-inj-path-offset source)
+                                                    (fn-inj-path-insert agent))))
+                  (:instance fn-inj-a-splice-is-a-cons
+                             (x source) (ins (fn-inj-path-insert agent)))
+                  (:instance fn-inj-unsplice-of-a-splice (x source)))))))
+
+(local
+ (defthm fn-ipp-a-configured-agent-is-a-true-list
+   (implies (fn-inj-configp config)
+            (true-listp (fn-inj-config-agent config)))
+   :hints (("Goal" :in-theory (enable fn-inj-configp fn-af-dot-atom-textp)))))
+
+; KEYSTONE (PKT-597, the inverse; subject fn-ipp-with-params).  The article
+; with parameters gives back its source: books/injection.lisp
+; fn-inj-source-of reads the Injection-Info line through fn-inj-strip-info,
+; so D25's comparison (books/poster-bytes.lisp fn-pb-subject) and the
+; operator's retry test (fn-inj-reinjectionp) answer for the stored article
+; exactly as for the injection without parameters
+; (fn-inj-source-of-inverts-the-injection).
+(defthm fn-ipp-with-params-keeps-the-source
+  (implies (and (fn-inj-injectedp (fn-inj-decide source config obs))
+                (fn-ipp-params-okp params))
+           (equal (fn-inj-source-of
+                   (fn-ipp-with-params
+                    (fn-inj-decision-octets (fn-inj-decide source config obs))
+                    (fn-inj-decision-msgid (fn-inj-decide source config obs))
+                    params)
+                   (fn-inj-config-agent config)
+                   (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                  (cons t source)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-ipp-params-okp))
+           :cases ((fn-inj-supplies-pathp source))
+           :use ((:instance fn-ipp-with-params-of-an-injection)
+                 (:instance fn-inj-the-atom-no-is-never-injected (observation obs))
+                 (:instance fn-inj-an-injected-supplied-path-has-an-offset)
+                 (:instance fn-ipp-date-octets-shape
+                            (inst (fn-inj-instant-of (fn-clock-wall obs))))
+                 (:instance fn-ipp-an-injection-configures-first)
+                 (:instance fn-ipp-a-configured-agent-is-a-true-list)
+                 (:instance fn-ipp-source-of-a-prefix-with
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))
+                 (:instance fn-ipp-source-of-a-v3-record-with
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))))))
+
+; -----------------------------------------------------------------------------
+; The parameters.
+
+(local
+ (defthm fn-ipp-no-crlfp-of-append
+   (equal (fn-ipp-no-crlfp (append a b))
+          (and (fn-ipp-no-crlfp a) (fn-ipp-no-crlfp b)))))
+
+(local
+ (defthm fn-ipp-no-crlfp-of-hex
+   (implies (fn-pa-hex-octetsp x) (fn-ipp-no-crlfp x))
+   :hints (("Goal" :in-theory (enable fn-pa-hex-octetsp fn-pa-hex-octetp)))))
+
+(local
+ (defthm fn-ipp-no-crlfp-without-cr-or-lf
+   (implies (and (not (member-equal 13 x)) (not (member-equal 10 x)))
+            (fn-ipp-no-crlfp x))))
+
+(local
+ (defthm fn-ipp-complaints-is-an-addr-spec
+   (implies (fn-ipp-complaints cfg)
+            (fn-ipp-addr-specp (fn-ipp-complaints cfg)))))
+
+; With a node secret and a login, the parameters open with the
+; posting-account value of that login: `; posting-account="' HEX `"', HEX
+; the 64 hexadecimal digits of fn-ns-posting-account-mac of the login's
+; octets (books/posting-account.lisp fn-pa-account-value-is-hex), then the
+; complaints address when one is set.
+(defthm fn-ipp-params-of-a-login
+  (implies (fn-ipp-accountp secret login)
+           (equal (fn-ipp-params secret login addr)
+                  (append *fn-ipp-account-open*
+                          (fn-pa-account-value secret (fn-ipp-octets login))
+                          *fn-ipp-quote*
+                          (if (consp addr) (fn-ipp-complaints-param addr) nil))))
+  :hints (("Goal" :in-theory (enable fn-ipp-params fn-ipp-account-param))))
+
+; Without a login (or before the secret is installed) no posting-account is
+; written: the parameters are the complaints address or nothing.
+(defthm fn-ipp-params-without-a-login
+  (implies (not (fn-ipp-accountp secret login))
+           (equal (fn-ipp-params secret login addr)
+                  (if (consp addr) (fn-ipp-complaints-param addr) nil)))
+  :hints (("Goal" :in-theory (enable fn-ipp-params))))
+
+; The parameters the owner writes are a run the inverse reads past.
+(local
+ (defthm fn-ipp-params-are-a-run-for-an-address
+   (implies (and (or (not addr) (fn-ipp-addr-specp addr))
+                 (consp (fn-ipp-params secret login addr)))
+            (fn-ipp-params-okp (fn-ipp-params secret login addr)))
+   :hints (("Goal" :in-theory (e/d (fn-ipp-params fn-ipp-account-param
+                                    fn-ipp-complaints-param)
+                                   (fn-ipp-addr-specp fn-pa-account-value
+                                    fn-ipp-accountp fn-ipp-octets))))))
+
+(defthm fn-ipp-params-are-a-parameter-run
+  (implies (consp (fn-ipp-params secret login (fn-ipp-complaints cfg)))
+           (fn-ipp-params-okp (fn-ipp-params secret login (fn-ipp-complaints cfg))))
+  :hints (("Goal" :in-theory (disable fn-ipp-params fn-ipp-complaints fn-ipp-params-okp
+                                      fn-ipp-addr-specp)
+           :use ((:instance fn-ipp-params-are-a-run-for-an-address
+                            (addr (fn-ipp-complaints cfg)))
+                 (:instance fn-ipp-complaints-is-an-addr-spec)))))
+
+; Without a login and without a complaints address the stored injection is
+; the injection: nothing is rewritten.
+(defthm fn-ipp-injected-octets-without-parameters
+  (implies (and (not (fn-ipp-accountp secret login))
+                (not (fn-ipp-complaints cfg)))
+           (equal (fn-ipp-injected-octets d secret login cfg)
+                  (fn-inj-decision-octets d)))
+  :hints (("Goal" :in-theory (enable fn-ipp-injected-octets fn-ipp-with-params))))
+
+(defthm fn-ipp-a-login-has-parameters
+  (implies (fn-ipp-accountp secret login)
+           (consp (fn-ipp-params secret login addr)))
+  :hints (("Goal" :in-theory (enable fn-ipp-params fn-ipp-account-param))))
+
+; KEYSTONE (PKT-597 (1); subject fn-ipp-injected-octets, which
+; books/owner-served-invariants.lisp fn-own-sub-stored-octets calls with the
+; submission's login, the owner's node secret and the live configuration).
+; Whenever there are parameters -- a login with the node secret installed
+; (fn-ipp-a-login-has-parameters), or a complaints address -- the stored
+; injection is the injected block with its one Injection-Info line
+; carrying them (fn-ipp-params-of-a-login: the posting-account value of the
+; login first), followed by the source, and the article still gives back its
+; source.  Without them it is the injection (fn-ipp-injected-octets-without-
+; parameters).
+(defthm fn-ipp-injected-octets-carry-the-parameters
+  (let ((d (fn-inj-decide source config obs))
+        (params (fn-ipp-params secret login (fn-ipp-complaints cfg))))
+    (implies (and (fn-inj-injectedp d) (consp params))
+             (and (equal (fn-ipp-injected-octets d secret login cfg)
+                         (if (fn-inj-supplies-pathp source)
+                             (append (fn-ipp-block-with
+                                      (fn-ipp-date obs) (fn-inj-decision-msgid d)
+                                      (fn-inj-config-agent config)
+                                      (fn-ipp-gid source) (fn-ipp-gdate source)
+                                      params)
+                                     (fn-inj-splice source (fn-inj-path-offset source)
+                                                    (fn-inj-path-insert
+                                                     (fn-inj-config-agent config))))
+                           (append (fn-ipp-prefix-with
+                                    (fn-ipp-date obs) (fn-inj-decision-msgid d)
+                                    (fn-inj-config-agent config)
+                                    (fn-ipp-gid source) (fn-ipp-gdate source)
+                                    params)
+                                   source)))
+                  (equal (fn-inj-source-of (fn-ipp-injected-octets d secret login cfg)
+                                           (fn-inj-config-agent config)
+                                           (fn-inj-decision-msgid d))
+                         (cons t source)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-ipp-injected-octets))
+           :use ((:instance fn-ipp-params-are-a-parameter-run)
+                 (:instance fn-ipp-with-params-of-an-injection
+                            (params (fn-ipp-params secret login (fn-ipp-complaints cfg))))
+                 (:instance fn-ipp-with-params-keeps-the-source
+                            (params (fn-ipp-params secret login
+                                                   (fn-ipp-complaints cfg))))))))
