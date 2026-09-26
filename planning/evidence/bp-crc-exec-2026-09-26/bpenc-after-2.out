@@ -1,0 +1,24 @@
+== after round 2 core /tank/fn/scratch/bp-crc-exec/native-d9e3f0321e15/tree/build/fn-host-developer.core
+61fe6a444b1f5312bef9d71cb7b77503c1679c968795c018691ba2f048b75931  /tank/fn/scratch/bp-crc-exec/native-d9e3f0321e15/tree/build/fn-host-developer.core
+== box:  12:01:30 up 72 days, 17:45, 59 users,  load average: 8.18, 9.65, 10.67
+24
+max-data 16777216
+== payload 49152 octets
+bundlep(guard) seconds 0.0000 bytes-consed 0
+encode seconds 0.0020 bytes-consed 2358144
+wire 49254 octets digest 1732517768605067727
+decode seconds 0.0060 bytes-consed 3930240
+round-trip T
+== payload 262144 octets
+bundlep(guard) seconds 0.0020 bytes-consed 0
+encode seconds 0.0130 bytes-consed 12576768
+wire 262248 octets digest 351141540838418460
+decode seconds 0.0340 bytes-consed 20994032
+round-trip T
+== payload 1048576 octets
+bundlep(guard) seconds 0.0080 bytes-consed 0
+encode seconds 0.0540 bytes-consed 50339824
+wire 1048680 octets digest 221726367095178201
+decode seconds 0.1420 bytes-consed 83877872
+round-trip T
+== box after:  12:01:30 up 72 days, 17:45, 59 users,  load average: 8.18, 9.65, 10.67
