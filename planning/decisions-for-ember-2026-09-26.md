@@ -258,6 +258,22 @@ The rehearsal on copies gave these results:
   - D02's scope covering a signed served POST (line 1023);
   - a store identity on the wire (line 1112).
 
+## PKT-293: the shape of the records freeze (the payload as an arena handle)
+
+**The trace** (planning/evidence/rep-wave-d-2-2026-09-26.md §1): the brief's freeze "the record's payload field becomes an arena handle" is not closed as briefed: `fn-sn-finish` reads every finished article's payload for the statement verdict (`fn-stx-verdict-of-octets`), the reclaim digests the held payload inside its step, the served machine reads `fn-article-payload` in 40 books (tombstone checks, OVER's body walk, control targets), and the acceptance state's article/pending is a second payload field sharing the record's list. A handle there forces either `fn-arena` through `fn-sn-finish` (38 books), the replay and the served machine (about 100 books of statement moves), or parsed fields decided at intern.
+
+**Constraints already selected:** D27 (the logical model stays octet lists; the executable path does not; no statement of an existing theorem moves), D30 (a named abstraction or refinement theorem at each boundary, not a twin of every helper), the arena's interface obligation (a tombstone is a new seal; space reclaimed at open).
+
+**Proposed default (not implemented; the record's §2 closed design):** two views of one record shape (the wire record keeps its exact octet-list round trip; the owner's retained record carries the handle), intern with parsed fields (the statement verdict and the served walks read fields decided once at intern, not the payload list), a transition parametric in the payload (so `fn-sn-finish` and the replay are proved once over both views), and the served article as a reference effect. Order: the decoder over the buffer first (rep-wave-d-3, urgent: a published checkpoint must reopen), then the two views, then intern, then the served effect.
+
+**Rejected alternatives and their cost:** pushing `fn-arena` through `fn-sn-finish` and the served machine directly (about 140 books of statement moves, a multi-day freeze with dev held); a profile ceiling on N x L (D27 forbids it).
+
+**What it touches:** the record's logical shape (not its wire encoding), every store invariant that says "the payload is an octet list", the checkpoint codec, the host entries of §3.
+
+**What continues without it:** everything; the checkpoint verb already halves its residency at the deployed profile's sizes; the node runs at sixteen bytes per retained octet until the freeze.
+
+**Answer with:** (a) adopt the §2 design in its order; (b) push the arena through fn-sn-finish and the served machine directly; (c) not now.
+
 ## For the coordinator
 
 ### PKT-246: a distinct `:conflict` word in the FNCT control reply codec
