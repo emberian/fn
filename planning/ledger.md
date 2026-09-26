@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 936 |
-| Certification roots in the Makefile | 918 |
-| Books inside the root closure | 932 |
-| `defthm` and `defthmd` events | 13040 |
-| `defun` events | 9082 |
-| Functions with verified guards | 2193 |
-| Functions declared `:verify-guards nil` and never verified | 716 |
-| Functions left at the default with an explicit guard | 4824 |
-| Functions left at the default with no guard | 1349 |
-| `assert-event` checks | 13499 |
-| `must-fail` checks | 1520 |
+| Books read | 938 |
+| Certification roots in the Makefile | 920 |
+| Books inside the root closure | 934 |
+| `defthm` and `defthmd` events | 13069 |
+| `defun` events | 9100 |
+| Functions with verified guards | 2194 |
+| Functions declared `:verify-guards nil` and never verified | 717 |
+| Functions left at the default with an explicit guard | 4835 |
+| Functions left at the default with no guard | 1354 |
+| `assert-event` checks | 13539 |
+| `must-fail` checks | 1528 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 113 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 128 |
-| Include-hygiene warnings | 941 |
+| Teeth-form warnings | 133 |
+| Include-hygiene warnings | 947 |
 | Host-names warnings | 1057 |
 | Hand-written-record warnings | 18 |
 
@@ -108,7 +108,7 @@ that `make certify` requests.
 | `books/article.lisp` | root | 24 | 45 | 45/0/0/0 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 17 | 13 | 0/1/0/12 | 0 | 0 | 0 |
 | `books/auth-secret.lisp` | root | 18 | 11 | 0/0/11/0 | 0 | 0 | 0 |
-| `books/bp-adu.lisp` | root | 19 | 41 | 7/0/34/0 | 0 | 0 | 0 |
+| `books/bp-adu.lisp` | root | 22 | 41 | 7/0/34/0 | 0 | 0 | 0 |
 | `books/bp-app-handoff-time.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/bp-app-handoff.lisp` | root | 6 | 31 | 0/0/31/0 | 0 | 0 | 0 |
 | `books/bp-authored-wire.lisp` | root | 2 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -174,7 +174,7 @@ that `make certify` requests.
 | `books/bp-node-fragment-jobs.lisp` | root | 21 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-plan.lisp` | root | 3 | 3 | 0/2/1/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-replacement.lisp` | root | 1 | 5 | 0/2/3/0 | 0 | 0 | 0 |
-| `books/bp-node-fragment-step.lisp` | root | 14 | 9 | 0/7/2/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-step.lisp` | root | 16 | 9 | 0/7/2/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer.lisp` | root | 45 | 22 | 0/5/17/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
@@ -183,8 +183,9 @@ that `make certify` requests.
 | `books/bp-node-machine-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 2 |
 | `books/bp-node-machine.lisp` | root | 70 | 95 | 47/3/45/0 | 0 | 0 | 1 |
-| `books/bp-node-profile-replay.lisp` | root | 2 | 1 | 0/1/0/0 | 0 | 0 | 0 |
-| `books/bp-node-profile.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/bp-node-profile-admission.lisp` | root | 8 | 3 | 1/0/2/0 | 0 | 0 | 0 |
+| `books/bp-node-profile-replay.lisp` | root | 5 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/bp-node-profile.lisp` | root | 20 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-bridge.lisp` | root | 19 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 31 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -641,7 +642,7 @@ that `make certify` requests.
 | `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 28 | 0 | 0 |
 | `tests/acl2/assumptions-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 7 | 11 | 0 |
 | `tests/acl2/auth-secret-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
-| `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
+| `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 0 | 0 |
 | `tests/acl2/bp-app-handoff-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 36 | 8 | 0 |
 | `tests/acl2/bp-app-handoff-time-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 4 | 0 |
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
@@ -680,7 +681,7 @@ that `make certify` requests.
 | `tests/acl2/bp-ion-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/bp-ion-workflow-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 2 | 0 |
 | `tests/acl2/bp-ion-workflow-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 0 | 0 |
-| `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-node-contact-driver-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 23 | 12 | 0 |
@@ -696,13 +697,14 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-jobs-tests.lisp` | root | 0 | 5 | 0/4/1/0 | 17 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
-| `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 19 | 2 | 0 |
+| `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 21 | 2 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bp-node-job-offer-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 26 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
 | `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 5 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
-| `tests/acl2/bp-node-profile-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 12 | 3 | 0 |
+| `tests/acl2/bp-node-profile-admission-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 17 | 6 | 0 |
+| `tests/acl2/bp-node-profile-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 23 | 5 | 0 |
 | `tests/acl2/bp-node-progress-premises-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/bp-node-receipt-send-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 38 | 15 | 0 |
 | `tests/acl2/bp-node-receive-boundary-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 1 | 0 |
