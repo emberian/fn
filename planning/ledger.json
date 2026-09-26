@@ -193,6 +193,7 @@
     "books/store-open-pre-c1",
     "tests/acl2/store-open-pre-c1-tests",
     "tests/acl2/linear-recognizers-tests",
+    "tests/acl2/open-one-pass-tests",
     "books/byte-store-state-checkpoint-program",
     "books/byte-store-range-read",
     "tests/acl2/byte-store-state-checkpoint-program-tests",
@@ -956,25 +957,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 975,
-    "books_in_root_closure": 968,
-    "roots": 952,
-    "theorems": 13716,
-    "functions": 9581,
-    "assert_events": 14446,
-    "must_fails": 1702,
+    "books": 976,
+    "books_in_root_closure": 969,
+    "roots": 953,
+    "theorems": 13743,
+    "functions": 9602,
+    "assert_events": 14502,
+    "must_fails": 1703,
     "prover_refusals": 2,
     "encapsulates": 66,
     "guards": {
-      "verified": 2222,
-      "declared-off": 771,
-      "default-guarded": 5167,
-      "default-unguarded": 1421
+      "verified": 2225,
+      "declared-off": 778,
+      "default-guarded": 5176,
+      "default-unguarded": 1423
     },
-    "suspect_theorems": 126,
-    "export_hygiene_warnings": 152,
+    "suspect_theorems": 127,
+    "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 148,
+    "teeth_form_warnings": 149,
     "include_hygiene_warnings": 991,
     "host_names_warnings": 1138,
     "hand_written_record_warnings": 18
@@ -1062,12 +1063,12 @@
       "book": "books/acceptance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
-      "functions": 48,
+      "theorems": 64,
+      "functions": 52,
       "guards": {
         "verified": 39,
-        "declared-off": 0,
-        "default-guarded": 9,
+        "declared-off": 1,
+        "default-guarded": 12,
         "default-unguarded": 0
       },
       "verify_guards_events": 39,
@@ -1083,7 +1084,9 @@
         "records-shape"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-fr-disjointp-of-all-memberships-left"
+      ],
       "read_error": null
     },
     {
@@ -10954,12 +10957,12 @@
       "book": "books/node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 34,
+      "theorems": 48,
+      "functions": 38,
       "guards": {
         "verified": 28,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 10,
         "default-unguarded": 0
       },
       "verify_guards_events": 28,
@@ -11956,12 +11959,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 84,
-      "functions": 158,
+      "theorems": 87,
+      "functions": 160,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 153,
+        "default-guarded": 155,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -13455,15 +13458,15 @@
       "book": "books/retention.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
-      "functions": 38,
+      "theorems": 46,
+      "functions": 41,
       "guards": {
-        "verified": 38,
+        "verified": 41,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 52,
+      "verify_guards_events": 55,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -24046,6 +24049,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/open-one-pass-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 56,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/outcome-class-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -28763,6 +28794,14 @@
       ]
     },
     {
+      "theorem": "fn-fr-disjointp-of-all-memberships-left",
+      "book": "books/acceptance.lisp",
+      "line": 251,
+      "reasons": [
+        "instance-corollary: the statement is fn-fr-disjointp-commutes instantiated, discharging nothing"
+      ]
+    },
+    {
       "theorem": "fn-frame-decode-refuses-oversize-before-validation",
       "book": "books/frame-invariants.lisp",
       "line": 697,
@@ -28830,7 +28869,7 @@
     {
       "theorem": "fn-node-capacity-refusal-is-no-op",
       "book": "books/node.lisp",
-      "line": 321,
+      "line": 469,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value"
       ]
@@ -28862,7 +28901,7 @@
     {
       "theorem": "fn-node-stale-completion-is-no-op",
       "book": "books/node.lisp",
-      "line": 345,
+      "line": 493,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value"
       ]
@@ -29106,7 +29145,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 298,
+      "line": 345,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -29114,7 +29153,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 338,
+      "line": 385,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
@@ -29336,6 +29375,12 @@
         "theorem": "fn-ks-distinctp-is-nodupp",
         "book": "books/acceptance-alloc.lisp",
         "line": 174,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-articles-freshp-is-one-pass",
+        "book": "books/acceptance.lisp",
+        "line": 269,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -31293,6 +31338,12 @@
         "check": "xp-alternation-without-positive-alternatives",
         "book": "tests/acl2/nntp-xpat-tests.lisp",
         "line": 143,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thm",
+        "book": "tests/acl2/open-one-pass-tests.lisp",
+        "line": 275,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
