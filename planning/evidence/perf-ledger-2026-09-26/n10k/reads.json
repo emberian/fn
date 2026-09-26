@@ -1,0 +1,179 @@
+{
+ "open_s": 20.923815177753568,
+ "open_line": "OWNER-OPEN open=full-replay reason=absent",
+ "vmhwm_kib_at_listening": 1897724,
+ "greeting_loaded": {
+  "n": 32,
+  "min_ms": 260.3476019576192,
+  "median_ms": 395.38381481543183,
+  "p95_ms": 454.78599704802036,
+  "max_ms": 477.4384265765548
+ },
+ "group": {
+  "n": 5,
+  "min_ms": 45.20156793296337,
+  "median_ms": 47.38081060349941,
+  "p95_ms": 51.31003446877003,
+  "max_ms": 51.31003446877003
+ },
+ "group_reply": "211 10402 1 10402 fn.test",
+ "stat": {
+  "n": 32,
+  "timing": {
+   "n": 32,
+   "min_ms": 0.25283172726631165,
+   "median_ms": 0.7196222431957722,
+   "p95_ms": 1.1245738714933395,
+   "max_ms": 1.317908987402916
+  },
+  "bytes_consed_per_op": 38869.5
+ },
+ "article_2k": {
+  "n": 32,
+  "timing": {
+   "n": 32,
+   "min_ms": 6.657982245087624,
+   "median_ms": 7.2020720690488815,
+   "p95_ms": 8.09742696583271,
+   "max_ms": 11.685499921441078
+  },
+  "bytes_consed_per_op": 420291.5
+ },
+ "over_1": {
+  "n": 32,
+  "timing": {
+   "n": 32,
+   "min_ms": 2.0865891128778458,
+   "median_ms": 8.903665468096733,
+   "p95_ms": 14.198044314980507,
+   "max_ms": 17.72736944258213
+  },
+  "bytes_consed_per_op": 4829794.0
+ },
+ "over_40": {
+  "n": 20,
+  "timing": {
+   "n": 20,
+   "min_ms": 149.46666080504656,
+   "median_ms": 320.0176265090704,
+   "p95_ms": 490.1100816205144,
+   "max_ms": 490.6952902674675
+  },
+  "bytes_consed_per_op": 263104121.6
+ },
+ "over_2000_uncovered": {
+  "n": 3,
+  "timing": {
+   "n": 3,
+   "min_ms": 15999.870120547712,
+   "median_ms": 18168.738611973822,
+   "p95_ms": 20962.064245715737,
+   "max_ms": 20962.064245715737
+  },
+  "bytes_consed_per_op": 17117673653.333334
+ },
+ "over_2000_profiled": {
+  "n": 5,
+  "min_ms": 17248.486502096057,
+  "median_ms": 17713.43749202788,
+  "p95_ms": 19166.14763252437,
+  "max_ms": 19166.14763252437
+ },
+ "window": {
+  "window_wall_s": 90.11895286943763,
+  "window_owner_cpu_s": 89.28999999999999,
+  "error": null
+ },
+ "phase": "reads",
+ "args": [],
+ "started_utc": "2026-09-26T15:02:25Z",
+ "ended_utc": "2026-09-26T15:05:35Z",
+ "box_before": {
+  "loadavg": "15.94 14.27 12.28 17/1880 2164976",
+  "running_user_units": [
+   "init.scope",
+   "run-r12620ccb74974701880582a4ba497ead.scope",
+   "run-r27db9d6448ba46df93852ad8fc3e0b2e.scope",
+   "run-r47e48b9e7e364b9fbddbe2578a2b58cd.scope",
+   "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+   "run-r6efe8e00b2b04d8b8c95b160f0bb7777.scope",
+   "run-r81141627ac5449c18ae857810b204e95.scope",
+   "run-r9013d1982ec84cf5be344da1ebab8896.scope",
+   "run-r93ea9d6f40bd4b63bf359d1108b3294a.scope",
+   "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+   "run-rfea618457ed4462bad243a522c784565.scope",
+   "dbus.service",
+   "dregg-watch.service",
+   "dreggcloud-demo.service",
+   "dreggcloud-notary.service",
+   "dreggcloud-service-house-v2.service",
+   "filter-chain.service",
+   "fn-node.service",
+   "gpg-agent.service",
+   "perfl-drive.service",
+   "pipewire-pulse.service",
+   "pipewire.service",
+   "qual-dfa810fc-chaincuts.service",
+   "qual-dfa810fc-chainM.service",
+   "qual-dfa810fc-mixed.service",
+   "snap.snapd-desktop-integration.snapd-desktop-integration.service",
+   "spike-reader-node.service",
+   "spike-reader-web.service",
+   "sps2-chain1.service",
+   "sps2-fix-base.service",
+   "wireplumber.service",
+   "dbus.socket",
+   "gpg-agent-browser.socket",
+   "gpg-agent-extra.socket",
+   "gpg-agent-ssh.socket",
+   "gpg-agent.socket",
+   "pipewire-pulse.socket",
+   "pipewire.socket",
+   "box-health.timer"
+  ]
+ },
+ "box_after": {
+  "loadavg": "14.19 14.84 12.93 10/1847 2174049",
+  "running_user_units": [
+   "init.scope",
+   "run-r08a05448bf1d47c9b645a5ebe2679865.scope",
+   "run-r27db9d6448ba46df93852ad8fc3e0b2e.scope",
+   "run-r337c991572d7440cba9df855611197f1.scope",
+   "run-r47e48b9e7e364b9fbddbe2578a2b58cd.scope",
+   "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+   "run-r6efe8e00b2b04d8b8c95b160f0bb7777.scope",
+   "run-r93ea9d6f40bd4b63bf359d1108b3294a.scope",
+   "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+   "run-rfea618457ed4462bad243a522c784565.scope",
+   "dbus.service",
+   "dregg-watch.service",
+   "dreggcloud-demo.service",
+   "dreggcloud-notary.service",
+   "dreggcloud-service-house-v2.service",
+   "filter-chain.service",
+   "fn-node.service",
+   "gpg-agent.service",
+   "perfl-drive.service",
+   "pipewire-pulse.service",
+   "pipewire.service",
+   "qual-dfa810fc-chaincuts.service",
+   "qual-dfa810fc-chainM.service",
+   "qual-dfa810fc-mixed.service",
+   "snap.snapd-desktop-integration.snapd-desktop-integration.service",
+   "spike-reader-node.service",
+   "spike-reader-web.service",
+   "sps2-fix-base.service",
+   "wireplumber.service",
+   "dbus.socket",
+   "gpg-agent-browser.socket",
+   "gpg-agent-extra.socket",
+   "gpg-agent-ssh.socket",
+   "gpg-agent.socket",
+   "pipewire-pulse.socket",
+   "pipewire.socket",
+   "box-health.timer"
+  ]
+ },
+ "image": "/tank/fn/scratch/perf-ledger/tree/build/fn-host-developer-prof",
+ "core_sha256": "90544f4cd7dc715bda86a478faec43c941a0c07f6b20a43e74057890d2071eb2"
+}

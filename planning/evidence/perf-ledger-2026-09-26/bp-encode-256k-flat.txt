@@ -1,0 +1,33 @@
+
+Number of samples:   1546
+Sample interval:     0.001 seconds
+Total sampling time: 1.546 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2155496 "main thread" RUNNING {1200068003}> (440880/1048576 bytes, 1196 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    485  31.4    485  31.4    485  31.4        -  SB-KERNEL::FLOOR1
+   4    460  29.8    460  29.8    945  61.1        -  FLOOR
+   6    421  27.2   1878 121.5   1366  88.4        -  FN-BPP-XOR
+   8     85   5.5     85   5.5   1451  93.9        -  GENERIC-*
+  10     43   2.8     43   2.8   1494  96.6        -  GENERIC-+
+  12     20   1.3     20   1.3   1514  97.9        -  GENERIC--
+  14     10   0.6   1239  80.1   1524  98.6        -  FN-BPP-CRC32C-OCTET
+  16     10   0.6     27   1.7   1534  99.2        -  FN-BPP-CRC32C-BIT
+  18      8   0.5      8   0.5   1542  99.7        -  SB-IMPL::APPEND2
+  20      2   0.1   1536  99.4   1544  99.9        -  FN-BPP-CRC32C-SCAN
+  22      2   0.1      7   0.5   1546 100.0        -  FN-BPB-ENCODE-BLOCK-WITH-CRC
+  24      0   0.0   1546 100.0   1546 100.0        -  FN-BPB-ENCODE
+  26      0   0.0   1546 100.0   1546 100.0        -  top level form
+  28      0   0.0   1546 100.0   1546 100.0        -  (FLET "G" :IN SB-C::%COMPILE-IN-LEXENV)
+  30      0   0.0   1546 100.0   1546 100.0        -  SB-C::%COMPILE-IN-LEXENV
+  32      0   0.0   1546 100.0   1546 100.0        -  SB-C:EVAL-WITH-COMPILE-IN-LEXENV
+  34      0   0.0   1546 100.0   1546 100.0        -  SB-IMPL::%SIMPLE-EVAL
+  36      0   0.0   1546 100.0   1546 100.0        -  SB-EXT:EVAL-TLF
+  38      0   0.0   1546 100.0   1546 100.0        -  (LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE)
+  40      0   0.0   1546 100.0   1546 100.0        -  (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE)
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

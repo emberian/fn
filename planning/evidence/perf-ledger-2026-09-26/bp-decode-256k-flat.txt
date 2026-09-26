@@ -1,0 +1,33 @@
+
+Number of samples:   2972
+Sample interval:     0.001 seconds
+Total sampling time: 2.972 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2155496 "main thread" RUNNING {1200068003}> (899160/1048576 bytes, 2235 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    943  31.7    943  31.7    943  31.7        -  SB-KERNEL::FLOOR1
+   4    931  31.3    931  31.3   1874  63.1        -  FLOOR
+   6    782  26.3   3601 121.2   2656  89.4        -  FN-BPP-XOR
+   8    142   4.8    142   4.8   2798  94.1        -  GENERIC-*
+  10     71   2.4     71   2.4   2869  96.5        -  GENERIC-+
+  12     37   1.2     37   1.2   2906  97.8        -  GENERIC--
+  14     21   0.7     59   2.0   2927  98.5        -  FN-BPP-CRC32C-BIT
+  16     15   0.5   2221  74.7   2942  99.0        -  FN-BPP-CRC32C-OCTET
+  18      9   0.3      9   0.3   2951  99.3        -  SB-IMPL::APPEND2
+  20      5   0.2   2835  95.4   2956  99.5        -  FN-BPP-CRC32C-SCAN
+  22      3   0.1     10   0.3   2959  99.6        -  FN-BPB-ENCODE-BLOCK-WITH-CRC
+  24      2   0.1      5   0.2   2961  99.6        -  FN-BPB-TAKE-BYTES
+  26      2   0.1      4   0.1   2963  99.7        -  FN-BPB-DATAP
+  28      2   0.1      2   0.1   2965  99.8        -  TAKE
+  30      1   0.0      3   0.1   2966  99.8        -  FN-BPB-SCAN-PRIMARY
+  32      1   0.0      2   0.1   2967  99.8        -  FN-CBOR-OCTET-LISTP
+  34      1   0.0      2   0.1   2968  99.9        -  FN-BPC-DEC
+  36      1   0.0      1   0.0   2969  99.9        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  38      1   0.0      1   0.0   2970  99.9        -  FN-CBOR-OCTETP
+  40      1   0.0      1   0.0   2971 100.0        -  NTHCDR
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

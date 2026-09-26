@@ -1,0 +1,27 @@
+fnh: heap hook installed
+OWNER-OPEN open=full-replay reason=absent
+accepted reader connection=0 time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000000@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000001@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000002@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000003@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000004@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000005@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000006@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000007@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000008@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000009@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000010@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000011@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000012@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000013@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000014@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000015@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000016@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000017@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000018@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000019@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:48Z
+accepted post path=served connection=0 message-id=<t17-000020@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:51Z
+accepted post path=served connection=0 message-id=<t17-000021@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:53Z
+accepted post path=served connection=0 message-id=<t17-000022@example.invalid> agent=fn.example.invalid time=2026-09-26T15:14:57Z
+accepted operator run

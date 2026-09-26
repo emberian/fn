@@ -1,0 +1,123 @@
+
+Number of samples:   15586
+Sample interval:     0.001 seconds
+Total sampling time: 15.586 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2174058 "main thread" RUNNING {1200068003}> (3376/1048576 bytes, 11 hash buckets)
+   #<THREAD tid=2174065 "fn-heap" RUNNING {1211A67443}> (3392/1048576 bytes, 26 hash buckets)
+   #<THREAD tid=2174061 "finalizer" RUNNING {1210ECE2A3}> (128/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2175158 "fn outbound feed" RUNNING {12198DC333}> (208/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2175160 "fn local control accept" RUNNING {12199D4433}> (368/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2175159 "fn pull feed" RUNNING {12198DC583}> (144/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2174066 "fn-prof" RUNNING {1211A9C6D3}> (1232/1048576 bytes, 9 hash buckets)
+   #<THREAD tid=2175204 "fn owner client" FINISHED values: NIL {1219AF60C3}> (22112/1048576 bytes, 79 hash buckets)
+   #<THREAD tid=2175213 "fn owner client" FINISHED values: NIL {121AC58373}> (18264/1048576 bytes, 67 hash buckets)
+   #<THREAD tid=2175216 "fn owner client" FINISHED values: NIL {121AC582C3}> (16896/1048576 bytes, 64 hash buckets)
+   #<THREAD tid=2175222 "fn owner client" FINISHED values: NIL {121AC58213}> (18400/1048576 bytes, 68 hash buckets)
+   #<THREAD tid=2175225 "fn owner client" FINISHED values: NIL {121AC58163}> (31880/1048576 bytes, 118 hash buckets)
+   #<THREAD tid=2175233 "fn owner client" FINISHED values: NIL {121AC580B3}> (31784/1048576 bytes, 120 hash buckets)
+   #<THREAD tid=2175255 "fn owner client" FINISHED values: NIL {121AC58003}> (18936/1048576 bytes, 70 hash buckets)
+   #<THREAD tid=2175311 "fn owner client" FINISHED values: NIL {121AC002C3}> (17848/1048576 bytes, 66 hash buckets)
+   #<THREAD tid=2175370 "fn owner client" FINISHED values: NIL {12159F0903}> (17816/1048576 bytes, 68 hash buckets)
+   #<THREAD tid=2175430 "fn owner client" FINISHED values: NIL {12159F0B93}> (20616/1048576 bytes, 76 hash buckets)
+   #<THREAD tid=2175438 "fn owner client" FINISHED values: NIL {121ADB02C3}> (17464/1048576 bytes, 64 hash buckets)
+   #<THREAD tid=2175440 "fn owner client" FINISHED values: NIL {121ADB0213}> (19808/1048576 bytes, 74 hash buckets)
+   #<THREAD tid=2175445 "fn owner client" FINISHED values: NIL {121ADB0163}> (19528/1048576 bytes, 76 hash buckets)
+   #<THREAD tid=2175451 "fn owner client" FINISHED values: NIL {121ADB00B3}> (24592/1048576 bytes, 89 hash buckets)
+   #<THREAD tid=2175457 "fn owner client" FINISHED values: NIL {121ADB0003}> (19856/1048576 bytes, 71 hash buckets)
+   #<THREAD tid=2175459 "fn owner client" FINISHED values: NIL {121AD302C3}> (26512/1048576 bytes, 99 hash buckets)
+   #<THREAD tid=2175463 "fn owner client" FINISHED values: NIL {121AD30213}> (21256/1048576 bytes, 78 hash buckets)
+   #<THREAD tid=2175464 "fn owner client" FINISHED values: NIL {12113C0903}> (34296/1048576 bytes, 126 hash buckets)
+   #<THREAD tid=2175473 "fn owner client" FINISHED values: NIL {12113C0B93}> (25480/1048576 bytes, 97 hash buckets)
+   #<THREAD tid=2175529 "fn owner client" FINISHED values: NIL {121AF182C3}> (32880/1048576 bytes, 124 hash buckets)
+   #<THREAD tid=2175561 "fn owner client" FINISHED values: NIL {121AF18213}> (27120/1048576 bytes, 101 hash buckets)
+   #<THREAD tid=2175591 "fn owner client" FINISHED values: NIL {121AF18163}> (21984/1048576 bytes, 81 hash buckets)
+   #<THREAD tid=2175644 "fn owner client" FINISHED values: NIL {121AF180B3}> (29200/1048576 bytes, 111 hash buckets)
+   #<THREAD tid=2175652 "fn owner client" FINISHED values: NIL {121AF18003}> (20040/1048576 bytes, 73 hash buckets)
+   #<THREAD tid=2175708 "fn owner client" FINISHED values: NIL {121AC702C3}> (19240/1048576 bytes, 73 hash buckets)
+   #<THREAD tid=2175762 "fn owner client" FINISHED values: NIL {121AC70213}> (18424/1048576 bytes, 70 hash buckets)
+   #<THREAD tid=2175774 "fn owner client" FINISHED values: NIL {1216320673}> (17632/1048576 bytes, 69 hash buckets)
+   #<THREAD tid=2175847 "fn owner client" FINISHED values: NIL {1216320903}> (23448/1048576 bytes, 85 hash buckets)
+   #<THREAD tid=2175864 "fn owner client" FINISHED values: NIL {121B0482C3}> (16000/1048576 bytes, 62 hash buckets)
+   #<THREAD tid=2175883 "fn owner client" FINISHED values: NIL {121B048213}> (15472/1048576 bytes, 58 hash buckets)
+   #<THREAD tid=2175887 "fn owner client" FINISHED values: NIL {121B048163}> (17528/1048576 bytes, 64 hash buckets)
+   #<THREAD tid=2175892 "fn owner client" FINISHED values: NIL {121B0480B3}> (16720/1048576 bytes, 64 hash buckets)
+   #<THREAD tid=2175901 "fn owner client" FINISHED values: NIL {121B048003}> (23400/1048576 bytes, 88 hash buckets)
+   #<THREAD tid=2175961 "fn owner client" FINISHED values: NIL {121B0002C3}> (20824/1048576 bytes, 78 hash buckets)
+   #<THREAD tid=2176019 "fn owner client" FINISHED values: NIL {121B000213}> (24264/1048576 bytes, 89 hash buckets)
+   #<THREAD tid=2176064 "fn owner client" FINISHED values: NIL {1215FA0673}> (17208/1048576 bytes, 65 hash buckets)
+   #<THREAD tid=2176079 "fn owner client" FINISHED values: NIL {1215FA0903}> (16840/1048576 bytes, 65 hash buckets)
+   #<THREAD tid=2176137 "fn owner client" FINISHED values: NIL {121AFA0373}> (18232/1048576 bytes, 67 hash buckets)
+   #<THREAD tid=2176181 "fn owner client" FINISHED values: NIL {121AFA02C3}> (17248/1048576 bytes, 66 hash buckets)
+   #<THREAD tid=2176199 "fn owner client" FINISHED values: NIL {121AFA0213}> (22344/1048576 bytes, 83 hash buckets)
+   #<THREAD tid=2176227 "fn owner client" FINISHED values: NIL {121AFA0163}> (20920/1048576 bytes, 78 hash buckets)
+   #<THREAD tid=2176242 "fn owner client" FINISHED values: NIL {121AFA00B3}> (20200/1048576 bytes, 71 hash buckets)
+   #<THREAD tid=2176247 "fn owner client" FINISHED values: NIL {121AFA0003}> (19320/1048576 bytes, 73 hash buckets)
+   #<THREAD tid=2176249 "fn owner client" FINISHED values: NIL {121AC182C3}> (21176/1048576 bytes, 78 hash buckets)
+   #<THREAD tid=2176256 "fn owner client" FINISHED values: NIL {121AC18213}> (16640/1048576 bytes, 62 hash buckets)
+   #<THREAD tid=2176263 "fn owner client" FINISHED values: NIL {1215C80903}> (23384/1048576 bytes, 83 hash buckets)
+   #<THREAD tid=2176360 "fn owner client" FINISHED values: NIL {1215C80B93}> (19136/1048576 bytes, 70 hash buckets)
+   #<THREAD tid=2176362 "fn owner client" FINISHED values: NIL {121B3402C3}> (14400/1048576 bytes, 56 hash buckets)
+   #<THREAD tid=2176375 "fn owner client" FINISHED values: NIL {121B340213}> (15584/1048576 bytes, 59 hash buckets)
+   #<THREAD tid=2176378 "fn owner client" FINISHED values: NIL {121B340163}> (18072/1048576 bytes, 67 hash buckets)
+   #<THREAD tid=2176381 "fn owner client" FINISHED values: NIL {121B3400B3}> (17312/1048576 bytes, 62 hash buckets)
+   #<THREAD tid=2176382 "fn owner client" FINISHED values: NIL {121B340003}> (17480/1048576 bytes, 65 hash buckets)
+   #<THREAD tid=2176385 "fn owner client" FINISHED values: NIL {121B0082C3}> (17920/1048576 bytes, 67 hash buckets)
+   #<THREAD tid=2176386 "fn owner client" FINISHED values: NIL {121B008213}> (16280/1048576 bytes, 61 hash buckets)
+   #<THREAD tid=2176389 "fn owner client" FINISHED values: NIL {1211670903}> (17280/1048576 bytes, 65 hash buckets)
+   #<THREAD tid=2176393 "fn owner client" FINISHED values: NIL {1211670B93}> (22296/1048576 bytes, 81 hash buckets)
+   #<THREAD tid=2176407 "fn owner client" FINISHED values: NIL {121A8C0003}> (15216/1048576 bytes, 59 hash buckets)
+   #<THREAD tid=2176408 "fn owner client" FINISHED values: NIL {121A8C00B3}> (20248/1048576 bytes, 76 hash buckets)
+   #<THREAD tid=2176409 "fn owner client" FINISHED values: NIL {121A8C0163}> (14280/1048576 bytes, 56 hash buckets)
+   #<THREAD tid=2176412 "fn owner client" FINISHED values: NIL {121A8C0213}> (14400/1048576 bytes, 55 hash buckets)
+   #<THREAD tid=2176414 "fn owner client" FINISHED values: NIL {121A8C02C3}> (17000/1048576 bytes, 62 hash buckets)
+   #<THREAD tid=2176416 "fn owner client" FINISHED values: NIL {121A8C0373}> (18040/1048576 bytes, 69 hash buckets)
+   #<THREAD tid=2176417 "fn owner client" FINISHED values: NIL {121A8802C3}> (17912/1048576 bytes, 67 hash buckets)
+   #<THREAD tid=2176418 "fn owner client" FINISHED values: NIL {121A880213}> (16752/1048576 bytes, 61 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2   8410  54.0  12376  79.4   8410  54.0        -  FN-OCTET-LISTP
+   4   4797  30.8   4797  30.8  13207  84.7        -  FN-OCTETP
+   6    605   3.9    605   3.9  13812  88.6        -  SB-IMPL::%SXHASH-STRING/TRUNCATING
+   8    282   1.8    794   5.1  14094  90.4        -  SB-IMPL::GETHASH/EQUAL
+  10    140   0.9    140   0.9  14234  91.3        -  FN-AG-CDR
+  12    128   0.8    128   0.8  14362  92.1        -  FN-AG-CAR
+  14     91   0.6    477   3.1  14453  92.7        -  SB-IMPL::PUTHASH/EQUAL
+  16     80   0.5  13574  87.1  14533  93.2        -  FN-ARTICLEP
+  18     43   0.3     44   0.3  14576  93.5        -  SB-KERNEL:STRING=*
+  20     42   0.3    652   4.2  14618  93.8        -  (LABELS SB-IMPL::SXHASH-RECURSE :IN SB-IMPL::PERHAPS-TRUNCATED-EQUAL-HASH)
+  22     39   0.3    137   0.9  14657  94.0        -  SB-IMPL::GROW-HASH-TABLE
+  24     37   0.2    108   0.7  14694  94.3        -  FN-ARTICLE-MSGIDS
+  26     33   0.2    197   1.3  14727  94.5        -  (FLET SB-IMPL::INSERT-AT :IN "SYS:SRC;CODE;TARGET-HASH-TABLE.LISP")
+  28     30   0.2     39   0.3  14757  94.7        -  FN-NODE-BINDINGP
+  30     30   0.2     30   0.2  14787  94.9        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  32     26   0.2     27   0.2  14813  95.0        -  FN-MEMBERSHIP-LISTP
+  34     25   0.2    669   4.3  14838  95.2        -  SB-IMPL::PERHAPS-TRUNCATED-EQUAL-HASH
+  36     25   0.2     68   0.4  14863  95.4        -  FN-RETAIN-OBLIGATION-IDS
+  38     24   0.2     55   0.4  14887  95.5        -  FN-RETAIN-OBLIGATIONP
+  40     24   0.2     24   0.2  14911  95.7        -  VECTOR-FILL/T
+  42     21   0.1     45   0.3  14932  95.8        -  FN-NODE-BINDING-MSGIDS
+  44     21   0.1     21   0.1  14953  95.9        -  foreign function poll
+  46     20   0.1     84   0.5  14973  96.1        -  FN-MEMBERSHIPS-BELOW-NEXTSP
+  48     20   0.1     20   0.1  14993  96.2        -  foreign function fstatat
+  50     19   0.1     32   0.2  15012  96.3        -  FN-ARTICLE-GROUPS
+  52     18   0.1    430   2.8  15030  96.4        -  FN-KEYSET-TAB-PUT
+  54     18   0.1     18   0.1  15048  96.5        -  TRUE-LISTP
+  56     16   0.1     37   0.2  15064  96.7        -  FN-NO-DUPLICATESP
+  58     15   0.1     65   0.4  15079  96.7        -  FN-ARTICLE-MEMBERSHIPS
+  60     15   0.1     65   0.4  15094  96.8        -  FN-SELECTION-VALIDP
+  62     15   0.1     15   0.1  15109  96.9        -  SB-KERNEL:TWO-ARG-<=
+  64     15   0.1     15   0.1  15124  97.0        -  SB-IMPL::REHASH
+  66     13   0.1    128   0.8  15137  97.1        -  FN-ARTICLES-BELOW-NEXTSP
+  68     13   0.1     25   0.2  15150  97.2        -  FN-ARTICLE-SHAPEP
+  70     13   0.1     16   0.1  15163  97.3        -  FN-NODE-BINDING-ID
+  72     13   0.1     13   0.1  15176  97.4        -  foreign function clock_nanosleep
+  74     12   0.1     12   0.1  15188  97.4        -  EQUAL
+  76     11   0.1     51   0.3  15199  97.5        -  FN-SUBSETP
+  78     11   0.1     25   0.2  15210  97.6        -  FN-RECORD-UINT64P
+  80     11   0.1     24   0.2  15221  97.7        -  FN-ARTICLE-STAMP
+------------------------------------------------------------------------
+         96   0.6                                     elsewhere

@@ -1,0 +1,60 @@
+
+Number of samples:   78896
+Sample interval:     0.001 seconds
+Total sampling time: 78.896 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2164977 "main thread" RUNNING {1200068003}> (1128/1048576 bytes, 4 hash buckets)
+   #<THREAD tid=2164981 "fn-heap" RUNNING {1211A67443}> (18000/1048576 bytes, 127 hash buckets)
+   #<THREAD tid=2164979 "finalizer" RUNNING {1210ECE2A3}> (456/1048576 bytes, 4 hash buckets)
+   #<THREAD tid=2165780 "fn outbound feed" RUNNING {121991BF23}> (176/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2165782 "fn local control accept" RUNNING {1219A0C1C3}> (1440/1048576 bytes, 12 hash buckets)
+   #<THREAD tid=2166552 "fn owner client" RUNNING {1215910B93}> (3595152/4194304 bytes, 6800 hash buckets)
+   #<THREAD tid=2165781 "fn pull feed" RUNNING {121991C173}> (296/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2164982 "fn-prof" RUNNING {1211A9C6D3}> (14664/1048576 bytes, 95 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2  23252  29.5  57078  72.3  23252  29.5        -  FN-NNTP-STRING-OCTETS-AUX
+   4   7472   9.5   7819   9.9  30724  38.9        -  FN-NNTP-STRING-OCTETS
+   6   7055   8.9  14977  19.0  37779  47.9        -  FN-NNTP-PRINTABLE-TOKENP
+   8   5652   7.2  21258  26.9  43431  55.0        -  FN-NNTP-MESSAGE-ID-TOKENP
+  10   5418   6.9   5418   6.9  48849  61.9        -  FN-AG-CDR
+  12   4942   6.3   4942   6.3  53791  68.2        -  SB-KERNEL:TWO-ARG-<=
+  14   4479   5.7   4479   5.7  58270  73.9        -  FN-AG-CAR
+  16   4169   5.3   4169   5.3  62439  79.1        -  SB-KERNEL:TWO-ARG->=
+  18   2758   3.5   2758   3.5  65197  82.6        -  FN-NG-CHAR-CODE
+  20   2597   3.3   2597   3.3  67794  85.9        -  FN-NNTP-MESSAGE-ID-TAILP
+  22   1915   2.4  46075  58.4  69709  88.4        -  FN-NNTP-INDEX-MSGID-OKP
+  24   1248   1.6   1248   1.6  70957  89.9        -  SB-KERNEL:STRING=*
+  26    983   1.2  74851  94.9  71940  91.2        -  FN-GIDX-FIND-NUMBER-ENTRY
+  28    964   1.2  72476  91.9  72904  92.4        -  FN-NNTP-INDEX-ENTRY-AVAILABLE
+  30    856   1.1    856   1.1  73760  93.5        -  %DATA-VECTOR-AND-INDEX
+  32    653   0.8    653   0.8  74413  94.3        -  foreign function pthread_sigmask
+  34    332   0.4    332   0.4  74745  94.7        -  foreign function poll
+  36    316   0.4    489   0.6  75061  95.1        -  FN-INDEX-ENTRY-MSGID
+  38    316   0.4    316   0.4  75377  95.5        -  foreign function syscall
+  40    299   0.4    299   0.4  75676  95.9        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  42    230   0.3    230   0.3  75906  96.2        -  FPR-RESTORE
+  44    223   0.3    525   0.7  76129  96.5        -  FN-NG-LEN
+  46    196   0.2    196   0.2  76325  96.7        -  FPR-SAVE
+  48    191   0.2    251   0.3  76516  97.0        -  FN-INDEX-ENTRY-NUMBER
+  50    152   0.2    152   0.2  76668  97.2        -  foreign function gc_find_freeish_pages
+  52    149   0.2    149   0.2  76817  97.4        -  %EQL/INTEGER
+  54    140   0.2    398   0.5  76957  97.5        -  FN-NNTP-CRLF-LINES-AUX
+  56    136   0.2    341   0.4  77093  97.7        -  FN-NNTP-INSERT-NUMBER
+  58    124   0.2    124   0.2  77217  97.9        -  EQUAL
+  60    121   0.2    121   0.2  77338  98.0        -  FN-INDEX-ENTRY-GROUP
+  62    111   0.1    111   0.1  77449  98.2        -  foreign function clock_nanosleep
+  64    106   0.1    106   0.1  77555  98.3        -  foreign function fstatat
+  66     88   0.1    139   0.2  77643  98.4        -  FN-NG-REVAPPEND
+  68     83   0.1     83   0.1  77726  98.5        -  FN-OCTETP
+  70     67   0.1     67   0.1  77793  98.6        -  FN-CBOR-AT-MOSTP
+  72     63   0.1    108   0.1  77856  98.7        -  FN-CBOR-OCTET-LISTP
+  74     55   0.1    128   0.2  77911  98.8        -  FN-OCTET-LISTP
+  76     53   0.1     53   0.1  77964  98.8        -  GENERIC-+
+  78     51   0.1     51   0.1  78015  98.9        -  FN-CBOR-OCTETP
+  80     40   0.1     40   0.1  78055  98.9        -  foreign function pthread_mutex_lock
+------------------------------------------------------------------------
+        140   0.2                                     elsewhere
