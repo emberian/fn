@@ -5431,6 +5431,15 @@
           "name": "fn-cra-a-re-signed-carrier-is-other-octets"
         }
       ]
+    },
+    {
+      "id": "PRF-140",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ks-accepted-statement-finishes-under-its-admission-context"
+        }
+      ]
     }
   ]
 }
