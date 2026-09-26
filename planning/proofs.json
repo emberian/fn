@@ -6397,7 +6397,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull.lisp",
         "books/peer-pull-session.lisp",
