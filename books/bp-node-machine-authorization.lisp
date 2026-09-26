@@ -305,10 +305,13 @@
              jobs)
             (fn-bpn-find-queued-for-peer peer jobs)))
   :hints
+  ;; The job recognizer and its field predicates opened in every case
+  ;; (354,000 steps); the argument needs only key uniqueness.
   (("Goal" :induct (fn-bpn-find-queued-for-peer peer jobs)
     :in-theory
-    (enable fn-bpn-find-queued-for-peer fn-bpn-find-job
-            fn-bpn-job-listp fn-bpn-job-key-memberp))))
+    (union-theories '(fn-bpn-find-queued-for-peer fn-bpn-find-job
+                      fn-bpn-job-listp fn-bpn-job-key-memberp)
+                    (theory 'minimal-theory)))))
 
 (defthm fn-bpn-attempt-proposal-is-authorized
   (implies
