@@ -110,3 +110,60 @@
 (assert-event (equal (fn-sbud-article-verdict-at *sbat-lower-h* 1 *sbat-safe*
                                                  32768 400)
                      :unaffordable))
+
+; ---------------------------------------------------------------------------
+; PRF-126: KEYSTONE fn-sbud-article-verdict-keeps-history-at-producer-width.
+; Reachable-shape witness: packet 1's record with sequence, txid, generation
+; and stamp moved to 2^32 (schema 2, what the allocator and clock produce
+; past 2^32 - 1) and its charge kept: admitted at H - 138 251 as before, and
+; the total is still within H, with no narrowness premise.
+(defconst *sbat-wide*
+  (fn-record-make 4294967296 4294967296 4294967296
+                  (fn-record-msgid *pmt-record*) (fn-record-payload *pmt-record*)
+                  (fn-record-groups *pmt-record*)
+                  (fn-record-obligation-id *pmt-record*)
+                  (fn-record-content-subject *pmt-record*)
+                  (fn-record-release-evidence *pmt-record*)
+                  (fn-record-charge *pmt-record*) 4294967296))
+(assert-event
+ (and (fn-record-p *sbat-wide*)
+      (fn-record-widep *sbat-wide*)
+      (fn-record-uint32p (fn-record-charge *sbat-wide*))
+      (equal (fn-sbud-article-verdict-at *pmt-old* 1 *sbat-safe* 32768 400)
+             :admissible)
+      (fn-profile-replay-within-boundp
+       *pmt-old* (+ *sbat-safe* (len (fn-record-encode *sbat-wide*))))))
+; The charge hypothesis, affirmatively: the tightest record with no group, a
+; 65 536-octet payload, every other field at its ceiling and sequence, txid,
+; generation, stamp AND charge at 2^32 encodes to 66 622 octets, three past
+; its figure 66 619; at H - 66 619 committed the verdict admits it and the
+; total is H + 3.
+(defconst *sbat-tight-charge*
+  (fn-record-make 4294967296 4294967296 4294967296
+                  (coerce (make-list 250 :initial-element #\a) 'string)
+                  (make-list 65536 :initial-element 65) nil
+                  (coerce (make-list 256 :initial-element #\m) 'string)
+                  (coerce (make-list 256 :initial-element #\m) 'string)
+                  (coerce (make-list 256 :initial-element #\m) 'string)
+                  4294967296 4294967296))
+(assert-event
+ (and (fn-record-p *sbat-tight-charge*)
+      (not (fn-record-uint32p (fn-record-charge *sbat-tight-charge*)))
+      (equal (fn-sbud-article-figure 65536 0) 66619)
+      (equal (len (fn-record-encode *sbat-tight-charge*)) 66622)
+      (equal (fn-sbud-article-verdict-at *pmt-old* 1 (- 250000 66619) 65536 0)
+             :admissible)
+      (not (fn-profile-replay-within-boundp
+            *pmt-old* (+ (- 250000 66619)
+                         (len (fn-record-encode *sbat-tight-charge*)))))))
+(must-fail
+ (defthm sbat-producer-width-without-the-charge-hypothesis
+   (implies (and (equal (fn-sbud-article-verdict-at profile used bytes-used
+                                                    payload-length group-count)
+                        :admissible)
+                 (<= (len (fn-record-payload record)) (nfix payload-length))
+                 (<= (len (fn-record-groups record)) (nfix group-count)))
+            (fn-profile-replay-within-boundp
+             profile (+ bytes-used (len (fn-record-encode record)))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-sbud-article-verdict-keeps-history-at-producer-width))))))

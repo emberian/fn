@@ -36,7 +36,10 @@
 ;                                            `fn-record-widep') encodes to at most
 ;                                            `fn-record-encoded-octets-ceiling', the ceiling a
 ;                                            store profile's R is checked against
-; Every other exported theorem in this book is derived from those eight
+;   fn-record-encode-producer-length-bound   a record whose charge fits u32 encodes within
+;                                            that same ceiling, with sequence, txid,
+;                                            generation and stamp at any u64
+; Every other exported theorem in this book is derived from those nine
 ; below the `encapsulate'.  The header is two constraints, not one six-octet
 ; constraint, so that the acceptance stamp (specs/acceptance-stamp.md §2.1)
 ; widens the grammar behind the seam -- schema 1, whose version octet is 1
@@ -117,6 +120,15 @@
                   (len (fn-record-groups record)))))
     :hints (("Goal" :use fn-record-impl-encode-narrow-length-bound))
     :rule-classes :linear)
+
+  (defthm fn-record-encode-producer-length-bound
+    (implies (fn-record-uint32p (fn-record-charge record))
+             (<= (len (fn-record-encode record))
+                 (fn-record-encoded-octets-ceiling
+                  (len (fn-record-payload record))
+                  (len (fn-record-groups record)))))
+    :hints (("Goal" :use fn-record-impl-encode-producer-length-bound))
+    :rule-classes nil)
 
   (defthm fn-record-accepted-schema-is-the-stamp-kind
     (implies (fn-record-result-okp (fn-record-decode-exact octets))
