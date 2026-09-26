@@ -931,21 +931,21 @@
     "books": 942,
     "books_in_root_closure": 938,
     "roots": 924,
-    "theorems": 13192,
-    "functions": 9146,
-    "assert_events": 13598,
-    "must_fails": 1540,
+    "theorems": 13199,
+    "functions": 9152,
+    "assert_events": 13601,
+    "must_fails": 1542,
     "encapsulates": 65,
     "guards": {
       "verified": 2198,
       "declared-off": 726,
-      "default-guarded": 4861,
-      "default-unguarded": 1361
+      "default-guarded": 4865,
+      "default-unguarded": 1363
     },
     "suspect_theorems": 114,
     "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 134,
+    "teeth_form_warnings": 135,
     "include_hygiene_warnings": 950,
     "host_names_warnings": 1071,
     "hand_written_record_warnings": 18
@@ -9486,13 +9486,13 @@
       "book": "books/native-operator.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
-      "functions": 104,
+      "theorems": 47,
+      "functions": 109,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 104,
-        "default-unguarded": 0
+        "default-guarded": 108,
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -21909,18 +21909,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 202,
-      "must_fails": 19,
-      "defconsts": 41,
-      "defmacros": 0,
+      "assert_events": 205,
+      "must_fails": 21,
+      "defconsts": 43,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
@@ -29132,7 +29132,13 @@
       {
         "check": "thm",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 1054,
+        "line": 1105,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thm",
+        "book": "tests/acl2/native-operator-tests.lisp",
+        "line": 1111,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -41262,7 +41268,7 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2511,
+        "line": 2537,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
