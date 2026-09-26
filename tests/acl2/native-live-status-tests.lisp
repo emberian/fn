@@ -289,6 +289,35 @@ pins=")
  (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-file-obs*)
         (nlst-status *nlst-profile* *nlst-file-obs*)))
 
+; PKT-492 (checkpoint-capture-stream): the owner's deferred automatic
+; publication is the observation's sixth element and prints on the
+; checkpoint-file line; a five-element observation (every offline report,
+; and a live one with nothing deferred) prints the line unchanged.
+(defconst *nlst-deferred-obs*
+  '(nil nil (:checkpoint 3 2) nil (4096 1790000000)
+    (:deferred :exceeds-budget 131072 65536)))
+(assert-event
+ (nlst-infixp (fn-record-string-octets "
+checkpoint-file octets=4096 modified=1790000000 deferred=exceeds-budget estimate=131072 budget=65536
+pins=")
+              (nlst-status *nlst-profile* *nlst-deferred-obs*)))
+(assert-event
+ (nlst-infixp (fn-record-string-octets "
+checkpoint-file=absent deferred=exceeds-budget estimate=131072 budget=65536
+pins=")
+              (nlst-status *nlst-profile*
+                           '(nil nil (:full-replay :no-checkpoint) nil nil
+                             (:deferred :exceeds-budget 131072 65536)))))
+(assert-event
+ (and (equal (fn-nls-checkpoint-file-words '(nil nil (:checkpoint 3 2) nil (4096 1790000000) nil))
+             (fn-nls-checkpoint-file-words *nlst-file-obs*))
+      (equal (fn-nls-checkpoint-deferred-words *nlst-file-obs*) nil)
+      (equal (fn-nls-checkpoint-deferred-words '(nil nil nil nil nil (:plan))) nil)))
+; Live equals offline with a deferral observed (the keystone's instance).
+(assert-event
+ (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-deferred-obs*)
+        (nlst-status *nlst-profile* *nlst-deferred-obs*)))
+
 ; The pessimistic open cost: every record replayed, 32 octets of list per
 ; octet of the history bound.
 (assert-event

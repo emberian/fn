@@ -1,0 +1,8 @@
+test_the_publication_thread_calls_the_stream_entry_over_its_own_buffer (tests.test_native_checkpoint_auto.AutoCheckpointSourceTests.test_the_publication_thread_calls_the_stream_entry_over_its_own_buffer) ... ok
+test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues (tests.test_native_checkpoint_auto.AutoCheckpointTests.test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues) ... ok
+test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay (tests.test_native_checkpoint_auto.AutoCheckpointTests.test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 28.431s
+
+OK

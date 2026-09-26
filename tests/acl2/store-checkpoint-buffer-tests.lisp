@@ -151,20 +151,25 @@
   :hints (("Goal" :in-theory (enable fn-sccb-renc fn-sccb-append-list
                                      fn-sccb-cons-ops))))
 
-; fn-sccb-append-list-is-append and fn-sccb-cons-ops-is-append-repeat
-; without (true-listp fn-octets): an empty write leaves an improper value
-; as it is, and `append' of nil onto it does not.
-(defthm sccbt-w-append-list-without-true-listp-buffer
-  (and (not (true-listp '(1 . 2))) (true-listp nil)
-       (not (equal (fn-sccb-append-list nil '(1 . 2)) (append '(1 . 2) nil))))
+; fn-sccb-append-list-is-append has NO hypothesis since the writer became
+; one `fn-octets-append-list' export call (PKT-315): the export's logical
+; value is `append' on any buffer value and any XS (fn-oct-append-list-is-
+; append, octets-stobj).  The two hypotheses the per-octet writer needed (a
+; true-list buffer for an empty write; a true-list XS) were dropped after the
+; weakened theorem was proved; the ground instances that refuted the
+; per-octet writer without them now hold, by evaluation.
+(defthm sccbt-w-append-list-without-any-hypothesis
+  (and (not (true-listp '(1 . 2)))
+       (equal (fn-sccb-append-list nil '(1 . 2)) (append '(1 . 2) nil))
+       (equal (fn-sccb-append-list '(1 . 2) '(9)) (append '(9) '(1 . 2)))
+       (equal (fn-sccb-append-list '(3 4) '(1 . 2)) (append '(1 . 2) '(3 4))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sccb-append-list))))
-(must-fail
- (defthm sccbt-r-append-list-without-true-listp-buffer
-   (implies (true-listp xs)
-            (equal (fn-sccb-append-list xs fn-octets) (append fn-octets xs)))
-   :rule-classes nil
-   :hints (("Goal" :do-not-induct t))))
+
+; fn-sccb-cons-ops-is-append-repeat without (true-listp fn-octets): an empty
+; write leaves an improper value as it is, and `append' of nil onto it does
+; not.  (The CONS ops are still one export call each: N is the count of
+; owed ops, never a list.)
 (defthm sccbt-w-cons-ops-without-true-listp-buffer
   (and (not (true-listp '(1 . 2)))
        (not (equal (fn-sccb-cons-ops 0 '(1 . 2))
@@ -175,18 +180,5 @@
  (defthm sccbt-r-cons-ops-without-true-listp-buffer
    (equal (fn-sccb-cons-ops n fn-octets)
           (append fn-octets (fn-scc-repeat (nfix n) *fn-scc-op-cons*)))
-   :rule-classes nil
-   :hints (("Goal" :do-not-induct t))))
-
-; fn-sccb-append-list-is-append without (true-listp xs): the writer walks
-; the conses and `append' keeps the dotted tail.
-(defthm sccbt-w-append-list-without-true-listp-xs
-  (and (not (true-listp '(1 . 2)))
-       (not (equal (fn-sccb-append-list '(1 . 2) '(9)) (append '(9) '(1 . 2)))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sccb-append-list))))
-(must-fail
- (defthm sccbt-r-append-list-without-true-listp-xs
-   (equal (fn-sccb-append-list xs fn-octets) (append fn-octets xs))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t))))
