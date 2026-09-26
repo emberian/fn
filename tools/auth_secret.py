@@ -52,12 +52,11 @@ class AuthSecretSession:
 
     def __init__(self):
         import subprocess  # noqa: PLC0415 (only this path starts a process)
-        env = os.environ.copy()
-        env["ACL2_CUSTOMIZATION"] = "NONE"
-        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-        self.proc = subprocess.Popen(
-            [env.get("FN_ACL2", "acl2")], cwd=ROOT, stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+        from tools import acl2_slots  # noqa: PLC0415
+        # The machine's ACL2 pool and heap cap, as every fn launcher (PKT-162).
+        self.proc = acl2_slots.popen(
+            [os.environ.get("FN_ACL2", "acl2")], "auth-secret session", cwd=ROOT,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         read_prompt(self.proc, 300.0)
         for form in self.BOOKS:
             self.call(form, timeout=600.0)
@@ -107,12 +106,16 @@ class AuthSecretSession:
 
     def close(self):
         if self.proc is not None:
+            from tools import acl2_slots  # noqa: PLC0415
             try:
-                self.proc.stdin.close()
-            except OSError:
-                pass
-            self.proc.wait(timeout=30)
-            self.proc = None
+                try:
+                    self.proc.stdin.close()
+                except OSError:
+                    pass
+                self.proc.wait(timeout=30)
+            finally:
+                self.proc = None
+                acl2_slots.release_tree_slot()
 
 
 def enrol(secret, salt=None):

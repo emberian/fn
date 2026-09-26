@@ -39,6 +39,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+from tools import acl2_slots  # noqa: E402
 from tools.run_store import (  # noqa: E402
     PROMPT, StoreError, acl2_result, decimal_list, read_prompt,
 )
@@ -59,12 +60,10 @@ class StxSession:
     """An ACL2 session over the stx books, with the toy realisers attached."""
 
     def __init__(self):
-        env = os.environ.copy()
-        env["ACL2_CUSTOMIZATION"] = "NONE"
-        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-        self.proc = subprocess.Popen(
-            [env.get("FN_ACL2", "acl2")], cwd=ROOT, stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+        # The machine's ACL2 pool and heap cap, as every fn launcher (PKT-162).
+        self.proc = acl2_slots.popen(
+            [os.environ.get("FN_ACL2", "acl2")], "stx session", cwd=ROOT,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         read_prompt(self.proc, 300.0)
         for form in _BOOKS:
             self.call(form, timeout=600.0)
@@ -101,11 +100,14 @@ class StxSession:
     def close(self):
         if self.proc is not None:
             try:
-                self.proc.stdin.close()
-            except OSError:
-                pass
-            self.proc.wait(timeout=30)
-            self.proc = None
+                try:
+                    self.proc.stdin.close()
+                except OSError:
+                    pass
+                self.proc.wait(timeout=30)
+            finally:
+                self.proc = None
+                acl2_slots.release_tree_slot()
 
 
 def octet_form(data: bytes) -> str:

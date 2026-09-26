@@ -224,16 +224,36 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
                 closures[book] = None
         return closures[book]
 
+    # Each manifest's recorded digests as the `<path>.lisp:<sha256>` entries a
+    # closure listing holds: "no drift" is then the listing being a subset,
+    # one set operation per (book, manifest) instead of a Python loop over
+    # the closure (208,852 closure_drift calls in `make check`).  Same rule
+    # as certs.closure_drift: an unrecorded or different digest is drift.
+    entries: dict[int, tuple[frozenset | None, frozenset | None]] = {}
+
+    def recorded(manifest: dict) -> tuple[frozenset | None, frozenset | None]:
+        remembered = entries.get(id(manifest))
+        if remembered is None:
+            def entry_set(digests):
+                if not isinstance(digests, dict):
+                    return None
+                return frozenset(f"{path}:{digest}" for path, digest in digests.items())
+            remembered = (entry_set(manifest.get("source_digests_sha256") or {}),
+                          entry_set(manifest.get("source_digests_sha256_after") or {})
+                          if manifest.get("source_digests_sha256_after") else frozenset())
+            entries[id(manifest)] = remembered
+        return remembered
+
     def matches(book: str, manifest: dict) -> bool:
         if book not in books:
             return False
         key = listing(book)
-        sources = manifest.get("source_digests_sha256") or {}
-        after = manifest.get("source_digests_sha256_after") or {}
-        return (key is not None and isinstance(sources, dict)
-                and not certs.closure_drift(key, sources)
-                and (not after or (isinstance(after, dict)
-                                   and not certs.closure_drift(key, after))))
+        if key is None:
+            return False
+        sources, after = recorded(manifest)
+        return (sources is not None and sources.issuperset(key)
+                and (not manifest.get("source_digests_sha256_after")
+                     or (after is not None and after.issuperset(key))))
 
     for run, manifest in runs:
         identity = str(manifest.get("acl2_toolchain_identity") or "unknown")

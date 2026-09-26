@@ -42,6 +42,18 @@ class TestBudgetRunner(unittest.TestCase):
                 def test_sleeps(self):
                     time.sleep(60)
         """))
+        # Order-dependent: the second test reads what the first one left in a
+        # shared world (a module global standing in for a class fixture or a
+        # process-wide session).
+        (package / "leaky.py").write_text(textwrap.dedent("""
+            import unittest
+            WORLD = {}
+            class Leaky(unittest.TestCase):
+                def test_a_writes(self):
+                    WORLD["authority"] = "granted"
+                def test_b_relies(self):
+                    self.assertEqual(WORLD.get("authority"), "granted")
+        """))
         self.environment = mock.patch.dict(
             os.environ, {"PYTHONPATH": str(self.directory)
                          + os.pathsep + os.environ.get("PYTHONPATH", "")})
@@ -61,6 +73,27 @@ class TestBudgetRunner(unittest.TestCase):
         self.assertEqual(record["tests"], 1)
         self.assertEqual(len(record["timings"]), 1)
         self.assertLess(record["seconds"], 60)
+
+    def test_reverse_order_exposes_a_test_that_relies_on_an_earlier_one(self):
+        forward = test_budget.run_module("budgetcases.leaky", 60, None)
+        self.assertTrue(forward["passed"], forward)
+        backward = test_budget.run_module("budgetcases.leaky", 60, None, "reverse")
+        self.assertFalse(backward["passed"])
+        self.assertFalse(backward["over_budget"])
+        self.assertEqual((backward["tests"], backward["failures"]), (2, 1))
+        self.assertEqual([name.rsplit(".", 1)[-1] for name, _ in backward["timings"]],
+                         ["test_b_relies", "test_a_writes"])
+
+    def test_a_test_over_its_own_budget_makes_the_module_over(self):
+        with mock.patch.object(test_budget, "TEST_BUDGET_SECONDS", -1.0):
+            record = self.run_module("passing", 60)
+        self.assertTrue(record["over_budget"])
+        self.assertFalse(record["terminated"])
+        self.assertFalse(record["passed"])
+        self.assertEqual(record["returncode"], 0)
+        self.assertEqual([name.rsplit(".", 1)[-1] for name, _ in record["slow_tests"]],
+                         ["test_quick"])
+        self.assertIn("a test over", test_budget.summarize(record, 1))
 
     def test_a_failing_module_is_failed_not_over_budget(self):
         record = self.run_module("failing", 60)

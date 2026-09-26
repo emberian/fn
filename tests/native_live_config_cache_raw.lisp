@@ -64,6 +64,10 @@
 
 (dolist (spec '(("host/native/io.lisp" fnn-decode-joined-names)
                 ("host/native/admin.lisp" fnn-owner-refresh-config-cache)
+                ;; peer-invite (e8a7606f) moved the stage-publish-complete
+                ;; body out of fnn-owner-live-admin-serialized into this
+                ;; deployed callee; the boundary under test is its body.
+                ("host/native/admin.lisp" fnn-owner-live-reconfigure-locked)
                 ("host/native/admin.lisp" fnn-owner-live-admin-serialized)))
   (destructuring-bind (path name) spec
     (let ((found nil))

@@ -469,8 +469,12 @@ class FnCliTests(unittest.TestCase):
         self.assertTrue(added.stderr.decode().startswith("accepted peer add "), added.stderr)
         self.assertIn(b"peer added name=upstream", added.stdout)
         listing = self.fn("peer", "list")
-        self.assertIn(b"name=upstream ", listing.stdout)
-        self.assertIn(b"inbound=fn.* max-octets=", listing.stdout)
+        # The report ACL2 renders (fn-native-admin-peer-report; the form in
+        # docs/operator.md "peer list"): the record `peer add` admitted, in
+        # the order it takes its arguments.  It no longer prints the inbound
+        # octet ceiling; tests/test_store_config.py reads that from the record.
+        self.assertIn(b"upstream path-identity=upstream address=news.example.invalid "
+                      b"port=119 security=clear inbound=fn.* ", listing.stdout)
 
     def test_a_missing_configuration_is_refused_not_faulted(self):
         result = subprocess.run(

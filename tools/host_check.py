@@ -37,6 +37,9 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+import acl2_slots  # noqa: E402
+
 HOST_DIRS = ("host", "host/native")
 BUILD_SCRIPT = "host/native/build.lisp"
 # The image build script names its own raw files; reading them from it keeps
@@ -126,15 +129,12 @@ def loaded_at_logic_prompt(output: str) -> tuple[bool, str]:
 
 
 def check(acl2: Path, relative: str, raw: bool, timeout: int) -> tuple[bool, str, str]:
-    environment = os.environ.copy()
-    environment["ACL2_CUSTOMIZATION"] = "NONE"
-    # Content-hashed certificates, relocatable across worktrees and hosts.
-    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
     try:
-        result = subprocess.run(
-            [str(acl2)], cwd=ROOT, input=driver_for(relative, raw).encode(),
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=environment,
+        # The machine's ACL2 pool and heap cap, as every fn launcher (PKT-162).
+        result = acl2_slots.run(
+            [str(acl2)], f"host_check {relative}", cwd=ROOT,
+            input=driver_for(relative, raw).encode(),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=timeout, check=False)
     except subprocess.TimeoutExpired as error:
         partial = (error.output or b"").decode("utf-8", "replace")

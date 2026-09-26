@@ -8,7 +8,6 @@ Python owns bounded filesystem I/O, POSIX barriers, and SHA-256 over byte
 strings it does not interpret (A-CRYPTO).
 """
 import argparse
-import contextlib
 import base64
 import errno
 import fcntl
@@ -21,7 +20,6 @@ import select
 import stat
 import subprocess
 import sys
-import threading
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -374,62 +372,15 @@ def acl2_boolean(output):
 
 
 def acl2_environment():
-    """The environment every bridge ACL2 gets: the certification settings
-    (`tools/acl2` and the runner use the same two) and the pool's heap cap."""
-    env = os.environ.copy()
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
-    return acl2_slots.apply_heap_cap(env)
+    """The environment every bridge ACL2 gets (`acl2_slots.acl2_environment`):
+    the certification settings and the pool's heap cap."""
+    return acl2_slots.acl2_environment()
 
 
-# One pool slot per process tree.  A process takes a slot for its first live
-# bridge and returns it with its last, and publishes its pid in
-# SLOT_HOLDER_VARIABLE while it holds it; a child it starts (the tests run
-# `tools/run_store.py` as a subprocess while holding a bridge) inherits that
-# slot instead of waiting for a second one, which would deadlock a full pool
-# of parents each waiting on its child.  A tree therefore counts once against
-# the pool however many bridges it nests.
-SLOT_HOLDER_VARIABLE = "FN_ACL2_SLOT_HOLDER"
-_SLOT_LOCK = threading.Lock()
-_SLOT_STACK = None
-_SLOT_USERS = 0
-
-
-def _pid_alive(pid):
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
-def _inherited_slot():
-    holder = os.environ.get(SLOT_HOLDER_VARIABLE, "")
-    return holder.isdigit() and _pid_alive(int(holder))
-
-
-def _acquire_slot(label):
-    global _SLOT_STACK, _SLOT_USERS
-    with _SLOT_LOCK:
-        if _SLOT_USERS == 0 and not _inherited_slot():
-            stack = contextlib.ExitStack()
-            stack.enter_context(acl2_slots.slot(label))
-            _SLOT_STACK = stack
-            os.environ[SLOT_HOLDER_VARIABLE] = str(os.getpid())
-        _SLOT_USERS += 1
-
-
-def _release_slot():
-    global _SLOT_STACK, _SLOT_USERS
-    with _SLOT_LOCK:
-        _SLOT_USERS = max(0, _SLOT_USERS - 1)
-        if _SLOT_USERS == 0 and _SLOT_STACK is not None:
-            stack, _SLOT_STACK = _SLOT_STACK, None
-            if os.environ.get(SLOT_HOLDER_VARIABLE) == str(os.getpid()):
-                del os.environ[SLOT_HOLDER_VARIABLE]
-            stack.close()
+# One pool slot per process tree: `acl2_slots.acquire_tree_slot` (PKT-162).
+SLOT_HOLDER_VARIABLE = acl2_slots.SLOT_HOLDER_VARIABLE
+_acquire_slot = acl2_slots.acquire_tree_slot
+_release_slot = acl2_slots.release_tree_slot
 
 
 class Acl2Store:

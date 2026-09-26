@@ -7,11 +7,15 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+import acl2_slots  # noqa: E402
+
 ACL2 = os.environ.get("FN_ACL2") or shutil.which("acl2")
 RAW = ROOT / "host" / "native" / "auth-admin.lisp"
 
@@ -29,14 +33,13 @@ def lisp_string(text: str) -> str:
 
 def run_acl2(driver: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
     process_env = dict(os.environ)
-    process_env["ACL2_CUSTOMIZATION"] = "NONE"
-    process_env.pop("ACL2_SYSTEM_BOOKS", None)
     if env:
         process_env.update(env)
-    return subprocess.run(
-        [str(ACL2)], cwd=ROOT, input=driver.encode("ascii"),
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        env=process_env, timeout=900, check=False,
+    # The machine's ACL2 pool and heap cap (PKT-162).
+    return acl2_slots.run(
+        [str(ACL2)], "auth-admin fidelity", env=process_env, cwd=ROOT,
+        input=driver.encode("ascii"), stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, timeout=900, check=False,
     )
 
 
