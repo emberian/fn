@@ -4855,6 +4855,35 @@
           "note": "KEYSTONE (conditional progress, A-BP-CONTACT). With the contact sustaining fn-assume-bp-contact-asks asks, the job KEY ready with a stable prefix of keys at or ahead of it in every asked state, and that prefix no longer than the asks, the host's first ask (fn-bpnj-contact-next) is answered with an offer and the contact offers KEY. Proved through the lemma fn-bpnj-contact-offers-a-ready-job-within-its-prefix. Teeth: two asks offer KEY2 after KEY1; one ask does not; a pending second state breaks readiness."
         }
       ]
+    },
+    {
+      "id": "PRF-125",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-credentials-wait-for-tls-and-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-refuses-a-clear-credential-without-the-lab-exception"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-journal-is-the-cursor-at-every-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-begin-ready-is-the-round-after-the-greeting"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-begin-ready-cursor-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-obs-is-the-machine-over-its-trace"
+        }
+      ]
     }
   ]
 }

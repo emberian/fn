@@ -1864,6 +1864,32 @@
         "planning/evidence/mission-four-node-2026-09-25.md"
       ],
       "note": "Unsigned report and reply pass on image abbd8aef (all seven steps); the signed report is refused at B (request-refused, reason not logged): the scenario stays specified until the signed run passes. planning/evidence/mission-four-node-2026-09-25.md."
+    },
+    {
+      "id": "SCN-071",
+      "title": "A node pulls over TLS as its own principal; a wrong principal and a clear-transport credential are refused, and the cut campaign holds over TLS",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-023"
+      ],
+      "steps": [
+        "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
+        "The same with PROFILE naming a login A does not hold.",
+        "The same with no security arguments (a clear transport) and the permission false.",
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+      ],
+      "expected": [
+        "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
+        "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
+        "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+      ],
+      "evidence": [
+        "planning/evidence/peering-tls-pull-2026-09-26.md",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log"
+      ]
     }
   ]
 }

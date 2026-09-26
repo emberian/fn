@@ -1,0 +1,23 @@
+{
+ "article_commands": [
+  "ARTICLE <pull-two@example.invalid>",
+  "ARTICLE <pull-one@example.invalid>"
+ ],
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "fnpl": [
+  "A.fnfd"
+ ],
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "kind": "fn-node",
+ "log_sha256_A": "7548a1e21463dd0e08b17841495a53c7f71ef3ca2285b7fdf8a34ee7b342de50",
+ "log_sha256_B": "af0666e0f31c689afe0f27158a87c80117291d710b84a6c61e271f82f321846b",
+ "newnews": [
+  "NEWNEWS fn.* 20260925 004442 GMT",
+  "NEWNEWS fn.* 20260926 004441 GMT"
+ ],
+ "proxy_connections": 2,
+ "pull_lines": [
+  "pull peer=A round=done cursor=advanced transport=clear",
+  "pull peer=A round=done cursor=advanced transport=clear"
+ ]
+}

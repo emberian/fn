@@ -2490,6 +2490,33 @@
         "planning/evidence/mission-four-node-2026-09-25.md"
       ],
       "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed."
+    },
+    {
+      "id": "NNT-023",
+      "title": "A pull presents its credential only over a verified TLS channel, is refused before any connection when a credential would cross a clear transport outside the loopback-lab exception, and a wrong principal leaves the cursor where it was",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-125"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull-session.lisp",
+        "books/peer-pull.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "host/native/pull-service.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-tls-pull-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T003614Z-4146295.json",
+        "planning/evidence/manifests/certify-20260926T004913Z-4166387.json"
+      ],
+      "implementation_note": "RFC 4642 section 2.2 (STARTTLS), RFC 4643 section 2.3.2 (AUTHINFO USER/PASS on an unprotected channel is a local-policy refusal) and RFC 3977 section 7.4 (NEWNEWS); the pull reuses the feed's session machine (PRF-047/PRF-051) as its preamble. The clear-transport credential refusal and the loopback-lab exception (profile allow-clear AND a host of 127.0.0.1 or ::1) are fn local policy. The serving side's binding is the reader port's `[auth] required`/`protected_only` and the AUTHINFO principal. The invitation does not yet carry the inviter's address (PKT-236)."
     }
   ]
 }

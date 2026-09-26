@@ -1,0 +1,18 @@
+{
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "dead_round_newnews": "NEWNEWS fn.* 20260926 004430 GMT",
+ "fnpl": [
+  "A.fnfd"
+ ],
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "kind": "kill-mid-round",
+ "log_sha256_A": "619e3213cbd11c6c0b3b0e8986f37543ba4fd264a908ced44e9ed8689454e8dd",
+ "log_sha256_B": "ce655e0ff4e9339dab5b0f19fcbcc2515a46861ae45fadafd0de44ac025b824b",
+ "newnews_after_restart": [
+  "NEWNEWS fn.* 20260926 004430 GMT"
+ ],
+ "pull_lines": [
+  "pull peer=A round=done cursor=advanced transport=clear",
+  "pull peer=A round=done cursor=advanced transport=clear"
+ ]
+}
