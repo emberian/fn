@@ -6457,7 +6457,9 @@
         "tests/acl2/consumer-owner-local-progress-tests.lisp",
         "host/owner-host.lisp",
         "planning/evidence/consumer-exchange-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T114912Z-1309060.json"
+        "planning/evidence/manifests/certify-20260926T114912Z-1309060.json",
+        "planning/evidence/manifests/certify-20260926T121934Z-1622002.json",
+        "planning/evidence/manifests/certify-20260926T123544Z-1783646.json"
       ],
       "progress_note": "Lane consumer-exchange (2026-09-26), wave 4 lane 12; gpt-6's wave-2 review section 7.",
       "events": [
@@ -6491,7 +6493,9 @@
         "host/native/control.lisp",
         "host/native/operator.lisp",
         "planning/evidence/control-reply-fit-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T121554Z-1588164.json"
+        "planning/evidence/manifests/certify-20260926T121554Z-1588164.json",
+        "planning/evidence/manifests/certify-20260926T121934Z-1622002.json",
+        "planning/evidence/manifests/certify-20260926T123544Z-1783646.json"
       ],
       "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep.",
       "events": [

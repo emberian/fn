@@ -98,7 +98,9 @@ Teeth:
   the page (the full antecedent); the page hypothesis dropped fails on the
   scope refusal (`must-fail`); the admission hypothesis dropped is proved to
   fail for every page past the ceiling (`colp-admitted-payload-fits-needs-the-admission`:
-  no 2^32-octet report is constructible).
+  such a page is the `:oversize` refusal, not the page) and to be what
+  excludes it (`colp-past-the-ceiling-is-not-admitted`); no 2^32-octet
+  report is constructible concretely.
 
 ## 2. The sweep: every control-socket reply
 
@@ -184,9 +186,29 @@ request or stream rows per page from an index.
   `fn-nls-page-refuses-exactly-past-the-total-width` -> observed: not driven
   natively (2^32 octets); the host carriage is checked statically.
 
-## Certification
+## Certification (persvati, 2 jobs, 300 s)
 
-(filled below)
+- r1 `run-20260926T121551Z-b559`, manifest
+  `certify-20260926T121554Z-1588164`: passed, 4 certified (byte-store-frame
+  2.08 s, byte-store-profile-v1 0.97 s, their tests 1.02 s and 0.97 s).
+- r2 `run-20260926T121846Z-eb0b` (`--affected-by` byte-store-frame,
+  consumer-local-control, native-control, native-live-status: 279 to
+  certify, the seam's whole closure), manifest
+  `certify-20260926T121934Z-1622002`: 273 passed, 6 failed. Causes, both
+  this lane's: `fn-nls-page-refuses-exactly-past-the-total-width` (a case
+  split that left the width unknown in the offset case; 4 books failed by
+  including it) and a combined teeth theorem in
+  consumer-owner-local-progress-tests that ran past 300 s. Slowest passing
+  books: native-admin 9.38 s, native-operator 8.83 s (untouched here),
+  byte-store-k0-step-bridge 7.28 s.
+- Both fixed in the REPL on persvati (the keystone 0.15 s; the teeth split
+  into two theorems, each 0.0 s), then r3 `run-20260926T123517Z-a911`
+  (`--affected-by` native-live-status, consumer-owner-local,
+  byte-store-profile-v1), manifest `certify-20260926T123544Z-1783646`:
+  passed, 13 certified, none over 10 s (native-live-status 4.23 s,
+  consumer-owner-local-progress 3.78 s, its tests 1.47 s, native-live-status
+  tests 2.22 s). r2's passes and r3 together cover every book the lane's
+  changes reach.
 
 ## Native
 
