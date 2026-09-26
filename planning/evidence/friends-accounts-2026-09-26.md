@@ -182,7 +182,9 @@ octets of CSPRNG salt, `fnn-owner-live-reconfigure-locked` with the stage
 `fn-acct-host-owner-redeem-stage` (the bounded plan over the LIVE value at the
 owner's clock), then the word `fn-acct-redeem-word` and the event
 `(:account-outcome WORD)` through `fn-ocfg-read-step` (the `:tls-established`
-re-entry), which renders 281/482. Octets the client sent after the PASS line
+re-entry), which renders 281/482. Control request kind 13, reserved for this lane,
+stays unused (the session reaches the publish in-process); operator-daily's
+continuation may take it. Octets the client sent after the PASS line
 are kept and fed next (on a TLS channel too). No control request kind is used:
 the NNTP session reaches the publication in-process, as peer accept does; kind
 13 stays unused.
@@ -257,3 +259,32 @@ bbf52159 image (FN_OLD_IMAGE, the qualification gate's copy, never /tank/fn/node
 - PKT-458 (new): books/config.lisp's EXPIRY comment names seconds; the clock's
   unit is milliseconds. Default: fix the comment at the next change that
   recertifies config.lisp anyway.
+
+### Runs (friends-accounts-2; persvati, 2 jobs, 300 s, w25 acl2-literal)
+
+- r1 run-20260926T113511Z-4d9a (certify-20260926T113601Z-1137720): red,
+  nntp-auth-invariants c1 (the outcome event); native-admin 10.9 s (fixed: it
+  no longer includes accounts).
+- r2 run-20260926T114514Z-07cc (certify-20260926T114541Z-1263027): red,
+  nntp-auth-invariants c1 again and native-live-status
+  fn-nls-report-of-query-kind-is-query-report (now over fn-nls-query-report).
+- r3 run-20260926T115348Z-f44d (certify-20260926T115417Z-1367181): red,
+  nntp-auth-fold (XREDEEM keeps POST awaiting) and nntp-auth-teeth-tests K10
+  (S3 added, with its must-fail).
+- r4 run-20260926T120643Z-e478 (certify-20260926T120719Z-1504010): GREEN,
+  14 certified, 581 from the cache, no book over 10 s (REPL first:
+  nntp-auth-fold and nntp-auth-teeth-tests admitted at b0eaf32d).
+
+Native (hbox, tools/hbox_native.sh, developer image): n3 at a82ddb64 OK; n4 at
+d03139df OK: module log sha256 faebff1b979dcbd32272a54fdcd90d338a5a1f0e169fc10426f8cc405bcbc031,
+fn-host-developer 45e34aba50173a066fa5b7c62538a140416ba38e070271eded48a149d05c8e7b;
+the bbf52159 image (b6f7c0e5..., the qualification gate's copy) opens a fresh
+store (exit 0) and refuses the redeemed store (exit 4, "ACL2 refused
+configuration namespace observation").
+
+### Not done
+
+The release-tarball run of this module (tests/friends_tarball.sh drives only
+the feed module); a signed post as the bound principal (the module posts
+unsigned, 240); the lift of the wire keystones through the fold to
+fn-own-read; PKT-458.

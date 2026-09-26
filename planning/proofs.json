@@ -6285,7 +6285,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/accounts.lisp",
@@ -6298,7 +6298,11 @@
         "planning/evidence/manifests/certify-20260926T105103Z-617929.json",
         "tests/acl2/accounts-wire-tests.lisp",
         "host/native-admin-host.lisp",
-        "host/native/admin.lisp"
+        "host/native/admin.lisp",
+        "planning/evidence/manifests/certify-20260926T113601Z-1137720.json",
+        "planning/evidence/manifests/certify-20260926T114541Z-1263027.json",
+        "planning/evidence/manifests/certify-20260926T115417Z-1367181.json",
+        "planning/evidence/manifests/certify-20260926T120719Z-1504010.json"
       ],
       "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot. friends-accounts-2 (2026-09-26): the XREDEEM wire keystones over fn-auth-step-pinned, the bounded plan and the word, the host publication before the reply, operator account invite/list.",
       "events": [
