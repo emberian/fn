@@ -6774,6 +6774,19 @@
           "name": "fn-bpp-xor-is-masked-logxor"
         }
       ]
+    },
+    {
+      "id": "PRF-192",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-to-buffer-is-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-to-buffer-refusal-keeps-the-buffer"
+        }
+      ]
     }
   ]
 }

@@ -143,6 +143,9 @@
 
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
+;; PRF-192: the served read's reply comes out of the octet buffer
+;; (host/native/owner.lisp fnn-owner-reply-from-buffer); the plan supplies it.
+(defun fnn-owner-reply-from-buffer () *output*)
 (defun fnn-owner-bool-global (name)
   (ecase name
     (fn-owner-closep (second *step*))
