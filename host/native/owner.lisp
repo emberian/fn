@@ -1757,7 +1757,8 @@ EPIPE and the client saw a bare close)."
            (closing (fnn-owner-bool-global 'fn-owner-closep))
            (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
            (consumed (fnn-global 'fn-owner-consumed))
-           (uncertain nil))
+           (uncertain nil)
+           (redeemed nil))
        (unless (and (integerp consumed) (<= 0 consumed (length incoming)))
          (fnn-fault "owner returned malformed receive-prefix count"))
        (when (fnn-owner-bool-global 'fn-owner-submittedp)
@@ -1767,6 +1768,12 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "writer drained a different connection"))
            (setq reply (concatenate 'fnn-octets reply completion)
                  uncertain stop)))
+       ;; PRF-164: an XREDEEM PASS left this connection holding; the
+       ;; owner plans and publishes, and only then renders 281 or 482.
+       (when (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
+         (setq reply (concatenate 'fnn-octets reply
+                                  (fnn-owner-account-redeem service cid))
+               redeemed t))
        (when uncertain
          (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
        ;; PRF-161: the step reached this address's failed-login limit
@@ -1777,7 +1784,7 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned a malformed exposure close"))
            (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
                  closing t)))
-       (values reply (or closing uncertain) starttls consumed)))))
+       (values reply (or closing uncertain) starttls consumed redeemed)))))
 
 ;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
 ;;; Before every served step ACL2 answers :proceed or the milliseconds to
@@ -1941,7 +1948,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                             (return)))
                          ((zerop (length incoming)) (return))
                          (t (fnn-owner-exposure-wait service cid)
-                            (multiple-value-bind (reply closing starttls consumed)
+                            (multiple-value-bind (reply closing starttls consumed
+                                                  redeemed)
                                 (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
@@ -1957,8 +1965,13 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                  ;; Stopping the process there turned one
                                  ;; client's refusal into every client's
                                  ;; closed socket (large-article, 2026-09-25).
-                                 (unless (or closing (= consumed (length incoming)))
-                                   (fnn-fault "protected owner read left a TLS suffix")))
+                                 ;; PRF-164: an XREDEEM PASS stops the fold at
+                                 ;; its line; what the client sent after it is
+                                 ;; the next step's input, already decrypted.
+                                 (cond ((or closing (= consumed (length incoming))))
+                                       (redeemed
+                                        (setq retained (subseq incoming consumed)))
+                                       (t (fnn-fault "protected owner read left a TLS suffix"))))
                                 ((fnn-owner-service-tls-context service)
                                  ;; The worker is the sole socket reader.  A
                                  ;; failed/short consume closes this connection;

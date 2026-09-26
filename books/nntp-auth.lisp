@@ -499,15 +499,48 @@
 (defmacro fn-auth-reader-session (as)
   `(fn-peer-reader-session (fn-auth-session-base ,as)))
 
+; The pending slot: nil, the name AUTHINFO USER cached, or one of the two
+; invitation-code redemption states XREDEEM keeps (PRF-164, NNT-034;
+; specs/nntp.md "Invitation-code accounts"):
+;
+;   (:xredeem CODE NAME)                 381 was answered; PASS is awaited
+;   (:xredeem-wait CODE NAME PASSWORD)   the session holds (handshakingp)
+;                                        until the host feeds the outcome
+;
+; each field one wire token.  They live in this connection's memory for one
+; exchange and are never written anywhere: the owner's plan reads them and
+; the outcome event clears them.  A redemption state is not a token (its car
+; is a keyword), so AUTHINFO PASS finds no credential under it.
+(defun fn-auth-wire-tokenp (x)
+  (declare (xargs :guard t))
+  (and (consp x) (true-listp x) (fn-nntp-printable-tokenp x) t))
+
+(defun fn-auth-redeem-statep (p)
+  (declare (xargs :guard t))
+  (and (true-listp p)
+       (consp p)
+       (consp (cdr p))
+       (consp (cddr p))
+       (fn-auth-wire-tokenp (cadr p))
+       (fn-auth-wire-tokenp (caddr p))
+       (or (and (equal (car p) :xredeem) (null (cdddr p)))
+           (and (equal (car p) :xredeem-wait)
+                (consp (cdddr p))
+                (fn-auth-wire-tokenp (cadddr p))
+                (null (cddddr p))))))
+
+(defun fn-auth-pendingp (p)
+  (declare (xargs :guard t))
+  (or (null p)
+      (and (consp p) (true-listp p) (fn-nntp-printable-tokenp p))
+      (fn-auth-redeem-statep p)))
+
 (defun fn-auth-sessionp (x)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-auth-session-shapep x)
        (fn-peer-sessionp (fn-auth-session-base x))
        (fn-auth-configp (fn-auth-session-config x))
-       (or (null (fn-auth-session-pending x))
-           (and (consp (fn-auth-session-pending x))
-                (true-listp (fn-auth-session-pending x))
-                (fn-nntp-printable-tokenp (fn-auth-session-pending x))))
+       (fn-auth-pendingp (fn-auth-session-pending x))
        (or (null (fn-auth-session-subject x))
            (fn-prin-idp (fn-auth-session-subject x)))
        (booleanp (fn-auth-session-tlsp x))
@@ -989,6 +1022,96 @@
                            nil))
      (t (fn-post-make-result as (fn-auth-single as "501 syntax error") nil)))))
 
+;; XREDEEM (an fn extension; specs/nntp.md "Invitation-code accounts",
+;; NNT-034).  Not RFC 4643's AUTHINFO, which nothing here overloads; the
+;; replies reuse its codes in the classes RFC 3977 section 3.2 gives them.
+;;
+;;   XREDEEM CODE NAME      381: the code and the login are kept in the
+;;                          session, in memory, for this exchange
+;;   XREDEEM PASS PASSWORD  no reply yet: the session holds (the served fold
+;;                          stops on handshakingp, as it does after 382) and
+;;                          the host owes the owner's plan, its publication
+;;                          and the (:account-outcome WORD) event, which
+;;                          answers 281 or 482 (fn-auth-redeem-outcome)
+;;
+;; 502 on an authenticated connection and 483 before a TLS layer on a
+;; listener that requires one, exactly AUTHINFO's two rules above; a PASS
+;; with nothing cached is 482, as section 2.3.2 says of AUTHINFO PASS.  The
+;; password is its own command line, never a bare line, so a client that
+;; loses its place cannot send it as a command.  A code is the operator's
+;; hexadecimal text and can never be the word PASS.
+(defun fn-auth-xredeem (as args)
+  (declare (xargs :guard t))
+  (let ((acfg (fn-auth-session-config as))
+        (pending (fn-auth-session-pending as)))
+    (cond
+     ((fn-auth-session-subject as)
+      (fn-post-make-result as (fn-auth-single as "502 already authenticated") nil))
+     ((and (fn-auth-config-protected-onlyp acfg) (not (fn-auth-session-tlsp as)))
+      (fn-post-make-result
+       as (fn-auth-single as "483 a protected channel is required; use STARTTLS")
+       nil))
+     ((and (consp args) (fn-nntp-keywordp (car args) "PASS"))
+      (cond
+       ((not (fn-auth-token-argp (cdr args)))
+        (fn-post-make-result as (fn-auth-single as "501 syntax error") nil))
+       ((not (and (fn-auth-redeem-statep pending)
+                  (equal (car pending) :xredeem)))
+        (fn-post-make-result
+         as (fn-auth-single as "482 redemption commands issued out of sequence")
+         nil))
+       (t
+        (fn-post-make-result
+         (fn-auth-make-session (fn-auth-session-base as) acfg
+                               (list :xredeem-wait (cadr pending)
+                                     (caddr pending) (car (cdr args)))
+                               nil (fn-auth-session-tlsp as) t)
+         nil nil))))
+     ((and (consp args)
+           (fn-auth-wire-tokenp (car args))
+           (fn-auth-token-argp (cdr args)))
+      (fn-post-make-result
+       (fn-auth-make-session (fn-auth-session-base as) acfg
+                             (list :xredeem (car args) (car (cdr args)))
+                             nil (fn-auth-session-tlsp as)
+                             (fn-auth-session-handshakingp as))
+       (fn-auth-single as "381 send the password with XREDEEM PASS")
+       nil))
+     (t (fn-post-make-result as (fn-auth-single as "501 syntax error") nil)))))
+
+(defun fn-auth-redeem-waitp (as)
+  (declare (xargs :guard t))
+  (let ((p (fn-auth-session-pending as)))
+    (and (consp p) (equal (car p) :xredeem-wait))))
+
+;; The host's re-entry after the owner planned and (when it planned a
+;; redeem) published: `(:account-outcome WORD)', WORD being
+;; books/accounts.lisp `fn-acct-redeem-word' of the plan and the
+;; publication.  Only :bound answers 281, and fn-acct-redeem-word is :bound
+;; only after the redeem record is durable or was already durable for this
+;; login and password.  No client octet produces the event.  A session that
+;; is not waiting answers nothing and does not change.
+(defun fn-auth-redeem-eventp (wire-event)
+  (declare (xargs :guard t))
+  (and (consp wire-event)
+       (equal (car wire-event) :account-outcome)
+       (consp (cdr wire-event))
+       (null (cddr wire-event))))
+
+(defun fn-auth-redeem-outcome (as wire-event)
+  (declare (xargs :guard t))
+  (if (and (fn-auth-redeem-waitp as) (fn-auth-redeem-eventp wire-event))
+      (fn-post-make-result
+       (fn-auth-make-session (fn-auth-session-base as)
+                             (fn-auth-session-config as)
+                             nil nil (fn-auth-session-tlsp as) nil)
+       (if (equal (cadr wire-event) :bound)
+           (fn-auth-single
+            as "281 account bound; authenticate with AUTHINFO on a new connection")
+         (fn-auth-single as "482 invitation code refused"))
+       nil)
+    (fn-post-make-result as nil nil)))
+
 ; STARTTLS (RFC 4642 section 2.2).
 (defun fn-auth-starttls (as args)
   ; The guard hint keeps fn-auth-single closed so the true-listp lemma
@@ -1081,6 +1204,7 @@
     (fn-post-make-result
      as (fn-auth-single as "440 posting not permitted for this principal") nil))
    ((fn-nntp-keywordp keyword "AUTHINFO") (fn-auth-authinfo as args))
+   ((fn-nntp-keywordp keyword "XREDEEM") (fn-auth-xredeem as args))
    ((fn-nntp-keywordp keyword "STARTTLS") (fn-auth-starttls as args))
    ((and (fn-nntp-keywordp keyword "CAPABILITIES")
          (or (null args)
@@ -1116,6 +1240,9 @@
    ((not (fn-auth-sessionp as)) (fn-post-make-result as nil nil))
    ; RFC 4642 section 2.2.2: the host's re-entry after the handshake.
    ((fn-auth-tls-eventp wire-event) (fn-auth-tls-established as))
+   ; PRF-164: the owner's outcome of an XREDEEM the session holds for.
+   ((and (fn-auth-redeem-eventp wire-event) (fn-auth-redeem-waitp as))
+    (fn-auth-redeem-outcome as wire-event))
    ; A handshaking connection serves nothing: every octet belongs to the
    ; handshake, and books/served.lisp's fold does not even frame them.  The
    ; branch is here so that the property holds of the step itself and not
@@ -1171,6 +1298,10 @@
 (verify-guards fn-auth-gatedp)
 (verify-guards fn-auth-token-argp)
 (verify-guards fn-auth-authinfo)
+(verify-guards fn-auth-xredeem)
+(verify-guards fn-auth-redeem-waitp)
+(verify-guards fn-auth-redeem-eventp)
+(verify-guards fn-auth-redeem-outcome)
 (verify-guards fn-auth-starttls)
 (verify-guards fn-auth-tls-established)
 (verify-guards fn-auth-tls-eventp)
@@ -1280,6 +1411,90 @@
   (fn-auth-effectsp (fn-post-result-effects (fn-auth-tls-established as)))
   :hints (("Goal" :in-theory (e/d (fn-auth-tls-established fn-auth-effectsp)
                                   nil))))
+
+; PRF-164: what XREDEEM and its outcome emit and keep, stated once so that
+; every theorem over the step keeps both closed.
+(defthm fn-auth-xredeem-effects-well-formed
+  (fn-auth-effectsp (fn-post-result-effects (fn-auth-xredeem as args)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-xredeem)
+                                  (fn-auth-single fn-nntp-effectsp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-keywordp fn-auth-token-argp)))))
+
+(defthm fn-auth-redeem-outcome-effects-well-formed
+  (fn-auth-effectsp (fn-post-result-effects
+                     (fn-auth-redeem-outcome as wire-event)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-redeem-outcome)
+                                  (fn-auth-single fn-nntp-effectsp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep)))))
+
+(defthm fn-auth-xredeem-keeps-the-config-base-and-subject
+  (and (equal (fn-auth-session-config
+               (fn-post-result-session (fn-auth-xredeem as args)))
+              (fn-auth-session-config as))
+       (equal (fn-auth-session-base
+               (fn-post-result-session (fn-auth-xredeem as args)))
+              (fn-auth-session-base as))
+       (equal (fn-auth-session-subject
+               (fn-post-result-session (fn-auth-xredeem as args)))
+              (fn-auth-session-subject as))
+       (equal (fn-auth-session-tlsp
+               (fn-post-result-session (fn-auth-xredeem as args)))
+              (fn-auth-session-tlsp as))
+       (not (fn-post-result-submission (fn-auth-xredeem as args))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-xredeem)
+                                  (fn-auth-single fn-nntp-keywordp
+                                   fn-auth-token-argp)))))
+
+(defthm fn-auth-redeem-outcome-keeps-the-config-and-base
+  (and (equal (fn-auth-session-config
+               (fn-post-result-session (fn-auth-redeem-outcome as wire-event)))
+              (fn-auth-session-config as))
+       (equal (fn-auth-session-base
+               (fn-post-result-session (fn-auth-redeem-outcome as wire-event)))
+              (fn-auth-session-base as))
+       (equal (fn-auth-session-tlsp
+               (fn-post-result-session (fn-auth-redeem-outcome as wire-event)))
+              (fn-auth-session-tlsp as))
+       (not (fn-post-result-submission (fn-auth-redeem-outcome as wire-event))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-redeem-outcome) (fn-auth-single)))))
+
+(defthm fn-auth-xredeem-holds-only-to-wait
+  (implies (and (not (fn-auth-session-handshakingp as))
+                (fn-auth-session-handshakingp
+                 (fn-post-result-session (fn-auth-xredeem as args))))
+           (and (fn-auth-redeem-waitp
+                 (fn-post-result-session (fn-auth-xredeem as args)))
+                (null (fn-auth-session-subject
+                       (fn-post-result-session (fn-auth-xredeem as args))))
+                (null (fn-auth-session-subject as))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-xredeem)
+                                  (fn-auth-single fn-nntp-keywordp
+                                   fn-auth-token-argp)))))
+
+(defthm fn-auth-redeem-outcome-never-enters-a-hold
+  (implies (fn-auth-session-handshakingp
+            (fn-post-result-session (fn-auth-redeem-outcome as wire-event)))
+           (fn-auth-session-handshakingp as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-redeem-outcome) (fn-auth-single)))))
+
+(in-theory (disable fn-auth-xredeem fn-auth-redeem-outcome fn-auth-redeem-waitp))
+(defthm fn-auth-xredeem-keeps-the-peer
+  (equal (fn-auth-session-peer
+          (fn-post-result-session (fn-auth-xredeem as args)))
+         (fn-auth-session-peer as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-session-peer)
+                                  (fn-auth-xredeem)))))
+
+(defthm fn-auth-redeem-outcome-keeps-the-peer
+  (equal (fn-auth-session-peer
+          (fn-post-result-session (fn-auth-redeem-outcome as wire-event)))
+         (fn-auth-session-peer as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-session-peer)
+                                  (fn-auth-redeem-outcome)))))
+
 
 (defthm fn-auth-command-effects-well-formed
   (implies (fn-auth-command as config keyword args)
@@ -1399,6 +1614,32 @@
                             fn-auth-configp fn-nntp-printable-tokenp
                             fn-prin-idp))))))
 
+(local (defthm fn-auth-xredeem-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-xredeem as args)) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-xredeem fn-auth-session-consistentp
+                            fn-auth-sessionp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-post-sessionp fn-post-session-consistentp
+                            fn-nntp-sessionp fn-nntp-session-consistentp
+                            fn-auth-configp fn-auth-single fn-nntp-single
+                            fn-auth-token-argp fn-nntp-keywordp
+                            fn-nntp-printable-tokenp fn-prin-idp))))))
+
+(local (defthm fn-auth-redeem-outcome-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-redeem-outcome as wire-event))
+            archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-redeem-outcome fn-auth-session-consistentp
+                            fn-auth-sessionp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-auth-configp fn-auth-single fn-nntp-single
+                            fn-nntp-printable-tokenp fn-prin-idp))))))
+
 (local (defthm fn-auth-command-preserves-consistentp
   (implies (and (fn-auth-session-consistentp as archive)
                 (fn-auth-command as config keyword args))
@@ -1408,6 +1649,7 @@
   :hints (("Goal"
            :in-theory (e/d (fn-auth-command)
                            (fn-auth-authinfo fn-auth-starttls fn-auth-single
+                            fn-auth-xredeem
                             fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                             fn-nntp-keyword-tokenp fn-nntp-multi
                             fn-auth-capability-lines
@@ -1986,9 +2228,16 @@
 ; which is RFC 4642 section 2.2's "MUST NOT be pipelined".
 
 (defthm fn-auth-handshaking-session-serves-nothing
+  ; PRF-164: the one other event a holding session answers is the owner's
+  ; outcome of the XREDEEM it holds for (fn-auth-redeem-outcome); a session
+  ; STARTTLS left handshaking has no redemption state (fn-auth-starttls
+  ; clears the pending slot), so for it nothing but (:tls-established)
+  ; answers.
   (implies (and (fn-auth-sessionp as)
                 (fn-auth-session-handshakingp as)
-                (not (fn-auth-tls-eventp wire-event)))
+                (not (fn-auth-tls-eventp wire-event))
+                (not (and (fn-auth-redeem-eventp wire-event)
+                          (fn-auth-redeem-waitp as))))
            (and (equal (fn-post-result-effects
                         (fn-auth-step as archive config observation injection
                                       wire-event))
@@ -2681,11 +2930,19 @@
 ; Two hypotheses, each with a violating value in
 ; tests/acl2/nntp-auth-teeth-tests.lisp.
 (defthm fn-auth-step-starttls-clears-a-principal-role
+  ; PRF-164: the session also holds while the owner publishes an XREDEEM
+  ; (fn-auth-redeem-waitp); that hold is the other theorem below
+  ; (fn-auth-step-redeem-hold-keeps-the-role), so this one is about the TLS
+  ; handshake exactly.
   (implies (and (not (fn-auth-session-handshakingp as))
                 (fn-auth-session-handshakingp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event))))
+                                wire-event)))
+                (not (fn-auth-redeem-waitp
+                      (fn-post-result-session
+                       (fn-auth-step as archive config observation injection
+                                     wire-event)))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
@@ -2722,6 +2979,54 @@
                             fn-nntp-command-arguments-at-mostp
                             fn-auth-starttls-handshake-clears-a-principal-role))
            :use ((:instance fn-auth-starttls-handshake-clears-a-principal-role
+                            (args (cdr (fn-nntp-tokenize
+                                        (cadr wire-event)))))))))
+
+
+; The other hold (PRF-164).  Whenever a step enters the redemption hold,
+; the new session has no subject and keeps the connection's role: holding
+; for the owner's publication binds nobody.
+(defthm fn-auth-step-redeem-hold-keeps-the-role
+  (implies (and (not (fn-auth-session-handshakingp as))
+                (fn-auth-session-handshakingp
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event)))
+                (fn-auth-redeem-waitp
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event))))
+           (and (null (fn-auth-session-subject
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session
+                         (fn-auth-step as archive config observation injection
+                                       wire-event)))
+                       (fn-auth-session-peer as))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-tls-eventp
+                            fn-auth-redeem-waitp
+                            fn-auth-tls-established)
+                           (fn-peer-step fn-auth-delegate fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-session-peer
+                            fn-auth-principal-rolep fn-auth-gatedp
+                            fn-auth-postingp fn-auth-find-cred
+                            fn-auth-capability-lines-for-peer
+                            fn-auth-peer-record fn-nntp-multi
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp fn-nntp-keywordp
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-starttls-handshake-clears-a-principal-role
+                            fn-auth-xredeem-holds-only-to-wait))
+           :use ((:instance fn-auth-xredeem-holds-only-to-wait
+                            (args (cdr (fn-nntp-tokenize
+                                        (cadr wire-event)))))
+                 (:instance fn-auth-starttls-handshake-clears-a-principal-role
                             (args (cdr (fn-nntp-tokenize
                                         (cadr wire-event)))))))))
 
@@ -2771,6 +3076,9 @@
   (cond
    ((not (fn-auth-sessionp as)) (fn-post-make-result as nil nil))
    ((fn-auth-tls-eventp wire-event) (fn-auth-tls-established as))
+   ; PRF-164: the owner's outcome of an XREDEEM the session holds for.
+   ((and (fn-auth-redeem-eventp wire-event) (fn-auth-redeem-waitp as))
+    (fn-auth-redeem-outcome as wire-event))
    ((fn-auth-session-handshakingp as) (fn-post-make-result as nil nil))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
@@ -2908,3 +3216,146 @@
                  (:instance fn-peer-step-pinned-submission-is-typed
                             (ps (fn-auth-session-base as))))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; XREDEEM over the served dispatcher (PRF-164, NNT-034).
+;
+; The subject is fn-auth-step-pinned, which books/served.lisp
+; fn-served-dispatch calls for every framed event, and which
+; host/owner-host.lisp fn-owner-chunk reaches through fn-own-read (the
+; carried copy books/served-carried.lisp fn-scar-auth-step-pinned is proved
+; equal to it).  The owner's re-entry, host/owner-host.lisp
+; fn-owner-account-outcome, feeds the (:account-outcome WORD) event through
+; fn-ocfg-read-step to the same function.
+
+(defun fn-auth-redeem-request (as)
+  ; The code, the login and the password a waiting session holds, for the
+  ; owner's plan (books/accounts.lisp fn-acct-redeem-bounded-plan).
+  (declare (xargs :guard t))
+  (let ((p (fn-auth-session-pending as)))
+    (if (fn-auth-redeem-statep p) (cdr p) nil)))
+
+
+(defthm fn-auth-sessionp-gives-its-pending
+  (implies (fn-auth-sessionp as)
+           (fn-auth-pendingp (fn-auth-session-pending as)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-auth-sessionp)
+                                  (fn-auth-pendingp fn-peer-sessionp
+                                   fn-auth-configp)))))
+
+; KEYSTONE (AUTHINFO's rule for XREDEEM).  Before a TLS layer on a listener
+; that requires one, XREDEEM answers 483 and changes nothing: the code, the
+; login and the password are never taken in cleartext.
+(defthm fn-auth-step-pinned-xredeem-before-tls-is-483
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-session-subject as))
+                (fn-auth-config-protected-onlyp (fn-auth-session-config as))
+                (not (fn-auth-session-tlsp as))
+                (fn-nntp-command-inputp line)
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "XREDEEM"))
+           (and (equal (fn-post-result-effects
+                        (fn-auth-step-pinned as archive index verdicts config
+                                             observation injection
+                                             (list :command line)))
+                       (fn-auth-single
+                        as
+                        "483 a protected channel is required; use STARTTLS"))
+                (equal (fn-post-result-session
+                        (fn-auth-step-pinned as archive index verdicts config
+                                             observation injection
+                                             (list :command line)))
+                       as)
+                (null (fn-post-result-submission
+                       (fn-auth-step-pinned as archive index verdicts config
+                                            observation injection
+                                            (list :command line))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
+                            fn-auth-tls-eventp fn-auth-restricted-keywordp
+                            fn-auth-xredeem fn-nntp-keywordp)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-postingp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp)))))
+
+; KEYSTONE (the hold).  After 381, `XREDEEM PASS PASSWORD' answers nothing
+; and holds: the session keeps the code, the login and the password for
+; the owner's plan, no subject, and the served fold stops at the line's end
+; (handshakingp), so nothing the client sent after it is answered before
+; the outcome.
+(defthm fn-auth-step-pinned-xredeem-pass-holds-for-the-owner
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-session-subject as))
+                (or (not (fn-auth-config-protected-onlyp
+                          (fn-auth-session-config as)))
+                    (fn-auth-session-tlsp as))
+                (equal (fn-auth-session-pending as) (list :xredeem code name))
+                (fn-nntp-command-inputp line)
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "XREDEEM")
+                (fn-nntp-keywordp (cadr (fn-nntp-tokenize line)) "PASS")
+                (fn-auth-token-argp (cddr (fn-nntp-tokenize line))))
+           (let ((r (fn-auth-step-pinned as archive index verdicts config
+                                         observation injection
+                                         (list :command line))))
+             (and (null (fn-post-result-effects r))
+                  (null (fn-post-result-submission r))
+                  (fn-auth-redeem-waitp (fn-post-result-session r))
+                  (fn-auth-session-handshakingp (fn-post-result-session r))
+                  (null (fn-auth-session-subject (fn-post-result-session r)))
+                  (equal (fn-auth-redeem-request (fn-post-result-session r))
+                         (list code name
+                               (car (cddr (fn-nntp-tokenize line))))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
+                            fn-auth-tls-eventp fn-auth-restricted-keywordp
+                            fn-auth-xredeem fn-auth-redeem-waitp
+                            fn-auth-redeem-request fn-nntp-keywordp
+                            fn-auth-pendingp fn-auth-redeem-statep
+                            fn-auth-wire-tokenp)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-postingp
+                            fn-auth-token-argp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp))
+           :use ((:instance fn-auth-sessionp-gives-its-pending)))))
+
+; KEYSTONE (the reply follows the word).  A waiting session answers the
+; owner's (:account-outcome WORD) with 281 exactly when WORD is :bound and
+; 482 otherwise, and leaves the hold with nothing cached and no subject.
+; books/accounts.lisp fn-acct-redeem-word-is-bound-only-after-a-durable-redeem
+; says when the owner's WORD is :bound.
+(defthm fn-auth-step-pinned-redeem-outcome-answers-the-word
+  (implies (and (fn-auth-sessionp as)
+                (fn-auth-redeem-waitp as))
+           (let ((r (fn-auth-step-pinned as archive index verdicts config
+                                         observation injection
+                                         (list :account-outcome word))))
+             (and (equal (fn-post-result-effects r)
+                         (if (equal word :bound)
+                             (fn-auth-single
+                              as "281 account bound; authenticate with AUTHINFO on a new connection")
+                           (fn-auth-single as "482 invitation code refused")))
+                  (null (fn-post-result-submission r))
+                  (equal (fn-post-result-session r)
+                         (fn-auth-make-session (fn-auth-session-base as)
+                                               (fn-auth-session-config as)
+                                               nil nil
+                                               (fn-auth-session-tlsp as)
+                                               nil)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp
+                            fn-auth-redeem-outcome fn-auth-redeem-eventp)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-sessionp)))))
