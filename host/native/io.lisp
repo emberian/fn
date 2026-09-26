@@ -80,6 +80,10 @@
 ;; the wire names the reason (books/nntp-post.lisp fn-post-store-refusal-line).
 (define-condition fnn-store-io-refusal (fnn-store-error) ())
 (define-condition fnn-usage-error (fnn-store-error) ())
+;; A Store open ACL2 refused by name (books/store-open-pre-c1.lisp): a
+;; refusal (exit 1) that recovery passes through unchanged, never the
+;; generic "cannot reconstruct committed history" fault.
+(define-condition fnn-store-open-refusal (fnn-store-error) ())
 
 ;; One POSIX failure, reported the way Python's OSError prints itself.
 (define-condition fnn-os-error (error)
@@ -1746,9 +1750,16 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                              store physical-records physical-sequences
                              actual-lower)))
     (fnn-check-history-marker store (length records))
-    (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
-                :recovering)
-      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history"))
+    (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+      ;; A named refusal of the open (books/store-open-pre-c1.lisp
+      ;; fn-sopc-classified-open): ACL2 renders the line.
+      (when (eq action :refused)
+        (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
+          (unless (stringp text)
+            (fnn-fault "ACL2 refused the open without naming a reason"))
+          (error 'fnn-store-open-refusal :message text)))
+      (unless (eq action :recovering)
+        (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
     (when reason
       (setf (fnn-store-open-mode store) (list :full-replay reason)))
     records))
@@ -1956,7 +1967,7 @@ died by heap exhaustion at N = 10,000 x 32 KiB."
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
-      ((or fnn-store-fault fnn-store-indeterminate) (e)
+      ((or fnn-store-fault fnn-store-indeterminate fnn-store-open-refusal) (e)
         (setf (fnn-store-fenced store) t)
         (error e))
       (fnn-store-error (e)
@@ -3559,6 +3570,11 @@ serialized profile when the saved image later starts."
                                   (fnn-octet-list (fnn-string-octets (first rest))))))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "retention") (fnn-command-retention root))
+                 ;; PKT-444: the repair of a pre-C1 control record.  Its
+                 ;; semantics wait on ember; until then it refuses by name
+                 ;; and touches nothing.
+                 ((string= command "repair-control")
+                  (fnn-refuse "~a" (fnn-core 'fn-store-repair-control-text)))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
                  ((string= command "probe")

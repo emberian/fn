@@ -5864,6 +5864,26 @@
         {
           "kind": "theorem",
           "name": "fn-nhc-author-refusal-names-an-unserved-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-identity-step-never-admits-a-pre-c1-control-record",
+          "note": "KEYSTONE (PKT-444 (1), the site). No identity step (books/replay.lisp fn-replay-identity-step, reached by fn-replay-identity-loop inside fn-sco-extend, which host/store-node-host.lisp fn-store-sn-recover builds) admits a pre-C1 control record: the result is not :ok and the cursor is unchanged. Teeth: tests/acl2/store-open-pre-c1-tests (reachable: the witness store's cancel after its snapshot and target; without the hypothesis: the target advances)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-never-faults-on-a-pre-c1-control-record",
+          "note": "KEYSTONE (PKT-444 (1), the open). Over the function the host calls, fn-sopc-classified-open (host/store-node-host.lisp fn-store-sn-open-extended), on the full open of a history whose identity fold reaches a pre-C1 control record at its own sequence: the answer is (:refused :pre-c1-control-record TXID MSGID), never a fault. Teeth: store-open-pre-c1-tests (the witness store opens to (:refused :pre-c1-control-record 2 \"<prec1-cancel@example.invalid>\") and its line; must-fails without each of the three hypotheses: a prefix stopped earlier (mutation, labelled), the target in place of the cancel, the cancel at the wrong sequence)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sopc-checkpoint-open-names-what-the-full-open-names",
+          "note": "The checkpoint open (fn-store-sn-recover-from-checkpoint) classifies as the full open of the same history. Teeth: store-open-pre-c1-tests (the witness captured at (r0 r1), extended over (r2))."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sopc-classified-open-is-the-open-without-a-pre-c1-record",
+          "note": "KEYSTONE (PKT-444 (1), the refinement). On a history holding no pre-C1 control record the classified open is fn-sco-store-open, the open the host ran before. Teeth: store-open-pre-c1-tests (the store without the cancel, and a post-C1 filing of the cancel (mutation, labelled), both open; without the hypothesis the witness history differs)."
         }
       ]
     },

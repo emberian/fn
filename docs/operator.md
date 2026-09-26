@@ -1455,6 +1455,15 @@ server could be reached, `refused` when the anchor says the image is older
 than the one its own records stand under. A refused recover is a signal to
 stop and work out which image you are holding, not to retry.
 
+A store written by a release before 2026-09-25 (C1) that holds a signed
+control article, such as a cancel, filed under its Newsgroups is refused
+by name by every open (`recover`, `run`, `health`, `inspect`, `checkpoint`):
+`pre-C1 control record (txid N, <message-id>): run store repair-control`,
+exit 1. Nothing is changed or replayed. The repair verb
+`fn store ROOT repair-control` exists but refuses (`repair semantics
+undecided (PKT-444)`) until what such a repair means is decided; keep the
+store as it is until then.
+
 `fn status` reports what the store is: the configuration generation, the
 transaction and article counts, the last recorded anchor, and whether an
 owner is live. While an owner holds the store no other process can take the
