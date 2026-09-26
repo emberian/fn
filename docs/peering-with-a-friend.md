@@ -130,15 +130,16 @@ printf 'PW-FOR-FRIEND\nPW-FOR-FRIEND\n' | $F operator $C principal set-password 
     --principal 607792851af81f99899a21cb728087edcb137e42883e11d83e9fc458d4d33033 --posting
 # ME: how I log in at the friend's node (the login the friend made for me)
 umask 077; printf 'FNAUTH1\nhbox-node\nPW-FOR-ME\n' > $N/exchange/persvati.fnauth
-systemctl --user stop fn-friends                # peer add is offline
 $F operator $C peer add persvati persvati.friends.fn.invalid 192.168.50.120 11990 \
     'local.*' 'local.*' \
     principal 607792851af81f99899a21cb728087edcb137e42883e11d83e9fc458d4d33033 \
     $N/exchange/persvati.fnauth false true starttls 192.168.50.120 $N/exchange/persvati-cert.pem
 $F operator $C peer pull persvati 20
-systemctl --user reset-failed fn-friends; systemd-run --user --unit fn-friends -p MemoryMax=8G $F operator $C run
 ```
 
+`peer add` reaches the running node through its control socket and
+replaces the record `accept` or `confirm` wrote without a restart (the
+live reconfiguration path; observed in tests/test_native_friends_feed.py).
 The friend does the mirror image (a login `hbox-node` bound to your
 principal, a profile naming `persvati-node` and the password you gave, `peer
 add hbox-scratch.friends.fn.invalid ... starttls 192.168.50.39 hbox-cert.pem`,
@@ -195,4 +196,3 @@ there: the other node verifies the cancel under the author's enrolled keys
   (`principal set-password`) and tell them the password. An invitation-code
   flow (the operator issues a code, the stranger redeems it over the reader
   port) is specified, not built (PKT-401).
-- `peer add` rewrites a peer offline; the node must be stopped for it.
