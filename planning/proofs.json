@@ -4433,10 +4433,6 @@
       "events": [
         "fn-sco-store-open-of-extended-capture",
         "fn-sco-finalize-okp-is-kind-ok",
-        "fn-sco-thaw-of-freeze",
-        "fn-sco-freeze-of-capture-carries-the-count",
-        "fn-ock-published-segments-decode-to-the-checkpoint",
-        "fn-ock-publication-is-the-capture-at-the-capture-point",
         "fn-ks-distinctp-is-nodupp",
         "fn-ks-subsetp-is-subset-logic",
         "fn-article-listp-is-shape-and-distinct-msgids",
@@ -5508,10 +5504,11 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sccb-plan-is-file-octets",
-        "fn-sccb-renc-is-program",
-        "fn-sccb-plan-refuses-what-the-codec-refuses",
-        "fn-sccb-treep-encodes-octets"
+        "fn-sct-renc-is-program",
+        "fn-ockp-encode-batch-is-rows-program",
+        "fn-ockp-chunks-of-append-cut",
+        "fn-ockp-frames-of-append",
+        "fn-ockp-counts-are-chunk-counts"
       ],
       "evidence": [
         "books/owner-checkpoint-pipeline.lisp",
@@ -5600,9 +5597,11 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sccr-decode-of-plan",
-        "fn-sccr-decode-plan-is-decode-segments",
-        "fn-sccr-run-is-run",
+        "fn-sct-load-is-decode-file",
+        "fn-sctr-run-decode-is-run-decode",
+        "fn-sctr-run-is-run",
+        "fn-sctr-step-is-step",
+        "fn-sccr-join-is-join",
         "fn-sccr-admitted-within-bounds"
       ],
       "evidence": [
@@ -6891,12 +6890,11 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-ock-publication-stream-writes-the-file",
-        "fn-ock-publication-stream-refuses-what-the-codec-refuses",
-        "fn-ock-publication-stream-defers-by-the-estimate",
-        "fn-ockb-file-len-is-len-file-octets",
-        "fn-ock-publication-blockedp-by-definition",
-        "fn-ock-publication-stream-next-is-the-capture"
+        "fn-ockp-estimate-is-len-file-octets",
+        "fn-ockp-len-acc-is-len-program",
+        "fn-ockp-rows-len-is-len-rows-program",
+        "fn-ockp-run-len-is-len-run",
+        "fn-ockp-decide-defers-by-the-estimate"
       ],
       "evidence": [
         "books/owner-checkpoint-pipeline.lisp",
@@ -6987,8 +6985,7 @@
         "fn-ocar-own-open-is-own-open",
         "fn-ocar-own-reader-context-is-reference",
         "fn-ocar-ocfg-open-keeps-store",
-        "fn-osi-ocar-exp-open-keeps-store",
-        "fn-sco-thaw-checked-accepts-own-publication"
+        "fn-osi-ocar-exp-open-keeps-store"
       ]
     },
     {
@@ -7233,7 +7230,14 @@
         "fn-cat-commit-keeps-rows",
         "fn-cat-commit-new-row",
         "fn-cat-commit-binds-fresh-numbers",
-        "fn-cat-visible-at-withdrawn"
+        "fn-cat-visible-at-withdrawn",
+        "fn-cat-relation-at-init",
+        "fn-cat-load-row-keeps-relation",
+        "fn-cat-load-establishes-relation",
+        "fn-cat-load-from-empty",
+        "fn-cat-relation-of-withdraw",
+        "fn-cat-relation-of-redecide",
+        "fn-cat-relation-of-complete"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
@@ -7595,7 +7599,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served-tls-prefix.lisp",
         "books/served-carried.lisp",
