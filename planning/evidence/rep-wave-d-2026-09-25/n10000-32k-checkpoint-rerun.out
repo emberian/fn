@@ -1,0 +1,76 @@
+Running as unit: run-r2ba55f8ba02a4fcd8dd46338ed81f969.scope; invocation ID: a9da6759fe8a492bb5c38050077bf43e
+Heap exhausted during garbage collection: 0 bytes available, 16 requested.
+     | Immobile Objects |
+ Gen layout symbol   code  Boxed   Cons    Raw   Code  SmMix  Mixed  LgRaw LgCode  LgMix Waste%       Alloc        Trig   Dirty GCs Mem-age
+  0      0      0      0      0 102457      0      0      0      0      0      0      0    0.1  3355606192  2013363792       -   1  0.0000
+  1      0      0      0      0 500026      0      0      0      0      0      0      0    0.0 16376719424 10127867136   98583   1  1.4008
+  2      1      5      1     11 392857  20186      0      2      8      0      0      0    2.4 13212856688     2000000   20186   0  0.4898
+  3      0      0      0      0      0      0      0      0      0      0      0      0    0.0           0     2000000       0   0  0.0000
+  4      0      0      0      0      0      0      0      0      0      0      0      0    0.0           0     2000000       0   0  0.0000
+  5      0      0      0      0      0      0      0      0      0      0      0      0    0.0           0     2000000       0   0  0.0000
+  6    860  30862  54987    564   5505   1188      4    176     32    652      0    332    3.1   268482608     2000000       5   0  0.0000
+Tot    861  30867  54988    5751000845  21374      4    178     40    652      0    332    1.0 33213664528 [99.0% of 33554432000 max]
+GC control variables:
+   *GC-INHIBIT* = true
+   *GC-PENDING* = true
+   *STOP-FOR-GC-PENDING* = false
+Collection trigger variables:
+   dynamic_space_size = 33554432000
+   bytes_allocated = 33213664528
+   auto_gc_trigger = 29984808992
+   bytes_consed_between_gcs = 1677721600
+fatal error encountered in SBCL pid 138549 tid 138549:
+Heap exhausted, game over.
+
+   0: fp=0x72dc5b7a6e30 pc=0xb801f38f06 REVAPPEND
+   1: fp=0x72dc5b7a6e58 pc=0xb801c31fce ACL2::FN-SCC-SEGMENTS
+   2: fp=0x72dc5b7a6e68 pc=0xb801c32611 ACL2::FN-SCC-FILE-OCTETS
+   3: fp=0x72dc5b7a6ea0 pc=0xb801c3e99a ACL2::FN-STORE-SCO-PUBLISH-OCTETS
+   4: fp=0x72dc5b7a6fd8 pc=0xb801d3a0cf ACL2::FNN-CALL
+   5: fp=0x72dc5b7a7008 pc=0xb801d3a60f ACL2::FNN-CORE-STATE
+   6: fp=0x72dc5b7a7060 pc=0xb801d4968d ACL2::FNN-COMMAND-STATE-CHECKPOINT
+   7: fp=0x72dc5b7a7110 pc=0xb801da6957 ACL2::FNN-OPERATOR-EXECUTE-STORE-ACTION
+   8: fp=0x72dc5b7a72a0 pc=0xb801d5a459 ACL2::FNN-MAIN
+   9: fp=0x72dc5b7a72b0 pc=0xb801d679f4 ACL2::FN-NATIVE-ENTRY
+  10: fp=0x72dc5b7a7358 pc=0xb8001edff0 ACL2::RAW-EV-FNCALL
+  11: fp=0x72dc5b7a73b8 pc=0xb80020f4cb ACL2::EV
+  12: fp=0x72dc5b7a7418 pc=0xb800279042 ACL2::EV-FOR-TRANS-EVAL
+  13: fp=0x72dc5b7a7488 pc=0xb800868de5 ACL2::LD-READ-EVAL-PRINT
+  14: fp=0x72dc5b7a74a0 pc=0xb800869f42 ACL2::LD-LOOP
+  15: fp=0x72dc5b7a7500 pc=0xb80086a972 ACL2::LD-FN-BODY
+  16: fp=0x72dc5b7a7660 pc=0xb80086e335 ACL2::LD-FN0
+  17: fp=0x72dc5b7a76c0 pc=0xb80086f28e ACL2::LD-FN
+  18: fp=0x72dc5b7a77b8 pc=0xb800951c5f ACL2::LP
+  19: fp=0x72dc5b7a7880 pc=0xb8024ecbb2 SB-INT::SIMPLE-EVAL-IN-LEXENV
+  20: fp=0x72dc5b7a7898 pc=0xb8000282bb EVAL
+  21: fp=0x72dc5b7a7968 pc=0xb8024ecbb2 SB-INT::SIMPLE-EVAL-IN-LEXENV
+  22: fp=0x72dc5b7a7980 pc=0xb8000282bb EVAL
+  23: fp=0x72dc5b7a7b90 pc=0xb8024efe8a SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS
+  24: fp=0x72dc5b7a7dd8 pc=0xb8024f1afb SB-IMPL::TOPLEVEL-INIT
+  25: fp=0x72dc5b7a7e70 pc=0xb802940849 (FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP)
+  26: fp=0x72dc5b7a7f30 pc=0xb802940655 (FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP)
+  27: fp=0x72dc5b7a7fc8 pc=0xb8029404a2 SB-IMPL::%START-LISP
+Command exited with non-zero status 1
+	Command being timed: "systemd-run --user --scope -p MemoryMax=40G /tank/fn/scratch/rep-wave-d/base-tree/build/fn-host-developer --fn operator /tank/fn/scratch/rep-wave-d/work/n10000-32k/m/fn.toml store checkpoint"
+	User time (seconds): 99.09
+	System time (seconds): 17.22
+	Percent of CPU this job got: 82%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:21.05
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 32837968
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 73231
+	Minor (reclaiming a frame) page faults: 15360580
+	Voluntary context switches: 10498
+	Involuntary context switches: 1351
+	Swaps: 0
+	File system inputs: 757683
+	File system outputs: 6
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
