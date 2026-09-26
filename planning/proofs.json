@@ -4513,7 +4513,8 @@
         "planning/evidence/manifests/certify-20260925T235221Z-2754177.json",
         "books/store-budget-article.lisp",
         "tests/acl2/store-budget-article-tests.lisp",
-        "planning/evidence/manifests/certify-20260926T001521Z-4100524.json"
+        "planning/evidence/manifests/certify-20260926T001521Z-4100524.json",
+        "planning/evidence/manifests/certify-20260926T002933Z-3123985.json"
       ],
       "progress_note": "Certified with teeth: manifests certify-20260925T235221Z-2754177 (persvati) and certify-20260926T001521Z-4100524 (hbox, with packet 1's gate); native gates on the a9ed4dc2 developer image (bounds-p6 record).",
       "events": [
