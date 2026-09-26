@@ -68,13 +68,13 @@
            (not (member-equal p (fn-bpnp-plan-peers
                                  (fn-bpnp-forward-plan-rows ordered table seen)))))
   :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
-                                      fn-bpp-eidp)))))
+                                      fn-bpp-eidp fn-bpn-nth)))))
 
 (local (defthm plan-peers-distinct
   (no-duplicatesp-equal
    (fn-bpnp-plan-peers (fn-bpnp-forward-plan-rows ordered table seen)))
   :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
-                                      fn-bpp-eidp)))))
+                                      fn-bpp-eidp fn-bpn-nth)))))
 
 (defthm fn-bpnp-forward-plan-has-one-session-per-peer
   (no-duplicatesp-equal (fn-bpnp-plan-peers (fn-bpnp-forward-plan held table))))
