@@ -306,3 +306,132 @@ stays a packet.
 - **Carrier signature verification at B over BP.** It is not exercised,
   because B refuses before its store. PRF-127 is the byte half of that
   claim.
+
+## 2026-09-26, source-corpus-3: the six unsigned elements arrive; the signed one is PKT-247
+
+Lane source-corpus-3 continues on `lane/source-corpus-2` in the same
+worktree. dev 43fad7ab was merged at 4f7128b7. That merge brings
+mission-signed's reason line and its transit-lookup fix
+(`fn-bpaj-transit-article-fields`). Registry conflicts were merged by id:
+PRF-127 and SCN-073 were appended, NNT-020 keeps PRF-127, and the backlog
+keeps both sides.
+
+### Certification at the merged bytes (hbox, 2 jobs, 300 s)
+
+- The REPL came first, on hbox, in a scratch copy of the tree
+  (`/tank/fn/scratch/source-corpus-2/repl-r1`):
+  - `books/relay-source-routes` loaded all its forms over its cached
+    closure;
+  - `peer-inbound-tests`, `bp-transit-join-tests` and
+    `relay-source-routes-tests` were loaded by `ld`, 0 errors.
+  - The two uncertified test books were loaded before the books that
+    include them.
+- run-20260926T022220Z-4401 (`--affected-by` both lane books), manifest
+  `certify-20260926T022246Z-145464`:
+  - relay-source-routes passed, 4.2 s;
+  - relay-source-routes-tests passed, 4.9 s;
+  - relay-source was already certified at these bytes.
+- run-20260926T022458Z-2258 (the 162 default and dtn image roots,
+  incremental), manifest `certify-20260926T022535Z-150066`:
+  - it certified the 9 books the cache lacked at 43fad7ab, all passed and
+    all under 10 s (slowest native-live-status, 8.6 s);
+  - the image acquire had refused ("no complete current artifact set")
+    before it.
+
+### Images and native runs (hbox, `/tank/fn/scratch/source-corpus-2/tree-r3`)
+
+Built by `build.sh` and `build-default.sh` with `ROOT=.../tree-r3`, under
+swarm-build. Each build log was read for ACL2 errors (PKT-284), and it had
+none.
+- dtn developer: launcher `d710917e3dbd51bb55c340b50fed4ade20ed922fd9131a1264bd98c05d0c9abd`,
+  core `ea580f55172ee1d0722e925e8ff18eb546bf5e3959ae4f0d0c6b461b2217dd01`;
+- developer: launcher `a3ea9eaed4a1d5998c6b11e4ba985c045735c5a2ebc7483fe6f43db8833906b3`,
+  core `7a58d788d13ff751a5c05eb6bf014c8725b355f3f30dc8e6487e83d1be2f3ab6`.
+
+The module now records the line of ACL2's reason that precedes each B
+verdict (`b_reason`). The expected answer is unchanged.
+
+- `native-5.log`
+  (`c9f6b2895fd8495d359371c38c356cbe630ff5890779225fd69feee4c203b86a`),
+  `tests.test_native_source_corpus_bp`, 104 s, FAIL at the signed element.
+  - Every unsigned element: B answers `request-accepted`.
+  - B's record is A's record with B's splice (`b_is_a_with_b_splice`).
+  - It is unchanged across the idle SIGKILL and the reopen.
+  - Each has a distinct bundle identity in B's kind-5 frame.
+  - B's log for the signed element:
+    `native-5-b-serve-1.log`
+    (`f8e6debb31b93a37290849dc4b3312707787ef6aa15269b39bb8771293f2422e`).
+- `native-6.log`
+  (`742eca3bffb36e340fbfd084db5b4550458c60f352bc57274eaf2c289762449e`),
+  `tests.test_native_source_corpus` (the NNTP-route regression gate): OK,
+  3/3, 14 s.
+
+The identity table from native-5:
+- Each bundle's source is `dtn://sender/`, its destination is
+  `dtn://receiver/`, and its creation time is 843704988638 ms.
+- A's Path is `sender.bp.gate.invalid!…`.
+- B's Path is `receiver.bp.gate.invalid!!` followed by A's.
+- SHA-256 values are shown to 8 hex digits; native-5.log has them in full.
+
+| element | Message-ID | A POST | kind-8 attempt (adu) | bundle seq | B frame | B verdict (reason) | A stored | B stored | B = A + splice | same after reopen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| supplied-date | `<sc-supplied-date@example.invalid>` | 240 | 483 | 0 | 1-0 | accepted | e9a0b6b9 | 2928df50 | yes | yes |
+| generated-date | `<sc-generated-date@example.invalid>` | 240 | 546 | 1 | 1-3 | accepted | 9d02b805 | 0985e8af | yes | yes |
+| client-path | `<sc-client-path@example.invalid>` | 240 | 513 | 2 | 1-6 | accepted | 8aa9d72c | 072842d0 | yes | yes |
+| xref | - | 441 Xref must not be supplied | - | - | - | - | - | - | - | - |
+| unknown-headers | `<sc-unknown-headers@example.invalid>` | 240 | 630 | 3 | 1-9 | accepted | 3a015185 | 1b14936d | yes | yes |
+| mime | `<sc-mime@example.invalid>` | 240 | 774 | 4 | 1-12 | accepted | 3d1922d7 | 2019d250 | yes | yes |
+| legacy | `<00000000843704994286.00000000000000002543.fn@sender.bp.gate.invalid>` (generated) | 240 | 589 | 5 | 1-15 | accepted | 78e30aec | 48c567f1 | yes | yes |
+| signed (carrier) | `<sc-signed@example.invalid>` | 240 | 8015 | 6 | 2-0 | **refused (reason=history)** | 0c8495b4 | ac2b6303 | yes | yes |
+
+client-path keeps the poster's Path tail at both nodes (D32):
+`receiver.bp.gate.invalid!!sender.bp.gate.invalid!poster.example.invalid!not-for-mail`.
+
+### The signed element: PKT-247's second layer, not this lane's scope
+
+- Byte relay: it held the seventh transfer, and B was SIGKILLed mid-receive.
+- B restarted (`b-serve-1`):
+  1. it received the bundle once (`BP accepted xfer=1 adu=8015`);
+  2. it made the carried-source decision
+     (`BP node source carried carrier=ingress-boundary author=sender-author`);
+  3. it stored the article: B serves it, and it is A's with B's splice,
+     the same after reopen;
+  4. it answered `BP node delivery refused result=refused reason=history`.
+- One receipt and one delivery, so the SIGKILL did not cause a second
+  submission.
+- This is the second layer mission-signed diagnosed (PKT-247):
+  - a signed article commits as a kind-4 acceptance;
+  - the BP application's Store binding (`fn-bpaj-record-for-msgid`,
+    `fn-bpr-store-record-acceptedp`) reads only plain records;
+  - so after the durable commit the lookup is `(:absent)`, and the
+    resubmission meets `(:have :history)`.
+- Class: implementation, in the BP receiver's Store binding (bp-native-app,
+  bp-native-app-fast, bp-receipt). That is outside this lane's scope: the
+  corpus, the relay projection and the transit lookup are all correct here.
+  It is owned with PKT-247. Stopped here; the expected answer is unchanged.
+
+The first cause of the old refusals (source-corpus-2 native-3 and native-4)
+is confirmed as mission-signed's layer 1. With `fn-bpaj-transit-article-fields`,
+every unsigned element carrying A's `Injection-Info` is accepted.
+
+Assurance chain, BP route, now observed for the unsigned elements:
+1. Native entry: `fnn-bpnode-request-result`.
+2. Executed subject: `fn-owner-app-plan-install`, then `fn-bpaj-transit-plan`
+   answering `:submit`.
+3. Behavioural theorem: `fn-rs-a-bp-transit-keeps-the-authored-source`.
+4. Observed: B's stored octets are A's with only B's splice (a stronger
+   observation than the authored-source projection the theorem states).
+
+### Status
+
+- SCN-073 stays `specified`:
+  - six of seven carried elements meet its expected result;
+  - the signed one waits on PKT-247;
+  - native-5.log is added to its evidence.
+- PKT-246:
+  - its reason-rendering step was done by mission-signed;
+  - its cause was mission-signed's layer 1, now fixed;
+  - what remains is the conflict-word packet (unchanged, no coordinator
+    answer: the default is to append `:conflict`, a refusal, exit 1).
+- `make check` is green in the worktree, with the ledger and the current
+  view regenerated locally (not committed).

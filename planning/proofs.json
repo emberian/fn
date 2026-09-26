@@ -5043,9 +5043,10 @@
         "tests/test_native_source_corpus_bp.py",
         "planning/evidence/source-corpus-2-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T010122Z-3162.json",
-        "planning/evidence/manifests/certify-20260926T010817Z-22211.json"
+        "planning/evidence/manifests/certify-20260926T010817Z-22211.json",
+        "planning/evidence/manifests/certify-20260926T022246Z-145464.json"
       ],
-      "progress_note": "Lane source-corpus-2 (2026-09-26). Certified on hbox: run-20260926T010101Z-8350 (relay-source 1.7 s, relay-source-routes 3.9 s; the test book timed out in an unbounded must-fail search) and run-20260926T010756Z-cf08 (relay-source-routes-tests 4.5 s). Teeth: the corpus client-path article injected by the real fn-inj-decide, relayed by fn-peer-relayed-octets, through a wanted transfer and a submitted BP plan; a sender Xref; one hypothesis-removal witness and must-fail per hypothesis. Native BP carriage (SCN-073) is open: B refuses every A-injected corpus article carried by BP, reason not rendered (PKT-246).",
+      "progress_note": "Lanes source-corpus-2 and source-corpus-3 (2026-09-26). Certified on hbox: run-20260926T010101Z-8350 and run-20260926T010756Z-cf08 at the lane base; at the dev 43fad7ab merge run-20260926T022220Z-4401 (relay-source-routes 4.2 s, relay-source-routes-tests 4.9 s, relay-source cached at these bytes). Native BP carriage (SCN-073, native-5 on images d710917e/a3ea9eae): the six unsigned corpus elements arrive at B as A's records with B's splice, each with its kind-8 attempt and a distinct bundle identity; the signed carrier is stored and then refused reason=history (PKT-247, the Store binding of kind-4 acceptances).",
       "events": [
         "fn-rs-authored-source-is-the-walk",
         "fn-rs-relaying-keeps-the-authored-source",

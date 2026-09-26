@@ -2092,7 +2092,8 @@
       "evidence": [
         "tests/test_native_source_corpus_bp.py",
         "tests/acl2/relay-source-routes-tests.lisp",
-        "planning/evidence/source-corpus-2-2026-09-26.md"
+        "planning/evidence/source-corpus-2-2026-09-26.md",
+        "planning/evidence/source-corpus-2-2026-09-26/native-5.log"
       ]
     }
   ]
