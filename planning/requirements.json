@@ -3245,9 +3245,32 @@
         "books/peer-carriage-rows.lisp",
         "books/checkpoint-publish.lisp",
         "books/checkpoint-pack-retire.lisp",
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "books/store-capacity-config.lisp",
+        "books/native-operator.lisp"
+      ],
+      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101); field 7 governs group names at init and at every configuration publication (PRF-171, SCN-101). Open: the group-name width 460 (PKT-510)."
+    },
+    {
+      "id": "STO-025",
+      "title": "Opening a store costs each configuration record its own work: replay carries the configuration invariant and never re-validates the whole configuration per record",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-186"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/node-config.lisp",
+        "books/config-physical-replay.lisp",
+        "books/store-checkpoint-open.lisp",
         "planning/evidence/caps-to-profile-2026-09-26.md"
       ],
-      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101). Open: field 7 read by group create and the group-name width 460 (PKT-451)."
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). Open: a configuration checkpoint so an open reads only the records after it (PKT-510)."
     },
     {
       "id": "HST-011",

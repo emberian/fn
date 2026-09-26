@@ -6413,6 +6413,31 @@
         {
           "kind": "theorem",
           "name": "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-accepted-group-names-are-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nop-init-plain-groups-are-within-the-profile"
+        }
+      ]
+    },
+    {
+      "id": "PRF-186",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cnode-record-acceptablep-is-the-carried-check"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnode-advanced-node-is-configured"
         }
       ]
     },
