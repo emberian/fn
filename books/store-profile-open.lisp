@@ -510,13 +510,35 @@
    :hints (("Goal" :in-theory (enable fn-bs-pf)))))
 
 (local
+ (defun fn-spo-put-okp-induct (i specs values)
+   (if (zp i)
+       (list specs values)
+     (fn-spo-put-okp-induct (1- i) (cdr specs)
+                            (if (consp values) (cdr values) nil)))))
+
+(local
+ (defthm fn-spo-values-okp-of-put
+   (implies (and (fn-frame-values-okp specs values)
+                 (natp i) (< i (len specs))
+                 (fn-frame-field-okp (nth i specs) v))
+            (fn-frame-values-okp specs (fn-bs-profile-put i v values)))
+   :hints (("Goal" :induct (fn-spo-put-okp-induct i specs values)
+            :in-theory (e/d (fn-frame-values-okp fn-bs-profile-put)
+                            (fn-frame-field-okp fn-spo-nth-of-put
+                             fn-spo-pf-of-put))))))
+
+(local
  (defthm fn-spo-put-4-values-okp
    (implies (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
                  (natp v) (< v (expt 2 64)))
             (fn-frame-values-okp *fn-bs-meta-profile-spec*
                                  (fn-bs-profile-put 4 v values)))
-   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-bs-profile-put
-                                      fn-frame-field-okp fn-frame-natp)))))
+   :hints (("Goal" :use ((:instance fn-spo-values-okp-of-put
+                                    (specs *fn-bs-meta-profile-spec*) (i 4)))
+            :in-theory (e/d (fn-frame-field-okp fn-frame-natp)
+                            (fn-spo-values-okp-of-put fn-frame-values-okp
+                             fn-bs-profile-put fn-spo-nth-of-put
+                             fn-spo-pf-of-put))))))
 
 ; The lowering of a saved profile in the window is a valid profile.
 (defthm fn-spo-repaired-of-the-window-is-valid
