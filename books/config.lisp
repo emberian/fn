@@ -671,7 +671,7 @@
   '(:create-group :remove-group :set-capacity :set-quota :set-policy
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
     :grant-control :revoke-control :issue-invitation :consume-invitation
-    :account-invite :account-redeem))
+    :account-invite :account-redeem :login-binding))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -691,6 +691,7 @@
         ((equal kind :consume-invitation) 14)
         ((equal kind :account-invite) 15)
         ((equal kind :account-redeem) 16)
+        ((equal kind :login-binding) 17)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -711,6 +712,7 @@
         ((equal code 14) :consume-invitation)
         ((equal code 15) :account-invite)
         ((equal code 16) :account-redeem)
+        ((equal code 17) :login-binding)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -980,6 +982,56 @@
   (fn-cfg-delta-make :account-redeem digest login 0
                      (list (fn-cfg-row-make digest login verifier 1))))
 
+;; Login bindings (PKT-221; books/login-binding.lisp).  The same slot holds
+;; the posting policy's login-to-signing-principal table: one row
+;; (LOGIN PRINCIPAL-HEX "" 2) per bound login, mark 2 beside the account
+;; rows' marks 0 and 1, written only by
+;;
+;;   (:login-binding LOGIN PRINCIPAL-HEX 0 ((LOGIN PRINCIPAL-HEX "" 2)))  code 17
+;;   (:login-binding LOGIN "" 0 ())                            (the unbind)
+;;
+;; which replaces every mark-2 row whose login spells the same octets and
+;; leaves every account row where it was.  PRINCIPAL-HEX is the 64 lowercase
+;; hexadecimal characters of a hybrid principal.  One delta per login, so a
+;; table of any size is published in records of at most *fn-cfg-max-deltas*
+;; changes (the owner's start publishes the credential file's `signing'
+;; fields this way).
+(defun fn-cfg-binding-rows (login principal-hex)
+  (declare (xargs :guard t))
+  (if (equal principal-hex "")
+      nil
+    (list (fn-cfg-row-make login principal-hex "" 2))))
+
+(defun fn-cfg-login-binding (login principal-hex)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :login-binding login principal-hex 0
+                     (fn-cfg-binding-rows login principal-hex)))
+
+(defun fn-cfg-binding-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 2))
+
+(defun fn-cfg-rows-without-binding (rows login)
+  ; ROWS less every binding row whose login spells LOGIN's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-binding-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets login)))
+          (fn-cfg-rows-without-binding (cdr rows) login)
+        (cons (car rows) (fn-cfg-rows-without-binding (cdr rows) login)))
+    nil))
+
+(defun fn-cfg-login-binding-reason (d)
+  (declare (xargs :guard t))
+  (let ((login (fn-cfg-delta-a d)) (hex (fn-cfg-delta-b d)))
+    (cond ((not (fn-cfg-account-loginp login)) :binding-login)
+          ((not (or (equal hex "") (fn-cfg-hex-textp hex 64)))
+           :binding-principal)
+          ((not (equal (fn-cfg-delta-rows d) (fn-cfg-binding-rows login hex)))
+           :binding-row)
+          (t nil))))
+
 ; The row a code's digest keys, or nil.
 (defun fn-cfg-account-row (rows digest)
   (declare (xargs :guard t))
@@ -1173,6 +1225,16 @@
                          (append (fn-cfg-rows-without-key
                                   (fn-cfg-accounts v) a)
                                  rows)))
+     ; A login binding replaces that login's binding row (PKT-221).
+     ((equal kind :login-binding)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-binding
+                                  (fn-cfg-accounts v) a)
+                                 rows)))
      (t v))))
 
 (defun fn-cfg-apply (v gen stamp deltas)
@@ -1300,6 +1362,7 @@
                                             (fn-cfg-delta-b d))
                :account-login-taken)
               (t nil))))
+     ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)

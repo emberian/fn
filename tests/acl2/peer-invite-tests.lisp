@@ -521,3 +521,12 @@
 (assert-event (equal (fn-pinv-redecide-request-encode nil) :bad))
 (assert-event
  (equal (fn-pinv-redecide-request-encode (make-list 251 :initial-element 60)) :bad))
+
+; PKT-221: the login-binding reload (kind 14) decodes as itself and as no
+; redecide; a redecide frame is no reload.
+(assert-event (fn-pinv-bindings-request-decode (fn-pinv-bindings-request-encode)))
+(assert-event
+ (not (fn-pinv-redecide-request-decode (fn-pinv-bindings-request-encode))))
+(assert-event
+ (not (fn-pinv-bindings-request-decode
+       (fn-pinv-redecide-request-encode *pinv-redecide-msgid*))))

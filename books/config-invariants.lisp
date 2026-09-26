@@ -183,6 +183,10 @@
 (local (defthm fn-cfg-rows-without-key-is-row-listp
   (implies (fn-cfg-row-listp rows)
            (fn-cfg-row-listp (fn-cfg-rows-without-key rows a)))))
+; PKT-221: the login binding rebuilds the accounts slot the same way.
+(local (defthm fn-cfg-rows-without-binding-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-binding rows a)))))
 (local (defthm fn-cfg-row-listp-of-append
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))

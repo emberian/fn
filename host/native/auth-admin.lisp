@@ -14,6 +14,10 @@
 ;; NIL (no store is named, so no owner can be observed: ACL2 answers
 ;; restart-required for an unknown observation).
 (defvar *fnn-native-auth-admin-store-root* nil)
+;; The control socket the configuration names, under `operator CONFIG'; a
+;; bind or unbind asks the running owner there to republish the file's
+;; bindings (PKT-221, host/native/login-bindings.lisp).  NIL: none.
+(defvar *fnn-native-auth-admin-control-path* nil)
 
 (defparameter +fnn-native-auth-admin-test-cuts+
   '("cleanup-unlinked" "cleanup-directory-durable"
@@ -396,16 +400,25 @@ production image, which refuses to start with the variable set."
           (write-string (fnn-octets-string (fnn-octets report))
                         *standard-output*)
           (finish-output *standard-output*)))
-      ;; After the change is durable, the writer lock is observed once and
-      ;; ACL2 answers whether a restart is owed (PKT-102).
-      (fnn-native-auth-admin-emit
-       :accepted action
-       (and durable
-            (fnn-native-auth-admin-core
-             'fn-native-auth-admin-effect-word
-             (if *fnn-native-auth-admin-store-root*
-                 (fnn-store-owner-observation *fnn-native-auth-admin-store-root*)
-                 :unknown))))
+      ;; After the change is durable, the writer lock is observed once; a
+      ;; bind or unbind seen under a running owner asks it to republish the
+      ;; file's bindings (PKT-221), and ACL2 answers what the change's
+      ;; effect is (PKT-102).
+      (let* ((observation
+               (and durable
+                    (if *fnn-native-auth-admin-store-root*
+                        (fnn-store-owner-observation
+                         *fnn-native-auth-admin-store-root*)
+                        :unknown)))
+             (live (and durable (eq action :bind)
+                        (not (member observation '(:free :absent)))
+                        (fnn-login-bindings-request-reload
+                         *fnn-native-auth-admin-control-path*))))
+        (fnn-native-auth-admin-emit
+         :accepted action
+         (and durable
+              (fnn-native-auth-admin-core
+               'fn-native-auth-admin-effect-word observation live))))
       +fnn-exit-ok+))))
 
 (defun fnn-native-auth-admin-execute-held (plan-result final stage directory

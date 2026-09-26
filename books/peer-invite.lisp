@@ -1021,6 +1021,27 @@
         (car v)
       nil)))
 
+;; PKT-221: `principal bind|unbind' against a running owner (kind 14).  The
+;; frame carries one fixed word and no data: the owner re-reads the
+;; credential file it was started with and publishes its bindings
+;; (books/login-binding-live.lisp fn-lb-sync-plan, host/native/login-bindings
+;; .lisp).  Kind 13 is invitation-code accounts' (PRF-164).
+(defconst *fn-pinv-bindings-kind* 14)
+(defconst *fn-pinv-bindings-word* (fn-record-string-octets "login-bindings"))
+
+(defun fn-pinv-bindings-request-encode ()
+  (declare (xargs :guard t))
+  (fn-nhctrl-seal *fn-pinv-bindings-kind* *fn-pinv-request-spec*
+                  (list *fn-pinv-bindings-word*)))
+
+(defun fn-pinv-bindings-request-decode (octets)
+  ; t for the reload request, else nil.
+  (declare (xargs :guard t))
+  (let ((v (fn-nhctrl-open-values octets *fn-pinv-bindings-kind*
+                                  *fn-pinv-request-spec*)))
+    (and (true-listp v) (equal (len v) 1)
+         (equal (car v) *fn-pinv-bindings-word*))))
+
 ; =============================================================================
 ; PRF-124: the confirm step ends with a configured peer, in the SAME
 ; configuration record that consumes the invitation.

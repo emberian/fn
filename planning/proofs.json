@@ -4166,7 +4166,7 @@
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
       ],
-      "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile, the store's own config.json profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted, does not drop the store's history-marker requirement (fn-profile-rollback-drops-markerp), and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). fn-profile-rollback-keeps-a-required-marker: when the store's profile requires the committed-history marker and the verdict is :sound, the kept profile requires it too; the kept format-7 config.json over a migrated store is refused as history-marker-required-dropped (qual-e747dbcc U1). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
+      "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly when the writer-lock observation taken after the durable change is neither :free nor :absent and the running owner did not answer :accepted or :uncertain to the binding reload (PKT-221, PRF-175; a password change never asks, so for it this is the old statement). Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile, the store's own config.json profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted, does not drop the store's history-marker requirement (fn-profile-rollback-drops-markerp), and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). fn-profile-rollback-keeps-a-required-marker: when the store's profile requires the committed-history marker and the verdict is :sound, the kept profile requires it too; the kept format-7 config.json over a migrated store is refused as history-marker-required-dropped (qual-e747dbcc U1). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
       "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
     },
     {
@@ -6479,6 +6479,49 @@
         "fn-osp-authorized-event-keeps-the-carried-source-and-signatures",
         "fn-col-poll-report-fits-or-refuses-by-name",
         "fn-col-poll-report-is-a-page-or-a-refusal"
+      ]
+    },
+    {
+      "id": "PRF-175",
+      "title": "A login's signing binding is a row of the configuration the owner publishes live: at start and on `principal bind|unbind' the configuration binds every login as the credential file does, an open session is decided under the table its connection pinned, a connection opened after the publication under the published table, and the verb says `applied' only after the owner published",
+      "statement": "Subject fn-lb-ocfg-gate (books/login-binding-live.lisp), called by host/owner-host.lisp fn-owner-login-gate from host/native/owner.lisp fnn-owner-attempt-served; fn-lb-sync-plan, called by host/owner-host.lisp fn-owner-login-bindings-plan from host/native/auth.lisp fnn-native-auth-publish-bindings (at start in fnn-native-auth-install and on control request 14 in host/native/login-bindings.lisp), whose delta lists are staged by fn-owner-reconfigure-deltas and published by fn-owner-reconfigure-complete (fn-ocl-publish) through fnn-owner-live-reconfigure-locked. (1) By definition (fn-lb-ocfg-gate-unfolds, not cited) the host's verdict is fn-lb-owner-gate (PRF of books/login-binding.lisp; its keystones apply) with the policy of the live configuration and the binding table of the in-flight submission's connection pin. (2) The delta (books/config.lisp :login-binding, code 17, rows (LOGIN PRINCIPAL-HEX \"\" 2) of the accounts slot): fn-lb-binding-delta-binds-the-login binds exactly the given principal (nil unbinds), fn-lb-binding-delta-keeps-other-logins leaves every other login, fn-lb-binding-delta-is-admitted is admitted against every configuration for a bindable login and a 32-octet principal. (3) fn-lb-sync-binds-every-login-as-the-file-does: when the plan is :ok, applying its deltas binds every login as the credential file's table does; fn-lb-pairs-deltas-set-exactly-their-logins is the fold; fn-lb-pairs-deltas-ignore-the-record-coordinates lets the host's records of at most 64 deltas compose. (4) fn-lb-a-publication-keeps-every-open-connections-table (no hypotheses): staging and publishing any change leaves every connection's pinned table; fn-lb-an-open-session-is-decided-under-its-pinned-table: over any owner trace that does not re-pin the connection, the gate decides its submission under the table pinned before the trace. (5) fn-lb-a-connection-opened-after-a-publication-is-bound-anew: with nothing staged, a durable publication of the binding deltas (the owner's history relation before, fn-ocl-config-historyp; no stale pin at the fresh identifier after, which fn-ocfg-statep implies) and a connection opened next, that connection's table binds every login the deltas name as the file does and every other as before. (6) fn-native-auth-admin-effect-word-applied-only-when-published (fn-native-auth-admin-effect-word-restart-unless-no-owner, restated with the owner's answer, stays its PRF's): `applied' only when the lock was not seen free or absent and the owner answered :accepted. Teeth: tests/acl2/login-binding-live-tests.lisp (a witness per keystone asserting every antecedent; one must-fail per hypothesis; the gate witness is login-binding-tests' constructed owner, the publication witness config-owner-live-tests' replayed ground owner) and tests/acl2/native-auth-admin-tests.lisp. Not covered: that the owner's live configuration is its history's replay across every publication (the maintained relation; PRF-028's fn-ocl-no-reader-observes-a-half-change is listed uncertified at the current digest and is cited, not claimed); the host's reading of the credential file (bounded transport, as before).",
+      "milestone": "M3",
+      "requirements": [
+        "SEC-005"
+      ],
+      "depends_on": [
+        "PRF-164",
+        "PRF-166"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/login-binding-live.lisp",
+        "tests/acl2/login-binding-live-tests.lisp",
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/native-auth-admin.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/auth.lisp",
+        "host/native/login-bindings.lisp",
+        "host/native/auth-admin.lisp",
+        "tests/test_native_auth.py",
+        "planning/evidence/keys-and-accounts-2026-09-26.md"
+      ],
+      "events": [
+        "fn-lb-binding-delta-binds-the-login",
+        "fn-lb-binding-delta-keeps-other-logins",
+        "fn-lb-binding-delta-is-admitted",
+        "fn-lb-pairs-deltas-set-exactly-their-logins",
+        "fn-lb-sync-binds-every-login-as-the-file-does",
+        "fn-lb-pairs-deltas-ignore-the-record-coordinates",
+        "fn-lb-a-publication-keeps-every-open-connections-table",
+        "fn-lb-an-open-session-is-decided-under-its-pinned-table",
+        "fn-lb-a-connection-opened-after-a-publication-is-bound-anew",
+        "fn-native-auth-admin-effect-word-applied-only-when-published"
       ]
     }
   ]

@@ -215,5 +215,109 @@ class NativeAuthTests(unittest.TestCase):
         self.assertIn(b"cleartext-credential", result.stderr.lower())
 
 
+    # -------------------------------------------------------------- PKT-221
+
+    def test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding(self):
+        """SCN-096 (PKT-221): `principal bind' against a running owner.
+
+        The login is bound to P under `posting-policy bound-logins'.  Session
+        A authenticates; the operator re-binds the login to Q while A is open
+        and the owner runs (no restart): the verb answers `applied'.  A's
+        article signed by P is accepted (A keeps the binding its connection
+        pinned, books/login-binding-live.lisp
+        fn-lb-an-open-session-is-decided-under-its-pinned-table); a new
+        session B's article signed by P is refused `login-not-bound' (B pins
+        the published table, fn-lb-a-connection-opened-after-a-publication-
+        is-bound-anew).  The owner process is the same throughout."""
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        root = Path(self.temporary.name)
+        control, log = root / "control.sock", root / "fn.log"
+        config = root / "live.toml"
+        config.write_text(self.config.read_text(encoding="ascii")
+                          + '\n[control]\npath = "{}"\n\n[log]\npath = "{}"\n'
+                          .format(control, log), encoding="ascii")
+        operator = [str(IMAGE), "--fn", "operator", str(config)]
+        p_principal, q_principal = bytes([85]) * 32, bytes([86]) * 32
+
+        def run(arguments, expected=0):
+            result = subprocess.run(arguments, cwd=ROOT, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, env=environment(),
+                                    timeout=600, check=False)
+            self.assertEqual(result.returncode, expected,
+                             (arguments, result.stdout, result.stderr))
+            return result
+
+        bound = run(operator + ["principal", "bind", "native-reader", p_principal.hex()])
+        self.assertIn(b"accepted operator principal bind effective-at-next-start",
+                      bound.stderr)
+        run(operator + ["policy", "set", "posting-policy", "bound-logins"])
+        process = subprocess.Popen(operator + ["run"], cwd=ROOT, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, env=environment())
+        self.addCleanup(lambda: process.poll() is None and stop_and_diagnostics(process))
+        line = wait_for_announcement(process, b"LISTENING ")
+        self.assertTrue(line.startswith(b"LISTENING "), line)
+        # P enrolled at generation 1 (the fixed Ed25519 test key, a fresh
+        # ML-DSA-65 key), and two articles signed by P.
+        principal, ed_public, ed_secret = (root / "p.bin", root / "ed-public.bin",
+                                           root / "ed-secret.bin")
+        principal.write_bytes(p_principal)
+        ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ml_private, ml_public = root / "ml-private.pem", root / "ml-public.pem"
+        run([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", str(ml_private)])
+        run([openssl, "pkey", "-in", str(ml_private), "-pubout", "-out", str(ml_public)])
+        run([str(IMAGE), "--fn", "hybrid-enroll", str(control), "1", str(principal),
+             str(ed_public), str(ml_public)])
+        articles = []
+        for name in ("a", "b"):
+            source, carried = root / (name + ".eml"), root / (name + "-carried.eml")
+            source.write_bytes(
+                b"From: bound@example.invalid\r\nDate: Sat, 26 Sep 2026 14:00:00 +0000\r\n"
+                b"Newsgroups: fn.test\r\nSubject: signed by P\r\n"
+                b"Message-ID: <rebind-" + name.encode() + b"@example.invalid>\r\n\r\n"
+                b"signed by P\r\n")
+            run([str(IMAGE), "--fn", "hybrid-sign-carrier", str(principal), str(ed_public),
+                 str(ed_secret), str(ml_public), str(ml_private), str(source), str(carried)])
+            articles.append(carried.read_bytes())
+
+        def session():
+            client = socket.create_connection(("127.0.0.1", self.port), timeout=60)
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"20"))
+            stream.write(b"AUTHINFO USER native-reader\r\n")
+            self.assertTrue(stream.readline().startswith(b"381"))
+            stream.write(b"AUTHINFO PASS correct-horse\r\n")
+            self.assertTrue(stream.readline().startswith(b"281"))
+            return client, stream
+
+        def post(stream, article):
+            stream.write(b"POST\r\n")
+            self.assertTrue(stream.readline().startswith(b"340"))
+            body = article if article.endswith(b"\r\n") else article + b"\r\n"
+            stream.write(body + b".\r\n")
+            return stream.readline().decode("ascii", "replace").strip()
+
+        client_a, stream_a = session()
+        rebound = run(operator + ["principal", "bind", "native-reader", q_principal.hex()])
+        self.assertIn(b"accepted operator principal bind applied", rebound.stderr)
+        reply_a = post(stream_a, articles[0])
+        client_b, stream_b = session()
+        reply_b = post(stream_b, articles[1])
+        still_running = process.poll() is None
+        for client in (client_a, client_b):
+            client.close()
+        diagnostic = stop_and_diagnostics(process)
+        text = log.read_text(encoding="ascii", errors="replace")
+        print("NATIVE-AUTH-REBIND-WITNESS", reply_a, "|", reply_b)
+        self.assertTrue(still_running, diagnostic)
+        self.assertTrue(reply_a.startswith("240"), (reply_a, text))
+        self.assertTrue(reply_b.startswith("441"), (reply_b, text))
+        self.assertIn("not bound", reply_b)
+        self.assertIn("post login=native-reader bound=" + p_principal.hex(), text)
+        self.assertIn("post login=native-reader refused login-not-bound", text)
+
 if __name__ == "__main__":
     unittest.main()
