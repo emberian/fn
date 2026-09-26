@@ -36,7 +36,8 @@
 ; and the identity delta (`fn-stx-delta', through `fn-sn-accepted-delta'),
 ; under the keyring and its generation.  Whether the keyring can change
 ; between the prepare that interns and the finish that consumes is the
-; phase gate's theorem in books/catalog-commit.lisp, not this book's.
+; phase gate's theorem of the commit book that follows this one (the
+; continuation, PKT-585), not this book's.
 
 (in-package "ACL2")
 (include-book "payload-arena")
