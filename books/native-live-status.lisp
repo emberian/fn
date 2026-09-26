@@ -366,7 +366,7 @@ freed-octets=N'."
           *fn-nls-lf*
           (fn-nls-connection-lines pins)))
 
-(defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health)))
+(defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health :accounts)))
 
 (defun fn-nls-report (kind profile s bytes cfg pins obs)
   "The octets `operator CONFIG KIND' prints.
@@ -380,6 +380,8 @@ configuration pins (nil with no owner), OBS the host's open observation."
     (fn-native-admin-peer-report (fn-cfg-peers (fn-cfg-value cfg))))
    ((equal kind :control)
     (fn-native-admin-control-report (fn-cfg-authorities (fn-cfg-value cfg))))
+   ; PRF-164: `account list' (books/accounts.lisp, no digest or verifier).
+   ((equal kind :accounts) (fn-acct-list-report (fn-cfg-value cfg)))
    ((equal kind :pins) (fn-nls-pins-line s pins))
    ((equal kind :obligations)
     (append (fn-nls-text "obligations=")
@@ -502,13 +504,15 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
   (declare (xargs :guard t))
   (cond ((equal kind :status) 1) ((equal kind :pins) 2)
         ((equal kind :peers) 3) ((equal kind :obligations) 4)
-        ((equal kind :control) 5) ((equal kind :health) 6) (t 0)))
+        ((equal kind :control) 5) ((equal kind :health) 6)
+        ((equal kind :accounts) 7) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
         ((equal code 3) :peers) ((equal code 4) :obligations)
-        ((equal code 5) :control) ((equal code 6) :health) (t nil)))
+        ((equal code 5) :control) ((equal code 6) :health)
+        ((equal code 7) :accounts) (t nil)))
 
 (defun fn-nls-seal (kind payload)
   (declare (xargs :guard t))

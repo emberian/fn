@@ -355,6 +355,76 @@ observation into the outcome and this function only carries it out."
                                     command condition)
           code)))))
 
+;;; PRF-164 (PKT-439): `account invite [--expires SECONDS]'.  The host
+;;; reads the CSPRNG; ACL2 renders the code and its digest
+;;; (books/accounts.lisp); the digest-only vector is planned by
+;;; fn-native-admin-plan and published live through the control socket, or
+;;; offline into the configuration when no owner runs (the `peer add'
+;;; pattern).  The code is printed once, to stdout, and only after the
+;;; pending row is durable; it is never logged, stored or put in an argv.
+(defun fnn-operator-account-entropy ()
+  (let ((width (fnn-core 'fn-acct-host-entropy-octets)))
+    (unless (and (integerp width) (< 0 width))
+      (fnn-fault "ACL2 returned an invalid code width"))
+    (let ((fd (fnn-open "/dev/urandom" sb-posix:o-rdonly))
+          (answer (fnn-make-octets width))
+          (offset 0))
+      (unwind-protect
+           (progn
+             (loop while (< offset width) do
+               (let* ((chunk (fnn-make-octets (- width offset)))
+                      (count (fnn-read-fd fd chunk)))
+                 (when (zerop count)
+                   (fnn-fault "OS CSPRNG ended before one invitation code"))
+                 (replace answer chunk :start1 offset :end2 count)
+                 (incf offset count)))
+             (fnn-octet-list answer))
+        (fnn-close fd)))))
+
+(defun fnn-operator-execute-account-invite (result)
+  (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+         (seconds (fnn-core 'fn-native-operator-host-result-account-invite-seconds
+                            result))
+         (control-path-list
+           (fnn-core 'fn-native-operator-host-result-account-control-path-octets
+                     result)))
+    (handler-case
+        (let* ((code (fnn-core 'fn-acct-host-code-text
+                               (fnn-operator-account-entropy)))
+               (digest (and (stringp code)
+                            (fnn-core 'fn-acct-host-code-digest-text
+                                      (fnn-ascii-octet-list code))))
+               (argv (and (stringp digest)
+                          (fnn-core 'fn-acct-host-invite-argv digest seconds)))
+               (plan (and argv (fnn-core 'fn-native-admin-host-plan argv)))
+               (control-path (and (fnn-octet-list-p control-path-list)
+                                  (consp control-path-list)
+                                  (fnn-octets control-path-list)))
+               (livep (and control-path
+                           (not (fnn-image-omits-p :control))
+                           (fnn-control-socket-path-p
+                            (fnn-lstat (fnn-octets-string control-path)))))
+               (exit
+                 (progn
+                   (unless (and (stringp code) (stringp digest)
+                                (fnn-admin-plan-acceptedp plan))
+                     (fnn-fault "ACL2 refused its own invitation vector"))
+                   (if livep
+                       (fnn-core 'fn-native-control-host-status-exit-code
+                                 (fnn-control-admin control-path argv))
+                     (fnn-admin-execute root plan)))))
+          (when (eql exit +fnn-exit-ok+)
+            (write-line code *fnn-stdout*)
+            (finish-output *fnn-stdout*))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code exit)
+                                    "account")
+          exit)
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "account" condition)
+          code)))))
+
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
@@ -637,6 +707,7 @@ one `init' makes; nothing is opened or locked."
           (:peering (fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))
           (:keys (fnn-keys-execute result))
+          (:account-invite (fnn-operator-execute-account-invite result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)
