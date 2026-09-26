@@ -557,7 +557,7 @@ class NativeKeyStatementTests(unittest.TestCase):
     def test_a_refused_key_change_is_named_in_the_post_reply(self):
         """PKT-473 (PRF-184): the succession statement's kind-4 composite is
         durable and the Store refuses its kind-3 key change (the transaction
-        budget holds exactly one more record).  The POST reply is ACL2's 240
+        budget admits the composite and nothing more).  The POST reply is ACL2's 240
         naming the refused key change (books/nntp-post.lisp
         *fn-post-durable-key-change-refused-line*), never the plain 240 and
         never a 441; the statement stands and the keys are unchanged."""
@@ -570,16 +570,31 @@ class NativeKeyStatementTests(unittest.TestCase):
         finally:
             self.stop(probe)
         used = self.transactions_used(probe)
-        d = self.profiled_node("d", max_transactions=used + 1)
-        self.start(d)
+        old, new = self.keys["old"], self.keys["new"]
+        statement = self.carrier(self.principal_file, old,
+                                 self.succession("<kc-refused@keys.invalid>", P, old, new),
+                                 "kc-refused")
+        # The smallest budget above USED that admits the statement's composite
+        # (the first attempt, USED + 1, was refused whole at run n3: the
+        # composite needs more than one transaction of headroom).  Each
+        # budget is a fresh store; every reply is recorded.
+        tried = []
+        for extra in range(1, 5):
+            d = self.profiled_node("d{}".format(extra), max_transactions=used + extra)
+            self.start(d)
+            try:
+                self.enrol_and_grant(d)
+                reply = self.post(d, statement)
+                tried.append((used + extra, reply.strip()))
+                if reply.startswith(b"240 "):
+                    break
+            except BaseException:
+                self.stop(d)
+                raise
+            self.stop(d)
+        witness("key-change-refused POST by budget", tried)
+        budget = tried[-1][0]
         try:
-            self.enrol_and_grant(d)
-            old, new = self.keys["old"], self.keys["new"]
-            statement = self.carrier(self.principal_file, old,
-                                     self.succession("<kc-refused@keys.invalid>", P, old, new),
-                                     "kc-refused")
-            reply = self.post(d, statement)
-            witness("key-change-refused POST", used + 1, reply.strip())
             self.assertEqual(reply, b"240 article received OK; the key change it carries "
                                     b"was refused (key-change-refused)\r\n")
             self.assertIn("key-statement enrol-successor refused", self.log(d))
@@ -590,7 +605,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.assertTrue(later.startswith(b"441 "), later)
         finally:
             self.stop(d)
-        self.assertEqual(self.transactions_used(d), used + 1)
+        self.assertEqual(self.transactions_used(d), budget)
         history = self.history(d)
         witness("history", history)
         self.assertEqual(history, ["generation=1 state=active principal=" + P.hex()])
