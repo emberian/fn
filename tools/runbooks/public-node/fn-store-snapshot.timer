@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly snapshots of the public fn node's store
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

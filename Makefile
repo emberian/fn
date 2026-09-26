@@ -703,6 +703,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
+	books/peer-transit-forms \
+	tests/acl2/peer-transit-forms-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
@@ -833,6 +835,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
+	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
 	books/owner-fault \
 	books/owner-feed-subject \
@@ -914,6 +917,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-invite-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/node-secret \
+	tests/acl2/node-secret-tests \
+	books/cancel-lock-lines \
+	books/cancel-lock \
+	tests/acl2/cancel-lock-tests \
+	tests/acl2/owner-cancel-lock-tests \
 	books/control-served \
 	tests/acl2/control-served-tests \
 	books/nntp-control \

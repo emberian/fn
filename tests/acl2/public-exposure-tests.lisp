@@ -28,7 +28,7 @@
 ; An owner with no connection, room for eight, next id 5, and the empty
 ; configuration: fn-own-open runs over it.
 (defconst *pxt-owner*
-  (fn-own-make nil nil nil 5 8 nil nil nil nil nil nil nil nil))
+  (fn-own-make nil nil nil 5 8 nil nil nil nil nil nil nil nil nil))
 (defconst *pxt-oc* (fn-ocfg-make *pxt-owner* (fn-cfg-initial) nil nil))
 
 (defmacro pxt-open (oc xs lim address now)
@@ -262,3 +262,210 @@
 (assert-event
  (equal (take 24 (fn-exp-health-lines (fn-exp-initial) *pxt-lim* 0 5003))
         (fn-record-string-octets "exposure pressure clear ")))
+
+; =============================================================================
+; PRF-211 (NNT-043): the connection capacity and the trusted range.
+
+; The trusted-range grammar: ranges, a bare address, IPv6, `none'; and
+; refusals (a prefix past the family's width, two slashes, an empty word,
+; an empty element, a word longer than a configuration label).
+(assert-event (equal (fn-exp-trusted-of-word "192.168.1.0/24, fd00::/8")
+                     '((:inet (192 168 1 0) 24)
+                       (:inet6 (253 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 8))))
+(assert-event (equal (fn-exp-trusted-of-word "10.0.0.7") '((:inet (10 0 0 7) 32))))
+(assert-event (equal (fn-exp-trusted-of-word "none") nil))
+(assert-event (fn-exp-trusted-wordp "none"))
+(assert-event (fn-exp-trusted-wordp "192.168.1.0/24"))
+(assert-event (not (fn-exp-trusted-wordp "192.168.1.0/33")))
+(assert-event (not (fn-exp-trusted-wordp "fd00::/129")))
+(assert-event (not (fn-exp-trusted-wordp "1.2.3.4/8/9")))
+(assert-event (not (fn-exp-trusted-wordp "")))
+(assert-event (not (fn-exp-trusted-wordp "10.0.0.0/8,")))
+(assert-event (not (fn-exp-trusted-wordp "localhost/8")))
+(assert-event (not (fn-exp-trusted-wordp
+                    (coerce (make-list 257 :initial-element #\1) 'string))))
+; Matching is by family and the first BITS bits.
+(assert-event (fn-exp-trusted-addressp '(:inet 192 168 1 77)
+                                       (fn-exp-trusted-of-word "192.168.1.0/24")))
+(assert-event (fn-exp-trusted-addressp '(:inet 192 168 1 77)
+                                       (fn-exp-trusted-of-word "192.168.0.0/23")))
+(assert-event (not (fn-exp-trusted-addressp '(:inet 192 168 2 77)
+                                            (fn-exp-trusted-of-word "192.168.0.0/23"))))
+(assert-event (fn-exp-trusted-addressp '(:inet 192 168 1 77)
+                                       (fn-exp-trusted-of-word "0.0.0.0/0")))
+(assert-event (not (fn-exp-trusted-addressp '(:inet6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1)
+                                            (fn-exp-trusted-of-word "0.0.0.0/0"))))
+
+; The configuration rows the host reads.
+(defconst *pxt-v-cap40*
+  (fn-cfg-apply-delta *pxt-v-empty* 1 0 (fn-cfg-set-limit "exposure-connections" 40)))
+(defconst *pxt-v-cap-u32*
+  (fn-cfg-apply-delta *pxt-v-empty* 1 0
+                      (fn-cfg-set-limit "exposure-connections" *fn-cbor-max-uint*)))
+; Past the rows' width: a value no admitted record holds (the delta is
+; refused with a reason), built here only to falsify H1.
+(defconst *pxt-v-cap-wide*
+  (fn-cfg-apply-delta *pxt-v-empty* 1 0
+                      (fn-cfg-set-limit "exposure-connections"
+                                        *fn-exp-owner-connection-bound*)))
+(assert-event (fn-cfg-delta-reason *pxt-v-empty* 1 0 0 nil
+                                  (fn-cfg-set-limit "exposure-connections"
+                                                    *fn-exp-owner-connection-bound*)))
+(assert-event (equal (fn-exp-connections-capacity *pxt-v-empty*) 31))
+(assert-event (equal (fn-exp-connections-capacity *pxt-v-cap40*) 40))
+
+; fn-exp-owner-bound-exceeds-every-capacity.  H1 (fn-cfg-limits-withinp).
+(assert-event (fn-cfg-limits-withinp (fn-cfg-limits *pxt-v-cap-u32*)))
+(assert-event (< (fn-exp-connections-capacity *pxt-v-cap-u32*)
+                 *fn-exp-owner-connection-bound*))
+(assert-event (not (fn-cfg-limits-withinp (fn-cfg-limits *pxt-v-cap-wide*))))
+(must-fail
+ (assert-event (< (fn-exp-connections-capacity *pxt-v-cap-wide*)
+                  *fn-exp-owner-connection-bound*)))
+
+; fn-exp-limits-total-is-the-capacity.  H1 (< capacity max-conns).
+; Witness: 40 under the run's bound, above the 31 every node had.
+(assert-event (< 40 *fn-exp-owner-connection-bound*))
+(assert-event (equal (fn-exp-lim-total (fn-exp-limits *pxt-v-cap40*
+                                                      *fn-exp-owner-connection-bound*
+                                                      t nil))
+                     40))
+; H1 dropped: an owner bounded at the old 32 clips 40 to 31.
+(assert-event (not (< 40 32)))
+(must-fail
+ (assert-event (equal (fn-exp-lim-total (fn-exp-limits *pxt-v-cap40* 32 t nil)) 40)))
+
+; KEYSTONE fn-exp-open-refuses-exactly-at-the-capacity.
+;   H1 (fn-cfg-limits-withinp (fn-cfg-limits v))
+;   H2 (not (fn-exp-auth-refusesp xs lim address now))
+(defconst *pxt-lim-cap40*
+  (fn-exp-limits *pxt-v-cap40* *fn-exp-owner-connection-bound* t nil))
+; Witness: the 40th held connection refuses the next with the busy 400; 39
+; admit; both sides of the equality computed.
+(assert-event (fn-cfg-limits-withinp (fn-cfg-limits *pxt-v-cap40*)))
+(assert-event (not (fn-exp-auth-refusesp (fn-exp-initial) *pxt-lim-cap40* *pxt-a* 5000)))
+(assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *pxt-lim-cap40* 40 *pxt-a* 5000)
+                     (list :refuse *fn-exp-busy-line* 1)))
+(assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *pxt-lim-cap40* 39 *pxt-a* 5000)
+                     (list :admit)))
+; Over a real owner bounded as a run bounds it, with capacity 2: two open,
+; the third reads the named 400 and nothing opens.
+(defconst *pxt-v-cap2*
+  (fn-cfg-apply-delta *pxt-v-empty* 1 0 (fn-cfg-set-limit "exposure-connections" 2)))
+(defconst *pxt-lim-cap2*
+  (fn-exp-limits *pxt-v-cap2* *fn-exp-owner-connection-bound* nil nil))
+(defconst *pxt-run-oc*
+  (fn-ocfg-make (fn-own-make nil nil nil 5 *fn-exp-owner-connection-bound*
+                             nil nil nil nil nil nil nil nil nil)
+                (fn-cfg-initial) nil nil))
+(defconst *pxt-k1* (pxt-open *pxt-run-oc* (fn-exp-initial) *pxt-lim-cap2* *pxt-a* 5000))
+(defconst *pxt-k2* (pxt-open (fn-exp-open-ocfg *pxt-k1*) (fn-exp-open-state *pxt-k1*)
+                             *pxt-lim-cap2* *pxt-b* 5001))
+(defconst *pxt-k3* (pxt-open (fn-exp-open-ocfg *pxt-k2*) (fn-exp-open-state *pxt-k2*)
+                             *pxt-lim-cap2* *pxt-a* 5002))
+(assert-event (equal (fn-exp-open-id *pxt-k1*) 5))
+(assert-event (equal (fn-exp-open-id *pxt-k2*) 6))
+(assert-event (null (fn-exp-open-id *pxt-k3*)))
+(assert-event (equal (fn-exp-open-refusal *pxt-k3*) (fn-exp-line *fn-exp-busy-line*)))
+(assert-event (equal (fn-exp-open-refusal *pxt-k3*)
+                     (fn-record-string-octets
+                      (concatenate 'string "400 too many connections; try again later"
+                                   (coerce (list (code-char 13) (code-char 10)) 'string)))))
+; H1 dropped: a row past the width is clipped by the owner's bound, so at
+; that many connections the decision is busy while the right side says admit.
+(defconst *pxt-lim-wide*
+  (fn-exp-limits *pxt-v-cap-wide* *fn-exp-owner-connection-bound* t nil))
+(assert-event (not (fn-exp-auth-refusesp (fn-exp-initial) *pxt-lim-wide* *pxt-a* 5000)))
+(must-fail
+ (assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *pxt-lim-wide*
+                                             *fn-cbor-max-uint* *pxt-a* 5000)
+                      (list :admit))))
+; H2 dropped: ten 481s from A this minute under the public limit; below the
+; capacity the right side says admit, the decision refuses by auth.
+(defconst *pxt-xs-failed*
+  (fn-exp-make nil nil (list (list *pxt-a* 0 10)) nil (list 0 0 0 0 0 0 0 0 0)))
+(assert-event (fn-exp-auth-refusesp *pxt-xs-failed* *pxt-lim-cap40* *pxt-a* 5000))
+(must-fail
+ (assert-event (equal (fn-exp-admit-decision *pxt-xs-failed* *pxt-lim-cap40* 0 *pxt-a* 5000)
+                      (list :admit))))
+
+; KEYSTONE fn-exp-trusted-address-is-never-refused-by-address.
+;   H1 (fn-exp-trusted-addressp address (fn-exp-lim-trusted lim))
+(defconst *pxt-lan* '(:inet 192 168 1 1))
+(defconst *pxt-wan* '(:inet 198 51 100 7))
+(defconst *pxt-lim-trusted*
+  (fn-exp-lim-make-full 5 1 2 600 60 2 1 :none
+                        (fn-exp-trusted-of-word "192.168.1.0/24") "192.168.1.0/24"))
+(defconst *pxt-v-trusted*
+  (fn-cfg-apply-delta *pxt-v-cap40* 2 0 (fn-cfg-set-policy "exposure-trusted" "192.168.1.0/24")))
+(assert-event (equal (fn-exp-lim-trusted
+                      (fn-exp-limits *pxt-v-trusted* *fn-exp-owner-connection-bound* t nil))
+                     (fn-exp-trusted-of-word "192.168.1.0/24")))
+; Witness: over a real owner, the router's LAN address opens three with a
+; per-address limit of 1.
+(defconst *pxt-t1* (pxt-open *pxt-run-oc* (fn-exp-initial) *pxt-lim-trusted* *pxt-lan* 5000))
+(defconst *pxt-t2* (pxt-open (fn-exp-open-ocfg *pxt-t1*) (fn-exp-open-state *pxt-t1*)
+                             *pxt-lim-trusted* *pxt-lan* 5001))
+(defconst *pxt-t3* (pxt-open (fn-exp-open-ocfg *pxt-t2*) (fn-exp-open-state *pxt-t2*)
+                             *pxt-lim-trusted* *pxt-lan* 5002))
+(assert-event (fn-exp-trusted-addressp *pxt-lan* (fn-exp-lim-trusted *pxt-lim-trusted*)))
+(assert-event (equal (fn-exp-open-id *pxt-t3*) 7))
+(assert-event (equal (fn-exp-count-address *pxt-lan* (fn-exp-conns (fn-exp-open-state *pxt-t3*)))
+                     3))
+(assert-event (not (equal (fn-exp-admit-decision (fn-exp-open-state *pxt-t2*) *pxt-lim-trusted*
+                                                 2 *pxt-lan* 5002)
+                          (list :refuse *fn-exp-address-line* 2))))
+; H1 dropped: the WAN address holding its one is refused by address.
+(defconst *pxt-xs-wan*
+  (fn-exp-open-state (pxt-open *pxt-run-oc* (fn-exp-initial) *pxt-lim-trusted* *pxt-wan* 5000)))
+(assert-event (not (fn-exp-trusted-addressp *pxt-wan* (fn-exp-lim-trusted *pxt-lim-trusted*))))
+(must-fail
+ (assert-event (not (equal (fn-exp-admit-decision *pxt-xs-wan* *pxt-lim-trusted* 1 *pxt-wan* 5001)
+                           (list :refuse *fn-exp-address-line* 2)))))
+
+; KEYSTONE fn-exp-untrusted-address-is-refused-exactly-at-its-limit.
+;   H1 (not trusted)   H2 (not auth-refuses)   H3 (< nconns total)
+; Witness: the WAN address at its limit is refused, below it admitted.
+(assert-event (not (fn-exp-auth-refusesp *pxt-xs-wan* *pxt-lim-trusted* *pxt-wan* 5001)))
+(assert-event (< 1 (fn-exp-lim-total *pxt-lim-trusted*)))
+(assert-event (equal (fn-exp-admit-decision *pxt-xs-wan* *pxt-lim-trusted* 1 *pxt-wan* 5001)
+                     (list :refuse *fn-exp-address-line* 2)))
+(assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *pxt-lim-trusted* 0 *pxt-wan* 5001)
+                     (list :admit)))
+; H1 dropped: the trusted address at its limit is admitted, not refused.
+(defconst *pxt-xs-lan* (fn-exp-open-state *pxt-t1*))
+(assert-event (<= (fn-exp-lim-per-address *pxt-lim-trusted*)
+                  (fn-exp-count-address *pxt-lan* (fn-exp-conns *pxt-xs-lan*))))
+(must-fail
+ (assert-event (equal (fn-exp-admit-decision *pxt-xs-lan* *pxt-lim-trusted* 1 *pxt-lan* 5001)
+                      (list :refuse *fn-exp-address-line* 2))))
+; H2 dropped: two 481s from the WAN address (the limit is 2) refuse by auth.
+(defconst *pxt-xs-wan-failed*
+  (fn-exp-make (fn-exp-conns *pxt-xs-wan*) nil (list (list *pxt-wan* 0 2)) nil
+               (list 0 0 0 0 0 0 0 0 0)))
+(assert-event (fn-exp-auth-refusesp *pxt-xs-wan-failed* *pxt-lim-trusted* *pxt-wan* 5001))
+(must-fail
+ (assert-event (equal (fn-exp-admit-decision *pxt-xs-wan-failed* *pxt-lim-trusted* 1
+                                             *pxt-wan* 5001)
+                      (list :refuse *fn-exp-address-line* 2))))
+; H3 dropped: at the total the decision is busy, not the address's.
+(must-fail
+ (assert-event (equal (fn-exp-admit-decision *pxt-xs-wan* *pxt-lim-trusted* 5 *pxt-wan* 5001)
+                      (list :refuse *fn-exp-address-line* 2))))
+
+; The capacity line `status' and `health' print.
+(assert-event
+ (equal (fn-exp-capacity-line (fn-exp-limits *pxt-v-trusted* *fn-exp-owner-connection-bound*
+                                             t nil)
+                              3)
+        (fn-record-string-octets
+         (concatenate 'string
+                      "exposure capacity connections=3 capacity=40 per-address=8"
+                      " trusted=192.168.1.0/24"
+                      (coerce (list (code-char 10)) 'string)))))
+(assert-event
+ (equal (fn-exp-capacity-line *pxt-lim-cap40* 0)
+        (fn-record-string-octets
+         (concatenate 'string
+                      "exposure capacity connections=0 capacity=40 per-address=8 trusted=none"
+                      (coerce (list (code-char 10)) 'string)))))

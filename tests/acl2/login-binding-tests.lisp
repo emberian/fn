@@ -39,13 +39,13 @@
                                             nil nil)
                       nil nil nil))
                6 8 nil nil nil nil nil nil
-               (fn-own-sub-make 5 0 0 nil) nil))
+               (fn-own-sub-make 5 0 0 nil) nil nil))
 (defconst *lbt-o* (lbt-owner *lbt-login* t))
 (defconst *lbt-o-guest* (lbt-owner *lbt-other-login* t))
 (defconst *lbt-o-unauthenticated* (lbt-owner *lbt-login* nil))
 (defconst *lbt-o-control*
   (fn-own-make nil nil nil 6 8 nil nil nil nil nil nil
-               (fn-own-sub-make *fn-own-control-id* 0 0 nil) nil))
+               (fn-own-sub-make *fn-own-control-id* 0 0 nil) nil nil))
 (assert-event (equal (fn-lb-inflight-login *lbt-o*) *lbt-login*))
 (assert-event (null (fn-lb-inflight-login *lbt-o-unauthenticated*)))
 (assert-event (null (fn-lb-inflight-login *lbt-o-control*)))

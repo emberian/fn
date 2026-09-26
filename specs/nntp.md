@@ -770,48 +770,78 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
 SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
 
-Status: **specified, not implemented** (PKT-575; the decision is PKT-576,
-planning/evidence/group-policy-2026-09-26.md).
+Status: **half implemented** (PRF-210, lane newsreader-cancel,
+planning/evidence/newsreader-cancel-2026-09-26.md). The decision is in
+place: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a
+Cancel-Lock of its target withdraws it, here and on every peer (a client
+that writes its own lines, as tin does, can cancel its own post today). The
+node-written lock keyed by the login, below, is proved and tested in ACL2 but
+not yet called by the owner: the owner's completion gate requires the stored
+payload to be the in-flight submission's staged octets
+(`fn-own-sub-stored-octets`), so the lines must be added there, with the
+secret held by the owner and the login carried by the submission. Until
+then Thunderbird, which writes no Cancel-Lock, cannot cancel. The decisions
+(PKT-576's default, P1) are the coordinator's of 2026-09-26. RFC 5537
+section 5.3 leaves cancel authentication to local policy; the login basis
+is that local policy; the lock and key are RFC 8315.
 
-Today a cancel or Supersedes from an ordinary newsreader is filed and
-withdraws nothing: only a verified signed canceller acts
-(`fn-ctl-withdrawal-plan` declines `:unsigned`). RFC 5537 section 5.3
-leaves cancel authentication to local policy; the same-login basis is a
-local policy (the coordinator's decision P1), Cancel-Lock is RFC 8315.
+What the node is to write (not wired). On a served POST from an authenticated login L the
+owner (books/cancel-lock.lisp `fn-cl-served-payload`) inserts directly after its own Injection-Info line
 
-The obstruction, measured in the tree: nothing durable names an unsigned
-article's posting login. The Store's kind-4 record does not
-(planning/evidence/path-and-login-2026-09-25.md, "The Store's kind-4 record
-does not; that remains open"), and the injected octets carry only the
-agent (`fn-inj-injection-info-line`). A withdrawal is decided at
-`fn-own-refresh` from durable state (`fn-ctl-journal-withdrawals` over the
-articles and their stored verdicts), so a basis that compares logins has
-nothing to compare against after a restart. D34 excludes adding the login
-to the Store record (a format change).
+    Cancel-Lock: sha256:Base64(SHA-256(K))
+    Cancel-Key: sha256:K'          (a cancel or Supersedes only)
 
-The proposed design (the default of PKT-576): the node puts the login's
-material in the article's own octets, as RFC 8315 does:
+with `K = Base64(HMAC-SHA256(S, MSGID || L))` (RFC 8315 section 4), `K'`
+the same for the cancel's target, and S a 32-octet secret the owner is to create
+at its first start in `STORE/cancel-lock.key` (never served, never in a
+record; a deleted file is replaced and the service log says so, and locks
+written under the old secret then no longer open by login; a file of the
+wrong size stops the node by name). A proto-article that already carries
+Cancel-Lock (tin's own) gets no node lock, and one that carries Cancel-Key
+gets no node key: RFC 8315 section 2 allows each field once and fn does not
+rewrite the poster's field, so the poster's own keys decide. An
+unauthenticated POST, a control or BP submission, and an article without
+this node's Injection-Info line get nothing.
 
-- at injection, the node adds `Cancel-Lock: sha256:BASE64(SHA256(K))` with
-  `K = BASE64(HMAC-SHA256(S, MSGID || LOGIN))` (RFC 8315 section 4's
-  recommended construction), S a 32-octet node secret created at `init`
-  beside the store's configuration and never served;
-- a cancel (Control: cancel, or Supersedes) POSTed by an authenticated
-  login gets `Cancel-Key: sha256:K'` for its target, computed from that
-  login; the withdrawal plan accepts an unsigned cause whose Cancel-Key
-  hashes to a Cancel-Lock of the target (RFC 8315 section 3), with the hash
-  in ACL2 (`books/sha256.lisp`, executable) and HMAC over it;
-- a friend's cancel from another node travels with its Cancel-Key, so every
-  node that holds the target decides the same way (visible(T,C) =
-  visible(C,T) keeps holding: the decision reads the two articles only);
-- the D25 inverse (`fn-inj-source-of`) must strip the injected Cancel-Lock.
+How it is decided. The withdrawal plan decides a cause this node did not
+verify by its Cancel-Key entries (a record naming them), and the effect's
+`:poster` arm withdraws a target one of whose sha256 Cancel-Lock entries is
+Base64(SHA-256(key)) for one of them (RFC 8315 sections 2.1, 2.2). The
+decision reads the two articles only, so it is the same on every node that
+holds both, in either arrival order (visible(T,C) = visible(C,T) is
+unchanged), and it replays from the Store after a restart. A cause this node
+verified is decided exactly as before, whatever keys it carries. The reply
+to the cancel's POST stays 240; the target is withdrawn by the existing
+visibility rule at the refresh that publishes the cancel (ARTICLE 430, gone
+from OVER; HDR :fn-control says `executed withdrawal <T> poster`; a key that
+opens nothing says `declined no-lock-match`).
 
-What it proves and what it cannot: acceptance is exact (the cancel's key
-hashes to the lock), and the same login is always accepted. "A different
-login is refused" holds only up to a SHA-256 second preimage of the lock
-(2^256 generic work; the collision figure, 2^128, does not apply because
-the lock is fixed before the forger chooses), an assumption to be named in
-`books/assumptions.lisp`, never a theorem about the real hash.
+What it proves and what it cannot. Keystone
+`fn-ctl-withdrawal-authority-is-exactly-signer-or-poster`: a cancel's record
+withdraws exactly for a verified signer who authored the target, a verified
+signer whose grants cover every group of the target, or an unverified cause
+whose key opens a lock of the target. The same login's key opens its lock
+(`fn-cl-login-key-opens-login-lock`); the owner's insertion changes no octet
+of the injected article (`fn-cll-insert-adds-only-the-lines`). Not
+theorems: that the written line parses back as the entry the decision reads
+(the teeth book checks it on served articles), and that another login's key
+opens nothing, which needs SHA-256 of two HMAC outputs under a secret the
+forger does not hold to collide (2^128 generic work for a collision among
+chosen logins; a forger who only sees the lock faces a second preimage,
+2^256). An abstract model of the hash would prove nothing about the real
+one, so there is no assumption book entry; the teeth check one such pair of
+logins by name.
+
+Known gaps against RFC 8315: comments (CFWS) inside a Cancel-Lock or
+Cancel-Key value are not stripped, so an entry glued to a comment is skipped
+rather than read (section 2's MUST accept); only sha256 is read (sha512 is
+skipped as unsupported, which section 2 permits); a Cancel-Key a poster
+supplies on a cancel of an article the node locked gets no node key beside it
+(section 3.3's MUST for an agent that added the lock; appending to the
+poster's field is the follow-up). The D25 comparison reads the inserted
+lines as part of the source: the same source from the same login under one
+Message-ID is still one article, and from another login it is now a
+conflict rather than a duplicate.
 
 ### Not yet true of POST
 
@@ -1180,8 +1210,8 @@ and sends, waits or closes as the answer says.
 
 | Slot | Decides | The client sees | Loopback default | Public default |
 | --- | --- | --- | --- | --- |
-| `exposure-connections` | connections held (never above the run's max) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | the run's max | the run's max |
-| `exposure-per-address` | connections held from one source address | `400 too many connections from this address; try again later` | the total | 8 |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | 31 | 31 |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | 8 |
 | `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
 | `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
 | `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
@@ -1213,6 +1243,44 @@ unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
 close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
 accounting and waiting instead of refusing are local policy.
 
+## Connection capacity and the trusted range (NNT-043)
+
+NNT-043: The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule
+
+The capacity is the `exposure-connections` row, a natural up to the limit
+rows' width (the CBOR uint32 maximum); with no row it is 31, the figure a
+run held before. No fixed ceiling sits under it: the owner a run installs is
+bounded one past that width (`*fn-exp-owner-connection-bound*`,
+books/public-exposure-rows.lisp), so the owner's own bound never refuses what
+the row admits, and the private connection a live `policy set` stages
+through always finds room. Below the capacity a connection is refused only
+by the per-address or failed-login rule; at it, every connection reads `400
+too many connections; try again later` and is closed
+(`fn-exp-open-refuses-exactly-at-the-capacity`, PRF-211). A raised row takes
+effect at the next accept.
+
+`exposure-trusted` (a policy row: `none`, or one or more comma-separated
+ranges `ADDRESS/BITS`, each address in `[listener] host`'s grammar, BITS at
+most 32 or 128, a bare address meaning the whole address) names the sources
+exempt from `exposure-per-address`. A node behind a home router whose NAT
+loopback presents every LAN reader as the router's address is the case: its
+readers would otherwise share one address's allowance. The exemption is from
+that rule alone: the capacity, the step budget and the failed-login limit
+apply to a trusted source as to any other
+(`fn-exp-trusted-address-is-never-refused-by-address`,
+`fn-exp-untrusted-address-is-refused-exactly-at-its-limit`). A range is
+matched by the kernel's family and the first BITS bits of the source
+address; an IPv4 range does not match an IPv4-mapped IPv6 source, which no
+admitted listener receives (NNT-041 refuses `::` and the mapped range).
+
+`operator CONFIG health` and `operator CONFIG status` print `exposure
+capacity connections=N capacity=C per-address=P trusted=RANGES`: the
+connections the owner holds, the capacity in force, the per-address limit
+and the trusted word (`none` when there is none).
+
+That the port refuses with 400 past a limit is RFC 3977 §5.1.1; the capacity,
+its default and the trusted range are local policy.
+
 ## Listener addresses (NNT-041)
 
 NNT-041: The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why
@@ -1238,6 +1306,47 @@ the portable form). The node is public when any listener is
 (`fn-exp-address-publicp` per address). A live reconfiguration does not
 rebind listeners (PKT-464 (a)); a changed `host` takes effect at restart.
 What remains: PKT-577.
+
+## Transit streaming (NNT-045)
+
+NNT-045: A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not
+
+A peer connection (a configured peer with an inbound half) accepts MODE
+STREAM with 203 (RFC 4644 §2.3; stateless: IHAVE stays available), CHECK
+(§2.4) and TAKETHIS (§2.5). The three forms are answered from two ACL2
+decisions of books/peer-inbound.lisp: `fn-peer-decide-offer` before the
+article (IHAVE's first reply, CHECK's only reply) and
+`fn-peer-decide-transfer` after it (IHAVE's second reply, TAKETHIS's only
+reply; it has no command formal). PRF-207 states the correspondence on the
+codes a peer reads off the socket:
+
+| decision | IHAVE (RFC 3977 §6.3.2) | streaming (RFC 4644) |
+| --- | --- | --- |
+| offer wanted / held / deferred or refused | 335 / 435 / 436, 435 | CHECK 238 / 438 / 431, 438 |
+| transfer durable / refused or held / deferred or uncertain | 235 / 437 / 436 | TAKETHIS 239 / 439 / 436 |
+
+RFC requirements: the codes and the Message-ID echoed by every CHECK and
+TAKETHIS reply. fn guarantee: one admission decision for all three forms,
+so no article is admitted under one form that another would refuse, and a
+duplicate is refused under every form. Local policy: 436 after TAKETHIS
+(RFC 4644 §2.5 names 400; innfeed retries 436 and a 400 closes the
+connection with every pipelined article behind it), and the pipeline
+bound: each 238 is a promise counted on the connection, a TAKETHIS retires
+one, and a CHECK with the peer record's inbound max-inflight outstanding
+(16 from `peer add`) answers 431, so a peer may pipeline without limit and
+fn's work per connection stays bounded (D27; the unbounded part is the
+peer's queue, not fn's).
+
+Outbound, fn sends MODE STREAM after the greeting when the peer record
+says streaming. 203: the feed offers with CHECK and transfers with
+TAKETHIS. 500 or 501 (RFC 3977 §3.2.1: the command or its argument is
+unknown, which is what a server without RFC 4644 answers): the same
+connection goes on with IHAVE, the owner logs one line
+(`fn-fc-fallback-log-line`) and records no stop; the next connection asks
+again. Any other answer is a refusal and stops the dial for the owner
+process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
+it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
+asks MODE STREAM, which every legacy server answers (PKT-599).
 
 ## Scope
 

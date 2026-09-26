@@ -17,10 +17,22 @@
 ;                               grants) and the configuration generation it was
 ;                               decided under; or a decline with its reason.
 ;   `fn-ctl-withdrawal-effect'  a pure function of that record and the
-;                               TARGET's accepted group bindings and verdict:
-;                               :author, :authority or (:decline REASON).  The
-;                               target's declared groups in the cancel never
-;                               enter, so naming a narrower list gains nothing.
+;                               TARGET's accepted group bindings, verdict and
+;                               octets: :author, :authority, :poster or
+;                               (:decline REASON).  The target's declared
+;                               groups in the cancel never enter, so naming a
+;                               narrower list gains nothing.
+;
+; SEC-006 (PRF-210, 2026-09-26): the poster of an UNSIGNED article withdraws
+; it by RFC 8315 Cancel-Lock.  A cause this node did not verify is decided by
+; its Cancel-Key field: the record names the keys, `(:cancel-key . KEYS)',
+; and it withdraws exactly a target one of whose sha256 Cancel-Lock values is
+; Base64(SHA-256(key)) for one of them (RFC 8315 section 2.1 and 4).  The
+; node itself puts a lock keyed by the posting login on every served POST and
+; the matching key on that login's cancel (books/cancel-lock.lisp), so on the
+; node that injected it the login is the principal of an unsigned article; a
+; friend's cancel from another node carries its key in its own octets, so
+; every node that holds both articles decides alike.
 ;   `fn-ctl-visible-articles'   the articles a newly published reader view
 ;                               serves: every article except a target some
 ;                               withdrawal whose cause is in the SAME article
@@ -34,6 +46,7 @@
 (include-book "control-classify")
 (include-book "stx-verify")
 (include-book "acceptance")
+(include-book "sha256")
 
 ; -----------------------------------------------------------------------------
 ; Namespace coverage.  A pattern is a group name (covers exactly that group)
@@ -208,20 +221,27 @@
 ; The decision made when a withdrawing article commits, under the
 ; configuration CFG it commits under (generation and authorities slot).  It
 ; reads the withdrawing article only: its verdict (verified HERE), its
-; Message-ID and its one TARGET (a cancel's argument or a Supersedes field,
-; `fn-ctl-article-target').  It never reads the target article, which may
+; Message-ID, its one TARGET (a cancel's argument or a Supersedes field,
+; `fn-ctl-article-target') and its Cancel-Key entries KEYS
+; (`fn-ctl-keys-octets').  A cause this node verified is decided by its
+; principal exactly as before SEC-006, whatever keys it carries; a cause it
+; did not verify is decided by its keys (a record naming them), and declines
+; as before when it carries none.  It never reads the target article, which may
 ; not have arrived; the target enters at `fn-ctl-withdrawal-effect'.  The
 ; scope is the principal's cancel grants in CFG, possibly empty (then only
 ; the author basis can apply).  RFC 5537 section 5.4: a Supersedes field
 ; withdraws its target "exactly as a cancel would", under the same
 ; authentication, so the two share this decision.
-(defun fn-ctl-withdrawal-plan (cause-msgid cause-verdict target cfg)
+(defun fn-ctl-withdrawal-plan (cause-msgid cause-verdict target keys cfg)
   (declare (xargs :guard t))
   (let ((principal (fn-ctl-verified-principal cause-verdict)))
-    (cond ((not principal)
+    (cond ((and (not principal) (not (consp keys)))
            (list :decline (fn-ctl-unverified-reason cause-verdict)))
           ((not target) (list :decline :no-target))
           ((equal target cause-msgid) (list :decline :self-target))
+          ((not principal)
+           (fn-ctl-withdrawal-make target cause-msgid (cons :cancel-key keys)
+                                   nil (fn-cfg-generation cfg)))
           (t (fn-ctl-withdrawal-make
               target cause-msgid principal
               (fn-ctl-grant-scope principal "cancel"
@@ -231,7 +251,7 @@
 (defun fn-ctl-cancel-plan (cause-msgid cause-verdict classified cfg)
   (declare (xargs :guard t))
   (fn-ctl-withdrawal-plan cause-msgid cause-verdict
-                          (fn-ctl-cancel-target classified) cfg))
+                          (fn-ctl-cancel-target classified) nil cfg))
 
 ; ---------------------------------------------------------------------------
 ; Supersedes (RFC 5537 section 5.4; RFC 5536 section 3.2.12:
@@ -274,19 +294,130 @@
             nil))
       nil)))
 
+;; ---------------------------------------------------------------------------
+;; RFC 8315 Cancel-Lock and Cancel-Key (SEC-006).  Both fields hold a list of
+;; `scheme:string' entries (section 2); an unsupported scheme is skipped and
+;; the entries after it are read (sections 2.1, 2.2).  sha256 is the one
+;; scheme fn reads (mandatory to implement); the scheme is compared in ASCII
+;; lower case, as the field name is.  Comments in CFWS are not stripped: an
+;; entry glued to a comment is not a sha256 entry and is skipped (a known
+;; gap against section 2's MUST accept, stated in specs/nntp.md).
+
+(defconst *fn-ctl-cancel-lock-name*
+  '(99 97 110 99 101 108 45 108 111 99 107))          ; cancel-lock
+(defconst *fn-ctl-cancel-key-name*
+  '(99 97 110 99 101 108 45 107 101 121))             ; cancel-key
+(defconst *fn-ctl-sha256-scheme*
+  '(115 104 97 50 53 54 58))                          ; sha256:
+
+; The string of one `sha256:STRING' entry, or nil.
+(defun fn-ctl-sha256-entry (word)
+  (declare (xargs :guard t))
+  (if (and (true-listp word)
+           (< (len *fn-ctl-sha256-scheme*) (len word))
+           (equal (fn-ctl-downcase (take (len *fn-ctl-sha256-scheme*) word))
+                  *fn-ctl-sha256-scheme*))
+      (nthcdr (len *fn-ctl-sha256-scheme*) word)
+    nil))
+
+(defun fn-ctl-sha256-entries (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (let ((e (fn-ctl-sha256-entry (car words))))
+        (if (consp e)
+            (cons e (fn-ctl-sha256-entries (cdr words)))
+          (fn-ctl-sha256-entries (cdr words))))
+    nil))
+
+; Every sha256 entry of the fields FIELDS, in order.  RFC 8315 section 2
+; allows each field once; a second one is read too (more entries, never
+; fewer; stated in specs/nntp.md).
+(defun fn-ctl-field-entries (fields)
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (append (if (and (true-listp (car fields)) (equal (len (car fields)) 3))
+                  (fn-ctl-sha256-entries
+                   (fn-ctl-words (fn-article-field-unfolded-value (car fields))))
+                nil)
+              (fn-ctl-field-entries (cdr fields)))
+    nil))
+
+(defun fn-ctl-cancel-keys (fields)
+  (declare (xargs :guard t))
+  (fn-ctl-field-entries (fn-ctl-fields-named *fn-ctl-cancel-key-name* fields)))
+
+(defun fn-ctl-cancel-locks (fields)
+  (declare (xargs :guard t))
+  (fn-ctl-field-entries (fn-ctl-fields-named *fn-ctl-cancel-lock-name* fields)))
+
+; The header fields of received octets, or nil when they do not parse.
+(defun fn-ctl-received-fields (received)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse received)))
+    (if (fn-article-result-okp parsed)
+        (let ((article (fn-article-result-article parsed)))
+          (if (true-listp article) (fn-article-fields article) nil))
+      nil)))
+
+(defun fn-ctl-keys-octets (received)
+  (declare (xargs :guard t))
+  (fn-ctl-cancel-keys (fn-ctl-received-fields received)))
+
+(defun fn-ctl-locks-octets (received)
+  (declare (xargs :guard t))
+  (fn-ctl-cancel-locks (fn-ctl-received-fields received)))
+
+; The lock a key opens: c-lock-string = Base64(hash(Base64(K))) where the
+; key entry IS Base64(K) (RFC 8315 sections 2.1 and 2.2), so the hash is over
+; the key's octets as they appear in the field.
+(defun fn-ctl-lock-of-key (key)
+  (declare (xargs :guard t))
+  (fn-stx-b64-encode (fn-sha256 key)))
+
+(defun fn-ctl-lock-memberp (x locks)
+  (declare (xargs :guard t))
+  (if (consp locks)
+      (or (equal x (car locks)) (fn-ctl-lock-memberp x (cdr locks)))
+    nil))
+
+(defun fn-ctl-some-key-opens-p (keys locks)
+  (declare (xargs :guard t))
+  (if (consp keys)
+      (or (fn-ctl-lock-memberp (fn-ctl-lock-of-key (car keys)) locks)
+          (fn-ctl-some-key-opens-p (cdr keys) locks))
+    nil))
+
+(defthm fn-ctl-some-key-opens-p-of-no-keys
+  (implies (not (consp keys))
+           (not (fn-ctl-some-key-opens-p keys locks))))
+
+; A record whose principal is a key list, `(:cancel-key . KEYS)'.
+(defun fn-ctl-key-principalp (p)
+  (declare (xargs :guard t))
+  (and (consp p) (eq (car p) :cancel-key)))
+
 ; The effect of a withdrawal record on its target, from the target's
-; accepted group bindings T-GROUPS and its stored verdict T-VERDICT.
+; accepted group bindings T-GROUPS, its stored verdict T-VERDICT and its
+; octets T-RECEIVED (read only for a key record).
 ;   :author     the target's verdict names the canceller (verified or
 ;               carried; a forgery carrying P's name is P's to withdraw);
+;   :poster     the record is a key record and one of its keys opens one of
+;               the target's sha256 Cancel-Locks (RFC 8315; SEC-006);
 ;   :authority  the record's scope covers EVERY group the target is served
 ;               in (the conservative cross-post rule, D29);
-;   (:decline REASON) otherwise.
-(defun fn-ctl-withdrawal-effect (w t-groups t-verdict)
+;   (:decline REASON) otherwise.  A key record has no scope: it never
+;   reaches the authority arm.
+(defun fn-ctl-withdrawal-effect (w t-groups t-verdict t-received)
   (declare (xargs :guard t))
   (let ((named (fn-ctl-named-principal t-verdict))
         (scope (fn-ctl-w-scope w)))
     (cond ((not (fn-ctl-withdrawalp w)) (list :decline :no-record))
           ((and named (equal named (fn-ctl-w-principal w))) :author)
+          ((fn-ctl-key-principalp (fn-ctl-w-principal w))
+           (if (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
+                                        (fn-ctl-locks-octets t-received))
+               :poster
+             (list :decline :no-lock-match)))
           ((not (consp scope)) (list :decline :no-grant))
           ((not (consp t-groups)) (list :decline :no-groups))
           ((not (fn-ctl-covers-every-p scope t-groups))
@@ -295,7 +426,7 @@
 
 (defun fn-ctl-effect-withdrawsp (effect)
   (declare (xargs :guard t))
-  (or (eq effect :author) (eq effect :authority)))
+  (or (eq effect :author) (eq effect :authority) (eq effect :poster)))
 
 ; -----------------------------------------------------------------------------
 ; The visible view.  ARTICLES is an acceptance archive's article list,
@@ -334,7 +465,8 @@
                   (fn-ctl-withdrawal-effect
                    w (fn-article-groups article)
                    (fn-ctl-lookup-verdict (fn-article-msgid article)
-                                          verdicts))))
+                                          verdicts)
+                   (fn-article-payload article))))
             (fn-ctl-withdrawn-by-p article (cdr withdrawals) articles
                                    verdicts)))
     nil))
@@ -369,7 +501,9 @@
 ; the ordered accepted withdrawing articles.  Each ENTRY is (TXID
 ; CAUSE-MSGID VERDICT TARGET), the article's Store txid, Message-ID, stored
 ; verdict and target (`fn-ctl-article-target').  A record is decided under the configuration in force at
-; its cancel's txid, never under today's.
+; its cancel's txid, never under today's.  An entry may carry a fifth
+; element, the cause's Cancel-Key entries (`fn-ctl-keys-octets'; SEC-006);
+; a four-element entry has none.
 
 (defun fn-ctl-configs-through (txid configs)
   (declare (xargs :guard t))
@@ -396,6 +530,7 @@
       (let* ((e (car entries))
              (plan (fn-ctl-withdrawal-plan
                     (fn-ctl-at 1 e) (fn-ctl-at 2 e) (fn-ctl-at 3 e)
+                    (fn-ctl-at 4 e)
                     (fn-ctl-config-at (fn-ctl-at 0 e) configs)))
              (rest (fn-ctl-journal-withdrawals (cdr entries) configs)))
         (if (fn-ctl-withdrawalp plan) (cons plan rest) rest))
@@ -582,38 +717,141 @@
                                       fn-ctl-cancel-target
                                       fn-ctl-grant-scope))))
 
-; The same binding for the general plan (a cancel or a Supersedes field).
+; The same binding for the general plan (a cancel or a Supersedes field):
+; a verified cause's record names its principal and grants; an unverified
+; cause's record names its Cancel-Key entries and no scope (SEC-006).
 (defthm fn-ctl-withdrawal-plan-record-is-bound
-  (implies (fn-ctl-withdrawalp (fn-ctl-withdrawal-plan cause verdict target cfg))
-           (let ((w (fn-ctl-withdrawal-plan cause verdict target cfg)))
+  (implies (fn-ctl-withdrawalp (fn-ctl-withdrawal-plan cause verdict target
+                                                       keys cfg))
+           (let ((w (fn-ctl-withdrawal-plan cause verdict target keys cfg)))
              (and (equal (fn-ctl-w-cause w) cause)
                   (equal (fn-ctl-w-target w) target)
-                  (equal (fn-ctl-w-principal w)
-                         (fn-ctl-verified-principal verdict))
-                  (fn-ctl-verified-principal verdict)
-                  (equal (fn-ctl-w-scope w)
-                         (fn-ctl-grant-scope
-                          (fn-ctl-verified-principal verdict) "cancel"
-                          (fn-cfg-authorities (fn-cfg-value cfg))))
-                  (equal (fn-ctl-w-generation w) (fn-cfg-generation cfg)))))
+                  (equal (fn-ctl-w-generation w) (fn-cfg-generation cfg))
+                  (if (fn-ctl-verified-principal verdict)
+                      (and (equal (fn-ctl-w-principal w)
+                                  (fn-ctl-verified-principal verdict))
+                           (equal (fn-ctl-w-scope w)
+                                  (fn-ctl-grant-scope
+                                   (fn-ctl-verified-principal verdict) "cancel"
+                                   (fn-cfg-authorities (fn-cfg-value cfg)))))
+                    (and (consp keys)
+                         (equal (fn-ctl-w-principal w) (cons :cancel-key keys))
+                         (equal (fn-ctl-w-scope w) nil))))))
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
                                       fn-ctl-grant-scope))))
+
+;; The cause alone, for callers that need only it.
+(defthm fn-ctl-withdrawal-plan-names-its-cause
+  (implies (fn-ctl-withdrawalp (fn-ctl-withdrawal-plan cause verdict target
+                                                       keys cfg))
+           (equal (fn-ctl-w-cause (fn-ctl-withdrawal-plan cause verdict target
+                                                          keys cfg))
+                  cause))
+  :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
+                                      fn-ctl-grant-scope))))
+
+; SEC-006, the signed canceller unchanged: a cause this node verified is
+; decided exactly as without keys, whatever Cancel-Key it carries.
+(defthm fn-ctl-verified-cause-ignores-its-keys
+  (implies (fn-ctl-verified-principal verdict)
+           (equal (fn-ctl-withdrawal-plan cause verdict target keys cfg)
+                  (fn-ctl-withdrawal-plan cause verdict target nil cfg)))
+  :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
+                                      fn-ctl-grant-scope))))
+
+; A named principal is a string or nil, never a key record.
+(defthm fn-ctl-named-principal-is-not-a-key-record
+  (not (fn-ctl-key-principalp (fn-ctl-named-principal v)))
+  :hints (("Goal" :in-theory (enable fn-ctl-named-principal
+                                     fn-ctl-principal-hex))))
+
+; A record that is not a key record never reads the target's octets.
+(defthm fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets
+  (implies (not (fn-ctl-key-principalp (fn-ctl-w-principal w)))
+           (equal (fn-ctl-withdrawal-effect w t-groups t-verdict r1)
+                  (fn-ctl-withdrawal-effect w t-groups t-verdict r2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-ctl-named-principal
+                                      fn-ctl-covers-every-p
+                                      fn-ctl-locks-octets))))
+
+; SEC-006, refused by name: a key record none of whose keys opens a lock of
+; the target declines :no-lock-match, whatever the target's verdict and
+; groups (a different login's key, a key for another article).
+(defthm fn-ctl-key-record-without-an-opened-lock-declines-by-definition
+  (implies (and (fn-ctl-withdrawalp w)
+                (fn-ctl-key-principalp (fn-ctl-w-principal w))
+                (not (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
+                                              (fn-ctl-locks-octets t-received))))
+           (equal (fn-ctl-withdrawal-effect w t-groups t-verdict t-received)
+                  (list :decline :no-lock-match)))
+  :hints (("Goal" :in-theory (disable fn-ctl-named-principal
+                                      fn-ctl-some-key-opens-p
+                                      fn-ctl-locks-octets)
+           :use ((:instance fn-ctl-named-principal-is-not-a-key-record
+                            (v t-verdict))))))
 
 ; KEYSTONE (C3).  A WITHDRAWAL TAKES EFFECT ONLY FOR THE AUTHOR OR AN
 ; AUTHORITY COVERING EVERY GROUP THE TARGET IS SERVED IN.  T-GROUPS is the
 ; target's accepted group bindings (the article's groups in the archive,
 ; `fn-ctl-withdrawn-by-p'); the cancel's own Newsgroups never enter.
 (defthm fn-ctl-cancel-executes-only-for-author-or-authority
-  (implies (fn-ctl-effect-withdrawsp (fn-ctl-withdrawal-effect w t-groups t-verdict))
+  (implies (fn-ctl-effect-withdrawsp (fn-ctl-withdrawal-effect w t-groups t-verdict
+                                                               t-received))
            (or (and (fn-ctl-named-principal t-verdict)
                     (equal (fn-ctl-named-principal t-verdict)
                            (fn-ctl-w-principal w)))
+               (and (fn-ctl-key-principalp (fn-ctl-w-principal w))
+                    (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
+                                             (fn-ctl-locks-octets t-received)))
                (and (consp (fn-ctl-w-scope w))
                     (consp t-groups)
                     (fn-ctl-covers-every-p (fn-ctl-w-scope w) t-groups))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-named-principal
-                                      fn-ctl-covers-every-p))))
+                                      fn-ctl-covers-every-p
+                                      fn-ctl-some-key-opens-p
+                                      fn-ctl-locks-octets))))
+
+; KEYSTONE (SEC-006, PRF-210).  A CANCEL'S AUTHORITY IS EXACTLY A GRANTED
+; SIGNED CANCELLER OR THE POSTER.  The record the plan makes for a cause
+; withdraws a target exactly when the cause names a target other than
+; itself and either this node verified the cause's principal P and P signed
+; the target or holds cancel grants covering every group the target is
+; served in (D29, unchanged), or this node verified no principal for the
+; cause and one of its Cancel-Key entries opens one of the target's sha256
+; Cancel-Locks (RFC 8315).  On the node that injected both, the lock and the
+; key are keyed by the posting login (books/cancel-lock.lisp), so there the
+; second basis is the posting login.  Subject: `fn-ctl-withdrawal-plan' and
+; `fn-ctl-withdrawal-effect', composed as `fn-ctl-journal-withdrawals' and
+; `fn-ctl-withdrawn-by-p' compose them; the owner refresh
+; (`fn-ctl-refresh-withdrawals', books/control-visible.lisp) is the host's
+; call (books/owner.lisp fn-own-refresh).
+(defthm fn-ctl-withdrawal-authority-is-exactly-signer-or-poster
+  (let ((w (fn-ctl-withdrawal-plan cause verdict target keys cfg)))
+    (iff (and (fn-ctl-withdrawalp w)
+              (fn-ctl-effect-withdrawsp
+               (fn-ctl-withdrawal-effect w t-groups t-verdict t-received)))
+         (and target
+              (not (equal target cause))
+              (if (fn-ctl-verified-principal verdict)
+                  (or (equal (fn-ctl-named-principal t-verdict)
+                             (fn-ctl-verified-principal verdict))
+                      (let ((scope (fn-ctl-grant-scope
+                                    (fn-ctl-verified-principal verdict) "cancel"
+                                    (fn-cfg-authorities (fn-cfg-value cfg)))))
+                        (and (consp scope) (consp t-groups)
+                             (fn-ctl-covers-every-p scope t-groups))))
+                (fn-ctl-some-key-opens-p keys
+                                         (fn-ctl-locks-octets t-received))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-ctl-named-principal
+                                      fn-ctl-covers-every-p
+                                      fn-ctl-some-key-opens-p
+                                      fn-ctl-locks-octets
+                                      fn-ctl-grant-scope)
+           :use ((:instance fn-ctl-named-principal-is-not-a-key-record
+                            (v t-verdict))))))
 
 ; A record whose cause is not in the view changes nothing in it: a
 ; connection pinned before the cancel committed keeps its archive.
@@ -680,7 +918,8 @@
                 (fn-ctl-effect-withdrawsp
                  (fn-ctl-withdrawal-effect
                   w (fn-article-groups article)
-                  (fn-ctl-lookup-verdict (fn-article-msgid article) verdicts))))
+                  (fn-ctl-lookup-verdict (fn-article-msgid article) verdicts)
+                  (fn-article-payload article))))
            (not (member-equal article
                               (fn-ctl-visible-articles articles ws verdicts))))
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawal-effect

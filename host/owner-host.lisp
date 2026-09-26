@@ -185,6 +185,24 @@
 ; built as a list here: `fn-owner-output' is NIL, and the host writes the
 ; reply from the octet buffer that `fn-owner-reply-buffer' fills from
 ; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
+;; SEC-006 (PRF-210): the node secret the native host read from
+;; STORE/keys/node-secret.key (host/native/owner.lisp
+;; fnn-owner-load-node-secret), installed into the configured owner after
+;; the open and after every recovery.  ACL2 decides whether the octets are
+;; a secret (fn-ns-secretp); the owner then carries it through every step.
+(defun fn-owner-install-node-secret (secret state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-ns-secretp secret)
+      (let ((state (fn-owner-replace-core
+                    (fn-own-with-node-secret (fn-owner-core state) secret)
+                    state)))
+        (value :installed))
+    (value :refused)))
+
+(defun fn-owner-node-secret-width (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value *fn-ns-secret-octets*))
+
 (defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
@@ -1074,10 +1092,13 @@
              ; native drain compares with this before the store attempt.
              ; fn-own-sub-stored-octets is the one definition of these
              ; octets; fn-owner-finish-submission compares the completed
-             ; record with the same function of the same configuration.
+             ; record with the same function of the same configuration and
+             ; the same owner's node secret.  A served POST under a login
+             ; gets its RFC 8315 Cancel-Lock here (SEC-006, PRF-210).
              (state (f-put-global 'fn-owner-submit-octets
                                   (fn-own-sub-stored-octets
-                                   (fn-owner-config state) sub)
+                                   (fn-owner-config state) sub
+                                   (fn-own-node-secret after))
                                   state))
              ; A transit submission's memberships are not in the submission:
              ; they are fn-peer-scope-groups of the article's Newsgroups and
@@ -2331,6 +2352,12 @@
     (value :released)))
 
 ;; The lines `health' appends (host/native-live-status-host.lisp).
+;; PRF-211: the capacity and the count, the last line of `status'.
+(defun fn-owner-exposure-capacity (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-capacity-line (fn-owner-exposure-limits state)
+                        (len (fn-own-conns (fn-owner-core state)))))
+
 (defun fn-owner-exposure-health (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-exp-health-lines (fn-owner-exposure-state state)
@@ -2628,13 +2655,15 @@
 
 ; A raw TCP descriptor starts in the ACL2 connection phase below.  Only a
 ; successful greeting (and configured MODE STREAM exchange) makes this feed
-; live for selection.
-(defun fn-owner-feed-connect (peer-octets conn state)
+; live for selection.  FORM is ACL2's (`fn-fc-connection-form' of the ready
+; connection state): :ihave after a 500/501 to MODE STREAM (PRF-207), so the
+; feed offers this connection IHAVE; nil otherwise.
+(defun fn-owner-feed-connect (peer-octets conn form state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (natp conn)))
         (value nil)
-      (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
+      (let ((state (fn-owner-step (list :feed-conn peer conn form) state)))
         (value :ok)))))
 
 (defun fn-owner-feed-dial-open (peer-octets conn user pass allow-clear state)
@@ -2790,6 +2819,12 @@ existing port only after fn-fc has made this connection ready."
                             (f-put-global 'fn-owner-feed-log-line
                                           (fn-fc-stop-log-line peer) state)
                           state))
+                 ;; PRF-207: a 500/501 to MODE STREAM goes on in IHAVE; the
+                 ;; one line says so (no stop is recorded).
+                 (state (if (fn-fc-ihave-fallback-p input step)
+                            (f-put-global 'fn-owner-feed-log-line
+                                          (fn-fc-fallback-log-line peer) state)
+                          state))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-next-state step) inputs)
@@ -2820,7 +2855,10 @@ existing port only after fn-fc has made this connection ready."
                   (:ready
                    (mv-let (erp word state)
                      (fn-owner-feed-connect peer-octets
-                                            (fn-fc-conn (fn-fc-next-state step)) state)
+                                            (fn-fc-conn (fn-fc-next-state step))
+                                            (fn-fc-connection-form
+                                             (fn-fc-next-state step))
+                                            state)
                      (if erp (mv erp word state)
                        (if (equal word :ok) (value :ready) (value :fault)))))
                   (:reply

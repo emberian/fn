@@ -452,10 +452,13 @@ class Acl2Owner(Acl2Store):
             "(fn-owner-feed-lost '" + self.literal(peer.encode("utf-8")) +
             " {} state)".format(int(monotonic)))
 
-    def feed_connect(self, peer, conn):
-        return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
+    def feed_connect(self, peer, conn, form=None):
+        """FORM is ACL2's connection form word (:ihave after a 500/501 to
+        MODE STREAM, else nil); this harness path never runs MODE STREAM."""
+        return self._symbol_any("(fn-owner-feed-connect '{} {} {} state)".format(
             self.literal(peer.encode("utf-8")),
-            "nil" if conn is None else str(conn)))
+            "nil" if conn is None else str(conn),
+            ":ihave" if form == "ihave" else "nil"))
 
     def feed_tick(self, peer, monotonic):
         return self._symbol_any("(fn-owner-feed-tick '{} {} state)".format(
