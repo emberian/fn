@@ -82,7 +82,11 @@ path = "$OLD/log/fn.log"
 EOF
 PW=$(openssl rand -hex 16)
 printf 'tester %s\n' "$PW" >"$OLD/credentials.txt"; chmod 600 "$OLD/credentials.txt"
-env ACL2_CUSTOMIZATION=NONE "$OFN" operator "$OLD/fn.toml" init fn.test
+# The small preset's fields (docs/operator.md, "The process heap"): with no
+# profile flag, init writes the D27 default on a machine of 4 GiB or more (this
+# scope's memory.max included), which a release's bin/fn refuses (PKT-582).
+SMALL="--max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-article-octets 32768 --max-groups-per-article 16 --max-open-suffix 128"
+env ACL2_CUSTOMIZATION=NONE "$OFN" operator "$OLD/fn.toml" init $SMALL fn.test
 printf '%s\n%s\n' "$PW" "$PW" | env ACL2_CUSTOMIZATION=NONE setsid "$OFN" operator "$OLD/fn.toml" principal set-password tester --posting
 mkdir -p "$(dirname "$UNIT_FILE")"
 cat >"$UNIT_FILE" <<EOF
@@ -177,7 +181,7 @@ check "rollback: the old unit is active and probed" sh -c "systemctl --user is-a
 
 # ---- fresh deploy and its rollback ------------------------------------------------
 sleep 1
-set +e; dfr --go $COMMON --store fresh "$NEW2" >"$RUN/fresh.out" 2>&1; rc=$?; set -e
+set +e; dfr --go $COMMON --init-args "$SMALL" --store fresh "$NEW2" >"$RUN/fresh.out" 2>&1; rc=$?; set -e
 sed 's/^/     | /' "$RUN/fresh.out"
 check "fresh deploy exits 0" [ $rc -eq 0 ]
 check "fresh: a new store, the login enrolled, health 0, probe held" sh -c "grep -q 'enrolled tester' '$RUN/fresh.out' && grep -q 'health rc=0' '$RUN/fresh.out' && grep -q 'probe tester.* rc=0' '$RUN/fresh.out'"
