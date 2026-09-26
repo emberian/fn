@@ -383,6 +383,27 @@ class TreeCacheTests(unittest.TestCase):
             self.assertIsNone(ledger._tree_cache_dir())
 
 
+
+class LaneCheckTests(unittest.TestCase):
+    """`make check-lane`: generated files are written aside, not compared."""
+
+    def test_without_the_flag_nothing_is_diverted(self):
+        with mock.patch.dict("os.environ", {}, clear=False) as env:
+            env.pop("FN_LANE_CHECK", None)
+            self.assertFalse(ledger.lane_generated("planning/ledger.md", "x"))
+
+    def test_with_the_flag_the_text_lands_in_the_directory_and_is_compared(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict("os.environ", {"FN_LANE_CHECK": "1",
+                                               "FN_LANE_CHECK_DIR": directory}), \
+                mock.patch("sys.stderr") as stderr:
+            self.assertTrue(ledger.lane_generated("planning/ledger.md", "regenerated\n"))
+            written = Path(directory, "planning/ledger.md").read_text()
+            said = "".join(call.args[0] for call in stderr.write.call_args_list)
+        self.assertEqual(written, "regenerated\n")
+        self.assertIn("differs from the committed file", said)
+
+
 if __name__ == "__main__":
     unittest.main()
 

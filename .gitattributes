@@ -1,2 +1,8 @@
 # Exact protocol-octet fixture: preserve CRLF and do not treat it as prose.
 tests/fixtures/topic-history/max-root-field.bin -text -diff
+# Id-keyed registry rows merge three-way by id (tools/merge_registry.py; the
+# driver is registered once per clone, see its header).
+planning/proofs.json merge=fn-registry
+planning/requirements.json merge=fn-registry
+planning/proof-events.json merge=fn-registry
+tests/scenarios/catalog.json merge=fn-registry

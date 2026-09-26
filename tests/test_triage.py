@@ -611,6 +611,9 @@ class NeverPublishTests(unittest.TestCase):
                                   lambda *a, **k: "python3 certify_books.py"), \
                 contextlib.redirect_stderr(io.StringIO()), \
                 tempfile.TemporaryDirectory() as directory:
+            # submit checks the book exists before it mirrors anything.
+            (Path(directory) / "books").mkdir()
+            (Path(directory) / "books/a.lisp").write_text("", encoding="utf-8")
             with self.assertRaises(farm.FarmError) as refused:
                 farm.submit("persvati", Path(directory), ["books/a"], 4, 300,
                             [], no_publish=True)

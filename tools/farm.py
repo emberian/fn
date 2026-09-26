@@ -57,6 +57,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 import datetime as dt
+import functools
 import json
 import os
 from pathlib import Path
@@ -71,6 +72,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs
+from certify_books import BOOK_NAME
 import evidence_manifests
 
 HOSTS = {
@@ -342,6 +344,88 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         f"{mode} $roots")
 
 
+# What each preflight exit means, when the script itself chose the code.
+PREFLIGHT_EXITS = {
+    9: "the remote root does not exist",
+    13: "tools/certify_books.py --dry-run refused the selection",
+    14: "tools/acl2_toolchain.py could not identify the ACL2 executable",
+    255: "ssh itself failed",
+}
+# Strongest first: an argparse refusal prints `usage:` before its `error:`.
+ERROR_LINES = (re.compile(r"error|refus|traceback", re.IGNORECASE),
+               re.compile(r"must |not found|no such|cannot|needs? ",
+                          re.IGNORECASE))
+
+
+def first_error_line(text: str) -> str:
+    """The first line that reads like the cause, else the first non-blank one."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    for pattern in ERROR_LINES:
+        for line in lines:
+            if pattern.search(line):
+                return line
+    return lines[0] if lines else ""
+
+
+def preflight_detail(code: int, stdout: str, stderr: str) -> str:
+    """Why a cache preflight did not complete, cause first.
+
+    Until 2026-09-26 this was the last 800 characters of the merged output:
+    the refusal (`book names must be repository-relative ...`, `install-partial
+    needs --toolchain-identity`) went to stderr and the tail was a book list,
+    so 16 lanes spent four or five calls each re-running the preflight by hand
+    (planning/review-2026-09-26-lane-friction.md section 2).  The exit code,
+    the first error line, the whole of stderr and the tail of stdout.
+    """
+    meaning = PREFLIGHT_EXITS.get(code)
+    parts = [f"exit {code}" + (f" ({meaning})" if meaning else "")]
+    cause = first_error_line(stderr) or first_error_line(stdout)
+    if cause:
+        parts.append(f"first error: {cause}")
+    if stderr.strip():
+        parts.append("stderr:\n" + stderr.rstrip())
+    if stdout.strip():
+        tail = stdout.strip()
+        if len(tail) > 2000:
+            tail = "..." + tail[-2000:]
+        parts.append("stdout (tail):\n" + tail)
+    return "\n".join(parts)
+
+
+def book_name_problem(root: Path, word: str, kind: str) -> str | None:
+    """Why `word` cannot name a book of this tree, or None.
+
+    The runner on the box refuses these too, but only after the mirror, and
+    its refusal reached the lane as an unexplained preflight failure.  A word
+    with a space in it is a shell variable that zsh did not split (13 failed
+    submits in 10 lanes); a leading `-` is an option that reached the list.
+    """
+    if not word or any(ch.isspace() for ch in word):
+        return (f"{kind} {word!r} contains whitespace: a list reached farm.py as "
+                "one argument (zsh does not split $VAR; use an array or ${=VAR})")
+    if word.startswith("-"):
+        return f"{kind} {word!r} is an option, not a book name"
+    name = word[:-len(".lisp")] if word.endswith(".lisp") else word
+    if not BOOK_NAME.fullmatch(name):
+        return (f"{kind} {word!r} is not a repository-relative book below books/ "
+                "or tests/acl2/ (e.g. books/wire or books/wire.lisp)")
+    if not (root / f"{name}.lisp").is_file():
+        return f"{kind} {word!r}: no {name}.lisp under {root}"
+    return None
+
+
+def refuse_bad_book_names(root: Path, books: list[str], affected_by: list[str],
+                          recertify: list[str] = ()) -> None:
+    """Refuse, before any rsync or ssh, a book word the box would refuse."""
+    problems = [problem for kind, words in (("book", books),
+                                            ("--affected-by", affected_by),
+                                            ("--recertify", recertify))
+                for word in words
+                if (problem := book_name_problem(root, word, kind))]
+    if problems:
+        raise FarmError("no farm run started: " + "; ".join(problems))
+
+
 def install_from_cache(host: str, remote: Path, books: list[str],
                        affected_by: list[str], closure: bool,
                        cache: str | None = None,
@@ -353,9 +437,10 @@ def install_from_cache(host: str, remote: Path, books: list[str],
     An incremental install refuses only when it did not run (no count line
     came back): a miss is what the runner certifies.
     """
-    answer = ssh(host, cache_preflight_script(
+    answer = RUN(["ssh", "-n", host, cache_preflight_script(
         host, remote, books, affected_by, closure, cache, acl2,
-        require_origin, recertify), check=False)
+        require_origin, recertify)], check=False, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
@@ -364,8 +449,8 @@ def install_from_cache(host: str, remote: Path, books: list[str],
         # removed stale pairs for the exact closure; the dependency-ordered
         # runner will now author every pair under this one remote root.
         return counts | {"recertify_closure": True}
-    detail = (answer.stdout.strip() or
-              f"ssh exited {answer.returncode}")[-800:]
+    detail = preflight_detail(answer.returncode, answer.stdout,
+                              answer.stderr or "")
     if incremental(closure, require_origin):
         raise FarmError(
             f"{host}: installing from the cache did not complete under "
@@ -536,6 +621,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         raise FarmError("--recertify takes books out of the incremental cache "
                         "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
+    refuse_bad_book_names(root, books, affected_by, list(recertify))
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
@@ -691,8 +777,37 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     return code
 
 
+# Per-book lists a publish report prints for every book it did not publish:
+# on a run that installed its closure, every installed book is `unverified`.
+FOLDED_LISTS = ("uncached", "unverified")
+
+
+def report_lines(lines: list[str], verbose: bool = False) -> list[str]:
+    """A certs report with its per-book `uncached:`/`unverified:` lists as counts.
+
+    Those lists are hundreds of lines on a wide run and buried the verdict:
+    132 farm calls in the 2026-09-26 friction review piped through `grep -v
+    uncached`.  `--verbose` keeps them.
+    """
+    if verbose:
+        return list(lines)
+    kept: list[str] = []
+    folded: dict[str, int] = {}
+    for line in lines:
+        label = line.lstrip().partition(": ")[0]
+        if label in FOLDED_LISTS and line.startswith("  "):
+            folded[label] = folded.get(label, 0) + 1
+        else:
+            kept.append(line)
+    for label in FOLDED_LISTS:
+        if folded.get(label):
+            kept.append(f"  {label}: {folded[label]} books (list with --verbose)")
+    return kept
+
+
 def fetch(host: str, identifier: str, root: Path,
-          remote: Path | None = None, cache: str | None = None) -> None:
+          remote: Path | None = None, cache: str | None = None,
+          verbose: bool = False) -> None:
     """Bring back the evidence directory, the new pairs, and cache the pairs."""
     remote = remote or remote_root(root, identifier)
     cache = cache or run_record(root, identifier).get("cache")
@@ -725,7 +840,7 @@ def fetch(host: str, identifier: str, root: Path,
     # is the sweep for a run whose last root, or whose own publish, failed.
     shared = ssh(host, certs_script(host, remote, "publish", "run", cache),
                  check=False)
-    for line in shared.stdout.strip().splitlines():
+    for line in report_lines(shared.stdout.strip().splitlines(), verbose):
         print(f"{host}: {line}")
     if shared.returncode != 0 or not shared.stdout.strip():
         # A `cd` that misses (exit 9) or an ssh that dies prints nothing, and
@@ -743,8 +858,96 @@ def fetch(host: str, identifier: str, root: Path,
     report = certs.publish(root, certs.cache_directory(), manifests,
                            origin=str(remote), origin_host=host,
                            origin_kind="run")
-    for line in report.lines():
+    for line in report_lines(report.lines(), verbose):
         print(line)
+
+
+SLOW_SECONDS = 10.0
+FAILURE_LINE = re.compile(r"ACL2 Error|HARD ACL2 ERROR|\*\* FAILED|FAILED|"
+                          r"Raw Lisp Error|timed out|Timeout")
+
+
+def first_failure_line(log: Path) -> str | None:
+    """The first ACL2 error or FAILED line of one book's log, or None."""
+    try:
+        with log.open(encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if FAILURE_LINE.search(line):
+                    return line.strip()[:240]
+    except OSError:
+        return None
+    return None
+
+
+def book_log(directory: Path, book: str) -> Path | None:
+    """Where the runner wrote `book`'s own log in a fetched run directory."""
+    stem = book.replace("/", "--")
+    plain = directory / f"{stem}.certify.log"
+    if plain.is_file():
+        return plain
+    waves = sorted(directory.glob(f"{stem}.pcert-*.certify.log"))
+    return waves[-1] if waves else None
+
+
+def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
+    """The fixed-form end of `farm.py wait`: what failed, where, and why.
+
+    Every red run used to cost three to six calls to find its failing books,
+    their logs and the first error (91 calls in 61 lanes, 2026-09-26 friction
+    review section 3).  This reads the manifests `fetch` brought home under
+    `root`; with none, the verdict is unknown and says so.
+    """
+    head = f"== verdict {identifier}: exit {code}"
+    log = root / "build" / "farm" / f"{identifier}.log"
+    try:
+        directories = sorted(set(EVIDENCE.findall(log.read_text(encoding="utf-8"))))
+    except OSError:
+        directories = []
+    manifests: list[tuple[Path, dict]] = []
+    for directory in directories:
+        try:
+            manifest = json.loads((root / directory / "manifest.json").read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(manifest, dict):
+            manifests.append((root / directory, manifest))
+    if not manifests:
+        return [head, "  no manifest came back under "
+                f"{root}/build/acl2; the verdict is unknown (not green); "
+                f"read {log}"]
+    lines = [head]
+    failing: list[str] = []
+    slow: list[tuple[float, str, object]] = []
+    passed = installed = 0
+    for directory, manifest in manifests:
+        results = manifest.get("book_results") or {}
+        reasons = manifest.get("book_failures") or {}
+        passed += sum(value == "passed" for value in results.values())
+        installed += sum(value == "installed" for value in
+                         (manifest.get("book_provenance") or {}).values())
+        for book in sorted(set(reasons) | {book for book, value in results.items()
+                                           if value != "passed"}):
+            where = book_log(directory, book)
+            first = first_failure_line(where) if where else None
+            why = first or "; ".join(reasons.get(book) or []) or results.get(book, "failed")
+            failing.append(f"  FAILED {book}: {why}")
+            failing.append(f"    log: {where or directory}")
+        jobs = manifest.get("jobs_effective") or manifest.get("jobs")
+        for book, seconds in (manifest.get("book_wall_seconds") or {}).items():
+            if isinstance(seconds, (int, float)) and seconds > SLOW_SECONDS:
+                slow.append((seconds, book, jobs))
+        lines.append(f"  manifest {directory / 'manifest.json'}: "
+                     f"status {manifest.get('status', 'unknown')}")
+    lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}; "
+                 f"installed from the cache {installed}")
+    lines.extend(failing)
+    if slow:
+        lines.append(f"  books over {SLOW_SECONDS:g} s (D26 measures at two jobs):")
+        for seconds, book, jobs in sorted(slow, reverse=True):
+            lines.append(f"    {seconds:8.1f} s  {book}  (at {jobs} jobs)")
+    else:
+        lines.append(f"  no book over {SLOW_SECONDS:g} s")
+    return lines
 
 
 def fetch_logs(host: str, identifier: str, root: Path, remote: Path,
@@ -935,6 +1138,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--acl2", default=None,
                         help="exact ACL2 executable path ON THE HOST for submit "
                              "(default: the host's configured executable)")
+    parser.add_argument("--verbose", action="store_true",
+                        help="wait: print every uncached book, not the count")
     parser.add_argument("--root", default=str(ROOT))
     parser.add_argument("--remote-root", default=None,
                         help="the path to use on the host (default: --root); a "
@@ -958,11 +1163,16 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.action == "wait":
             if len(arguments.rest) != 1:
                 parser.error("wait takes exactly one run id")
-            return wait(arguments.host, arguments.rest[0], root,
+            identifier = arguments.rest[0]
+            code = wait(arguments.host, identifier, root,
                         arguments.poll_seconds, arguments.wait_seconds,
                         arguments.cache,
+                        collect=functools.partial(fetch, verbose=arguments.verbose),
                         remote=(str(expand_remote(arguments.host, arguments.remote_root))
                                 if arguments.remote_root else None))
+            for line in verdict_lines(root, identifier, code):
+                print(line)
+            return code
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote, root)
