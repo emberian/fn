@@ -1719,6 +1719,25 @@
         "tests/acl2/bp-fragment-send-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-069",
+      "title": "Two strangers become peers with one confirm, and a declined key statement stays declined across a restart that adds the grant",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "A and B run `peer genesis`; A: `peer invite nodeB fn.* HOST PORT a.example KEYS INV`; B: `peer accept INV KEYS b.example - ACC`; A: `peer confirm ACC INV`; A: `peer list`.",
+        "A: `peer confirm ACC INV-OTHER` with another invitation A issued; A2 with FN_PEER_TEST_STOP_AFTER_CONSUME: confirm, restart, `peer list`, confirm again.",
+        "Node D: enrol P, POST a succession statement with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The confirm exits 0 and `peer list` shows nodeB with auth principal B.",
+        "Another invitation is refused another-invitation and configures nothing; after the stop A2 already lists nodeB2, and the retry enrols once.",
+        "The statement logs `key-statement declined no-grant`; after each restart the log adds `key-statement declined ... at-open` and the key history is unchanged (the pre-packet image instead logs `enrol-successor committed at-open`)."
+      ]
     }
   ]
 }

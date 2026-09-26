@@ -73,6 +73,30 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-owner-reconfigure-deltas id (list delta) state))
 
+; PRF-124: the confirm's plan over both documents and the live peers table,
+; and its record's deltas (the consumption and the peer, one record).
+(defun fn-pinv-host-confirm-record-plan (received invitation observed-ml ed ml
+                                                  invitations snapshots peers)
+  (declare (xargs :mode :program))
+  (fn-pinv-confirm-record-plan received invitation observed-ml ed ml
+                               invitations snapshots peers))
+
+(defun fn-pinv-host-owner-peers (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))
+
+(defun fn-pinv-host-owner-reconfigure-deltas (id deltas state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-owner-reconfigure-deltas id deltas state))
+
+(defun fn-pinv-host-confirm-request-encode (acceptance invitation)
+  (declare (xargs :mode :program))
+  (fn-pinv-confirm-request-encode acceptance invitation))
+
+(defun fn-pinv-host-confirm-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-pinv-confirm-request-decode octets))
+
 (defun fn-native-operator-host-result-peering-words (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-peering-words result))

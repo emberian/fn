@@ -121,17 +121,42 @@
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
 
+;;; Packet 5 (PRF-124): the cursor publication's crash cuts.  A developer
+;;; image started with FN_PULL_TEST_KILL=CUT:N dies by SIGKILL at CUT of this
+;;; process's Nth FNPL append: before-write (nothing of it on disk),
+;;; after-write (written, not fenced) or after-fsync (durable, before the
+;;; round goes on).  Production has no injection branch.
+(defvar *fnn-pull-append-count* 0)
+
+(defun fnn-pull-test-cut (cut)
+  (let ((raw (fnn-developer-selector "FN_PULL_TEST_KILL")))
+    (when raw
+      (let* ((colon (position #\: raw))
+             (name (and colon (subseq raw 0 colon)))
+             (n (and colon (parse-integer raw :start (1+ colon) :junk-allowed t))))
+        (unless (and n (member name '("before-write" "after-write" "after-fsync")
+                               :test #'string=))
+          (fnn-fault "invalid FN_PULL_TEST_KILL (expected CUT:N)"))
+        (when (and (string= name cut) (= n *fnn-pull-append-count*))
+          (fnn-err "pull: developer kill at ~a of append ~d" cut n)
+          (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+          (fnn-fault "test SIGKILL did not terminate the process"))))))
+
 (defun fnn-pull-journal-append (journal cursor)
+  (incf *fnn-pull-append-count*)
   (handler-case
       (let* ((frame (fnn-core 'fn-pull-cursor-frame cursor))
              (envelope (fnn-core 'fn-pull-journal-wrap frame)))
         (unless (fnn-octet-list-p envelope)
           (fnn-fault "owner refused FNPL envelope"))
+        (fnn-pull-test-cut "before-write")
         (fnn-owner-feed-phase journal :append)
         (fnn-write-all (fnn-owner-feed-journal-fd journal) (fnn-octets envelope))
         (fnn-owner-feed-phase journal :written)
+        (fnn-pull-test-cut "after-write")
         (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable))
+        (fnn-owner-feed-phase journal :append-durable)
+        (fnn-pull-test-cut "after-fsync"))
     (error (e)
       (ignore-errors (fnn-owner-feed-phase journal :failed))
       (fnn-owner-feed-close journal)
