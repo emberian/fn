@@ -21,6 +21,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions left at the default with no guard | 1382 |
 | `assert-event` checks | 13984 |
 | `must-fail` checks | 1605 |
+| of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 120 |
 | Export-hygiene warnings | 153 |
