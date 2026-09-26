@@ -309,3 +309,77 @@
                          :conflict)
                   (fn-rcl-collisionp source2 source1))))
    :hints (("Goal" :in-theory (disable fn-inj-decide fn-rcl-existing-action)))))
+
+; -----------------------------------------------------------------------------
+; fn-sr-a-signed-retry-is-already-stored (PKT-166): the hybrid-author route's
+; stored octets, fn-hsig-injected-carrier-octets, at A and at B 37 s later,
+; over a real rendered dual-signature carrier (the signatures are opaque
+; octets here: rendering does not verify, the route verifies before it).
+(defconst *srt-principal* (make-list 32 :initial-element 7))
+(defconst *srt-keys* (list (cons :ed25519 (make-list 32 :initial-element 11))
+                           (cons :ml-dsa-65 (make-list 1952 :initial-element 13))))
+(defconst *srt-sigs* (list (cons :ed25519 (make-list 64 :initial-element 17))
+                           (cons :ml-dsa-65 (make-list 3309 :initial-element 19))))
+(defconst *srt-signed-source* (srt-source nil t *srt-msgid* nil *srt-body*))
+(defun srt-carrier-plan (source obs)
+  (fn-hsig-injected-carrier-plan source *srt-principal* *srt-keys* *srt-sigs*
+                                 *srt-config* obs))
+(defun srt-carrier (source obs)
+  (fn-hsig-injected-carrier-octets source *srt-principal* *srt-keys* *srt-sigs*
+                                   *srt-config* obs))
+(defconst *srt-s-signed* (srt-store (srt-carrier *srt-signed-source* *srt-a*)))
+(assert-event
+ (let ((held (srt-held *srt-s-signed*)))
+   (and (srt-carrier *srt-signed-source* *srt-a*)
+        (srt-carrier *srt-signed-source* *srt-b*)
+        (equal (fn-article-payload held) (srt-carrier *srt-signed-source* *srt-a*))
+        (equal (fn-inj-decision-msgid (srt-carrier-plan *srt-signed-source* *srt-a*)) *srt-mo*)
+        (equal (fn-inj-decision-msgid (srt-carrier-plan *srt-signed-source* *srt-b*)) *srt-mo*)
+        (equal *srt-groups* (fn-article-groups held))
+        (equal (fn-rcl-existing-action *srt-msgid* (srt-carrier *srt-signed-source* *srt-b*)
+                                       *srt-groups* *srt-s-signed*)
+               :duplicate))))
+; Hypothesis removed: the carrier of another source is held; conflict.
+(assert-event
+ (equal (fn-rcl-existing-action *srt-msgid* (srt-carrier *srt-signed-source* *srt-b*)
+                                *srt-groups*
+                                (srt-store (srt-carrier *srt-changed* *srt-a*)))
+        :conflict))
+; Hypothesis removed: other groups; conflict.
+(assert-event
+ (equal (fn-rcl-existing-action *srt-msgid* (srt-carrier *srt-signed-source* *srt-b*)
+                                '("fn.other") *srt-s-signed*)
+        :conflict))
+; Hypothesis removed: no octets at B (injection disabled); no verdict of a
+; duplicate is claimed, and the octets are nil.
+(assert-event
+ (null (fn-hsig-injected-carrier-octets
+        *srt-signed-source* *srt-principal* *srt-keys* *srt-sigs*
+        (fn-inj-make-config nil *srt-agent* (list (srt-text "fn.test")) 32768) *srt-b*)))
+(must-fail
+ (defthm srt-signed-retry-without-the-held-payload
+   (let ((pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
+         (pb (fn-hsig-injected-carrier-plan source principal keys signatures config b))
+         (oa (fn-hsig-injected-carrier-octets source principal keys signatures config a))
+         (ob (fn-hsig-injected-carrier-octets source principal keys signatures config b))
+         (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+     (implies (and oa ob
+                   (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
+                   (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid))
+                   (equal groups (fn-article-groups held)))
+              (equal (fn-rcl-existing-action msgid ob groups s) :duplicate)))
+   :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
+                                       fn-hsig-injected-carrier-plan fn-rcl-existing-action)))))
+(must-fail
+ (defthm srt-signed-retry-without-the-groups
+   (let ((pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
+         (pb (fn-hsig-injected-carrier-plan source principal keys signatures config b))
+         (oa (fn-hsig-injected-carrier-octets source principal keys signatures config a))
+         (ob (fn-hsig-injected-carrier-octets source principal keys signatures config b))
+         (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+     (implies (and oa ob (equal (fn-article-payload held) oa)
+                   (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
+                   (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid)))
+              (equal (fn-rcl-existing-action msgid ob groups s) :duplicate)))
+   :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
+                                       fn-hsig-injected-carrier-plan fn-rcl-existing-action)))))

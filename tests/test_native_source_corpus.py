@@ -431,6 +431,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         for name in ("supplied-date", "generated-date", "unknown-headers", "mime"):
             self.assertTrue(facts[name]["stored"].endswith(corpus[name]), name)
         self.assertEqual(facts["signed"]["author"], 0, facts["signed"])
+        self.assertEqual(facts["signed"]["author-retry"], 0, facts["signed"])
         self.assertTrue(facts["carrier"]["first"].startswith("240"), facts["carrier"])
         self.assertEqual(facts["carrier"]["retry"].encode(), ALREADY, facts["carrier"])
         self.assertTrue(facts["carrier"]["stored"].endswith(carrier), "carrier normalized")
@@ -457,7 +458,8 @@ class NativeSourceCorpusTests(unittest.TestCase):
         signed source authored again through `hybrid-author` is the article
         already stored, not an error, and adds no article.  RED on the image
         of e79286bf: the route commits through fn-owner-prepare-identity with
-        no existing-action verdict (PKT-166)."""
+        no existing-action verdict (PKT-166, decided: the route now asks
+        fn-owner-existing-action first)."""
         a = self.initialize("s", ["fn.test"], "s.corpus.invalid")
         self.start(a)
         keys = self.keys(a)
@@ -478,6 +480,19 @@ class NativeSourceCorpusTests(unittest.TestCase):
         self.assertEqual(first, 0, first_detail)
         self.assertEqual(sorted(after), sorted(before))
         self.assertEqual(again, 0, again_detail)
+        self.assertIn("DUPLICATE", again_detail[2], again_detail)
+        # A changed signed source under the held Message-ID is the conflict:
+        # a refusal (exit 1), not an acceptance, with its word printed.
+        self.start(a)
+        other = self.author(a, keys, "other", changed(signed))
+        other_detail = self.last_author
+        after_other = self.served(a)
+        self.stop(a)
+        print("SOURCE-CORPUS-SIGNED-CONFLICT " + json.dumps(
+            {"other": other_detail, "after": sorted(after_other)}, sort_keys=True))
+        self.assertEqual(other, 1, other_detail)
+        self.assertIn("REFUSED", other_detail[2], other_detail)
+        self.assertEqual(sorted(after_other), sorted(before))
 
     # -- cancel order, pinned reader, Supersedes, replay ------------------------
     def test_cancel_orders_pinned_reader_and_replay(self):
