@@ -148,9 +148,9 @@ values.
 | --- | --- | --- |
 | `max-transactions` (T) | committed transactions | 4,294,967,295 (the u32 txid width) |
 | `max-history-octets` (H) | total committed record octets | 1 TiB |
-| `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
-| `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
-| `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
+| `max-record-octets` (R) | one encoded Store event | 67,108,864 (64 MiB; at least 196,608, the worst-case Store event) |
+| `max-article-octets` (A) | one article's payload | 16,777,216 (16 MiB) |
+| `max-groups-per-article` (G) | newsgroups on one article | 4,096 |
 | `max-group-name-octets` | one group name (validated, not yet enforced on `group create`: PKT-435) | 256 (the record codec's and the configuration label's width today) |
 | `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
 | `max-consumers` | consumers registered; the next `consumer register` past it is refused | 1,048,576 |
@@ -560,9 +560,12 @@ FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
 ```
 
 `bin/fn` is `packaging/fn` (`packaging/fn-native` is a link to it): it finds
-the image (`FN_NATIVE_HOST`, else `../libexec/fn/fn-host` beside itself, else
-the checkout's `build/fn-host`) and execs it with every argument, deciding
-nothing. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
+the image and execs it with every argument, deciding nothing. An installed
+`bin/fn` (a `libexec/fn/` beside its `bin/`) always runs its own release's
+`libexec/fn/fn-host` and ignores `FN_NATIVE_HOST`, so an old release's
+`bin/fn` runs the old image in any shell; a checkout's `packaging/fn` runs
+`FN_NATIVE_HOST` when set (the tests' override), else the checkout's
+`build/fn-host`. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
 the other image verbs are as below. The spike's bash `fn` wrapper made its
 own decisions; each is now the image's (its header lists where each went:
 `mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
@@ -842,7 +845,8 @@ the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
-`--group` seeds them once, and `fn group` changes them afterwards. The
+`init` seeds them once, and `fn operator CONFIG group create|retire`
+changes them afterwards, live or offline. The
 configuration file holds only what the host needs in order to start.
 
 A peer this node pulls by NEWNEWS (RFC 3977 section 7.4) gets an interval,
@@ -904,11 +908,17 @@ it again. The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
 books/feed-connection.lisp) and lasts one owner process: a restart spends
 one `MODE STREAM` exchange again.
 
-`[listener] host` accepts loopback aliases or an explicit numeric IPv4
-address. ACL2 parses the literal and supplies the exact bind address; the host
-does not resolve or reinterpret it. The wildcard `0.0.0.0` remains refused so
-an operator must name the interface placed in service. General IPv6 literals
-remain open; `::1` is the admitted IPv6 spelling.
+`[listener] host` is one address or a comma-separated list of them: IPv4
+dotted quads, IPv6 literals (`::1`, `2001:db8::7`, or bracketed `[::1]`) and
+the name `localhost`. The owner binds each on `port` (and on `tls_port` when
+set), so `host = "[::1], 192.0.2.7"` serves both families. ACL2 parses every
+literal and supplies the exact bind address; the host does not resolve or
+reinterpret it. The wildcards `0.0.0.0` and `::` stay refused so an operator
+names each interface placed in service, and an IPv4-mapped `::ffff:a.b.c.d`
+is refused in favour of the IPv4 address. A refusal names the reason:
+`listener-address`, `listener-unspecified`, `listener-mapped` or
+`listener-duplicate` (specs/nntp.md "Listener addresses", NNT-041). A
+changed `host` takes effect when the node restarts.
 
 ## Run it as a service
 
@@ -1383,17 +1393,17 @@ per-address and failed-login allowance.
 ## Add a group
 
 ```
-systemctl stop fn
-fn --config /etc/fn/fn.toml group create fn.announce
-systemctl start fn
+fn operator /etc/fn/fn.toml group create fn.announce
 ```
 
-The stop is required today. A group is a durable configuration record, and
-writing one needs the exclusive writer lock the running owner holds, so
-`fn group` refuses while the service is live and says so. `fn group retire
-<name>` retires a name: the articles already bound to it and its watermark
-are kept, and the name stops being served. Creating a retired name again
-revives it with its numbering intact.
+No stop is needed. A group is a durable configuration record: with the
+owner running and its `[control] path` live, the verb asks the owner, which
+publishes the record as a new configuration generation at once
+(`fn-native-admin-plan-deltas`, books/native-admin.lisp); with no owner
+running, the verb writes it offline and `run` serves it at the next start.
+`fn operator CONFIG group retire <name>` retires a name: the articles already
+bound to it and its watermark are kept, and the name stops being served.
+Creating a retired name again revives it with its numbering intact.
 
 **Special-purpose names are a local agreement, not ordinary groups.** RFC
 5536 section 3.1.4 names two kinds of restricted `<newsgroup-name>`. The
@@ -1474,7 +1484,19 @@ load). Never deploy an image from d0df09ed up to this check over such a
 node: it opens that checkpoint as `open=checkpoint:S` with a record count of
 0 and a Message-ID index that misses committed articles (PKT-395). A
 checkpoint published before a249a699 is refused too, today as
-`reason=checkpoint-open-refused`.
+`reason=checkpoint-open-refused`. In a rollback the same holds in the other
+direction: older images reject a newer checkpoint file and fall back to a
+full replay.
+
+And the incremental peer rows (delta codes 18 and 19, `peer carries` and
+`peer budget` since 2026-09-26, offline or live): a store whose
+configuration log holds either is refused at open by releases before them
+(the deployed bbf52159 image exits 4; rehearsed on a copy, planning/evidence/
+caps-to-profile-2026-09-26.md), so roll back only from the pre-upgrade
+snapshot. A store that never extended a peer after the upgrade is unaffected.
+The same holds for a checkpoint or pack directory that has published
+generation 4096 or more (the numbering is a uint32 since then): an older
+release refuses that directory.
 
 There are two rollbacks, and they are not the same:
 

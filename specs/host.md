@@ -359,6 +359,20 @@ and holds no wire state, so `fn-wire-drive` has one owner and it is the book.
 A submission is completed as refused while the reader holds only a shared
 lock, and ACL2 -- never the host -- writes the 240 or the 441.
 
+The reply octets are never built as a list on the served read (PRF-192,
+2026-09-26, lane egress-span; PKT-491). `fn-owner-chunk` installs the step's
+effects without rendering them; `fn-owner-reply-buffer` then calls
+`fn-served-reply-to-buffer` (books/served-reply-buffer.lisp), which writes
+each `(:reply octets)` effect into the octet buffer `fn-octets`, and the
+host copies the buffer's range [0, len) out once, under the service mutex,
+and writes that byte vector to the socket after the mutex is released. The
+keystone `fn-served-reply-to-buffer-is-the-reply` says the range is
+`fn-served-reply-octets` of the effects whenever every reply effect is
+octets (the answer `:ok`), and the host faults on `:malformed` as it did on
+a non-octet reply. The buffer is `fn-octets` because only the service
+mutex's holder touches it; the copy is needed because the send runs outside
+the mutex while the next locked step refills the buffer.
+
 ### The owner submission path
 
 Served POST, inbound transit and a running owner's control `POST` all enter

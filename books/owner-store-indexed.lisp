@@ -50,6 +50,7 @@
 (include-book "store-node-resolution")
 (include-book "consumer-event-index-store-invariants")
 (include-book "bp-signed-binding")
+(include-book "post-identity-index")
 
 ; The owner field laws this book reads (withdrawn at owner-invariants'
 ; export with its vocabulary).
@@ -405,6 +406,46 @@
                                    fn-spc-prepare fn-own-refresh
                                    fn-sbud-admitp fn-sbud-used)))))
 
+;; PRF-191: the prepare fn-owner-prepare-buffer installs since
+;; books/post-identity-index.lisp.  It keeps the index with no hypothesis on
+;; the view: whichever node its duplicate test yields, the Store it returns
+;; is the one it was given or that Store with the record staged.
+(defthm fn-osi-pidx-spc-prepare-keeps-indexed
+  (implies (fn-ceis-indexedp s)
+           (fn-ceis-indexedp (fn-pidx-spc-prepare s record view)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-indexedp fn-pidx-spc-prepare fn-pcar-stage-record)
+                (fn-sn-update fn-sn-make-v6 fn-cei-correspondencep
+                 fn-cei-build fn-sn-statep fn-rcon-record-p
+                 fn-pidx-sn-prepare-node fn-rcon-sn-record-bindsp
+                 fn-rcon-cpe-projection-step fn-pcar-candidatep
+                 fn-rcon-record-p-is-record-p
+                 fn-rcon-cpe-projection-step-is-cpe-projection-step
+                 fn-rcon-sn-record-bindsp-is-sn-record-bindsp
+                 fn-pcar-stage-record-is-stage-record)))))
+
+(defthm fn-osi-pidx-prepare-keeps-indexed
+  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
+           (fn-ceis-indexedp
+            (fn-own-store (fn-ocfg-owner (fn-pidx-sbud-prepare oc record budget)))))
+  :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pidx-opc-prepare
+                                   fn-pidx-opc-owner-prepare)
+                                  (fn-ceis-indexedp fn-pidx-spc-prepare
+                                   fn-own-refresh fn-sbud-admitp fn-sbud-used)))))
+
+;; The view trie (fn-scar-view-indexedp, books/owner-offer-indexed.lisp) is
+;; kept alike: only the refresh changes the view.
+(defthm fn-osi-pidx-prepare-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp
+            (fn-ocfg-owner (fn-pidx-sbud-prepare oc record budget))))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-pidx-sbud-prepare
+                                   fn-pidx-opc-prepare fn-pidx-opc-owner-prepare
+                                   fn-ocfg-with-owner)
+                                  (fn-midx-correspondencep fn-own-refresh
+                                   fn-pidx-spc-prepare
+                                   fn-sbud-admitp fn-sbud-used)))))
+
 (defthm fn-osi-ccar-ocfg-prepare-identity-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
            (fn-ceis-indexedp
@@ -498,7 +539,8 @@
 ;
 ;   :step            fn-owner-step, fn-owner-refuse-reservation, -begin, ...  fn-ocfg-step
 ;   :io              fn-owner-io                              fn-rcon-ocfg-io
-;   :prepare         fn-owner-prepare, fn-owner-prepare-buffer fn-pcar-sbud-prepare
+;   :prepare         fn-owner-prepare                         fn-pcar-sbud-prepare
+;   :prepare-buffer  fn-owner-prepare-buffer (PRF-191)        fn-pidx-sbud-prepare
 ;   :prepare-identity fn-owner-prepare-identity               fn-ccar-ocfg-prepare-identity
 ;   :complete        fn-owner-finish                          fn-ccar-ocfg-complete
 ;   :finish          fn-owner-finish-submission               fn-ccar-own-finish
@@ -528,6 +570,7 @@
       (:step (if (fn-osi-host-own-eventp a) (fn-ocfg-step oc a) oc))
       (:io (fn-rcon-ocfg-io oc a b))
       (:prepare (fn-pcar-sbud-prepare oc a b))
+      (:prepare-buffer (fn-pidx-sbud-prepare oc a b))
       (:prepare-identity (fn-ccar-ocfg-prepare-identity oc a))
       (:complete (fn-ccar-ocfg-complete oc))
       (:finish (if (fn-ocfg-staged oc) oc
@@ -582,6 +625,7 @@
                        '(fn-osi-host-step
                          fn-osi-ocfg-step-keeps-indexed fn-osi-rcon-io-keeps-indexed
                          fn-osi-pcar-prepare-keeps-indexed
+                         fn-osi-pidx-prepare-keeps-indexed
                          fn-osi-ccar-ocfg-prepare-identity-keeps-indexed
                          fn-osi-ccar-ocfg-complete-keeps-indexed
                          fn-osi-ocl-publish-keeps-indexed

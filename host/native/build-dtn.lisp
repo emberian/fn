@@ -140,6 +140,9 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
+;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
+;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+(include-book "books/post-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
@@ -154,6 +157,9 @@
 (include-book "books/store-checkpoint-tables")
 (include-book "books/store-checkpoint-tables-reader")
 (include-book "books/owner-checkpoint-pipeline")
+;; The served read over the octet buffer (ingress-span): host/owner-host.lisp
+;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
+(include-book "books/served-span")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file

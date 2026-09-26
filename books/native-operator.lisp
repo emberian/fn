@@ -290,6 +290,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                       (:e fn-bs-profile-validp)))
           ("Goal'" :in-theory (enable (:e fn-bs-profile-validp)))))
 
+;; PRF-171 (PKT-451 (C)): field 7, max-group-name-octets, governs the names
+;; `init' creates, as it governs `group create' (books/store-capacity-config
+;; `fn-cvec-native-admin-authorize').  Every name of NAMES is at most N octets.
+(defun fn-nop-group-names-within (names n)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (and (<= (len (fn-record-string-octets (car names))) (nfix n))
+           (fn-nop-group-names-within (cdr names) n))
+    t))
+
 (defun fn-nop-parse-init-plain (words config)
   (declare (xargs :guard t))
   (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
@@ -314,8 +324,35 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           ; groups are flags, preset words and decimals, never a group name.
           ((fn-native-admin-some-group-name-reservedp words)
            (fn-nop-refused :reserved-group-name "init" config words))
+          ; The profile's field 7, by name.
+          ((not (fn-nop-group-names-within
+                 groups (fn-bs-profile-max-group-name-octets profile)))
+           (fn-nop-refused :max-group-name-octets "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
                             (list :init groups request))))))
+
+;  KEYSTONE (PRF-171).  An accepted `init' plan creates no group whose name is
+; longer than the max-group-name-octets of the profile it will write.  Host:
+; host/native/operator.lisp's init arm runs this plan
+; (`fn-native-operator-plan').
+(defthm fn-nop-init-plain-groups-are-within-the-profile
+  (let ((result (fn-nop-parse-init-plain words config)))
+    (implies (equal (fn-native-operator-result-status result) :accepted)
+             (fn-nop-group-names-within
+              (cadr (nth 4 result))
+              (fn-bs-profile-max-group-name-octets
+               (fn-bs-profile-resolve (caddr (nth 4 result)) nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nop-parse-init-plain fn-nop-result
+                                   fn-nop-refused fn-nop-usage
+                                   fn-native-operator-result-status)
+                                  (fn-nop-group-names-within
+                                   fn-bs-profile-max-group-name-octets
+                                   fn-bs-profile-resolve
+                                   fn-nop-parse-profile-flags
+                                   fn-nop-parse-init-groups
+                                   fn-nop-some-flag-wordp
+                                   fn-native-admin-some-group-name-reservedp)))))
 
 ;  `init' under a configuration that names a mission (`[ops] mission'): the
 ; mission fixes the profile, so a profile word is a usage error, and with no
@@ -458,7 +495,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention" "account")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention" "account" "motd")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -483,7 +520,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
          "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
-        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
+        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it)")
+        ((equal subject "motd")
+         "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
          "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
@@ -504,7 +543,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account|motd} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -699,7 +738,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
-                 (equal command "control") (equal command "retention"))
+                 (equal command "control") (equal command "retention")
+                 (equal command "motd"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -1123,6 +1163,7 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "policy")
            (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")
+           (equal (fn-native-operator-result-command result) "motd")
            (and (equal (fn-native-operator-result-command result) "account")
                 (not (equal (fn-ncfg-first
                              (fn-native-operator-result-arguments result))
@@ -1288,6 +1329,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "bp-route")
                (equal (fn-native-operator-result-command result) "policy")
                (equal (fn-native-operator-result-command result) "retention")
+               (equal (fn-native-operator-result-command result) "motd")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((and (equal (fn-native-operator-result-command result) "account")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1380,7 +1422,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
  (defthm fn-nop-parse-init-command
    (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-init fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-native-admin-some-group-name-reservedp))))))
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-native-admin-some-group-name-reservedp fn-nop-group-names-within fn-bs-profile-max-group-name-octets))))))
 
 (local
  (defthm fn-nop-parse-post-command

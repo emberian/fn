@@ -181,19 +181,24 @@
  (equal (lg-reply *lg-env* "CAPABILITIES")
         (lg-block "101 capability list follows"
                   '("VERSION 2" "READER" "OVER MSGID" "HDR" "XPAT" "NEWNEWS"
-                    "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT"
+                    "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT"
                     "IMPLEMENTATION fn-nntp-lab"))))
 (defconst *lg-help-lines*
   '("CAPABILITIES HELP QUIT MODE DATE POST"
+    "AUTHINFO STARTTLS XREDEEM"
     "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS"
     "ARTICLE HEAD BODY STAT"
-    "OVER XOVER HDR XHDR XPAT"))
+    "OVER XOVER HDR XHDR XPAT"
+    "IHAVE CHECK TAKETHIS"))
 (assert-event (equal (lg-reply *lg-env* "HELP")
                      (lg-block "100 help text follows" *lg-help-lines*)))
 
-; Every keyword HELP lists is in fact dispatched: none of them answers the
-; §3.2.1 "command not recognized" line.  A keyword removed from the dispatcher
-; but left in the help text fails here.
+; Every reader-layer keyword HELP lists is in fact dispatched by this
+; layer: none of them answers the §3.2.1 "command not recognized" line.  A
+; keyword removed from the dispatcher but left in the help text fails here.
+; AUTHINFO, STARTTLS and XREDEEM belong to the authentication layer above
+; this one; tests/acl2/nntp-help-tests.lisp checks the whole list against
+; the served step, fn-auth-step-pinned.
 (defconst *lg-help-keywords*
   '("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST" "GROUP" "LISTGROUP"
     "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS" "ARTICLE" "HEAD" "BODY"

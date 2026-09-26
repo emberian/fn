@@ -138,6 +138,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/hybrid-lifecycle-store-invariants \
 	books/owner-verdict-read \
 	books/owner-list-counts-read \
+	books/config-descriptions \
+	books/owner-descriptions-read \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -203,11 +205,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
-	books/store-checkpoint-shape \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
-	books/owner-checkpoint-stream \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/linear-recognizers-tests \
@@ -411,6 +411,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-forward-plan-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
+	books/post-identity-index \
+	tests/acl2/post-identity-index-tests \
 	books/owner-store-indexed \
 	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \
@@ -682,6 +684,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-pinned-msgid-tests \
 	books/nntp-list-counts \
 	tests/acl2/nntp-list-counts-tests \
+	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
@@ -702,6 +705,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-guard-carried \
 	books/served-carried \
 	books/owner-served-carried \
+	books/wire-span \
+	books/served-span \
 	books/owner-offer-indexed \
 	books/store-events-carried \
 	books/owner-commit-carried \
@@ -712,6 +717,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/msgid-index-concrete \
 	books/octets-stobj \
 	books/payload-arena \
+	books/catalog-record \
+	books/catalog \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -720,6 +727,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
+	books/proto-catalog \
+	books/proto-catalog-fold \
+	books/proto-catalog-arena \
+	tests/acl2/proto-catalog-tests \
+	tests/acl2/catalog-record-tests \
+	tests/acl2/catalog-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -729,6 +742,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
+	books/nntp-help \
+	tests/acl2/nntp-help-tests \
 	books/nntp-auth-fold \
 	tests/acl2/served-tests \
 	tests/acl2/nntp-auth-teeth-tests \
@@ -751,6 +766,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-owner-live-tests \
 	tests/acl2/owner-config-observe-tests \
 	tests/acl2/owner-served-carried-tests \
+	tests/acl2/wire-span-tests \
+	tests/acl2/served-span-tests \
 	tests/acl2/peer-offer-indexed-tests \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
@@ -770,6 +787,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	books/nntp-index-runtime \
+	books/group-number-index \
 	books/group-bucket-index \
 	books/group-bucket-article \
 	books/group-bucket-article-invariants \
@@ -905,8 +923,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \
 	tests/acl2/public-exposure-reply-tests \
+	books/served-reply-buffer \
+	tests/acl2/served-reply-buffer-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	tests/acl2/group-number-index-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \

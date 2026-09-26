@@ -406,15 +406,51 @@
 
 (defun fn-inj-config-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)))
+  (and (true-listp x) (equal (len x) 5)))
 (defun fn-inj-config-allow (x) (declare (xargs :guard t)) (fn-inj-nth 0 x))
 (defun fn-inj-config-agent (x) (declare (xargs :guard t)) (fn-inj-nth 1 x))
 (defun fn-inj-config-groups (x) (declare (xargs :guard t)) (fn-inj-nth 2 x))
 (defun fn-inj-config-max-octets (x) (declare (xargs :guard t)) (fn-inj-nth 3 x))
 
+; The fifth field is the reader listing (PRF-195): the group descriptions
+; and the node's message the connection's LIST NEWSGROUPS and LIST MOTD
+; show (books/nntp-responses.lisp `fn-nntp-env-listed').  Nothing in this
+; book reads it, so no injection decision depends on it
+; (fn-inj-decide-ignores-the-listing below).  `fn-inj-make-config' builds a
+; configuration with none.
+(defun fn-inj-config-listing (x) (declare (xargs :guard t)) (fn-inj-nth 4 x))
+
+(defun fn-inj-make-config-listed (allow agent groups max-octets listing)
+  (declare (xargs :guard t))
+  (list allow agent groups max-octets listing))
+
 (defun fn-inj-make-config (allow agent groups max-octets)
   (declare (xargs :guard t))
-  (list allow agent groups max-octets))
+  (fn-inj-make-config-listed allow agent groups max-octets nil))
+
+(defthm fn-inj-config-shapep-of-fn-inj-make-config-listed
+  (fn-inj-config-shapep
+   (fn-inj-make-config-listed allow agent groups max-octets listing)))
+(defthm fn-inj-config-allow-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-allow (fn-inj-make-config-listed allow agent groups max l))
+         allow))
+(defthm fn-inj-config-agent-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-agent (fn-inj-make-config-listed allow agent groups max l))
+         agent))
+(defthm fn-inj-config-groups-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-groups (fn-inj-make-config-listed allow agent groups max l))
+         groups))
+(defthm fn-inj-config-max-octets-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-max-octets
+          (fn-inj-make-config-listed allow agent groups max l))
+         max))
+(defthm fn-inj-config-listing-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-listing
+          (fn-inj-make-config-listed allow agent groups max l))
+         l))
+(defthm fn-inj-config-listing-of-fn-inj-make-config
+  (equal (fn-inj-config-listing (fn-inj-make-config allow agent groups max))
+         nil))
 
 (defthm fn-inj-config-shapep-of-fn-inj-make-config
   (fn-inj-config-shapep (fn-inj-make-config allow agent groups max-octets)))
@@ -432,6 +468,7 @@
          max))
 
 (in-theory (disable (:d fn-inj-config-shapep) (:d fn-inj-make-config)
+                    (:d fn-inj-make-config-listed) (:d fn-inj-config-listing)
                     (:d fn-inj-config-allow) (:d fn-inj-config-agent)
                     (:d fn-inj-config-groups) (:d fn-inj-config-max-octets)))
 
@@ -946,3 +983,22 @@
           fn-inj-reinjectionp)))
 
 (in-theory (disable fn-inj-vocabulary))
+
+; The reader listing is not an input of the injection decision: a served
+; configuration that carries one (books/owner-agent.lisp
+; `fn-oag-post-config') decides every POST exactly as the same configuration
+; without it (PRF-195).
+(defthm fn-inj-decide-ignores-the-listing
+  (equal (fn-inj-decide source
+                        (fn-inj-make-config-listed allow agent groups max listing)
+                        observation)
+         (fn-inj-decide source (fn-inj-make-config allow agent groups max)
+                        observation))
+  :hints (("Goal" :in-theory '(fn-inj-decide fn-inj-configp
+                               fn-inj-generated-message-id
+                               fn-inj-make-config
+                               fn-inj-config-shapep-of-fn-inj-make-config-listed
+                               fn-inj-config-allow-of-fn-inj-make-config-listed
+                               fn-inj-config-agent-of-fn-inj-make-config-listed
+                               fn-inj-config-groups-of-fn-inj-make-config-listed
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))

@@ -28,6 +28,9 @@
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
+;; PRF-192: the served read's reply as a range of the octet buffer:
+;; host/owner-host.lisp fn-owner-reply-buffer calls fn-served-reply-to-buffer.
+(include-book "books/served-reply-buffer")
 (include-book "books/owner-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
@@ -53,6 +56,7 @@
 (include-book "books/owner-tls-prefix")
 (include-book "books/owner-config-observe")
 (include-book "books/owner-served-carried")
+(include-book "books/served-span")
 (include-book "books/owner-commit-carried")
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
@@ -72,6 +76,9 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
+;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
+;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+(include-book "books/post-identity-index")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")
@@ -175,15 +182,24 @@
 ;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
 (include-book "books/store-history-required")
 (ld "host/store-host.lisp" :ld-error-action :error)
-;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
-;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
+;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
-;; The state checkpoint read from the octet buffer (rep-wave-d-3):
-;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
-;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+;; The FNSC segments read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The schema-3 tables and the pipeline (lane checkpoint-pipeline, D33/D34):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sct-load,
+;; fn-store-sco-select calls fn-sco-select-named and
+;; fn-store-sco-publish-setup calls fn-ockp-setup (owner-host.lisp includes
+;; books/owner-checkpoint-pipeline itself).
 (include-book "books/store-checkpoint-tables")
 (include-book "books/store-checkpoint-tables-reader")
+;; Wave 5's attach-stobj prototype (planning/design-2026-09-26-consolidation.md
+;; section 3): the attachable generic fn-pcat (books/proto-catalog.lisp) with
+;; the arena attached before it is introduced; host/native/proto-catalog.lisp
+;; registers the developer verb `proto-catalog' that calls fn-pcat-smoke.
+(include-book "books/proto-catalog-arena")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
@@ -301,6 +317,8 @@
         ; `principal bind|unbind' live (PKT-221): request 14, wrapping keys.
         (load "host/native/login-bindings.lisp")
         (load "host/native/checkpoint.lisp")
+        ; The attach-stobj prototype's smoke verb (developer image only).
+        (load "host/native/proto-catalog.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
