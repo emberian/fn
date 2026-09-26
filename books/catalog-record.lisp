@@ -318,11 +318,40 @@
        (equal (fn-held-stamp h) (fn-record-stamp h)))
   :hints (("Goal" :in-theory (enable fn-record-internals fn-held-internals))))
 
+; The recognizer executes (its field recognizers are the wire record's,
+; all guard-verified); a list of held records; what a row of one satisfies.
+(verify-guards fn-held-p)
+
 (defun fn-held-listp (xs)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if (atom xs)
       (null xs)
     (and (fn-held-p (car xs)) (fn-held-listp (cdr xs)))))
+
+(defthm fn-held-listp-forward-true-listp
+  (implies (fn-held-listp xs) (true-listp xs))
+  :rule-classes :forward-chaining)
+
+(defthm fn-held-p-of-nth-of-held-listp
+  (implies (and (fn-held-listp xs) (natp i) (< i (len xs)))
+           (fn-held-p (nth i xs))))
+
+(defthm fn-held-listp-of-update-nth
+  (implies (and (fn-held-listp xs) (fn-held-p h) (natp i) (< i (len xs)))
+           (fn-held-listp (update-nth i h xs))))
+
+(defthm fn-held-listp-of-append-one
+  (implies (and (fn-held-listp xs) (fn-held-p h))
+           (fn-held-listp (append xs (list h)))))
+
+(defthm fn-held-p-fields
+  (implies (fn-held-p h)
+           (and (natp (fn-record-payload h))
+                (fn-hf-p (fn-held-facts h))
+                (fn-hc-p (fn-held-context h))
+                (fn-held-numbersp (fn-held-numbers h))
+                (fn-held-withdrawnp (fn-held-withdrawn h))))
+  :hints (("Goal" :in-theory (enable fn-held-p))))
 
 ; -----------------------------------------------------------------------------
 ; ALPHA: the wire record a held record stands for, given its bytes.
