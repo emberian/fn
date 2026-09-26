@@ -11,8 +11,8 @@ post, a signed carrier POSTed by a client, protected NNTP transit to a second
 node and a SIGKILL reopen. The node shows the table
 (`SOURCE-CORPUS-TABLE` in `tests/test_native_source_corpus.py`). Each
 layer's equality is the one its contract means (specs/nntp.md NNT-020). The
-exception is the signed control route: a retry through `hybrid-author` exits
-1 with no word (PKT-166, below).
+signed control route answered a retry with an unexplained exit 1; PKT-166 (below)
+is now decided and implemented: DUPLICATE, exit 0.
 
 ## The corpus
 
@@ -66,7 +66,7 @@ both nodes.
 | unknown-headers | 240 | 441 already stored | 441 different article | 4 | 63a41597 | 0530bc21 | 435 | same |
 | mime | 240 | 441 already stored | 441 different article | 5 | fb497786 | e244dca1 | 435 | same; retry 441 already stored |
 | legacy | 240 (generated Message-ID) | 240, a new article | 240, a new article | 6 | 28155d7d | 2c3e66b1 | 435 | same |
-| signed, hybrid-author | exit 0 | exit 1, no word (PKT-166) | - | 9 | f6785d33 | 62543371 | 435 | same |
+| signed, hybrid-author | exit 0 | exit 0 DUPLICATE after PKT-166 (run 15); exit 1 before | - | 9 | f6785d33 | 62543371 | 435 | same |
 | carrier, POSTed | 240 | 441 already stored | - | 10 | 8381f33d | a9c5742e | 435 | same |
 
 Operator post of the same source under its Message-ID (supplied-date,
@@ -201,36 +201,62 @@ finding (spike-control-2026-09-25.md) is stale, so no packet is needed.
 Policy change at replay was not driven here: the newest-declined-key-statement
 behaviour belongs to lane peering-compose.
 
-## PKT-166: the signed control route has no retry identity
+## PKT-166: decided and implemented (the signed control route's retry)
 
-- **Trace.** `hybrid-author CONTROL 1 SOURCE ED ML PEM` with the same signed
-  source a second time, 1.2 s later, exits 1 with empty stdout and stderr.
-  The served Message-ID set is unchanged, so nothing new is stored and
-  nothing is lost. Run 5 shows it: `SOURCE-CORPUS-SIGNED-RETRY`.
-- **Cause.** host/native/hybrid-control.lisp `fnn-hybrid-control-author`
-  commits through `fnn-owner-identity-commit` (`fn-owner-prepare-identity`)
-  and never asks `fn-rcl-existing-action`. The Store's identity prepare
-  refuses the held Message-ID, and the route answers `:refused`.
-- **Constraints.**
-  - "Uncertain, refused and accepted stay distinct at every boundary, exit
-    codes included".
-  - D25: a retry of the same source is "already stored here".
-  - The operator post already answers exit 0 with
-    `accepted operator post DUPLICATE`.
-- **Default.** Before building the event, ask `fn-owner-existing-action`
-  with the injected carrier octets `received`, the Message-ID and the filed
-  groups. On `:duplicate`, answer a new control reply that the client prints
-  as `DUPLICATE` with exit 0. On `:conflict`, answer a named refusal.
-  `fn-sr-a-retry-is-already-stored` already proves the verdict for this
-  input: the route's octets are `fn-inj-decide`'s.
-- **Rejected alternative.** Leave exit 1. The cost is that an agent cannot
-  tell a safe retry from a refusal.
-- **Affects.**
-  - the control-socket reply vocabulary (`fn-native-hybrid-control-host-*`);
-  - the `hybrid-author` client's exit map;
-  - `test_signed_route_retry_is_already_stored`, which is red until then.
-- **What continues without it.** Everything else. A client POSTing the
-  carrier has the right retry (441 already stored).
+Trace before the change (run 5, dd7527e8...): a `hybrid-author` retry of
+the same signed source exited 1 with no word, because
+`fnn-hybrid-control-author` committed through `fn-owner-prepare-identity` and
+never asked the D25 verdict. The coordinator decided the default.
+
+- **Host** (0ee7c9b2). The commit callback of `fnn-hybrid-control-author`
+  (host/native/hybrid-control.lisp) asks `fn-owner-existing-action`
+  (`fn-rcl-existing-action`) over the injected carrier octets, the
+  Message-ID and the filed groups, before `fnn-owner-identity-commit`:
+  - `:duplicate` and `:conflict` are the Store attempt's words, exactly as
+    `fnn-owner-attempt` answers them on the operator post;
+  - only `:absent` commits.
+  - The client prints ACL2's status word, as `operator post` does:
+    `accepted hybrid-author DUPLICATE` (exit 0) or
+    `refused hybrid-author REFUSED` (exit 1).
+  - The control reply vocabulary has no conflict word, so the conflict is
+    the refusal class. A distinct conflict word would be a change to the
+    FNCT reply codec; it is not made here.
+- **Theorem** `fn-sr-a-signed-retry-is-already-stored`: the route's stored
+  octets are `fn-hsig-injected-carrier-octets` (source, key, signatures,
+  configuration, clock). Held at clock A, the same octets computed at any
+  clock B under the same Message-ID and groups are `:duplicate`. So a retry
+  of an accepted signed source is never a fresh acceptance. The status word
+  printed with exit 0 means it is never a silent exit.
+  - Teeth: a rendered dual-signature carrier held by the real Store.
+    - Hypothesis-removal witnesses: another source's carrier (conflict),
+      other groups (conflict), injection disabled (no octets).
+    - `must-fail` forms for the held payload and for the groups.
+  - Certified in persvati run-20260926T000945Z-f48e (manifest
+    certify-20260926T001006Z-2934089: `source-routes` passed, 2.7 s) and
+    run-20260926T001105Z-bef7 (manifest certify-20260926T001123Z-2946946:
+    `source-routes-tests` passed, 7.6 s).
+  - The first test-book attempt failed: a defconst may not call the
+    statement codec's attachment. The fix is make-event, as in
+    hybrid-store-tests. That second run is the lane's fourth farm run, a
+    known one-line fix and not a blind retry.
+- **Finding, not a defect.** ML-DSA-65 signing is hedged (FIPS 204), so
+  signing the same source again yields a different carrier: a changed
+  authored source under the held Message-ID, which D25 correctly answers as
+  a conflict. A client's retry therefore resends the signature it
+  persisted, as it resends its Message-ID. The test asserts both: the resend
+  is DUPLICATE, and the re-signed source is REFUSED.
+- **Native.** Developer image from 0ee7c9b2 (build2.sh): launcher sha256
+  ec430642134f313d0cf533933d49f2ba80ced47894a6974f2c493c8ba861cca9, core
+  80604d4e69cb198c77798d3035092a2118e61e0c80866b064473ccabf19716cb.
+  - Run 15 (`native-15.log`, sha256
+    f3dffe45adbbd9a53eee51c749e31736b38ecf81fad2816075446bdc4744ab58): all
+    three tests OK.
+  - The identity table now asserts that the signed retry exits 0.
+  - Later commits change only the test module and records, not the image.
+- **Harness classification, runs 6 to 14.** A test-ordering bug read the
+  re-sign's detail as the resend's. The instrumented image (tree3,
+  diagnostics only, never committed) showed the owner answering
+  `:duplicate` and the client receiving it.
 
 ## Not done, and why
 

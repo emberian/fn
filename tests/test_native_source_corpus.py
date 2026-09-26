@@ -119,9 +119,17 @@ class NativeSourceCorpusTests(unittest.TestCase):
                       "fn.*", outbound, "127.0.0.1", "true"])
 
     def start(self, node):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # The owner's diagnostics go to a regular file (an unread PIPE can
+        # fill and block the service), kept in FN_NATIVE_TEST_DIAGNOSTIC_DIR
+        # when set.
+        keep = os.environ.get("FN_NATIVE_TEST_DIAGNOSTIC_DIR")
+        directory = Path(keep) if keep else node["root"]
+        directory.mkdir(parents=True, exist_ok=True)
+        with (directory / (self.id().rsplit(".", 1)[-1] + "-" + node["name"]
+                           + ".stderr")).open("ab") as stderr:
+            process = subprocess.Popen(
+                [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
+                cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=stderr)
         self.processes.append(process)
         node["process"] = process
         wait_for_announcement(process, b"LISTENING ")
@@ -229,17 +237,26 @@ class NativeSourceCorpusTests(unittest.TestCase):
                       keys["ml_public"]])
         return keys
 
-    def author(self, node, keys, stem, source_octets):
+    def author(self, node, keys, stem, source_octets, signatures=None):
+        """Sign SOURCE_OCTETS and author it; with SIGNATURES (an earlier stem),
+        resend that earlier signed source exactly.  ML-DSA-65 signing is
+        hedged (FIPS 204), so signing the same source again yields another
+        signature and so another authored carrier: a client's retry reuses
+        the signature it persisted, as it reuses its Message-ID."""
         root = node["root"]
         source = root / (stem + ".eml")
         source.write_bytes(source_octets)
-        signed = self.command([IMAGE, "--fn", "hybrid-sign", keys["principal"],
-                               keys["ed_public"], keys["ed_secret"], keys["ml_public"],
-                               keys["ml_private"], source])
-        parts = dict(line.split() for line in signed.stdout.decode().splitlines())
         ed_sig, ml_sig = root / (stem + ".ed"), root / (stem + ".ml")
-        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
-        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+        if signatures is not None:
+            ed_sig.write_bytes((root / (signatures + ".ed")).read_bytes())
+            ml_sig.write_bytes((root / (signatures + ".ml")).read_bytes())
+        else:
+            signed = self.command([IMAGE, "--fn", "hybrid-sign", keys["principal"],
+                                   keys["ed_public"], keys["ed_secret"], keys["ml_public"],
+                                   keys["ml_private"], source])
+            parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+            ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
         done = self.command([IMAGE, "--fn", "hybrid-author", node["control"], "1", source,
                              ed_sig, ml_sig, keys["ml_public"]], expected=None)
         self.last_author = (done.returncode, done.stdout.decode("utf-8", "replace").strip(),
@@ -330,7 +347,8 @@ class NativeSourceCorpusTests(unittest.TestCase):
         facts["signed"] = {"author": self.author(a, keys, "signed", corpus["signed"])}
         signed_id = header(corpus["signed"], b"Message-ID")
         facts["signed"]["message_id"] = signed_id
-        facts["signed"]["author-retry"] = self.author(a, keys, "signed-retry", corpus["signed"])
+        facts["signed"]["author-retry"] = self.author(a, keys, "signed-retry", corpus["signed"],
+                                                      signatures="signed")
         facts["signed"]["author-retry-detail"] = self.last_author
         carrier_source = corpus["signed"].replace(b"<sc-signed@", b"<sc-carrier@")
         carrier = self.carrier(a, keys, "carrier", carrier_source)
@@ -470,17 +488,23 @@ class NativeSourceCorpusTests(unittest.TestCase):
         first_detail = self.last_author
         before = self.served(a)
         time.sleep(1.2)
-        again = self.author(a, keys, "again", signed)
+        again = self.author(a, keys, "again", signed, signatures="first")
         again_detail = self.last_author
+        resigned = self.author(a, keys, "resigned", signed)
+        resigned_detail = self.last_author
         after = self.served(a)
         self.stop(a)
         print("SOURCE-CORPUS-SIGNED-RETRY " + json.dumps(
-            {"first": first_detail, "again": again_detail,
+            {"first": first_detail, "again": again_detail, "resigned": resigned_detail,
              "before": sorted(before), "after": sorted(after)}, sort_keys=True))
         self.assertEqual(first, 0, first_detail)
         self.assertEqual(sorted(after), sorted(before))
         self.assertEqual(again, 0, again_detail)
         self.assertIn("DUPLICATE", again_detail[2], again_detail)
+        # The same source signed afresh is another carrier (hedged ML-DSA-65):
+        # a changed authored source under the held Message-ID, the conflict.
+        self.assertEqual(resigned, 1, resigned_detail)
+        self.assertIn("REFUSED", resigned_detail[2], resigned_detail)
         # A changed signed source under the held Message-ID is the conflict:
         # a refusal (exit 1), not an acceptance, with its word printed.
         self.start(a)

@@ -1742,7 +1742,7 @@
         "The operator route answers DUPLICATE and adds no article; the supplied Path tail is kept behind A's identity; every source and the carrier are stored verbatim after the injected block",
         "B stores A's octets with its identity and an empty diagnostic spliced into Path; the re-offer is 435; numbers and octets are unchanged across reopen; store inspect equals the served octets",
         "Both cancel orders withdraw their targets from every fresh view, live and after replay; the pinned reader keeps 220; the superseding article stays visible",
-        "Open: hybrid-author's retry of the same signed source is answered exit 1 (PKT-166)"
+        "hybrid-author's resend of the same signed carrier is DUPLICATE, exit 0; the same source signed afresh (hedged ML-DSA-65) or changed is REFUSED, exit 1; no article is added"
       ],
       "evidence": [
         "tests/test_native_source_corpus.py",

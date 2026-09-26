@@ -4635,6 +4635,10 @@
         {
           "kind": "theorem",
           "name": "fn-sr-an-injection-is-a-cons"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-signed-retry-is-already-stored"
         }
       ]
     }
