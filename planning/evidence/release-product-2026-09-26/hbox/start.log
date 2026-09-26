@@ -1,0 +1,18 @@
++ systemd-run --user --unit fn-release-rehearsal -p MemoryMax=24G -p WorkingDirectory=/tank/fn/scratch/release-product/rehearsal/node /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml run
+Running as unit: fn-release-rehearsal.service; invocation ID: 1c692f3c2388449c9abfa502680db55f
++ sleep 8
++ systemctl --user --no-pager status fn-release-rehearsal
++ head -6
+● fn-release-rehearsal.service - /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml run
+     Loaded: loaded (/run/user/1000/systemd/transient/fn-release-rehearsal.service; transient)
+  Transient: yes
+     Active: active (running) since Sat 2026-09-26 14:54:21 EDT; 8s ago
+ Invocation: 1c692f3c2388449c9abfa502680db55f
+   Main PID: 2717073 (sbcl)
++ ss -ltn
++ grep :11995 
+LISTEN 0      128                  192.168.50.39:11995      0.0.0.0:*   
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn --version
+fn c755569badf5839f85750619d6b7fa1a370e7e94
++ echo PHASE start DONE
+PHASE start DONE

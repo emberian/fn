@@ -1,0 +1,5 @@
+source=c755569badf5839f85750619d6b7fa1a370e7e94 (git archive, 296427520 octets)
+green-check profile=default: 403 books in the closure of 185 roots, 403 green at their current digest; not green: none
+acquire: profile=default image=build/fn-host artifact-set=768967bc1630e7df6f2cd201fd18a86434babd4dae9c5dd95c57080531eabcf9 origin=composed books=403 source=69b87de456ba8eeaf3ad3f69b16e77bb9e4fb382d13cc4864da3963e24991c6e toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+validate: profile=default image=build/fn-host roots=185 result=loaded
+acl2: /tank/fn/toolchains/w28/acl2-literal-4g

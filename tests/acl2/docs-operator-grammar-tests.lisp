@@ -48,11 +48,10 @@
 (defconst *fn-docs-operator-argv*
   '(
     ("docs/install.md#2-the-first-node" 1 "mission" "small-community" "--host" "203.0.113.7" "--port" "119")
-    ("docs/install.md#2-the-first-node" 2 "init")
-    ("docs/install.md#2-the-first-node" 3 "policy" "set" "path-identity" "news.example.org")
-    ("docs/install.md#2-the-first-node" 4 "principal" "set-password" "alice" "--posting")
-    ("docs/install.md#2-the-first-node" 5 "status")
-    ("docs/install.md#2-the-first-node" 6 "health")
+    ("docs/install.md#2-the-first-node" 2 "policy" "set" "path-identity" "news.example.org")
+    ("docs/install.md#2-the-first-node" 3 "principal" "set-password" "alice" "--posting")
+    ("docs/install.md#2-the-first-node" 4 "status")
+    ("docs/install.md#2-the-first-node" 5 "health")
     ("docs/install.md#3-peering-with-a-friend" 1 "peer" "keygen" "/var/lib/fn/keys")
     ("docs/install.md#3-peering-with-a-friend" 2 "peer" "invite" "friend" "local.*" "198.51.100.9" "119" "friend.example.net" "/var/lib/fn/keys" "/var/lib/fn/invitation-for-friend" "203.0.113.7" "119")
     ("docs/install.md#3-peering-with-a-friend" 3 "peer" "accept" "/var/lib/fn/invitation-for-friend" "/var/lib/fn/keys" "friend.example.net" "198.51.100.9:119" "/var/lib/fn/acceptance-for-you")

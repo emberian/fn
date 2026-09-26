@@ -5,7 +5,10 @@
   "fn-feed-offerablep": "a specification name mapped to its implementation: specs/peering.md's correspondence table sets section 3.2's fn-feed-offerablep beside fn-own-feed-offerablep (books/owner-feed.lisp)",
   "fn-store-cfg-peer-name-list": "retired name kept as history: specs/peering.md records that host/store-node-host.lisp's :program copy of that name was removed in favour of fn-cfg-peer-names",
   "fn-record-decode-exact-refuses-another-header": "retired name kept as history: specs/acceptance-stamp.md records that T1's derived theorem of that name became fn-record-decode-exact-refuses-another-magic",
-  "fn-nntp-hdr-labelled-line-is-block-text": "retired name kept as history: specs/nntp-audit.md records that books/nntp-effects' message-id lemma was rerouted off that open lemma onto fn-nntp-xpat-msgid-block-is-block-text"
+  "fn-nntp-hdr-labelled-line-is-block-text": "retired name kept as history: specs/nntp-audit.md records that books/nntp-effects' message-id lemma was rerouted off that open lemma onto fn-nntp-xpat-msgid-block-is-block-text",
+  "fn-rev-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
+  "fn-rev12-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
+  "fn-rev12-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition"
  },
  "stale": {
   "PKT-446": {

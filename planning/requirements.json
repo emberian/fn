@@ -3352,6 +3352,49 @@
         "planning/evidence/crypto-deps-2026-09-26.md"
       ],
       "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
+    },
+    {
+      "id": "HST-017",
+      "title": "The release is one tarball per platform built from a git archive of REV behind the green gate of the default profile's closure, installed as one directory",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "packaging/release-tarball.sh",
+        "packaging/install-native.sh",
+        "packaging/install.sh",
+        "tools/green_check.py",
+        "tests/test_release_tarball.py",
+        "tests/test_native_distribution.sh",
+        "docs/install.md",
+        "planning/evidence/release-product-2026-09-26.md"
+      ],
+      "implementation_note": "The Linux tarball is built and rehearsed on hbox (record); the OpenBSD tarball follows release-openbsd's VM recipe. store export/import (the reinstall's data path) is lane migration-removal's; install.md marks those two lines until it lands."
+    },
+    {
+      "id": "HST-018",
+      "title": "No Python on the path a deployed node or its operator verbs execute: tools/runpath_check.py over the tree and over every release",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/release-tarball.sh",
+        "Makefile",
+        "planning/evidence/release-product-2026-09-26.md"
+      ],
+      "implementation_note": "Static mode runs in make check (lane release-openbsd); --tree runs in every release build and in tests.test_release_tarball; witnesses in tests/test_runpath_check.py (a planted python symlink among them)."
     }
   ]
 }
