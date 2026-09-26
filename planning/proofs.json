@@ -7015,6 +7015,35 @@
         "fn-osi-ocar-exp-open-keeps-store",
         "fn-sco-thaw-checked-accepts-own-publication"
       ]
+    },
+    {
+      "id": "PRF-197",
+      "title": "Every admitted listener host projects to a nonempty duplicate-free list of bindable addresses: an IPv4 quad other than 0.0.0.0 or an IPv6 literal other than :: and ::ffff:0:0/96, the owner binding each octet for octet",
+      "statement": "Over the function the host calls: host/native/owner.lisp fnn-owner-run-normalized calls host/native-config-host.lisp fn-native-config-host-listener-addresses, which is fn-native-config-listener-addresses (books/native-config.lisp), and binds each (FAMILY OCTETS) it returns with fnn-listen, the first on [listener] port and each further one on the port the first bound (and on tls_port when set). KEYSTONE fn-native-config-listener-addresses-are-bindable-projections: (fn-native-config-listener-addresses H) is not :bad implies it is a cons, fn-native-config-listener-projection-listp (each element (:inet Q) with Q four octets other than (0 0 0 0), or (:inet6 A) with A sixteen octets other than the unspecified address and not beginning with the IPv4-mapped prefix) and no-duplicatesp-equal. fn-ncfg-listener-element-classifies-by-definition says which form each element is (dotted quad, the name localhost, an RFC 4291 section 2.2 literal). The refusal reason reaches the operator through fn-native-config-load's (:refused REASON). Not covered: that the kernel binds what bind(2) is given (A-HOST), status/health rendering of the addresses (PKT-577).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-041"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-config.lisp",
+        "tests/acl2/native-config-tests.lisp",
+        "host/native-config-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/listener-v6-2026-09-26.md"
+      ],
+      "events": [
+        "fn-native-config-listener-addresses-are-bindable-projections",
+        "fn-ncfg-listener-plan-ok-shape",
+        "fn-ncfg-listener-element-ok-is-a-projection",
+        "fn-ncfg-listener-element-classifies-by-definition",
+        "fn-native-config-ipv6-literal-shape",
+        "fn-native-config-ipv4-address-shape"
+      ]
     }
   ]
 }

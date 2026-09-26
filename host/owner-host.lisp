@@ -2190,6 +2190,22 @@
 ;; Once per run, after recovery and before listen: the listener the owner is
 ;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
 ;; defaults of every absent row.
+;; NNT-041: several listeners.  The node is public when any listener is
+;; (fn-exp-address-publicp decides each).
+(defun fn-owner-exposure-projections-publicp (projections)
+  (declare (xargs :mode :program))
+  (and (consp projections)
+       (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
+           (fn-owner-exposure-projections-publicp (cdr projections)))))
+
+(defun fn-owner-exposure-install-set (projections state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((publicp (fn-owner-exposure-projections-publicp projections))
+         (state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
+         (state (f-put-global 'fn-owner-exposure-close nil state))
+         (state (f-put-global 'fn-owner-exposure-public publicp state)))
+    (value (if publicp :public :loopback))))
+
 (defun fn-owner-exposure-install (family address state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))

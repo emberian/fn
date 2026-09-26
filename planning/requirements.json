@@ -3326,6 +3326,29 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "NNT-041",
+      "title": "The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why",
+      "specification": "specs/nntp.md#listener-addresses-nnt-041",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-197"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-config.lisp",
+        "tests/acl2/native-config-tests.lisp",
+        "host/native-config-host.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/listener-v6-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4291 section 2.2 text forms and RFC 3986 section 3.2.2 brackets are RFC requirements; the wildcard and IPv4-mapped refusals and one socket per written address are local policy. The native two-family case (SCN-126) is named for the batch. Status and health do not yet list the bound addresses (PKT-577)."
     }
   ]
 }
