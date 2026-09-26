@@ -4412,6 +4412,33 @@
         "fn-bpfs-canvas-of-extents",
         "fn-bpfs-views-of-cut"
       ]
+    },
+    {
+      "id": "PRF-115",
+      "title": "A resend of an accepted source after its withdrawal or reclamation is answered from the Store (duplicate or conflict), never prepared as a fresh acceptance, and is served a 441 line",
+      "statement": "Over the decision the host calls at POST (fn-rclb-existing-action, host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-rcl-existing-action, fn-owner-existing-action from fnn-owner-attempt-transit): for a string Message-ID held in the Store's article list, both answer :duplicate or :conflict after fn-sn-finish of that Store, whatever the completed record (fn-vj-a-completion-keeps-a-held-message-id-answered; a cancel that withdraws the target is accepted by such a completion, and the owner's carried commit is fn-sn-finish by fn-ccar-sn-finish-is-sn-finish), and for any Store whose article list is fn-rcl-reclaim-state of an acceptance state holding it (fn-vj-reclamation-keeps-a-held-message-id-answered); while the resend is the connection's in-flight submission with no completion consumed, fn-own-outcome renders the duplicate or the conflict 441 line for it (fn-vj-a-held-message-id-is-answered-441). The host returns the word before fnn-advance-frontier and fn-owner-prepare-buffer, so no number is allocated (host control flow, observed natively, not a theorem). The same source being :duplicate rather than :conflict after reclamation is fn-rcl-existing-action-after-reclaim with its SHA-256 collision disjuncts.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-019"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/visibility-join.lisp",
+        "tests/acl2/visibility-join-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T000258Z-2861655.json",
+        "planning/evidence/visibility-join-2026-09-25.md",
+        "tests/test_native_visibility_join.py"
+      ],
+      "progress_note": "Certified persvati run-20260926T000228Z-6d61 (2 jobs, w25): books/visibility-join 1.4 s, its tests 1.6 s. Teeth: a reachable Store built by fn-sn-io/fn-spc-prepare/fn-sn-finish with target, cancel (withdrawn under a namespace grant) and the reclaimed tombstone; one must-fail per hypothesis (the stringp removals are corrupted-state witnesses). Native SCN-060 passed on the developer image (hbox).",
+      "events": [
+        "fn-vj-a-completion-keeps-a-held-message-id-answered",
+        "fn-vj-reclamation-keeps-a-held-message-id-answered",
+        "fn-vj-a-held-message-id-is-answered-441"
+      ]
     }
   ]
 }
