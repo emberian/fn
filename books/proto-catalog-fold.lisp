@@ -14,7 +14,9 @@
 ; octets held below a handle, advanced from a delta (gpt-6 section 6:
 ; "scalar totals advance from committed deltas"): `fn-pcat-total' after a
 ; seal is the total before it plus the sealed payload's length, without a
-; walk of what was already there (`fn-pcat-total-of-seal-is-delta').
+; walk of what was already there (`fn-pcat-total-of-seal-is-delta').  Both
+; theorems hold with no hypothesis but the handle's, as the arena's own
+; keystones do: the seal walks the conses the value has.
 
 (in-package "ACL2")
 (include-book "proto-catalog")
@@ -36,58 +38,50 @@
     (+ (fn-pcat-payload-len (- h 1) fn-pcat)
        (fn-pcat-total (- h 1) fn-pcat))))
 
+; One seal: the count grows by one, the handles below the old count read
+; as before, the old count reads the sealed payload.  No hypothesis: the
+; seal is `fn-oct-snoc', which walks the conses the value has.
 (local
- (defthm fn-pcat-append-assoc
-   (equal (append (append a b) c) (append a (append b c)))))
-
-; The seal keeps every handle it found (the arena's keystone, restated over
-; the generic's names: a reader that pinned h before the fold reads the
-; same octets after it).
-(defthm fn-pcat-seal-many-is-append
-  (implies (and (true-listp fn-pcat) (true-listp payloads))
-           (equal (fn-pcat-seal-many payloads fn-pcat) (append fn-pcat payloads)))
-  :hints (("Goal" :induct (fn-pcat-seal-many payloads fn-pcat)
-           :in-theory (enable fn-pcat-seal-list))))
+ (defthm fn-pcat-seal-list-len
+   (equal (len (fn-pcat-seal-list xs a)) (1+ (len a)))
+   :hints (("Goal" :in-theory (enable fn-pcat-seal-list)))))
 
 (local
- (defthm fn-pcat-nth-of-append-below
+ (defthm fn-pcat-seal-list-keeps-nth-below
    (implies (and (natp h) (< h (len a)))
-            (equal (nth h (append a b)) (nth h a)))
-   :hints (("Goal" :in-theory (enable nth)))))
+            (equal (nth h (fn-pcat-seal-list xs a)) (nth h a)))
+   :hints (("Goal" :in-theory (enable fn-pcat-seal-list nth)))))
 
+(local
+ (defthm fn-pcat-seal-list-nth-at
+   (equal (nth (len a) (fn-pcat-seal-list xs a)) xs)
+   :hints (("Goal" :in-theory (enable fn-pcat-seal-list nth)))))
+
+; The fold keeps every handle it found (the arena's keystone
+; `fn-arena-seals-keep-sealed', restated over the generic's names: a reader
+; that pinned h before the fold reads the same octets after it).
 (defthm fn-pcat-seal-many-keeps-sealed
-  (implies (and (fn-pcat-p fn-pcat) (natp h) (< h (fn-pcat-count fn-pcat)))
+  (implies (and (natp h) (< h (fn-pcat-count fn-pcat)))
            (equal (fn-pcat-payload h (fn-pcat-seal-many payloads fn-pcat))
                   (fn-pcat-payload h fn-pcat)))
-  :hints (("Goal" :in-theory (e/d (fn-pcat-payload fn-pcat-count fn-pcat-p-is-payload-listp)
-                                  (fn-pcat-seal-many))
-           :use ((:instance fn-pcat-seal-many-is-append
-                            (payloads (true-list-fix payloads))))
-           :do-not-induct t)))
+  :hints (("Goal" :induct (fn-pcat-seal-many payloads fn-pcat)
+           :in-theory (enable fn-pcat-payload fn-pcat-count))))
 
-; The total below the old count, after one seal, is unchanged (the seal
-; wrote above it); the total below the new count is the old total plus the
-; delta.  Proved without walking: the fold on the sealed value is the fold
-; on the old value below the old count.
+; The total below the old count is unchanged by a seal (it wrote above);
+; the total below the new count is the old total plus the delta.  Proved
+; without walking what was there.
 (local
- (defthm fn-pcat-total-of-append-below
-   (implies (and (natp h) (<= h (len a)) (true-listp a))
-            (equal (fn-pcat-total h (append a b)) (fn-pcat-total h a)))
-   :hints (("Goal" :in-theory (enable fn-pcat-payload-len)))))
-
-(local
- (defthm fn-pcat-nth-len-of-append-one
-   (implies (true-listp a)
-            (equal (nth (len a) (append a (list xs))) xs))
-   :hints (("Goal" :in-theory (enable nth)))))
+ (defthm fn-pcat-total-of-seal-below
+   (implies (and (natp h) (<= h (len a)))
+            (equal (fn-pcat-total h (fn-pcat-seal-list xs a))
+                   (fn-pcat-total h a)))
+   :hints (("Goal" :induct (fn-pcat-total h a)
+            :in-theory (enable fn-pcat-payload-len)))))
 
 (defthm fn-pcat-total-of-seal-is-delta
-  (implies (fn-pcat-p fn-pcat)
-           (equal (fn-pcat-total (+ 1 (fn-pcat-count fn-pcat))
-                                 (fn-pcat-seal-list xs fn-pcat))
-                  (+ (len xs) (fn-pcat-total (fn-pcat-count fn-pcat) fn-pcat))))
-  :hints (("Goal" :in-theory (e/d (fn-pcat-count fn-pcat-seal-list fn-pcat-payload-len
-                                   fn-pcat-p-is-payload-listp)
-                                  (fn-pcat-total))
-           :expand ((fn-pcat-total (+ 1 (len fn-pcat)) (append fn-pcat (list xs))))
+  (equal (fn-pcat-total (+ 1 (fn-pcat-count fn-pcat))
+                        (fn-pcat-seal-list xs fn-pcat))
+         (+ (len xs) (fn-pcat-total (fn-pcat-count fn-pcat) fn-pcat)))
+  :hints (("Goal" :in-theory (e/d (fn-pcat-count fn-pcat-payload-len) (fn-pcat-total))
+           :expand ((fn-pcat-total (+ 1 (len fn-pcat)) (fn-pcat-seal-list xs fn-pcat)))
            :do-not-induct t)))

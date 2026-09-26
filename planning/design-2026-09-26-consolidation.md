@@ -531,3 +531,176 @@ and no new cut.** The brief for the pipeline (5.1) requires
 between two segments reopens with the OLD checkpoint (the `created` cut's
 verdict) and the staged file is swept. The verb's five cuts through both
 entries (`tests.test_native_state_checkpoint`) stay the module for the batch.
+
+## 3. The attach-stobj prototype
+
+(section 3 is written from the prototype's result; see below)
+
+## 4. The deletion map
+
+gpt-6 section 10: a deletion map per abstraction, so that each lane removes
+what it replaces. Host lines are function names in the file named
+(`tools/current_view.py` finds the line; a number never goes into a book).
+"Measurements" are the figures that prove the whole path improved, each
+taken under matched conditions on the same box and image pair, before and
+after, over the whole lifetime: load, sustained posting, repeated
+checkpointing, reopen, reclamation (the ledger's harness,
+`planning/evidence/perf-ledger-2026-09-26/perf.py`, and `tools/rep_measure.py`).
+
+### 4.1 The catalog `fn-cat` (1.1)
+
+| Replaces | Callers that move (host line) | Old execution paths removed | Reference definitions kept (spec only) |
+| --- | --- | --- | --- |
+| the Store's derived event index `fn-sn-event-index` (the triple SEQUENCE-TRIE, MSGID-TRIE, COUNT; `fn-cei-*`) and its relation `fn-ceis-indexedp`; the owner view's `fn-own-view-index` (`fn-midx-*` trie), `fn-own-view-group-index` (`fn-gidx-*` buckets), `fn-own-view-withdrawals`, `-withdrawn`, `-raw`, `-verdicts`; the Store tuple's fields 6 (index), 8 (verdicts), 9 (snapshots) | `fn-owner-prepare-buffer`, `fn-owner-existing-action-buffer`, `fn-owner-finish-submission`, `fn-owner-recover`, `-recover-from-checkpoint`, `-recover-extended`, `fn-owner-sco-capture`, `fn-owner-article-count` (host/owner-host.lisp); `fn-store-sn-recover`, `fn-store-sco-decode` (host/store-node-host.lisp); the served reads under `fn-owner-chunk` (`fn-scar-*` → `fn-gidx-entry-number-article`, `fn-nntp-msgid-retrieval-indexed`) | `fn-retain-known-id-scanp`, `fn-rclb-existing-action`'s `fn-find-article`, `fn-acceptedp` on POST (ledger row 5); `fn-gidx-find-number-entry` and `fn-nntp-index-entry-available` per OVER row (row 1, 7); `fn-served-make-conn-group-indexed` per POST (PKT-558); `fn-sbud-count`'s `len` of the history; the `fn-ceis-*` preservation books (31 theorems) once `fn-cat$corr` carries their content | `fn-sf-records`; `fn-cei-article-records-for`, `fn-cei-build`; `fn-gidx-build`; `fn-ctl-refresh-visible`, `-withdrawals`; `fn-sn-finish` over wire records |
+
+Measurements: records visited per POST (N to 1), per OVER row (N to 1),
+per completion (seq to 0); allocated bytes per POST (2.25 MB at 10,000 to
+the row's size); OVER 40 rows (320 ms) and 2,000 rows (17.7 s) at 10,000
+and 20,000 to O(rows); proof fan-out: the books that include
+consumer-event-index* and msgid-index* (count by `make affected`) become
+includers of catalog*.
+
+### 4.2 The byte owner (1.2; the arena of rep-wave-d)
+
+| Replaces | Callers that move | Removed | Kept |
+| --- | --- | --- | --- |
+| the octet-list payload in the record (`fn-record-payload` of the held record), the acceptance state's `fn-article-payload` and `fn-pending-payload`, the in-flight `fn-own-sub-octets`, the served reply as a list (`fn-nntp-crlf-lines-aux`, `fn-ag-rev-onto`), the frame's payload copy (`fn-frame-protected`) | `fnn-owner-attempt` (host/native/owner.lisp: the fill, unchanged) and the finish (the seal); `fnn-owner-handle-chunk`'s reply write (the range from the handle: egress-span's seam); `fn-store-sn-recover` (decode then intern); the checkpoint reader (2.1); `fn-rcl-tombstone-of` (reclaim, by handle); later `fn-owner-feed-sealed-frame` and `bp-service` (the feed and BP read by handle when they build a bundle) | `fnn-octet-list` per payload call; `fn-record-payloadp`'s per-octet walk on the served path (the held record's payload is `natp`); `fn-nov-body-line-count`'s walk per OVER (a parsed fact); the tree codec's payload copies; `fn-arena-payload` as an escape hatch once no caller needs the list | `fn-record-p` over the wire record; the codec seam (`fn-record-encode`/`-decode-exact`, unchanged); the arena's own logical value |
+
+Measurements: retained bytes per octet (16 to 1: 5.55 GB live at
+10,000 x 32 KiB to about 0.6 GB); transient peak of a 3 MiB ARTICLE (571 MB
+consed to O(1) beyond the socket copy) and POST (1.94 GB); lock-hold time
+per ARTICLE (0.9 s owner CPU at 3 MiB to the copy); reopen from the journal
+(164 s, 22.5 GB at 10,000 x 32 KiB); the heap census after a full GC on the
+loaded owner (`heap.lisp`).
+
+### 4.3 PreparedCommit and completion by token (1.3)
+
+| Replaces | Callers that move | Removed | Kept |
+| --- | --- | --- | --- |
+| `fn-own-inflight` + `fn-sf-record-candidate` + `fn-sf-completion`'s (sequence . txid) pair as the way the finish finds its record; the store callback pair `*fnn-finish-callback*`/`fnn-owner-finish-submission` with no argument | `fn-owner-finish-submission`, `fn-owner-refuse-reservation`, `fn-owner-known-abort`, `fn-owner-pending-octets`, `fn-owner-pending-sequence` (host/owner-host.lisp); `fnn-owner-attempt`, `fnn-owner-finish-submission` (host/native/owner.lisp): the token threads through the attempt | `fn-ccar-seek`, `fn-sn-completion-record`, `fn-sn-find-record` on the served path; the `fn-ccar-*` and `fn-pcar-*` equality chains once the catalog serves the path (each was a twin of one lookup) | `fn-sn-find-record` as the meaning of "the completing record"; `fn-sf-*`'s kernel and its K0 programs (the record file's program is unchanged) |
+
+Measurements: records visited per completion (the sequence's conses to
+0); owner CPU per commit at N = 10,000 and 20,000 (the ledger's POST row).
+
+### 4.4 The committed delta (1.4)
+
+| Replaces | Callers that move | Removed | Kept |
+| --- | --- | --- | --- |
+| `fn-own-refresh` and its two-list comparisons `fn-gidx-refresh`, `fn-midx-refresh`, `fn-ctl-refresh-withdrawals`, `-visible`, `-withdrawn`; the per-connection pinned archive copy `fn-own-conn-archive` | `fn-own-complete`, `fn-own-store-step` (books/owner.lisp: the view applies the delta the commit returns); `fn-own-open` and the greeting (the view is a version); GROUP and LISTGROUP (`fn-nntp-*` group selection: the version advances between commands, C3 kept) | the refresh's rediscovery; the greeting's view copy; `fn-served-make-conn-group-indexed` | `fn-own-refresh` as the meaning of the delta (`fn-view-apply-is-refresh`) |
+
+Measurements: bytes consed per POST from the refresh (1.4 % now) and
+from the per-connection index (15.6 %); a long-lived reader session sees a
+peer's article after its next GROUP (the inventory's finding), measured as
+the number of commands to visibility (unbounded to 1).
+
+### 4.5 The checkpoint schema and pipeline (2)
+
+| Replaces | Callers that move | Removed | Kept |
+| --- | --- | --- | --- |
+| the 7-tuple checkpoint value (`fn-sco-make`), `fn-sco-freeze`/`-thaw`, `fn-sco-index-records`; the tree codec `fn-scc-*` (postfix program over an ACL2 tree), `fn-sccb-plan`'s whole-file encode and `fn-sccr-*`'s tree decode; `fn-ockb-file-len`'s walk; `fn-ock-publication` (the list entry, already superseded) | `fnn-owner-publish-captured`, `fnn-owner-maybe-publish` (host/native/owner.lisp); `fnn-command-state-checkpoint`, `fnn-state-checkpoint-plan`, `-load`, `fnn-recover-from-state-checkpoint` (host/native/io.lisp); `fn-store-sco-publish-plan`, `-decode`, `-segment-admit`, `fn-owner-sco-capture`, `-publication-done` (the host wrappers) | the records twice in the file (PKT-307, PKT-314); the whole-tree walks per publication (three, each linear in N); the whole-file buffer residency; the decode's second copy at open | `fn-sco-capture` as what the tables mean; `fn-sco-open`, `fn-sn-recover-from-checkpoint-equals-full-recover`; `fn-bs-scp-program` and its five cuts; the FNSC frame and the reader's admission per segment |
+
+Measurements: file octets per payload octet (670 MB for 320 MB to about
+1.05); capture wall and its growth with N (2.6 s at 2,131 to 54 s at
+39,996, linear, to O(N) rows of metadata plus one memcpy per extent, so
+seconds); VmHWM across nineteen captures (5.55 GB at 40,000 x 2 KiB);
+reopen from the checkpoint (132 s, 19.3 GB at 10,000 x 32 KiB); the
+publication buffer's residency (315 MB to SEG); the verb's wall at the
+ledger's points.
+
+### 4.6 Adapter retirement (gpt-6 section 7)
+
+| Replaces | Callers that move | Removed | Kept |
+| --- | --- | --- | --- |
+| `fnn-owner-name-list` (LF-joined names split in raw Lisp); the feed flush's frame-by-index fetch against a separate peer list (`fnn-owner-feed-flush`: `fn-owner-feed-record-peers` then `fn-owner-feed-sealed-frame index`); the `f-put-global` mailboxes of host/owner-host.lisp (`fn-owner-output`, `-closep`, `-starttlsp`, `-submittedp`, `-effects`, `-submit-id/-msgid/-octets/-groups/-intent/-transitp/-peer`, `-feed-records/-frames/-command/-command-status/-peer`, `-sco-base/-durable/-attempted/-deferred`, `-config-octets/-reason`, `-log-line`, `-record-octets/-debt`, `-carried-usage`, about thirty) read back by `fnn-global`; `fn-owner-config-names` | every `fnn-owner-*-global` and `fnn-global` reader in host/native/owner.lisp, feed-service.lisp, pull-service.lisp; `fnn-owner-drain-one`, `fnn-owner-complete-bound-submission`, `fnn-owner-feed-flush`, `fnn-owner-publish-captured`, `fnn-owner-serve-client` | the name-list grammar; the by-index fetch; the mailbox reads; `fnn-owner-octets-global`; history-search completion (4.3); refresh-by-rediscovery (4.4) | ACL2 constructs every value; the adapter executes it |
+
+The typed results (ACL2 values the wrapper returns, one per step, each a
+`fn-*-p` shape with a recognizer the host checks once): `FeedPublication
+{peer_reference, sealed_frame_plan, completion_token}`; `SubmissionTaken
+{id, msgid, octets-range, groups, intent, transitp, peer}`; `ServedStep
+{reply-range, closep, starttlsp, submittedp, log-line}`; `Capture {count,
+fill, roots, frontier, budget}`; `ConfigResult {octets, reason}`. Text is
+rendered at the CLI and log boundaries only; bytes are encoded at the wire
+and storage boundaries only; no global result mailboxes.
+
+Measurements: allocation per POST from the join/split; the mutex-held time
+per feed flush and per served step (the served step's I/O runs outside the
+critical section where the contract permits: gpt-6 section 7's second
+paragraph: one mutation owner, bounded semantic steps, immutable read
+plans against pinned versions, I/O consuming plans).
+
+### 4.7 D34, D35, D36 (the non-catalog lanes)
+
+| Abstraction | Replaces | Removed | Kept |
+| --- | --- | --- | --- |
+| one store format, fresh deploys (D34) | the format-7 translation `fn-bs-profile-from-format-7` and `*fn-bs-meta-format-7-*` (books/byte-store-frame.lisp), `upgrade-profile`'s upgrade relation (`fn-profile-upgrade-verdict`, books/store-profile-upgrade.lisp; `fnn-command-upgrade-profile`, `fnn-upgrade-profile-write`, host/native/io.lisp), `rollback-check` and `rollback-snapshot` (`fnn-command-rollback-check`, `-rollback-snapshot`; `fn-native-operator-history-*`), `needs-upgrade`, the versioned release directories and `packaging/upgrade-native.sh`, docs/operator.md "Upgrade, and what a rollback loses" | the two format-7 presets as store frames; `tests.test_native_profile_upgrade`, `test_native_rollback_history`, `test_native_stamp_migration`, `test_native_newnews_migration`, `test_native_history_required`'s migrate arm, `PROFILE_CUTS` (byte-store-profile-program) | `store export` / `store import` (new: the exact committed records and the profile, as a portable archive the codec seam defines; the import is an `init` plus a replay); the profile fields and their validation |
+| the release is the product (D35) | the developer's checkout as the deployment; Python on the node | `tools/*.py` from the runpath (a check: `tools/runpath_check.py`, lane release-openbsd) | `packaging/release-tarball.sh` per platform; `packaging/install-native.sh` |
+| a public node (D36) | the LAN-only node | | the exposure limits (PRF-161), the certificate and tier from ember |
+
+## 5. The wave-5 briefs
+
+Eight briefs, in gpt-6's order, in `planning/briefs-wave5/` (the coordinator
+copies them to `build/coordinator/queue/`). Each names its model, its
+user-visible result, its base, what to read, its ordered task, its
+maintained relation with its entries, its witnesses, the native modules for
+the batch, its fixtures, its envelope, the id blocks it needs, and its
+deletion map (section 4's row). Their seams:
+
+| # | Brief | Model | Owns | Waits on | Seam |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `w5-checkpoint-pipeline` | Fable | books/store-checkpoint-tables*, the pipeline over `fn-octets-pub`, the resource decision; host: the four checkpoint entries | nothing (the schema over today's record shape: P holds the list payloads' bytes, E rows reference them; the catalog slice re-targets E's loader) | hands the catalog slice `fn-sct-load` over rows; hands egress/ingress nothing |
+| 2 | `w5-catalog-slice` | Fable | books/catalog*, catalog-record, catalog-commit, catalog-delta, catalog-relation; the arena behind them; host: prepare, finish, existing-action, recover, the served reads by number and Message-ID | ember's D33 and PKT-293 (gpt-6's answer assumed); brief 1 merged (the loader) | absorbs `w3-rep-wave-d-4`; egress-span's reply range reads the handle; ingress-span's span is the buffer range the prepare interns |
+| 3 | `w5-adapter-retirement` | Opus | host/native/owner.lisp, feed-service, pull-service; host/owner-host.lisp's wrappers; books/owner-results (the typed shapes) | brief 2's token and delta (or lands first with the shapes over today's values: the brief says which) | keeps the mutex discipline; egress-span's writer |
+| 4 | `w5-bp-catalog` | Opus | the BP receipt/obligation rows as catalog kinds; bp-native-app's reads by handle | brief 2 | bp-lifecycle's records |
+| 5 | `w5-config-consumer-catalog` | Opus | the configuration checkpoint (PKT-510) as roots; the consumer projection as a delta consumer | brief 1 (roots), brief 2 (delta) | caps-to-profile-2's PRF-186 folds |
+| 6 | `w5-migration-removal` | Opus | D34's removals; `store export/import` | ember's D34 | release-product's tarball |
+| 7 | `w5-release-product` | Opus | D35: the tarballs, the runpath check, docs for a stranger | lane release-openbsd's findings | migration-removal (no upgrade verb in the docs) |
+| 8 | `w5-public-node` | Opus | D36: fn.fg-goose.online | ember's certificate and tier | release-product's tarball; the exposure limits |
+
+## 6. The assurance chain, and what needs ember
+
+**The chain for the slice** (BRIEF-COMMON's form), as the briefs state it:
+native entry (`fnn-owner-attempt`, `fnn-owner-finish-submission`,
+`fnn-recover`, `fnn-owner-publish-captured`, `fnn-owner-handle-chunk`) →
+executed ACL2 subject over the representation (`fn-cat-prepare`,
+`fn-cat-complete`, `fn-cat-load-row`, `fn-sct-file`, the served read from
+the handle) → refinement (`fn-cat$corr` and `fn-arena$corr`, proved once
+per export; `fn-held-wire` as alpha) → maintained relation
+(`fn-cat-owner-relation`, established at the four entries of 1.5, preserved
+by the `:protect` exports) → behavioural theorems (`fn-view-apply-is-refresh`,
+`fn-sct-load-of-publish-is-the-capture`, the served bytes' equation) →
+observed result (the native modules per brief, the ledger's rows re-measured).
+
+**Decisions for ember** (packets the deputy numbers at merge; each with
+trace, constraints, default, rejected alternative, what continues without
+it):
+
+- **P-A, D33's confirmation and PKT-293 with it.** Default: gpt-6's answer
+  (two views, shared transition, intern-time facts in two classes); the
+  catalog slice is briefed on it and stops if overruled. Rejected: the
+  global `natp` freeze (rep-wave-d-2 section 1's finding). Without it: the
+  pipeline lane (1) still lands over today's record shape.
+- **P-B, the attach-stobj mechanism as the tree's rule for representations**
+  (section 3's finding). Default: adopt; a representation is an
+  implementation attached to a generic whose logical side is the model,
+  and the tree's books above the generic never recertify for a new
+  implementation. Rejected: the hundred-book arena-threading approach
+  (rep-wave-d section 2 (c)); the `mbe` freeze per leaf (a recertification
+  of the closure per representation). Without it: the catalog slice threads
+  `fn-cat` as a formal through its own new books only, which is what it
+  does anyway; the saving is on the NEXT implementation (a paged arena, a
+  hash-table Message-ID index).
+- **P-C, the delta log versus versions for pinned views.** Default:
+  versions (1.1: a view is a count; withdrawals and verdicts are versioned
+  facts), no per-connection copy and no delta log to bound. Rejected: a
+  bounded delta log per connection (a data bound). Without it: the served
+  view keeps its copy and `fn-own-refresh` stays until the slice's second
+  step.
+- **P-D, one store format until v1 (D34): `store export/import`'s scope.**
+  Default: the exact committed records and the profile; identity and
+  consumer state come with them because they are records; feed journals
+  and BP spools are not exported (a reinstall re-peers). Rejected: an
+  in-place format bump with a reader for both. Without it: the node keeps
+  `upgrade-profile` and the rollback verbs, and the release carries the
+  upgrade docs.
+- **P-E, D36's certificate and storage tier**: hers; the brief lists what
+  the node needs from her (5.8).
