@@ -430,12 +430,14 @@
 ; the clock is unusable, which reclaims nothing under release-after).  S:
 ; the Store state the open replayed (holders, verdicts, articles).  RECORDS:
 ; the committed history as octets (pack plus suffix).  FRONTIER: the durable
-; allocator frontier.  LOWER, NAMES, SELECTED, FOOTPRINT: the compact verb's
-; observation.  DRY: `--dry-run'.
+; allocator frontier.  LOWER, NAMES, GENERATIONS, SELECTED, FOOTPRINT: the compact
+; verb's observation.  DRY: `--dry-run'.
 ;
 ;   (:compact-first)                 the history is not one selected pack
 ;                                    with no transaction file left: the host
 ;                                    runs the compact verb's decision first
+;   (:resume-retire COUNTS)          nothing to rewrite; an older generation
+;                                    survives a cut after the selection: retire it
 ;   (:none COUNTS)                   nothing is reclaimable now (with no
 ;                                    authorized release this is the answer,
 ;                                    and it writes nothing)
@@ -454,7 +456,7 @@
         (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
 
 (defun fn-rclp-decide (profile rule now s records frontier lower names
-                               selected footprint dry)
+                               generations selected footprint dry)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((used (len records))
          (reclaim (fn-bs-pack-reclaim-plan
@@ -465,6 +467,13 @@
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
           ((or (not (natp lower)) (< used lower) (equal reclaim :invalid))
            (list :refused :observation))
+          ; Nothing left to rewrite, but a generation older than the
+          ; selected one survives: a cut between the selection and the
+          ; retirement (the older generation still holds the released
+          ; payloads).  The rerun finishes the retirement.
+          ((and (atom msgids) (not dry)
+                (posp (fn-cverb-older-count generations selected)))
+           (list :resume-retire counts))
           ((atom msgids) (list :none counts))
           (dry (list :dry-run msgids (fn-rclp-freed records ctx) counts))
           ((or (not (equal lower used)) (consp reclaim) (null selected))
@@ -486,7 +495,7 @@
 ; that list is a theorem about the bytes the host writes.
 (defthm fn-rclp-decide-publishes-the-rewrite
   (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           selected footprint dry)))
+                           generations selected footprint dry)))
     (implies (equal (car d) :reclaim)
              (and (equal (nth 1 d) *fn-rclp-steps*)
                   (equal (car (fn-cc-capture
@@ -507,6 +516,7 @@
                                       fn-rcl-store-counts fn-rclp-ctx
                                       fn-bs-pack-reclaim-plan fn-cverb-pack-octets
                                       fn-cverb-octet-sum fn-cverb-space-budget
+                                      fn-cverb-older-count
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-transactions))))
 
@@ -521,13 +531,13 @@
 ; :reclaim.
 (defthm fn-rclp-keep-forever-writes-nothing
   (not (equal (car (fn-rclp-decide profile '(:keep-forever) now s records frontier
-                                   lower names selected footprint dry))
+                                   lower names generations selected footprint dry))
               :reclaim))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-rclp-events fn-rclp-freed fn-cc-capture
                                       fn-cc-encode fn-rcl-store-counts
                                       fn-bs-pack-reclaim-plan fn-cverb-pack-octets
                                       fn-cverb-octet-sum fn-cverb-space-budget
-                                      fn-rclp-rewritten-msgids
+                                      fn-rclp-rewritten-msgids fn-cverb-older-count
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-transactions))))

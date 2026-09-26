@@ -119,21 +119,33 @@
 (defmacro rpt-n () '(len (rpt-events)))
 ; Fully packed (lower = n, no name, a selected generation): it reclaims.
 (defmacro rpt-d () '(fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                  (rpt-n) (rpt-n) nil 0 '(100) nil))
+                                  (rpt-n) (rpt-n) nil '(0) 0 '(100) nil))
 (assert-event (and (equal (car (rpt-d)) :reclaim)
                    (equal (nth 2 (rpt-d)) (rpt-msgids))
                    (equal (nth 4 (rpt-d))
                           (fn-cc-encode (cadr (fn-cc-capture (rpt-new) (rpt-n)))))))
 ; --dry-run writes nothing and names the same article.
 (assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) (rpt-n) nil 0 '(100) t)
+                                     (rpt-n) (rpt-n) nil '(0) 0 '(100) t)
                      (list :dry-run (rpt-msgids) (rpt-freed)
                            (fn-rcl-store-counts *rpt-rule* 0 *rpt-s*))))
 ; Not packed: compact first.
 (assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) 0 nil nil nil nil)
+                                     (rpt-n) 0 nil nil nil nil nil)
                      '(:compact-first)))
 ; fn-rclp-keep-forever-writes-nothing: witness.
 (assert-event (equal (car (fn-rclp-decide *rpt-profile* '(:keep-forever) 0 *rpt-s*
-                                          (rpt-events) (rpt-n) (rpt-n) nil 0 '(100) nil))
+                                          (rpt-events) (rpt-n) (rpt-n) nil '(0) 0 '(100) nil))
                      :none))
+
+; After a cut between the selection and the retirement the history holds
+; only tombstones (nothing to rewrite) and generation 0 survives under the
+; selected 1: the rerun retires it.  Tooth: with no older generation it is
+; :none.
+(assert-event (equal (car (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
+                                          (rpt-n) (rpt-n) nil '(0 1) 1 '(100) nil))
+                     :resume-retire))
+(must-fail (assert-event
+            (equal (car (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
+                                        (rpt-n) (rpt-n) nil '(1) 1 '(100) nil))
+                   :resume-retire)))

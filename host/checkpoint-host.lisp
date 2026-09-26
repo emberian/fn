@@ -195,15 +195,15 @@
 ;; configuration's; the instant is the clock observation's stamp, derived as
 ;; an article's stamp is (`fn-record-stamp-of-observation').
 (defun fn-store-reclaim-decide (profile clock octet-records frontier lower names
-                                        selected footprint dry state)
+                                        generations selected footprint dry state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (cfg (f-get-global 'fn-store-cfg state))
          (rule (fn-rcl-config-rule (fn-cfg-value cfg)))
          (stamp (fn-record-stamp-of-observation clock)))
     (value (fn-rclp-decide profile rule (if (natp stamp) stamp nil) s
-                           octet-records frontier lower names selected
-                           footprint dry))))
+                           octet-records frontier lower names generations
+                           selected footprint dry))))
 
 ;; The subjects of books/checkpoint-compaction-preservation: the reclaim
 ;; preservation theorems are stated over these two functions.

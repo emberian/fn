@@ -719,12 +719,13 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                                      (fnn-store-prepare-observation)
                                      (mapcar #'fnn-octet-list records)
                                      (fnn-store-frontier store)
-                                     lower names selected
+                                     lower names generations selected
                                      (fnn-compact-footprint store names generations)
                                      (if dry t nil))))
       (unless (and (listp decision)
                    (member (first decision)
-                           '(:compact-first :none :dry-run :reclaim :refused)))
+                           '(:compact-first :none :resume-retire :dry-run :reclaim
+                             :refused)))
         (fnn-fault "ACL2 returned no reclaim decision"))
       decision)))
 
@@ -748,6 +749,12 @@ selection-* process-death cuts (fn-cpp-marker-step)."
     (case (first decision)
       (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
       (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
+      (:resume-retire
+       (let ((retired (fnn-pack-retire-older-generations store)))
+         (handler-case (fnn-reclaim-at "reclaim-retired")
+           (fnn-os-error (e) (fnn-indeterminate "reclaim is uncertain: ~a" e)))
+         (format nil "reclaimed=0 retired=~d ~a" (length retired)
+                 (fnn-reclaim-counts-line (second decision)))))
       (:dry-run
        (destructuring-bind (msgids freed counts) (rest decision)
          (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
