@@ -120,7 +120,10 @@
   (declare (ignore args))
   (ecase name
     (fn-owner-peer-for-socket-address nil)
-    (fn-owner-open (setq *output* (fnn-ascii "200 ready")) 1)))
+    ;; PRF-161: the accept is admitted and opened by one ACL2 call, and every
+    ;; step is charged against the address's budget first.
+    (fn-owner-exposure-open (setq *output* (fnn-ascii "200 ready")) 1)
+    (fn-owner-exposure-charge :proceed)))
 
 ;; The four ACL2 globals one served read publishes.  The plan supplies them,
 ;; so the loop reads them exactly where host/owner-host.lisp puts them.
@@ -134,6 +137,8 @@
      (setq *output* (fnn-ascii (fourth *step*)))
      :ok)
     (fn-owner-close :closed)
+    (fn-owner-exposure-idle :keep)
+    (fn-owner-exposure-release :released)
     (fn-owner-tls-established :ok)))
 
 (defun fnn-owner-octets-global (name)
@@ -148,6 +153,8 @@
     ;; No read in these scenarios sends a 441 (books/owner-log.lisp
     ;; fn-olog-served-refusal-lines), so the refusal log lines are empty.
     (fn-owner-refusal-lines nil)
+    ;; No step here reaches the failed-login limit (fn-exp-observe).
+    (fn-owner-exposure-close nil)
     (fn-owner-consumed
      (if (eq (first *step*) :all) (length (first *chunks*)) (first *step*)))))
 
@@ -159,7 +166,8 @@
             +fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
             fnn-owner-wall-milliseconds)
            ("host/native/owner.lisp"
-            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-serve-client)))
+            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-serve-client
+            fnn-owner-exposure-wait fnn-owner-exposure-idle)))
   (destructuring-bind (source . wanted) source-and-names
     (let ((found nil))
       (with-open-file (stream source)
@@ -218,12 +226,14 @@
 (check (search "consumed no octets" (first *faults*))
        "the no-progress fault says something else: ~s" (first *faults*))
 
-;;; 4. One reading at open and one before every chunk, each a fresh reading of
-;;;    this host's clocks in the units fn-clock-observation takes.
+;;; 4. One reading at open and two before every chunk (the exposure charge's
+;;;    and the chunk's own, PRF-161: a waiting connection must see the clock
+;;;    move), each a fresh reading of this host's clocks in the units
+;;;    fn-clock-observation takes.
 (run-scenario '("ONE" "TWO")
               (list (list :all nil nil "") (list :all nil nil "")))
 (check (null *faults*) "an ordinary exchange faulted: ~s" *faults*)
-(check (= (length *observations*) 3)
+(check (= (length *observations*) 5)
        "the owner was handed ~d clock readings for an open and two chunks"
        (length *observations*))
 (let ((now (fnn-owner-wall-milliseconds)))

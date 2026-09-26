@@ -846,6 +846,46 @@ no-posters open: the open has no pending POST, and
 carried by the served path; it is theorem vocabulary, not a runtime
 whole-store check or an independent posting authority condition.
 
+## Public exposure (NNT-031)
+
+NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command
+
+A listener off loopback answers people the operator never met. What it
+owes them is RFC 3977's, and what it will spend on them is the operator's,
+decided in `books/public-exposure.lisp` (PRF-161) over rows of the live
+configuration (`fn operator CONFIG policy set SLOT VALUE`, applied to the
+running owner like every configuration record). The host counts nothing: it
+passes the kernel's source address, the connection id and the owner's clock,
+and sends, waits or closes as the answer says.
+
+| Slot | Decides | The client sees | Loopback default | Public default |
+| --- | --- | --- | --- | --- |
+| `exposure-connections` | connections held (never above the run's max) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | the run's max | the run's max |
+| `exposure-per-address` | connections held from one source address | `400 too many connections from this address; try again later` | the total | 8 |
+| `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
+| `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
+| `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
+| `exposure-auth-failures` | `481` answers one address may draw per minute | `400 too many authentication failures; closing connection`, and at the next accept `400 too many authentication failures from this address` | unlimited | 10 |
+| `exposure-posts-per-minute` | submissions per authenticated principal per minute | nothing: the principal's connections wait for the next minute | unlimited | 60 |
+| `anonymous` (policy) | what an unauthenticated session may do: `none` or `open` | under `none`, `480 authentication required` for every reader and posting command (RFC 4643 §2.2) | as `[auth] required` | `none` |
+
+Progress that resets the timers is an answered command or 512 octets
+consumed since the last progress (§3.1's "significant amount of data"), so a
+client trickling one octet at a time is closed by the first-command or idle
+timer. `anonymous open` never weakens `[auth] required`. A row that is absent
+takes the listener's default: loopback keeps the behaviour every store had
+before this section; a listener outside 127.0.0.0/8 and `::1` takes the
+public column. What the proof covers, what the host adds and what is not
+covered is PRF-161's statement and the record
+`planning/evidence/public-exposure-2026-09-26.md`; `operator CONFIG health`
+prints the exposure lines after its eight states.
+
+Which of these is an RFC requirement, an fn guarantee and a local policy:
+the 400/502 greeting and the immediate close after it, and the 480 for an
+unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
+close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
+accounting and waiting instead of refusing are local policy.
+
 ## Scope
 
 No moderation, automated control-message execution, private-mail confidentiality,
