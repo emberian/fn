@@ -6206,6 +6206,35 @@
           "name": "fn-native-auth-admin-effect-word-applied-only-when-published"
         }
       ]
+    },
+    {
+      "id": "PRF-181",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scar-feed-span-is-feed-counted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-is-read-tls-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-is-reference-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-own-read-span-is-own-read-tls-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-keeps-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-preserves-node-premise"
+        }
+      ]
     }
   ]
 }

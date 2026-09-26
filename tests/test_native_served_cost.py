@@ -21,13 +21,35 @@ def definition(source: str, name: str) -> str:
 
 
 class NativeServedCostTests(unittest.TestCase):
-    def test_owner_calls_fast_counted_entry(self) -> None:
+    def test_owner_calls_fast_span_entry(self) -> None:
+        # The native read path is the span over the octet buffer (REP-012):
+        # the host fills the buffer and calls fn-owner-chunk-span, which
+        # calls fn-scar-ocfg-read-span, whose fold checks only the fast
+        # predicate; no list of the read's octets is built on the way.
         native = (ROOT / "host/native/owner.lisp").read_text()
         host = (ROOT / "host/owner-host.lisp").read_text()
-        owner = (ROOT / "books/owner-tls-prefix.lisp").read_text()
-        self.assertIn("(fnn-owner-action 'fn-owner-chunk cid", native)
-        self.assertIn("(fn-ocfg-read-tls-prefix", host)
-        self.assertIn("(fn-served-step-counted-fast", owner)
+        span = (ROOT / "books/served-span.lisp").read_text()
+        handoff = definition(native, "fnn-owner-handle-chunk")
+        self.assertIn("(fnn-octets-fill incoming)", handoff)
+        self.assertIn("(fnn-owner-buffer-action 'fn-owner-chunk-span cid", handoff)
+        self.assertNotIn("fnn-octet-list incoming", handoff)
+        self.assertNotIn("'fn-owner-chunk cid", handoff)
+        self.assertIn("(fn-scar-ocfg-read-span", definition(host, "fn-owner-chunk-span"))
+        self.assertIn("(fn-scar-step-span-fast", definition(span, "fn-scar-own-read-span"))
+        fast = definition(span, "fn-scar-step-span-fast")
+        self.assertIn("fn-wire-fast-statep", fast)
+        self.assertNotIn("fn-wire-statep", fast)
+
+    def test_span_fold_allocates_nothing_inside_a_line(self) -> None:
+        # The executable span step (the :exec of fn-wire-feed-span) reaches
+        # the wire's state constructor only at a delimiter, the span's end
+        # or a refusal: the run between delimiters is an index scan.
+        wire_span = (ROOT / "books/wire-span.lisp").read_text()
+        scan = definition(wire_span, "fn-wire-span-scan")
+        self.assertIn("(fn-oct-run-end i bound fn-octets)", scan)
+        self.assertNotIn("fn-wire-feed-byte", scan)
+        run_end = definition(wire_span, "fn-oct-run-end")
+        self.assertNotRegex(run_end, re.compile(r"\(cons |fn-wire-make-state|list "))
 
     def test_fast_predicate_has_fixed_spine_and_scalar_scope(self) -> None:
         wire = (ROOT / "books/wire.lisp").read_text()

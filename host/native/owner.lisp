@@ -1743,8 +1743,16 @@ EPIPE and the client saw a bare close)."
      ;; 3.4)."  Without this the owner's current observation is whatever the
      ;; process started with, and every article of a run carries one Date.
      (fnn-owner-advance-clock)
-     (unless (eq (fnn-owner-action 'fn-owner-chunk cid
-                                   (fnn-octet-list incoming)) :ok)
+     ;; The observation goes to the core in the octet buffer
+     ;; (books/octets-stobj.lisp): filled once here from the byte vector and
+     ;; read in place by span (books/wire-span.lisp fn-wire-feed-span through
+     ;; books/served-span.lisp fn-scar-ocfg-read-span), never as a list of
+     ;; its octets.  The buffer is free here: the attempt below fills it
+     ;; again for the payload after this read has returned, under the same
+     ;; mutex (fnn-owner-attempt).
+     (fnn-octets-fill incoming)
+     (unless (eq (fnn-owner-buffer-action 'fn-owner-chunk-span cid
+                                          0 (length incoming)) :ok)
        (fnn-refuse "owner no longer knows connection ~d" cid))
      ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
      ;; fn-olog-served-refusal-lines): a POST refused before it became a

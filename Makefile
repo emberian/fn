@@ -682,6 +682,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-guard-carried \
 	books/served-carried \
 	books/owner-served-carried \
+	books/wire-span \
+	books/served-span \
 	books/owner-offer-indexed \
 	books/store-events-carried \
 	books/owner-commit-carried \
@@ -730,6 +732,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-owner-live-tests \
 	tests/acl2/owner-config-observe-tests \
 	tests/acl2/owner-served-carried-tests \
+	tests/acl2/wire-span-tests \
+	tests/acl2/served-span-tests \
 	tests/acl2/peer-offer-indexed-tests \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \

@@ -6523,6 +6523,36 @@
         "fn-lb-a-connection-opened-after-a-publication-is-bound-anew",
         "fn-native-auth-admin-effect-word-applied-only-when-published"
       ]
+    },
+    {
+      "id": "PRF-181",
+      "title": "The served read the host calls over the octet buffer is the reference list read: fn-owner-chunk-span -> fn-scar-ocfg-read-span reads the range by index and equals fn-ocfg-read-tls-prefix over the range's octets, and the wire read is fn-wire-feed-proper over the slice",
+      "statement": "Subject fn-scar-ocfg-read-span (books/served-span.lisp), called by host/owner-host.lisp fn-owner-chunk-span from host/native/owner.lisp fnn-owner-handle-chunk (which fills fn-octets from the socket vector with fnn-octets-fill and calls fn-owner-chunk-span with the range [0, len), no fnn-octet-list on the read path). KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the served buffer fold fn-scar-feed-span, reading the range's bytes by fn-octets-get, equals the carried list counted fold fn-scar-feed-counted over (fn-oct-slice-list i end fn-octets), byte for byte. fn-scar-ocfg-read-span-is-read-tls-prefix: for natural i, end the span read is fn-scar-ocfg-read-tls-prefix over the slice. KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation (fn-ocl-relation) and its view trie's correspondence, the span read is fn-ocfg-read-tls-prefix over the slice, the reference read the list path already establishes (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation). fn-scar-ocfg-read-span-keeps-store and fn-scar-ocfg-read-span-preserves-node-premise: the read leaves the store and its node premise. Every executable function is guard-verified (fn-scar-feed-span-consumed-is-natural). What it does not say: the served fold still rebuilds the connection once per byte, and the wire state once per byte (PKT-479: per-framed-event dispatch and a per-line index scan); the wire read fn-wire-feed-span is proved (fn-wire-feed-span-is-feed-proper: its (state, events) is fn-wire-feed-proper over the slice, the reference byte machine) but is not on the live host path yet.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-scar-feed-span-is-feed-counted",
+        "fn-scar-ocfg-read-span-is-read-tls-prefix",
+        "fn-scar-ocfg-read-span-is-reference-under-ocl-relation",
+        "fn-scar-own-read-span-is-own-read-tls-prefix",
+        "fn-scar-ocfg-read-span-keeps-store",
+        "fn-scar-ocfg-read-span-preserves-node-premise"
+      ],
+      "evidence": [
+        "books/served-span.lisp",
+        "books/wire-span.lisp",
+        "tests/acl2/served-span-tests.lisp",
+        "tests/acl2/wire-span-tests.lisp",
+        "planning/evidence/ingress-span-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T143902Z-2971338.json",
+        "planning/evidence/manifests/certify-20260926T141846Z-2775311.json"
+      ],
+      "progress_note": "Lane ingress-span (2026-09-26, PKT-302 (iv)): certified on persvati (served-span, served-span-tests: run-20260926T143838Z-e0fd; wire-span, wire-span-tests: run-20260926T141822Z-1776; ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s; no book over 10 s). Measurement (before/after) and the hbox native gate (SCN-110) pending."
     }
   ]
 }
