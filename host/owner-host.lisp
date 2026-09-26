@@ -52,6 +52,7 @@
 (include-book "../books/store-budget-article")
 ; PKT-169: the maintenance reservation (the served gates below).
 (include-book "../books/store-maintenance-reserve")
+(include-book "../books/store-capacity-vector")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -83,6 +84,8 @@
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
 (include-book "../books/login-binding")
+; PRF-161: the limits of a public reader port (fn-exp-).
+(include-book "../books/public-exposure")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -290,6 +293,7 @@
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
                (state (f-put-global 'fn-owner-record-octets nil state))
+               (state (f-put-global 'fn-owner-record-debt nil state))
                ; PRF-099: the carried-usage cache restarts from the Store
                ; this open replayed (fn-pcb-usage-extend walks it once).
                (state (f-put-global 'fn-owner-carried-usage nil state)))
@@ -430,17 +434,36 @@
                               (cons (len records) bytes) state)))
     (mv bytes state)))
 
+; The completion debt of the carried Store (the open forward undertakings,
+; each owing a release record), carried as (K . DEBT) and extended by the
+; records committed since (books/store-capacity-vector.lisp
+; `fn-cvec-debt-extend'; equal to `fn-cvec-record-debt' when the cache is
+; valid, `fn-cvec-debt-extend-is-the-record-debt'), reset with the octets
+; when a profile is installed at open.
+(defun fn-owner-record-debt (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+         (cache (if (boundp-global 'fn-owner-record-debt state)
+                    (f-get-global 'fn-owner-record-debt state)
+                  nil))
+         (debt (fn-cvec-debt-extend cache records))
+         (state (f-put-global 'fn-owner-record-debt
+                              (cons (len records) debt) state)))
+    (mv debt state)))
+
 ; The owner's verdict on one more record of KIND: the carried profile's count
-; and history gates against the Store it carries, and the maintenance
-; reservation (books/store-maintenance-reserve.lisp `fn-smr-verdict-at': a
-; release consumes it, every other kind leaves it,
-; `fn-smr-admission-keeps-the-reserve').
+; and history gates against the Store it carries, and the capacity vector
+; (books/store-capacity-vector.lisp `fn-cvec-verdict-at': a release
+; discharges a debt or consumes the maintenance release, every other kind
+; keeps room for every open undertaking's release, its own included, and the
+; maintenance release, `fn-cvec-admission-keeps-the-vector').
 (defun fn-owner-publication-verdict (kind state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (bytes state) (fn-owner-record-octets state)
-    (let ((s (fn-owner-store state)))
-      (value (fn-smr-verdict-at (fn-owner-store-profile state) kind
-                                (fn-sbud-used s) bytes)))))
+    (mv-let (debt state) (fn-owner-record-debt state)
+      (let ((s (fn-owner-store state)))
+        (value (fn-cvec-verdict-at (fn-owner-store-profile state) kind
+                                   (fn-sbud-used s) bytes debt))))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -571,6 +594,7 @@
         (if existing
             (value existing)
           (mv-let (bytes state) (fn-owner-record-octets state)
+          (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid payload groups
@@ -592,13 +616,14 @@
                  ; test reads the last record's txid instead of folding
                  ; every record's through fn-record-p.
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
-                 ; one release record still fits after the article
-                 ; (books/store-maintenance-reserve.lisp
-                 ; `fn-smr-prepare-keeps-the-reserve').
-                 (budget (fn-smr-article-budget-for
+                 ; (books/store-budget-article.lisp), and PRF-138: 0 unless
+                 ; the capacity vector (a release per open undertaking and
+                 ; the maintenance release) still holds after the article
+                 ; (books/store-capacity-vector.lisp
+                 ; `fn-cvec-prepare-keeps-the-vector').
+                 (budget (fn-cvec-article-budget-for
                           (fn-owner-store-profile state) (fn-sbud-used s)
-                          bytes record))
+                          bytes record debt))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -609,7 +634,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared)))))))))))
+              (value :prepared))))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -657,6 +682,7 @@
         (if existing
             (value existing)
           (mv-let (bytes state) (fn-owner-record-octets state)
+          (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid (fn-octets-list fn-octets) groups
@@ -665,13 +691,14 @@
                           (fn-store-octets->string evidence-octets)
                           charge))
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
-                 ; one release record still fits after the article
-                 ; (books/store-maintenance-reserve.lisp
-                 ; `fn-smr-prepare-keeps-the-reserve').
-                 (budget (fn-smr-article-budget-for
+                 ; (books/store-budget-article.lisp), and PRF-138: 0 unless
+                 ; the capacity vector (a release per open undertaking and
+                 ; the maintenance release) still holds after the article
+                 ; (books/store-capacity-vector.lisp
+                 ; `fn-cvec-prepare-keeps-the-vector').
+                 (budget (fn-cvec-article-budget-for
                           (fn-owner-store-profile state) (fn-sbud-used s)
-                          bytes record))
+                          bytes record debt))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -682,7 +709,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared)))))))))))
+              (value :prepared))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
@@ -1795,19 +1822,17 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-pop-request event)))
 
-;; The grants a statement is decided under.  At acceptance: the live
-;; configuration's.  At open (AT-OPEN, the newest-record recovery): packet
-;; 7's `fn-ks-reopen-rows' under `*fn-ks-reopen-policy*' -- by default the
-;; configuration in force at the statement's own txid, the fold of the
-;; Store's configuration journal (books/key-statements.lisp
-;; fn-ks-recover-recorded).
+;; The grants a statement is decided under (books/key-statements.lisp
+;; fn-ks-statement-rows): at acceptance the live configuration's; at open
+;; (AT-OPEN, the newest-record recovery) the configuration in force at the
+;; statement's own txid, the fold of the Store's configuration journal
+;; (fn-ks-recover-recorded; PRF-124, PRF-140).  The reopen is recorded by
+;; definition: there is no policy switch.
 (defun fn-owner-key-statement-rows (event at-open state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((live (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))))
-    (if at-open
-        (fn-ks-reopen-rows *fn-ks-reopen-policy* event live
-                           (fn-sn-config-history (fn-owner-store state)))
-      live)))
+  (fn-ks-statement-rows event at-open
+                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        (fn-sn-config-history (fn-owner-store state))))
 
 (defun fn-owner-key-statement-plan
     (event observed-ml-key ed-observation ml-observation at-open state)
@@ -1988,6 +2013,133 @@
 ; fn-pgc-peer-arm (books/peer-guard-carried.lisp, D24), whose guard names no
 ; node recognizer, so no peer event evaluates fn-node-statep either
 ; (fn-pgc-peer-arm-is-peer-step-pinned).
+;; -----------------------------------------------------------------------------
+;; PRF-161: the limits of a public reader port (books/public-exposure.lisp).
+;;
+;; The exposure state lives in `fn-owner-exposure', beside the configured
+;; owner, and only fn-exp- functions change it.  The limits are read from the
+;; LIVE configuration at every call (fn-exp-limits), so a `policy set' the
+;; owner published is in force for the next accept and the next step; no
+;; connection is closed by it (fn-exp-limits-never-drop-a-connection).  The
+;; host passes the kernel's source address, the connection id and nothing it
+;; computed; the clock is the owner's current observation, which the host
+;; advanced just before (fnn-owner-advance-clock).
+
+(defun fn-owner-exposure-state (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-exposure state)
+      (f-get-global 'fn-owner-exposure state)
+    (fn-exp-initial)))
+
+(defun fn-owner-exposure-publicp (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-owner-exposure-public state)
+       (f-get-global 'fn-owner-exposure-public state)))
+
+(defun fn-owner-exposure-now (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-clock-monotonic (fn-own-clock (fn-owner-core state))))
+
+(defun fn-owner-exposure-limits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-limits (fn-cfg-value (fn-owner-config state))
+                 (fn-own-max-conns (fn-owner-core state))
+                 (fn-owner-exposure-publicp state)
+                 (fn-auth-config-requiredp (fn-owner-auth state))))
+
+;; Once per run, after recovery and before listen: the listener the owner is
+;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
+;; defaults of every absent row.
+(defun fn-owner-exposure-install (family address state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
+         (state (f-put-global 'fn-owner-exposure-close nil state))
+         (state (f-put-global 'fn-owner-exposure-public
+                              (fn-exp-address-publicp family address) state)))
+    (value (if (fn-exp-address-publicp family address) :public :loopback))))
+
+;; The accept.  PEER-OCTETS is fn-owner-peer-for-socket-address's answer.
+;; The result is the new connection id, or NIL; `fn-owner-output' holds the
+;; greeting, or the 400 a refused connection is sent before it is closed
+;; (`fn-owner-closep' is then T).
+(defun fn-owner-exposure-open (family address peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((peer (and peer-octets (fn-store-octets->string peer-octets)))
+         (peer (if (equal peer :bad) nil peer))
+         (before (fn-owner-core state))
+         (id (fn-own-next-id before))
+         (r (fn-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
+                         (fn-owner-exposure-limits state) (fn-owner-auth state)
+                         peer (cons family address)
+                         (fn-owner-exposure-now state)))
+         (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
+         (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
+    (if (fn-exp-open-id r)
+        (let* ((state (fn-owner-install-effects (fn-exp-open-effects r) state))
+               (state (f-put-global 'fn-owner-log-line
+                                    (fn-olog-connection-line
+                                     (fn-owner-core state) id
+                                     (and peer peer-octets))
+                                    state)))
+          (value (fn-exp-open-id r)))
+      (let* ((state (f-put-global 'fn-owner-effects nil state))
+             (state (f-put-global 'fn-owner-output
+                                  (fn-exp-open-refusal r) state))
+             (state (f-put-global 'fn-owner-closep
+                                  (and (fn-exp-open-refusal r) t) state))
+             (state (f-put-global 'fn-owner-starttlsp nil state))
+             (state (f-put-global 'fn-owner-submittedp nil state)))
+        (value nil)))))
+
+;; Before a served step: :proceed, or the milliseconds to wait.
+(defun fn-owner-exposure-charge (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((r (fn-exp-charge (fn-owner-exposure-state state)
+                           (fn-owner-exposure-limits state) id
+                           (fn-owner-exposure-now state)))
+         (state (f-put-global 'fn-owner-exposure (cdr r) state)))
+    (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
+
+;; After a served step (fn-owner-chunk below): `fn-owner-exposure-close'
+;; holds the 400 the host appends before it closes, or NIL.
+(defun fn-owner-exposure-observe (id effects consumed state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
+         (subject (and conn (fn-auth-session-subject (fn-own-conn-session conn))))
+         (r (fn-exp-observe (fn-owner-exposure-state state)
+                            (fn-owner-exposure-limits state) id
+                            (fn-owner-exposure-now state)
+                            (fn-served-reply-octets effects) consumed subject
+                            (and (fn-served-submission effects) t)))
+         (state (f-put-global 'fn-owner-exposure (cdr r) state))
+         (state (f-put-global 'fn-owner-exposure-close
+                              (if (consp (car r)) (cadr (car r)) nil) state)))
+    state))
+
+;; On a receive timeout: :keep or :close (RFC 3977 3.1: close, send nothing).
+(defun fn-owner-exposure-idle (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((r (fn-exp-idle (fn-owner-exposure-state state)
+                         (fn-owner-exposure-limits state) id
+                         (fn-owner-exposure-now state)))
+         (state (f-put-global 'fn-owner-exposure (cdr r) state)))
+    (value (car r))))
+
+(defun fn-owner-exposure-release (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-exposure
+                             (fn-exp-release (fn-owner-exposure-state state) id)
+                             state)))
+    (value :released)))
+
+;; The lines `health' appends (host/native-live-status-host.lisp).
+(defun fn-owner-exposure-health (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-health-lines (fn-owner-exposure-state state)
+                       (fn-owner-exposure-limits state)
+                       (len (fn-own-conns (fn-owner-core state)))
+                       (fn-owner-exposure-now state)))
+
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((owner (fn-owner-core state)))
@@ -2001,6 +2153,10 @@
                      (fn-own-tls-result-effects result) state))
              (state (f-put-global 'fn-owner-consumed
                                   (fn-own-tls-result-consumed result) state))
+             ; PRF-161: progress, failed logins and submissions of this step.
+             (state (fn-owner-exposure-observe
+                     id (fn-own-tls-result-effects result)
+                     (fn-own-tls-result-consumed result) state))
              ; One line per 441 the effects send (books/owner-log.lisp
              ; fn-olog-served-refusal-lines-one-per-441).
              (state (f-put-global 'fn-owner-refusal-lines

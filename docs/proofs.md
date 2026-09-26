@@ -711,7 +711,17 @@ naming the theorems that should, which is the C1-14 and C1-15 work.
 ## Registry states
 
 Requirements: `specified`, `implemented`, `validated`, or `deferred`.
-Proof targets: `planned`, `in-progress`, `certified`, or `deferred`.
+Proof targets: `planned`, `uncertified-at-current-digest` or `certified`, and
+the proof target's `status` is generated, never typed: `python3 tools/ledger.py
+--write` derives it and `make check` (through `ledger.py --check`) refuses a
+hand-edited value. `planned` means the target cites no event; `certified` means
+a manifest the row cites under `planning/evidence/manifests/` recorded every
+event's defining book passed at its current source digest and include closure
+(the rule `tools/certified_claims.py` applies); anything else is
+`uncertified-at-current-digest`. Editing a book therefore turns its targets
+uncertified until the lane harvests and cites the run that certified the new
+bytes. The status speaks for the cited events, not for everything the target's
+statement says.
 
 Implemented/validated requirements and certified proof targets require evidence
 paths. A proof's evidence must name actual events/books, exact ACL2/Lisp versions,

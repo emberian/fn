@@ -109,6 +109,8 @@ Each packet follows the mandate's §12 form. Every trace is quoted from the name
 
 **Answer with:** (a) `:recorded`; (b) `:current`; (c) `:recorded` plus the explicit `keys redecide MSGID` operator verb (PKT-241, not built).
 
+**Lane key-replay-fixture (2026-09-26) implemented gpt-6's advice, (a) with no supported `:current`:** the constant is gone, the reopen is recorded by definition (`fn-ks-statement-rows`), the old behaviour is only a counterexample fixture in the test book, PRF-140 proves an accepted statement cut before its key change finishes under its admission context, and `keys redecide MSGID` is specified as PKT-325, not built; ember confirms or overrules (overruling to (b) is now a Store format version, not a one-line edit).
+
 ## PKT-173 b (PKT-230): hold refused signed evidence as a charged record, or keep refusing?
 
 **The trace.** The record has no trace. The question (peering-compose "Packet 4"; mandate §12.4) is whether to hold `:unenrolled` / `:unsupported-profile` evidence "as a charged durable record so a later enrolment can verify it".
@@ -289,6 +291,10 @@ The rehearsal on copies gave these results:
 **What continues without it:** everything.
 
 **Answer with:** (a) keep the gate order, the stored copy settles it; (b) answer D25 for a source authored before the revocation; (c) a privileged operator query for revoked authors.
+
+## PKT-323: the capacity vector's three defaults (capacity-vector, planning/evidence/capacity-vector-2026-09-26.md)
+
+Taken as defaults by the lane under the mandate's §2, for you to confirm or overrule; each is a one-line switch with its theorem already proved under the default: (a) a release record is reserved at its 4,096-octet codec ceiling per open obligation plus one for maintenance (the alternative, the exact release's size, is not known at admission); (b) `retention set` always has the last `max-config-generations` generation reserved to it (the alternative, no reserved generation, lets an unrelated configuration record take the last slot and leave a release unfilable); (c) disk preallocation REJECTED: the free space observed at compact and reclaim is an environmental assumption stated as such, with the named refusal kept (the alternative, a real preallocation under a platform contract, needs an `encapsulate` and a filesystem that honours it). **Answer with:** (a) confirm all three; (b) name the one to change.
 
 ## For the coordinator
 
