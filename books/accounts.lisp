@@ -229,15 +229,34 @@
            (equal (fn-cfg-rows-with-key rows k)
                   (if (equal (fn-cfg-row-a r) k) (list r) nil)))))
 
+; The slot's third writer is the login binding (PKT-221,
+; books/login-binding.lisp): it removes only binding rows (mark 2).
 (defthm fn-acct-accounts-of-apply-delta-unfolds
   (equal (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d))
-         (if (or (equal (fn-cfg-delta-kind d) :account-invite)
-                 (equal (fn-cfg-delta-kind d) :account-redeem))
-             (append (fn-cfg-rows-without-key (fn-cfg-accounts v)
-                                              (fn-cfg-delta-a d))
-                     (fn-cfg-delta-rows d))
-           (fn-cfg-accounts v)))
+         (cond ((or (equal (fn-cfg-delta-kind d) :account-invite)
+                    (equal (fn-cfg-delta-kind d) :account-redeem))
+                (append (fn-cfg-rows-without-key (fn-cfg-accounts v)
+                                                 (fn-cfg-delta-a d))
+                        (fn-cfg-delta-rows d)))
+               ((equal (fn-cfg-delta-kind d) :login-binding)
+                (append (fn-cfg-rows-without-binding (fn-cfg-accounts v)
+                                                     (fn-cfg-delta-a d))
+                        (fn-cfg-delta-rows d)))
+               (t (fn-cfg-accounts v))))
   :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-groups))))
+
+; Removing binding rows keeps the first row a key names when that row is an
+; account row.
+(local (defthm fn-acct-rows-with-key-of-rows-without-binding
+  (implies (and (consp (fn-cfg-rows-with-key rows k))
+                (not (fn-cfg-binding-rowp (car (fn-cfg-rows-with-key rows k)))))
+           (and (consp (fn-cfg-rows-with-key
+                        (fn-cfg-rows-without-binding rows l) k))
+                (equal (car (fn-cfg-rows-with-key
+                             (fn-cfg-rows-without-binding rows l) k))
+                       (car (fn-cfg-rows-with-key rows k)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
+                                     fn-cfg-rows-without-binding)))))
 
 ; -----------------------------------------------------------------------------
 ; Once only
@@ -255,6 +274,7 @@
   :hints (("Goal" :in-theory (enable fn-cfg-delta-reason
                                      fn-cfg-account-redeemedp
                                      fn-cfg-account-row
+                                     fn-cfg-binding-rowp
                                      fn-cfg-ag-car)
            :cases ((equal (fn-cfg-delta-a d) digest)))))
 

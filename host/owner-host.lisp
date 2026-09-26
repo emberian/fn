@@ -84,6 +84,7 @@
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
 (include-book "../books/login-binding")
+(include-book "../books/login-binding-live")
 ; PRF-161: the limits of a public reader port (fn-exp-).
 (include-book "../books/public-exposure")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
@@ -1634,32 +1635,18 @@
       (f-get-global 'fn-owner-transit-carried state)
     nil))
 
-;; The login-binding table the native auth profile loaded
-;; (books/native-auth-profile.lisp fn-native-auth-load-bindings), installed
-;; beside the auth configuration before the listener opens.  Transport only:
-;; ACL2 built it, and fn-lb-owner-gate is the only reader.
-(defun fn-owner-set-login-bindings (bindings state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((state (f-put-global 'fn-owner-login-bindings bindings state)))
-    (value :ok)))
-
-(defun fn-owner-login-bindings (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-login-bindings state)
-      (f-get-global 'fn-owner-login-bindings state)
-    nil))
-
 ;; The posting policy's gate for the served submission in flight
-;; (books/login-binding.lisp fn-lb-owner-gate over the owner, its LIVE
-;; configuration and the binding table), called by host/native/owner.lisp
-;; fnn-owner-attempt-served before the transit attempt.  The verdict's
-;; service-log line is left in fn-owner-login-log-line (nil: no login).
+;; (books/login-binding-live.lisp fn-lb-ocfg-gate: the policy of the owner's
+;; LIVE configuration, the login-binding table the submission's connection
+;; pinned when it opened), called by host/native/owner.lisp
+;; fnn-owner-attempt-served before the transit attempt.  The table is rows of
+;; the configuration (PKT-221), published at start and on `principal bind'
+;; through the live reconfiguration; there is no binding global.  The
+;; verdict's service-log line is left in fn-owner-login-log-line (nil: no
+;; login).
 (defun fn-owner-login-gate (received state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((verdict (fn-lb-owner-gate (fn-owner-core state)
-                                    (fn-ocfg-config (fn-owner-ocfg state))
-                                    (fn-owner-login-bindings state)
-                                    received))
+  (let* ((verdict (fn-lb-ocfg-gate (fn-owner-ocfg state) received))
          (state (f-put-global 'fn-owner-login-log-line
                               (fn-lb-verdict-line verdict) state)))
     (value verdict)))

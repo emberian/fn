@@ -410,20 +410,35 @@
           t nil nil nil 128))
         :credential-shape))
 
-; When a durable credential change reaches service (PKT-102):
+; When a durable credential change reaches service (PKT-102, PKT-221):
 ; fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp
-; fnn-native-auth-admin-result-code calls with the writer-lock observation.
+; fnn-native-auth-admin-result-code calls with the writer-lock observation
+; and the owner's answer to the binding reload.
 
-(assert-event (equal (fn-native-auth-admin-effect-word :held) :restart-required))
-(assert-event (equal (fn-native-auth-admin-effect-word :free) :effective-at-next-start))
-(assert-event (equal (fn-native-auth-admin-effect-word :absent) :effective-at-next-start))
-(assert-event (equal (fn-native-auth-admin-effect-word :unknown) :restart-required))
-(assert-event (equal (fn-native-auth-admin-effect-word nil) :restart-required))
+(assert-event (equal (fn-native-auth-admin-effect-word :held nil) :restart-required))
+(assert-event (equal (fn-native-auth-admin-effect-word :held :refused) :restart-required))
+(assert-event (equal (fn-native-auth-admin-effect-word :held :accepted) :applied))
+(assert-event (equal (fn-native-auth-admin-effect-word :held :uncertain) :uncertain))
+(assert-event (equal (fn-native-auth-admin-effect-word :free nil) :effective-at-next-start))
+(assert-event (equal (fn-native-auth-admin-effect-word :absent :accepted) :effective-at-next-start))
+(assert-event (equal (fn-native-auth-admin-effect-word :unknown nil) :restart-required))
+(assert-event (equal (fn-native-auth-admin-effect-word nil nil) :restart-required))
 ; Teeth: "never restart-required" and "always restart-required" (the answer
 ; the spike saw) are both false.
 (must-fail
  (defthm naat-effect-word-always-restart
-   (equal (fn-native-auth-admin-effect-word observation) :restart-required)))
+   (equal (fn-native-auth-admin-effect-word observation live) :restart-required)))
 (must-fail
  (defthm naat-effect-word-never-restart
-   (not (equal (fn-native-auth-admin-effect-word observation) :restart-required))))
+   (not (equal (fn-native-auth-admin-effect-word observation live) :restart-required))))
+; Teeth for the `applied' keystone: each literal of its right side is needed.
+; Without the owner's :accepted, a held lock is not `applied'; with it, a
+; lock seen free is still `effective-at-next-start'.
+(must-fail
+ (defthm naat-effect-word-applied-without-acceptance
+   (implies (not (member-equal observation '(:free :absent)))
+            (equal (fn-native-auth-admin-effect-word observation live) :applied))))
+(must-fail
+ (defthm naat-effect-word-applied-whenever-accepted
+   (implies (equal live :accepted)
+            (equal (fn-native-auth-admin-effect-word observation live) :applied))))
