@@ -1,0 +1,90 @@
+{
+  "about": "Throughput per operation of a native developer image on hbox, tmpfs, one unit (tools/throughput_gate.py); quiet says whether each source run had the box to itself. A run fails a metric above max(value * (1 + tolerance), value + floor). value is the smaller of the qualified release's and dev's figure (a ratchet: an improvement lowers it at the next write); both are kept beside it, and a dev figure over the release's limit needs a row in planning/throughput-causes.json.",
+  "tolerance": 0.25,
+  "release": {
+    "revision": "bbf52159dcab19228bd6cd0b855b99dd6d68758d",
+    "run": "bbf52159dcab-release-bbf52159-20260926T075519Z.json",
+    "core_sha256": "e66401023938779925fd97a9b476961dd7f48c6b85e87b9b44b757ded1be79a5",
+    "quiet": false
+  },
+  "dev": {
+    "revision": "0d21164752bb0083b91ab76835eee49c8a8fefaa",
+    "run": "0d21164752bb-dev-head-20260926T080533Z.json",
+    "core_sha256": "25913fc3ae2730a980a130505a0cb2b52889b27b89e5fcd26ace8a8affbfd820",
+    "quiet": false
+  },
+  "metrics": {
+    "probe_wall_s": {
+      "value": 68.714,
+      "floor": 0.5,
+      "release": 68.714,
+      "dev": 71.717
+    },
+    "probe_cpu_s": {
+      "value": 68.675,
+      "floor": 0.5,
+      "release": 68.675,
+      "dev": 71.65
+    },
+    "probe_commit_ms": {
+      "value": 67.671,
+      "floor": 0.5,
+      "release": 67.671,
+      "dev": 70.668
+    },
+    "probe_reopen_s": {
+      "value": 0.892,
+      "floor": 0.5,
+      "release": 0.892,
+      "dev": 0.964
+    },
+    "probe_bytes_consed_per_commit": {
+      "value": 103341504,
+      "floor": 262144,
+      "release": 103341504,
+      "dev": 103341507
+    },
+    "post_median_ms": {
+      "value": 1.545,
+      "floor": 1.0,
+      "release": 1.545,
+      "dev": 1.72
+    },
+    "post_p95_ms": {
+      "value": 2.061,
+      "floor": 2.0,
+      "release": 2.061,
+      "dev": 2.492
+    },
+    "post_owner_cpu_ms": {
+      "value": 1.6,
+      "floor": 1.0,
+      "release": 1.6,
+      "dev": 1.9
+    },
+    "article_median_ms": {
+      "value": 2.609,
+      "floor": 1.0,
+      "release": 2.609,
+      "dev": 2.939
+    },
+    "article_p95_ms": {
+      "value": 2.725,
+      "floor": 2.0,
+      "release": 2.725,
+      "dev": 4.092
+    },
+    "reopen_s": {
+      "value": 0.145,
+      "floor": 0.5,
+      "release": 0.145,
+      "dev": 0.155
+    },
+    "checkpoint_publish_ms": {
+      "value": 350,
+      "floor": 50.0,
+      "release": 350,
+      "dev": 414
+    }
+  }
+}

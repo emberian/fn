@@ -1,0 +1,4 @@
+{
+  "about": "Named causes for throughput regressions the gate reports (tools/throughput_gate.py check). A row names the measured revision (at least 7 hex digits) and the reason: what regressed, by how much, why it is accepted or which lane fixes it. A row excuses that revision's run only; the next revision's run is compared afresh.",
+  "causes": []
+}
