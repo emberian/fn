@@ -4430,9 +4430,10 @@
         "books/record-width-producers.lisp",
         "tests/acl2/record-width-producers-tests.lisp",
         "tests/acl2/profile-monotonicity-tests.lisp",
-        "planning/evidence/bounds-p6-2026-09-25.md"
+        "planning/evidence/bounds-p6-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T235221Z-2754177.json"
       ],
-      "progress_note": "Admitted event by event in the persvati REPL; certification pending.",
+      "progress_note": "Certified with teeth (manifest certify-20260925T235221Z-2754177, run-20260925T235154Z-c725); native gate on the ffd85ad0 developer image (bounds-p6 record, width-boundary section).",
       "events": [
         "fn-sn-prepare-stages-a-narrow-article-record",
         "fn-post-admitted-article-record-is-within-r",
