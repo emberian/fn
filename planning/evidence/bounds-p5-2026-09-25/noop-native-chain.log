@@ -1,0 +1,55 @@
+test_every_chain_publication_cut_from_both_entries (tests.test_native_pack_chain.NativePackChainTests.test_every_chain_publication_cut_from_both_entries) ... ERROR
+test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain) ... ERROR
+
+======================================================================
+ERROR: test_every_chain_publication_cut_from_both_entries (tests.test_native_pack_chain.NativePackChainTests.test_every_chain_publication_cut_from_both_entries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-p5/tree/tests/test_native_pack_chain.py", line 94, in test_every_chain_publication_cut_from_both_entries
+    base, config0, _ = self.scale_store("cut-base", CUT_N)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-p5/tree/tests/test_native_pack_chain.py", line 57, in scale_store
+    self.native("store", store, "probe", str(n))
+  File "/tank/fn/scratch/bounds-p5/tree/tests/test_native_checkpoint.py", line 41, in native
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/scratch/bounds-p5/tree/build/fn-host-developer', '--fn', 'store', '/tmp/fn-native-checkpoint-5pjohj3_/cut-base', 'probe', '4300']' timed out after 1800 seconds
+
+======================================================================
+ERROR: test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-p5/tree/tests/test_native_pack_chain.py", line 72, in test_scale_store_compacts_into_a_chain
+    store, config, port = self.scale_store("scale-chain", N)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-p5/tree/tests/test_native_pack_chain.py", line 57, in scale_store
+    self.native("store", store, "probe", str(n))
+  File "/tank/fn/scratch/bounds-p5/tree/tests/test_native_checkpoint.py", line 41, in native
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/scratch/bounds-p5/tree/build/fn-host-developer', '--fn', 'store', '/tmp/fn-native-checkpoint-aeigd7g5/scale-chain', 'probe', '4500']' timed out after 1800 seconds
+
+----------------------------------------------------------------------
+Ran 2 tests in 3601.777s
+
+FAILED (errors=2)

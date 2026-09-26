@@ -40,6 +40,8 @@
 ; Recovery after a reclaim calls fn-ccp-observe-framed and fn-ccp-coverage-framed
 ; through host/checkpoint-host.lisp.
 (include-book "books/checkpoint-compaction-preservation")
+; The pack chain the open walks and compaction extends (P5).
+(include-book "books/checkpoint-pack-chain")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")

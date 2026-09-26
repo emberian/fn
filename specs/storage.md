@@ -771,30 +771,79 @@ then fails before the selection; the store reopens and the rerun converges
 torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
 held|short`.
 
-### Chained packs (not implemented)
 
-The 4 MiB compaction unit is permanent per store today, because each
-compaction repacks the whole history. Chaining lifts that limit without
-raising the open's largest single allocation. It needs:
+### Chained packs (P5, 2026-09-25; STO-012)
 
-1. A pack that covers events `[lower, boundary)` and names its predecessor:
-   the predecessor's generation, boundary and frame digest. The first pack
-   has `lower = 0` and no predecessor.
-2. Contiguity: each pack's `lower` is its predecessor's `boundary`. The
-   selection marker names the newest pack. The open walks the chain from
-   the newest, reads one pack at a time, and checks each link's digest.
-3. A chain-length bound in the profile, so the open's work stays bounded
-   before any pack is read. The aggregate replay bound (field 3) must also
-   count pack events; today it counts suffix files only (finding 3 of the
-   compact-verb record).
-4. Retire keeps every generation the selected chain names, and removes only
-   generations outside it.
-5. The preservation theorem generalized: the chain's concatenated
-   reconstruction plus the suffix is the identical record list (PRF-073 over
-   a chain). Each crash cut of publishing a new link leaves the previous
-   chain selected.
-6. A compaction then packs only the uncovered suffix, at most 4 MiB, into a
-   new link. It never repacks what earlier links cover.
+STO-012: Compaction chains packs: each compaction packs only the uncovered
+suffix into a link naming its predecessor by digest, the open walks the chain,
+retire keeps it.
+
+Each compaction packs only the uncovered suffix, so the pack no longer bounds
+the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
+
+1. A pack is one **link** (`fn-x` version 1): it covers events
+   `[lower, boundary)` and names its predecessor by generation and by the
+   predecessor's frame digest (the 32-octet trailer). The first link has
+   `lower = 0` and no predecessor; a version-0 pack decodes as a first link.
+   A link holds one scheduling quantum (`*fn-cc-max-events*` 4096 events and
+   `*fn-cc-max-octets*` 4 MiB of summary) and always at least one record, so
+   a record up to the profile's R is never refused by the quantum; one link
+   file is at most `fn-ccc-link-octet-bound` = 128 + max(4 MiB, R) octets,
+   the open's largest single pack read.
+2. **Contiguity**: a link's `lower` is its predecessor's `boundary` and its
+   lower frontier is its predecessor's frontier (`fn-ccc-links-okp`). The
+   selection marker names the newest link. The open walks the chain from the
+   newest (host/native/checkpoint.lisp `fnn-pack-walk`, one bounded read and
+   one `fn-ccc-entry-step` per link) and hands ACL2 the walked chain
+   (`fn-ccc-observe-chain`, `fn-ccc-coverage-chain`).
+3. **Walk bound**: the walk is given the profile's max-transactions T links
+   (`fn-ccc-walk-bound`). Every link covers a record, so a chain has at most
+   `boundary` links (`fn-ccc-links-count-within-boundary`) and an admitted
+   store never exhausts the fuel. There is no separate chain-length field.
+4. **Retire** keeps every generation the selected chain names and removes
+   only generations outside it (`fn-ccc-retire-plan-keeps-the-chain`).
+5. **Preservation**: the chain's records are one valid prefix
+   (`fn-ccc-links-okp-composes-a-prefix`); a capture over the uncovered
+   suffix extends the chain and keeps it a prefix of the history
+   (`fn-ccc-capture-extends-the-chain`); the open over the chain and the
+   transaction files from any sequence N at or below the chain's boundary
+   to the end of the history answers exactly the history
+   (`fn-ccc-chain-reconstructs-the-history`: N is 0 before a reclaim, the
+   boundary after it, anything between at a reclaim cut, so no reclaimed
+   file is needed); a reclaim keeps that answer at every cut
+   (`fn-ccc-reclaim-preserves-reconstructed-history`, PRF-073 over a
+   chain). The served view replays the records this open returns
+   (`fnn-pack-recover-records`, called by both reopen paths of the store
+   open), so an article in a link is framed from the same record bytes as
+   before it was packed. Each link is published and selected by the existing pack
+   program (immutable generation, then the selection marker); at every cut
+   the walk from the image's marker reads the old chain or the new link
+   followed by the old chain (`fn-ccc-publication-crash-walks-old-or-new-chain`,
+   stated under the two facts the pack program's keystones give).
+6. `store compact` extends the chain one link at a time until it covers
+   every committed record (`fnn-pack-extend-chain`); it never repacks what
+   earlier links cover, and it no longer refuses a history above 4096
+   transactions. `status` prints `pack-chain links=L boundary=B
+   generations=...`. Its temporary-space check (STO-019) is per link: before
+   every link the verb asks the one decision again over a fresh free-octet
+   observation, and refuses `temporary-space` by name, nothing of that link
+   written, when the link's accounted octets (`fn-cverb-link-octets`: the
+   128-octet header bound, the quantum's summary size and the trailer)
+   exceed it (`fn-cverb-pack-fits-the-disk`, over the link the host
+   captures). Links already selected stay; a rerun continues from them.
+7. `store reclaim` (STO-017) over a chain publishes one reclaiming pack, a
+   version-0 pack that decodes as the first link of a new chain covering
+   exactly what the selected chain covered
+   (`fn-rclp-reclaiming-pack-is-a-first-link`); its selection makes a
+   one-link chain, and retirement removes every link of the old one. A
+   rewritten history past one quantum is refused `spans-links` by name,
+   nothing written: rewriting it needs a chain of rewritten links published
+   before one selection, which is not built (PKT-332).
+
+Open: the link codec's round trip is executed in the test book, not proved;
+pack generation names stay below `*fn-cpp-max-generations*` (4096), so a
+store can be compacted at most 4096 times before retire must free names,
+which it cannot for names the chain holds (a finding for the next packet).
 
 Chaining is still packing. It does not relieve the transaction budget or the
 replay input. That is H's job.

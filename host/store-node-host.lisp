@@ -23,6 +23,10 @@
 (include-book "../books/store-profile-namespace")
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
+; fn-store-sn-prepare and fn-store-sn-finish call the owner's carried twins
+; (fn-pcar-spc-prepare, fn-ccar-sn-finish): neither walks the history.
+(include-book "../books/owner-commit-carried")
+(include-book "../books/owner-prepare-carried")
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
@@ -793,9 +797,15 @@ reopen predicate, writer-lock observation and observed final namespace."
                  ; fn-spc-prepare-equals-specification-under-relation equates
                  ; this call to fn-sn-prepare for every state reachable from
                  ; successful observed open through the actual mutators.
+                 ; fn-pcar-spc-prepare-is-spc-prepare (books/owner-prepare-
+                 ; carried.lisp, no hypothesis) is the call below equal to
+                 ; fn-spc-prepare, whose candidate test folds
+                 ; fn-store-event-txid over every record of the history
+                 ; (fn-sf-next-lower, 94% of commit CPU at N = 2000 once the
+                 ; finish was carried, bounds-p5 2026-09-25).
                  (next (if (equal record :clock-unusable)
                            s
-                         (fn-spc-prepare s record))))
+                         (fn-pcar-spc-prepare s record))))
             (if (equal record :clock-unusable)
                 (value :clock-unusable)
               (if (equal next s)
@@ -877,7 +887,14 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (f-get-global 'fn-store-sn state))
          (before-files (fn-sn-files before))
-         (next (fn-sn-finish before))
+         ; fn-ccar-sn-finish-is-sn-finish (books/owner-commit-carried.lisp):
+         ; equal to fn-sn-finish on every input.  fn-sn-finish finds the
+         ; completion record by fn-sn-find-record, which runs the event
+         ; recognizer over every record of the history, so N commits cost
+         ; N^2 recognitions (bounds-p5 2026-09-25: 5.2, 19.2 and 77.4 s of
+         ; commit CPU for N = 250, 500 and 1000); the carried finish steps
+         ; to the record's sequence position and reads it by shape.
+         (next (fn-ccar-sn-finish before))
          (after-files (fn-sn-files next)))
     ; fn-sn-finish is deliberately a no-op away from :completing.  The host
     ; reports success only for the transition that consumes this exact pending

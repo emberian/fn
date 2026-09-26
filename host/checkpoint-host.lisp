@@ -9,6 +9,7 @@
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/checkpoint-compaction-preservation")
 (include-book "../books/store-compact-verb")
+(include-book "../books/checkpoint-pack-chain")
 (include-book "../books/store-reclaim-pack")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
@@ -292,3 +293,54 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cpa-store-auxiliary-agrees
           (f-get-global 'fn-store-sn state))))
+
+;; Chained packs (books/checkpoint-pack-chain.lisp, P5).  The native walk
+;; (host/native/checkpoint.lisp `fnn-pack-walk') reads one link at a time,
+;; each within `fn-ccc-link-octet-bound' of the profile, and asks ACL2 for its
+;; lower bound and predecessor; the open, the coverage, the capture of the
+;; next link and the retirement are ACL2's answers over the walked chain.
+(defun fn-store-checkpoint-chain-link-bound (profile)
+  (declare (xargs :mode :program))
+  (fn-ccc-link-octet-bound profile))
+
+(defun fn-store-checkpoint-chain-walk-bound (profile)
+  (declare (xargs :mode :program))
+  (fn-ccc-walk-bound profile))
+
+(defun fn-store-checkpoint-chain-step (framed digest bound)
+  (declare (xargs :mode :program))
+  (fn-ccc-entry-step framed digest bound))
+
+(defun fn-store-checkpoint-chain-observe (chain observed frontier bound)
+  (declare (xargs :mode :program))
+  (fn-ccc-observe-chain chain observed frontier bound))
+
+(defun fn-store-checkpoint-chain-coverage (chain observed-count frontier bound)
+  (declare (xargs :mode :program))
+  (fn-ccc-coverage-chain chain observed-count frontier bound))
+
+; The line `checkpoint pack' prints for the no-op (exit 0, nothing written).
+(defun fn-store-checkpoint-pack-nothing-line (boundary count)
+  (declare (xargs :mode :program))
+  (concatenate 'string "packed nothing-uncovered boundary="
+               (coerce (explode-nonnegative-integer (nfix boundary) 10 nil) 'string)
+               " records="
+               (coerce (explode-nonnegative-integer (nfix count) 10 nil) 'string)))
+
+(defun fn-store-checkpoint-chain-capture (records lower lower-frontier
+                                                  pred-generation pred-digest)
+  (declare (xargs :mode :program))
+  (let ((captured (fn-ccc-capture-link records lower lower-frontier
+                                       pred-generation pred-digest)))
+    (cond ((equal (car captured) :ok)
+           (list :ok (fn-ccc-encode-link (cadr captured))
+                 (fn-ccc-boundary (cadr captured))))
+          ((equal (car captured) :nothing-uncovered)
+           (list :nothing-uncovered
+                 (fn-store-checkpoint-pack-nothing-line (cadr captured)
+                                                        (len records))))
+          (t captured))))
+
+(defun fn-store-checkpoint-chain-retire-plan (generations chain bound)
+  (declare (xargs :mode :program))
+  (fn-ccc-retire-plan generations chain bound))

@@ -574,7 +574,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-009",
-        "PRF-073"
+        "PRF-073",
+        "PRF-085"
       ],
       "verification": [
         "proof",
@@ -2875,6 +2876,32 @@
       ],
       "implementation_note": "RFC 4642 section 2.2 is STARTTLS; section 1 describes the separate TLS port and discourages it, so the implicit-TLS listener is a local policy for readers (tin 2.6) that speak only that form, and it runs the STARTTLS session machine (PRF-162). The inspect answer is the store node's Message-ID lookup rendered by ACL2; it does not compare article text (D25 is the re-send's).",
       "note": "store inspect needs the owner stopped (the store lock); a live query through the control socket is PKT-410."
+    },
+    {
+      "id": "STO-012",
+      "title": "Compaction chains packs: each compaction packs only the uncovered suffix into a link naming its predecessor by digest, the open walks the chain, retire keeps it",
+      "specification": "specs/storage.md#chained-packs-p5-2026-09-25-sto-012",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-085"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/checkpoint-pack-chain.lisp",
+        "tests/acl2/checkpoint-pack-chain-tests.lisp",
+        "books/store-compact-verb.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_pack_chain.py",
+        "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
+        "planning/evidence/manifests/certify-20260925T094221Z-3382380.json",
+        "planning/evidence/bounds-p5-2026-09-25.md"
+      ],
+      "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
     }
   ]
 }

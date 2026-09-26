@@ -250,7 +250,7 @@ files of the committed history with one lossless pack:
 
 ```text
 fn operator /path/to/fn.toml store compact
-compacted steps=pack,select,reclaim,retire records=7 generation=0 reclaimed=7 retired=0
+compacted steps=pack,select,reclaim,retire records=7 generation=0 links=1 reclaimed=7 retired=0
 ```
 
 It opens the store as `recover` does, so it is refused (1, `store is already
@@ -258,22 +258,24 @@ locked`) while an owner runs. ACL2 decides what it does
 (`fn-cverb-decide`, `books/store-compact-verb.lisp`) and the host carries out
 exactly that:
 
-- `pack,select,reclaim,retire`: capture every committed record's exact bytes
-  into the next pack generation, publish it, select it, unlink the
-  transaction files it covers and retire the older pack generations. The open
-  afterwards hands replay the identical record list
-  (`fn-ccp-reclaim-preserves-reconstructed-history`), so every article, number,
-  watermark, retention pin and the next article number are unchanged.
-- `reclaim,retire`: the selected pack already covers every committed record
-  (a rerun after an interrupted compaction); no new pack is written.
-- refused (1), nothing written, with the reason: `already-compact` (nothing
-  to pack, reclaim or retire), `empty-history`, `temporary-space` (the new pack would not
-  fit the free space of the store's filesystem, as the image observes it;
-  the pack is written beside the files it replaces, so leave at least the
-  history's size free), `exceeds-compaction-unit` (the
-  history's pack would exceed 4 MiB, the unit one pack holds; the open reads
-  a pack as one bounded read, and compacting a larger history needs chained
-  packs, which do not exist yet).
+- `pack,select,reclaim,retire`: extend the selected chain of packs over the
+  committed records it does not cover yet, one link (at most 4,096 records
+  or 4 MiB, and at least one record) at a time, publishing and selecting
+  each link; then unlink the transaction files the chain covers and retire
+  the pack generations outside it. The open afterwards hands replay the
+  identical record list (`fn-ccc-chain-reconstructs-the-history`), so every
+  article, number, watermark, retention pin and the next article number are
+  unchanged. `status` prints `pack-chain links=L boundary=B generations=...`.
+- `reclaim,retire`: the selected chain already covers every committed record
+  (a rerun after an interrupted compaction); no new link is written.
+- refused (1), with the reason: `already-compact` (nothing to pack, reclaim
+  or retire), `empty-history`, `temporary-space` (the next link would not
+  fit the free space of the store's filesystem, as the image observes it
+  before every link; each link is written beside the files it covers, so
+  leave at least one link, about 4 MiB, free). Nothing of the refused link
+  is written; links already selected by the same run stay (the message says
+  `links=K`), and a rerun continues from them. No size of the history is
+  refused.
 
 A death or an I/O error at any step leaves a store the next `recover` opens
 with the same history; an I/O error after a durable change is uncertain (3),
