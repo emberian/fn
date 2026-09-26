@@ -171,3 +171,22 @@ Budget went to PKT-213's proof, its FNPL refinement and the D26 repair.
 - PKT-236 (d), the pull-only credential slot: not started (PKT-431 (2)).
 - PKT-207 / PKT-115: not started, not measured (PKT-431 (3)).
 - The soak's refuser and withdrawal arms wait on those.
+
+## Soak (SCN-095's bounded form)
+
+"Days" is the claim; 30 minutes is the evidence. On the 2dc81256 image
+(fn-host-developer 1dec0e37...), FN_PULL_SOAK_SECONDS=1800,
+test_soak_two_nodes_and_an_unproducible_listing: B pulls fn node A and the
+scripted peer S (which lists `<ghost-soak>` and answers it 430) every 60 s,
+bound 3; A received an article every two minutes (15); B was restarted
+cleanly half-way. Result: 60 pull rounds, every article stored at B exactly
+once, `<ghost-soak>` dropped exactly once (three ARTICLE <ghost>), B's RSS
+360,284 KiB first, 386,432 KiB last and max. Log
+planning/evidence/peer-feeds-2026-09-26/native-soak.log sha256
+89c6ff547c5fe54ac3007eac6f5c6e92374d656a32031f7a47ee34fe8b456fb9; A's log
+e09abb11..., B's log 5783f1dd.... Runbook: on hbox,
+`FN_PULL_SOAK_SECONDS=1800 FN_NATIVE_HOST=<developer image>
+python3 -m unittest tests.test_native_peer_pull.NativePeerPullTests.test_soak_two_nodes_and_an_unproducible_listing`
+under `systemd-run --user --scope -p MemoryMax=24G`
+(build/pf-native-manual.sh in the lane). Not in the soak: the MODE STREAM
+refuser restarted and the withdrawal (PKT-431 (1), (3)).
