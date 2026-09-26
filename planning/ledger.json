@@ -661,8 +661,10 @@
     "books/records-attach-concrete",
     "books/msgid-index-concrete",
     "books/octets-stobj",
+    "books/payload-arena",
     "books/poster-bytes-buffer",
     "tests/acl2/octets-stobj-tests",
+    "tests/acl2/payload-arena-tests",
     "books/sha256-buffer",
     "tests/acl2/sha256-buffer-tests",
     "books/owner-advance-carried",
@@ -908,19 +910,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 921,
-    "books_in_root_closure": 917,
-    "roots": 904,
-    "theorems": 12806,
-    "functions": 8977,
-    "assert_events": 13415,
-    "must_fails": 1488,
+    "books": 923,
+    "books_in_root_closure": 919,
+    "roots": 906,
+    "theorems": 12925,
+    "functions": 9011,
+    "assert_events": 13419,
+    "must_fails": 1498,
     "encapsulates": 65,
     "guards": {
-      "verified": 2189,
-      "declared-off": 710,
-      "default-guarded": 4756,
-      "default-unguarded": 1322
+      "verified": 2191,
+      "declared-off": 713,
+      "default-guarded": 4777,
+      "default-unguarded": 1330
     },
     "suspect_theorems": 113,
     "export_hygiene_warnings": 152,
@@ -11131,6 +11133,32 @@
       "encapsulates": 0,
       "includes": [
         "article-fields"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/payload-arena.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 98,
+      "functions": 29,
+      "guards": {
+        "verified": 2,
+        "declared-off": 3,
+        "default-guarded": 20,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "octets-stobj",
+        "records-shape"
       ],
       "system_includes": [],
       "suspects": [],
@@ -22776,6 +22804,33 @@
         "store-identity-traces-tests"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/payload-arena-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 10,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/payload-arena"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },

@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 921 |
-| Certification roots in the Makefile | 904 |
-| Books inside the root closure | 917 |
-| `defthm` and `defthmd` events | 12806 |
-| `defun` events | 8977 |
-| Functions with verified guards | 2189 |
-| Functions declared `:verify-guards nil` and never verified | 710 |
-| Functions left at the default with an explicit guard | 4756 |
-| Functions left at the default with no guard | 1322 |
-| `assert-event` checks | 13415 |
-| `must-fail` checks | 1488 |
+| Books read | 923 |
+| Certification roots in the Makefile | 906 |
+| Books inside the root closure | 919 |
+| `defthm` and `defthmd` events | 12925 |
+| `defun` events | 9011 |
+| Functions with verified guards | 2191 |
+| Functions declared `:verify-guards nil` and never verified | 713 |
+| Functions left at the default with an explicit guard | 4777 |
+| Functions left at the default with no guard | 1330 |
+| `assert-event` checks | 13419 |
+| `must-fail` checks | 1498 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 113 |
 | Export-hygiene warnings | 152 |
@@ -469,6 +469,7 @@ that `make certify` requests.
 | `books/path-update-tail.lisp` | root | 67 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
+| `books/payload-arena.lisp` | root | 98 | 29 | 2/3/20/4 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 20 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/peer-carriage-rows.lisp` | root | 14 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/peer-carriage.lisp` | root | 40 | 18 | 0/1/16/1 | 0 | 0 | 0 |
@@ -896,6 +897,7 @@ that `make certify` requests.
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 31 | 6 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
+| `tests/acl2/payload-arena-tests.lisp` | root | 21 | 5 | 0/0/1/4 | 4 | 10 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 46 | 14 | 0 |
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 54 | 14 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
