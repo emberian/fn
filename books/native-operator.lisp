@@ -404,7 +404,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "retention")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -429,6 +429,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
+        ((equal subject "retention")
+         "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
@@ -578,7 +580,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
-                 (equal command "control"))
+                 (equal command "control") (equal command "retention"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -1065,6 +1067,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "bp-boundary")
                (equal (fn-native-operator-result-command result) "bp-route")
                (equal (fn-native-operator-result-command result) "policy")
+               (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "show") :show)
