@@ -183,7 +183,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **maintenance: operator compaction.** `operator CONFIG store compact` is decided in ACL2: the pack it writes fits the free space the host observes on the store's filesystem (PKT-169), and a reclaim keeps the reconstructed history.
 
 - Host-called subject: `fn-cverb-decide` at host/checkpoint-host.lisp:188.
-- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:193; PRF-073 (uncertified-at-current-digest), PRF-129 (certified)); certified at the current source and closure by `certify-20260926T021052Z-4035158` (earliest archived).
+- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:193; PRF-073 (certified), PRF-129 (certified)); certified at the current source and closure by `certify-20260926T021052Z-4035158` (earliest archived).
 - Tested: lane image of `5181e0ea` ([m5-compact-verb-2026-09-24](evidence/m5-compact-verb-2026-09-24.md)), profile developer image, checkpoint cuts through both entries; not a shared qualification.
 - Deployed: no: node image `bbf52159`; changed since it: `books/store-compact-verb.lisp`, `host/checkpoint-host.lisp`.
 - Latest positive result: 10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).
