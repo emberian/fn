@@ -143,3 +143,95 @@ observed.
 4. build/coordinator/BRIEF-COMMON.md (the coordinator's file) still says
    run.log prints "each module's OK/FAILED/skipped line"; it now reads OK /
    FAILED / SKIPPED (N of N) and a SKIPPED module makes the status 4.
+
+## Continuation: the stderr pipe (hot-path-checker-2, PKT-505)
+
+**The trap.** exposure-reply-size's record (§4, and the "Not done" list)
+describes it. `start_owner` in tests/test_native_operator_verbs.py started
+the owner with `stderr=subprocess.PIPE` and read the pipe only after the
+owner stopped. The owner writes one log line per accepted POST while
+holding its log mutex. After about 500 POSTs the 64 KiB pipe was full, the
+logging thread blocked in pipe_write, and every later request waited: 512
+transactions, then `health` fenced as owner-unanswering. Classification:
+harness, not product. The product half, where a log sink that does not
+drain wedges the owner, is PKT-508.
+
+**Exposed modules.** Every module that starts an owner through this fixture
+is exposed. Each either calls `start_owner` or borrows it:
+
+- test_native_operator_verbs;
+- test_native_bounds_join and test_native_bounds_blob (through
+  ProfileUpgradeFixture);
+- test_native_control_reply_fit;
+- test_native_history_required;
+- test_native_outcome_algebra;
+- test_native_profile_namespace;
+- test_native_profile_upgrade;
+- test_native_state_checkpoint.
+
+Only bounds_join's LargeReplyTests (2,003 POSTs) crossed the threshold, and
+it drained stderr privately. The others post at most 130 articles, so for
+them the trap was latent. test_native_consumer_profile already filed its
+own owner's stderr. test_native_public_exposure starts its owner with
+stderr in a file of its own, so it was never exposed; it ran as the
+control. Outside this fixture, twelve modules keep a private `start_owner`
+on an unread pipe. They are listed, not fixed, in PKT-504 (d).
+
+**The fix, at the fixture (583cda60).** The fixture now starts the owner
+through tests/native_process.py `start_filed(argv, log_path, ...)`:
+
+- stdout stays a pipe, which the fixture reads for LISTENING;
+- stderr goes to `owner-N.err` in the test's temporary directory;
+- `process.stderr` is a read handle on that file, so every caller that
+  reads `owner.stderr` after the owner stops still reads the whole log,
+  exactly as it did from the pipe;
+- `process.stderr_path` names the file;
+- a failed start reports the last 8 KiB of the log.
+
+No timeout or budget was raised. test_native_bounds_join drops its drain
+thread and reads the log on stop.
+
+tests/test_fixture_stderr.py runs with no image, in tooling-test. A
+stand-in owner, run through the real `start_owner`:
+
+- writes 1 MiB to stderr (about 2,000 POSTs' worth of log lines);
+- announces LISTENING;
+- writes 1 MiB more while "serving", then marks that it answered;
+- exits 0 on SIGTERM.
+
+The test asserts that it announces and answers, that the caller reads back
+all 2 MiB, and that each owner a test starts has its own file. The control
+runs the same stand-in with stderr on an unread pipe, as the old fixture
+did. It never announces within 3 s, which shows the stand-in reproduces
+the trap.
+
+**Native (hbox, tools/hbox_native.sh --name hot-path-checker-2 --label
+stderr --images developer,production 583cda60).** The images: developer
+launcher `4e16e5ca...` (core `c93e2277...`), production `20a974c5...`
+(core `562bc562...`). run.log SHA-256 `473ea3ce...`. The logs are in
+planning/evidence/native-harness-env-2026-09-26-stderr/ with the box's
+SHA256SUMS.
+
+| module | result | log SHA-256 |
+| --- | --- | --- |
+| tests.test_native_bounds_join | OK (2 ran, 1 skipped: DeployRehearsal needs FN_FORMAT7_IMAGE). LargeReplyTests passed through the fixture's owner with no private drain: 3 large POSTs and 2,000 more, then a 3.95 MB OVER, owner exit 0 (29.6 s) | `53cbbccc...` |
+| tests.test_native_public_exposure | OK (1 ran; the flood campaign, 55.0 s) | `c5f90b77...` |
+| tests.test_native_operator_verbs | FAILED, 1 of 22. Every owner-starting case passed (the uncertain-outcome pair and the capacity cases). The failure is `test_peer_list_is_a_query_and_the_host_asks_acl2_which`, a source-text assertion that `fn-native-admin-query-report` calls `fn-native-admin-peer-report`. Since a50312ef (PKT-391) the book calls `fn-native-admin-peer-budget-report`. Classification: harness, a stale source-shape expectation on dev, not this fixture. It is left to its owner (PKT-504 (e)); the expected answer was not changed here | `7cf84cf4...` |
+
+**PKT-490, the optional items.**
+
+- **(2) done.** tools/native_env.py `reads` follows the tests/ modules a
+  module imports, transitively, for image variables. An image read only
+  through a helper is set when its image is built, and when it is not built
+  it is noted, never refused: a helper may read it at import without the
+  module starting that image. Opt-ins and fixed paths still count from the
+  module's own file. tests/test_hbox_native.py
+  `test_an_image_read_through_an_imported_helper_is_set_and_never_refused`
+  covers it. bounds_join now gets `FN_NATIVE_HOST` without the hand-set
+  variable exposure-reply-size needed. Across the 93 native modules, 20 now
+  read at least one more variable. Those are the module lists that
+  `plan --images developer,production` sets more of.
+- **(3)** was done by tooling-velocity-2: options may follow REV.
+- **(4)** is already true in BRIEF-COMMON, whose hbox paragraph describes
+  OK/FAILED/SKIPPED and status 4.
+- **(1) not taken.** Each of its opt-ins needs a native run of its own.

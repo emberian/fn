@@ -13,8 +13,12 @@ any test step.
 
 A module *reads* a variable when its source calls `os.environ.get("NAME"`,
 `os.environ["NAME"]` or `os.getenv("NAME"`; `plan` scans the module's own file
-(tests/test_x.py for tests.test_x or tests.test_x.Class), not the helpers it
-imports.  For each requested module `plan` prints one line,
+(tests/test_x.py for tests.test_x or tests.test_x.Class) and every tests/
+module it imports, transitively, for image variables (PKT-490 (2)); opt-ins
+and fixed paths count from the module's own file.  An image variable read only
+through an imported helper is set when its image is built and noted, never
+refused, when it is not: a helper may read it at import without the module
+ever starting that image.  For each requested module `plan` prints one line,
 
     MODULE NAME=VALUE ...
 
@@ -123,8 +127,47 @@ def module_file(module: str) -> Path:
     raise SystemExit(f"native_env: no source for {module}")
 
 
-def reads(module: str) -> list[str]:
+# `from tests.X import ...`, `import tests.X` and `from tests import X, Y as Z`:
+# the local helpers a module takes its images from (tests/test_native_bounds_join
+# reads FN_NATIVE_HOST only through test_native_operator_verbs' IMAGE).
+IMPORT_FROM = re.compile(r"^\s*(?:from\s+tests\.([\w.]+)\s+import|import\s+tests\.([\w.]+))", re.M)
+IMPORT_NAMES = re.compile(r"^\s*from\s+tests\s+import\s+(\([^)]*\)|[^\n]+)", re.M)
+
+
+def local_imports(text: str) -> list[str]:
+    found = [f"tests.{a or b}" for a, b in IMPORT_FROM.findall(text)]
+    for names in IMPORT_NAMES.findall(text):
+        for word in names.strip("()").replace("\\", " ").split(","):
+            name = word.split(" as ")[0].strip()
+            if name:
+                found.append(f"tests.{name}")
+    return found
+
+
+def own_reads(module: str) -> list[str]:
+    """The variables MODULE's own file reads."""
     return sorted(set(READ.findall(module_file(module).read_text())))
+
+
+def reads(module: str) -> list[str]:
+    """The variables MODULE reads, in its own file or a tests/ helper it imports."""
+    top = module_file(module)
+    seen: set[Path] = set()
+    names: set[str] = set()
+    pending = [top]
+    while pending:
+        path = pending.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        text = path.read_text()
+        names.update(READ.findall(text))
+        for helper in local_imports(text):
+            try:
+                pending.append(module_file(helper))
+            except SystemExit:
+                continue  # a package or a name that is not a module file
+    return sorted(names)
 
 
 def join_images(built: list[str], *extra: str) -> str:
@@ -140,9 +183,10 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
     for module in modules:
         stem = module_file(module).stem
         assignments = []
+        own = set(own_reads(module))
         for name in reads(module):
-            if name in given:
-                continue
+            if name in given or (name not in own and name not in IMAGES):
+                continue  # a helper's opt-ins stay the helper's own modules'
             if name in IMAGES:
                 image = next((i for i in IMAGES[name] if i in images), None)
                 if (stem, name) in FALLBACK:
@@ -150,8 +194,15 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
                 if image is not None:
                     if not (name in DEFAULTS_TO_FIRST and image == IMAGES[name][0]):
                         assignments.append(f"{name}={IMAGE_PATH[image]}")
-                else:
+                elif name in own:
                     missing.append((module, name, IMAGES[name][0]))
+                else:
+                    # Read only by an imported helper, which may read it at
+                    # import and never start that image: set when built,
+                    # noted (never refused) when not.
+                    notes.append(f"{module} reads {name} through a tests/ helper it "
+                                 f"imports (not set: the {IMAGES[name][0]} image is not "
+                                 f"built; add it to --images if the module starts it)")
             elif name in FIXED:
                 assignments.append(f"{name}={FIXED[name][0]}")
             elif name in MANUAL and not MANUAL[name].startswith(("falls back", "defaults")):

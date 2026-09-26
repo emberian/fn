@@ -113,6 +113,23 @@ class HboxNativeDryRunTests(unittest.TestCase):
         need = lines.index("need tests.test_native_hybrid_author FN_NATIVE_HOST $T/build/fn-host")
         self.assertLess(need, lines.index(hybrid))
 
+    def test_an_image_read_through_an_imported_helper_is_set_and_never_refused(self):
+        # PKT-490 (2): tests.test_native_bounds_join reads FN_NATIVE_HOST only
+        # through test_native_operator_verbs' IMAGE (exposure-reply-size set it
+        # by hand).  Built: it is set.  Not built: a note, not a refusal.
+        both = dry("--images", "developer,production", "HEAD", "tests.test_native_bounds_join")
+        self.assertEqual(both.returncode, 0, both.stderr)
+        join = next(line for line in both.stdout.splitlines()
+                    if line.startswith("tstep test-tests.test_native_bounds_join "))
+        self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", join)
+        self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", join)
+        developer = dry("HEAD", "tests.test_native_bounds_join")
+        self.assertEqual(developer.returncode, 0, developer.stderr)
+        self.assertIn("reads FN_NATIVE_HOST through a tests/ helper", developer.stdout + developer.stderr)
+        self.assertNotIn("FN_NATIVE_HOST=", next(
+            line for line in developer.stdout.splitlines()
+            if line.startswith("tstep test-tests.test_native_bounds_join ")))
+
     def test_every_image_or_opt_in_variable_a_native_module_reads_is_classified(self):
         import sys
         sys.path.insert(0, str(ROOT))
