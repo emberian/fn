@@ -1158,7 +1158,7 @@ There are two rollbacks, and they are not the same:
   locked`, 1) rather than read mid-write. It reads each store's committed
   history the way the open does (the selected pack's records, then the
   transaction files after it) and ACL2 compares the two record by record,
-  octet for octet (`fn-native-operator-history-loss`). When the snapshot's
+  octet for octet (`fn-native-operator-history-loss-is-ancestry`). When the snapshot's
   records are exactly this store's first records it answers
 
   ```

@@ -1042,6 +1042,11 @@
 ;; fn-native-operator-history-loss-is-ancestry).  Events are committed
 ;; records' octets; *fn-nop-a* and *fn-nop-b* have the same length and the same
 ;; leading sequence octet and differ in content.
+;; The composition the host runs and PRF-141 is stated over, spelled out.
+(defmacro fn-nop-t-loss (snap cur)
+  `(fn-native-operator-history-verdict
+    (fn-nop-history-run (fn-native-operator-history-start) ,snap ,cur)
+    (len ,cur)))
 (defconst *fn-nop-a* '(0 0 0 0 0 0 0 0 65 65 65 65))
 (defconst *fn-nop-b* '(0 0 0 0 0 0 0 0 66 66 66 66))
 (defconst *fn-nop-c* '(0 0 0 0 0 0 0 1 67 67 67 67 67))
@@ -1052,11 +1057,11 @@
 (assert-event
  (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
    (and (equal (append snap (nthcdr (len snap) cur)) cur)
-        (equal (car (fn-native-operator-history-loss snap cur)) :loses)
-        (equal (cadr (fn-native-operator-history-loss snap cur))
+        (equal (car (fn-nop-t-loss snap cur)) :loses)
+        (equal (cadr (fn-nop-t-loss snap cur))
                (len (nthcdr (len snap) cur)))
-        (equal (fn-native-operator-history-loss snap cur) '(:loses 2)))))
-(assert-event (equal (fn-native-operator-history-loss (list *fn-nop-a* *fn-nop-c*)
+        (equal (fn-nop-t-loss snap cur) '(:loses 2)))))
+(assert-event (equal (fn-nop-t-loss (list *fn-nop-a* *fn-nop-c*)
                                                       (list *fn-nop-a* *fn-nop-c*))
                      '(:loses 0)))
 ; The host's call sequence, as `fnn-command-rollback-snapshot' makes it.
@@ -1084,21 +1089,21 @@
                                                  (fn-nop-test-descriptors cur 0))
                '(:loses 1))
         (not (equal (append snap (nthcdr (len snap) cur)) cur))
-        (equal (fn-native-operator-history-loss snap cur)
+        (equal (fn-nop-t-loss snap cur)
                '(:refused :snapshot-not-a-prefix)))))
 (must-fail
  (thm (implies (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
                                        (fn-nop-test-descriptors cur 0))
-               (equal (car (fn-native-operator-history-loss snap cur)) :loses))
+               (equal (car (fn-nop-t-loss snap cur)) :loses))
       :hints (("Goal" :do-not-induct t))))
 ; The count's premise removed: over the same pair the count is not the
 ; suffix's length.
 (assert-event
  (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
-   (not (equal (cadr (fn-native-operator-history-loss snap cur))
+   (not (equal (cadr (fn-nop-t-loss snap cur))
                (len (nthcdr (len snap) cur))))))
 (must-fail
- (thm (equal (cadr (fn-native-operator-history-loss snap cur))
+ (thm (equal (cadr (fn-nop-t-loss snap cur))
              (len (nthcdr (len snap) cur)))
       :hints (("Goal" :do-not-induct t))))
 ; The list-level lemma (fn-native-operator-snapshot-loss-counts-the-suffix)
@@ -1108,10 +1113,10 @@
              (- (len cur) (len snap)))
       :hints (("Goal" :do-not-induct t))))
 ; A snapshot ahead of the store, and one that diverges later, are refused.
-(assert-event (equal (car (fn-native-operator-history-loss
+(assert-event (equal (car (fn-nop-t-loss
                            (list *fn-nop-a* *fn-nop-c*) (list *fn-nop-a*)))
                      :refused))
-(assert-event (equal (car (fn-native-operator-history-loss
+(assert-event (equal (car (fn-nop-t-loss
                            (list *fn-nop-a* *fn-nop-d*)
                            (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
                      :refused))

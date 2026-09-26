@@ -59,8 +59,8 @@ native entry `fn operator CONFIG store rollback-check --snapshot SNAP`
 parse) -> host/native/operator.lisp -> `fnn-command-rollback-snapshot`
 -> observation: `fnn-rollback-history` of each store under its shared lock
 (the open's reader, pack included, marker checked) -> executed ACL2 subject:
-`fn-native-operator-history-start` / `-step` / `-verdict`, whose composition
-in the host's order is `fn-native-operator-history-loss`
+`fn-native-operator-history-start` / `-step` / `-verdict`, composed in the
+host's order (V below; `fn-nop-history-run` is the loop)
 -> behavioural theorem `fn-native-operator-history-loss-is-ancestry`
 -> observed result: the two report lines and exit 0/1, natively below.
 No relation is maintained across calls: the verb observes once under both
@@ -70,26 +70,31 @@ source-checked by `RollbackHistorySourceTests`, not proved (PKT-327 (3)).
 
 ## Theorems (books/native-operator.lisp, PRF-141)
 
-- `fn-native-operator-history-loss-is-ancestry` (KEYSTONE):
+- `fn-native-operator-history-loss-is-ancestry` (KEYSTONE), over
+  V = `(fn-native-operator-history-verdict (fn-nop-history-run (fn-native-operator-history-start) snap cur) (len cur))`:
   ```
-  (and (iff (equal (car (fn-native-operator-history-loss snap cur)) :loses)
+  (and (iff (equal (car V) :loses)
             (equal (append snap (nthcdr (len snap) cur)) cur))
        (implies (equal (append snap (nthcdr (len snap) cur)) cur)
-                (equal (cadr (fn-native-operator-history-loss snap cur))
-                       (len (nthcdr (len snap) cur)))))
+                (equal (cadr V) (len (nthcdr (len snap) cur)))))
   ```
   The verb says `loses` exactly when the store's history is the snapshot's
   records followed by more records, and the count is the number of those
   records. Host line: `fnn-command-rollback-snapshot` (host/native/io.lisp)
   through `fn-native-operator-host-history-step` / `-verdict`
   (host/native-operator-host.lisp).
-- `fn-native-operator-history-loss-is-snapshot-loss`: the fold equals
+- `fn-native-operator-history-loss-is-snapshot-loss`: V equals
   `fn-native-operator-snapshot-loss` (PRF-130's list-level function; its
   lemma `fn-native-operator-snapshot-loss-counts-the-suffix` stays true and
   now describes records; PRF-130's statement is amended to say the
   descriptor reading was not a history comparison).
+- Both theorems are stated over the composition itself, so the functions
+  they mention are the host-called ones (`reach_check`); the first cut named
+  a wrapper function `fn-native-operator-history-loss`, which no host line
+  calls, and `make check-lane` flagged it as an unreachable subject; it is
+  gone, and the test book spells V with a macro.
 - Every executable function is guard-verified (`:common-lisp-compliant`,
-  checked in the REPL: step, run, verdict, loss, report).
+  checked in the REPL: start, step, run, verdict, report).
 
 Teeth (tests/acl2/native-operator-tests.lisp):
 - Reachable positive witness: snapshot `(A)`, store `(A C D)`: the
