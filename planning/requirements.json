@@ -3353,7 +3353,7 @@
         "books/catalog-record.lisp"
       ],
       "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585).",
-      "note": "Lane catalog-slice (wave 5 lane 2, D33; design planning/design-2026-09-26-consolidation.md section 1)."
+      "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
     },
     {
       "id": "STO-027",

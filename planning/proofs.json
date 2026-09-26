@@ -7032,7 +7032,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "create-fn-cat{correspondence}",
         "fn-cat-commit{correspondence}",
