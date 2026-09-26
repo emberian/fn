@@ -4898,6 +4898,53 @@
         "fn-bs-frontier-v2-round-trip",
         "fn-bs-k0-host-frontier-frame-is-concrete-codec"
       ]
+    },
+    {
+      "id": "PRF-131",
+      "title": "A BP verb's run class is ACL2's, with one exit code per class; a BP node's held rows and held octets are the operator's profile, a saved profile opens, and replay past the profile is refused by name, never truncated",
+      "statement": "Part 1 (books/bp-run-class.lisp, books/bp-node-run-class.lisp). The host records evidence with fn-bprc-note: the reason of each (:forward-refused W A G REASON) effect through fn-bprc-effect-evidence (host/native/bp-service.lisp fnn-bps-drive-effects, :process scope), each TCPCL session's outcome and fence flag through fn-bprc-session-evidence (host/native/bp.lisp fnn-bp-exit-code, fnn-bp-session-word), each publication classification through fn-bprc-publication-evidence, and the article verdicts its tally counted through fn-bprc-with-articles; it renders fn-bprc-run-exit-code (fnn-bps-exit-code, fnn-bp-exit-code, the bp-node serve result) and, for every fnn-store-indeterminate, the fenced code (fnn-bp-verb). fn-bprc-exit-code-separates-the-classes: the five classes :accepted 0, :refused 1, :fenced 3, :interrupted 6, :not-connected 7 answer five codes. fn-bprc-fence-is-never-masked: once :fenced is recorded, whatever was recorded before or after, the class is :fenced. fn-bprc-connection-local-never-fences: from the empty record, words among :failed, :uncertain, :refused, :accepted and nil never make the class :fenced. fn-bprc-uncertain-article-fences. fn-bpnrc-job-result-class-is-the-transport-class: under PRF-120's hypotheses (fn-bpnj-named-result-is-the-transport-outcome), the class of the effects of the durable answer to a named job result is fn-bprc-transfer-class of its outcome: :accepted, :refused, :interrupted for :uncertain, :not-connected otherwise. Part 2 (books/bp-node-profile.lisp, books/bp-node-profile-replay.lisp). fnn-bps-open reads bp-node-profile through fn-bpnpf-read and opens the machine with fn-bpnf-initial-state under its rows and octets. fn-bpnpf-read-of-octets: for every profile fn-bpnpf-validp admits (each field a machine limit, 1..2^24), the file's octets read back as exactly that profile. fn-bpnpf-valid-profile-opens: every valid profile opens a machine whose max-jobs and max-octets are the profile's. fn-bpnpf-write-never-lowers: bp-node profile publishes only a profile that raises or keeps every field. fn-bpnpf-replay-past-the-profile-is-refused: after any prefix that replays :ready to a held list the profile has filled, a well-formed received row makes fn-bpnf-family-replay-rows-aux over the whole journal answer (:fault :held-beyond-profile). Scope: the ADU, bundle-decoder and held-image ceilings are still constants (PKT-276); the Store profile's max-bp-rows is not read; the class does not yet separate expiry, no-route, busy delivery or a clock-domain change (PKT-276).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "depends_on": [
+        "PRF-120",
+        "PRF-121"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-run-class.lisp",
+        "books/bp-node-run-class.lisp",
+        "tests/acl2/bp-run-class-tests.lisp",
+        "tests/acl2/bp-node-host-tests.lisp",
+        "host/bp-node-host.lisp",
+        "host/native/bp.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "books/bp-node-profile.lisp",
+        "books/bp-node-profile-replay.lisp",
+        "books/bp-fnbs-family-replay.lisp",
+        "tests/acl2/bp-node-profile-tests.lisp",
+        "tests/test_bp_service_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-lifecycle-3 (2026-09-26, wave 2), PKT-276. Teeth: tests/acl2/bp-run-class-tests (the five codes; a must-fail per hypothesis of the separation; the fence among mixed evidence; the class of each outcome over the reachable attempting state of PRF-120's teeth, the stale attempt and the pending state as hypothesis removals), tests/acl2/bp-node-host-tests (the mixed article/session cases), tests/acl2/bp-node-profile-tests (the 128-row profile round trip, a zero-row and a 2^24+1-row profile, a configuration-less open, a lowering write refused, replay of two durable kind-5 rows under one row of profile answering :held-beyond-profile and under two :ready). Native: the six BP modules' expectations and SCN-067 under a 128-row profile; see the record.",
+      "events": [
+        "fn-bprc-exit-code-separates-the-classes",
+        "fn-bprc-fence-is-never-masked",
+        "fn-bprc-connection-local-never-fences",
+        "fn-bprc-uncertain-article-fences",
+        "fn-bpnrc-job-result-class-is-the-transport-class",
+        "fn-bpnpf-read-of-octets",
+        "fn-bpnpf-valid-profile-opens",
+        "fn-bpnpf-write-never-lowers",
+        "fn-bpnpf-read-is-valid",
+        "fn-bpnpf-row-past-the-profile-is-named",
+        "fn-bpnpf-replay-past-the-profile-is-refused"
+      ]
     }
   ]
 }
