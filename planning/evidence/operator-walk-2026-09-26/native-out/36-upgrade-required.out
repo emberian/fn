@@ -1,0 +1,2 @@
+upgraded profile=current transactions-used=4 transactions-budget=4294967295 previous-budget=4294967295
+profile format=8 max-transactions=4294967295 max-history-octets=2199023255552 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=8 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=required

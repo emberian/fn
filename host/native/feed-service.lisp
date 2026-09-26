@@ -256,7 +256,7 @@ closed by this worker, preserving the one-closer rule."
                   (fnn-owner-action 'fn-owner-feed-reply-chunk
                                     (fnn-feed-link-peer-octets link)
                                     (fnn-octet-list octets) now)
-                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :connection-refused :need-input :closed :invalid :fault)
+                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :connection-refused :streaming-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
@@ -267,6 +267,9 @@ closed by this worker, preserving the one-closer rule."
          (fnn-owner-feed-flush service)
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
+         (fnn-owner-log 'fn-owner-feed-log-line t))
+       ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
+       (when (eq word :streaming-refused)
          (fnn-owner-log 'fn-owner-feed-log-line t))
        (values word
                (if (member word '(:starttls :auth-user :auth-pass :mode :send))
@@ -401,7 +404,7 @@ ACL2 framer."
                (declare (ignore ignored host port timeout security auth))
                (fnn-feed-drop-link runtime link now backoff)))
            (return))
-          ((:closed :invalid :connection-refused)
+          ((:closed :invalid :connection-refused :streaming-refused)
            (multiple-value-bind (ignored host port backoff timeout security auth)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
              (declare (ignore ignored host port timeout security auth))

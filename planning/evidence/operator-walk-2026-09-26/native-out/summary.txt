@@ -1,0 +1,63 @@
+00 install exit=0 :: installed native fn under /tank/fn/scratch/operator-walk/prefix
+01 help exit=0 expect=0 ok :: accepted operator help
+02 status-no-config exit=5 expect=5 ok :: fn-host: error: operator configuration file is missing
+03 mission-a exit=0 expect=0 ok :: accepted operator mission
+04 status-never-initialized exit=6 expect=6 ok :: refused operator status NO-STORE
+05 health-never-initialized exit=6 expect=6 ok :: refused operator health NO-STORE
+06 run-never-initialized exit=6 expect=6 ok :: refused operator run NO-STORE
+07 init-profile-under-mission exit=5 expect=5 ok :: usage operator init MISSION-FIXES-PROFILE
+08 init-a exit=0 expect=0 ok :: accepted operator init
+09 init-again exit=1 expect=1 ok :: refused operator init STORE-EXISTS
+10 show-port exit=0 expect=0 ok :: accepted operator show
+11 path-identity-a exit=0 expect=0 ok :: accepted operator policy
+12 status-offline-a exit=0 expect=0 ok :: accepted operator status
+13 health-offline-a exit=19 expect=19 ok :: accepted operator health
+14 mission-b exit=0 expect=0 ok :: accepted operator mission
+15 init-b exit=0 expect=0 ok :: accepted operator init
+16 path-identity-b exit=0 expect=0 ok :: accepted operator policy
+17 enrol-login exit=0 expect=0 :: accepted operator principal set-password effective-at-next-start
+18 principal-list exit=0 expect=0 ok :: accepted operator principal list
+19 peer-add-a-to-b exit=0 expect=0 ok :: accepted operator peer
+20 peer-add-b-from-a exit=0 expect=0 ok :: accepted operator peer
+21 peer-list-a exit=0 expect=0 ok :: accepted operator peer
+   start a: listening=yes control-socket=yes
+   start b: listening=yes control-socket=yes
+22 status-live-a exit=0 expect=0 ok :: accepted operator status
+23 post-a exit=0 expect=0 ok :: accepted operator post ACCEPTED
+24 status-live-b exit=0 expect=0 ok :: accepted operator status
+25 health-live-a exit=0 expect=0 ok :: accepted operator health
+26 post-over-budget exit=1 expect=1 ok :: refused operator post REFUSED
+   logs: a 2 lines, b 2 lines; b accepted-peer=1 a feed-lines=1
+   stop a: inactive
+27 peer-add-nostream exit=0 expect=0 ok :: accepted operator peer
+   start a: listening=yes control-socket=yes
+28 post-a-2 exit=0 expect=0 ok :: accepted operator post ACCEPTED
+   nostream: MODE STREAM received 2 times in 40 s; a log stop lines 1
+29 health-live-a-nostream exit=26 expect=26 ok :: accepted operator health
+   stop a: inactive
+   backup: cp -a of the stopped store -> snapshot-store
+   start a: listening=yes control-socket=yes
+30 post-a-3 exit=0 expect=0 ok :: accepted operator post ACCEPTED
+31 post-a-4 exit=0 expect=0 ok :: accepted operator post ACCEPTED
+   stop a: inactive
+32 needs-upgrade exit=0 expect=0 ok :: accepted operator needs-upgrade
+33 upgrade-profile-scale exit=1 expect=1 ok :: refused operator upgrade-profile store profile upgrade refused: not-an-upgrade max-transactions
+34 upgrade-profile-raise exit=0 expect=0 ok :: accepted operator upgrade-profile
+35 rollback-check-kept exit=0 expect=0 ok :: accepted operator rollback-check
+36 upgrade-required exit=0 expect=0 ok :: accepted operator upgrade-profile
+37 rollback-check-kept-required exit=1 expect=1 ok :: refused operator rollback-check
+38 rollback-check-snapshot exit=0 expect=0 ok :: accepted operator rollback-snapshot
+39 rollback-check-foreign exit=1 expect=1 ok :: refused operator rollback-snapshot
+40 recover-after-rollback exit=0 expect=0 ok :: accepted operator recover
+41 status-after-rollback exit=0 expect=0 ok :: accepted operator status
+   start a: listening=yes control-socket=yes
+   crash: SIGKILL, unit failed
+   after crash: stale control socket present
+42 status-after-crash exit=0 expect=0 ok :: accepted operator status
+43 recover-after-crash exit=0 expect=0 ok :: accepted operator recover
+   start a: listening=yes control-socket=yes
+44 health-recovered exit=26 expect=26 ok :: accepted operator health
+45 status-recovered exit=0 expect=0 ok :: accepted operator status
+   stop a: inactive
+   stop b: inactive
+done

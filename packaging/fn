@@ -1,0 +1,49 @@
+#!/bin/sh
+# fn -- the operator's one installed command: the production saved native host image,
+# found and exec'd.  Installed as PREFIX/bin/fn by
+# packaging/install-native.sh (so NODE/current/bin/fn in a managed node);
+# `packaging/fn-native' is a link to this file for older callers.
+#
+# It locates the image and forwards every argument; it decides nothing.  The
+# native image owns its positional protocol, every outcome and every exit
+# code (ACL2: books/native-operator.lisp and the verbs' own books).  The
+# spike's bash `packaging/fn' (spike/mega f6d947d0) made operator decisions
+# on the host; each is now ACL2's or gone (docs/operator.md, "Install"):
+#   mission table and init        -> `operator CONFIG mission NAME', `init'
+#   doctor, thresholds, alerts    -> `operator CONFIG health' ([alerts])
+#   [alerts]/[ops] stripping      -> the ACL2 configuration grammar admits them
+#   upgrade's format comparison   -> `store needs-upgrade', `store rollback-check'
+#   log rotation                  -> SIGHUP, ACL2's reopen decision
+#   profile choice and defaults   -> `init' flags / the mission, in ACL2
+#   release switching, unit files -> packaging/upgrade-native.sh, share/fn/
+#   probe, backup, restore        -> removed (tools/node_probe.py; stop, copy)
+# The default image does not expose the raw owner/reader service diagnostics;
+# tests that need those build the explicit `developer` image profile.
+set -eu
+
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ -n "${FN_NATIVE_HOST:-}" ]; then
+    image=$FN_NATIVE_HOST
+elif [ -x "$here/../libexec/fn/fn-host" ]; then
+    image=$here/../libexec/fn/fn-host
+else
+    root=$(CDPATH= cd -- "$here/.." && pwd)
+    image=$root/build/fn-host
+fi
+
+if [ ! -x "$image" ]; then
+    echo "fn: native host image missing: $image (run tools/build_native_host.sh)" >&2
+    exit 4
+fi
+if [ ! -s "$image.core" ]; then
+    echo "fn: native host core missing: $image.core" >&2
+    exit 4
+fi
+
+# A saved ACL2 image must not inherit a user's customization/system-book
+# selection.  This matches tools/build_native_host.sh and does not interpret
+# any operator-supplied value.
+ACL2_CUSTOMIZATION=NONE
+export ACL2_CUSTOMIZATION
+unset ACL2_SYSTEM_BOOKS
+exec "$image" --fn "$@"

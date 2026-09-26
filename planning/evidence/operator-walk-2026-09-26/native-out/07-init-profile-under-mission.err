@@ -1,0 +1,2 @@
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init
+usage operator init MISSION-FIXES-PROFILE

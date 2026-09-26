@@ -2334,6 +2334,30 @@ The host reads and measures; it decides nothing."
                           (cddr verdict))
                  +fnn-exit-refused+)))))
 
+(defun fnn-rollback-history (root)
+  "The committed transaction files of the store at ROOT as (SEQUENCE .
+OCTET-LENGTH) pairs, in sequence order: an observation, no lock, no replay."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (mapcar (lambda (pair)
+              (let ((st (fnn-lstat (cdr pair))))
+                (unless st (fnn-fault "transaction file vanished"))
+                (cons (car pair) (sb-posix:stat-size st))))
+            (fnn-transaction-files store))))
+
+(defun fnn-command-rollback-snapshot (root snapshot)
+  "What restoring the snapshot store at SNAPSHOT would lose against ROOT:
+ACL2's fn-native-operator-snapshot-loss over both committed histories.  The
+host observes and prints; ACL2 decides and counts."
+  (let* ((cur (fnn-rollback-history root))
+         (snap (fnn-rollback-history snapshot))
+         (verdict (fnn-core 'fn-native-operator-host-snapshot-loss snap cur)))
+    (unless (and (consp verdict) (member (first verdict) '(:loses :refused)))
+      (fnn-fault "ACL2 returned a malformed snapshot verdict"))
+    (fnn-out "~a" (fnn-core 'fn-native-operator-host-snapshot-loss-report
+                            verdict (length snap) (length cur)))
+    (if (eq (first verdict) :loses) +fnn-exit-ok+ +fnn-exit-refused+)))
+
 ;; The offline profile upgrade's cuts, in the order
 ;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
 ;; (books/byte-store-profile-program.lisp) five `:cut' steps.

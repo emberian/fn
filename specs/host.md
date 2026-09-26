@@ -490,3 +490,30 @@ rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
 [health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
 describes the verb.
 
+## Operator walk
+
+HST-008: One installed `fn` (packaging/fn, which locates the saved image and
+forwards every argument, deciding nothing) takes an operator from nothing to
+a recovered node, and each verb answers every store state with a distinct,
+documented outcome. On an **absent** store (none of the store's five entries
+beside `[store] path`), every verb that opens a store answers `refused` with
+exit 6 and ACL2's line naming `init`, never a fault (4): the decision is
+`fn-native-operator-store-outcome` over the host's `lstat` observation, made
+before any open (PRF-130). `init` creates the store (0), refuses an existing
+one (1) and, under a mission's `fn.toml`, takes group words only: a profile
+word is a usage error (5) whose line says what it accepts. On a **fenced**
+store (a writer lock held with no answering owner, a clone fence) `health`
+answers 20 and the offline verbs refuse (1) without opening it. On a
+**running** store the status, health and administrative verbs are answered
+by the owner over its control socket; offline administration refuses (1).
+On a **recovered** store (after a process death) `recover` reports the
+replayed history (0) and `run` serves it. Usage errors print ACL2's accepted
+form before the tagged result line. An outbound peer that refuses `MODE
+STREAM` (RFC 4644 section 2.3) is stopped by name for the owner's run, never
+re-dialled with it. `store rollback-check --snapshot SNAPSHOT` states what
+restoring a pre-migration snapshot loses: ACL2 counts the committed
+transactions after the snapshot's history (PRF-130). The operator guide's
+[native component entry](../docs/operator.md#native-component-entry) and
+[upgrade section](../docs/operator.md#upgrade-and-what-a-rollback-loses)
+describe the verbs.
+
