@@ -2217,10 +2217,6 @@ keystone) and serving continues."
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (unwind-protect
-       (fnn-owner-publish-captured-1 service captured)
-    (fnn-owner-service-nursery)))
-
-(defun fnn-owner-publish-captured-1 (service captured)
   (destructuring-bind (base configs records segment count suffix budget) captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
@@ -2274,7 +2270,8 @@ keystone) and serving continues."
           (setf (fnn-owner-service-publisher service) nil
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq)))))))
+                        (fnn-owner-service-workers service) :test #'eq))))))
+    (fnn-owner-service-nursery)))
 
 (defun fnn-owner-maybe-publish (service)
   "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
