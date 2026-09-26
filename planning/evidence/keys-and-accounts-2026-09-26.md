@@ -401,7 +401,10 @@ account-list 10 and tests 18; must-fails checked to fail.
   6567be5e: tests/acl2/native-admin-peer-budget-tests and tests/acl2/account-list-tests passed, 214
   from the cache, no book over 10 s. Manifest
   planning/evidence/manifests/certify-20260926T130312Z-2065168.json.
-- `make check-lane` green at 6567be5e.
+- r3: persvati run-20260926T130502Z-510f (tests/acl2/docs-operator-grammar-tests, regenerated for the
+  docs/operator.md line shift) at d6721738: passed 1, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T130524Z-2084756.json.
+- `make check-lane` green at the final commit.
 
 ### Native (hbox /tank/fn/scratch/keys-and-accounts-3/native-n1, fb3a1e13)
 
