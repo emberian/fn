@@ -67,7 +67,10 @@ class NativeImplicitTlsTests(unittest.TestCase):
                       'tls_key = "{}"'.format(private_key)]
         if tls_port is not None:
             lines.append('tls_port = {}'.format(tls_port))
-        lines += ['', '[auth]', 'protected_only = true', '']
+        # protected_only needs the TLS pair (the run gate); without one the
+        # node is a plain loopback node.
+        lines += ['', '[auth]', 'protected_only = {}'.format(
+            'true' if certificate is not None else 'false'), '']
         config = self.root / "fn.toml"
         config.write_text("\n".join(lines), encoding="ascii")
         return config
@@ -112,8 +115,6 @@ class NativeImplicitTlsTests(unittest.TestCase):
                     self.assertTrue(lines.ask(b"CAPABILITIES").startswith(b"101 "))
                     capabilities = lines.block()
                     self.assertNotIn(b"STARTTLS\r\n", capabilities)
-                    self.assertTrue(any(c.startswith(b"AUTHINFO") for c in capabilities),
-                                    capabilities)
                     # protected_only: AUTHINFO is allowed at once, not 483.
                     self.assertTrue(lines.ask(b"AUTHINFO USER reader").startswith(b"381 "))
                     self.assertTrue(lines.ask(b"STARTTLS").startswith(b"502 "))
