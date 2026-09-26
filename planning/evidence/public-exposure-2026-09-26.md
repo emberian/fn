@@ -49,6 +49,14 @@ monotonic clock; it sends the line, waits, or closes as the answer says.
 | TLS renegotiation / handshake cost | OpenSSL 3.5's server context: TLS 1.3 has no renegotiation, and OpenSSL 3 refuses client-initiated renegotiation on TLS 1.2 unless enabled (it is not); the handshake itself is inside the 10 s send/receive timeouts of the host | host trust (host/native/tls.lisp), not a theorem | handshake failure closes that connection only | `owner TLS connection:` log line |
 | A hostile peer on the transit port | a configured peer is resolved by source address and admitted by the same `fn-exp-open` (it counts against the total and its address); its offers are decided by `fn-peer-step` against its record (inbound groups, `inbound-max-octets`) | ACL2 (existing peering books) | `437`/`438`/`439` per offer | the service log |
 
+The brief's "per-address command rate" and "per-connection work budget
+per quantum" are one row here: a step is the unit of work (one fn-owner-chunk
+over at most one host read of `+fnn-max-read+` octets, however many
+pipelined commands it holds), and every connection's steps count against its
+address, so no connection can exceed the budget its address has. A separate
+per-connection row would only ever be tighter than that and was not needed
+by any phase of the campaign.
+
 Two limits are deliberately waits, not refusals: the step budget and the
 post rate. A refusal would either cut a command in the middle (the step is
 the host read, not a command) or invent a reply code RFC 3977 does not give
