@@ -5891,14 +5891,14 @@
     {
       "id": "PRF-161",
       "title": "The limits of a public reader port as the host calls them: admission bounded by the total and per-address rows in force, a step budget per quantum that waits and never refuses, the none anonymous policy gating every reader and posting command 480, and no limit or reconfiguration dropping a connection",
-      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step; fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the run's max_connections, ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total and the address below its per-address limit in force, and leaves the address at most one higher and within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
+      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step, as books/public-exposure-reply.lisp's fn-exp-observe-effects over the step's effects (fn-exp-observe-effects-unfolds: it is fn-exp-observe of fn-served-reply-octets of the effects, so every fn-exp-observe theorem here is about the host's call; its executable reads the reply's two facts, answered and the 481 count, by one constant-stack scan of the effects with no copy of the reply: fn-exp-481-scan-counts-the-481-replies, fn-exp-effects-scan-is-the-reply-scan, fn-exp-observe-effects-is-the-observation-of-the-reply; exposure-reply-size, PKT-481: fn-exp-481-count's per-octet recursion over a 2 MiB reply had exhausted the control stack and stopped the owner); fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the run's max_connections, ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total and the address below its per-address limit in force, and leaves the address at most one higher and within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
       "milestone": "M6",
       "requirements": [
         "NNT-031"
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -5918,7 +5918,11 @@
         "docs/operator.md",
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/public-exposure-reply.lisp",
+        "tests/acl2/public-exposure-reply-tests.lisp",
+        "planning/evidence/exposure-reply-size-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T135318Z-2532226.json"
       ],
       "events": [
         "fn-exp-open-admits-within-the-limits-in-force",
@@ -5935,7 +5939,10 @@
         "fn-exp-observe-keeps-the-connection-ids",
         "fn-exp-limits-never-drop-a-connection",
         "fn-exp-observe-closes-only-on-a-failed-login",
-        "fn-exp-idle-closes-only-silence"
+        "fn-exp-idle-closes-only-silence",
+        "fn-exp-481-scan-counts-the-481-replies",
+        "fn-exp-effects-scan-is-the-reply-scan",
+        "fn-exp-observe-effects-is-the-observation-of-the-reply"
       ]
     },
     {
