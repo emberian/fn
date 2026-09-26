@@ -7079,6 +7079,44 @@
         "fn-osi-pidx-prepare-keeps-indexed",
         "fn-osi-pidx-prepare-keeps-view-indexed"
       ]
+    },
+    {
+      "id": "PRF-189",
+      "title": "OVER's rows are found through a number index the group index carries, equal to the bucket walk under the group index's relation",
+      "statement": "Each bucket of the group index is (group entries . numbers); NUMBERS is a trie keyed by local article number (books/group-number-index.lisp; at most 31 levels for numbers <= 2^31 - 1), and each entry's number and Message-ID (fn-nntp-index-entry-available) are decided once, when fn-gnix-add adds it. Relation fn-gidx-numbers-okp (books/group-bucket-index.lisp): every bucket's number index is fn-gnix-build of its entries. Established by every build (fn-gidx-numbers-okp-of-build, -of-build-entries; no hypothesis) and preserved by fn-gidx-put (fn-gidx-numbers-okp-of-put), fn-gidx-put-all and fn-gidx-refresh (books/owner.lisp; fn-own-refresh's group-index transition, the only one that changes it). Keystone fn-gidx-nidx-number-article-is-walk (books/group-bucket-article.lisp; hypothesis (fn-gidx-numbers-okp buckets)): (fn-gidx-nidx-number-article number (fn-gidx-bucket-numbers group buckets) trie) = (fn-gidx-entry-number-article group number (fn-gidx-bucket group buckets) trie), which walks the bucket with fn-gidx-find-number-entry; lemma fn-gnix-find-of-build (no hypothesis): the trie answers the walk's first match. The host-called subject: fn-nntp-over-range-indexed (books/nntp-range-indexed.lisp), which the pinned dispatcher fn-nntp-archive-command-pinned's OVER/XOVER arm calls (fn-nntp-step-pinned, reached from host/owner-host.lisp fn-owner-chunk through fn-scar-ocfg-read-tls-prefix), now renders through fn-nov-lines-for-numbers-numbered; fn-nntp-over-range-indexed-is-walk (same hypothesis) equates it with the per-row walk's renderer fn-nntp-over-range-walk, and fn-nov-lines-for-numbers-numbered-of-build rewrites it to fn-nov-lines-for-numbers-indexed under a build, so PRF-067's fn-nntp-over-range-indexed-equals-fold and fn-nntp-carried-over-range-equals-archive-command keep their statements. Not claimed: the range's number selection (fn-nntp-index-group-range-numbers) still walks the bucket once per OVER and re-decides availability for in-range entries; ARTICLE/HEAD/BODY/STAT by number use the archive walk fn-nntp-find-group-number (PKT-544).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-001",
+        "NNT-006"
+      ],
+      "depends_on": [
+        "PRF-067"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/group-number-index.lisp",
+        "books/group-bucket-index.lisp",
+        "books/group-bucket-article.lisp",
+        "books/nntp-range-indexed.lisp",
+        "books/owner.lisp",
+        "tests/acl2/group-number-index-tests.lisp",
+        "planning/evidence/over-number-index-2026-09-26.md"
+      ],
+      "progress_note": "Lane over-number-index (2026-09-26). Teeth: tests/acl2/group-number-index-tests.lisp (buckets from fn-gidx-refresh, a build then a put; the keystone's reachable witness at numbers 2 and 2^31 - 1; a labelled corrupted-state bucket with an emptied number index on which the relation and the conclusion both fail; must-fail of the keystone, the put, put-all and refresh preservation and fn-nntp-over-range-indexed-is-walk without the relation; fn-gnix-get-of-set without each posp hypothesis). Validation by batch: REPL-admitted and incrementally certified on persvati; the batch certifies the union.",
+      "events": [
+        "fn-gidx-nidx-number-article-is-walk",
+        "fn-nntp-over-range-indexed-is-walk",
+        "fn-gnix-find-of-build",
+        "fn-gnix-get-of-set",
+        "fn-nov-lines-for-numbers-numbered-of-build",
+        "fn-gidx-bucket-numbers-under-okp",
+        "fn-gidx-numbers-okp-of-build",
+        "fn-gidx-numbers-okp-of-build-entries",
+        "fn-gidx-numbers-okp-of-put",
+        "fn-gidx-numbers-okp-of-put-all",
+        "fn-gidx-numbers-okp-of-refresh"
+      ]
     }
   ]
 }
