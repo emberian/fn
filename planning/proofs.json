@@ -4612,7 +4612,8 @@
         "books/consumer-owner-local.lisp",
         "host/owner-host.lisp",
         "planning/evidence/consumer-e2-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T000312Z-2863061.json"
+        "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
+        "planning/evidence/manifests/certify-20260926T005533Z-4181560.json"
       ],
       "progress_note": "Lane consumer-e2 (2026-09-25), PKT-165 for the retaining-mode decision.",
       "events": [
