@@ -172,6 +172,109 @@
 
 (in-theory (disable fn-pbb-strip-optional-at))
 
+;; -----------------------------------------------------------------------------
+;; The Injection-Info line with or without parameters (PKT-597): the index
+;; twins of `fn-inj-param-rest' and `fn-inj-strip-info'.
+
+(defun fn-pbb-param-rest-at (i fn-octets)
+  ; The index past the first CRLF at or after I when no CR or LF stands
+  ; alone before it, else :no.
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (<= i (fn-octets-len fn-octets)))
+                  :measure (nfix (- (fn-octets-len fn-octets) (nfix i)))))
+  (cond ((or (not (natp i)) (>= i (fn-octets-len fn-octets))) :no)
+        ((equal (fn-octets-get i fn-octets) 13)
+         (if (and (< (1+ i) (fn-octets-len fn-octets))
+                  (equal (fn-octets-get (1+ i) fn-octets) 10))
+             (+ i 2)
+           :no))
+        ((equal (fn-octets-get i fn-octets) 10) :no)
+        (t (fn-pbb-param-rest-at (1+ i) fn-octets))))
+
+(defthm fn-pbb-param-rest-at-bounds
+  (implies (and (natp i) (<= i (len fn-octets))
+                (not (equal (fn-pbb-param-rest-at i fn-octets) :no)))
+           (and (integerp (fn-pbb-param-rest-at i fn-octets))
+                (<= i (fn-pbb-param-rest-at i fn-octets))
+                (<= (fn-pbb-param-rest-at i fn-octets) (len fn-octets))))
+  :rule-classes ((:rewrite :corollary
+                  (implies (and (natp i) (<= i (len fn-octets))
+                                (not (equal (fn-pbb-param-rest-at i fn-octets) :no)))
+                           (integerp (fn-pbb-param-rest-at i fn-octets))))
+                 (:linear :trigger-terms ((fn-pbb-param-rest-at i fn-octets))
+                  :corollary
+                  (implies (and (natp i) (<= i (len fn-octets))
+                                (not (equal (fn-pbb-param-rest-at i fn-octets) :no)))
+                           (and (<= i (fn-pbb-param-rest-at i fn-octets))
+                                (<= (fn-pbb-param-rest-at i fn-octets) (len fn-octets))))))
+  :hints (("Goal" :induct (fn-pbb-param-rest-at i fn-octets))))
+
+(defthm fn-pbb-param-rest-at-is-inj-param-rest
+  (implies (and (natp i) (<= i (len fn-octets)) (true-listp fn-octets))
+           (equal (fn-inj-param-rest (nthcdr i fn-octets))
+                  (if (equal (fn-pbb-param-rest-at i fn-octets) :no)
+                      :no
+                    (nthcdr (fn-pbb-param-rest-at i fn-octets) fn-octets))))
+  :hints (("Goal" :induct (fn-pbb-param-rest-at i fn-octets)
+           :in-theory (enable fn-inj-param-rest))))
+
+(in-theory (disable fn-pbb-param-rest-at))
+
+(defun fn-pbb-strip-info-at (agent i fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (<= i (fn-octets-len fn-octets)))
+                  :guard-hints
+                  (("Goal" :in-theory (disable len)
+                    :use ((:instance fn-pbb-strip-at-bounds
+                                     (prefix (fn-inj-append *fn-inj-injection-info-field*
+                                                            agent))))))))
+  (let ((r (fn-pbb-strip-at (fn-inj-injection-info-line agent) i fn-octets)))
+    (if (equal r :no)
+        (let ((p (fn-pbb-strip-at (fn-inj-append *fn-inj-injection-info-field* agent)
+                                  i fn-octets)))
+          (if (and (not (equal p :no))
+                   (< p (fn-octets-len fn-octets))
+                   (equal (fn-octets-get p fn-octets) 59))
+              (fn-pbb-param-rest-at p fn-octets)
+            :no))
+      r)))
+
+(defthm fn-pbb-strip-info-at-bounds
+  (implies (and (natp i) (<= i (len fn-octets))
+                (not (equal (fn-pbb-strip-info-at agent i fn-octets) :no)))
+           (and (integerp (fn-pbb-strip-info-at agent i fn-octets))
+                (<= i (fn-pbb-strip-info-at agent i fn-octets))
+                (<= (fn-pbb-strip-info-at agent i fn-octets) (len fn-octets))))
+  :rule-classes ((:rewrite :corollary
+                  (implies (and (natp i) (<= i (len fn-octets))
+                                (not (equal (fn-pbb-strip-info-at agent i fn-octets) :no)))
+                           (integerp (fn-pbb-strip-info-at agent i fn-octets))))
+                 (:linear :trigger-terms ((fn-pbb-strip-info-at agent i fn-octets))
+                  :corollary
+                  (implies (and (natp i) (<= i (len fn-octets))
+                                (not (equal (fn-pbb-strip-info-at agent i fn-octets) :no)))
+                           (and (<= i (fn-pbb-strip-info-at agent i fn-octets))
+                                (<= (fn-pbb-strip-info-at agent i fn-octets) (len fn-octets))))))
+  :hints (("Goal" :in-theory (disable len)
+           :use ((:instance fn-pbb-strip-at-bounds (prefix (fn-inj-injection-info-line agent)))
+                 (:instance fn-pbb-strip-at-bounds
+                            (prefix (fn-inj-append *fn-inj-injection-info-field* agent)))
+                 (:instance fn-pbb-param-rest-at-bounds
+                            (i (fn-pbb-strip-at (fn-inj-append *fn-inj-injection-info-field* agent)
+                                                i fn-octets)))))))
+
+(defthm fn-pbb-strip-info-at-is-inj-strip-info
+  (implies (and (natp i) (<= i (len fn-octets)) (true-listp fn-octets))
+           (equal (fn-inj-strip-info agent (nthcdr i fn-octets))
+                  (if (equal (fn-pbb-strip-info-at agent i fn-octets) :no)
+                      :no
+                    (nthcdr (fn-pbb-strip-info-at agent i fn-octets) fn-octets))))
+  :hints (("Goal" :in-theory (e/d (fn-inj-strip-info) (len))
+           :use ((:instance fn-pbb-strip-at-bounds
+                            (prefix (fn-inj-append *fn-inj-injection-info-field* agent)))))))
+
+(in-theory (disable fn-pbb-strip-info-at))
+
 ; -----------------------------------------------------------------------------
 ; The source walk: the index of the source, or nil.
 
@@ -179,15 +282,15 @@
   ; K is the index of what follows an Injection-Date line carrying DATE.
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp k) (<= k (fn-octets-len fn-octets)))))
-  (let ((v1 (fn-pbb-strip-at (fn-inj-injection-info-line agent) k fn-octets)))
+  (let ((v1 (fn-pbb-strip-info-at agent k fn-octets)))
     (if (not (equal v1 :no))
         (if (or (not (equal (fn-pbb-strip-at (fn-inj-message-id-line msgid) v1 fn-octets)
                             :no))
                 (not (equal (fn-pbb-strip-at (fn-inj-date-line date) v1 fn-octets) :no)))
             nil
           v1)
-      (let ((s (fn-pbb-strip-at
-                (fn-inj-injection-info-line agent)
+      (let ((s (fn-pbb-strip-info-at
+                agent
                 (fn-pbb-strip-optional-at
                  (fn-inj-date-line date)
                  (fn-pbb-strip-optional-at (fn-inj-message-id-line msgid) k fn-octets)
@@ -253,7 +356,7 @@
                   :guard (and (natp r1) (<= r1 (fn-octets-len fn-octets)))
                   :guard-hints (("Goal" :in-theory (disable len)))))
   (cond ((equal (fn-pbb-strip-at *fn-inj-injection-date-field* r1 fn-octets) :no)
-         (let ((s (fn-pbb-strip-at (fn-inj-injection-info-line agent) r1 fn-octets)))
+         (let ((s (fn-pbb-strip-info-at agent r1 fn-octets)))
            (if (equal s :no) nil s)))
         (t
          (let* ((j (fn-pbb-strip-at *fn-inj-injection-date-field* r1 fn-octets))
@@ -313,8 +416,7 @@
            :in-theory (e/d (fn-pbb-source-after-path) (len))
            :use ((:instance fn-pbb-strip-at-bounds (prefix *fn-inj-injection-date-field*)
                             (i r1))
-                 (:instance fn-pbb-strip-at-bounds (prefix (fn-inj-injection-info-line agent))
-                            (i r1))
+                 (:instance fn-pbb-strip-info-at-bounds (i r1))
                  (:instance fn-pbb-strip-at-bounds
                             (prefix (fn-inj-injection-date-line (fn-pbb-date))) (i r1))
                  (:instance fn-pbb-source-after-stamp-bounds (k (fn-pbb-r2))
@@ -325,7 +427,7 @@
 (local
  (defun fn-pbb-v2-tail (r1 agent msgid)
    (cond ((equal (fn-inj-strip *fn-inj-injection-date-field* r1) :no)
-          (let ((s (fn-inj-strip (fn-inj-injection-info-line agent) r1)))
+          (let ((s (fn-inj-strip-info agent r1)))
             (if (equal s :no) nil (cons t s))))
          (t
           (let* ((date (fn-inj-take 31 (fn-inj-drop (len *fn-inj-injection-date-field*)
@@ -727,10 +829,11 @@
                   :guard (and (natp i) (<= i (fn-octets-len fn-octets)))))
   (let* ((line (fn-pbb-line-at i fn-octets))
          (r (fn-inj-strip *fn-inj-injection-info-field* line)))
-    (if (and (true-listp r) (< 2 (len r)))
-        (let ((agent (fn-inj-take (- (len r) 2) r)))
-          (if (equal (fn-inj-injection-info-line agent) line) agent nil))
-      nil)))
+    (or (if (and (true-listp r) (< 2 (len r)))
+            (let ((agent (fn-inj-take (- (len r) 2) r)))
+              (if (equal (fn-inj-injection-info-line agent) line) agent nil))
+          nil)
+        (fn-pb-params-line-agent line))))
 
 (defthm fn-pbb-info-line-agent-is-pb-info-line-agent
   (implies (and (natp i) (<= i (len fn-octets)) (true-listp fn-octets))

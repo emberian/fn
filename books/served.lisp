@@ -566,14 +566,28 @@
 ; enumeration.  Both recognizers are specification vocabulary and never run on
 ; the served path, so neither is guard verified.
 
-(defun fn-served-submit-effect (decision)
+; The login the submission was decided under (PKT-597): the AUTHINFO USER
+; name of the connection's auth session at the event that delivered the
+; article body, once that session authenticated; nil when it had not.
+; RFC 4643 section 2.3.1 note [2]: an authenticated session refuses a
+; further AUTHINFO with 502 (books/nntp-auth.lisp fn-auth-authinfo), so the
+; login of an authenticated session never changes.  It is read here, from
+; the session before the step, and not by the owner after the read: a read
+; may carry an anonymous POST and a later AUTHINFO, and the article is the
+; anonymous one.  books/owner.lisp fn-own-finish-read records it in the
+; submission, where books/injection-info-params.lisp reads it.
+(defun fn-served-login (as)
   (declare (xargs :guard t))
-  (list :submit decision))
+  (if (fn-auth-session-subject as) (fn-auth-session-pending as) nil))
+
+(defun fn-served-submit-effect (decision login)
+  (declare (xargs :guard t))
+  (list :submit decision login))
 
 (defun fn-served-submit-effectp (effect)
   (declare (xargs :guard t :verify-guards nil))
   (and (true-listp effect)
-       (equal (len effect) 2)
+       (equal (len effect) 3)
        (equal (car effect) :submit)
        (or (fn-inj-injectedp (car (cdr effect)))
            (fn-peer-submissionp (car (cdr effect))))))
@@ -665,11 +679,11 @@
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (mbe :logic (append effects
                          (if submission
-                             (list (fn-served-submit-effect submission))
+                             (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))))
                            nil))
           :exec (fn-ag-append effects
                               (if submission
-                                  (list (fn-served-submit-effect submission))
+                                  (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))))
                                 nil))))))
 
 ; Local projections of one dispatch, in accessor vocabulary, so that nothing
@@ -729,7 +743,8 @@
             (append (fn-post-result-effects r)
                     (if (fn-post-result-submission r)
                         (list (fn-served-submit-effect
-                               (fn-post-result-submission r)))
+                               (fn-post-result-submission r)
+                               (fn-served-login (fn-served-conn-session conn))))
                       nil))))
    :hints (("Goal" :in-theory (disable fn-auth-step-pinned fn-post-offeredp
                                        fn-wire-begin-article-with-line-limit
@@ -1178,6 +1193,20 @@
         (fn-served-submission (cdr effects)))
     nil))
 
+;; The login of the first submission (PKT-597), read exactly where
+;; fn-served-submission reads the submission: the owner records the two
+;; together (books/owner.lisp fn-own-finish-read).
+(defun fn-served-submission-login (effects)
+  (declare (xargs :guard t))
+  (if (consp effects)
+      (if (and (consp (car effects))
+               (equal (car (car effects)) :submit)
+               (consp (cdr (car effects)))
+               (car (cdr (car effects))))
+          (if (consp (cdr (cdr (car effects)))) (car (cdr (cdr (car effects)))) nil)
+        (fn-served-submission-login (cdr effects)))
+    nil))
+
 ; DEFECT REPAIRED 2026-09-20 (w6/peering-inbound-2): without the
 ; fn-served-effectsp hypothesis this is FALSE.  Counterexample:
 ; left = ((:submit nil)), right = ((:submit 5)).  fn-served-submission
@@ -1195,6 +1224,17 @@
                   (if (fn-served-submission left)
                       (fn-served-submission left)
                     (fn-served-submission right))))
+  :hints (("Goal" :in-theory (e/d (fn-served-effectsp fn-served-effectp
+                                   fn-served-submit-effectp)
+                                  ((:d fn-inj-injectedp)
+                                   (:d fn-peer-submissionp))))))
+
+(defthm fn-served-submission-login-of-append
+  (implies (fn-served-effectsp left)
+           (equal (fn-served-submission-login (append left right))
+                  (if (fn-served-submission left)
+                      (fn-served-submission-login left)
+                    (fn-served-submission-login right))))
   :hints (("Goal" :in-theory (e/d (fn-served-effectsp fn-served-effectp
                                    fn-served-submit-effectp)
                                   ((:d fn-inj-injectedp)
