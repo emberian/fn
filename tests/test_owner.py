@@ -26,6 +26,33 @@ class OwnerProcess:
         # exception at a named point in the serve loop, once.
         self.inject_fault = inject_fault
         self.proc = None
+        self.error_log = None
+
+    def _error_log(self):
+        """Stderr goes to a file, never an undrained pipe.
+
+        A pipe nobody reads fills at 64 KiB and the owner then blocks in its
+        write: a boot that failed with a long ACL2 transcript (81 KiB when
+        host/owner-host.lisp named an undefined function) never exited, and
+        the start loop waited out its 300 s deadline instead of failing with
+        the reason.
+        """
+        if self.error_log is not None:
+            self.error_log.close()
+        self.error_log = tempfile.TemporaryFile()
+        return self.error_log
+
+    def _read_errors(self):
+        if self.error_log is None:
+            return ""
+        self.error_log.seek(0)
+        return self.error_log.read().decode("utf-8", "replace")
+
+    def _close_pipes(self, proc):
+        proc.stdout.close()
+        if self.error_log is not None:
+            self.error_log.close()
+            self.error_log = None
 
     def start(self):
         extra = []
@@ -43,7 +70,7 @@ class OwnerProcess:
             [sys.executable, "tools/run_owner.py", "--store", str(self.store),
              "--port", "0", "--control", str(self.control),
              "--max-connections", str(self.max_connections)] + extra,
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=self._error_log())
         # Recovery loads the owner books and replays the history; on a
         # co-tenant-loaded box that ACL2 startup runs minutes, not seconds.
         deadline = time.monotonic() + 300
@@ -81,10 +108,9 @@ class OwnerProcess:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5)
-        error = proc.stderr.read().decode("utf-8", "replace")
-        proc.stdout.close()
-        proc.stderr.close()
-        raise RuntimeError("owner did not start: " + error)
+        error = self._read_errors()
+        self._close_pipes(proc)
+        raise RuntimeError("owner did not start: " + error[-8000:])
 
     def stop_reading_stderr(self):
         """Stop the owner and answer what it wrote to stderr.
@@ -102,16 +128,15 @@ class OwnerProcess:
         except subprocess.TimeoutExpired:
             self.proc.kill()
             self.proc.wait(timeout=5)
-        text = self.proc.stderr.read().decode("utf-8", "replace")
-        self.proc.stdout.close()
-        self.proc.stderr.close()
+        text = self._read_errors()
+        self._close_pipes(self.proc)
         self.proc = None
         return text
 
     def stderr(self):
         try:
-            return self.proc.stderr.read().decode("utf-8", "replace")
-        except (OSError, ValueError, AttributeError):
+            return self._read_errors()
+        except (OSError, ValueError):
             return ""
 
     def stop(self):
@@ -124,16 +149,14 @@ class OwnerProcess:
         except subprocess.TimeoutExpired:
             self.proc.kill()
             self.proc.wait(timeout=5)
-        self.proc.stdout.close()
-        self.proc.stderr.close()
+        self._close_pipes(self.proc)
         self.proc = None
 
     def kill(self):
         """The crash: no shutdown, no flush, the owner simply dies."""
         self.proc.kill()
         self.proc.wait(timeout=5)
-        self.proc.stdout.close()
-        self.proc.stderr.close()
+        self._close_pipes(self.proc)
         self.proc = None
 
     def connect(self):

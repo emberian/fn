@@ -542,16 +542,19 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertGreater(after["charge-reserved"], 0)
 
         owner = self.start_owner(IMAGE)
-        # budget-2 .. budget-1 used: every POST is accepted, the last one at
-        # used = 127 = budget-1.
-        replies = self.post_many(ids[1:128])
-        self.assertEqual(replies, ["240 article received OK"] * 127)
-        # used = budget and used stays = budget: refused by name, twice.  A
+        # PKT-169 (STO-019): admission keeps the maintenance reservation, one
+        # release record, including its transaction.  So an article is
+        # admitted while used + 1 < budget: the last one at used = 126, and
+        # the 128th transaction stays the release's
+        # (books/store-maintenance-reserve.lisp `fn-smr-article-budget').
+        replies = self.post_many(ids[1:127])
+        self.assertEqual(replies, ["240 article received OK"] * 126)
+        # used = budget-1 and it stays there: refused by name, twice.  A
         # Message-ID the store already holds is still answered by the Store's
         # existing-article decision, not by the budget: the same bytes are
         # the duplicate answer and a changed authored byte the conflict
         # answer (D25), neither the capacity refusal.
-        refused = self.post_many(ids[128:130] + ids[:1])
+        refused = self.post_many(ids[127:129] + ids[:1])
         self.assertEqual(
             refused[:2],
             ["441 posting failed; the store has no capacity for this article"] * 2)
@@ -563,7 +566,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
             ["441 posting failed; a different article with this Message-ID is stored here"])
         self.stop(owner)
         full = self.headroom()
-        self.assertEqual(full["transactions-used"], 128)
+        self.assertEqual(full["transactions-used"], 127)
         self.assertEqual(full["transactions-budget"], 128)
 
     def test_the_scale_profile_is_reachable_from_init(self):

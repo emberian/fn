@@ -177,7 +177,10 @@ The caller holds SERVICE's mutex for this whole function."
                (fnn-fault "committed BP application receipt lost its result"))
              (return-from fnn-bpapp-accept-locked (values result adu))))
           (:busy (return-from fnn-bpapp-accept-locked (values :busy nil)))
-          (:refused (return-from fnn-bpapp-accept-locked (values :refused nil)))
+          (:refused
+           ;; The dispatcher's reason, for the refusal line.
+           (setq *fnn-owner-transit-detail* (second action))
+           (return-from fnn-bpapp-accept-locked (values :refused nil)))
           (otherwise (fnn-fault "unknown BP application action ~a" action)))))
     (fnn-fault "BP application dispatcher did not reach a terminal state")))
 

@@ -14,6 +14,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
+import acl2_slots
 import run_store
 from run_owner import Acl2Owner, acl2_octet_list
 from feed_wire import Journal
@@ -25,10 +26,14 @@ class BookBridge(Acl2Owner):
         self.proc = None
         self.poisoned = False
         self.peer = peer
-        env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", ACL2_BOOK_HASH_ALISTP="NIL")
-        self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
+        self.closed = False
+        # The machine's ACL2 pool and heap cap, as the production bridges
+        # (PKT-162); Acl2Store.close() returns the slot.
+        self.proc = acl2_slots.popen([os.environ.get("FN_ACL2", "acl2")],
+                                     "feed-journal book bridge", cwd=ROOT,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT, env=env)
+                                     stderr=subprocess.STDOUT)
+        self._slot_held = True
         run_store.read_prompt(self.proc, run_store.ACL2_START_TIMEOUT_SECONDS)
         self.call('(include-book "books/feed-journal")')
         self.call('(ld "host/feed-filename-host.lisp" :ld-error-action :return :ld-error-triples t)')

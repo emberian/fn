@@ -66,15 +66,14 @@
 ;; keeps the reassembly reference closed in the main proof.
 (local
  (defthm fn-bpnf-reassemble-is-not-ready
-   (not (equal (car (fn-bpf-reassemble fs total)) :ready))
-   :hints (("Goal" :in-theory (e/d (fn-bpf-reassemble)
-                                   (fn-bpf-inputsp fn-bpf-canvas
-                                    fn-bpf-first-index))))))
+   (not (equal (car (fn-bpfw-spec fs total)) :ready))
+   :hints (("Goal" :use ((:instance fn-bpfw-spec-is-never-ready))
+            :in-theory (disable fn-bpfw-spec fn-bpfw-spec-is-never-ready)))))
 
 (local
  (defthm fn-bpnf-fragment-query-is-not-ready
    (not (equal (car (fn-bpnf-fragment-query st anchor)) :ready))
-   :hints (("Goal" :in-theory (disable fn-bpf-reassemble
+   :hints (("Goal" :in-theory (disable fn-bpfw-spec
                                        fn-bpnf-active-fragmentp
                                        fn-bpnf-active-set
                                        fn-bpnf-fragment-cells

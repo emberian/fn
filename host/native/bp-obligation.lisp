@@ -154,7 +154,7 @@
            (service (fnn-bps-open fnbs config wall wall-error)))
       ;; Routing: the carrier's hop is ACL2's choice over this Store's
       ;; bp-route table, at queue time (fn-bprt-job-route) and before the
-      ;; offer (fn-bpnp-contact-next).
+      ;; offer (fn-bpnj-contact-next).
       (unwind-protect
            (let* ((routed (fnn-bps-use-store-routes service store))
                   (work-octets (fnn-octet-list (fnn-string-octets (first key))))

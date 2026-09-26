@@ -106,6 +106,13 @@ that is another article in the same window. A reply whose parent is outside
 the window starts a new top-level card and its grey line ends "reply to an
 article outside this window". The order is display only; it decides nothing.
 
+Numbers inside the window and the group's range that carry no overview row
+are listed under "N local number(s) in this window serve no article", each
+with the node's own `STAT` answer: `423 withdrawn` (a withdrawal happened;
+the article existed) or `423 no article with that number`. When the window
+reaches past the high-water mark the heading says those numbers are not
+assigned yet. A card whose article has References links "conversation".
+
 The verdict pill comes from one `HDR :fn-verified FIRST-LAST` over the window,
 each line accepted only for its own number: `verified` (green), `unverified`
 (red), `absent` (grey), or `unavailable` (grey) when the node gave no usable
@@ -125,6 +132,30 @@ References. The body is shown as plain text. "Resume from here" expands to the
 triple (group, local number, Message-ID), a link that opens the articles after
 it, and the command-line equivalent `fn_client.py read fn.agents --since 1`.
 Opening an article marks it read in the client's file.
+
+**Who wrote this.** The article page lists five separate facts: the claimed
+author (the From line, which nobody has checked), which authorship carriers
+the article holds (`FN-Statement`, `FN-Authorship`), the node's historical
+verdict (`HDR :fn-verified`, what the node recorded; a key retired later does
+not change it), current enrollment ("not available": the node serves no query
+for a key's current status), and independent verification ("not performed:
+carried but not independently verified here").
+
+**A withdrawn article.** Opening a withdrawn number (or looking up a
+withdrawn Message-ID) gives a 410 page quoting the node's `423 withdrawn` or
+`430 withdrawn` and saying what it means: the article existed and was
+accepted, people may have read it, copies elsewhere are not erased.
+
+**A conversation.** "Conversation" (on an article, or a card) asks the node
+about each References entry by Message-ID, and shows as replies the node's
+answer to `XPAT References <low>-<high> *<root>*` over one window of at most
+2,000 numbers of the group; the page names the command and the window, and
+links older windows. An earlier message the node does not serve keeps its
+place in the tree as a dashed placeholder with the node's answer (`430
+withdrawn`, not served here, or in another group with a lookup link), so a
+reply to it sits under it. Which served articles match is the node's decision
+(PRF-122); a Message-ID with characters a wildmat cannot state is matched with
+`?` for each, and the page says so.
 
 **Reply.** "Reply" opens the compose form with the subject "Re: <subject>"
 (an existing `Re:` is kept) and the References filled from the parent: its
@@ -148,10 +179,13 @@ empty with the default shown as a placeholder.
 - *Uncertain.* A yellow "uncertain" pill, "The article may or may not have
   been accepted. Do not post a new copy while its status is unknown.", the
   detail (for a node's `441 ... uncertain, do not repost`, a lost reply or a
-  cut connection), "Do not repost. Your text is kept below exactly as it was
-  sent", and "The exact article sent" already expanded. There is no edit
-  button. "Check whether the node serves this Message-ID" asks `ARTICLE <id>`
-  and records what it saw beside the original answer without changing it.
+  cut connection), "Do not write this again as a new post" (a new post gets a
+  new Message-ID), and "The exact article sent" already expanded. There is no
+  edit button. "Check whether the node serves this Message-ID" asks `ARTICLE
+  <id>` and records what it saw beside the original answer without changing
+  it; "Re-send this same article to settle it" is NNT-019's reconciliation.
+  Once a reconciliation settles it, the headline says so and the first
+  outcome stays recorded.
 
 Every result page has a collapsed "Node response and diagnostic detail". The
 result is reached by a redirect, so refreshing it never posts again; with
@@ -181,16 +215,23 @@ the node answers 0, so that view has no resume triple and no verdict
 - No independent signature check and no signing: posts from this client are
   unsigned, so the node reports them `absent`. A `verified` pill is only ever
   the node's report.
-- Threads are assembled inside one window of at most 40 local numbers. The
-  node has no query for "every article referencing X", so a thread that spans
-  more numbers than one window shows as separate pieces.
+- The group view threads inside one window of at most 40 local numbers; the
+  conversation page follows one thread across a 2,000-number window of one
+  group, and older windows are one link away. Replies in other groups are not
+  shown.
 - Read marks are per machine. Two browsers on one machine share them; two
   machines do not.
 - One principal per process. To read as tulip, start another process with
   `--user tulip` on another `--port`.
 - The HTTP side is not TLS and not authenticated: it is bound to `127.0.0.1`
-  and checks the `Host` and `Origin` headers and a per-process form token, so
-  it is for the person logged into this machine.
+  and checks the `Host` and `Origin` headers, refuses a request its browser
+  marks `Sec-Fetch-Site: cross-site` or `same-site` before any NNTP command or
+  local write, and requires a per-process form token on every POST (post,
+  save, lookup, reconcile, mark read), so it is for the person logged into
+  this machine. Opening an article records a local read mark and nothing else.
+- A compose form's identifier is minted once and named in the page URL
+  (`/c?id=...`): Back, refresh and a restored tab return to the same
+  identifier, and a posted form says "already posted" instead of posting.
 
 ## Evidence
 

@@ -1,5 +1,7 @@
 ; fn: the runtime producers stay inside the record widths the profile admits
-; (PRF-123; D27, packets P6 and 6 of the Fable mandate §12).
+; (PRF-123; D27, packets P6 and 6 of the Fable mandate §12), and every record
+; they can stage is within R at any sequence, txid, generation and stamp
+; width (PRF-126, below the PRF-123 section).
 ;
 ; `fn-bs-profile-admits-every-article-record' (byte-store-frame) holds for a
 ; record that is not `fn-record-widep': every integer field within u32.  This
@@ -280,3 +282,156 @@
                             fn-record-widep fn-sbud-post-boundary
                             fn-profile-replay-within-boundp
                             fn-record-stamp-of-observation)))))
+
+; ===========================================================================
+; PRF-126: the producer ceiling.  A record whose charge fits u32 encodes
+; within `fn-record-encoded-octets-ceiling' whatever
+; the width of its sequence, txid, generation and stamp
+; (`fn-record-encode-producer-length-bound', records-seam: the ceiling counts
+; five-octet heads for the schema octet, the group count, the Message-ID,
+; the metadata strings and the group names, which are at least 17 octets
+; longer than any of them encodes, and four eight-octet heads need 16).  So the
+; allocator and the clock can pass 2^32 - 1 without any profile's R moving:
+; the width migration that remains (PKT-244) is in the readers of those
+; values, not in R.
+
+; PRF-126.  The article producer's charge, groups, payload and stamp are the
+; ones it was given (the stamp the observation's).
+(defthm fn-sn-article-record-charge-and-groups
+  (implies (fn-record-p (fn-sn-article-record s obs msgid payload groups
+                                              obligation-id subject evidence
+                                              charge))
+           (and (equal (fn-record-charge
+                        (fn-sn-article-record s obs msgid payload groups
+                                              obligation-id subject evidence
+                                              charge))
+                       charge)
+                (equal (fn-record-groups
+                        (fn-sn-article-record s obs msgid payload groups
+                                              obligation-id subject evidence
+                                              charge))
+                       groups)
+                (equal (fn-record-payload
+                        (fn-sn-article-record s obs msgid payload groups
+                                              obligation-id subject evidence
+                                              charge))
+                       payload)
+                (equal (fn-record-stamp
+                        (fn-sn-article-record s obs msgid payload groups
+                                              obligation-id subject evidence
+                                              charge))
+                       (fn-record-stamp-of-observation obs))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
+; PRF-126 KEYSTONE (the profile relation, at the producers' widths).  Under
+; the profile a store runs under, a record whose charge fits u32, which names
+; at least one group, whose payload is within A and whose groups are within
+; G encodes within R -- whatever the width of its sequence, txid, generation
+; and stamp.  `fn-bs-profile-admits-every-article-record' (PRF-086) is the
+; same conclusion for a narrow record; this one needs no narrowness.
+(defthm fn-bs-profile-admits-every-producer-record
+  (implies (and (fn-bs-profile-admittedp values)
+                (fn-record-uint32p (fn-record-charge record))
+                (<= (len (fn-record-payload record))
+                    (fn-bs-profile-max-article-octets values))
+                (<= (len (fn-record-groups record))
+                    (fn-bs-profile-max-groups-per-article values)))
+           (<= (len (fn-record-encode record))
+               (fn-bs-profile-max-record-octets values)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-profile-validp-facts
+                                   (values (fn-bs-profile-of values)))
+                        (:instance fn-record-encode-producer-length-bound))
+           :in-theory (e/d (fn-bs-profile-admittedp fn-bs-profile-field
+                            fn-bs-profile-max-record-octets
+                            fn-bs-profile-max-article-octets
+                            fn-bs-profile-max-groups-per-article
+                            fn-record-encoded-octets-ceiling)
+                           (fn-bs-profile-validp-facts fn-record-uint32p
+                            fn-record-encode-narrow-length-bound
+                            fn-record-encode-length-bound
+                            fn-bs-profile-of fn-bs-profile-validp)))))
+
+; PRF-126 KEYSTONE (the article producer the host runs, at any allocator and
+; clock width).  A record `fn-sn-prepare' stages from `fn-sn-article-record'
+; with a charge within u32 encodes within the ceiling of its own payload and
+; group count.
+(defthm fn-sn-prepare-stages-an-article-record-within-its-ceiling
+  (implies (and (fn-record-uint32p charge)
+                (not (equal (fn-sn-prepare
+                             s (fn-sn-article-record s obs msgid payload groups
+                                                     obligation-id subject
+                                                     evidence charge))
+                            s)))
+           (<= (len (fn-record-encode
+                     (fn-sn-article-record s obs msgid payload groups
+                                           obligation-id subject evidence
+                                           charge)))
+               (fn-record-encoded-octets-ceiling (len payload) (len groups))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-rwp-sn-prepare-gate
+                                   (record (fn-sn-article-record
+                                            s obs msgid payload groups
+                                            obligation-id subject evidence
+                                            charge)))
+                        (:instance fn-sn-article-record-charge-and-groups)
+                        (:instance fn-record-encode-producer-length-bound
+                                   (record (fn-sn-article-record
+                                            s obs msgid payload groups
+                                            obligation-id subject evidence
+                                            charge))))
+           :in-theory (e/d ()
+                           (fn-sn-article-record fn-sn-prepare fn-record-p
+                            fn-record-uint32p fn-sf-prepare-record
+                            fn-sf-statep
+                            fn-record-encoded-octets-ceiling)))))
+
+; The BP ingress producer (`fn-bpi-record-for', books/bp-ingress, host
+; host/bp-ingress-host): its charge is the policy's, which `fn-bpi-policy-p'
+; bounds by u32, so the record it stages is within the producer ceiling of
+; its own payload and groups at any width.
+(defthm fn-bpi-staged-record-fits-the-producer-ceiling
+  (implies (and (fn-bpi-policy-p policy)
+                (not (equal (fn-sn-prepare
+                             store (fn-bpi-record-for store policy context
+                                                      msgid-octets group-octets
+                                                      adu))
+                            store)))
+           (<= (len (fn-record-encode
+                     (fn-bpi-record-for store policy context msgid-octets
+                                        group-octets adu)))
+               (fn-record-encoded-octets-ceiling
+                (len (fn-record-payload
+                      (fn-bpi-record-for store policy context msgid-octets
+                                         group-octets adu)))
+                (len (fn-record-groups
+                      (fn-bpi-record-for store policy context msgid-octets
+                                         group-octets adu))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-rwp-sn-prepare-gate
+                                   (s store)
+                                   (record (fn-bpi-record-for
+                                            store policy context msgid-octets
+                                            group-octets adu)))
+                        (:instance fn-sn-article-record-charge-and-groups
+                                   (s store)
+                                   (obs (fn-bpi-context-observation context))
+                                   (msgid (fn-record-octets-string msgid-octets))
+                                   (payload adu)
+                                   (groups (car (cdr (fn-bpi-map-groups
+                                                      group-octets
+                                                      (fn-bpi-policy-group-map
+                                                       policy)))))
+                                   (obligation-id (fn-bpi-policy-archive-id policy))
+                                   (subject (fn-bpi-policy-subject policy))
+                                   (evidence (fn-bpi-policy-evidence policy))
+                                   (charge (fn-bpi-policy-charge policy)))
+                        (:instance fn-record-encode-producer-length-bound
+                                   (record (fn-bpi-record-for
+                                            store policy context msgid-octets
+                                            group-octets adu))))
+           :in-theory (e/d (fn-bpi-record-for fn-bpi-policy-p)
+                           (fn-sn-article-record fn-sn-prepare fn-record-widep
+                            fn-record-uint32p fn-sf-prepare-record
+                            fn-sf-statep fn-record-p)))))

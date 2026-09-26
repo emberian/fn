@@ -313,7 +313,15 @@
          (cond ((not request) :request)
                ((equal (car plan) :refused)
                 (or (fn-bpaj-nth 1 plan) (car plan)))
-               ((not (or freshp retryp)) :intent)
+               ; Neither fresh nor a retry: which half failed is the
+               ; reason (no durable intent could be formed from the plan,
+               ; or the Store already holds a record for the Message-ID
+               ; that is not this intent's binding).
+               ((not (or freshp retryp))
+                (cond ((and (equal status :new) (not new-intent))
+                       :intent-unformed)
+                      ((equal (car lookup) :conflict) :intent-store-conflict)
+                      (t :intent)))
                ((not (equal (fn-bpa-request-source-eid request)
                             (f-get-global 'fn-owner-app-bundle-source state)))
                 :bundle-source)
@@ -352,6 +360,33 @@
                 state)))
     (value (fn-olog-bp-app-class result))))
 
+;; The one line bp-node serve prints for a delivered request it did not
+;; accept (host/native/bp-node.lisp fnn-bpnode-request-result): RESULT is the
+;; answer the host returns, DETAIL the reason ACL2 named for a Store-side
+;; refusal (fnn-owner-transit-refused keeps it), or nil.  The reason is, in
+;; order: the D23 source decision's refusal when the view is not a trusted
+;; request; the planner's or dispatcher's reason (fn-owner-app-plan resets it
+;; per request); DETAIL; :unnamed when no step named one.  The host prints
+;; the line and decides nothing from it.
+(defun fn-owner-bp-request-refusal-line (view result detail state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((cfg (fn-owner-config state))
+         (reason
+           (cond ((not (fn-bpah-request-trustedp view cfg))
+                  (let ((d (fn-bpah-view-source-decision view cfg)))
+                    (if (equal (car d) :refused)
+                        (or (fn-bpn-nth 1 d) :ingress)
+                      :not-a-request)))
+                 ((f-get-global 'fn-owner-app-refusal-reason state))
+                 ((and detail (symbolp detail)) detail)
+                 (t :unnamed))))
+    (value (fn-record-octets-string
+            (fn-olog-join
+             (list (fn-olog-text "delivery")
+                   (fn-olog-bp-app-class-word (fn-olog-bp-app-class result))
+                   (fn-olog-field "result" (fn-olog-symbol-text result))
+                   (fn-olog-field "reason" (fn-olog-symbol-text reason))))))))
+
 (defun fn-owner-app-current-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))
@@ -367,7 +402,14 @@
                   (f-get-global 'fn-bpaj-state state)
                   (fn-owner-store state) request generation)))
     (if (not (equal action (list :submit)))
-        (value (if (equal (car action) :busy) :busy :refused))
+        ; The dispatcher's own reason is the refusal's (or the deferral's).
+        (let ((state (f-put-global 'fn-owner-app-refusal-reason
+                                   (or (and (consp action)
+                                            (symbolp (cadr action))
+                                            (cadr action))
+                                       :dispatch)
+                                   state)))
+          (value (if (equal (car action) :busy) :busy :refused)))
       (if (f-get-global 'fn-owner-app-transitp state)
           (fn-owner-bp-transit-submit
            (f-get-global 'fn-owner-app-peer state)

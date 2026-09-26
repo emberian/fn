@@ -12,14 +12,6 @@ under that protocol.
 from __future__ import annotations
 
 
-def _heap_capped(environment):
-    """The pool's heap cap (tools/acl2_slots.py) for an ACL2 this check starts."""
-    import sys as _sys
-    from pathlib import Path as _Path
-    _sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
-    import acl2_slots
-    return acl2_slots.apply_heap_cap(environment)
-
 import argparse
 import os
 from pathlib import Path
@@ -29,7 +21,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from tools import host_check
+from tools import acl2_slots, host_check
 
 LD_OK = "FN_OWNER_FEED_CONNECTION_HOST_LD_OK"
 MARKER = "FN_OWNER_FEED_CONNECTION_HOST_LOADED"
@@ -59,15 +51,12 @@ def run(fixture: str) -> tuple[bool, str, str]:
     acl2 = host_check.executable()
     if acl2 is None:
         return False, "FN_ACL2 is unset or does not name an executable", ""
-    environment = os.environ.copy()
-    environment["ACL2_CUSTOMIZATION"] = "NONE"
-    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-    environment = _heap_capped(environment)
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
     try:
-        completed = subprocess.run(
-            [str(acl2)], cwd=ROOT, input=driver_for(fixture).encode(),
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=environment,
+        # The machine's ACL2 pool and heap cap (PKT-162).
+        completed = acl2_slots.run(
+            [str(acl2)], f"owner feed connection {fixture}", cwd=ROOT,
+            input=driver_for(fixture).encode(),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=TIMEOUT_SECONDS, check=False)
     except subprocess.TimeoutExpired as error:
         return False, f"timed out after {TIMEOUT_SECONDS}s", (error.output or b"").decode("utf-8", "replace")

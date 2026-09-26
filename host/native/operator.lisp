@@ -44,6 +44,10 @@
            (fnn-operator-word status) subject reason))
 
 (defun fnn-operator-emit-result (result)
+  "ACL2's hint line (what the command accepts, or what to do), if any, then
+the one tagged result line."
+  (let ((hint (fnn-core 'fn-native-operator-host-result-hint result)))
+    (when (stringp hint) (fnn-err "~a" hint)))
   (fnn-operator-emit-status
    (fnn-core 'fn-native-operator-host-result-status result)
    (or (fnn-core 'fn-native-operator-host-result-command result) "request")
@@ -165,6 +169,8 @@ order, and the names it found handed straight back."
                (fnn-operator-optional-path
                 result 'fn-native-operator-host-result-run-log-path-octets))
              (tls-context nil))
+        (setq *fnn-health-min-percent*
+              (fnn-core 'fn-native-operator-host-result-health-min-percent result))
         (unwind-protect
             (progn
               ;; Append-only, created 0640 if absent, never through a
@@ -346,6 +352,8 @@ observation into the outcome and this function only carries it out."
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
+; And `fnn-command-reclaim' (`store reclaim [--dry-run]', STO-017).
+(defvar *fnn-reclaim-callback* nil)
 
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
@@ -361,6 +369,8 @@ observation into the outcome and this function only carries it out."
                            (fnn-fault "ACL2 accepted a store plan with no profile"))
                          (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))
+                      (:reclaim (funcall *fnn-reclaim-callback* root nil))
+                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
                       (:checkpoint (fnn-command-state-checkpoint root))
                       (:needs-upgrade (fnn-command-needs-upgrade root))
                       (:rollback-check
@@ -368,6 +378,12 @@ observation into the outcome and this function only carries it out."
                         root
                         (fnn-octets-string
                          (fnn-core 'fn-native-operator-host-result-rollback-path-octets
+                                   result))))
+                      (:rollback-snapshot
+                       (fnn-command-rollback-snapshot
+                        root
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-snapshot-path-octets
                                    result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
@@ -425,6 +441,65 @@ observation into the outcome and this function only carries it out."
           (return code))
         (sleep watch)))))
 
+;;; The health verdict (`health', PRF-112).
+;;;
+;;; The running owner renders it over its control socket from the Store,
+;;; configuration and feed table it carries; with none, the Store is opened
+;;; read-only unless the host's observations say it is fenced.  ACL2 decides
+;;; which (fn-nls-route, fn-nh-fence-of), renders every word
+;;; (books/native-health.lisp), and reads the exit code back from the octets
+;;; the host prints (fn-nh-report-exit-of-render).
+
+(defun fnn-operator-health-report (root control-path min)
+  "The health report's octets, or :refused when the owner refused to answer."
+  (let* ((socket-present
+           (and control-path
+                (not (fnn-image-omits-p :control))
+                (fnn-control-socket-path-p
+                 (fnn-lstat (fnn-octets-string control-path)))))
+         (answer (if socket-present
+                     (fnn-control-live-status control-path :health)
+                   :none)))
+    (if (and (consp answer) (eq (first answer) :done))
+        (second answer)
+      (let ((route (fnn-core 'fn-native-live-status-host-route socket-present answer)))
+        (if (eq route :refused)
+            :refused
+          (or (fnn-core 'fn-native-health-host-fenced route
+                        (fnn-store-owner-observation root)
+                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t))
+              (multiple-value-bind (store records) (fnn-open-live-store root nil)
+                (declare (ignore records))
+                (unwind-protect
+                     (fnn-core 'fn-native-health-host-offline
+                               (fnn-store-config store) min *the-live-state*)
+                  (fnn-store-close store)))))))))
+
+(defun fnn-operator-execute-health (result)
+  (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+         (path-list (fnn-core
+                     'fn-native-operator-host-result-status-control-path-octets
+                     result))
+         (control-path (and (fnn-octet-list-p path-list) (consp path-list)
+                            (fnn-octets path-list)))
+         (min (fnn-core 'fn-native-operator-host-result-health-min-percent result)))
+    (handler-case
+        (let ((report (fnn-operator-health-report root control-path min)))
+          (if (eq report :refused)
+              (progn (fnn-operator-emit-status :refused "health")
+                     +fnn-exit-refused+)
+            (let ((code (fnn-core 'fn-native-health-host-exit report)))
+              (unless (and (integerp code) (<= 0 code 99))
+                (fnn-fault "ACL2 health report carries no exit code"))
+              (fnn-write-report report)
+              (fnn-operator-emit-status :accepted "health")
+              code)))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "health" condition)
+          code)))))
+
 (defun fnn-operator-store-max-credentials (root)
   "The store profile's max-credentials (D27, PRF-102), read from config.json
 without the writer lock: principal administration does not open the store.
@@ -466,8 +541,21 @@ configuration usage result."
       (error 'fnn-usage-error :message "operator configuration file exceeds ACL2 bound"))
     (fnn-octet-list (fnn-read-regular-bounded path maximum))))
 
-(defun fnn-operator-dispatch-plan (result)
-  (let ((status (fnn-core 'fn-native-operator-host-result-status result)))
+(defun fnn-operator-store-outcome (result)
+  "HST-008: an accepted plan that needs a store, over a root holding none of
+the store's entries, becomes ACL2's :no-store refusal before any open
+(fn-native-operator-store-outcome, PRF-130).  The observation is the lstat
+one `init' makes; nothing is opened or locked."
+  (if (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
+      (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
+        (fnn-core 'fn-native-operator-host-store-outcome result
+                  (and (stringp root)
+                       (fnn-operator-init-observed (fnn-absolute root)))))
+    result))
+
+(defun fnn-operator-dispatch-plan (result0)
+  (let* ((result (fnn-operator-store-outcome result0))
+         (status (fnn-core 'fn-native-operator-host-result-status result)))
     (if (not (eq status :accepted))
         (progn (fnn-operator-emit-result result)
                (fnn-core 'fn-native-operator-host-result-exit-code result))
@@ -478,6 +566,11 @@ configuration usage result."
                          ;; peer genesis|invite|accept|confirm reach the owner
                          ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
                          (:peering :control))))
+          (when (and (member action '(:reclaim :reclaim-dry-run))
+                     (null *fnn-reclaim-callback*))
+            (fnn-operator-emit-status
+             :usage "action" "reclaim needs the checkpoint surface, which this image omits")
+            (return-from fnn-operator-dispatch-plan +fnn-exit-usage+))
           (when (and (eq action :compact) (null *fnn-compact-callback*))
             (fnn-operator-emit-status
              :usage "action" "compact needs the checkpoint surface, which this image omits")
@@ -495,8 +588,9 @@ configuration usage result."
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
           (:status (fnn-operator-execute-status result))
+          (:health (fnn-operator-execute-health result))
           ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
-            :rollback-check)
+            :rollback-check :rollback-snapshot :reclaim :reclaim-dry-run)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:peering (fnn-pinv-execute result))

@@ -105,17 +105,18 @@
 ; constrained functions, whose checked defattach is the concrete codec.
 ; This theorem checks the attached implementation's separate byte grammar.
 (defthm fn-bs-k0-host-frontier-frame-is-concrete-codec
-  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
            (and (fn-cbor-octet-listp (fn-bs-frontier-encode-impl n))
                 (equal (fn-bs-frontier-decode-impl
                         (fn-bs-frontier-encode-impl n)) n)))
   :rule-classes nil
   :hints (("Goal"
-           :use ((:instance fn-bs-frontier-seal-octet-listp)
+           :use ((:instance fn-bs-frontier-encode-impl-octets)
                  (:instance fn-bs-frontier-impl-round-trip))
-           :in-theory (e/d (fn-bs-frontier-encode-impl)
+           :in-theory (e/d ()
                            (fn-bs-frontier-decode-impl
-                            fn-bs-frontier-seal-octet-listp
+                            fn-bs-frontier-encode-impl
+                            fn-bs-frontier-encode-impl-octets
                             fn-bs-frontier-impl-round-trip)))))
 
 (defthm fn-bs-k0-host-frontier-arguments-are-typed-input

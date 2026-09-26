@@ -95,3 +95,31 @@
           (fn-fc-initial-auth-state nil 12 :clear '(117) '(112) t)
           '(50 48 48 13 10)))
         :auth-user))
+
+; PRF-130 (the walk, finding c): a peer answering 501 to MODE STREAM is a
+; streaming refusal; recorded, the peer is not dialled again.
+(defconst *fc-mode-state* (fn-fc-next-state *fc-mode*))
+(assert-event (equal (fn-fc-phase *fc-mode-state*) :mode))
+(defconst *fc-501* (fn-fc-step *fc-mode-state* '(53 48 49 32 110 111 13 10)))
+(assert-event (equal (fn-fc-kind *fc-501*) :refused))
+(assert-event (equal (fn-fc-phase (fn-fc-next-state *fc-501*)) :closed))
+(assert-event (fn-fc-streaming-refusal-p *fc-mode-state* *fc-501*))
+(assert-event (fn-fc-dial-allowedp t "hub" nil))
+(assert-event (not (fn-fc-dial-allowedp t "hub" (fn-fc-stopped-put "hub" :mode-stream-refused nil))))
+(assert-event (fn-fc-dial-allowedp t "far" (fn-fc-stopped-put "hub" :mode-stream-refused nil)))
+(assert-event (fn-fc-stopped-reason "hub" (fn-fc-stopped-put "hub" :mode-stream-refused nil)))
+; Without the :mode phase: a greeting refusal is a refusal, not a streaming one.
+(defconst *fc-greet-state* (fn-fc-initial-state t 1 :clear))
+(defconst *fc-greet-502* (fn-fc-step *fc-greet-state* '(53 48 50 13 10)))
+(assert-event (equal (fn-fc-kind *fc-greet-502*) :refused))
+(assert-event (not (fn-fc-streaming-refusal-p *fc-greet-state* *fc-greet-502*)))
+; Without the non-203 hypothesis: 203 makes the connection ready.
+(defconst *fc-203* (fn-fc-step *fc-mode-state* '(50 48 51 32 111 107 13 10)))
+(assert-event (equal (fn-fc-kind *fc-203*) :ready))
+(assert-event (not (fn-fc-streaming-refusal-p *fc-mode-state* *fc-203*)))
+; Without a complete line: no reply yet, no refusal.
+(defconst *fc-partial* (fn-fc-step *fc-mode-state* '(53 48)))
+(assert-event (equal (fn-fc-kind *fc-partial*) :need-input))
+(assert-event (not (fn-fc-streaming-refusal-p *fc-mode-state* *fc-partial*)))
+; Nothing queued: no dial even without a stop.
+(assert-event (not (fn-fc-dial-allowedp nil "hub" nil)))

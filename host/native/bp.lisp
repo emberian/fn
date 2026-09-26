@@ -416,11 +416,11 @@ may or may not be durable."
   (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
     (fnn-fault "bp: injected receive core fault"))
   (let* ((tally (fnn-bps-tally service))
-         (ingress (fnn-bps-tcpcl-ingress
-                   (fnn-bps-state service) conn session-counter xfer-id
-                   owner channel)))
+         (admission (fnn-bps-tcpcl-admission
+                     (fnn-bps-state service) conn session-counter xfer-id
+                     owner channel)))
     (multiple-value-bind (result adu)
-        (fnn-bps-receive service ingress octets)
+        (fnn-bps-receive service admission octets)
       (case (first result)
         (:accepted
          (incf (fnn-bp-tally-accepted tally))

@@ -95,6 +95,46 @@ translation carry, not one the node produces: a transaction ID past
 2^32 - 1 needs a wider frontier file (frontier-3), a stamp past 2106 and a
 charge past 2^32 - 1 need their producers widened first.
 
+STO-018: a record whose charge fits u32 is within the profile's R at any
+sequence, transaction ID, generation and stamp width, and the allocation
+frontier frame carries u64 (frontier format 3) with every format-2 frontier
+frame read to the same transaction ID. The record ceiling a profile's R is
+checked against counts five-octet heads for the schema octet, the group
+count, the Message-ID, the three metadata strings and every group name, which
+encode at least 17 octets shorter; four eight-octet heads need 16
+(`fn-record-encode-producer-length-bound`, PRF-126). So widening the
+allocator or the clock past 2^32 - 1 moves no profile field, and no saved
+profile needs translation. The frontier frame's payload is the format-2
+deterministic uint below 2^32 and the eight-octet head (canonical only above
+2^32 - 1, RFC 8949 §4.2.1) from 2^32 to 2^64 - 1; the format-2 reader is kept
+by name and the format-3 reader agrees with it on everything it accepts
+(`fn-bs-frontier-decode-extends-format-2`), so no frontier file is rewritten.
+An image before format 3 refuses a wide frontier frame by its payload bound,
+never misreads it. The width guarantees are fn's; no RFC requires them.
+
+The producers, and where each stops today:
+
+- sequence, transaction ID, generation: the durable allocator
+  (`fn-sf-prepare-record`, the frontier). Its successor
+  (`fn-bs-frontier-next`) still stops at 2^32 - 1: the file machine
+  (`fn-sf-statep`), the observed open (`fn-sn-open-observed`), the checkpoint
+  (`fn-checkpointp`, `fn-checkpoint-restore`) and its TREE naturals
+  (`fn-cpc-treep`) and the consumer candidate bound read the frontier as u32
+  (PKT-244).
+- stamp: `fn-record-stamp-of-observation`, seconds below 2^32 or
+  `:clock-unusable`; the checkpoint's TREE naturals carry an article's stamp,
+  so widening it waits on the same codec (PKT-244).
+- charge: the POST boundary (`fn-sbud-post-boundary`, `:charge-bound` above
+  2^32 - 1) and the BP policy (`fn-bpi-policy-p`); the charge is the one
+  field the ceiling cannot absorb.
+- the article producers (`fn-sn-article-record` from the served POST, the
+  developer `store post` and BP ingress): charged `fn-sbud-article-figure`
+  of their own counts before a transaction ID is reserved; the Python BP and
+  owner clients ask the same verdict (`fn-store-sn-article-verdict`). The
+  signed composite (kind 4) and peer-carried events are checked against R on
+  their actual bytes and are not yet charged the article figure before
+  reservation (PKT-244).
+
 The history bound H is kept by admission, not only checked at open: an
 article is charged the record ceiling of its own payload length and group
 count at the produced widths (`fn-sbud-article-figure`), both by the
@@ -329,8 +369,11 @@ promises and each has its own proof obligation:
   with its own version.
 - **Content reclamation** (C) removes object bytes. Obligation: no retention
   obligation holds them (D03: only an explicit authorized release ends one),
-  and no active reference pins them: a reader's pinned archive, a consumer
-  cursor or an unresolved BP handoff. The record that the bytes existed, and
+  and no active reference pins them: a reader's pinned archive or an
+  unresolved BP handoff. An E2 consumer position is not such a reference: it
+  is a committed Store-event prefix and creates no retention pin (the selected
+  no-implicit-pin profile, [consumer progress](consumer-progress.md)); a
+  consumer whose content was reclaimed sees an explicit unavailable gap. The record that the bytes existed, and
   their identity, stay (see anti-resurrection). Not implemented for article
   content.
 
@@ -344,7 +387,7 @@ policy that this contract does not yet have says otherwise.
 | Retention undertaking (`fn-e` `:undertake`, `books/store-events`) | Capacity charge; the hold on content; admissibility of a later release; the operator's `store retention` | Until the matching authorized release | P. H: an open undertaking must stay in the summary with its charge, subject and evidence. C: never removes it |
 | Retention release (`fn-e` `:release`) | That the hold ended and on whose authority; reclamation's permission; refusing a second release | Until superseded by a summary that keeps the released identity and its evidence (**open**: D13) | P. H: into the anti-resurrection summary only |
 | Identity and key policy evidence (`:statement-verdict` `fn-stxe`, `:keyring-snapshot` `fn-stxk`, `:accepted-statement` `fn-stxa`) | Verifying historical signed articles at recovery (STO-008: a missing enrollment is a fault); equivocation (`fn-sn-equivocatorp`); statement lookup; key and epoch evolution | Forever (**open**: a keyring-epoch summary that answers every historical verification identically) | P. H: only with a summary proved to answer `fn-sn-statement-lookup` and `fn-sn-equivocatorp` the same for every future query |
-| Consumer cursor pins (`:consumer` `fnce`: bootstrap, register, ack, rebase, unregister, rollover; `books/consumer-*`) | What each consumer acknowledged; which history an unacknowledged consumer still pins; the next registration epoch | Each entry until superseded by the next ack, rebase or unregister for that consumer. The epoch scalar: forever | P. H: into the latest entry per consumer plus `next-epoch` (the state `books/consumer-position` already carries). Its pins bound C |
+| Consumer positions (`:consumer` `fnce`: bootstrap, register, ack, rebase, unregister, rollover; `books/consumer-*`) | What each consumer declared through which committed Store-event prefix; the next registration epoch | Each entry until superseded by the next ack, rebase or unregister for that consumer. The epoch scalar: forever | P. H: into the latest entry per consumer plus `next-epoch` (the state `books/consumer-position` already carries), with a mapping that keeps every live position's prefix. They pin nothing, so they do not bound C (a retaining consumer mode would be a separately charged durable hold: PKT-165) |
 | Topic admission (`:topic-admin-install`, `:topic-anchor`, `:topic-admit`) | Admitting later topic events (parents, authorship, admin) | Forever (**open**: experimental) | P only |
 | Submission outcomes | Local POST: the accepted article record, which answers a retry with the same Message-ID as a duplicate. Refused and uncertain outcomes are not persisted beyond the burned reservation. BP submissions: the workflow and handoff records | As the article record / as the BP rows below | As those rows |
 | Unresolved BP handoffs and obligations (FNBS directory: dispatch, delivery, deletion, conflict, family, forward rows; `books/bp-fnbs-*`) | Custody, retry, delivery and deletion reports, conflict evidence | Until resolved; then an outcome summary for duplicate and replay refusal (**open**) | Separate namespace. None of P, H or C touches it today (**open**) |
@@ -521,8 +564,11 @@ statement index is re-derived from the payloads at open and an
 `:absent` article, which has no authorship field, contributes nothing under
 any keyring and neither does its tombstone, so it is not held),
 `held-reader-pin`, `held-consumer-cursor` (a
-consumer that acknowledged number A in the group holds every number above
-A), `held-feed` (a live peer not yet delivered it; a retired peer holds
+holder that acknowledged number A in the group holds every number above
+A: a per-group article-number holder. No caller constructs it from an E2
+consumer position, which is a Store-event prefix in another coordinate and
+pins nothing; the slot is reserved for an explicitly selected retaining
+consumer mode, PKT-165), `held-feed` (a live peer not yet delivered it; a retired peer holds
 nothing) and `held-bp-obligation`. The keystone says the executable test is
 exactly "no obligation in the flattened list names the article" together
 with the rule.
@@ -555,6 +601,104 @@ not touch, and an article with a verdict is not reclaimed.
 **Served**: ARTICLE, HEAD, BODY and STAT of a reclaimed article answer
 `423 article reclaimed` by number and `430 article reclaimed` by
 Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
+
+### Content reclamation's durable step: `store reclaim` (STO-017)
+
+STO-017: Packing, history compaction and content reclamation are distinct operations; `store reclaim` removes released payload octets through a reclaiming pack and returns them to the file system.
+
+The three operations (the Fable mandate, section 8):
+
+- **Packing** (`store compact`, books/store-compact-verb.lisp) reduces
+  filesystem objects and keeps the exact event history: the selected pack
+  holds every committed record's canonical bytes.
+- **History compaction** (replacing history by a summary sufficient for
+  every future decision) is not implemented. Nothing here claims it.
+- **Content reclamation** (`store reclaim`, books/store-reclaim-pack.lisp)
+  changes only the payload octets of released article records. Every
+  event keeps its sequence, transaction ID, generation, Message-ID, groups,
+  obligation ID, content subject, release evidence and stamp, and its
+  charge falls to the one permanent history unit (below); every
+  event that is not a legacy article record (an accepted-statement
+  composite, a keyring snapshot, a statement verdict, a retention, consumer
+  or topic event) keeps its bytes (`fn-rclp-events-keep-every-other-kind`).
+
+The verb, offline under the exclusive lock after the ordinary open:
+
+    fn operator CONFIG store reclaim [--dry-run]
+    fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS}
+
+`fn-rclp-decide` answers over the replayed Store and the compact verb's
+observation: nothing (`reclaimed=0`, exit 0, and nothing written: with no
+authorized release this is the bounded answer, `fn-rclp-keep-forever-writes-nothing`),
+`--dry-run` (the Message-IDs and the octets a run would free, nothing
+written), compact first (the history is not one selected pack with no
+transaction file left: the ordinary compact steps run, then the decision
+is asked again), a named refusal (`temporary-space`, `capture`,
+`observation`, `profile`; exit 1, nothing written) or the steps:
+
+1. drop the derived state checkpoint (it holds payload octets and an open
+   would read it in place of the history); cuts
+   `reclaim-state-checkpoint-unlink`, `reclaim-state-checkpoint-directory`;
+2. publish the reclaiming generation unselected (the pack publication and
+   its `candidate-*` cuts); cut `reclaim-pack-published`;
+3. select it (the marker replacement and its `selection-*` cuts), the one
+   commit point; cut `reclaim-pack-selected`;
+4. retire the older generations (`pack-retire-*`): the unlink that returns
+   the octets and the inode to the file system; cut `reclaim-retired`.
+
+A reopen after any cut opens the old selected pack (the full history) or
+the new one (the reclaimed history), and a rerun converges: an event the
+pack rewrote is never rewritten again under any later context
+(`fn-rclp-a-reclaimed-event-stays-reclaimed`).
+
+What becomes available again, precisely: the payload octets of each
+reclaimed record, on disk when the older generation is retired, and in the
+committed-record octets the admission gate sums (`bytes-used` of
+`status`'s headroom line; `fn-rclp-freed-is-the-admission-count`), and the
+retention charge of the reclaimed article's archive pin less one permanent
+history unit (`charge-reserved`; `fn-rclp-rewritten-charge-is-the-history-unit`):
+the pin itself stays, as `fn-retain-release` keeps one unit for a released
+obligation, and no other obligation's charge changes. The release is the
+operator's authorized retention rule. The transaction count is not released
+(sequence numbers are history).
+
+### The maintenance reservation (STO-019)
+
+STO-019: Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance.
+
+The decision (PKT-169, 2026-09-26) and its two halves:
+
+- **The disk.** `store compact` and `store reclaim` write one new pack
+  beside the files present. The host reports the free octets of the
+  store's filesystem (statvfs: `f_bavail` blocks of `f_frsize` octets) and
+  ACL2 refuses by name (`temporary-space`, exit 1, nothing written) when
+  the pack's accounted octets exceed them or the observation failed
+  (`fn-cverb-pack-fits-the-disk`, `fn-rclp-pack-fits-the-disk`). The
+  history bound `max_history_octets` bounds the open's replay input (the
+  transaction files past the selected pack); the selected pack is read
+  under the compaction unit. So H is not maintenance's budget, and a store
+  at its history bound compacts and reclaims.
+- **The release record.** A release is a Store record (the `:release`
+  retention event). The served gates (`fn-smr-verdict-at` for every record
+  kind, `fn-smr-article-budget-for` for the served POST and BP transit,
+  `fn-smr-article-verdict-at` for the developer `store post`) admit a
+  record other than a release only if, after it, the profile's own gate
+  still admits one release record: one transaction of the profile's budget
+  and the release record's codec ceiling (4,096 octets) within H
+  (`fn-smr-admission-keeps-the-reserve`, `fn-smr-prepare-keeps-the-reserve`,
+  `fn-smr-article-verdict-keeps-the-reserve`). A release consumes the
+  reservation (`fn-smr-reserve-admits-the-release`). The reservation holds
+  at init under every admitted profile and is kept by a profile upgrade.
+  It is the profile's gate at kind `:release`, not a constant of its own;
+  `status` prints it: `maintenance-reserve octets=4096 transactions=1
+  held|short` (`short` only on a store filled before this rule).
+
+The release's configuration record (`retention set`) is in the
+configuration namespace, bounded by `max_config_generations` and the
+configuration record bound, never by H: no Store admission takes its room.
+The BP namespace keeps its own reservation, the FNBS received-namespace
+debt cover (books/bp-node-debt.lisp); a bundle delivered into the Store
+passes the Store gates above.
 
 ### Chained packs (not implemented)
 
