@@ -337,8 +337,9 @@ three parts have three different owners of the *reply*, all of them ACL2.
    [peering §8](peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred)):
    `:control-not-filed` "control message not filed: its control group is not
    configured here", `:control-malformed` "the Control header field is
-   malformed" (`:control-signed` is no longer produced: a signed control
-   article is filed like an unsigned one), and
+   malformed" (a signed control article is filed like an unsigned one, so
+   the former `:control-signed` word was removed from both tables, PKT-208),
+   and
    `:refused` "the article was refused" for a refusal no kind names. RFC 3977
    §6.3.1 permits `441` for all of them; the distinct text is a stronger fn
    guarantee and its exact words are a local policy choice (P2; the

@@ -493,3 +493,56 @@
               *hst-authored-source*)
 (assert-equal (car (fn-hc-value (fn-hc-received-plan *hst-path-carrier*)))
               *hst-authored-source*)
+
+; -----------------------------------------------------------------------------
+; PKT-147 (control-across-peers, PRF-170): teeth for
+; fn-hsig-injected-carrier-unserved-group-is-refused-by-name.  G1 serves
+; "example", the group the source names; G2 is this node's list.
+(defconst *hst-g1* (list (fn-record-string-octets "example")))
+(defconst *hst-g2-unserved* (list (fn-record-string-octets "other")))
+(defconst *hst-g2-served* (list (fn-record-string-octets "other")
+                                (fn-record-string-octets "example")))
+(defun hst-cfg (allow groups)
+  (fn-inj-make-config allow (fn-record-string-octets "author.example.invalid")
+                      groups *fn-article-max-octets*))
+(defun hst-octets (allow groups)
+  (fn-hsig-injected-carrier-octets
+   *hst-authored-source* *hst-principal* *hst-keys* *hst-signatures*
+   (hst-cfg allow groups) *hst-injection-observation*))
+(defun hst-reason (allow groups)
+  (fn-hsig-injected-carrier-reason
+   *hst-authored-source* *hst-principal* *hst-keys* *hst-signatures*
+   (hst-cfg allow groups) *hst-injection-observation*))
+
+; Reachable positive witness, the unserved branch: both hypotheses hold, the
+; named group is not in G2, and the carrier is refused :unknown-group.
+(assert! (and (hst-octets t *hst-g1*)
+              (fn-inj-group-namesp *hst-g2-unserved*)
+              (not (fn-inj-groups-admissiblep
+                    (fn-inj-decision-groups
+                     (fn-hsig-injected-carrier-plan
+                      *hst-authored-source* *hst-principal* *hst-keys*
+                      *hst-signatures* (hst-cfg t *hst-g1*)
+                      *hst-injection-observation*))
+                    *hst-g2-unserved*))
+              (equal (hst-octets t *hst-g2-unserved*) nil)
+              (equal (hst-reason t *hst-g2-unserved*) :unknown-group)))
+; Reachable positive witness, the served branch: the same octets, no reason.
+(assert! (and (hst-octets t *hst-g1*)
+              (fn-inj-group-namesp *hst-g2-served*)
+              (equal (hst-octets t *hst-g2-served*) (hst-octets t *hst-g1*))
+              (equal (hst-reason t *hst-g2-served*) nil)))
+; Without the first hypothesis (the source is admitted under some served
+; list): posting disallowed, G2 still a list of names, and the refusal is
+; not :unknown-group.
+(assert! (and (not (hst-octets nil *hst-g1*))
+              (fn-inj-group-namesp *hst-g2-unserved*)
+              (equal (hst-reason nil *hst-g2-unserved*) :posting-disallowed)))
+(must-fail (assert! (equal (hst-reason nil *hst-g2-unserved*) :unknown-group)))
+; Without the second (G2 names groups): the first holds, the configuration
+; is invalid and the refusal is not :unknown-group.
+(defconst *hst-g2-not-names* (list '(32)))
+(assert! (and (hst-octets t *hst-g1*)
+              (not (fn-inj-group-namesp *hst-g2-not-names*))
+              (equal (hst-reason t *hst-g2-not-names*) :config-invalid)))
+(must-fail (assert! (equal (hst-reason t *hst-g2-not-names*) :unknown-group)))

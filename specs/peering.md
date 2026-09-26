@@ -1496,8 +1496,12 @@ classifies the signed source and the filing plan the received carrier;
 where they disagree no event is built and the attempt is refused, never
 filed elsewhere. A signed control article stored under its `Newsgroups`
 before C1 (2026-09-25 morning, when every ingress began filing or refusing
-control articles) would no longer replay: its record binds no filing group.
-Whether any deployed store holds one has not been checked.
+control articles) does not replay: its record binds no filing group. Observed
+on hbox (control-across-peers, PKT-444): a pre-C1 image's store with a
+signed cancel in fn.test faults at open ("replay rejected committed
+transaction history"), the same store without it opens. The deployed store
+held no Control field when control-c3b copied it (2026-09-25); the repair
+path is PKT-444.
 
 **Per verb.**
 
@@ -1523,6 +1527,37 @@ answers `executed withdrawal <msgid> author|authority`, `executed
 reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 <serial>`. It is the node's historical claim, like `:fn-verified`, and
 `tools/fn_verify.py` checks only the signature half of it.
+
+### 8.1 Control across peers (PRF-170)
+
+NNT-037: A cancel crossing between peers has D29's behaviour on each node under its own grants, in both arrival orders, across a kill between the arrivals, with a reader pinned on either node; a signed article naming a group the node does not serve is refused by name
+
+Each receiver decides again (above, "Feed"): a node's withdrawal of a
+target depends on its own enrolment and its own `control grant` rows at the
+cancel's txid, never on the sender's execution. D29's test is observed per
+node: `tests/test_native_control_across_peers.py` relays each target and
+its cancel to two nodes in both orders, with grants on either or both
+sides, with both receivers SIGKILLed between the arrivals in half the
+cases, and with a reader pinned on each node; the fresh answer is the same
+line in both orders (`430 withdrawn` where the node's decision withdraws),
+the pinned reader keeps its archive until its own POST re-pins it, and a
+revoke followed by a kill changes no recorded decision. The theorems these
+cases witness are C3's (`fn-ctl-visible-is-arrival-order-independent`,
+`fn-ctl-pinned-view-keeps-its-archive`,
+`fn-ctl-cancel-executes-only-for-author-or-authority`,
+`fn-ctl-replay-is-the-fold`); nothing here restates them.
+
+A signed article authored through `hybrid-author` passes the injecting
+agent before any Store attempt (`fn-hsig-injected-carrier-plan`), so a
+`Newsgroups` naming a group this node does not serve is the injection
+decision's `:unknown-group`, answered as the control status
+`unknown-group` (exit 1) rather than a bare refusal
+(`fn-hsig-injected-carrier-unserved-group-is-refused-by-name`,
+`fn-nhc-author-refusal`). Every other refusal of that ingress names its
+arm: `author-not-enrolled`, `source-malformed`, `carrier-refused`,
+`article-exceeds-profile-bound`, `control-not-filed`,
+`control-malformed`, `signed-event-not-formed`. RFC 3977 does not govern
+this local channel; the words are a local policy.
 
 ## 9. Key statements: succession and revocation (PRF-098)
 

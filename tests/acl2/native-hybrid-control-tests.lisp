@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-hybrid-control")
 (include-book "std/testing/assert-equal" :dir :system)
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/codec-attach")
 
 (defconst *nhc-principal* (make-list 32 :initial-element 1))
@@ -64,3 +65,29 @@
 ; Every hybrid frame is within the command-frame floor of the ordinary bound.
 (assert-event (<= (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*)
                   *fn-nctrl-max-command-frame*))
+
+; PKT-147 (control-across-peers): every signed-author refusal is named.
+; Witnesses for fn-nhc-author-refusal-is-a-named-refusal (no hypotheses)
+; and fn-nhc-author-refusal-names-an-unserved-group.
+(assert-event (equal (fn-nhc-author-refusal :carrier :unknown-group) :unknown-group))
+(assert-event (equal (fn-nhc-author-refusal :carrier :path-present) :carrier-refused))
+(assert-event (equal (fn-nhc-author-refusal :carrier :oversize)
+                     :article-exceeds-profile-bound))
+(assert-event (equal (fn-nhc-author-refusal :enrollment nil) :author-not-enrolled))
+(assert-event (equal (fn-nhc-author-refusal :source nil) :source-malformed))
+(assert-event (equal (fn-nhc-author-refusal :filing :control-not-filed)
+                     :control-not-filed))
+(assert-event (equal (fn-nhc-author-refusal :filing :control-malformed)
+                     :control-malformed))
+(assert-event (equal (fn-nhc-author-refusal :event nil) :signed-event-not-formed))
+(assert-event (equal (fn-native-control-status-exit-code
+                      (fn-nhc-author-refusal :carrier :unknown-group))
+                     1))
+(assert-event (equal (fn-native-control-reply-decode
+                      (fn-native-control-reply-encode
+                       (fn-nhc-author-refusal :carrier :unknown-group)))
+                     :unknown-group))
+; The named words are refusals, and the vocabulary's non-refusals are not.
+(must-fail (assert-event (equal (fn-native-control-status-class :uncertain) :refused)))
+(must-fail (assert-event (equal (fn-nhc-author-refusal :carrier :path-present)
+                                :unknown-group)))

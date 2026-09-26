@@ -225,6 +225,11 @@
                     (fn-tp-outcome-line :storage-failed)
                     (fn-tp-outcome-line :uncertain))))
    (no-duplicatesp-equal lines)))
+; PKT-208: a word nothing produces is not a Store refusal kind; the two
+; control filing words the plan produces are.
+(assert-event (not (fn-post-store-refusalp :control-signed)))
+(assert-event (and (fn-post-store-refusalp :control-not-filed)
+                   (fn-post-store-refusalp :control-malformed)))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for the injection clock
