@@ -1719,6 +1719,31 @@
         "tests/acl2/bp-fragment-send-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-066",
+      "title": "A signed report crosses four native fn nodes and two dtn7-rs relays with outages and restarts; its receipt settles before the receiver's consumer wakes; the reply returns",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-009",
+        "REP-007"
+      ],
+      "steps": [
+        "A holds a signed report with a durable obligation; B's consumer is registered and asleep.",
+        "A requests it toward B through fn relay X (small Transfer MRU: fragmented, reassembled at X), dtn7 relays r1 and r2, and fn relay Y, with links down and every node restarted at least once.",
+        "B takes custody, delivers to its Store and queues the application receipt; the receipt crosses its own outage back to A.",
+        "B's consumer wakes, verifies, acknowledges and replies; the reply crosses back; A's consumer wakes and consumes it."
+      ],
+      "expected": [
+        "A answers receipt-accepted and its obligation is receipted with pinned=no before B's consumer polls.",
+        "B's poll returns the report with its authored source; the reply is delivered at A and A's receipt releases B's pin.",
+        "Every boundary names its identities (work, attempt, Message-ID, authored-source digest, bundle, attempts, receipt)."
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-four-node-2026-09-25.md"
+      ]
     }
   ]
 }

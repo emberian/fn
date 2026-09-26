@@ -4412,6 +4412,48 @@
         "fn-bpfs-canvas-of-extents",
         "fn-bpfs-views-of-cut"
       ]
+    },
+    {
+      "id": "PRF-120",
+      "title": "A ready base job is never starved by an older held or offered job on its contact, a transport result settles only its own attempt, a report or receipt is sent only by the durable record of its accepted transfer, and an encoder refusal settles its pending record",
+      "statement": "fn-bpnj-step (books/bp-node-job-offer.lisp) is the step host/native/bp-service.lisp fnn-bps-foundation-step calls; it equals fn-bpnp-step on every event but three (fn-bpnj-step-delegates-every-other-event). fn-bpnj-contact-next, asked before every base offer (fnn-bpc-drive-contact; fnn-bpnode-send-receipts), answers an offer while any queued job for the peer is ready (fn-bpnj-contact-offers-while-a-ready-job-remains), and the offer's event persists exactly that job's :attempting record with the :cl-send of its durable route (fn-bpnj-contact-offer-starts-the-ready-job). A transfer result names its attempt token: another token settles nothing (fn-bpnj-stale-job-result-settles-nothing), the current one proposes :finished for :accepted and :requeued otherwise (fn-bpnj-named-result-is-the-transport-outcome), and :forwarded is reported only at the durable answer to a pending :finished record of an :attempting job (fn-bpnj-step-forwarded-needs-a-durable-finished-record), so a queued report intent or job is not a sent one. A :refused answer settles the pending record (fn-bpnj-encoder-refusal-settles-the-pending-record). The new arms keep the guard premises and the lifecycle invariant (fn-bpnj-step-preserves-guard-premises, fn-bpnj-new-arms-preserve-the-lifecycle-invariant). Under A-BP-CONTACT the host's first ask is an offer and the contact offers a ready job within its prefix of keys at or ahead of it (fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact). Covered scope: base FNBS jobs (requests, receipts, status reports); the held-bundle forwarding path (kind 8) keeps its own session scan and stale-callback handling (fn-bpnp-forward-result-*). Not covered: token monotonicity across every served event and restart; freedom of :finished proposals on non-base events.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-103",
+        "PRF-079"
+      ],
+      "assumptions": [
+        "A-BP-CONTACT"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-job-offer.lisp",
+        "books/bp-node-job-offer-progress.lisp",
+        "books/assumptions.lisp",
+        "tests/acl2/bp-node-job-offer-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "specs/bp-node-machine.md",
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-four-node-2026-09-25.md"
+      ],
+      "events": [
+        "fn-bpnj-step-delegates-every-other-event",
+        "fn-bpnj-contact-offers-while-a-ready-job-remains",
+        "fn-bpnj-contact-offer-starts-the-ready-job",
+        "fn-bpnj-contact-job-step-preserves-the-base-invariants",
+        "fn-bpnj-step-preserves-guard-premises",
+        "fn-bpnj-new-arms-preserve-the-lifecycle-invariant",
+        "fn-bpnj-stale-job-result-settles-nothing",
+        "fn-bpnj-named-result-is-the-transport-outcome",
+        "fn-bpnj-step-forwarded-needs-a-durable-finished-record",
+        "fn-bpnj-encoder-refusal-settles-the-pending-record",
+        "fn-bpnj-host-refuses-an-unnamed-transport-result",
+        "fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact"
+      ]
     }
   ]
 }
