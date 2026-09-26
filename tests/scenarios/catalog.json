@@ -3449,7 +3449,15 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/usenet-headers-2026-09-26-native.log"
       ],
-      "implementation": "tests/test_native_reader_index.py NativeReaderIndexTest.test_list_newsgroups_descriptions_and_motd_published_live; evidence log planning/evidence/usenet-headers-2026-09-26-native.log (hbox, developer and production images of the lane tree at 4904bc529's bytes, 6 ran, 0 skipped, 0 failed)"
+      "implementation": {
+        "test": "tests.test_native_reader_index",
+        "cases": [
+          "test_list_newsgroups_descriptions_and_motd_published_live"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-2026-09-26.md"
+      }
     }
   ]
 }
