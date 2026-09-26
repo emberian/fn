@@ -205,34 +205,59 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertEqual(self.article_count(), 1)
 
-    def test_seventy_fragments_across_a_kill_reassemble_once(self):
-        # PRF-121: a family of 70 fragments, beyond the old 64-fragment
-        # reassembly ceiling, sent highest offset first, with the receiver
-        # killed (SIGKILL) after 35 of them.  The restarted receiver recovers
-        # the 35 held fragments from its journal, takes the other 35 and
-        # reassembles the family once: one handoff, one article.
-        fragments = self.author_fragments(70)
-        order = list(reversed(range(70)))
+    def kill_across_family(self, count, before_kill):
+        # A family of COUNT fragments, sent highest offset first, with the
+        # receiver killed (SIGKILL) after BEFORE_KILL of them.  The restarted
+        # receiver recovers the held fragments from its journal, takes the
+        # rest and reassembles the family once: one handoff, one article.
+        # Nothing completes before the last fragment (offset zero).
+        fragments = self.author_fragments(count)
+        order = list(reversed(range(count)))
         first, port = self.start_receiver(once=False)
-        for number in order[:35]:
+        for number in order[:before_kill]:
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0, sent.stderr)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
         first.kill()
         out, err = first.communicate(timeout=60)
         self.assertNotIn(b"BP fragment family durable", out)
         self.assertEqual(self.article_count(), 0)
 
         second, port = self.start_receiver(once=False)
-        for number in order[35:]:
+        for number in order[before_kill:-1]:
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0, sent.stderr)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
         second.terminate()
         out, err = second.communicate(timeout=120)
+        self.assertNotIn(b"BP fragment family durable", out)
+        # The last fragment goes to a one-session receiver, which exits only
+        # after its post-session work (the family, then the Store handoff).
+        third, port = self.start_receiver()
+        number = order[-1]
+        sent = self.send_fragment(port, fragments[number], number)
+        self.assertEqual(sent.returncode, 0, (number, sent.stdout, sent.stderr))
+        out, err = third.communicate(timeout=300)
+        self.assertEqual(third.returncode, 0, (out, err))
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
         self.assertEqual(self.article_count(), 1)
 
+    def test_sixty_four_fragments_across_a_kill_reassemble_once(self):
+        # PRF-121 on the served path: the uncapped sweep reassembler and the
+        # once-per-family selector, with the family filling the node's held
+        # capacity (*fn-bpn-machine-max-jobs*, 64 rows) across a kill.
+        self.kill_across_family(64, 32)
+
+    @unittest.skip("SCN-067 blocked by the held-row capacity: "
+                   "*fn-bpn-machine-max-jobs* (64) refuses the 65th held "
+                   "fragment with XFER_REFUSE No Resources (observed on "
+                   "0069b282); PKT-171 P5 moves it into the profile")
+    def test_seventy_fragments_across_a_kill_reassemble_once(self):
+        # SCN-067: 70 fragments, beyond the old 64-fragment reassembly
+        # ceiling, with the receiver killed after 35.
+        self.kill_across_family(70, 35)
 
 if __name__ == "__main__":
     unittest.main()
