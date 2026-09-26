@@ -4816,7 +4816,8 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ],
       "events": [
         "fn-bpnj-step-delegates-every-other-event",
@@ -5226,7 +5227,8 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ],
       "progress_note": "Lane bp-lifecycle-3 (2026-09-26, wave 2), PKT-276. Teeth: tests/acl2/bp-run-class-tests (the five codes; a must-fail per hypothesis of the separation; the fence among mixed evidence; the class of each outcome over the reachable attempting state of PRF-120's teeth, the stale attempt and the pending state as hypothesis removals), tests/acl2/bp-node-host-tests (the mixed article/session cases), tests/acl2/bp-node-profile-tests (the 128-row profile round trip, a zero-row and a 2^24+1-row profile, a configuration-less open, a lowering write refused, replay of two durable kind-5 rows under one row of profile answering :held-beyond-profile and under two :ready). Native: the six BP modules' expectations and SCN-067 under a 128-row profile; see the record.",
       "events": [
@@ -5585,7 +5587,8 @@
         "books/bp-node-job-offer.lisp",
         "tests/acl2/bp-node-job-offer-tests.lisp",
         "planning/evidence/hot-path-scans-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T070754Z-693820.json"
+        "planning/evidence/manifests/certify-20260926T070754Z-693820.json",
+        "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ]
     }
   ]
