@@ -738,6 +738,8 @@
     "tests/acl2/owner-tls-pin-tests",
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
+    "books/nntp-help",
+    "tests/acl2/nntp-help-tests",
     "books/nntp-auth-fold",
     "tests/acl2/served-tests",
     "tests/acl2/nntp-auth-teeth-tests",
@@ -997,20 +999,20 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1018,
-    "books_in_root_closure": 1011,
-    "roots": 993,
-    "theorems": 14417,
-    "functions": 9972,
-    "assert_events": 15149,
-    "must_fails": 1823,
+    "books": 1020,
+    "books_in_root_closure": 1013,
+    "roots": 995,
+    "theorems": 14427,
+    "functions": 9987,
+    "assert_events": 15168,
+    "must_fails": 1832,
     "prover_refusals": 2,
     "encapsulates": 77,
     "guards": {
       "verified": 2279,
       "declared-off": 783,
-      "default-guarded": 5427,
-      "default-unguarded": 1483
+      "default-guarded": 5432,
+      "default-unguarded": 1493
     },
     "suspect_theorems": 136,
     "export_hygiene_warnings": 159,
@@ -10520,6 +10522,32 @@
         "hybrid-lifecycle",
         "nntp-responses",
         "stx-reader"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-help.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-auth"
       ],
       "system_includes": [],
       "suspects": [],
@@ -24521,6 +24549,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-help-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 10
+      },
+      "verify_guards_events": 0,
+      "assert_events": 19,
+      "must_fails": 9,
+      "prover_refusals": 0,
+      "defconsts": 15,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-help"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -35219,7 +35275,7 @@
       },
       {
         "book": "books/nntp-responses.lisp",
-        "line": 2311,
+        "line": 2317,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
