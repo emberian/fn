@@ -45,6 +45,9 @@
 (include-book "../books/owner-bound-commit")
 (include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
+; PRF-191: a POST's Message-ID tests through the owner's view trie
+; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
+(include-book "../books/post-identity-index")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
 (include-book "../books/owner-advance-carried")
@@ -95,6 +98,8 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
+; PRF-192: the served reply as a range of the octet buffer (fn-owner-reply-buffer).
+(include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -175,10 +180,15 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-core state)))
 
-(defun fn-owner-install-effects (effects state)
+; The served read's install (fn-owner-chunk): every projection
+; `fn-owner-install-effects' makes EXCEPT the reply octets, which are never
+; built as a list here: `fn-owner-output' is NIL, and the host writes the
+; reply from the octet buffer that `fn-owner-reply-buffer' fills from
+; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
+(defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
-         (state (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state))
+         (state (f-put-global 'fn-owner-output nil state))
          (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
          ; RFC 4642 section 2.2.2: the host owes a TLS handshake.  The book
          ; decided it (fn-auth-starttls, books/nntp-auth.lisp); this reads
@@ -188,6 +198,12 @@
          (state (f-put-global 'fn-owner-submittedp
                               (if (fn-served-submission effects) t nil) state)))
     state))
+
+(defun fn-owner-install-effects (effects state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (fn-owner-install-served-effects effects state)))
+    (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state)))
+
 
 ;; The process root (P3 owner open, books/owner-checkpoint-open.lisp).  Both
 ;; paths extend a checkpoint over the records after it (`fn-sco-extend') and
@@ -465,19 +481,21 @@
 ; it is the codec ceiling `*fn-record-max-payload*'.
 ;
 ; Native operator startup supplies the one posting-policy bit after recovery
-; and after `fn-owner-install-profile'.  Preserve the agent, served and closed groups
-; ACL2 already installed and set the served bound from the profile; this
+; and after `fn-owner-install-profile'.  Preserve the agent, served groups,
+; reader listing (PRF-195) and closed groups (PRF-196) ACL2 already installed
+; and set the served bound from the profile; this
 ; changes the same fn-own-config value read by served POST and control.
 (defun fn-owner-posting-configure (allow state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (cfg (fn-own-config owner))
-         (next (fn-inj-make-config-closed (and allow t)
-                                          (fn-inj-config-agent cfg)
-                                          (fn-inj-config-groups cfg)
-                                          (fn-owner-served-post-bound state)
-                                          ;; O2: keep the closed groups.
-                                          (fn-inj-config-closed cfg))))
+         (next (fn-inj-make-config-full (and allow t)
+                                        (fn-inj-config-agent cfg)
+                                        (fn-inj-config-groups cfg)
+                                        (fn-owner-served-post-bound state)
+                                        (fn-inj-config-listing cfg)
+                                        ;; O2: keep the closed groups.
+                                        (fn-inj-config-closed cfg))))
     (if (not (fn-inj-configp next))
         (value :refused)
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
@@ -751,7 +769,11 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-rclb-existing-action msgid fn-octets groups s)))
+             ; PRF-191: the held article through the view trie
+             ; (books/post-identity-index.lisp
+             ; fn-pidx-existing-action-is-rclb-existing-action).
+             (existing (fn-pidx-existing-action msgid fn-octets groups
+                                                (fn-owner-core state))))
         (if existing
             (value existing)
           (mv-let (bytes state) (fn-owner-record-octets state)
@@ -776,7 +798,12 @@
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           (fn-pcar-sbud-prepare before record budget)
+                           ; PRF-191: fn-pidx-sbud-prepare, equal to
+                           ; fn-pcar-sbud-prepare over the owner's carried
+                           ; view (fn-pidx-sbud-prepare-is-pcar-sbud-prepare):
+                           ; the duplicate test reads the view trie and the
+                           ; retention admission is decided once.
+                           (fn-pidx-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
                 (value :clock-unusable)
@@ -816,8 +843,11 @@
       ;; fn-ocfg-step of this event on every owner fn-own-relation admits
       ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
       ;; it stages without replaying the appended history, whose replay the
-      ;; maintained store relation carries.  Guard-verified under fn-sn-statep
-      ;; of the store, which fn-ocl-relation carries.
+      ;; maintained store relation carries, and its candidate test reads the
+      ;; history's last record, not every record (PRF-193,
+      ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
+      ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
+      ;; carries.
       (let ((state (fn-owner-install-ocfg
                     (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
                     state)))
@@ -2062,9 +2092,11 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-rclb-existing-action
+      ; PRF-191: fn-rclb-existing-action through the view trie
+      ; (fn-pidx-existing-action-is-rclb-existing-action).
+      (let ((action (fn-pidx-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
-                     (fn-owner-store state))))
+                     (fn-owner-core state))))
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is
@@ -2192,6 +2224,22 @@
 ;; Once per run, after recovery and before listen: the listener the owner is
 ;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
 ;; defaults of every absent row.
+;; NNT-041: several listeners.  The node is public when any listener is
+;; (fn-exp-address-publicp decides each).
+(defun fn-owner-exposure-projections-publicp (projections)
+  (declare (xargs :mode :program))
+  (and (consp projections)
+       (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
+           (fn-owner-exposure-projections-publicp (cdr projections)))))
+
+(defun fn-owner-exposure-install-set (projections state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((publicp (fn-owner-exposure-projections-publicp projections))
+         (state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
+         (state (f-put-global 'fn-owner-exposure-close nil state))
+         (state (f-put-global 'fn-owner-exposure-public publicp state)))
+    (value (if publicp :public :loopback))))
+
 (defun fn-owner-exposure-install (family address state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
@@ -2299,7 +2347,7 @@
                       (fn-owner-ocfg state) id octets))
              (state (fn-owner-install-ocfg
                      (fn-own-tls-result-owner result) state))
-             (state (fn-owner-install-effects
+             (state (fn-owner-install-served-effects
                      (fn-own-tls-result-effects result) state))
              (state (f-put-global 'fn-owner-consumed
                                   (fn-own-tls-result-consumed result) state))
@@ -2315,6 +2363,56 @@
                                    (fn-own-tls-result-effects result))
                                   state)))
         (value :ok)))))
+
+; The served read's reply, into the octet buffer (PRF-192; PKT-491): the
+; host calls this right after `fn-owner-chunk' (host/native/owner.lisp
+; fnn-owner-handle-chunk) and writes the buffer's range [0, len) to the
+; socket.  `fn-served-reply-to-buffer-is-the-reply': under :ok that range
+; is `fn-served-reply-octets' of the step's effects, the reply
+; `fn-owner-install-effects' would have put in `fn-owner-output'.
+; :malformed (a reply effect that is not octets) is a host fault, as a
+; non-octet `fn-owner-output' was.
+(defun fn-owner-reply-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (mv-let (okp fn-octets)
+    (fn-served-reply-to-buffer (f-get-global 'fn-owner-effects state) fn-octets)
+    (mv nil (if okp :ok :malformed) fn-octets state)))
+
+; The same read over a range of the octet buffer (books/served-span.lisp;
+; REP-012, PRF-181): host/native/owner.lisp fnn-owner-handle-chunk fills the
+; buffer from the socket's byte vector and calls this with [start, end), so
+; no octet of a read is ever a cons cell.  fn-scar-ocfg-read-span is
+; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
+; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation); everything
+; installed below is installed as fn-owner-chunk installs it.
+(defun fn-owner-chunk-span (id start end fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (if (not (and (natp start) (natp end) (<= start end)
+                    (<= end (fn-octets-len fn-octets))))
+          (value :bad-range)
+        (let* ((result (fn-scar-ocfg-read-span
+                        (fn-owner-ocfg state) id start end fn-octets))
+               (state (fn-owner-install-ocfg
+                       (fn-own-tls-result-owner result) state))
+               (state (fn-owner-install-effects
+                       (fn-own-tls-result-effects result) state))
+               (state (f-put-global 'fn-owner-consumed
+                                    (fn-own-tls-result-consumed result) state))
+               ; PRF-161: progress, failed logins and submissions of this step.
+               (state (fn-owner-exposure-observe
+                       id (fn-own-tls-result-effects result)
+                       (fn-own-tls-result-consumed result) state))
+               ; One line per 441 the effects send (books/owner-log.lisp
+               ; fn-olog-served-refusal-lines-one-per-441).
+               (state (f-put-global 'fn-owner-refusal-lines
+                                    (fn-olog-served-refusal-lines
+                                     (fn-owner-core state) id
+                                     (fn-own-tls-result-effects result))
+                                    state)))
+          (value :ok))))))
 
 (defun fn-owner-close (id state)
   (declare (xargs :stobjs state :mode :program))

@@ -1,0 +1,17 @@
+== before n=1000 round=1 15:52:02Z load 9.87 10.51 11.21
+   rc=0 {'open_s': 1.4280801163986325, 'unsigned_median_s': 0.04271204024553299, 'signed_median_s': 0.11979587189853191, 'unsigned_owner_cpu_ms': 2.500000000000002, 'signed_owner_cpu_ms': 84.49999999999999, 'loadavg_after': '9.80 10.49 11.20 8/1848 2411720'}
+== after n=1000 round=1 15:52:08Z load 9.80 10.49 11.20
+   rc=0 {'open_s': 1.7145809913054109, 'unsigned_median_s': 0.04279399663209915, 'signed_median_s': 0.10295422561466694, 'unsigned_owner_cpu_ms': 3.0000000000000027, 'signed_owner_cpu_ms': 67.0, 'loadavg_after': '9.89 10.49 11.20 7/1815 2412064'}
+== before n=10000 round=1 15:52:13Z load 9.89 10.49 11.20
+   rc=0 {'open_s': 11.719839546829462, 'unsigned_median_s': 0.0450424924492836, 'signed_median_s': 0.29551693983376026, 'unsigned_owner_cpu_ms': 5.999999999999961, 'signed_owner_cpu_ms': 260.49999999999994, 'loadavg_after': '10.02 10.48 11.18 11/1836 2413924'}
+== after n=10000 round=1 15:52:33Z load 10.02 10.48 11.18
+   rc=0 {'open_s': 12.704431400634348, 'unsigned_median_s': 0.04512416385114193, 'signed_median_s': 0.12562676798552275, 'unsigned_owner_cpu_ms': 6.49999999999995, 'signed_owner_cpu_ms': 91.00000000000001, 'loadavg_after': '10.22 10.50 11.17 12/1829 2414519'}
+== before n=1000 round=2 15:52:51Z load 10.22 10.50 11.17
+   rc=0 {'open_s': 2.020637670531869, 'unsigned_median_s': 0.04286297783255577, 'signed_median_s': 0.14361176919192076, 'unsigned_owner_cpu_ms': 4.0000000000000036, 'signed_owner_cpu_ms': 108.5, 'loadavg_after': '10.20 10.49 11.16 12/1832 2414852'}
+== after n=1000 round=2 15:52:57Z load 10.20 10.49 11.16
+   rc=0 {'open_s': 1.784150061197579, 'unsigned_median_s': 0.043686836026608944, 'signed_median_s': 0.12323552742600441, 'unsigned_owner_cpu_ms': 4.0000000000000036, 'signed_owner_cpu_ms': 92.49999999999999, 'loadavg_after': '10.35 10.51 11.17 11/1832 2415094'}
+== before n=10000 round=2 15:53:04Z load 10.48 10.54 11.17
+   rc=0 {'open_s': 15.644803677685559, 'unsigned_median_s': 0.04524745140224695, 'signed_median_s': 0.33201299980282784, 'unsigned_owner_cpu_ms': 6.49999999999995, 'signed_owner_cpu_ms': 293.50000000000006, 'loadavg_after': '10.94 10.65 11.19 12/1839 2415823'}
+== after n=10000 round=2 15:53:28Z load 10.94 10.65 11.19
+   rc=0 {'open_s': 12.906489195302129, 'unsigned_median_s': 0.0459330165758729, 'signed_median_s': 0.12847080919891596, 'unsigned_owner_cpu_ms': 6.50000000000004, 'signed_owner_cpu_ms': 92.99999999999997, 'loadavg_after': '10.97 10.67 11.19 10/1838 2416312'}
+MEAS-DONE

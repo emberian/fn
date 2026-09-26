@@ -123,19 +123,36 @@
     ;; PRF-161: the accept is admitted and opened by one ACL2 call, and every
     ;; step is charged against the address's budget first.
     (fn-owner-exposure-open (setq *output* (fnn-ascii "200 ready")) 1)
-    (fn-owner-exposure-charge :proceed)))
+    (fn-owner-exposure-charge :proceed)
+    ;; PRF-164: no XREDEEM in these scenarios, so no connection waits.
+    (fn-acct-host-owner-redeem-waitingp nil)))
+
+;; The octet buffer (books/octets-stobj.lisp fn-octets): the host fills it
+;; once per read (fnn-octets-fill) and hands the owner the range [start, end)
+;; (PRF-181, fn-owner-chunk-span); the stub records the range's octets as the
+;; INCOMING that step was handed.
+(defparameter *buffer* nil)
+(defun fnn-octets-fill (vector) (setq *buffer* (fnn-octets vector)) (length *buffer*))
+
+(defun fnn-owner-take-step (incoming)
+  (push (fnn-text incoming) *chunks*)
+  (setq *step* (pop *plans*))
+  (unless *step* (error "the loop took a step this scenario did not plan"))
+  (setq *output* (fnn-ascii (fourth *step*)))
+  :ok)
+
+(defun fnn-owner-buffer-action (name &rest args)
+  (ecase name
+    (fn-owner-chunk-span
+     (destructuring-bind (cid start end) args
+       (declare (ignore cid))
+       (fnn-owner-take-step (subseq *buffer* start end))))))
 
 ;; The four ACL2 globals one served read publishes.  The plan supplies them,
 ;; so the loop reads them exactly where host/owner-host.lisp puts them.
 (defun fnn-owner-action (name &rest args)
   (ecase name
     (fn-owner-observe (push args *observations*) :observed)
-    (fn-owner-chunk
-     (push (fnn-text (second args)) *chunks*)
-     (setq *step* (pop *plans*))
-     (unless *step* (error "the loop took a step this scenario did not plan"))
-     (setq *output* (fnn-ascii (fourth *step*)))
-     :ok)
     (fn-owner-close :closed)
     (fn-owner-exposure-idle :keep)
     (fn-owner-exposure-release :released)
@@ -143,6 +160,9 @@
 
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
+;; PRF-192: the served read's reply comes out of the octet buffer
+;; (host/native/owner.lisp fnn-owner-reply-from-buffer); the plan supplies it.
+(defun fnn-owner-reply-from-buffer () *output*)
 (defun fnn-owner-bool-global (name)
   (ecase name
     (fn-owner-closep (second *step*))

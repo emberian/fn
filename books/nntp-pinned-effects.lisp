@@ -34,12 +34,29 @@
            :in-theory (disable fn-nov-indexed-lines-are-clean
                                fn-nov-lines-for-numbers-indexed))))
 
+; The same for the rows the number index finds (over-number-index): the
+; renderer is the indexed one's, so its lines are clean whatever the index.
+(defthm fn-nov-numbered-lines-are-clean
+  (fn-nov-clean-line-listp
+   (fn-nov-lines-for-numbers-numbered numbers nidx trie))
+  :hints (("Goal" :induct (fn-nov-lines-for-numbers-numbered numbers nidx trie)
+           :in-theory (e/d (fn-nov-lines-for-numbers-numbered)
+                           (fn-nov-overview fn-nov-line)))))
+
+(defthm fn-nntp-numbered-over-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nov-lines-for-numbers-numbered numbers nidx trie))
+  :hints (("Goal" :use ((:instance fn-nov-numbered-lines-are-clean))
+           :in-theory (disable fn-nov-numbered-lines-are-clean
+                               fn-nov-lines-for-numbers-numbered))))
+
 (defthm fn-nntp-effects-over-range-indexed
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-over-range-indexed session buckets trie token legacyp)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed)
                                   (fn-nov-lines-for-numbers-indexed
+                                   fn-nov-lines-for-numbers-numbered
                                    fn-nntp-index-group-range-numbers
                                    fn-nntp-parse-range fn-nntp-single)))))
 

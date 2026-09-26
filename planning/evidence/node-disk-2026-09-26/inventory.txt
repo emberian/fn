@@ -1,0 +1,214 @@
+NAME                                                                                        MOUNTPOINT                          USED  AVAIL  COMPRESS        SYNC      LOGBIAS     RECSIZE  SPECIAL_SMALL_BLOCKS
+bpool                                                                                       /othersys/boot                      324M  1.43G  lz4             standard  latency        128K                     0
+bpool/BOOT                                                                                  none                                323M  1.43G  lz4             standard  latency        128K                     0
+bpool/BOOT/ubuntu_wtpnm2                                                                    /othersys/boot                      322M  1.43G  lz4             standard  latency        128K                     0
+rpool                                                                                       /othersys                           795G  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT                                                                                  none                                589G  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2                                                                    /othersys                           589G  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/srv                                                                /othersys/srv                       327M  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/usr                                                                /othersys/usr                       418M  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/usr/local                                                          /othersys/usr/local                 418M  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var                                                                /othersys/var                      51.3G  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/games                                                          /othersys/var/games                 376K  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/lib                                                            /othersys/var/lib                  49.8G  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/lib/AccountsService                                            /othersys/var/lib/AccountsService   324K  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/lib/NetworkManager                                             /othersys/var/lib/NetworkManager    920K  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/lib/apt                                                        /othersys/var/lib/apt               126M  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/lib/dpkg                                                       /othersys/var/lib/dpkg              259M  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/log                                                            /othersys/var/log                  1.19G  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/mail                                                           /othersys/var/mail                  272K  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/snap                                                           /othersys/var/snap                  354M  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/spool                                                          /othersys/var/spool                1020K  96.4G  lz4             standard  latency        128K                     0
+rpool/ROOT/ubuntu_wtpnm2/var/www                                                            /othersys/var/www                   356K  96.4G  lz4             standard  latency        128K                     0
+rpool/USERDATA                                                                              /othersys                          51.4G  96.4G  lz4             standard  latency        128K                     0
+rpool/USERDATA/hbox_tgyjc1                                                                  /othersys/home/hbox                51.3G  96.4G  lz4             standard  latency        128K                     0
+rpool/USERDATA/root_tgyjc1                                                                  /othersys/root                     79.0M  96.4G  lz4             standard  latency        128K                     0
+rpool/keystore                                                                              -                                   581M  96.9G  lz4             standard  latency           -                     -
+rpool/lxd                                                                                   legacy                             1.83G  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/buckets                                                                           legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/containers                                                                        legacy                              952M  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/containers/bkj_bkjcont                                                            legacy                              951M  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/custom                                                                            legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/deleted                                                                           legacy                             1.12M  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/deleted/buckets                                                                   legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/deleted/containers                                                                legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/deleted/custom                                                                    legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/deleted/images                                                                    legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/deleted/virtual-machines                                                          legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/images                                                                            legacy                              918M  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/images/a08ecb43f866110d66ba1169f78395d30d3d21b08b70808d7999c4eb8e5200ab           legacy                              270M  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/images/dd50a97865f3a71ea5bd3028c0a900473e80d1c3adcb7510584812339b871e6f           legacy                              648M  96.4G  lz4             standard  latency        128K                     0
+rpool/lxd/virtual-machines                                                                  legacy                              192K  96.4G  lz4             standard  latency        128K                     0
+rpool/var                                                                                   /othersys/var                       152G  96.4G  lz4             standard  latency        128K                     0
+rpool/var/lib                                                                               /othersys/var/lib                   152G  96.4G  lz4             standard  latency        128K                     0
+tank                                                                                        /tank                              2.53T   109G  lz4             standard  latency        128K                     0
+tank/backups                                                                                none                                517G   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30                                                     none                                517G   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/srv                                                 none                                326M   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/usr                                                 none                                409M   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/usr/local                                           none                                409M   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var                                                 none                               51.2G   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/games                                           none                                272K   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/lib                                             none                               49.7G   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/lib/AccountsService                             none                                188K   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/lib/NetworkManager                              none                                512K   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/lib/apt                                         none                                125M   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/lib/dpkg                                        none                                162M   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/log                                             none                               1.17G   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/mail                                            none                                168K   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/snap                                            none                                352M   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/spool                                           none                                852K   109G  lz4             standard  latency        128K                     0
+tank/backups/hbox-pre-harden-2026-06-30/var/www                                             none                                220K   109G  lz4             standard  latency        128K                     0
+tank/dregg-build                                                                            /tank/dregg-build                  1.52T   109G  lz4             standard  latency        128K                   32K
+== syncprops
+rpool  standard
+== df
+Filesystem                                       Type      Size  Used Avail Use% Mounted on
+tmpfs                                            tmpfs      13G  5.0M   13G   1% /run
+/dev/nvme0n1p4                                   ext4      455G  389G   44G  91% /
+tmpfs                                            tmpfs      62G 1008M   61G   2% /dev/shm
+efivarfs                                         efivarfs  256K  128K  124K  51% /sys/firmware/efi/efivars
+tmpfs                                            tmpfs     5.0M   12K  5.0M   1% /run/lock
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-udev-load-credentials.service
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-tmpfiles-setup-dev-early.service
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-tmpfiles-setup-dev.service
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-sysctl.service
+tmpfs                                            tmpfs      62G  628M   62G   1% /tmp
+/dev/nvme0n1p1                                   vfat       96M  6.2M   90M   7% /boot/efi
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-tmpfiles-setup.service
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-resolved.service
+tmpfs                                            tmpfs      13G  148K   13G   1% /run/user/1000
+tmpfs                                            tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
+tank                                             zfs       626G  517G  110G  83% /tank
+tank/dregg-build                                 zfs       1.7T  1.6T  110G  94% /tank/dregg-build
+tmpfs                                            tmpfs      13G  100K   13G   1% /run/user/120
+/dev/mapper/keystore-rpool                       ext4      437M   28K  404M   1% /run/keystore/rpool
+rpool/ROOT/ubuntu_wtpnm2                         zfs       337G  241G   97G  72% /othersys
+rpool/USERDATA/hbox_tgyjc1                       zfs       147G   51G   97G  35% /othersys/home/hbox
+rpool/USERDATA/root_tgyjc1                       zfs        97G   80M   97G   1% /othersys/root
+rpool/ROOT/ubuntu_wtpnm2/srv                     zfs        97G  327M   97G   1% /othersys/srv
+rpool/ROOT/ubuntu_wtpnm2/usr/local               zfs        97G  409M   97G   1% /othersys/usr/local
+rpool/ROOT/ubuntu_wtpnm2/var/games               zfs        97G  384K   97G   1% /othersys/var/games
+rpool/ROOT/ubuntu_wtpnm2/var/lib                 zfs       146G   50G   97G  34% /othersys/var/lib
+rpool/ROOT/ubuntu_wtpnm2/var/lib/AccountsService zfs        97G  256K   97G   1% /othersys/var/lib/AccountsService
+rpool/ROOT/ubuntu_wtpnm2/var/lib/apt             zfs        97G  126M   97G   1% /othersys/var/lib/apt
+rpool/var/lib/docker                             zfs        98G  867M   97G   1% /othersys/var/lib/docker
+rpool/ROOT/ubuntu_wtpnm2/var/lib/dpkg            zfs        97G  161M   97G   1% /othersys/var/lib/dpkg
+rpool/ROOT/ubuntu_wtpnm2/var/lib/NetworkManager  zfs        97G  640K   97G   1% /othersys/var/lib/NetworkManager
+rpool/ROOT/ubuntu_wtpnm2/var/log                 zfs        98G  1.2G   97G   2% /othersys/var/log
+rpool/ROOT/ubuntu_wtpnm2/var/mail                zfs        97G  256K   97G   1% /othersys/var/mail
+rpool/ROOT/ubuntu_wtpnm2/var/snap                zfs        97G  353M   97G   1% /othersys/var/snap
+rpool/ROOT/ubuntu_wtpnm2/var/spool               zfs        97G  896K   97G   1% /othersys/var/spool
+rpool/ROOT/ubuntu_wtpnm2/var/www                 zfs        97G  256K   97G   1% /othersys/var/www
+bpool/BOOT/ubuntu_wtpnm2                         zfs       1.7G  244M  1.5G  15% /othersys/boot
+/dev/sdb1                                        vfat      511M   15M  497M   3% /othersys/boot/efi
+== lsblk
+NAME               SIZE TYPE  ROTA FSTYPE      MOUNTPOINT                          MODEL
+loop0                4K loop     0 squashfs    /snap/bare/5                        
+loop1            528.4M loop     0 squashfs    /snap/code/261                      
+loop2             11.8M loop     0 squashfs    /snap/snap-store/1390               
+loop3             66.8M loop     0 squashfs    /snap/core24/2124                   
+loop4            519.9M loop     0 squashfs    /snap/code/264                      
+loop5             63.8M loop     0 squashfs    /snap/core20/2866                   
+loop6               74M loop     0 squashfs    /snap/core22/2955                   
+loop7             50.1M loop     0 squashfs    /snap/snapd/27710                   
+loop8             66.8M loop     0             /snap/core24/1643                   
+loop9            405.6M loop     0 squashfs    /snap/blender/7803                  
+loop10              20M loop     0             /snap/desktop-security-center/151   
+loop11           291.2M loop     0 squashfs    /snap/steam/271                     
+loop12           615.3M loop     0 squashfs    /snap/gnome-46-2404/168             
+loop13           406.1M loop     0 squashfs    /snap/blender/7740                  
+loop14             193M loop     0             /snap/gaming-graphics-core22/184    
+loop15            11.1M loop     0             /snap/firmware-updater/147          
+loop16            16.5M loop     0             /snap/firmware-updater/226          
+loop17           242.6M loop     0             /snap/gaming-graphics-core24/13     
+loop18           614.5M loop     0             /snap/gnome-46-2404/164             
+loop19           505.1M loop     0             /snap/gnome-42-2204/176             
+loop20           531.5M loop     0             /snap/gnome-42-2204/263             
+loop21            89.7M loop     0             /snap/gtk-common-themes/1536        
+loop22            91.7M loop     0             /snap/gtk-common-themes/1535        
+loop23             395M loop     0             /snap/mesa-2404/1165                
+loop24             402M loop     0             /snap/mesa-2404/1839                
+loop25            18.8M loop     0             /snap/prompting-client/222          
+loop27              74M loop     0 squashfs    /snap/core22/2437                   
+loop28            18.4M loop     0 squashfs    /snap/prompting-client/228          
+loop29             828K loop     0             /snap/snapd-desktop-integration/387 
+loop30           260.8M loop     0 squashfs    /snap/firefox/8863                  
+loop31            50.1M loop     0                                                 
+loop32             828K loop     0             /snap/snapd-desktop-integration/391 
+loop33            11.8M loop     0 squashfs    /snap/snap-store/1419               
+loop34           278.4M loop     0             /snap/steam/231                     
+loop35           261.3M loop     0 squashfs    /snap/firefox/8929                  
+loop36            50.3M loop     0 squashfs    /snap/snapd/27738                   
+loop37            63.8M loop     0 squashfs    /snap/core20/2922                   
+loop38            14.2M loop     0 squashfs    /snap/desktop-security-center/188   
+sda                2.7T disk     1                                                 HUA723030ALA640
+--sda1             100M part     1 vfat                                            
+--sda2              16M part     1                                                 
+--sda3             2.7T part     1 zfs_member                                      
+sdb              931.5G disk     0                                                 Samsung SSD 860 EVO M.2 1TB
+--sdb1             512M part     0 vfat        /othersys/boot/efi                  
+--sdb2               2G part     0                                                 
+--sdb3               2G part     0 zfs_member                                      
+--sdb4             927G part     0 zfs_member                                      
+sdc                2.7T disk     1 udf                                             HUA723030ALA640
+--sdc1             100M part     1 vfat                                            
+--sdc2              16M part     1                                                 
+--sdc3             2.7T part     1 zfs_member                                      
+zd0                500M disk     0 crypto_LUKS                                     
+--keystore-rpool   484M crypt    0 ext4        /run/keystore/rpool                 
+nvme0n1          476.9G disk     0                                                 SAMSUNG MZVLB512HAJQ-00000
+--nvme0n1p1        100M part     0 vfat        /boot/efi                           
+--nvme0n1p2         16M part     0                                                 
+--nvme0n1p3       13.6G part     0 zfs_member                                      
+--nvme0n1p4      463.2G part     0 ext4        /                                   
+== findmnt /
+TARGET SOURCE         FSTYPE OPTIONS
+/      /dev/nvme0n1p4 ext4   rw,relatime
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,inode64)
+tmpfs on /tmp type tmpfs (rw,nosuid,nodev,size=64659820k,nr_inodes=1048576,inode64)
+tmpfs on /run/user/1000 type tmpfs (rw,nosuid,nodev,relatime,size=12931960k,nr_inodes=3232990,mode=700,uid=1000,gid=1000,inode64)
+tmpfs on /run/user/120 type tmpfs (rw,nosuid,nodev,relatime,size=12931960k,nr_inodes=3232990,mode=700,uid=120,gid=122,inode64)
+lrwxrwxrwx  1 root root  10 Jul 15 18:15 a9ea7fb2-3a8e-3147-b22d-d8ac1ad984bc -> ../../sdb3
+lrwxrwxrwx  1 root root  10 Jul 15 18:15 c56ff35a-155c-7643-9c75-1bf81f61411a -> ../../sdb4
+tank  sync  standard  default
+tank  logbias  latency  default
+tank  special_small_blocks  0  default
+tank  primarycache  all  default
+tank/dregg-build  sync  standard  default
+tank/dregg-build  logbias  latency  default
+tank/dregg-build  special_small_blocks  32K  local
+tank/dregg-build  primarycache  all  default
+rpool  ashift  12  local
+tank  ashift  12  local
+SAMSUNG MZVLB512HAJQ-00000              
+drwxr-xr-x  22 hbox root  26 Sep 24 18:02 /tank/fn
+drwxrwxr-x 232 hbox hbox 238 Sep 26 14:01 /tank/fn/scratch
+zfs
+zfs
+ext2/ext3
+tmpfs
+acl2-8.7
+acl2.tar.gz
+bp-a3-smoke.pruxL6
+bp-a3-smoke.yDUaha
+bp-a3-smoke.ZtJ52n
+certcache
+dtn7
+gates
+inn
+labs
+lanes
+ltp
+measurements
+ninep
+node
+sbcl
+sbcl-2.6.8-x86-64-linux
+sbcl.tar.bz2
+scale
+scratch
+scratch-ocl-open-repl
+setup.log
+sysbooks.log
+toolchains

@@ -138,6 +138,7 @@
                   fn-nntp-group-result fn-nntp-listgroup-command
                   fn-nntp-listgroup-result
                   fn-nntp-list-command fn-nntp-list-response
+                  fn-nntp-list-newsgroups-described fn-nntp-list-motd
                   fn-nntp-list-counts-command fn-nntp-list-counts
                   fn-nntp-list-active fn-nntp-list-active-times
                   fn-nntp-list-status-response fn-nntp-list-active-status

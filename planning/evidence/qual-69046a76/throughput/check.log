@@ -1,0 +1,2 @@
+throughput_gate: 69046a76798b-qual-69046a76-20260926T174825Z.json measures 69046a76798b (at HEAD), 1 of 12 metrics compared (under load: qual-69046a76-chainM.service, qual-69046a76-peerrows.service, run-r93ea9d6f40bd4b63bf359d1108b3294a.scope busy; CPU and wall-clock figures not compared, PKT-477 (1)), box cpu busy median 0.127
+rc=0

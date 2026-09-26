@@ -1,0 +1,41 @@
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/before-10k-1 before-10k-1 400 15:52:54Z load 10.20 10.49 11.16
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/after-10k-1 after-10k-1 400 15:53:23Z load 10.94 10.64 11.19
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/before-1k-1 before-1k-1 400 15:53:50Z load 10.89 10.66 11.18
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/after-1k-1 after-1k-1 400 15:53:54Z load 10.90 10.67 11.18
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/before-10k-2 before-10k-2 400 15:53:58Z load 10.90 10.67 11.18
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/after-10k-2 after-10k-2 400 15:54:23Z load 11.51 10.84 11.22
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/before-1k-2 before-1k-2 400 15:54:49Z load 12.08 11.03 11.28
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/after-1k-2 after-1k-2 400 15:54:54Z load 12.00 11.03 11.27
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/before-10k-3 before-10k-3 400 15:54:58Z load 12.00 11.03 11.27
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/after-10k-3 after-10k-3 400 15:55:26Z load 12.71 11.31 11.36
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/before-1k-3 before-1k-3 400 15:55:51Z load 13.05 11.50 11.42
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/after-1k-3 after-1k-3 400 15:55:56Z load 13.13 11.54 11.44
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/before-10k-4 before-10k-4 400 15:56:00Z load 12.96 11.53 11.43
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/after-10k-4 after-10k-4 400 15:56:24Z load 12.28 11.49 11.42
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/before-1k-4 before-1k-4 400 15:56:49Z load 11.76 11.43 11.40
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/after-1k-4 after-1k-4 400 15:56:53Z load 11.76 11.43 11.40
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/before-10k-5 before-10k-5 400 15:56:57Z load 11.62 11.41 11.40
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n10k-2k/store /dev/shm/pidx2/after-10k-5 after-10k-5 400 15:57:25Z load 11.15 11.32 11.37
+   rc=0
+== post /tank/fn/scratch/throughput-gate/native-img-6407de336/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/before-1k-5 before-1k-5 400 15:57:49Z load 10.26 11.10 11.29
+   rc=0
+== post /tank/fn/scratch/post-identity-index/native-r1/tree/build/fn-host-developer /tank/fn/scratch/fixtures/n1k-2k/store /dev/shm/pidx2/after-1k-5 after-1k-5 400 15:57:53Z load 10.08 11.05 11.27
+   rc=0
+MEASURE2-DONE 15:57:58Z

@@ -1,0 +1,9 @@
+test_group_create_is_bounded_by_field_7 (tests.test_native_group_name_bound.NativeGroupNameBoundTests.test_group_create_is_bounded_by_field_7) ... ok
+test_init_is_bounded_by_field_7 (tests.test_native_group_name_bound.NativeGroupNameBoundTests.test_init_is_bounded_by_field_7) ... ok
+test_the_default_profile_admits_the_longer_name (tests.test_native_group_name_bound.NativeGroupNameBoundTests.test_the_default_profile_admits_the_longer_name) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.796s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_group_name_bound", "tests": 3, "failures": 0, "errors": 0, "skipped": 0, "executed": 3, "skips": [], "timings": [["tests.test_native_group_name_bound.NativeGroupNameBoundTests.test_group_create_is_bounded_by_field_7", 0.556], ["tests.test_native_group_name_bound.NativeGroupNameBoundTests.test_init_is_bounded_by_field_7", 0.079], ["tests.test_native_group_name_bound.NativeGroupNameBoundTests.test_the_default_profile_admits_the_longer_name", 0.16]]}

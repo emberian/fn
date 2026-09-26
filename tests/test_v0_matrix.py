@@ -579,6 +579,37 @@ class ReportPublicationTests(unittest.TestCase):
 
 
 
+class ClientWireTests(unittest.TestCase):
+    """client_wire_outcomes reads only the node's reply lines (pan/Thunderbird)."""
+
+    def test_each_action_reads_its_own_reply_line(self):
+        log = "\n".join([
+            "1.0 0 --- action redeem",
+            "1.1 0 S: 200 ready", "1.2 0 C: XREDEEM <code> LOGIN",
+            "1.3 0 S: 381 send the password with XREDEEM PASS",
+            "1.4 0 C: XREDEEM PASS <redacted>", "1.5 0 S: 281 account bound",
+            "2.0 0 --- action read",
+            "2.1 0 C: AUTHINFO PASS <redacted>", "2.2 0 S: 281 authentication accepted",
+            "2.3 0 C: ARTICLE <a@b>", "2.4 0 S: 220 1 <a@b> article follows",
+            "3.0 0 --- action reply",
+            "3.1 0 C: POST", "3.2 0 S: 340 send article",
+            "3.3 0 C: Subject: Re: x", "3.4 0 S: 240 article received OK",
+            "4.0 0 --- action cancel",
+            "4.1 0 C: POST", "4.2 0 S: 440 posting not permitted",
+        ])
+        seen = v0_matrix.client_wire_outcomes(log)
+        self.assertEqual(seen["redeem"], ["381 send the password with XREDEEM PASS",
+                                          "281 account bound"])
+        self.assertEqual(seen["read"], "220 1 <a@b> article follows")
+        self.assertEqual(seen["reply"], "240 article received OK")
+        # A refused POST is its own reply; an action that never ran is None.
+        self.assertEqual(seen["cancel"], "440 posting not permitted")
+        self.assertIsNone(seen["post"])
+        self.assertEqual(seen["client_login"], "281 authentication accepted")
+        # A client line is never taken for the node's answer.
+        self.assertNotIn("Subject: Re: x", json.dumps(seen))
+
+
 class TinWireTests(unittest.TestCase):
     """tin_wire_outcomes reads only the node's reply lines (the tin phase)."""
 

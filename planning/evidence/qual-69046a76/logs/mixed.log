@@ -1,0 +1,314 @@
+init rc 0 initialized /tank/fn/scratch/qual-69046a76/mixed/store
+accepted operator init
+{
+ "latency": {
+  "reader-group": {
+   "n": 4979,
+   "p50_ms": 0.5489783361554146,
+   "p95_ms": 633.9156208559871,
+   "p99_ms": 61227.207539603114,
+   "max_ms": 396799.1890180856
+  },
+  "post": {
+   "n": 1342,
+   "p50_ms": 127.85356026142836,
+   "p95_ms": 811.4340398460627,
+   "p99_ms": 76164.11720495671,
+   "max_ms": 396799.5694465935
+  },
+  "signed-report": {
+   "n": 129,
+   "p50_ms": 10499.518397264183,
+   "p95_ms": 12967.112196609378,
+   "p99_ms": 26271.581888198853,
+   "max_ms": 77571.02170400321
+  },
+  "status-live": {
+   "n": 87,
+   "p50_ms": 10084.522101096809,
+   "p95_ms": 10117.617843672633,
+   "p99_ms": 10150.403619743884,
+   "max_ms": 10150.403619743884
+  },
+  "health-live": {
+   "n": 87,
+   "p50_ms": 6919.612105004489,
+   "p95_ms": 10120.078634470701,
+   "p99_ms": 10157.826366834342,
+   "max_ms": 10157.826366834342
+  },
+  "bp-queue": {
+   "n": 52,
+   "p50_ms": 5961.021471768618,
+   "p95_ms": 31211.140286177397,
+   "p99_ms": 48373.239188455045,
+   "max_ms": 48373.239188455045
+  },
+  "control-group-create": {
+   "n": 26,
+   "p50_ms": 10091.211975552142,
+   "p95_ms": 10132.169291377068,
+   "p99_ms": 10159.216979518533,
+   "max_ms": 10159.216979518533
+  },
+  "control-grant": {
+   "n": 26,
+   "p50_ms": 10092.474933713675,
+   "p95_ms": 10116.571449674666,
+   "p99_ms": 10141.656688414514,
+   "max_ms": 10141.656688414514
+  },
+  "consumer-wake": {
+   "n": 68,
+   "p50_ms": 10311.547704972327,
+   "p95_ms": 109903.16691063344,
+   "p99_ms": 151478.2359795645,
+   "max_ms": 151478.2359795645
+  },
+  "consumer-wake:not-ok": {
+   "n": 67,
+   "p50_ms": 10306.40676151961,
+   "p95_ms": 102396.4424263686,
+   "p99_ms": 110616.84087384492,
+   "max_ms": 110616.84087384492
+  },
+  "bp-resume": {
+   "n": 11,
+   "p50_ms": 4651.867809705436,
+   "p95_ms": 13179.615825414658,
+   "p99_ms": 13179.615825414658,
+   "max_ms": 13179.615825414658
+  },
+  "control-group-create:not-ok": {
+   "n": 24,
+   "p50_ms": 10091.508297249675,
+   "p95_ms": 10132.169291377068,
+   "p99_ms": 10159.216979518533,
+   "max_ms": 10159.216979518533
+  },
+  "status-live:not-ok": {
+   "n": 49,
+   "p50_ms": 10093.261936679482,
+   "p95_ms": 10130.198890343308,
+   "p99_ms": 10150.403619743884,
+   "max_ms": 10150.403619743884
+  },
+  "control-grant:not-ok": {
+   "n": 24,
+   "p50_ms": 10092.528840526938,
+   "p95_ms": 10116.571449674666,
+   "p99_ms": 10141.656688414514,
+   "max_ms": 10141.656688414514
+  },
+  "signed-report:not-ok": {
+   "n": 73,
+   "p50_ms": 10641.38303976506,
+   "p95_ms": 15253.552155569196,
+   "p99_ms": 77571.02170400321,
+   "max_ms": 77571.02170400321
+  },
+  "health-live:not-ok": {
+   "n": 45,
+   "p50_ms": 10093.15925091505,
+   "p95_ms": 10145.796419121325,
+   "p99_ms": 10157.826366834342,
+   "max_ms": 10157.826366834342
+  },
+  "bp-resume:not-ok": {
+   "n": 1,
+   "p50_ms": 73.97523708641529,
+   "p95_ms": 73.97523708641529,
+   "p99_ms": 73.97523708641529,
+   "max_ms": 73.97523708641529
+  }
+ },
+ "first": {
+  "t": 1.0,
+  "cpu_s": 0.07,
+  "rss_kib": "374124",
+  "hwm_kib": "374124",
+  "store_octets": 4853,
+  "store_inodes": 13,
+  "bp_journal_octets": 0,
+  "owner_alive": true
+ },
+ "last": {
+  "t": 3732.1,
+  "cpu_s": 2785.68,
+  "rss_kib": "708252",
+  "hwm_kib": "1384444",
+  "store_octets": 9433719,
+  "store_inodes": 2493,
+  "bp_journal_octets": 323906,
+  "owner_alive": true
+ },
+ "owner_alive_at_end": true,
+ "owner_exit": 0,
+ "recover_rc": 0,
+ "event_kinds": {
+  "bootstrap": 1,
+  "bp-queue": 52,
+  "bp-resume": 11,
+  "control-grant": 26,
+  "enroll": 2,
+  "group-create": 26,
+  "health": 87,
+  "register": 2,
+  "report": 129,
+  "status": 87,
+  "wake": 68
+ },
+ "nonzero": [
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "296\"}], \"operations\": [], \"outbox\": [], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 305}\nconsumer stopped: position: consumer uncertain",
+   "t": 255.6
+  },
+  {
+   "kind": "group-create",
+   "n": 3,
+   "rc": 3,
+   "tail": "uncertain operator group UNCERTAIN",
+   "t": 387.6
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "box\": [], \"pending_ack\": \"uncertain\", \"state\": {}, \"transitions\": [], \"unattributed\": 452}\nconsumer stopped: ack uncertain; position settles it on the next wake",
+   "t": 388.0
+  },
+  {
+   "kind": "status",
+   "rc": 3,
+   "lines": [],
+   "t": 388.23
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control UNCERTAIN",
+   "t": 397.69
+  },
+  {
+   "kind": "group-create",
+   "n": 4,
+   "rc": 3,
+   "tail": "uncertain operator group UNCERTAIN",
+   "t": 527.79
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "box\": [], \"pending_ack\": \"uncertain\", \"state\": {}, \"transitions\": [], \"unattributed\": 587}\nconsumer stopped: ack uncertain; position settles it on the next wake",
+   "t": 527.9
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control UNCERTAIN",
+   "t": 537.88
+  },
+  {
+   "kind": "report",
+   "n": 25,
+   "rc": 3,
+   "tail": "}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; a resend of the saved artifact reconciles it",
+   "t": 538.03
+  },
+  {
+   "kind": "status",
+   "rc": 3,
+   "lines": [],
+   "t": 551.95
+  },
+  {
+   "kind": "group-create",
+   "n": 5,
+   "rc": 3,
+   "tail": "uncertain operator group UNCERTAIN",
+   "t": 667.98
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "464\"}], \"operations\": [], \"outbox\": [], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 705}\nconsumer stopped: position: consumer uncertain",
+   "t": 668.06
+  },
+  {
+   "kind": "report",
+   "n": 31,
+   "rc": 3,
+   "tail": "}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; a resend of the saved artifact reconciles it",
+   "t": 677.9
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control UNCERTAIN",
+   "t": 678.08
+  },
+  {
+   "kind": "status",
+   "rc": 3,
+   "lines": [],
+   "t": 692.91
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "464\"}], \"operations\": [], \"outbox\": [], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 705}\nconsumer stopped: position: consumer uncertain",
+   "t": 709.27
+  },
+  {
+   "kind": "report",
+   "n": 32,
+   "rc": 3,
+   "tail": "}], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 0}\nconsumer stopped: reply POST uncertain; a resend of the saved artifact reconciles it",
+   "t": 710.86
+  },
+  {
+   "kind": "group-create",
+   "n": 6,
+   "rc": 3,
+   "tail": "uncertain operator group UNCERTAIN",
+   "t": 808.16
+  },
+  {
+   "kind": "wake",
+   "rc": 3,
+   "tail": "639\"}], \"operations\": [], \"outbox\": [], \"pending_ack\": null, \"state\": {}, \"transitions\": [], \"unattributed\": 768}\nconsumer stopped: position: consumer uncertain",
+   "t": 808.41
+  },
+  {
+   "kind": "control-grant",
+   "rc": 3,
+   "tail": "uncertain operator control UNCERTAIN",
+   "t": 818.27
+  }
+ ]
+}
+	Command being timed: "python3 /tank/fn/scratch/qual-69046a76/mixed.py /tank/fn/scratch/qual-69046a76/mixed 3600"
+	User time (seconds): 3003.88
+	System time (seconds): 231.39
+	Percent of CPU this job got: 86%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:02:17
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1384444
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 392094
+	Minor (reclaiming a frame) page faults: 99033924
+	Voluntary context switches: 2333422
+	Involuntary context switches: 59001
+	Swaps: 0
+	File system inputs: 2022376
+	File system outputs: 178190
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0

@@ -952,6 +952,21 @@
                             (article (car new-articles))
                             (articles (cdr new-articles)))))))
 
+; The group index's number relation (PRF-189, books/group-bucket-index.lisp
+; `fn-gidx-numbers-okp') is preserved by the one transition that changes the
+; group index: the refresh, by a put of each new entry or a build.
+(defthm fn-gidx-numbers-okp-of-put-all
+  (implies (fn-gidx-numbers-okp buckets)
+           (fn-gidx-numbers-okp (fn-gidx-put-all entries buckets)))
+  :hints (("Goal" :in-theory (disable fn-gidx-put fn-gidx-numbers-okp))))
+
+(defthm fn-gidx-numbers-okp-of-refresh
+  (implies (fn-gidx-numbers-okp buckets)
+           (fn-gidx-numbers-okp (fn-gidx-refresh buckets old-articles
+                                                 new-articles)))
+  :hints (("Goal" :in-theory (disable fn-gidx-put-all fn-gidx-build
+                                      fn-gidx-numbers-okp))))
+
 ; The records a withdrawing article causes are decided by the refresh that
 ; first publishes it, under the configuration in force at that article's own
 ; Store txid (`fn-ctl-article-withdrawals': the txid of its acceptance record

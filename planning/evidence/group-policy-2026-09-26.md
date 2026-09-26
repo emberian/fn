@@ -230,3 +230,61 @@ filed and withdraws nothing, as today.
 
 - CT3 and P1 (above). LIST COUNTS status (PKT-575 (1)).
 - No farm certification (validation by batch).
+
+## 6. Merge with dev (usenet-headers, PRF-195), continuation group-policy-merge
+
+`git merge dev` (dev 9b91c4a10) conflicted in sixteen files; both lanes had
+taken the SAME fifth field of two records, so the union is a shape change,
+not a text union:
+
+- books/injection.lisp: the posting configuration is SIX fields: allow,
+  agent, groups, max-octets, listing (PRF-195, index 4), closed (PRF-196,
+  index 5). `fn-inj-make-config-full` is the one six-argument constructor;
+  `-listed` (closed nil), `-closed` (listing nil) and `fn-inj-make-config`
+  (both nil) are defined through it, every accessor-of-constructor lemma of
+  both sides kept. New `fn-inj-decide-ignores-the-listing-and-closed`
+  (the decision over the full configuration equals it over the four inputs);
+  `fn-inj-decide-ignores-the-listing` kept.
+- books/nntp-responses.lisp: the reader environment is SIX fields
+  (:fn-nntp-env observation facts posting listing closed); `fn-nntp-env-full`
+  added; `fn-nntp-env`, `-listed`, `-with-closed` build it with nil in the
+  fields they do not name; `fn-nntp-env-closed` reads index 5. LIST dispatch:
+  ACTIVE.TIMES, COUNTS, NEWSGROUPS (described), MOTD, then the O2 status arm
+  when a group is closed, else `fn-nntp-list-response`.
+- books/nntp-post.lisp: `fn-post-reader-env` is `fn-nntp-env-full` of the
+  pinned configuration (listing and closed, unconditionally); new
+  `fn-post-reader-env-listing`; `fn-post-reader-env-closed` now states the
+  closed field exactly. Every served-step site (nntp-post, nntp-auth-fold,
+  nntp-pinned-effects, peer-offer-indexed, owner-control-read,
+  owner-enrollment-read, owner-list-counts-read) calls `fn-post-reader-env`.
+- books/owner-descriptions-read.lisp (dev, not conflicted): its :use
+  instances name `fn-post-reader-env`; a local
+  `fn-odr-list-motd-of-reader-env` keeps the LIST MOTD keystone statements
+  exactly as usenet-headers wrote them.
+- books/owner-agent.lisp `fn-oag-post-config`, books/owner-served-bound.lisp,
+  host/owner-host.lisp `fn-owner-posting-configure`: build with
+  `fn-inj-make-config-full`, carrying both fields.
+- books/config.lisp: delta kinds and both code tables hold 20
+  :set-group-description and 21 :set-group-status. books/nntp-invariants.lisp,
+  books/nntp-effects.lisp: both lanes' LIST theorems kept.
+  host/native-admin-host.lisp: both verbs offline.
+
+REPL (persvati, ~/fn-gates/group-policy-repl): config, config-invariants,
+injection, nntp-responses, group-status, native-admin, nntp-invariants,
+nntp-effects, nntp-post proved in one chained session; injection-invariants
+in a clean session over merged injection (the chained session failed it by
+local-event leakage, a harness artifact, not the book); nntp-pinned-effects,
+nntp-auth-fold, owner-agent, owner-control-read, nntp-list-counts,
+owner-list-counts-read, config-descriptions, owner-descriptions-read,
+owner-enrollment-read, owner-served-bound, peer-offer-indexed,
+tests/acl2/group-status-tests, tests/acl2/group-descriptions-tests each in a
+fresh session with the preceding chain skip-loaded. `make check-lane` green.
+
+Native (hbox, merged tree, images developer and production):
+tests.test_native_group_policy OK (4 ran, 0 skipped), run
+/tank/fn/scratch/group-policy/native-wt-20260926T203509Z, module log sha256
+58d95f6dd7155f239823d9800152103075ad5f614a59bc6fe3e257735b06d67a.
+tests.test_native_reader_index (FN_RUN_NATIVE_READER_INDEX=1, usenet-headers'
+LIST NEWSGROUPS/MOTD case on the union) OK (6 ran, 0 skipped), run
+/tank/fn/scratch/group-policy/native-wt-20260926T205616Z, module log sha256
+04ac9a9baab0ac7a49c9a1de9726ad90c6fd93566f2e3c91b4215b574cbdeb47.

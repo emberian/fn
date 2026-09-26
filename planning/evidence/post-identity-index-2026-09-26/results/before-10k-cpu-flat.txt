@@ -1,0 +1,116 @@
+
+Number of samples:   757
+Sample interval:     0.001 seconds
+Total sampling time: 0.757 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2409888 "fn-heap" RUNNING {121190BEF3}> (480/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2409892 "fn service log writer" RUNNING {121206E6B3}> (296/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2410565 "fn owner client" RUNNING {122BDB0673}> (157856/1048576 bytes, 520 hash buckets)
+   #<THREAD tid=2409891 "fn-prof" RUNNING {1211F03263}> (136/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     99  13.1     99  13.1     99  13.1        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+   4     50   6.6     50   6.6    149  19.7        -  SB-KERNEL:STRING=*
+   6     38   5.0     38   5.0    187  24.7        -  FN-CBOR-OCTETP
+   8     30   4.0     60   7.9    217  28.7        -  FN-CBOR-OCTET-LISTP
+  10     23   3.0     23   3.0    240  31.7        -  FN-AG-CDR
+  12     16   2.1     16   2.1    256  33.8        -  FN-AG-CAR
+  14     12   1.6     44   5.8    268  35.4        -  FN-RECORD-PAYLOADP
+  16     12   1.6     15   2.0    280  37.0        -  FN-OWN-REFRESH
+  18     11   1.5     11   1.5    291  38.4        -  FN-WIRE-AG-CDR
+  20     10   1.3     10   1.3    301  39.8        -  FN-ARTICLE-BODY-CRLFP
+  22      9   1.2    103  13.6    310  41.0        -  FN-FIND-ARTICLE
+  24      9   1.2      9   1.2    319  42.1        -  foreign function __write
+  26      8   1.1    165  21.8    327  43.2        -  FN-SCAR-FEED-COUNTED
+  28      8   1.1      8   1.1    335  44.3        -  FN-CCAR-SEEK
+  30      7   0.9    101  13.3    342  45.2        -  FN-SCAR-FEED-BYTE
+  32      7   0.9     45   5.9    349  46.1        -  FN-WIRE-FEED-BYTE
+  34      7   0.9      8   1.1    356  47.0        -  SB-IMPL::LIST-REVERSE
+  36      7   0.9      7   0.9    363  48.0        -  FN-CBOR-AT-MOSTP
+  38      7   0.9      7   0.9    370  48.9        -  FN-WIRE-AG-CAR
+  40      6   0.8     13   1.7    376  49.7        -  FN-WIRE-LIST-LENGTH
+  42      6   0.8      7   0.9    382  50.5        -  FN-PCAR-NEXT-LOWER
+  44      6   0.8      6   0.8    388  51.3        -  foreign function pthread_sigmask
+  46      6   0.8      6   0.8    394  52.0        -  foreign function rename
+  48      5   0.7     13   1.7    399  52.7        -  FN-SBUD-OCTETS-ADVANCE
+  50      5   0.7      9   1.2    404  53.4        -  FN-ARTICLE-ASCII-DOWNCASE
+  52      5   0.7      6   0.8    409  54.0        -  GENERIC-<
+  54      5   0.7      5   0.7    414  54.7        -  (SB-VM::OPTIMIZED-DATA-VECTOR-REF (UNSIGNED-BYTE 8))
+  56      5   0.7      5   0.7    419  55.4        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-REF/CHECK-BOUNDS
+  58      5   0.7      5   0.7    424  56.0        -  FN-SHS-ROUNDS
+  60      5   0.7      5   0.7    429  56.7        -  FN-ACAR-NNTP-PROJECTIONP
+  62      4   0.5    160  21.1    433  57.2        -  FN-RETAIN-PIN-ID-SCANP
+  64      4   0.5     23   3.0    437  57.7        -  FN-PCAR-CANDIDATEP
+  66      4   0.5      7   0.9    441  58.3        -  REPLACE
+  68      4   0.5      7   0.9    445  58.8        -  FN-INJ-APPEND
+  70      4   0.5      7   0.9    449  59.3        -  FN-WIRE-STATE-BODY-LIMIT
+  72      4   0.5      5   0.7    453  59.8        -  FN-MBX-LEX
+  74      4   0.5      5   0.7    457  60.4        -  FN-WIRE-STATE-LINE-LEN
+  76      4   0.5      4   0.5    461  60.9        -  FN-CBOR-ENCODE-BOUNDED
+  78      4   0.5      4   0.5    465  61.4        -  TRUE-LISTP
+  80      4   0.5      4   0.5    469  62.0        -  EQUAL
+  82      4   0.5      4   0.5    473  62.5        -  FN-ARTICLE-HEADER-BYTEP
+  84      4   0.5      4   0.5    477  63.0        -  FN-INJ-CDR
+  86      4   0.5      4   0.5    481  63.5        -  FN-SHS-EXTEND
+  88      4   0.5      4   0.5    485  64.1        -  FN-WIRE-STATE-LINE-LIMIT
+  90      4   0.5      4   0.5    489  64.6        -  foreign function __open64
+  92      4   0.5      4   0.5    493  65.1        -  (SB-VM::OPTIMIZED-DATA-VECTOR-SET (UNSIGNED-BYTE 8))
+  94      3   0.4    640  84.5    496  65.5        -  FNN-CALL
+  96      3   0.4      5   0.7    499  65.9        -  FN-RECORD-STRING-OCTETS-AUX
+  98      3   0.4      5   0.7    502  66.3        -  FN-SERVED-CONN-INDEX
+ 100      3   0.4      4   0.5    505  66.7        -  FN-SERVED-MAKE-RESULT
+ 102      3   0.4      3   0.4    508  67.1        -  FN-RECORD-STRING-OCTETS
+ 104      3   0.4      3   0.4    511  67.5        -  FN-RETAIN-OBLIGATION-ID
+ 106      3   0.4      3   0.4    514  67.9        -  FN-WIRE-STATE-BODY-SIZE
+ 108      3   0.4      3   0.4    517  68.3        -  FN-SHS-LOAD-LIST-WORD
+ 110      3   0.4      3   0.4    520  68.7        -  FN-SBUD-USED
+ 112      3   0.4      3   0.4    523  69.1        -  SB-IMPL::APPEND2
+ 114      2   0.3     11   1.5    525  69.4        -  SB-KERNEL:VECTOR-TO-LIST
+ 116      2   0.3      7   0.9    527  69.6        -  FN-SERVED-CONN-GROUP-INDEX
+ 118      2   0.3      6   0.8    529  69.9        -  FN-INJ-NTH
+ 120      2   0.3      4   0.5    531  70.1        -  FN-SERVED-CONN-INJECTION
+ 122      2   0.3      3   0.4    533  70.4        -  FN-SERVED-CONN-OBSERVATION
+ 124      2   0.3      3   0.4    535  70.7        -  FN-WIRE-MAKE-STATE
+ 126      2   0.3      3   0.4    537  70.9        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+ 128      2   0.3      2   0.3    539  71.2        -  foreign function clock_nanosleep
+ 130      2   0.3      2   0.3    541  71.5        -  SB-IMPL::CALC-SYMBOL-NAME-HASH
+ 132      2   0.3      2   0.3    543  71.7        -  GENERIC--
+ 134      2   0.3      2   0.3    545  72.0        -  FPR-SAVE
+ 136      2   0.3      2   0.3    547  72.3        -  FN-WIRE-STATE-PENDING-CRP
+ 138      2   0.3      2   0.3    549  72.5        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-SET/CHECK-BOUNDS
+ 140      2   0.3      2   0.3    551  72.8        -  SB-IMPL::%LOOKUP-SYMBOL
+ 142      2   0.3      2   0.3    553  73.1        -  FN-SERVED-RESULT-EFFECTS
+ 144      2   0.3      2   0.3    555  73.3        -  SB-IMPL::FIND-SYMBOL2
+ 146      2   0.3      2   0.3    557  73.6        -  FN-AUTH-SESSION-HANDSHAKINGP
+ 148      2   0.3      2   0.3    559  73.8        -  FN-WIRE-REVERSE-OCTETS-AUX
+ 150      2   0.3      2   0.3    561  74.1        -  FN-OCT-BUF-LIST-DOWN
+ 152      2   0.3      2   0.3    563  74.4        -  FN-SERVED-RESULT-CONN
+ 154      2   0.3      2   0.3    565  74.6        -  FN-ARTICLE-MSGID
+ 156      2   0.3      2   0.3    567  74.9        -  SB-IMPL::GET3
+ 158      2   0.3      2   0.3    569  75.2        -  GENERIC-+
+ 160      1   0.1    260  34.3    570  75.3        -  FNN-CORE-STATE
+ 162      1   0.1    103  13.6    571  75.4        -  FN-SCAR-STEP-COUNTED-CORE
+ 164      1   0.1     29   3.8    572  75.6        -  FN-ACCEPTEDP
+ 166      1   0.1     27   3.6    573  75.7        -  FN-ARTICLE-PARSE-LINES
+ 168      1   0.1     24   3.2    574  75.8        -  FN-SCAR-DISPATCH-EVENTS
+ 170      1   0.1     19   2.5    575  76.0        -  FN-INJ-DECIDE
+ 172      1   0.1      9   1.2    576  76.1        -  FN-SERVED-TLS-HANDSHAKINGP
+ 174      1   0.1      8   1.1    577  76.2        -  FN-BS-PROFILE-INVALID-REASON
+ 176      1   0.1      5   0.7    578  76.4        -  FN-ARTICLE-HEADER-BYTES-P
+ 178      1   0.1      5   0.7    579  76.5        -  FN-SERVED-CONN-CONTROL
+ 180      1   0.1      4   0.5    580  76.6        -  SB-KERNEL:%CONCATENATE-TO-VECTOR
+ 182      1   0.1      3   0.4    581  76.8        -  FN-EXP-OBSERVE-FACTS
+ 184      1   0.1      3   0.4    582  76.9        -  APPEND
+ 186      1   0.1      3   0.4    583  77.0        -  FN-CTL-TARGET-OCTETS
+ 188      1   0.1      2   0.3    584  77.1        -  FN-SERVED-CONN-VERDICTS
+ 190      1   0.1      2   0.3    585  77.3        -  FN-SERVED-CONN-CONFIG
+ 192      1   0.1      2   0.3    586  77.4        -  FN-RECORD-OCTETS-CHARS
+ 194      1   0.1      2   0.3    587  77.5        -  FN-CFG-STAMPP
+ 196      1   0.1      2   0.3    588  77.7        -  FN-RECORD-METADATA-BYTES-P
+ 198      1   0.1      2   0.3    589  77.8        -  FNN-RANDOM-HEX
+ 200      1   0.1      1   0.1    590  77.9        -  foreign function gc_find_freeish_pages
+------------------------------------------------------------------------
+        113  14.9                                     elsewhere

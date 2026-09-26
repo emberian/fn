@@ -1,0 +1,8 @@
+test_a_peer_carries_more_than_the_old_row_cap (tests.test_native_peer_rows_growth.NativePeerRowsGrowthTests.test_a_peer_carries_more_than_the_old_row_cap) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 6499.743s
+
+OK
+peer-rows-growth: 1100 requests in 6440.7 s
+# rc=0 wall=6500

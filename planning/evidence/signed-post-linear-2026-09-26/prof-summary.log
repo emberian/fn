@@ -1,0 +1,12 @@
+== load n=1000 15:28:07Z load 12.19 11.96 12.48
+   rc=0 RESULT {"mode": "load", "n": 1000, "signed": 32, "probes": 40, "sign_s": 7.113195531070232, "load_s": 44.916350233368576, "preload_signed_s": [0.109890803694725
+== run n=1000 before 15:29:00Z load 10.73 11.61 12.33
+   rc=0 RESULT {"mode": "run", "tag": "before", "image": "/tank/fn/scratch/perf-ledger/tree/build/fn-host-developer-prof", "open_s": 1.4168528085574508, "k": 20, "loadavg_before": "10.73 11.61 12.33 6/1835 2301958", "sprof_error": null, "unsigned_median_s": 0.042622875422239304, "signed_median_s": 0.12464874610304832, "unsigned_owner_cpu_ms": 28.0, "signed_owner_cpu_ms": 113.49999999999997, "unsigned_s": 
+== load n=10000 15:29:07Z load 10.59 11.56 12.31
+   rc=0 RESULT {"mode": "load", "n": 10000, "signed": 32, "probes": 40, "sign_s": 6.43991799838841, "load_s": 467.7852813117206, "preload_signed_s": [0.1113036302849650
+== run n=10000 before 15:37:02Z load 13.01 12.69 12.53
+   rc=0 RESULT {"mode": "run", "tag": "before", "image": "/tank/fn/scratch/perf-ledger/tree/build/fn-host-developer-prof", "open_s": 11.225941631942987, "k": 20, "loadavg_before": "12.72 12.64 12.52 7/1808 2352708", "sprof_error": null, "unsigned_median_s": 0.04459846764802933, "signed_median_s": 0.28118739929050207, "unsigned_owner_cpu_ms": 5.50000000000006, "signed_owner_cpu_ms": 248.99999999999994, "un
+PROF-DONE
+== run n=1000 before1c 15:37:45Z load 13.34 12.80 12.58
+   rc=0 RESULT {"mode": "run", "tag": "before1c", "image": "/tank/fn/scratch/perf-ledger/tree/build/fn-host-developer-prof", "open_s": 1.5340744368731976, "k": 20, "loadavg_before": "13.34 12.80 12.58 7/1830 2354416", "sprof_error": null, "unsigned_median_s": 0.04271323513239622, "signed_median_s": 0.12264390103518963, "unsigned_owner_cpu_ms": 3.5000000000000027, "signed_owner_cpu_ms": 86.50000000000001, 
+PROF-DONE

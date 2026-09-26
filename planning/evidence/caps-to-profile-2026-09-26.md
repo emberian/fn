@@ -240,3 +240,228 @@ recertified as config's dependents at unchanged bytes.
    two new `fn-cfg-apply-delta` arms may add case splits where those books
    open it; not yet examined (accumulated-persistence in the REPL on
    owner-invariants is the next action). No baseline was edited.
+
+## Continuation (caps-to-profile-2, 2026-09-26)
+
+Lane `caps-to-profile-2`, branch `lane/caps-to-profile-2` from dev `a931ed8d`.
+IDs: PRF-186 (new), PRF-171 (extended for field 7), STO-025, SCN-115,
+PKT-510 (what remains). PKT-511 unused (no decision for ember). No
+configuration delta code, wire kind or store format was taken (the codes on
+dev stay 17 `:login-binding`, 18 `:add-peer-rows`, 19 `:remove-peer-rows`;
+no other file names 17/18 for the peer rows).
+
+### C1. PKT-501: the offline request's cost, measured, then fixed (PRF-186)
+
+Where the time went, measured before choosing a design (persvati REPL, the
+SCN-101 shape built in ACL2: one `:set-peer` then 1,099 `:add-peer-rows`
+records of one 64-octet principal each):
+
+| At dev a931ed8d | 550 records | 1,100 records |
+| --- | --- | --- |
+| `fn-cnode-config-replay` | 0.43 s | 1.61 s, 6.6 GB consed |
+| `fn-cpr-replay` (the open's fold) | | 2.43 s, 9.9 GB consed |
+| decoding the 1,100 records (`fn-cfg-decode-exact`) | | under 0.05 s, 23 MB |
+| `fn-cfgp` of the final configuration, once | | 5.9 MB |
+
+The cost was not the image start, not the reads and not the decode: every
+replay fold ran the whole-configuration recognizer `fn-cfgp` (every row of
+every slot) inside `fn-cnode-record-acceptablep` two or three times per
+configuration record, plus `fn-cnode-statep` of the advanced node (which
+includes `fn-cfgp` and the node recognizer), so one replay was O(records x
+configuration size). An offline request runs about five replays of the whole
+log: `fnn-recover` at open (`fn-store-sn-recover`: `fn-sco-extend` ->
+`fn-sco-store-open` -> `fn-cpr-loop`), `fnn-admin-authorize`
+(`fn-store-cfg-native-admin-authorize` -> `fn-native-admin-publication-authorize`:
+`fn-cnode-config-replay`, then `fn-native-admin-candidate-open-result`:
+`fn-cnode-config-replay`, `fn-cpr-replay`, `fn-cpo-open-observed`) and
+`fnn-admin-verify-under-lock` (`fnn-recover` again). This is AGENTS.md's
+"no whole-state revalidation on a served path", in the config arm that
+bounds-p3 finding 2 had left because "there are few" configuration records.
+
+The cheaper true fix (commit `c5233ed4`): the folds carry the invariant.
+books/node-config.lisp defines `fn-cnode-carried-acceptablep` (every
+conjunct of `fn-cnode-record-acceptablep` but `fn-cfgp`) and proves
+
+- KEYSTONE `fn-cnode-record-acceptablep-is-the-carried-check`:
+  `(implies (fn-cfgp (fn-cnode-config cn)) (equal (fn-cnode-record-acceptablep
+  cn record ceiling) (fn-cnode-carried-acceptablep cn record ceiling)))`;
+- `fn-cnode-advanced-node-is-configured`: `(implies (fn-cnode-statep cn)
+  (fn-cnode-statep (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node cn)
+  txid) (fn-cnode-config cn))))`.
+
+`fn-cnode-apply-config`, `fn-cnode-replay-loop`, `fn-cpr-loop`
+(books/config-physical-replay.lisp) and `fn-sco-cpr-prefix`
+(books/store-checkpoint-open.lisp) run the carried check, and the last two
+skip the advanced node's recognizer, under `:exec`; each `:logic` body is
+unchanged, so no theorem statement moved, and each `verify-guards` proves
+the `:exec` equal to the `:logic` with the two theorems above. The host
+subjects: host/native/io.lisp `fnn-bridge-recover` (every open) and
+host/native/admin.lisp `fnn-admin-authorize` (every publication, offline and
+live). After, same REPL measurement: `fn-cpr-replay` of 1,100 records 0.12 s
+and 139 MB (from 2.43 s and 9.9 GB), `fn-cnode-config-replay` 0.13 s,
+`fn-sco-store-open` 0.13 s.
+
+Not chosen: the configuration checkpoint of the brief. The measurement put
+the cost in revalidation, not in the log's length, and the brief's rule was
+to take the cheaper true fix. What the checkpoint would still buy is below.
+
+Native, hbox, `tests.test_native_peer_rows_growth` (developer image):
+
+| Run | Image | Requests | Seconds | Per request |
+| --- | --- | --- | --- | --- |
+| predecessor native-b1 | 9755f664 | 1,100 | 8,335.9 | 7.58 s |
+| native-base | a931ed8d (dev) | 300 | 251.7 | 0.84 s |
+| native-base | a931ed8d (dev) | 1,100 | 8,156.8 | 7.42 s |
+| native-after2 | bf00ae29 | 300 | 58.5 | 0.20 s |
+| native-after1 | c5233ed4 | 1,100 | 1,058.3 | 0.96 s |
+
+1,100 requests on the same day: 8,156.8 s at dev a931ed8d -> 1,058.3 s
+(7.7x; the predecessor's 8,336 s at 9755f664 agrees); 300 requests: 251.7 s -> 58.5 s
+(4.3x). native-after1 ran while native-base's 1,100-request run (below) was
+using the box. NOT linear: 300 requests average 0.20 s and 1,100 average
+0.96 s, so a request still costs O(configuration records), now about 1 ms
+per record per request: every request still reads, decodes and folds the
+whole log about five times, and an `:add-peer-rows` apply copies the peer's
+group (138 MB consed per 1,100-record replay). A configuration checkpoint
+that the open resumes from, with its refinement to the full replay (the
+split theorem `fn-cnode-replay-loop-splits-at-any-prefix` is the start), and
+one replay per request instead of five, are PKT-510.
+
+Logs: planning/evidence/caps-to-profile/native-peer-rows-growth-after.log
+(sha256 431bcc40...; native-after1-SHA256SUMS, developer image core
+91f321b2...), native-peer-rows-growth-base-300.log (20d01251...),
+native-peer-rows-growth-base-1100.log (9c453776...),
+native-peer-rows-live-and-rollback.log (028e3cfd..., the 300-request line
+and C3), native-after2-SHA256SUMS (developer launcher 233d4add..., production
+69ef2eea...).
+
+Crash points: no host code changed in C1 (no `fnn-at` site, no program
+step); `tools/native_program_check.py` is part of `make check-lane`, green.
+
+Assurance chain: native entry `operator CONFIG peer carries` ->
+`fnn-admin-execute` -> `fnn-open-live-store`/`fnn-bridge-recover`
+(`fn-store-sn-recover`) and `fnn-admin-authorize`
+(`fn-store-cfg-native-admin-authorize`) -> the four folds, whose `:exec` is
+the carried check -> refinement `fn-cnode-record-acceptablep-is-the-carried-check`
+(and `fn-cnode-advanced-node-is-configured`) -> maintained relation
+`fn-cnode-statep`, established by `fn-cpr-initial-cnode-statep` at the
+initial node and preserved by `fn-cnode-apply-config-preserves-state` and
+`fn-cpr-apply-event-preserves-cnode-statep` -> the unchanged replay theorems
+-> observed: 1,100 requests all exit 0 and `peer list` names the 1,100
+principals in order (SCN-101, SCN-115).
+
+Teeth (tests/acl2/config-physical-replay-tests.lisp, PRF-186 section): a
+reachable node (the file's replayed history) and the next record: antecedent
+true, both checks T; a late record: both NIL; the host's `fn-cpr-replay` of
+the history plus that record gives the one-step `fn-cnode-apply-config`
+node; the hypothesis: a node whose quota slot is not a row list fails
+`fn-cfgp`, the carried check admits the record and the node's check refuses
+it (asserted, and the ground `must-fail`); the advanced-node lemma: the
+reachable node advanced to txid 8 is configured, from the malformed node it
+is not (asserted, ground `must-fail`).
+
+### C2. PKT-451 (C): field 7 read at both intakes (PRF-171 extended)
+
+Commit `bf00ae29`. Field 7 `max-group-name-octets` had no reader. Now:
+
+- books/store-capacity-config.lisp `fn-cvec-native-admin-authorize`: a
+  record creating a group whose name is longer than field 7 is refused
+  `:max-group-name-octets`, else it is the publication authorization it
+  replaced. Host: host/store-node-host.lisp
+  `fn-store-cfg-native-admin-authorize`, called by host/native/admin.lisp
+  `fnn-admin-authorize` (offline `fnn-admin-execute` and the live owner's
+  `fnn-owner-live-reconfigure-locked`). KEYSTONES
+  `fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound`
+  (the refusal iff a created name exceeds field 7; within it, equal to
+  `fn-native-admin-publication-authorize` under `fn-cvec-config-generations`,
+  so PRF-102's and PRF-138's keystones carry) and
+  `fn-cvec-accepted-group-names-are-within-the-profile`.
+- books/native-operator.lisp `fn-nop-parse-init-plain`: `init` refuses
+  `:max-group-name-octets` by name; KEYSTONE
+  `fn-nop-init-plain-groups-are-within-the-profile` (an accepted plan's
+  groups are within the field 7 of the profile it resolves).
+
+No format bump, and D27's three agree: field 7 was already validated at most
+the codec width (byte-store-frame `fn-bs-profile-invalid-reason`,
+`:max-group-name-octets-outside-codec`), the representation (the 256-octet
+record and label widths) is unchanged, and no format evolves; a saved
+profile's field 7 now governs what it always named. The widths rising to the
+wire's 460 (RFC 3977 section 3.1) with the ceiling taking field 7 remain:
+the records-shape and byte-store-frame freeze, PKT-510.
+
+Teeth: tests/acl2/store-capacity-config-tests.lisp (a 100-octet name under
+field 7 = 100 is accepted at generation 2 and equals the publication; 101 is
+refused by name and the publication alone would have accepted it; the
+default field 7 = 256 accepts 101; a record creating no group is untouched
+at field 7 = 1; the acceptance hypothesis, ground); tests/acl2/native-operator-tests.lisp
+(init at the bound accepted with its groups within; 101 refused by name;
+default accepts; the acceptance hypothesis: a non-accepted result whose
+arguments hold a 101-octet name is not within, asserted and ground).
+
+Native (native-after2, bf00ae29, developer image):
+`tests.test_native_group_name_bound` OK, 3 ran: under
+`--max-group-name-octets 100` a 100-octet `group create` exits 0, a
+101-octet one exits 1 naming MAX-GROUP-NAME-OCTETS with the configuration
+directory unchanged; `init` of the 101-octet name exits 1 by name and
+writes no store; the default profile creates it. Log
+native-group-name-bound.log (sha256 c9fcce59...).
+
+### C3. Sweep 19's additions (PKT-451 (4), (5), (6))
+
+- (4) The live owner's arm, natively: `NativePeerRowsLiveTests` (native-after2):
+  with a node running, `peer add`, three `peer carries` and two `peer budget`
+  go through the control socket to `fnn-owner-live-admin-serialized` ->
+  `fn-native-admin-host-owner-reconfigure`, all exit 0; after SIGTERM (exit
+  0) `peer list` names the three principals and the second budget only
+  (`:remove-peer-rows` applied live).
+- (5) The rollback, rehearsed on copies: the bbf52159 production image (the
+  qualification gate's copy, /tank/fn/gates/qual-bbf52159-20260925, never
+  /tank/fn/node) opens a fresh store `status` exit 0 and refuses the store
+  holding codes 18 and 19, exit 4 "ACL2 refused configuration namespace
+  observation". docs/operator.md's rollback section says so (PKT-440's rule).
+  Log native-peer-rows-live-and-rollback.log (028e3cfd...).
+- (6) `tests.test_native_operator_verbs` with `--images developer,production`:
+  22 ran, 0 skipped; `NativeOperatorPeerListTests` all 4 OK on the production
+  image. One failure, not this lane's and not behaviour:
+  `NativeOperatorVerbCompositionTests.test_peer_list_is_a_query_and_the_host_asks_acl2_which`
+  greps books/native-admin.lisp for `(fn-native-admin-peer-report ...)`,
+  which a50312ef1 (PKT-391) renamed to `fn-native-admin-peer-budget-report`
+  (a stale source-shape test, harness class; PKT-510). Log
+  native-operator-verbs-after2.log (95faffac...).
+- `tests.test_native_checkpoint_generations` OK (2), `tests.test_native_capacity_vector`
+  OK (1); `tests.test_native_admin` SKIPPED 9 of 9 (it needs explicit
+  source and launcher SHA values hbox_native.sh does not set): no evidence
+  from it.
+
+### C4. D26
+
+PKT-502 closed the owner-invariants examination at batch Z (10.8 s at two
+jobs, within its baseline). This lane's r1 installed owner-invariants from
+the cache (it does not include the changed books), so nothing here moves it.
+The one book over 10 s in r1 was this lane's own
+tests/acl2/store-capacity-config-tests (25.4 s: a general must-fail the
+prover searched for 24 s), fixed by a ground instance, r2 (no book over 10 s).
+
+### C5. Certification
+
+REPL/incremental on persvati first (~/fn-gates/caps-to-profile-2-repl, every
+changed book and test book). Farm, persvati, w25, 2 jobs, 300 s:
+
+| Run | Rev | Scope | Result | Manifest |
+| --- | --- | --- | --- | --- |
+| run-20260926T153104Z-77b9 | bf00ae29 | `--affected-by` node-config, config-physical-replay, store-checkpoint-open, store-capacity-config, native-operator | 151 certified, 0 failed, 291 from the cache; store-capacity-config-tests 25.4 s | certify-20260926T153141Z-3460348 |
+| run-20260926T154025Z-581e | e77f5af8 | store-capacity-config-tests | 1 passed, none over 10 s | certify-20260926T154049Z-3549609 |
+| run-20260926T154352Z-aee1 | ee5dd011 | config-physical-replay-tests | 1 passed, none over 10 s | certify-20260926T154415Z-3583008 |
+
+### C6. Not done (PKT-510)
+
+1. A configuration checkpoint the open resumes from (its refinement to the
+   full replay), and one replay per offline request instead of about five:
+   the remaining O(records) per request (0.96 s average at 1,100).
+2. The group-name width to 460: `fn-record-encoded-octets-ceiling` taking
+   field 7, validity weakened, the format-7 translation keeping 256,
+   `fn-bs-profile-admits-every-article-record` with the name hypothesis, the
+   preset reopen witnesses (records-shape and byte-store-frame freeze).
+3. The pack path past 4,096 natively (PKT-451 (3)).
+4. The stale source test in test_native_operator_verbs (a50312ef1).
+5. PKT-451 items 1 to 5 of the packet body beyond (C) were not reached.
