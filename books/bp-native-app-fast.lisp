@@ -16,7 +16,8 @@
   (declare (xargs :guard t))
   (and (fn-record-p record)
        (equal (fn-sf-phase (fn-sn-files store)) :ready)
-       (member-equal record (fn-sf-records (fn-sn-files store)))
+       (member-equal record
+                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
        (fn-bpi-node-record-committedp (fn-sn-node store) record)))
 
 (defun fn-bpaj-request-acceptable-fast

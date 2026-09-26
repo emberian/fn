@@ -251,7 +251,10 @@
 
 (local (in-theory (enable fn-bpa-car fn-bpa-cdr)))
 ; A finite witness search grounds every retained context in the actual Store.
-; The Store argument stays fixed during receiver journal replay.
+; The Store argument stays fixed during receiver journal replay.  The search
+; runs over the history's article records (`fn-bpr-article-records'): a
+; signed article is committed as a kind-4 composite whose article record it
+; carries, and grounds a context as a plain record does.
 (defun fn-bprv-record-binds (store config context record)
   (and (consp record)
        (fn-bpr-request-acceptablep store config record
@@ -266,7 +269,7 @@
     nil))
 (defun fn-bprv-context-backedp (store config context)
   (consp (fn-bprv-find-record store config context
-                             (fn-sf-records (fn-sn-files store)))))
+                             (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
 (defun fn-bprv-contexts-backedp (store config contexts)
   (if (consp contexts)
       (and (fn-bprv-context-backedp store config (car contexts))
@@ -299,14 +302,14 @@
   :hints (("Goal" :induct (fn-bprv-find-record store config context records))))
 (defthm fn-bprv-acceptable-record-is-member
   (implies (fn-bpr-request-acceptablep store config record request authorized)
-           (member-equal record (fn-sf-records (fn-sn-files store))))
+           (member-equal record (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))))
   :hints (("Goal" :in-theory (enable fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp))))
 (defthm fn-bprv-derived-context-backed
   (implies (fn-bpr-request-acceptablep store config record request authorized)
            (fn-bprv-context-backedp store config (fn-bpr-context-from-request record request)))
   :hints (("Goal" :use ((:instance fn-bprv-find-record-from-member
       (context (fn-bpr-context-from-request record request))
-      (records (fn-sf-records (fn-sn-files store)))))
+      (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
     :in-theory (enable fn-bprv-context-backedp))))
 (defthm fn-bprv-found-record-binds
   (implies (consp (fn-bprv-find-record store config context records))
@@ -320,11 +323,11 @@
 (defthm fn-bprv-backed-context-has-actual-ready-record
   (implies (fn-bprv-context-backedp store config context)
    (let ((record (fn-bprv-find-record store config context
-                                     (fn-sf-records (fn-sn-files store)))))
+                                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
      (and (fn-sn-statep store)
           (equal (fn-sf-phase (fn-sn-files store)) :ready)
           (fn-record-p record)
-          (member-equal record (fn-sf-records (fn-sn-files store)))
+          (member-equal record (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
           (fn-bpi-node-record-committedp (fn-sn-node store) record)
           (equal context (fn-bpr-context-from-request record (fn-bpr-context-request context)))
           (equal (fn-bpa-request-article (fn-bpr-context-request context))
@@ -334,9 +337,9 @@
   :rule-classes nil
   :hints (("Goal"
     :use ((:instance fn-bprv-found-record-binds
-             (records (fn-sf-records (fn-sn-files store))))
+             (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))))
           (:instance fn-bprv-found-record-is-member
-             (records (fn-sf-records (fn-sn-files store)))))
+             (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
     :in-theory (e/d (fn-bprv-context-backedp fn-bprv-record-binds
                        fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp)
                      (fn-bprv-find-record fn-bprv-found-record-binds fn-bprv-found-record-is-member)))))

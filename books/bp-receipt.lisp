@@ -281,8 +281,30 @@
    (fn-bpa-request-incarnation request) (fn-bpa-request-auth-context request)
    (fn-bpa-request-terms-id request) request))
 
+; The article record a Store event commits: a plain article record is its
+; own; a signed acceptance composite (kind 4, `fn-stxa-p') commits the
+; article record it carries, decoded as replay decodes it
+; (`fn-replay-composite-record', books/replay.lisp, which installs that
+; record in the node).  Every other event commits no article record and
+; maps to itself, which is never `fn-record-p'.  Cost: a composite's
+; article record octets are decoded when a walk reaches it.
+(defun fn-bpr-event-article (event)
+  (declare (xargs :guard t))
+  (if (fn-stxa-p event) (fn-replay-composite-record event) event))
+
+; The article records of a Store history, one per event, in order.
+(defun fn-bpr-article-records (events)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (cons (fn-bpr-event-article (car events))
+            (fn-bpr-article-records (cdr events)))
+    nil))
+
 ; The explicit A-POLICY value is trusted laboratory input.  Request wire fields
 ; are checked for exact contextual agreement but never authorize acceptance.
+; A signed article is committed as a kind-4 composite, not as a plain record;
+; its article record is a member of the history's article records, so the
+; receiver binds it as it binds a plain one (PKT-247).
 (defun fn-bpr-store-record-acceptedp (store record)
   ; Store file completion history is deliberately transient: recovery rebuilds
   ; the durable node from its published namespace and bindings.  Receiver
@@ -292,7 +314,8 @@
   ; issue a receiver receipt, even if its node still has a matching article.
   (and (fn-sn-statep store) (fn-record-p record)
        (equal (fn-sf-phase (fn-sn-files store)) :ready)
-       (member-equal record (fn-sf-records (fn-sn-files store)))
+       (member-equal record
+                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
        (fn-bpi-node-record-committedp (fn-sn-node store) record)))
 (defun fn-bpr-request-acceptablep (store config record request policy-authorizedp)
   (and (equal policy-authorizedp t) (fn-bpr-configp config)

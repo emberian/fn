@@ -473,13 +473,20 @@
                                                  (caddr eid))))))
         (t "")))
 
+; The article records of Store events RECORDS whose Message-ID is MSGID: a
+; plain article record, or the article record a signed kind-4 composite
+; carries (`fn-bpr-event-article'), so a signed article the Store committed
+; binds as a plain one does (PKT-247).  Cost: every composite before the end
+; of RECORDS is decoded once per lookup (its article record's octets); an
+; index from Message-ID to event beside the Message-ID trie is owed (PKT-291).
 (defun fn-bpaj-record-for-msgid (msgid records)
   (declare (xargs :guard t :measure (acl2-count records)))
   (if (consp records)
-      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records))))
-        (if (and (fn-record-p (car records))
-                 (equal msgid (fn-record-msgid (car records))))
-            (cons (car records) rest)
+      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
+            (record (fn-bpr-event-article (car records))))
+        (if (and (fn-record-p record)
+                 (equal msgid (fn-record-msgid record)))
+            (cons record rest)
           rest))
     nil))
 
