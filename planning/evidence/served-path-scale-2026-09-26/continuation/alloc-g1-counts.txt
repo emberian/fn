@@ -1,0 +1,6 @@
+fn-own-refresh 1800
+fn-ctl-refresh-withdrawals 800
+fn-ctl-refresh-visible 800
+fn-ctl-refresh-withdrawn 800
+fn-midx-refresh 800
+fn-gidx-refresh 800

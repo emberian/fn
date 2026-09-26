@@ -199,3 +199,249 @@ not done, PKT-455 (4).
    the history per refresh.
 5. PKT-041 (checkpoint-mode `fnn-open-live-store` rebuilding all N
    records' octets): not reached.
+
+## Continuation (served-path-scale-2, 2026-09-26, Opus 5.5)
+
+Lane `lane/served-path-scale-2` from dev a931ed8d, dev merged at 6e3ccd15
+(hot-path-scans-2's count in the tree). Ids: PRF-188 (new; PRF-173 not
+extended), SCN-117, PKT-514 (what remains), PKT-515 not taken (the index
+shape was a defect with a fix, not a decision). Commits: 7a728986 (the
+carried greeting), 9b6eb8ec (the checkpoint index shape refusal), and the
+record/registry commit carrying this section. Scripts and results:
+`served-path-scale-2026-09-26/continuation/`.
+
+### 1. The greeting carries the owner's invariant (PKT-455 (1), PKT-190)
+
+Host lines: host/owner-host.lisp `fn-owner-exposure-open` (the native
+accept, host/native/owner.lisp `fnn-owner-serve-client`) calls
+`fn-ocar-exp-open`; `fn-owner-open` (host/native/admin.lisp) calls
+`fn-ocar-ocfg-open` (books/owner-open-carried.lisp). Each is the reference
+(`fn-exp-open`, `fn-ocfg-open`) with the three whole-state recognizers a
+reader open evaluated taken from `fn-ocl-relation`:
+
+| Recognizer (reference path) | Carried from |
+| --- | --- |
+| `fn-statep` of the view archive, in `fn-nntp-projectionp` via `fn-served-open-indexed`'s session | `fn-acar-ocl-relation-carries-view-statep` (the projection recorded by `fn-acar-open-session`) |
+| the same, again, in `fn-own-reader-context`'s `fn-peer-open-session` | the same |
+| `fn-node-statep` of the store node, same call | `fn-scar-ocl-relation-carries-node-statep` |
+| `fn-cfgp` of the configuration, same call | `fn-ocl-relation`'s own conjunct |
+
+KEYSTONES (hypothesis `(fn-ocl-relation oc)` only):
+`fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation` and
+`fn-ocar-exp-open-is-exp-open-under-ocl-relation`: equal as values, the
+greeting effects and the whole configured owner, for every AUTHINFO
+policy, exposure state, limits, peer, address and time. The served bytes
+are therefore unchanged. Chain: native accept -> `fn-owner-exposure-open`
+-> `fn-ocar-exp-open` (executed) -> keystone -> `fn-exp-open` -> the
+relation `fn-ocl-relation`, established at every host-called open
+(`fn-ock-recover-installs-ocl-relation`, `fn-orec-recover-installs-ocl-relation`)
+and preserved by every configured-owner transition (`fn-ocl-open-`,
+`-close-`, `-observe-`, `-read-`, `-advance-preserves-historical-relation`;
+the open's own preservation reaches the carried result through the
+keystone) -> observed: the greeting rows below. books/owner-store-indexed.lisp's
+host-step model now names the carried functions in its `:open` and
+`:exposure-open` arms (`fn-ocar-ocfg-open-keeps-store`,
+`fn-osi-ocar-exp-open-keeps-store`, no hypothesis), so PRF-144's
+`fn-osi-live-owner-store-is-indexed` still describes the host.
+
+What a greeting still evaluates per connection: the connection bound (`len`
+of the connections), the group list and next-number table (O(groups)), the
+article count (`len` of the view's articles: pointer steps, no recognizer)
+and the AUTHINFO policy recognizer. The peer open (`fn-ocfg-open-peer`) is
+not carried (peer connections are configured, not strangers): PKT-514.
+
+Teeth (tests/acl2/owner-open-carried-tests.lisp, 71 forms admitted in the
+persvati REPL and certified in r1): reachable witness
+`*acar-t-committed*` (the configured owner the host's open installs, one
+POST committed through the host's commit; `fn-ocl-relation` holds; the
+view has an article): the carried and reference opens are equal, the
+greeting is written, connection 2 is installed and pinned, its session
+records the projection and pins the store node and the configuration, and
+the relation holds after; the exposure open admits it under
+public-exposure-tests' limits and returns id 2. Hypothesis (labelled
+corrupted state, no transition makes it): `*acar-t-bad-view-oc*`, a
+non-article added to the view archive: the relation fails, the carried
+open records the projection `t`, the reference `nil`; `must-fail` for both
+keystones and the conclusion asserted false. Each step lemma's hypotheses
+one at a time (archive `fn-statep`, node `fn-node-statep`, `fn-cfgp`,
+`fn-acar-view-statep`), each with its conclusion asserted false. All seven
+carried functions are `:common-lisp-compliant`.
+
+Measurements (hbox, 24 CPUs, SHARED with the qualification's units: load
+average 14 to 17 during every row below; none is a quiet-box figure):
+
+| Greeting (32 fresh connections after 32 warm) | base a931ed8d (core 03f2b892) | lane 6e3ccd15 (core b098e499) |
+| --- | --- | --- |
+| N = 10,000 (2 KiB, loaded by rep_measure; the same store copied) median / p95 | 241.3 / 359.3 ms | 0.47 / 1.20 ms |
+| N = 20,000 fixture, reopened owner, median / p95 | 477.7 / 596.7 ms | 0.53 / 0.89 ms |
+| N = 20,000 fixture, first (full-replay) owner, median / p95 | 872.4 / 6,252.5 ms (overlaps its checkpoint publication) | 0.53 / 0.99 ms (same overlap) |
+
+Logs: continuation/greet-10k-base-a931ed8d.json,
+continuation/greet-10k-g1-6e3ccd15.json, continuation/open-base-a931ed8d.log
+(sha256 df97382d2acf97c4e9a1e6e096d1277a51267514c39107b854d652013708568f),
+continuation/open-g1-6e3ccd15.log (sha256 23a8192248fa859179109e398d97aa7762978af50692f052e56ee2fb1aa564c3).
+The same fixture runs time the opens: full replay `store recover` 168.5 s
+(base) and 199.3 s (lane, 174.9 s user; load 13 to 15), LISTENING 176.5 /
+179.6 s; the reopen from the checkpoint each published 50.9 / 49.2 s,
+LISTENING 57.1 / 51.5 s. This lane changed neither; the replay's cost is
+section 4.
+
+### 2. PKT-395: the fixture's checkpoint refusal was an unversioned index shape, and it hid a silent mis-open
+
+The checkpoint file carries the Store's derived event index and, where
+the index yields the record list, only the count (`fn-sco-freeze`); the
+records are thawed out of the index (`fn-sco-thaw`). The file names no
+index shape, and the shape changed twice:
+
+- a249a699 (signed-history-index): a single sequence trie became a pair
+  (SEQ-TRIE . MSGID-TRIE). The fixture's image (8cc3cd4c) and the deployed
+  bbf52159 predate it. Their checkpoints thaw a garbage record list and are
+  refused only because a later check fails:
+  `open=full-replay reason=checkpoint-open-refused`. The refusal is
+  incidental, not deliberate.
+- d0df09ed (hot-path-scans-2): the pair became (SEQ-TRIE MSGID-TRIE .
+  COUNT). A checkpoint written between the two (a931ed8d's, dfa810fc's)
+  thaws the RIGHT records, because the sequence trie is still the car, but
+  its Message-ID trie is read as the car of the old one and its count as 0.
+  `fn-sn-statep` leaves the derived index out by design (D21), so the open
+  SUCCEEDS with an index that does not correspond to the history.
+
+Evidence. The ACL2 value: over the 3-record history of
+`*acar-t-o*`'s store, the pair built from the correct index has count 0
+against 3, the same thawed records, and 0 records for the committed
+Message-ID against 1 (continuation/ — REPL session p395 on persvati).
+Native: the base image a931ed8d reopened the fixture from the checkpoint
+it published (`open=checkpoint:20000 suffix=0`, 50.9 s); a copy of that
+store recovered by the lane image WITHOUT the check (6e3ccd15, post
+d0df09ed) says `open=checkpoint:20000 suffix=0` in 57.2 s (load 14.0): the
+mis-open. With the check (9b6eb8ec, native-g2): `open=full-replay
+reason=checkpoint-index-shape`, 217.2 s (load 14.8); and the lane's own
+checkpoint (published by 6e3ccd15, the same shape) recovered by 9b6eb8ec:
+`open=checkpoint:20000 suffix=0`, 46.7 s (load 13.1). continuation/cross.log.
+
+The fix, by name, no translation: books/store-checkpoint-shape.lisp
+`fn-sco-thaw-checked` refuses a thawed checkpoint whose index count is not
+its record count (`:index-shape`, O(1)); `fn-sco-select-named` reports it
+as `(:full-replay :checkpoint-index-shape)` and is `fn-sco-select` on every
+other status. host/store-node-host.lisp `fn-store-sco-decode` calls
+`fn-sco-thaw-checked`, `fn-store-sco-select` calls `fn-sco-select-named`;
+host/native/io.lisp `fnn-state-checkpoint-load` passes the named status.
+KEYSTONE `fn-sco-thaw-checked-accepts-own-publication` (hypothesis
+`(true-listp suffix)`, the decoded suffix the host passes): the freeze of
+`fn-sco-extend` of a capture thaws to `(:ok C)`, so this image never
+refuses its own publication. Teeth (tests/acl2/store-checkpoint-shape-tests.lisp,
+30 forms admitted in the REPL): the reachable recovery image's frozen
+capture (count 2) thaws `:ok`; the pair shape thaws the right records with
+count 0, does not correspond, and is refused `:index-shape`; the single
+trie is refused the same way; `must-fail` of the keystone with an atom
+suffix (its conclusion asserted false) and of the selection lemma without
+its hypothesis. The shape test is necessary, not sufficient: a file this
+image wrote is still trusted as its capture, as before. docs/operator.md
+"Upgrade, and what a rollback loses" says which checkpoints are refused and
+that no image from d0df09ed up to this check may be deployed over a node
+whose checkpoint was published between a249a699 and d0df09ed.
+
+### 3. POST at N = 10,000 and PKT-517 (the group index rebuild)
+
+rep_measure on the lane's profiling twin (6e3ccd15, core 1186ed7a) over a
+10,000 x 2 KiB store on /dev/shm, K = 32, R = 3, load average 14:
+bytes consed per POST 2,497,908 (hot-path-scans-2 measured 7,955,659 and
+7,965,868 at N = 10,000 on images that predate served-path-scale's
+group-index extension, 1f5acd35: neither 5c6825b2 nor ff2eacb3 contains
+c150c506); POST median 7.95 ms, p95 8.92 ms on tmpfs; STAT 49 KB, ARTICLE
+430 KB per op. Call counts over 200 POSTs after a reopen (continuation/count.lisp,
+sb-int:encapsulate): `fn-own-refresh` 1,800, `fn-gidx-refresh` 800,
+`fn-midx-refresh` 800, `fn-ctl-refresh-visible`, `-withdrawn`,
+`-withdrawals` 800 each, and ZERO calls of `fn-gidx-build`,
+`fn-index-build` and `fn-midx-build`. PKT-517's rebuild is not on the
+current code: its 19,900 samples were the images before the fix. The
+allocation profile of those 200 POSTs (continuation/alloc-g1-flat.txt) is
+now the served per-byte fold (`fn-scar-feed-byte` 36 percent of samples,
+under `fn-scar-feed-counted` 50): ingress-span's lane, not this one.
+
+`fn-own-refresh`'s `(len (fn-sf-records ...))` stays: 10,000 pointer
+steps, no allocation, a few microseconds; replacing it with
+`fn-sbud-count`'s O(1) count needs the Store's index premise inside
+`fn-own-refresh`, i.e. a carried twin of every refreshing owner transition
+(the logic body of `fn-own-refresh` is what every owner theorem reads).
+Measured cost against that proof cost: not done, PKT-514.
+
+### 4. What the 20,000-record open costs now (PKT-455 (2), for ember's "why still slow")
+
+served-path-scale's sb-sprof graph of `store recover` on the fixture
+(5e15ad4c, 94.6 s sampled; hbox:/tank/fn/scratch/served-path-scale/prof-img2/out/graph.txt)
+read for callers: (a) the chain/checkpoint link decode
+(`fn-ccc-decode-link` 30.2 percent cumulative) re-validates each record's
+octets as octet LISTS in several decoders: `fn-record-payloadp` (20.3),
+`fn-cbor-octet-listp` (20.5, from `fn-stmt-decode-prefix-items-bounded-impl`,
+`fn-cc-octet-event-listp`, `fn-record-decode-exact-impl`,
+`fn-ccc-decode-link`, `fn-ccc-framed-link`, `fn-cc-decode-exact`,
+`fn-frame-trailer`), `fn-record-string-octets-aux` (24.2): D27's
+representation at open (PKT-168 (4)); (b) the two per-step linear lookups
+of the replay, O(N) per step and so O(N^2) per replay:
+`fn-retain-known-id-scanp` (retention.lisp, `fn-retain-admissiblep`'s
+:exec, from `fn-node-prepare` per replayed acceptance) 12.3 percent and
+`fn-acceptedp` (acceptance.lisp `fn-accept-prepare`'s duplicate test)
+about 4; (c) the collector about 11. Not done here (budget): the index
+carried through the replay (design in the LANEDUMP: a fast-alist identity
+set beside `fn-sco-cpr-prefix`, extended when the node's lists grew by one
+and rebuilt otherwise, the `fn-gidx-refresh` pattern; an indexed twin of
+`fn-cpr-apply-event` -> `fn-replay-apply-record` -> `fn-node-prepare` whose
+two lookups read it; keystone: equal to the reference fold under the
+index's correspondence). PKT-514 (1).
+
+### 5. PKT-041 (checkpoint-mode `fnn-open-live-store` rebuilding the prefix octets)
+
+Not reached. The reopen from a checkpoint is 46.7 to 50.9 s at N = 20,000
+on this box against 168 to 217 s of full replay; the envelope measured the
+two equal at N = 10,000 on tmpfs (11.9 against 12.7 s). The prefix octets
+are `fn-store-sco-prefix-octets` re-encoding every record of the checkpoint
+(host/store-node-host.lisp) for pack, compact and the owner; not profiled
+by this lane. PKT-514 (2).
+
+### Native gate (hbox, tools/hbox_native.sh)
+
+- native-g2 (9b6eb8ec: both changes; developer and production images;
+  SHA256SUMS sha256 92c19bfd...): test_native_bounds_join OK (2 ran, 1
+  skipped: FN_FORMAT7_IMAGE), log 79c85490...; test_native_checkpoint OK (23
+  ran, 3 skipped: the combined E2 developer image cases), log 7d8dd16e...;
+  test_native_owner FAILED (2 of 18), log a4ed64b9...: the two
+  NativeOwnerHandlerStructureTests (`developer_selectors_gate_arm...`,
+  `the_chunk_loop_keeps_its_suffix...`) fail identically on the base image
+  a931ed8d (native-base-a931ed8d, SHA256SUMS d606dc9d..., which also failed
+  `two_client_uncertainty_fences...` once): environment/harness of the base,
+  not this lane's change. native-g1 (6e3ccd15) the same (SHA256SUMS c7aa3f27...).
+- The served bytes: the keystones equate the carried opens with the
+  reference as values; the greeting rows above answer the same 200/201.
+  bounds_join's LargeReplyTests ran inside test_native_bounds_join (OK).
+  The v0 matrix's served rows were not rerun (PKT-514 (3)).
+
+### Certification
+
+persvati r1 run-20260926T145403Z-5ed0, certify-20260926T145454Z-3119631: 7
+passed (owner-open-carried 1.9 s, owner-store-indexed 3.7 s, the test books
+1.8 to 2.2 s). r2 run-20260926T150340Z-9b58, certify-20260926T150419Z-3212490:
+2 passed (store-checkpoint-shape and its tests). No book over 10 s.
+store-checkpoint-shape.lisp was changed after r2 (a lemma renamed
+`fn-sco-select-named-unfolds`, readmitted in the REPL with its test book):
+the batch certifies it.
+
+### What remains (PKT-514)
+
+1. The replay's per-step lookups (section 4 (b)) and the octet-list
+   re-validation at open (section 4 (a), with PKT-168 (4)).
+2. PKT-041 (section 5).
+3. The peer open (`fn-ocfg-open-peer`) still evaluates `fn-node-statep` and
+   the archive's `fn-statep` per peer connection; `fn-own-refresh`'s `len`;
+   the v0 matrix's served rows on the lane image; a quiet-box repetition of
+   every figure above (PKT-476).
+
+Packets: PKT-455 (1) done (the greeting: 0.53 ms at N = 20,000 against
+478 ms); (2) narrowed to PKT-514 (1); (3) answered: PKT-395's refusal was
+an unversioned index shape, now refused by name, and the silent mis-open of
+a249a699..d0df09ed checkpoints is fixed; (4) measured (2.50 MB per POST;
+PKT-517's rebuild is absent on the current code); (5) PKT-514 (2).
+PKT-190 ticked (the greeting evaluates no whole-state recognizer).
+PKT-395 ticked by 9b6eb8ec (the rehearsal of the next deployment should
+still record `reason=checkpoint-index-shape` for a dfa810fc node).
+PKT-517 answered: not on the current code (zero builds in 200 POSTs).
