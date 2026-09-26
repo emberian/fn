@@ -624,7 +624,10 @@ The low-level native `--fn store ROOT retention` diagnostic opens the recovered
 Store under a shared lock and prints `pins=N reserved=B` from the ACL2
 retention ledger. It reports aggregate active pins and reserved charge; it does
 not decide release or identify an obligation. Like `store ROOT status`, it
-refuses with exit 1 if a live writer holds the Store lock.
+refuses with exit 1 if a live writer holds the Store lock. While an owner
+runs, `operator CONFIG obligations` opens with the same two figures
+(`obligations=N reserved=B`), computed by the same ACL2 functions over the
+Store the owner carries.
 
 A production image refuses to start when any selector in the registry is set in
 its environment, even to the empty string, or when `store ROOT post` is given
@@ -1259,6 +1262,35 @@ not-a-key-statement`), when the statement's change is already made
 (`refused already-acted`), or when it declines again (`key-statement
 redecide declined REASON`). The verb needs the running owner: offline it is
 refused, like every control verb.
+
+### Why was an article withdrawn: `control log` and `control evidence`
+
+A cancel, or an article whose `Supersedes` names another, is decided once,
+when the node first publishes it, under the grants in force at its own
+transaction. To read what was decided:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml control log
+packaging/fn-native operator /etc/fn/fn.toml control evidence <c1@example.invalid>
+```
+
+`control log` prints `withdrawals=N` and one line per withdrawal record the
+node holds: `withdrawal target=T cause=C principal=P scope=S generation=G`,
+where `scope` is the canceller's `cancel` grants when the record was decided
+(`-` for none: only the author basis can apply) and `generation` the
+configuration it was decided under. `control evidence MESSAGE-ID` prints
+that article's first line (`stored=yes txid=N verdict=V`, or `stored=no`),
+then what its own decision was: `decision=withdrawal ...` (the log's line),
+`decision=declined reason=R` (for instance `unsigned`, `unverified`,
+`self-target`), or `decision=none` when it names no target; then one
+`withdrawn-by ... effect=E` line per record naming it as target, where `E`
+is `author`, `authority`, or `declined reason=R` (`outside-namespace`,
+`no-grant`, `no-groups`), and `effect=target-absent` while the target has
+not arrived. With an owner running it answers from the owner's view; with
+none, the offline command decides the records over the Store as recovery
+does, in the same words. A Message-ID that is not one (`<...>`, printable
+ASCII) is a usage error (exit 5). books/control-evidence.lisp renders every
+word (PRF-185, HST-011).
 
 ## Expose a node to strangers
 

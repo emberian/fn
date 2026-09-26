@@ -6358,6 +6358,35 @@
           "name": "fn-nls-page-refuses-exactly-past-the-total-width"
         }
       ]
+    },
+    {
+      "id": "PRF-185",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cev-evidence-decision-is-in-the-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-decision-line-is-a-log-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-journal-holds-each-articles-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-journal-records-are-withdrawals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cevg-parse-kind-is-a-kind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-obligations-figures-are-the-retention-figures"
+        }
+      ]
     }
   ]
 }
