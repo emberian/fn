@@ -64,7 +64,7 @@
                     (fn-own-enqueue
                      o2 (fn-own-sub-make-login
                          id (fn-own-conn-version conn) nil decision
-                         (fn-own-session-login (fn-own-conn-session conn))))
+                         (fn-served-submission-login effects)))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 

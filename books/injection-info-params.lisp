@@ -27,7 +27,8 @@
 
 (in-package "ACL2")
 (include-book "poster-bytes")
-(include-book "posting-account")
+(include-book "injection-info-policy")
+(include-book "config")
 
 ; "; posting-account=\"" and "; mail-complaints-to=\"" and the closing quote.
 (defconst *fn-ipp-account-open*
@@ -36,42 +37,6 @@
   '(59 32 109 97 105 108 45 99 111 109 112 108 97 105 110 116 115 45 116 111 61 34))
 (defconst *fn-ipp-quote* '(34))
 
-; The octets of a text, a string's character codes or an octet list as is.
-(defun fn-ipp-codes (chars)
-  (declare (xargs :guard (character-listp chars)))
-  (if (consp chars)
-      (cons (char-code (car chars)) (fn-ipp-codes (cdr chars)))
-    nil))
-
-(defun fn-ipp-octets (text)
-  (declare (xargs :guard t))
-  (if (stringp text) (fn-ipp-codes (coerce text 'list)) text))
-
-; An <addr-spec> of two dot-atoms, local "@" domain: what the operator may
-; set as the complaints address.  atext has no DQUOTE, backslash, ";", SP,
-; CR or LF, so the address stands in a <quoted-string> as it is.
-(defun fn-ipp-split-at (x)
-  ; (local . domain) at the first "@", or nil.
-  (declare (xargs :guard t))
-  (if (consp x)
-      (if (equal (car x) 64)
-          (cons nil (cdr x))
-        (let ((r (fn-ipp-split-at (cdr x))))
-          (if r (cons (cons (car x) (car r)) (cdr r)) nil)))
-    nil))
-
-(defun fn-ipp-addr-specp (x)
-  (declare (xargs :guard t))
-  (let ((r (fn-ipp-split-at x)))
-    (and r
-         (fn-af-dot-atom-textp (car r))
-         (fn-af-dot-atom-textp (cdr r)))))
-
-; The policy slot of the complaints address (`fn operator CONFIG policy set
-; complaints-to ADDR', books/native-admin.lisp: a `:set-policy' row like
-; path-identity; no delta code of its own).
-(defconst *fn-ipp-complaints-slot* "complaints-to")
-
 ; The address the live configuration names, as octets, or nil when it is
 ; unset or not an addr-spec.
 (defun fn-ipp-complaints (cfg)
@@ -79,22 +44,29 @@
   (let ((a (fn-ipp-octets (fn-cfg-policy (fn-cfg-value cfg) *fn-ipp-complaints-slot*))))
     (if (fn-ipp-addr-specp a) a nil)))
 
-; The parameter octets: posting-account when there is a key and a login,
-; mail-complaints-to when an address is set, in that order; nil when
-; neither.
-(defun fn-ipp-account-param (key login)
+; The parameter octets: posting-account when the owner holds the node
+; secret and the submission has a login (the AUTHINFO USER octets,
+; books/served.lisp fn-served-login), mail-complaints-to when an address is
+; set, in that order; nil when neither.
+(defun fn-ipp-account-param (secret login)
   (declare (xargs :guard t))
   (fn-inj-append *fn-ipp-account-open*
-                 (fn-inj-append (fn-pa-account-value key (fn-ipp-octets login))
+                 (fn-inj-append (fn-pa-account-value secret (fn-ipp-octets login))
                                 *fn-ipp-quote*)))
 
 (defun fn-ipp-complaints-param (addr)
   (declare (xargs :guard t))
   (fn-inj-append *fn-ipp-complaints-open* (fn-inj-append addr *fn-ipp-quote*)))
 
-(defun fn-ipp-params (key login addr)
+(defun fn-ipp-accountp (secret login)
   (declare (xargs :guard t))
-  (fn-inj-append (if (and (consp key) login) (fn-ipp-account-param key login) nil)
+  (and (fn-ns-secretp secret) (consp (fn-ipp-octets login))))
+
+(defun fn-ipp-params (secret login addr)
+  (declare (xargs :guard t))
+  (fn-inj-append (if (fn-ipp-accountp secret login)
+                     (fn-ipp-account-param secret login)
+                   nil)
                  (if (consp addr) (fn-ipp-complaints-param addr) nil)))
 
 ; -----------------------------------------------------------------------------
@@ -145,17 +117,14 @@
           (fn-inj-append (fn-inj-path-line agent)
                          (fn-ipp-at-stamp r agent msgid params)))))))
 
-; What the owner stores for an injected decision D submitted under LOGIN
-; (nil: no login), with the posting-account KEY and the complaints address
-; of the live configuration CFG.
-(defun fn-ipp-stored-octets (d key login cfg)
+; The injected octets of decision D submitted under LOGIN (nil: no login)
+; with the Injection-Info parameters, under the node SECRET and the
+; complaints address of the live configuration CFG.
+; books/owner-served-invariants.lisp fn-own-sub-stored-octets hands these
+; to the Cancel-Lock insertion (books/cancel-lock.lisp
+; fn-cl-served-payload), so the Injection-Info line is written first.
+(defun fn-ipp-injected-octets (d secret login cfg)
   (declare (xargs :guard t))
   (fn-ipp-with-params (fn-inj-decision-octets d)
                       (fn-inj-decision-msgid d)
-                      (fn-ipp-params key login (fn-ipp-complaints cfg))))
-
-; The operator's answer for a login (`fn operator CONFIG account-hash
-; LOGIN'): the value an article posted under LOGIN carries.
-(defun fn-ipp-account-hash (key login)
-  (declare (xargs :guard t))
-  (fn-pa-account-value key (fn-ipp-octets login)))
+                      (fn-ipp-params secret login (fn-ipp-complaints cfg))))

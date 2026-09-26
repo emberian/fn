@@ -1543,14 +1543,11 @@
         (fn-auth-with-base as (fn-peer-with-node ps (fn-sn-node (fn-own-store o))))
       as)))
 
-; The login a served connection's session has authenticated as: the name
-; AUTHINFO USER cached once AUTHINFO PASS set the subject (RFC 4643 section
-; 2.3), nil before.  books/login-binding.lisp fn-lb-inflight-login reads the
-; same two fields.
-(defun fn-own-session-login (as)
-  (declare (xargs :guard t))
-  (if (fn-auth-session-subject as) (fn-auth-session-pending as) nil))
-
+; The submission's login is the one its :submit effect carries
+; (books/served.lisp fn-served-login, read by fn-served-submission-login):
+; the login of the session at the event that decided the article, so an
+; AUTHINFO earlier in the same read as a complete POST is the article's
+; login, and one later in the read never claims it (PKT-597).
 (defun fn-own-finish-read (o conn result)
   (declare (xargs :guard t))
   (let* ((effects (fn-served-result-effects result))
@@ -1579,7 +1576,7 @@
                     (fn-own-enqueue
                      o2 (fn-own-sub-make-login
                          id (fn-own-conn-version conn) nil decision
-                         (fn-own-session-login (fn-own-conn-session conn))))
+                         (fn-served-submission-login effects)))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 

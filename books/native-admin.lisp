@@ -32,6 +32,7 @@
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
 (include-book "reclaim-rule")
+(include-book "injection-info-policy")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -315,6 +316,18 @@
              (equal (cadr words) "set")
              (equal (caddr words) "path-identity")
              (fn-path-identityp (cadddr argv)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
+       ; PKT-597 (books/injection-info-policy.lisp): the mailbox the node's
+       ; Injection-Info names as mail-complaints-to (RFC 5536 section
+       ; 3.2.8), a durable `:set-policy' row like path-identity, applied
+       ; live; the value must be an <addr-spec> of two dot-atoms, so it
+       ; stands in the header's quoted-string as it is.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-ipp-complaints-slot*)
+             (fn-ipp-addr-specp (fn-ipp-octets (cadddr argv))))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
        ; The served POST posting policy (books/login-binding.lisp):

@@ -28,6 +28,7 @@
 ; SEC-006: the served arm of the stored octets carries the login's
 ; RFC 8315 Cancel-Lock (books/cancel-lock.lisp fn-cl-served-payload).
 (include-book "cancel-lock")
+(include-book "injection-info-params")
 
 ; -----------------------------------------------------------------------------
 ; P2.  The 240 names this submission's record.
@@ -77,7 +78,8 @@
                                 (fn-peer-submission-octets d))
       (fn-cl-served-payload secret (fn-own-sub-login sub)
                             (fn-inj-decision-msgid d)
-                            (fn-inj-decision-octets d)))))
+                            (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+                                                    cfg)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
 ;; control submission's staged octets are its own: nothing is prepended, so
@@ -92,18 +94,25 @@
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-cl-served-payload secret (fn-own-sub-login sub)
                                         (fn-own-sub-msgid sub)
-                                        (fn-own-sub-octets sub))))
+                                        (fn-ipp-injected-octets
+                                         (fn-own-sub-decision sub) secret
+                                         (fn-own-sub-login sub) cfg))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
                                      fn-own-sub-msgid))))
 
+;; Without a login and without a complaints address, the injected octets
+;; are stored as they are (no Injection-Info parameter, no Cancel-Lock).
 (defthm fn-own-sub-stored-octets-without-a-login-by-definition
   (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
-                (not (consp (fn-own-sub-login sub))))
+                (not (consp (fn-own-sub-login sub)))
+                (not (fn-ipp-complaints cfg)))
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
+                                     fn-ipp-injected-octets fn-ipp-params
+                                     fn-ipp-accountp fn-ipp-octets))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))
@@ -127,7 +136,7 @@
 (defthm fn-own-stored-octets-carry-the-login-lock
   (let* ((d (fn-own-sub-decision sub))
          (login (fn-own-sub-login sub))
-         (x (fn-inj-decision-octets d))
+         (x (fn-ipp-injected-octets d secret login cfg))
          (fields (fn-ctl-received-fields x))
          (k (fn-cll-info-end x 0 :start)))
     (implies (and (not (fn-peer-submissionp d))
@@ -144,13 +153,15 @@
                             (fn-cll-drop k x)))))
   :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
                                   (fn-cl-served-payload fn-cl-lock fn-cl-key-lines
+                                   fn-ipp-injected-octets
                                    fn-ctl-received-fields fn-cll-line
                                    fn-cll-info-end fn-cll-take fn-cll-drop))
            :use ((:instance fn-cl-served-payload-writes-one-login-lock
                             (login (fn-own-sub-login sub))
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
-                            (payload (fn-inj-decision-octets
-                                      (fn-own-sub-decision sub))))))))
+                            (payload (fn-ipp-injected-octets
+                                      (fn-own-sub-decision sub) secret
+                                      (fn-own-sub-login sub) cfg)))))))
 
 (defun fn-own-completion-names-submission-p (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
