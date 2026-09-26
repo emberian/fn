@@ -1,0 +1,11 @@
+posted 1000: last-1000 median 2.16 ms p95 3.62 max 16.87; 2.4 s elapsed; rss 469096 KiB
+posted 2000: last-1000 median 2.57 ms p95 4.42 max 11.66; 5.3 s elapsed; rss 524392 KiB
+posted 3000: last-1000 median 2.98 ms p95 5.53 max 12.66; 8.6 s elapsed; rss 590632 KiB
+posted 4000: last-1000 median 3.86 ms p95 8.96 max 14.56; 13.0 s elapsed; rss 666288 KiB
+posted 5000: last-1000 median 4.70 ms p95 10.09 max 18.07; 18.4 s elapsed; rss 747504 KiB
+posted 6000: last-1000 median 5.81 ms p95 11.89 max 134.90; 25.0 s elapsed; rss 696764 KiB
+posted 7000: last-1000 median 5.46 ms p95 11.45 max 18.15; 31.0 s elapsed; rss 824252 KiB
+posted 8000: last-1000 median 6.67 ms p95 13.42 max 71.99; 39.1 s elapsed; rss 730568 KiB
+posted 9000: last-1000 median 11.28 ms p95 18.37 max 29.06; 50.3 s elapsed; rss 889528 KiB
+posted 10000: last-1000 median 13.47 ms p95 22.61 max 120.03; 63.7 s elapsed; rss 808804 KiB
+{"completed": 10000, "load_s": 63.718, "owner_cpu_ms_per_post": 6.198, "first_quarter": {"n": 2500, "median_ms": 2.529, "p95_ms": 4.558, "max_ms": 16.875, "argmax": 170}, "last_quarter": {"n": 2500, "median_ms": 11.669, "p95_ms": 19.363, "max_ms": 120.028, "argmax": 2374}, "all": {"n": 10000, "median_ms": 5.3, "p95_ms": 14.663, "max_ms": 134.895, "argmax": 5245}, "stalled": null}
