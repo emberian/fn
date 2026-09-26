@@ -305,7 +305,7 @@
                        :event :signed-record
                        ;; A control article the filing plan refused
                        ;; (books/peer-authored-accept.lisp fn-pa-filing-plan).
-                       :control-not-filed :control-malformed :control-signed
+                       :control-not-filed :control-malformed
                        ;; A bound login refused by the posting policy
                        ;; (books/login-binding.lisp fn-lb-gate).
                        :login-not-bound :login-unsigned))
@@ -346,8 +346,6 @@
     "control message not filed: its control group is not configured here (control-not-filed)")
    ((equal kind :control-malformed)
     "the Control header field is malformed (control-malformed)")
-   ((equal kind :control-signed)
-    "a signed control message cannot be filed here yet (control-signed)")
    ((equal kind :login-not-bound)
     "the login is not bound to this signing principal")
    ((equal kind :login-unsigned)

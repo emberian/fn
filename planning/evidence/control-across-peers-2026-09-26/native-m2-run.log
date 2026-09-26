@@ -1,0 +1,16 @@
+== source commit f9b91cde98cd3bd43ac6c0b111208a733a54d0c0
+== install 10:21:35Z
+   install exit 0 (/tank/fn/scratch/control-across-peers/native-m2/logs/install.log)
+== certify 10:21:48Z
+   certify exit 0 (/tank/fn/scratch/control-across-peers/native-m2/logs/certify.log)
+== acquire 10:23:51Z
+   acquire exit 0 (/tank/fn/scratch/control-across-peers/native-m2/logs/acquire.log)
+== validate 10:24:13Z
+   validate exit 0 (/tank/fn/scratch/control-across-peers/native-m2/logs/validate.log)
+== image-developer 10:24:26Z
+   image-developer exit 0 (/tank/fn/scratch/control-across-peers/native-m2/logs/image-developer.log)
+== image-production 10:25:16Z
+   image-production exit 0 (/tank/fn/scratch/control-across-peers/native-m2/logs/image-production.log)
+== test-tests.test_native_control_across_peers 10:26:14Z
+   test-tests.test_native_control_across_peers exit 1: FAILED (failures=1) (/tank/fn/scratch/control-across-peers/native-m2/logs/test-tests.test_native_control_across_peers.log)
+== done status 1; /tank/fn/scratch/control-across-peers/native-m2/SHA256SUMS

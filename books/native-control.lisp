@@ -45,9 +45,24 @@
 (defconst *fn-nctrl-statuses-before-conflict*
   '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault
     :article-exceeds-profile-bound))
+; The merge order fixes the octets: :conflict (outcome-algebra, merged
+; first) is octet 8; control-across-peers' seven named refusals follow it.
 (defconst *fn-nctrl-statuses*
   '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault
-    :article-exceeds-profile-bound :conflict))
+    :article-exceeds-profile-bound :conflict
+    :author-not-enrolled :source-malformed :unknown-group :carrier-refused
+    :control-not-filed :control-malformed :signed-event-not-formed))
+; PKT-147 (control-across-peers): the signed-author ingress's refusals name
+; their reason (books/native-hybrid-control.lisp `fn-nhc-author-refusal'):
+; the signer has no current enrolment, the source's fields do not parse, a
+; named newsgroup is not served here (the injection decision's
+; :unknown-group), the carrier is otherwise refused, the control filing plan
+; refused (its two words), or the signed Store event was not formed.  They
+; follow, so every earlier status keeps its octet.
+(defconst *fn-nctrl-named-refusals*
+  '(:article-exceeds-profile-bound
+    :author-not-enrolled :source-malformed :unknown-group :carrier-refused
+    :control-not-filed :control-malformed :signed-event-not-formed))
 (defconst *fn-nctrl-reply-spec* (list (cons :enum *fn-nctrl-statuses*)))
 
 ; The FNCT payload width: the request spec's width, the widest FNCT payload
@@ -359,9 +374,9 @@
 (defun fn-native-control-status-class (status)
   (declare (xargs :guard t))
   (cond ((member-equal status '(:accepted :duplicate)) :accepted)
-        ((member-equal status '(:refused :clock-unusable :busy
-                                :article-exceeds-profile-bound :conflict))
+        ((member-equal status '(:refused :clock-unusable :busy :conflict))
          :refused)
+        ((member-equal status *fn-nctrl-named-refusals*) :refused)
         ((equal status :uncertain) :uncertain)
         (t :fault)))
 

@@ -2762,6 +2762,37 @@
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-100",
+      "title": "A cancel crossing two peers in both orders, with grants on either or both sides, a kill between the arrivals and readers pinned on both nodes",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-037"
+      ],
+      "steps": [
+        "Three loopback nodes H, A and B, each `init fn.ga.t fn.gb.t fn.gab.t fn.post control.cancel`; P and Q enrolled on all three; Q granted cancel over fn.ga.* and fn.gab.* on A, fn.gb.* and fn.gab.* on B.",
+        "For each basis (P cancels P's signed target; Q cancels an unsigned target) and each target group, H authors the target and the cancel; the harness relays the pair over IHAVE to A and B, target first or cancel first, with both receivers SIGKILLed and restarted between the two arrivals in half the cases.",
+        "Readers opened on A and B after the first arrivals read each target again after the second arrivals and after their own POST; every grant is then revoked and both receivers SIGKILLed and restarted.",
+        "A signed article naming fn.unserved is authored through hybrid-author."
+      ],
+      "expected": [
+        "On each node the fresh answer is the same line in both orders: 430 withdrawn for the author basis everywhere and for the authority basis where that node's grant covers the target's group, 220 otherwise.",
+        "A pinned reader answers 220 for every target it saw until its POST re-pins it, then the fresh answer; after the revoke and the restart every answer is unchanged.",
+        "hybrid-author exits 1 with `refused hybrid-author UNKNOWN-GROUP`; the same signer's article naming only fn.test is accepted."
+      ],
+      "implementation": {
+        "test": "tests.test_native_control_across_peers",
+        "cases": [
+          "NativeControlAcrossPeersTests.test_author_basis",
+          "NativeControlAcrossPeersTests.test_authority_basis",
+          "NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named"
+        ],
+        "native": true,
+        "log": "planning/evidence/control-across-peers-2026-09-26/native-m1-across-peers.log",
+        "record": "planning/evidence/control-across-peers-2026-09-26.md"
+      }
     }
   ]
 }

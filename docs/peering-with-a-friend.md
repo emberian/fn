@@ -197,9 +197,27 @@ the grant, it declined; after granting, `operator CONFIG keys redecide
 MESSAGE-ID` enrols the successor without a restart (docs/operator.md, "Re-decide
 a declined key statement").
 
+Each node decides a cancel again under its own grants. The author's own
+cancel withdraws on both nodes; a moderator's cancel of someone else's
+unsigned article withdraws only on the node where you ran `control grant`
+for that moderator over the article's group, so grant it on both nodes if
+you both want it honoured. The order does not matter: a cancel that
+arrives before its article hides the article from its first appearance, a
+restart between the two changes nothing, and a reader already connected
+keeps seeing what it saw until it posts or reconnects
+(`tests/test_native_control_across_peers.py`, SCN-100).
+
+`hybrid-author` names its refusal: a signed article whose `Newsgroups`
+names a group this node does not carry is refused `UNKNOWN-GROUP` (exit
+1); ask your friend to create the group, or post to one you both carry.
+
 ## What is not here
 
 - A stranger's own account on your node: today you make it
   (`principal set-password`) and tell them the password. An invitation-code
   flow (the operator issues a code, the stranger redeems it over the reader
   port) is specified, not built (PKT-401).
+- A view in which every article is withdrawn (two cancels by one author
+  naming each other) answers the plain `430 no article with that
+  message-id` rather than `430 withdrawn`; and the BP receiver's refusal
+  line of an unfiled control article reads `reason=none` (PKT-443).

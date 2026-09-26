@@ -2995,6 +2995,29 @@
       ],
       "implementation_note": "exit(f, x) = code(classify(f, x)): 0 accepted, 1 refused (NO-STORE, CONFLICT and every other reason printed as a word), 3 fenced (indeterminate local durable authority, nothing else), 4 fault, 5 usage, 6 interrupted, 7 not connected. The host's +fnn-exit-*+ constants are ACL2's fn-outcome-code. The table is the native executable's; tools/fn_client.py's --json record carries scope server. Outside it: health's verdict 0/19..27 (HST-007; PKT-329) and signal exits (128+N).",
       "note": "An fn image from before :conflict answers a conflict uncertain (exit 3): clients are upgraded with the node (docs/agents.md)."
+    },
+    {
+      "id": "NNT-037",
+      "title": "A cancel crossing between peers has D29's behaviour on each node under its own grants, in both arrival orders, across a kill between the arrivals, with a reader pinned on either node; a signed article naming a group the node does not serve is refused by name",
+      "specification": "specs/peering.md#81-control-across-peers-prf-170",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-170"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_control_across_peers.py",
+        "tests/test_native_hybrid_author.py",
+        "books/hybrid-store-injected.lisp",
+        "books/native-hybrid-control.lisp",
+        "planning/evidence/control-across-peers-2026-09-26.md"
+      ],
+      "implementation_note": "D29: visible(T then C) = visible(C then T) is the test; each receiver decides again under its own enrolment and grants (specs/peering.md section 8). The two-node matrix witnesses the C3 keystones fn-ctl-visible-is-arrival-order-independent, fn-ctl-pinned-view-keeps-its-archive, fn-ctl-cancel-executes-only-for-author-or-authority and fn-ctl-replay-is-the-fold (PRF-097's, cited, not restated); PRF-170 is the named unserved-group refusal (PKT-147). RFC 3977 section 6.3.1 permits a plain refusal; the named word is a stronger fn guarantee."
     }
   ]
 }
