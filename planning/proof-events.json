@@ -4597,11 +4597,52 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpfs-canvas-of-extents"
+          "name": "fn-bpfs-views-of-cut"
+        }
+      ]
+    },
+    {
+      "id": "PRF-121",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-reassemble-is-spec"
         },
         {
           "kind": "theorem",
-          "name": "fn-bpfs-views-of-cut"
+          "name": "fn-bpf-reassemble-is-capped-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-exact-canvas-reassembles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-uncapped"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-fragment-query-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-memo-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-plan-at-of-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-sweep-is-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-cell-at-of-sort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-sortedp-of-sort"
         }
       ]
     }

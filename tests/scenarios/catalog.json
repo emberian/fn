@@ -1719,6 +1719,29 @@
         "tests/acl2/bp-fragment-send-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-067",
+      "title": "A family of more fragments than the old 64-fragment ceiling, interrupted by a receiver kill, reassembles once and is delivered once",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-008"
+      ],
+      "steps": [
+        "Author one request ADU and cut it into 70 fragments (fn-bpf-cut).",
+        "Serve the receiver continuously; send 35 fragments, highest offset first; kill the receiver with SIGKILL.",
+        "Restart the receiver on the same journal and send the other 35, offset zero last."
+      ],
+      "expected": [
+        "Before the kill no family is published and the Store holds no article.",
+        "After the restart the receiver logs `BP fragment family durable` once and `BP application handoff durable` once, and the Store holds one article."
+      ],
+      "evidence": [
+        "tests/test_bp_fragment_node_native.py",
+        "tests/acl2/bp-fragment-sweep-tests.lisp",
+        "planning/evidence/bp-lifecycle-2026-09-25.md"
+      ]
     }
   ]
 }

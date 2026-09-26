@@ -13,6 +13,14 @@
   (declare (xargs :guard (and (natp n) (true-listp acc))))
   (if (zp n) acc (bpfwt-payload (1- n) (cons (mod n 251) acc))))
 
+(local (defthm bpfwt-len-nthcdr-bound
+         (<= (len (nthcdr n x)) (len x))
+         :rule-classes :linear))
+(local (defthm bpfwt-len-nthcdr-shrinks
+         (implies (and (consp x) (posp n))
+                  (< (len (nthcdr n x)) (len x)))
+         :hints (("Goal" :expand ((nthcdr n x))))))
+
 ; Fragments of CHUNK octets from OFF, most recent first (so the list is in
 ; descending offset order: the sweep's sort is exercised).
 (defun bpfwt-frags (payload off chunk total acc)
