@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1028 |
-| Certification roots in the Makefile | 1001 |
-| Books inside the root closure | 1020 |
-| `defthm` and `defthmd` events | 14514 |
-| `defun` events | 10095 |
-| Functions with verified guards | 2290 |
+| Books read | 1031 |
+| Certification roots in the Makefile | 1004 |
+| Books inside the root closure | 1023 |
+| `defthm` and `defthmd` events | 14533 |
+| `defun` events | 10123 |
+| Functions with verified guards | 2295 |
 | Functions declared `:verify-guards nil` and never verified | 784 |
-| Functions left at the default with an explicit guard | 5528 |
-| Functions left at the default with no guard | 1493 |
-| `assert-event` checks | 15312 |
-| `must-fail` checks | 1820 |
+| Functions left at the default with an explicit guard | 5533 |
+| Functions left at the default with no guard | 1511 |
+| `assert-event` checks | 15378 |
+| `must-fail` checks | 1830 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 138 |
 | Export-hygiene warnings | 163 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 154 |
-| Include-hygiene warnings | 1026 |
+| Teeth-form warnings | 155 |
+| Include-hygiene warnings | 1027 |
 | Host-names warnings | 1177 |
 | Hand-written-record warnings | 18 |
 
@@ -357,8 +357,8 @@ that `make certify` requests.
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
-| `books/feed-connection-invariants.lisp` | root | 45 | 21 | 0/0/21/0 | 0 | 0 | 1 |
-| `books/feed-connection.lisp` | root | 5 | 44 | 44/0/0/0 | 0 | 0 | 0 |
+| `books/feed-connection-invariants.lisp` | root | 47 | 21 | 0/0/21/0 | 0 | 0 | 1 |
+| `books/feed-connection.lisp` | root | 8 | 49 | 49/0/0/0 | 0 | 0 | 0 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -498,7 +498,7 @@ that `make certify` requests.
 | `books/owner-store-indexed.lisp` | root | 46 | 7 | 0/5/2/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-verdict-read.lisp` | root | 21 | 2 | 0/0/1/1 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 89 | 162 | 0/5/157/0 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 92 | 164 | 0/5/159/0 | 0 | 0 | 0 |
 | `books/path-update-tail.lisp` | root | 67 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -516,6 +516,7 @@ that `make certify` requests.
 | `books/peer-offer-indexed.lisp` | root | 20 | 10 | 9/0/1/0 | 0 | 0 | 1 |
 | `books/peer-pull-session.lisp` | root | 32 | 38 | 0/0/38/0 | 0 | 0 | 0 |
 | `books/peer-pull.lisp` | root | 85 | 121 | 11/0/110/0 | 0 | 0 | 2 |
+| `books/peer-transit-forms.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/post-identity-index.lisp` | root | 15 | 11 | 4/0/7/0 | 0 | 0 | 0 |
@@ -878,7 +879,7 @@ that `make certify` requests.
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/feed-connection-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 7 | 0 |
 | `tests/acl2/feed-connection-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 16 | 0 |
-| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 41 | 0 | 0 |
+| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 56 | 1 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/feed-journal-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 22 | 2 | 0 |
@@ -963,6 +964,7 @@ that `make certify` requests.
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 149 | 1 | 0 |
 | `tests/acl2/owner-enrollment-read-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 31 | 9 | 0 |
 | `tests/acl2/owner-fault-tests.lisp` | root | 2 | 5 | 0/0/0/5 | 37 | 4 | 0 |
+| `tests/acl2/owner-feed-form-tests.lisp` | root | 1 | 7 | 0/0/0/7 | 17 | 4 | 0 |
 | `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 2 | 3 | 0/0/2/1 | 133 | 6 | 0 |
 | `tests/acl2/owner-intent-carried-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 28 | 5 | 0 |
@@ -995,6 +997,7 @@ that `make certify` requests.
 | `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 43 | 4 | 0 |
 | `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 48 | 10 | 0 |
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
+| `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 34 | 5 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/post-identity-index-tests.lisp` | root | 0 | 7 | 0/2/0/5 | 15 | 6 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 62 | 12 | 0 |

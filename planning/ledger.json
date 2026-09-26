@@ -696,6 +696,8 @@
     "books/peer-inbound",
     "books/peer-inbound-invariants",
     "tests/acl2/peer-inbound-tests",
+    "books/peer-transit-forms",
+    "tests/acl2/peer-transit-forms-tests",
     "books/nntp-auth",
     "tests/acl2/nntp-auth-tests",
     "books/served",
@@ -826,6 +828,7 @@
     "tests/acl2/owner-feed-port-tests",
     "tests/acl2/owner-feed-tests",
     "books/owner",
+    "tests/acl2/owner-feed-form-tests",
     "books/owner-invariants",
     "books/owner-fault",
     "books/owner-feed-subject",
@@ -1005,26 +1008,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1028,
-    "books_in_root_closure": 1020,
-    "roots": 1001,
-    "theorems": 14514,
-    "functions": 10095,
-    "assert_events": 15312,
-    "must_fails": 1820,
+    "books": 1031,
+    "books_in_root_closure": 1023,
+    "roots": 1004,
+    "theorems": 14533,
+    "functions": 10123,
+    "assert_events": 15378,
+    "must_fails": 1830,
     "prover_refusals": 2,
     "encapsulates": 77,
     "guards": {
-      "verified": 2290,
+      "verified": 2295,
       "declared-off": 784,
-      "default-guarded": 5528,
-      "default-unguarded": 1493
+      "default-guarded": 5533,
+      "default-unguarded": 1511
     },
     "suspect_theorems": 138,
     "export_hygiene_warnings": 163,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 154,
-    "include_hygiene_warnings": 1026,
+    "teeth_form_warnings": 155,
+    "include_hygiene_warnings": 1027,
     "host_names_warnings": 1177,
     "hand_written_record_warnings": 18
   },
@@ -8465,7 +8468,7 @@
       "book": "books/feed-connection-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 47,
       "functions": 21,
       "guards": {
         "verified": 0,
@@ -8496,15 +8499,15 @@
       "book": "books/feed-connection.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
-      "functions": 44,
+      "theorems": 8,
+      "functions": 49,
       "guards": {
-        "verified": 44,
+        "verified": 49,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 44,
+      "verify_guards_events": 49,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -12429,12 +12432,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 89,
-      "functions": 162,
+      "theorems": 92,
+      "functions": 164,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 157,
+        "default-guarded": 159,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -12952,6 +12955,32 @@
         "fn-pull-fixed-fold",
         "fn-pull-list-of-true-list"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/peer-transit-forms.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-inbound"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -23183,24 +23212,26 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 41,
-      "must_fails": 0,
+      "assert_events": 56,
+      "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 23,
-      "defmacros": 0,
+      "defconsts": 28,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/feed-connection"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -25583,6 +25614,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-feed-form-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 17,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-feed-port-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26498,6 +26557,34 @@
       "encapsulates": 0,
       "includes": [
         "../../books/peer-pull"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/peer-transit-forms-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 9
+      },
+      "verify_guards_events": 0,
+      "assert_events": 34,
+      "must_fails": 5,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/peer-transit-forms"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -33107,6 +33194,12 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "ptf-k3-never-raises",
+        "book": "tests/acl2/peer-transit-forms-tests.lisp",
+        "line": 192,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "pbt-one-article-without-msgid-agreement",
         "book": "tests/acl2/poster-bytes-tests.lisp",
         "line": 108,
@@ -39532,6 +39625,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-transit-forms-tests.lisp",
+        "line": 7,
+        "include": "../../books/peer-transit-forms",
+        "included": "books/peer-transit-forms.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/policy-tests.lisp",
         "line": 5,
         "include": "crypto-seam-tests",
@@ -45492,28 +45592,28 @@
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 306,
+        "line": 310,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 336,
+        "line": 340,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 471,
+        "line": 475,
         "name": "fnn-owner-fence-service",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 471,
+        "line": 475,
         "name": "fnn-owner-fault-service",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
