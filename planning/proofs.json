@@ -3136,7 +3136,7 @@
         "fn-ccp-reclaim-preserves-reconstructed-history",
         "fn-ccp-profile-upgrade-keeps-reclaim-plan",
         "fn-bs-selected-reclaim-crash-preserves-suffix-payload",
-        "fn-cverb-pack-fits-the-profile-budget",
+        "fn-cverb-pack-fits-the-disk",
         "fn-cverb-capture-within-pack-octets",
         "fn-cverb-pack-decision-capture-succeeds",
         "fn-native-operator-run-store-compact-is-the-compact-action",
@@ -4829,7 +4829,9 @@
         "fn-native-operator-run-store-reclaim-is-the-reclaim-action",
         "fn-native-operator-run-reclaim-action-is-only-store-reclaim",
         "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action",
-        "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
+        "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run",
+        "fn-rclp-rewritten-charge-is-the-history-unit",
+        "fn-rclp-freed-charge-account"
       ]
     },
     {
