@@ -347,6 +347,38 @@ policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
 requirement of packet C3-05 is unchanged by the packaging.
 
+### The saved image's memory
+
+HST-017: The saved image carries the execution world only, and the owner
+serves on a small collection trigger. `host/native/build.lisp` (and
+`build-dtn.lisp`) loads `host/native/strip-world.lisp` after the last event and
+immediately before `save-exec`: every symbol keeps, at its current value,
+only the world properties that execution reads -- the `*1*` dispatch's
+`symbol-class`, the signatures and guards the guard-failure forms and
+`ev-fncall` read, the stobj and attachment properties, macros, constants,
+tables and every world global -- and the world list becomes those triples
+over a bottom of command 0, event 0 and `project-dir-alist`, so that LP's
+`lookup-world-index` and `replace-project-dir-alist` (the start path with
+`ACL2_SYSTEM_BOOKS` set) still find what they walk to. Theorems, rules,
+bodies, the event history, the undo ring and the proof-output world stack
+are not saved. No compiled definition changes: they live in function cells,
+not in the world. A guard violation inside `fnn-call` is the same fault line
+and exit code as before (the developer verb `guard-probe`), because the guard
+term in the failure is compiled into the executable counterpart, not read
+from the world. `tools/build_native_host.sh` refuses an image whose build log
+lacks the strip marker. The owner collects every 64 MiB during recovery and a
+checkpoint publication (PKT-316), less when the process reserved under 1 GiB
+(a sixteenth of the reservation, at least 8 MiB: a copying collection of the
+nursery needs as much again free); after recovery one full collection returns
+the recovery's garbage pages to the system; from `LISTENING` it collects every
+8 MiB. The
+figures (core dynamic content, the smallest working heap, resident set after
+1,000 POSTs, the reopen) and the list of kept properties with the ACL2 8.7
+source that reads each are in `planning/evidence/image-floor-2026-09-26.md`;
+the native case is `tests/test_native_image_floor.py`. The heap a profile
+needs is still `heap-from-profile`'s derivation (HST-013), which the list
+representation of the retained history dominates.
+
 ### The served reader path
 
 One socket read is one `fn-served-step` (books/served.lisp): a fold of

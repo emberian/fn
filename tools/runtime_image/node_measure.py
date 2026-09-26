@@ -14,6 +14,16 @@ tools/msgid_measure.py.  A measurement only: it decides nothing a node does.
         takes one POST (240) and serves it back (220); bisection to 8 MB.
     node_measure.py core IMAGE
         the runtime's own figure: "dynamic space too small for core: N KiB".
+    node_measure.py checkpoint IMAGE WORK [--heap MB]
+        (lane image-floor) a fresh development-profile store: POSTs of 2,048
+        octets until the owner logs `CHECKPOINT auto'; VmRSS/VmHWM after the
+        publication; then stop, start again on that store (the reopen):
+        seconds to LISTENING and VmRSS after it.
+    node_measure.py reopen-floor IMAGE WORK [--lo MB --hi MB]
+        (lane image-floor) the smallest heap at which the owner reopens the
+        store a `run' left in WORK and serves its first article.
+`run' also stops the owner after the POSTs and starts it again on the same
+store: reopen seconds and VmRSS after the reopen, and per-POST median/p95 ms.
 Output: one JSON line on stdout.
 """
 from __future__ import annotations
@@ -63,7 +73,12 @@ def fresh(image, work, env, profile=DEVELOPMENT):
 
 
 def rss(pid):
-    return {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+    if os.path.exists("/proc/%d/status" % pid):
+        return {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+    # OpenBSD (no /proc): ps(1)'s resident set in KiB; no high-water mark.
+    out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], stdout=subprocess.PIPE,
+                         check=True).stdout
+    return {"rss_kib": int(out.split()[0]), "hwm_kib": None}
 
 
 def multiline(c, out):
@@ -113,11 +128,15 @@ def run(a):
         r.post(c, 0, OCTETS)
         doc["after_1"] = rss(proc.pid)
         t0 = time.perf_counter()
+        times = []
         for i in range(1, a.posts):
+            t1 = time.perf_counter()
             r.post(c, i, OCTETS)
+            times.append(time.perf_counter() - t1)
             if i + 1 in (100, 1000, 10000):
                 doc["after_%d" % (i + 1)] = rss(proc.pid)
         doc["post_s"] = round(time.perf_counter() - t0, 3)
+        doc["post_ms"] = latency(times)
         c.close()
         if a.transcript:
             data = transcript(port, min(a.posts, 20))
@@ -127,6 +146,62 @@ def run(a):
     finally:
         r.stop_owner(proc, err)
     doc["owner_rc"] = proc.returncode
+    proc, doc["reopen_s"], err = r.start_owner(image, config, env, work / "owner.stderr",
+                                               timeout=600)
+    try:
+        doc["reopen_s"] = round(doc["reopen_s"], 3)
+        time.sleep(1.0)
+        doc["after_reopen"] = rss(proc.pid)
+    finally:
+        r.stop_owner(proc, err)
+    return doc
+
+
+def latency(times):
+    if not times:
+        return None
+    t = sorted(times)
+    return {"median": round(1000 * t[len(t) // 2], 3),
+            "p95": round(1000 * t[min(len(t) - 1, int(len(t) * 0.95))], 3)}
+
+
+def checkpoint(a):
+    """POST until the owner publishes a checkpoint; then the reopen."""
+    image, work = Path(a.image), Path(a.work)
+    env = env_for(a.heap)
+    config, port = fresh(image, work, env)
+    log = work / "owner.stderr"
+    if log.exists():
+        log.unlink()
+    doc = {"image": str(image), "heap_mb": a.heap, "profile": "development"}
+    proc, start_s, err = r.start_owner(image, config, env, log, timeout=600)
+    try:
+        doc["start_s"] = round(start_s, 3)
+        c = m.Conn(port)
+        line = None
+        for i in range(a.max_posts):
+            r.post(c, i, OCTETS)
+            err.flush()
+            line = next((l for l in log.read_text(errors="replace").splitlines()
+                         if "CHECKPOINT auto " in l), None)
+            if line:
+                doc["posts"] = i + 1
+                break
+        c.close()
+        if not line:
+            raise RuntimeError("no CHECKPOINT auto after %d posts" % a.max_posts)
+        doc["checkpoint_line"] = line.strip()
+        time.sleep(1.0)
+        doc["after_publication"] = rss(proc.pid)
+    finally:
+        r.stop_owner(proc, err)
+    proc, reopen_s, err = r.start_owner(image, config, env, log, timeout=600)
+    try:
+        doc["reopen_s"] = round(reopen_s, 3)
+        time.sleep(1.0)
+        doc["after_reopen"] = rss(proc.pid)
+    finally:
+        r.stop_owner(proc, err)
     return doc
 
 
@@ -175,6 +250,50 @@ def floor(a):
         else:
             lo = mid
     return {"image": str(image), "floor_mb": hi, "failed_at_mb": lo, "trials": rows}
+
+
+def reopen_floor(a):
+    """The smallest heap at which the owner reopens the store `run' left in
+    WORK (its fn.toml) and serves its first article back; bisection to 8 MB."""
+    image, work = Path(a.image), Path(a.work)
+    config = work / "fn.toml"
+    port = int(re.search(r"port = (\d+)", config.read_text()).group(1))
+
+    def attempt(heap):
+        env = env_for(heap)
+        try:
+            proc, secs, err = r.start_owner(image, config, env, work / "reopen.stderr",
+                                            timeout=600)
+        except BaseException as e:
+            return False, "start: %s" % str(e)[:120]
+        try:
+            c = m.Conn(port)
+            _, reply, _ = r.timed_multiline(c, "ARTICLE %s" % m.msgid(0))
+            c.close()
+            return reply.startswith(b"220"), "%.3f s %s" % (secs, reply[:12])
+        except BaseException as e:
+            return False, "session: %s" % str(e)[:120]
+        finally:
+            try:
+                r.stop_owner(proc, err)
+            except BaseException:
+                pass
+
+    lo, hi = a.lo, a.hi
+    rows = []
+    ok, why = attempt(hi)
+    rows.append([hi, ok, why])
+    if not ok:
+        return {"image": str(image), "reopen_floor_mb": None, "trials": rows}
+    while hi - lo > 8:
+        mid = (lo + hi) // 2
+        ok, why = attempt(mid)
+        rows.append([mid, ok, why])
+        if ok:
+            hi = mid
+        else:
+            lo = mid
+    return {"image": str(image), "reopen_floor_mb": hi, "failed_at_mb": lo, "trials": rows}
 
 
 def core(a):
@@ -271,8 +390,17 @@ def main():
     q.add_argument("--posts", type=int, default=100)
     q = s.add_parser("core")
     q.add_argument("image")
+    q = s.add_parser("reopen-floor")
+    q.add_argument("image"); q.add_argument("work")
+    q.add_argument("--lo", type=int, default=128)
+    q.add_argument("--hi", type=int, default=1024)
+    q = s.add_parser("checkpoint")
+    q.add_argument("image"); q.add_argument("work")
+    q.add_argument("--heap", type=int, default=1024)
+    q.add_argument("--max-posts", type=int, default=200)
     a = p.parse_args()
-    doc = {"run": run, "floor": floor, "core": core, "probe": probe}[a.cmd](a)
+    doc = {"run": run, "floor": floor, "core": core, "probe": probe,
+           "checkpoint": checkpoint, "reopen-floor": reopen_floor}[a.cmd](a)
     print(json.dumps(doc, sort_keys=True))
 
 

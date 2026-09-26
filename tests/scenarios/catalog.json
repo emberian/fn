@@ -3425,6 +3425,35 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-137",
+      "title": "An image whose saved world is the execution world starts, serves and refuses exactly as before: a guard violation at the host boundary is the same fault line and exit code, the start with ACL2_SYSTEM_BOOKS set works, a fresh node serves from a 256 MB dynamic space, and the served transcript is byte-identical",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-017"
+      ],
+      "steps": [
+        "Build the developer and production images of the lane (tools/hbox_native.sh --images developer,production) and, in scratch, the same source without the strip (the comparison image).",
+        "Run `--fn guard-probe` on both developer images, and on the stripped one with ACL2_SYSTEM_BOOKS set; run it on the production image.",
+        "Read each production core's dynamic requirement (node_measure.py core) and start a fresh development store's owner with --dynamic-space-size 256MB: one POST, then ARTICLE.",
+        "On today's image and the new one: 1,000 POSTs of 2,048 octets on a fresh scale store, the fixed served transcript (node_measure.py run --transcript), stop and reopen; a development store until the owner publishes a checkpoint, then the reopen."
+      ],
+      "expected": [
+        "guard-probe exits 4 with the one stderr line `store: ACL2 error in fn-sha256-of-string: (EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
+        "The stripped core needs under 192 MiB of dynamic space (today's 271 MiB); the 256 MB node answers 240 and 220.",
+        "The transcripts of today's image and the new one are byte-identical; the qualifying native modules pass on the new images."
+      ],
+      "evidence": [
+        "planning/evidence/image-floor-2026-09-26.md",
+        "tests/test_native_image_floor.py"
+      ],
+      "implementation": {
+        "test": "tests/test_native_image_floor.py",
+        "native": true,
+        "record": "planning/evidence/image-floor-2026-09-26.md"
+      }
     }
   ]
 }

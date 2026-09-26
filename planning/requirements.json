@@ -3326,6 +3326,29 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "HST-017",
+      "title": "The saved image carries the execution world only, and the owner serves on a small collection trigger: a fresh node starts in, serves from and refuses a guard violation within a 256 MB dynamic space",
+      "specification": "specs/host.md#the-saved-images-memory",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "measurement"
+      ],
+      "evidence": [
+        "host/native/strip-world.lisp",
+        "host/native/build.lisp",
+        "host/native/build-dtn.lisp",
+        "host/native/owner.lisp",
+        "tools/build_native_host.sh",
+        "tests/test_native_image_floor.py",
+        "tools/runtime_image/node_measure.py",
+        "planning/evidence/image-floor-2026-09-26.md"
+      ],
+      "implementation_note": "Before save-exec the build replaces the installed world by the current values of the properties execution reads (symbol-class, signatures, guards, stobj and attachment properties, macros, constants, tables, world globals) over a bottom of command 0, event 0 and project-dir-alist; the core's dynamic content falls from 271.4 to 166.4 MiB (hbox). The owner collects every 64 MiB during recovery and a checkpoint publication (PKT-316) and every 8 MiB from LISTENING. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packet."
     }
   ]
 }
