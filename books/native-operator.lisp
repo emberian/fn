@@ -1774,6 +1774,13 @@ OBSERVED (the markers found beside the store root) is empty."
 ; found none of the store's entries, the outcome is a refusal named
 ; :no-store whose exit code is 6: never accepted (so no action runs and no
 ; open is attempted), never the fault code 4, never the usage code 5.
+(local
+ (defthm fn-nop-native-action-of-refused
+   (equal (fn-native-operator-result-native-action (list :refused r c g a)) :none)
+   :hints (("Goal" :in-theory '(fn-native-operator-result-native-action
+                                fn-native-operator-result-status
+                                fn-ncfg-first car-cons)))))
+
 (defthm fn-native-operator-absent-store-is-refused
   (implies (and (fn-native-operator-result-needs-storep result)
                 (not (consp observed)))
@@ -1783,11 +1790,15 @@ OBSERVED (the markers found beside the store root) is empty."
                   (equal (fn-native-operator-exit-code outcome)
                          *fn-nop-no-store-exit*)
                   (equal (fn-native-operator-result-native-action outcome) :none))))
-  :hints (("Goal" :in-theory (enable fn-nop-refused fn-nop-result
-                                     fn-native-operator-result-status
-                                     fn-native-operator-result-reason
-                                     fn-native-operator-result-native-action
-                                     fn-native-operator-exit-code))))
+  :hints (("Goal" :in-theory '(fn-native-operator-store-outcome
+                                fn-nop-refused fn-nop-result
+                                fn-native-operator-result-status
+                                fn-native-operator-result-reason
+                                fn-native-operator-exit-code
+                                fn-ncfg-first fn-ncfg-second fn-ncfg-rest
+                                (:e fn-native-operator-result-native-action)
+                                fn-nop-native-action-of-refused
+                                car-cons cdr-cons))))
 
 ; The converse half: a store that is there (any marker observed) or a plan
 ; that needs none is passed through untouched, so the check refuses nothing
@@ -1795,7 +1806,8 @@ OBSERVED (the markers found beside the store root) is empty."
 (defthm fn-native-operator-store-outcome-passes-a-present-store
   (implies (or (consp observed)
                (not (fn-native-operator-result-needs-storep result)))
-           (equal (fn-native-operator-store-outcome result observed) result)))
+           (equal (fn-native-operator-store-outcome result observed) result))
+  :hints (("Goal" :in-theory '(fn-native-operator-store-outcome))))
 
 ;  The line printed before a usage or refused result's tagged line: what the
 ; command accepts, or what to do.  ACL2's words; the host prints them.
