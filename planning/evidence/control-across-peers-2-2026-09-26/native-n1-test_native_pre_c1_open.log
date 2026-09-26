@@ -1,0 +1,34 @@
+test_every_open_of_the_witness_refuses_by_name (tests.test_native_pre_c1_open.PreC1OpenTest.test_every_open_of_the_witness_refuses_by_name) ... ok
+test_repair_control_refuses_until_its_semantics_are_decided (tests.test_native_pre_c1_open.PreC1OpenTest.test_repair_control_refuses_until_its_semantics_are_decided) ... ok
+test_the_store_without_the_cancel_opens (tests.test_native_pre_c1_open.PreC1OpenTest.test_the_store_without_the_cancel_opens) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.264s
+
+OK
+$ fn store /tmp/fn-pre-c1-qxs0p10q/witness/store recover -> 1 
+store: pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control
+$ fn store /tmp/fn-pre-c1-qxs0p10q/witness/store inspect <prec1-target@example.invalid> -> 1 
+store: pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control
+$ fn store /tmp/fn-pre-c1-qxs0p10q/witness/store checkpoint -> 1 
+store: pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control
+$ fn operator /tmp/fn-pre-c1-qxs0p10q/witness/fn.toml run -> 1 
+refused operator run pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control
+$ fn operator /tmp/fn-pre-c1-qxs0p10q/witness/fn.toml health -> 1 
+refused operator health pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control
+$ fn store /tmp/fn-pre-c1-b_v1771s/witness/store repair-control -> 1 
+store: repair semantics undecided (PKT-444)
+$ fn store /tmp/fn-pre-c1-j6f4pmej/ordinary/store recover -> 0 
+recovered transactions=2 articles=1 staging-orphans=0 anchor=none checkpoint=none
+open=full-replay reason=absent
+$ fn store /tmp/fn-pre-c1-j6f4pmej/ordinary/store status -> 0 
+transactions=2 articles=1 staging-orphans=0 unsigned-legacy-experiment
+profile format=7 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=128 list-memory-octets=805306368
+headroom transactions-used=2 transactions-budget=128 bytes-used=10551 history-bound=25165824 charge-reserved=3 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 debt=0 held
+open=full-replay reason=absent
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file=absent
+pins=1 reserved=3 connections=0
+pack-chain none

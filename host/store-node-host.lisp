@@ -23,6 +23,8 @@
 (include-book "../books/store-profile-namespace")
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
+; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
+(include-book "../books/store-open-pre-c1")
 ; fn-store-sn-prepare and fn-store-sn-finish call the owner's carried twins
 ; (fn-pcar-spc-prepare, fn-ccar-sn-finish): neither walks the history.
 (include-book "../books/owner-commit-carried")
@@ -215,11 +217,24 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; fn-sn-open-okp, without running the whole-state recognizer again.
 ; No barrier is fabricated here: Python must report each of five real fsync
 ; observations via fn-store-sn-io before this state is :ready.
+; The open is `fn-sopc-classified-open' (books/store-open-pre-c1.lisp): a
+; history whose identity fold stopped at a control record a pre-C1 image
+; filed under its Newsgroups is refused by name (:refused, the refusal kept
+; in the global `fn-store-open-refusal' for fn-store-open-refusal-text);
+; every other history is `fn-sco-store-open' of E, as before
+; (fn-sopc-classified-open-is-the-open-without-a-pre-c1-record).
 (defun fn-store-sn-open-extended (e config-records frontier state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((pair (fn-sco-store-open e config-records frontier))
+  (let* ((classified (fn-sopc-classified-open e config-records frontier))
+         (refused (equal (car classified) :refused))
+         (state (f-put-global 'fn-store-open-refusal
+                              (if refused classified nil) state))
+         (pair (if refused (list nil nil) classified))
          (replayed (car pair))
          (opened (cadr pair)))
+    (if refused
+        (let ((state (f-put-global 'fn-store-sco-open nil state)))
+          (value :refused))
     (if (and (equal (fn-replay-result-kind replayed) :ok)
              (equal (fn-sn-open-kind opened) :ok)
              (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
@@ -231,7 +246,19 @@ reopen predicate, writer-lock observation and observed final namespace."
                (state (f-put-global 'fn-store-sco-open (list e replayed opened) state)))
           (value :recovering))
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
-        (value :fault)))))
+        (value :fault))))))
+
+; The operator's line for the refusal the last open recorded, or nil.
+(defun fn-store-open-refusal-text (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (boundp-global 'fn-store-open-refusal state)
+             (fn-sopc-refusal-text (f-get-global 'fn-store-open-refusal state))
+           nil)))
+
+; The repair verb's answer while its semantics wait on ember (PKT-444).
+(defun fn-store-repair-control-text ()
+  (declare (xargs :mode :program))
+  *fn-sopc-repair-undecided-text*)
 
 ; The physical configuration and Store histories share transaction IDs, but
 ; have independent sequence spaces. ACL2 interleaves them at recovery, with

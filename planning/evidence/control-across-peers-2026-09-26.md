@@ -216,3 +216,177 @@ The manual runs used the m2 tree's images with the test files copied in
 - PKT-444: the pre-C1 replay repair (ember's choice among a/b/c).
 - A signed control through BP (the BP case above is unsigned; C1 filing is
   by the Control field alone).
+
+## Continuation: the pre-C1 open (control-across-peers-2)
+
+Lane `lane/control-across-peers-2` from dev `273cd980`; brief
+`build/coordinator/queue/done/w4-control-across-peers-2.txt` (PKT-444's first
+half; ids: events of PRF-170, SCN-100 extended, PKT-457).
+
+### 1. The fault's site
+
+The witness store (hbox `/tank/fn/scratch/control-across-peers/replay-work/store`,
+written by the pre-C1 developer image `f358dbac`; committed as
+`tests/fixtures/pre-c1-control-store/witness` with `SHA256SUMS`) was decoded
+and replayed in ACL2 on persvati (a REPL over dev's certified books; the
+records through `fn-frame-store-decode` and `fn-store-event-decode-exact`,
+the configuration through `fn-cfg-decode-exact`). Three records: 0 the
+keyring snapshot, 1 the signed target, 2 the signed cancel. The
+configuration fold (`fn-cpr-replay`'s resumable form) is `:ok`. The identity
+fold stops at record 2: `(:fault next=2 :composite-binding)`.
+
+Classification: implementation (a generic fault where an open must succeed
+or refuse by name). The function that produced it: `books/replay.lisp`
+`fn-replay-identity-step`, its `fn-stxa-p` arm. Record 2 is a schema-1
+composite at keyring generation 1, so neither the carried nor the revoked
+arm binds and the snapshot arm's `fn-hsig-article-event-snapshot-bindsp-v1`
+fails in `fn-hsig-carried-record-metadatap`: the record lists `("fn.test")`
+(its Newsgroups, what the pre-C1 image filed) while
+`fn-hsig-source-filed-groups` of its signed source is `("control.cancel")`
+(C1's classifier: `(:control "cancel" ...)`). `fn-sco-finalize` then answers
+`(:error :identity)`, `host/store-node-host.lisp` `fn-store-sn-open-extended`
+`:fault`, and `host/native/io.lisp` `fnn-recover-full-replay` printed
+`ACL2 replay rejected committed transaction history or configuration
+history` (exit 4).
+
+### 2. The decision (books/store-open-pre-c1.lisp; PRF-170 events)
+
+`books/replay.lisp` and `books/control-classify.lisp` are unchanged (so no
+closure above replay.lisp moved; the brief's `--affected-by` of those two was
+not needed). A new leaf book:
+
+- `fn-sopc-pre-c1-control-record-p (event)`: a schema-1 kind-4 composite whose
+  signed source classifies `:control`, whose record lists exactly the
+  source's Newsgroups, and not `fn-hsig-source-filed-groups`.
+- `fn-sopc-open-refusal (e)`: over the extended capture E the host opens from,
+  when the identity fold did not finish `:ok`, the record at its cursor, if it
+  is such a record at its own sequence: `(:refused :pre-c1-control-record TXID
+  MSGID)`; else nil.
+- `fn-sopc-classified-open (e configs frontier)`: the refusal, else
+  `fn-sco-store-open` (the pair the host used before). HOST LINE:
+  `host/store-node-host.lisp` `fn-store-sn-open-extended`, which every native
+  open reaches (`fn-store-sn-recover`, `fn-store-sn-recover-from-checkpoint`;
+  from `fnn-recover`: store recover/inspect/checkpoint/status, the owner's
+  start in `operator run`, offline `health`).
+- `fn-sopc-refusal-text`: `pre-C1 control record (txid N, MSGID): run store
+  repair-control`.
+
+Theorems:
+
+- KEYSTONE `fn-replay-identity-step-never-admits-a-pre-c1-control-record`: for
+  a pre-C1 control record, `fn-replay-identity-step` from any context answers
+  a context whose kind is not `:ok`, at the same cursor (the site above,
+  stated over the step the fold runs).
+- KEYSTONE `fn-replay-never-faults-on-a-pre-c1-control-record`: if the
+  identity fold of PREFIX is `:ok`, EVENT is a pre-C1 control record and its
+  sequence is `(len prefix)`, then `fn-sopc-classified-open` of the full open
+  of `(append prefix (cons event rest))` (E = `fn-sco-extend` of the capture
+  of no prefix, as `fn-store-sn-recover` builds it) is exactly
+  `(:refused :pre-c1-control-record TXID MSGID)` of EVENT: never a fault, for
+  any REST.
+- `fn-sopc-checkpoint-open-names-what-the-full-open-names`: from a checkpoint
+  capture of any store-event prefix extended over the suffix, the classified
+  open is the full open's.
+- KEYSTONE (refinement) `fn-sopc-classified-open-is-the-open-without-a-pre-c1-record`:
+  when no record of E's history is a pre-C1 control record, the classified
+  open IS `fn-sco-store-open` (for the full open, `fn-cpr-replay` and
+  `fn-cpo-open-observed`): the change is invisible to every such history.
+
+Teeth (`tests/acl2/store-open-pre-c1-tests.lisp`, the witness store's four
+files as octet constants decoded by the host's codecs, never `ld`-ed): the
+witness decodes and the pre-book open was `(:error :identity)` at cursor 2
+`:composite-binding`; the step keystone reachable (cancel after the snapshot
+and target) and without its hypothesis (the target advances: must-fail); the
+open keystone reachable (the witness opens to `(:refused
+:pre-c1-control-record 2 "<prec1-cancel@example.invalid>")` and the line),
+without H1 (MUTATION, labelled: the target regrouped to fn.other stops the
+fold at 1: not the refusal, must-fail), without H2 (the target: it opens,
+must-fail on `:refused`), without H3 (the cancel at position 1: stops on the
+sequence, nothing named, must-fail); the checkpoint form; the refinement
+reachable (the store without the cancel: equal and `:ok`), a post-C1 filing
+of the same cancel (MUTATION, labelled: groups `("control.cancel")`: free,
+equal, opens; `:refused` must-fail), without its hypothesis (the witness:
+must-fail); CORRUPTED STATE (labelled): the cancel regrouped to `("fn.test"
+"control.cancel")` is not named and stays `(:error :identity)`.
+
+The checkpoint prefix: no image before P3 (42deb1d2, after C1) writes a
+checkpoint, and every image since refuses (before: faults) to open a history
+holding such a record, so no checkpoint covers one; the theorem above makes
+the checkpoint open name what the full open names in any case.
+
+### 3. The host
+
+`host/native/io.lisp`: a new condition `fnn-store-open-refusal` (a
+`fnn-store-error`: exit 1 through `fn-outcome-host-condition-exit-code`, the
+outcome-algebra table), raised by `fnn-recover-full-replay` with ACL2's line
+(`fn-store-open-refusal-text` of the refusal `fn-store-sn-open-extended`
+keeps in the global `fn-store-open-refusal`) and passed through `fnn-recover`
+unchanged (the store is fenced, never rewritten into the generic
+"cannot reconstruct" fault). The checkpoint path's refusal falls back to the
+full replay, which refuses by name. `store ROOT repair-control` exists and
+refuses `repair semantics undecided (PKT-444)` (exit 1) without touching the
+store. Health reports the store refused by name (`refused operator health
+...`, exit 1), not fenced (3). docs/operator.md "Recover after a crash" has
+the sentence.
+
+The line appears after each family's word, as every refusal does:
+`store: pre-C1 control record (txid 2, <...>): run store repair-control`,
+`refused operator run pre-C1 control record (...)...`; the brief's
+`refused: ...` form is not a family's grammar.
+
+### 4. Native (hbox, never /tank/fn/node)
+
+`tools/hbox_native.sh --label n1 2e25e21b tests.test_native_pre_c1_open`
+(/tank/fn/scratch/control-across-peers-2/native-n1; developer image
+`fn-host-developer` c31eb24c..., core a5ea6074...): OK, 3 tests. Log
+`planning/evidence/control-across-peers-2-2026-09-26/native-n1-test_native_pre_c1_open.log`
+`6f3a8be7ea7459ed79446da038f904d842df2533c69a87b673738ee0d7d0236b`;
+SHA256SUMS `native-n1-SHA256SUMS` (53b59540...). Observed: store recover,
+inspect, checkpoint: `store: pre-C1 control record (txid 2,
+<prec1-cancel@example.invalid>): run store repair-control`, exit 1; operator
+run and health: `refused operator run|health pre-C1 control record ...`,
+exit 1; the transactions unchanged; `store repair-control`: `store: repair
+semantics undecided (PKT-444)`, exit 1; the ordinary store recovers 2
+transactions and its status exits 0. The fixtures were copied per case,
+never modified in place.
+
+Assurance chain: native entry (`fnn-dispatch` -> `fnn-open-live-store` ->
+`fnn-recover`) -> `fnn-bridge-recover` -> `fn-store-sn-recover` ->
+`fn-store-sn-open-extended` -> the executed subject `fn-sopc-classified-open`
+over the octets decoded by the ACL2 codecs -> the keystones above -> the
+observed exit 1 and line. No maintained relation is new: the open
+establishes the Store's relations exactly as before on every history the
+refusal does not name (the refinement keystone).
+
+### 5. Certification
+
+persvati `run-20260926T114951Z-18bc`, manifest
+`planning/evidence/manifests/certify-20260926T115014Z-1323843.json`:
+`--affected-by books/store-open-pre-c1.lisp`: 2 certified (store-open-pre-c1
+1.0 s, its tests 1.6 s), 92 from the cache, 0 failed. Both were loaded in the
+REPL first. `make check-lane` green (warn only: the new book ends with no
+theory withdrawal, as store-checkpoint-open does).
+
+### 6. The repair's semantics: ember's packet (PKT-444)
+
+Trace: section 1. Constraints: never replay a pre-C1 record silently at open;
+no last-writer-wins; the record's octets are durable history. Options: (a)
+replay the record as filed-under-Newsgroups history, what it meant when
+written: an explicit, logged, one-way migration on a snapshot in the
+two-step pattern (copy, migrate the copy, verify it opens, swap), which
+rewrites nothing in the original; (b) re-file it under its filing group if the
+operator created control.<verb>, else as refused evidence (changes what the
+old store serves); (c) declare pre-C1 control records unsupported (the
+refusal stays the answer). THE COORDINATOR'S RECOMMENDATION: (a). Affected:
+the store format's replay rule for schema-1 composites, a new migration verb
+(its proof: every other record replays unchanged), `store repair-control`'s
+body. What continues without it: every post-C1 store (the live node's
+included) opens as before; a pre-C1 store is refused by name.
+
+### Not done (PKT-457)
+
+- A pre-C1 MALFORMED control record (classified `:malformed`) still faults
+  generically; this lane names only `:control` records.
+- A schema-0 composite has no stored source to classify (not examined on a
+  store).
+- tools/run_store.py (the Python host) has no line for the refusal.
