@@ -434,17 +434,75 @@ may or may not be durable."
        (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
        (list :uncertain reason)))))
 
+;;; Developer measurement (FN_BP_TEST_PROFILE="64 128 256", developer image
+;;; only): SBCL's deterministic profiler counts the calls and time of the ACL2
+;;; functions an arrival reaches, both the raw function and its executable
+;;; counterpart, and after an accepted arrival that leaves the named number of
+;;; rows held it prints the arrival's wall time and that table, then resets.
+;;; A measurement only: nothing it prints is read back or decides anything.
+(defparameter +fnn-bp-profile-names+
+  '("FN-BPNJ-STEP" "FN-BPNJ-HOST-EVENTP" "FN-BPNF-STEP" "FN-BPNF-FRAGMENT-STEP"
+    "FN-BPNF-HELDP" "FN-BPB-ENCODE" "FN-BPB-BUNDLEP" "FN-BPNF-RECOVERY-HELDP"
+    "FN-BPNF-ACTIVE-FRAGMENTP" "FN-BPNF-SAME-FRAGMENT-FAMILY-P"
+    "FN-BPNF-ACTIVE-SET" "FN-BPNF-ACTIVE-SET-ROWS" "FN-BPNF-FAMILY-NEXT"
+    "FN-BPNF-FAMILY-NEXT-MEMO" "FN-BPNF-FAMILY-TRIED-P"
+    "FN-BPNF-FAMILY-PLAN-AT" "FN-BPNF-OFFSET-ZERO-SOURCE"
+    "FN-BPNF-ARRIVAL-COUNT" "FN-BPNF-FIND-HELD" "FN-BPNF-HELD-OCTETS"
+    "FN-BPNF-PUBLICATION-AUTHORIZE" "FN-BPNF-PUBLICATION-OPERATIONP"
+    "FN-BPNF-CALLBACK-RESULT" "FN-BPNPF-ADMITTED-RECEIVE-EVENT"
+    "FN-OWNER-BP-TCPCL-INGRESS" "FN-BPN-MACHINE-STATEP"
+    "FN-BPN-MACHINE-INVARIANTP" "FN-BPNF-ANSWER-STATE"
+    "FN-BPNF-RECEIVE-DECISION" "FN-BPNF-STORED-RECORD-NAME"))
+
+(defvar *fnn-bp-profile-points* :unset)
+
+(defun fnn-bp-profile-points ()
+  "The held-row counts FN_BP_TEST_PROFILE names, profiling on first use."
+  (when (eq *fnn-bp-profile-points* :unset)
+    (let ((text (fnn-developer-selector "FN_BP_TEST_PROFILE")))
+      (setq *fnn-bp-profile-points*
+            (and text
+                 (with-input-from-string (in (substitute #\Space #\, text))
+                   (loop for n = (read in nil nil) while (integerp n) collect n))))
+      (when *fnn-bp-profile-points*
+        (dolist (name +fnn-bp-profile-names+)
+          (dolist (package '("ACL2" "ACL2_*1*_ACL2"))
+            (let ((symbol (find-symbol name package)))
+              (when (and symbol (fboundp symbol))
+                (eval `(sb-profile:profile ,symbol))))))
+        (sb-profile:reset))))
+  *fnn-bp-profile-points*)
+
+(defun fnn-bp-profile-arrival (service started)
+  (let ((points (fnn-bp-profile-points)))
+    (when points
+      (let ((held (length (fnn-core 'fn-bpnf-held-list
+                                    (fnn-bps-state service))))
+            (ms (round (* 1000 (- (get-internal-real-time) started))
+                       internal-time-units-per-second)))
+        (if (member held points)
+            (let ((table (with-output-to-string (*standard-output*)
+                           (sb-profile:report))))
+              (fnn-out "BP profile held=~d arrival-ms=~d" held ms)
+              (with-input-from-string (in table)
+                (loop for line = (read-line in nil nil) while line
+                      do (fnn-out "BP profile | ~a" line))))
+          (fnn-out "BP profile held=~d arrival-ms=~d" held ms))
+        (sb-profile:reset)))))
+
 (defun fnn-bp-deliver-node
   (service conn session-counter xfer-id octets owner channel)
   "Complete one transfer through the single FNBS machine owner."
   (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
     (fnn-fault "bp: injected receive core fault"))
-  (let* ((tally (fnn-bps-tally service))
+  (let* ((started (get-internal-real-time))
+         (tally (fnn-bps-tally service))
          (admission (fnn-bps-tcpcl-admission
                      (fnn-bps-state service) conn session-counter xfer-id
                      owner channel)))
     (multiple-value-bind (result adu)
-        (fnn-bps-receive service admission octets)
+        (multiple-value-prog1 (fnn-bps-receive service admission octets)
+          (fnn-bp-profile-arrival service started))
       (case (first result)
         (:accepted
          (incf (fnn-bp-tally-accepted tally))
