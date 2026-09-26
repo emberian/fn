@@ -8,15 +8,17 @@ Aim (ember, 2026-09-26): friends bring up their own instances and peer, some pee
 
 | Pile | Packets |
 | --- | ---: |
-| (a) WAVE 4 | 109 |
-| &nbsp;&nbsp;already owned by a lane running or queued now | 24 |
-| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 80 |
-| &nbsp;&nbsp;coordinator chores (not lanes) | 5 |
-| (b) AFTER v1 | 105 |
-| (c) WON'T DO / SUPERSEDED | 21 |
-| **Total** | **235** |
+| (a) WAVE 4 | 126 |
+| &nbsp;&nbsp;already owned by a lane running or queued now | 15 |
+| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 100 |
+| &nbsp;&nbsp;coordinator chores (not lanes) | 11 |
+| (b) AFTER v1 | 119 |
+| (c) WON'T DO / SUPERSEDED | 22 |
+| **Total** | **267** |
 
-Every open packet appears exactly once below (checked by script against the backlog's open lines).
+Sweep 10 (deputy 3, dev `88ec3ef0..804896a1`): 235 at the triage, 6 retired by merges in the window (PKT-002, 242, 249, 271, 319, 348; struck below with the hash), 38 added: sweep 10's 16 new packets (PKT-353 to 368), 13 reserved ids given their first backlog line (PKT-321, 323, 326, 330, 331, 401, 403 to 406, 409 to 411) and 9 open packets this pass had missed (PKT-168, 324, 332, 408, 412 to 416). Moved between piles: PKT-197 to (c); PKT-164 and PKT-263 to (b); PKT-252 to friend-session; PKT-300 to operator-daily; PKT-301 to served-path-scale. Running now (WAVE-STATE): outcome-algebra, pack-chain-open, signed-history-index-2, and the candidates peer-feeds, keys-and-accounts, community-bounds, reader-2 (their packets stay under their candidate headings).
+
+Every open packet appears exactly once below (struck lines are retired and not counted) (checked by script against the backlog's open lines).
 
 Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 092 and PKT-400 to 416, above `WAVE-STATE.md`'s next-free list (PRF-146, NNT-024, SCN-084, PKT-353; sweep 10 appends from PKT-353). The ranges proposed per lane below continue above wave 3's (PRF-163, NNT-033, SCN-093, PKT-417 and up; STO-021, HST-010, SEC-005, CNS-004, REP-012, WEB-002 from `tools/next_id.py`); they are proposals: the coordinator confirms each with `tools/next_id.py` and the board when it writes the brief.
 
@@ -24,36 +26,39 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 
 ### (a0) Already owned by a lane running or queued now (not wave-4 candidates; a continuation takes what each leaves)
 
-**commit-regression (running, the coordinator's)**
+**commit-regression (merged 1f9d8ef8)**
 
-- PKT-348 the ~20x per-commit regression after 483987b1
+- ~~PKT-348 the ~20x per-commit regression after 483987b1~~ retired at 1f9d8ef8 (no regression; the offline term repaired at 735614d6)
 
-**qual-b6759850 (running)**
+**qual-b6759850 (merged 8e27c115)**
 
-- PKT-249 show the live store copy sits below H before any deploy proposal
-- PKT-271 format-3 frontier frames: the pre-upgrade snapshot is the only rollback; first native run of format 3
-- PKT-300 capacity is budget minus one; checkpoint sized by the captured state must publish and reopen
-- PKT-319 mission-signed-2's dev-head image never built: name it in the qualification
+- ~~PKT-249 show the live store copy sits below H before any deploy proposal~~ retired at 8e27c115
+- ~~PKT-271 format-3 frontier frames: the pre-upgrade snapshot is the only rollback; first native run of format 3~~ retired at 8e27c115
+- moved: PKT-300 (b) closed at 8e27c115; the remainder (the operator page's one-fewer sentence) moved to operator-daily
+- ~~PKT-319 mission-signed-2's dev-head image never built: name it in the qualification~~ retired at 8e27c115
 
-**pack-chain-join (running, lane/bounds-p5)**
+**pack-chain-join (merged 735614d6 with lane/bounds-p5)**
 
-- PKT-002 chained packs: `store compact` past 4,096 transactions
-- PKT-197 the chain keystones (link codec, PRF-073 over a chain, per-link crash, chain-length bound)
+- ~~PKT-002 chained packs: `store compact` past 4,096 transactions~~ retired at 735614d6
+- moved: PKT-197 narrowed at 735614d6 and moved to (c) (superseded by PKT-168 (1) to (3))
 
-**pack-chain-open (queued)**
+**pack-chain-open (running)**
 
 - PKT-347 one preserved 20,000-article chain fixture
+- PKT-331 the 20,000-article served-identical claim over a compacted chain (sweep 10)
+- PKT-168 chained packs' remainder: (4) the chain open over the buffer is this lane's; (1) generation names below 4096, (2) the link codec round trip unproved, (3) no crash composition or K0 over chain cuts stay after it (sweep 10)
 
-**capacity-vector (running)**
+**capacity-vector (merged 9851d6a7)**
 
-- PKT-263 reclaim-lifecycle-2 steps 3 to 7: holders, per-article release verb, replay proof, guards, N=5,000
+- moved: PKT-263 not reached by the lane; moved to (b) History reclamation
 
-**hot-path-scans (running)**
+**hot-path-scans (merged b1e164ab, part 2)**
 
-- PKT-301 the O(N) POST allocation and OVER terms
+- moved: PKT-301 moved to served-path-scale with PKT-324 (the terms it named)
 
-**signed-history-index (running)**
+**signed-history-index-2 (running; signed-history-index held by statement item 11, f370581b)**
 
+- PKT-330 the signed-entry index held until `fn-bpaj-store-indexedp` is established at the open and preserved (sweep 10)
 - PKT-223 the signed POST's identity prepare replays the history
 - PKT-190 the 1.4 s greeting under the owner mutex (if the budget reaches; else served-path-scale takes it)
 
@@ -72,14 +77,14 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-317 live heap after a full collection is measured nowhere
 - PKT-303 the arena's five model-only events wait for a host caller
 
-**friends-peer (running)**
+**friends-peer (merged e36706fa; friends-peer-2 merged f5fcea88)**
 
-- PKT-242 the invitation carries the inviter's address so `peer accept` configures the peer (PKT-236 (a))
+- ~~PKT-242 the invitation carries the inviter's address so `peer accept` configures the peer (PKT-236 (a))~~ retired at e36706fa
 
-**sanding (running)**
+**sanding (merged 15c25aef)**
 
-- PKT-164 the lost-reply 440 case: the operator's `store inspect` settling path (the recommended default)
-- PKT-252 tin over TLS, the withdrawn parent in the group view (non-loopback web reader and the human session go to friend-session)
+- moved: PKT-164 the default built at 15c25aef; moved to (b) decisions with a default in force
+- moved: PKT-252 tin over TLS and the pill closed at 15c25aef; the remainder moved to friend-session
 
 ### Wave-4 lane candidates, by leverage toward friends peering and public reading
 
@@ -92,8 +97,11 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - **Starts after:** friends-peer's runbook and tarball fixes landed; a person and a machine (ember).
 
 - PKT-343 the first external observation: a second operator on a second machine
+- PKT-252 the web reader on a non-loopback deployment and a human session (from sanding, sweep 10)
+- PKT-354 the repeatable friend session rerun with the friend on persvati; then the scratch goes (sweep 10)
+- PKT-411 tin on hbox needs a domain name for its From line; tin's TLS wire unlogged (sweep 10)
 
-#### 2. peer-feeds
+#### 2. peer-feeds (RUNNING since 09:45; PKT-431..432)
 
 - **Packets:** PKT-236, PKT-213, PKT-207, PKT-115, PKT-074
 - **User-visible result:** a peering between two friends' nodes stays up for days without an operator: a peer that keeps listing an article it cannot produce no longer stalls the pull, a MODE STREAM refusal survives a restart and falls back to IHAVE, TLS pulls have their replay bound observed, and a withdrawal no longer drops IHAVE/CHECK to a history scan.
@@ -106,6 +114,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-207 after any withdrawal the IHAVE/CHECK history test falls to a scan; a Message-ID-to-txid index
 - PKT-115 the IHAVE/CHECK per-event config check (half of what remains)
 - PKT-074 the three-node D23 chain has never run natively (relay with `carried`, unlisted author 439)
+- PKT-353 a pulling friend misses a cancel: NEWNEWS serves by filed group (not in the running brief; its seam) (sweep 10)
 
 #### 3. upgrade-restore
 
@@ -133,6 +142,9 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 
 - PKT-189 two quadratic node checks at open (reopen about N^1.6)
 - PKT-041 in checkpoint mode pack, compact and the owner still rebuild all N records' octets
+- PKT-301 the O(N) POST allocation and OVER terms (from hot-path-scans, sweep 10)
+- PKT-324 hot-path-scans' served-path prefix traversals: `fn-own-refresh`'s index rebuild, the byte-count cache, the kernel appends, the BP cursor (sweep 10)
+- PKT-321 M1: control requests starve behind saturating reads in the mixed hour; mutex hold per request kind (sweep 10)
 
 #### 5. operator-daily
 
@@ -151,8 +163,13 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-269 the health verdict runs under the owner mutex with `:verify-guards nil`
 - PKT-016 `--dynamic-space-size` 32000 MB is a data bound; take it from the profile or the operator
 - PKT-286 SCN-076 (the operator walk) as tests/ modules within the budget
+- PKT-300 the operator page does not say a profile admits one transaction fewer than its budget ((b) closed at 8e27c115; sweep 10)
+- PKT-361 `store checkpoint` prints an ACL2 invariant-risk warning on stdout (sweep 10)
+- PKT-403 the mission makes no TLS pair (X.509 through the image's OpenSSL) (sweep 10)
+- PKT-409 the mission writes no `tls_port` (sweep 10)
+- PKT-410 a live `store inspect` through the control socket (sweep 10)
 
-#### 6. keys-and-accounts
+#### 6. keys-and-accounts (RUNNING since 09:45; PKT-433..434)
 
 - **Packets:** PKT-325, PKT-211, PKT-221, PKT-212, PKT-240
 - **User-visible result:** friends rotate and revoke keys, and the operator re-decides a declined key statement, without restarts or refused invitations: succession-era invitations work, a login's principal binding changes live, `peer list` shows the carriage budget, the transit log prints the seven-class verdict, and fn_verify renders revoked.
@@ -165,8 +182,9 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-221 a login-to-principal binding change needs a restart
 - PKT-212 a refused kind-3 commit surfaces as the transit's refusal; fn_verify does not render `revoked`
 - PKT-240 `fn-pcb-admission-verdict` (seven classes) has no host caller
+- PKT-401 invitation-code accounts (designed by friends-peer-2; not in the running brief: the friends-accounts lane, WAVE-STATE next launch 3, PRF-164/NNT-034/SCN-094) (sweep 10)
 
-#### 7. community-bounds
+#### 7. community-bounds (RUNNING since 09:45; PKT-435..436)
 
 - **Packets:** PKT-003, PKT-007, PKT-136, PKT-013, PKT-001, PKT-157, PKT-183, PKT-135
 - **User-visible result:** a public node with hundreds of accounts, peers, groups and consumers never meets a hidden constant: the keyring snapshot, the configuration record, group-name width, config rows and deltas, and the namespace counts come from the profile or are proved work bounds.
@@ -183,7 +201,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-183 namespace contiguity and the credential file's bound composed only in prose
 - PKT-135 classify feed, scheduler, anchor, consumer-token and topic payload caps
 
-#### 8. reader-2
+#### 8. reader-2 (RUNNING since 09:50; PKT-437..438)
 
 - **Packets:** PKT-253, PKT-175, PKT-245, PKT-109, PKT-111, PKT-158, PKT-238
 - **User-visible result:** a friend reading on the web or in tin sees whether a signed post was verified here, by whom, and whether that key is still enrolled; the tin rows and the INN supplied-Path case run in the matrix; the login-rebinding lost reply is exercised.
@@ -281,6 +299,11 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-258 the launcher AST rule misses an ACL2 program in a variable
 - PKT-341 must-fails that are prover refusals counted as teeth: label them
 - PKT-120 stale prose in proofs.json and the rep-heap record
+- PKT-359 stale expectations at the candidate (C15 to C18, W1); C18: the served crash model gives no evidence as shipped (sweep 10)
+- PKT-412 reach_check reads subjects from hints and hypotheses and seeds from an unloaded host file (sweep 10)
+- PKT-364 the teeth-form lint misreads a constant inside a macro as a bare claim (sweep 10)
+- PKT-366 the farm installs `defrecord` without its compiled file (sweep 10)
+- PKT-368 teeth_check: `fn-record-group-namep` never anchored true (sweep 10)
 
 #### 15. hot-path-checker
 
@@ -315,6 +338,8 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-226 what the bbf52159 qualification did not cover (plaintext pull, no revoke, developer-twin-only cuts, loopback)
 - PKT-081 the NNTP probe's five marker cuts have no wire run; the staging-cleanup swallow S1
 - PKT-126 "TLS reset preserves the selected library identity" failed on hbox, not investigated
+- PKT-358 the exposure post rate not exercised natively (sweep 10)
+- PKT-367 SCN-027, 047, 055, 056 back to specified; SCN-047's native run contradicted its expectation (sweep 10)
 
 ### Coordinator chores (in wave 4's window, not lanes)
 
@@ -323,6 +348,12 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-352 a superseding note in mission-four-node's record naming PRF-128
 - PKT-342 gpt-6's proposed AGENTS.md rule, for ember
 - PKT-235 the live node's `upgrade-profile --history-marker required`: ember's go
+- PKT-360 deploy the qualified candidate b6759850 (or a later cut): ember's go (sweep 10)
+- PKT-404 how a node faces the internet and with which certificate: ember's packet (sweep 10)
+- PKT-355 friends-peer-2's merge certification `--affected-by books/owner.lisp` at the merged bytes (sweep 10)
+- PKT-365 lower the throughput baseline after 735614d6 with a named improvement (sweep 10)
+- PKT-408 the gate once per host/books batch; a quiet run to arm the wall-clock figures (sweep 10)
+- PKT-326 owner-invariants and owner-control-read: a quiet re-measure, never a lane (sweep 10)
 
 ## (b) AFTER v1: matters, but not for friends peering
 
@@ -346,6 +377,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-015 the TCPCL MRU literal 1,048,576
 - PKT-299 the BP namespace's maintenance reservation (rotation reserve 0, unproved)
 - PKT-298 two older FNBS replay folds answer the old bound
+- PKT-414 `fn-bpb-encode` at ~6 us an octet; one `:session` step encodes every candidate three times (1.3 s) (sweep 10)
 
 ### BP: mission, routing, exits and assurance
 
@@ -362,6 +394,9 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-062 production DTN labs (setup uses the developer `store post`)
 - PKT-063 `bp-boundary show` omits receipt-signer rows
 - PKT-064 the with-issued waits slot (narrower than filed)
+- PKT-363 test_bp_obligation_native's kill between attempt and outcome fails on the candidate's image: C10 or a defect (sweep 10)
+- PKT-413 the bprv replay bridge: `fn-bpaj-replay` against `fn-bprr-replay` (sweep 10)
+- PKT-415 the fragment/job relation's warm-start theorem (PKT-265's statement) (sweep 10)
 
 ### Representation (D27)
 
@@ -409,6 +444,10 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-196 history compaction as a semantic summary
 - PKT-050 covered files checked at open, not ruled out by proof
 - PKT-153 reader pins have no durable form
+- PKT-263 reclaim-lifecycle-2 steps 3 to 7: holders, per-article release verb, replay proof, guards, N=5,000 (capacity-vector did not reach them; sweep 10)
+- PKT-332 `store reclaim` past one quantum refused `spans-links`; the capture's digest length; the mid-chain disk refusal unexercised (sweep 10)
+- PKT-416 the reclaim bridge: reopening the rewritten pack equals `fn-rcl-reclaim-state` (sweep 10)
+- PKT-362 the capacity vector's debt over replay, a must-fail for the natp debt hypothesis, two unexercised compaction cuts (sweep 10)
 
 ### Owner, checkpoint, marker and K0 assurance
 
@@ -426,6 +465,11 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-250 PRF-123's composition over two host calls, outside the image closure
 - PKT-350 the owner's key-statement recovery related by construction, not a theorem
 - PKT-206 the C3 owner relation (journal equality, txid order) and owner-level teeth
+
+### Peering and public exposure (sweep 10)
+
+- PKT-356 no future-Date policy (RFC 5537 §3.4 local policy)
+- PKT-357 no theorem ties `fn-exp-conns` to `fn-own-conns`
 
 ### Consumers beyond the local profile
 
@@ -463,9 +507,14 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-296 the unread Store profile field 10 `max-bp-rows`: retire or bind
 - PKT-018 T and H from the offline profile to a configuration record
 - PKT-076 store identity (a decision candidate from LIST COUNTS)
+- PKT-164 the lost-reply 440 case: `store inspect` with the node stopped is built (15c25aef); the privileged query stays ember's (sweep 10)
+- PKT-323 capacity-vector's three defaults: the release ceiling, the kept configuration generation, the disk as an assumption (sweep 10)
+- PKT-405 what an anonymous reader may do (`none` off loopback in force) (sweep 10)
+- PKT-406 the public defaults in force; PROXY v2 the alternative (sweep 10)
 
 ## (c) WON'T DO / SUPERSEDED
 
+- PKT-197: superseded by PKT-168 (1) to (3) at 735614d6 (the reconstruction keystone generalized; sweep 10)
 - PKT-004: superseded: the ADU, bundle and held-image widths closed at 9ebf5f0e (PKT-276); the fragment recognizers and sender bounds are PKT-185
 - PKT-005: superseded: record schema 2 and frontier format 3 landed (4fce0568); the txid, stamp and checkpoint widths are PKT-244, the charge PKT-181
 - PKT-047: spike-only artefact: three scratch patches for bounds-p3's image; P3 merged long ago and checkpoint-cost and rep-wave-d-3 replaced its figures
