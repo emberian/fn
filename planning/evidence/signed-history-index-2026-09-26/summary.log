@@ -1,0 +1,5 @@
+before n=1000 rc=0 SUMMARY {"n": 1000, "signed_in_history": 32, "rounds": 7, "octets": 2048, "median_unsigned_s": 0.0429723747074604, "median_signed_s": 0.35476019978523254, "preload_signed_s": [0.09236233122646809, 0.0
+after n=1000 rc=0 SUMMARY {"n": 1000, "signed_in_history": 32, "rounds": 7, "octets": 2048, "median_unsigned_s": 0.04263679403811693, "median_signed_s": 0.10075484029948711, "preload_signed_s": [0.10387926176190376, 0.
+before n=10000 rc=0 SUMMARY {"n": 10000, "signed_in_history": 32, "rounds": 7, "octets": 2048, "median_unsigned_s": 0.046705602668225765, "median_signed_s": 18.91844287607819, "preload_signed_s": [0.09748464357107878, 0.
+after n=10000 rc=0 SUMMARY {"n": 10000, "signed_in_history": 32, "rounds": 7, "octets": 2048, "median_unsigned_s": 0.04769129864871502, "median_signed_s": 0.24072915688157082, "preload_signed_s": [0.09377386048436165, 0
+done

@@ -387,6 +387,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-channel-ingress-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
+	books/owner-store-indexed \
+	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
