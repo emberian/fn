@@ -2599,12 +2599,14 @@
         "planning/evidence/sanding-2026-09-26.md"
       ],
       "implementation": {
-        "test": "tests/test_native_implicit_tls.py",
+        "test": "tests.test_native_implicit_tls",
         "cases": [
-          "tests/test_native_implicit_tls.py"
+          "NativeImplicitTlsTests.test_implicit_tls_is_the_starttls_session",
+          "NativeImplicitTlsTests.test_tls_port_without_certificate_is_refused",
+          "NativeImplicitTlsTests.test_store_inspect_settles_accepted_and_absent"
         ],
-        "native": false,
-        "log": "planning/evidence/sanding-2026-09-26.md",
+        "native": true,
+        "log": "planning/evidence/sanding-2026-09-26/tin-walk/owner.log",
         "record": "planning/evidence/sanding-2026-09-26.md"
       }
     }
