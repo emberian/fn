@@ -44,7 +44,7 @@ class StoreExportTests(ProfileFixture):
 
     def served_store(self):
         self.init()
-        owner = self.start_owner()
+        owner = self.start_owner(self.image)
         try:
             ids = ["<sx{}@example.invalid>".format(i) for i in range(COUNT)]
             self.post_many(ids, subject=b"export")
