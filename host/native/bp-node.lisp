@@ -751,7 +751,7 @@ an operator's `bp-route' change applies to the next queue and contact."
   "Send the owed receipts `fnn-bpnode-queue-outboxes' queued for PEER-ID on
 this node's own base contact, so `bp-contact tick' is not the only path
 (spec bp-node-machine 9.4).  ACL2 decides each offer of the contact
-(fn-bpnp-contact-next, books/bp-node-contact-driver.lisp): a queued job for
+(fn-bpnj-contact-next, books/bp-node-job-offer.lisp): a queued job for
 the peer with nothing issued, fenced or pending, routed by the owner's table
 to the hop its durable route names, not yet offered on this contact.  The
 send drives the same effects as `bp-contact tick', with one difference of
@@ -766,7 +766,7 @@ uncertain, as it does everywhere else."
     (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
   (fnn-bpnode-route-by-owner bp)
   (let* ((peer (fnn-bp-eid peer-id))
-         (first-answer (fnn-core 'fn-bpnp-contact-next (fnn-bps-state bp)
+         (first-answer (fnn-core 'fn-bpnj-contact-next (fnn-bps-state bp)
                                  peer (fnn-bps-routing bp) nil)))
     (unless (eq (first first-answer) :close)
       (fnn-out "BP node receipt contact peer=~a" peer-id)

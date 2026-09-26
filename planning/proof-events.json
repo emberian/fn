@@ -4790,6 +4790,71 @@
           "name": "fn-col-ack-is-the-kernel-ack-unfolds"
         }
       ]
+    },
+    {
+      "id": "PRF-120",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-step-delegates-every-other-event",
+          "note": "The named equation: host/native/bp-service.lisp fnn-bps-foundation-step calls fn-bpnj-step, which is fn-bpnp-step on every event but :contact-job, :job-result and an unnamed base transport result, so every keystone over fn-bpnp-step is a fact about the called step on those events."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-offers-while-a-ready-job-remains",
+          "note": "KEYSTONE (no starvation). Over fn-bpnj-contact-next (asked by fnn-bpc-drive-contact and fnn-bpnode-send-receipts before every offer): with the gate open and the job KEY names ready (queued for the peer, not offered on this contact, routed on its durable route), the answer is an offer, whatever is held or already offered ahead of it. Teeth: tests/acl2/bp-node-job-offer-tests (older job route-changed: the previous driver answers :held, this one offers the younger job; older job already offered: the previous driver closes; without readiness :held; without the gate :close)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-offer-starts-the-ready-job",
+          "note": "KEYSTONE. The offer's event, through fn-bpnj-step, persists exactly the selected job's :attempting record and owes the :cl-send of its durable route, peer, key and wire; the job is ready. Teeth: the reachable offer (token 2, route port 4556); the same event at the pending state answers nothing."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-job-step-preserves-the-base-invariants",
+          "note": "The new arm keeps the base machine invariant and the lifecycle (pending authorization) invariant."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-step-preserves-guard-premises",
+          "note": "KEYSTONE (maintained relation). fn-bpnj-step keeps fn-bpnp-step-guard-premisesp over every host event fn-bpnj-host-eventp admits (with the state a true list, as every constructor makes it)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-new-arms-preserve-the-lifecycle-invariant",
+          "note": "The :contact-job and :job-result arms preserve fn-bpn-lifecycle-invariantp of the base."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-stale-job-result-settles-nothing",
+          "note": "KEYSTONE (stale callback). A :job-result whose token is not the job's current attempt token answers only (:job-result-stale KEY TOKEN) and leaves the state unchanged. Teeth: token 1 against the attempt token 2; the queued state before the offer."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-named-result-is-the-transport-outcome",
+          "note": "KEYSTONE. The current attempt's result proposes :finished (success effect :transport :forwarded) for :accepted and :requeued (success :transport :attempted and :forward-refused, never :forwarded) otherwise. Teeth: both arms at the reachable attempting state."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-step-forwarded-needs-a-durable-finished-record",
+          "note": "KEYSTONE (sent means completed and durable). Over fn-bpnj-step on a base event with the lifecycle invariant: an effect reporting :transport ... :forwarded is answered only to (:persist-result TOKEN :durable) of the pending :finished record of an :attempting job. A queued report intent and a queued job are not sent. Teeth: the durable :finished record reports :forwarded; the same record answered :refused does not."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-encoder-refusal-settles-the-pending-record",
+          "note": "KEYSTONE (encoder refusal). A :refused answer to the pending record clears it, leaves the base unfenced and the jobs unchanged, and answers exactly its refusal effect; the host answers :refused when ACL2's lifecycle frame encoder refuses (fnn-bps-persist-record). Teeth: the refused :finished record; the :uncertain answer fences instead."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-host-refuses-an-unnamed-transport-result",
+          "note": "The host's event check refuses a base :forward-result that names no attempt, so fn-bpnj-step's unnamed arm is unreachable in composition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact",
+          "note": "KEYSTONE (conditional progress, A-BP-CONTACT). With the contact sustaining fn-assume-bp-contact-asks asks, the job KEY ready with a stable prefix of keys at or ahead of it in every asked state, and that prefix no longer than the asks, the host's first ask (fn-bpnj-contact-next) is answered with an offer and the contact offers KEY. Proved through the lemma fn-bpnj-contact-offers-a-ready-job-within-its-prefix. Teeth: two asks offer KEY2 after KEY1; one ask does not; a pending second state breaks readiness."
+        }
+      ]
     }
   ]
 }
