@@ -23,11 +23,20 @@
 ; The host (host/native/checkpoint.lisp `fnn-command-compact') performs the
 ; observation and the I/O; the decision, its budget and its bounds are here.
 ;
-; Temporary space.  At the verb's peak the store holds every transaction file
-; and pack generation it held at open plus the new pack.  The persisted
-; profile's aggregate history bound (field 3, `max_recovery_record_bytes':
-; 24 MiB for development, 768 MiB for scale) is the budget that sum must fit;
-; the pack is refused before any byte is written when it would not.  The pack
+; Temporary space (PKT-169, decided 2026-09-26).  At the verb's peak the
+; disk holds every file the store held at open plus the new pack; the files
+; present are already on the disk, so the verb's added demand is the pack.
+; The host reports the free octets of the store's filesystem
+; (host/native/checkpoint.lisp `fnn-disk-free-octets', statvfs f_bavail *
+; f_frsize) and ACL2 refuses the pack by name (:temporary-space) before any
+; byte is written when its accounted octets exceed them, or when the host
+; observed no natural.  The persisted profile's history bound H is not the
+; budget here: H bounds the open's replay input (the transaction files past
+; the selected pack, host/native/io.lisp `fnn-durable-records'), not the
+; disk, and the selected pack is read under the compaction unit below.  The
+; former check (the files present plus the pack within H) refused every
+; store past half its history bound, so a store refused for history
+; headroom could never compact or reclaim (reclaim-lifecycle F2).  The pack
 ; octets are accounted by `fn-cverb-pack-octets', which
 ; `fn-cverb-capture-within-pack-octets' shows is at least the file the host
 ; seals.
@@ -72,12 +81,11 @@ plus the frame trailer the host's seal appends."
   (declare (xargs :guard t :verify-guards nil))
   (+ (fn-cc-event-octets-size records) *fn-frame-trailer-octets*))
 
-(defun fn-cverb-space-budget (profile)
-  "The persisted profile's aggregate history bound, in octets."
+(defun fn-cverb-disk-admitsp (disk-free octets)
+  "The disk the host observed has room for OCTETS more: DISK-FREE, the free
+octets the host reported, is a natural at least OCTETS."
   (declare (xargs :guard t))
-  (if (fn-bs-profile-admittedp profile)
-      (fn-bs-profile-max-history-octets profile)
-    0))
+  (and (natp disk-free) (natp octets) (<= octets disk-free)))
 
 (defun fn-cverb-older-count (generations selected)
   (declare (xargs :guard t))
@@ -88,9 +96,9 @@ plus the frame trailer the host's seal appends."
 ; open reconstructed (pack plus suffix).  LOWER: the selected pack's coverage
 ; boundary (0 without one).  NAMES: the sorted transaction namespace.
 ; GENERATIONS and SELECTED: the pack namespace plan and the selected
-; generation (nil without one).  FOOTPRINT: the sizes of every transaction
-; file and pack generation present.
-(defun fn-cverb-decide (profile records lower names generations selected footprint)
+; generation (nil without one).  DISK-FREE: the free octets of the store's
+; filesystem, as the host observed them (nil when it could not).
+(defun fn-cverb-decide (profile records lower names generations selected disk-free)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((used (len records))
          (reclaim (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions profile)
@@ -106,8 +114,7 @@ plus the frame trailer the host's seal appends."
           ((or (< *fn-cc-max-events* used)
                (< *fn-cc-max-octets* (fn-cc-event-octets-size records)))
            (list :refused :exceeds-compaction-unit))
-          ((< (fn-cverb-space-budget profile)
-              (+ (fn-cverb-octet-sum footprint) (fn-cverb-pack-octets records)))
+          ((not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets records)))
            (list :refused :temporary-space))
           (t (list :compact *fn-cverb-pack-steps*)))))
 
@@ -179,25 +186,48 @@ plus the frame trailer the host's seal appends."
 ; -----------------------------------------------------------------------------
 ; Keystones over the decision the verb carries out
 
-; KEYSTONE (temporary space).  When the verb decides to pack, every file the
-; store held at open plus the pack file the host then seals from the same
-; records fits the persisted profile's aggregate history bound.  For every
-; frontier: the pack's size does not depend on it beyond the encoding bound.
-(defthm fn-cverb-pack-fits-the-profile-budget
+;  KEYSTONE (temporary space against the disk, PKT-169).  When the verb
+; decides to pack, the pack file the host then seals from the same records
+; (its payload plus the frame trailer) fits the free octets the host
+; reported for the store's filesystem.  For every frontier.
+(defthm fn-cverb-pack-fits-the-disk
   (implies (equal (fn-cverb-decide profile records lower names
-                                   generations selected footprint)
+                                   generations selected disk-free)
                   (list :compact *fn-cverb-pack-steps*))
-           (<= (+ (fn-cverb-octet-sum footprint)
-                  (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture records frontier))))
+           (<= (+ (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture records frontier))))
                   *fn-frame-trailer-octets*)
-               (fn-bs-profile-max-history-octets profile)))
+               disk-free))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cverb-decide fn-cverb-pack-octets
-                                   fn-cverb-space-budget)
+                                   fn-cverb-disk-admitsp)
                                   (fn-cc-capture fn-cc-encode
                                    fn-cc-event-octets-size
                                    fn-bs-pack-reclaim-plan
                                    fn-cverb-older-count
+                                   fn-bs-profile-admittedp)))))
+
+; The refusal is exactly the disk's: a history the verb would otherwise pack
+; is refused :temporary-space when, and only when, the pack's accounted
+; octets exceed the free octets observed.  By definition of the decision.
+(defthm fn-cverb-temporary-space-is-the-disk-by-definition
+  (implies (and (fn-bs-profile-admittedp profile)
+                (natp lower) (<= lower (len records))
+                (not (equal (fn-bs-pack-reclaim-plan
+                             names (fn-bs-profile-max-transactions profile) lower)
+                            :invalid))
+                (not (equal lower (len records)))
+                (<= (len records) *fn-cc-max-events*)
+                (<= (fn-cc-event-octets-size records) *fn-cc-max-octets*))
+           (equal (fn-cverb-decide profile records lower names
+                                   generations selected disk-free)
+                  (if (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets records))
+                      (list :compact *fn-cverb-pack-steps*)
+                    (list :refused :temporary-space))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cverb-decide)
+                                  (fn-cc-event-octets-size fn-cverb-pack-octets
+                                   fn-cverb-disk-admitsp
+                                   fn-bs-pack-reclaim-plan fn-cverb-older-count
                                    fn-bs-profile-admittedp)))))
 
 ; A history of exact Store events below the frontier has fewer events than
@@ -233,7 +263,7 @@ plus the frame trailer the host's seal appends."
 ; already applied, so a pack decision is never refused by the capture.
 (defthm fn-cverb-pack-decision-capture-succeeds
   (implies (and (equal (fn-cverb-decide profile records lower names
-                                        generations selected footprint)
+                                        generations selected disk-free)
                        (list :compact *fn-cverb-pack-steps*))
                 (fn-record-uint32p frontier)
                 (fn-cc-octet-event-listp records 0 0 frontier))
@@ -255,7 +285,7 @@ plus the frame trailer the host's seal appends."
 (defthm fn-cverb-covered-history-writes-no-pack-by-definition
   (implies (equal lower (len records))
            (not (equal (fn-cverb-decide profile records lower names
-                                        generations selected footprint)
+                                        generations selected disk-free)
                        (list :compact *fn-cverb-pack-steps*))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cverb-decide)
@@ -311,5 +341,5 @@ plus the frame trailer the host's seal appends."
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-observed-historyp))))
 
-(in-theory (disable fn-cverb-decide fn-cverb-pack-octets fn-cverb-space-budget
+(in-theory (disable fn-cverb-decide fn-cverb-pack-octets fn-cverb-disk-admitsp
                     fn-cverb-older-count fn-cverb-octet-sum))
