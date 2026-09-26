@@ -4990,6 +4990,38 @@
         "fn-cverb-pack-fits-the-disk",
         "fn-rclp-pack-fits-the-disk"
       ]
+    },
+    {
+      "id": "PRF-128",
+      "title": "A relay takes custody only over an admitted channel: a bundle whose channel admission was refused is refused at reception with the admission's reason, before any FNBS step",
+      "statement": "host/native/bp-service.lisp fnn-bps-receive calls fn-bpaj-admitted-receive-event (books/bp-channel-ingress.lisp) with the admission answer of fnn-bps-tcpcl-admission (fn-owner-bp-tcpcl-ingress, i.e. fn-bpaj-tcpcl-ingress-result over the live owner configuration) and hands fnn-bps-foundation-step only its :ready answer. fn-bpaj-refused-channel-takes-no-custody: when the admission answer is not :admitted, the answer is exactly (:refused REASON) with the admission's own reason (fn-bpaj-channel-refusal-reason) and is not :ready, so no kind-5 custody row is proposed and hence no forwarding job, :attempting record, fragment family or owed receipt follows from that bundle. fn-bpaj-admitted-channel-receives-under-its-ingress: an admitted channel's answer is fn-bpnf-receive-wire-event under the admitted ingress, whose principal is the policy's selection (fn-bpaj-admitted-ingress-binds-announcement-and-selection). D23 (planning/decisions.md), mandate section 4 'Offline forwarding'; retires PKT-170.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-120"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-channel-ingress.lisp",
+        "tests/acl2/bp-channel-ingress-tests.lisp",
+        "books/bp-native-app.lisp",
+        "books/bp-native-app-fast.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp.lisp",
+        "host/bp-native-app-host.lisp",
+        "host/native/bp-node.lisp",
+        "specs/bp-node-machine.md",
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-signed-2026-09-26.md"
+      ],
+      "events": [
+        "fn-bpaj-refused-channel-takes-no-custody",
+        "fn-bpaj-admitted-channel-receives-under-its-ingress"
+      ]
     }
   ]
 }

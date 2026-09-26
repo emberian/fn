@@ -1558,6 +1558,8 @@ Every other caller submits exact authored octets and names them."
                                       (fnn-octet-list actual-id)
                                       (fnn-octet-list actual-subject))))
           (unless (eq kind :want)
+            (fnn-owner-transit-refused
+             (list :refused (fnn-owner-core 'fn-owner-transit-reason)))
             (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)
             (return-from fnn-owner-complete-bp-transit-submission :refused))
           (unless (and (equalp stored
@@ -1576,6 +1578,7 @@ Every other caller submits exact authored octets and names them."
                   (fnn-owner-action 'fn-owner-submission-intent
                                     (fnn-octet-list evidence) generation txid)))
             (unless (eq intent :ready)
+              (setq *fnn-owner-transit-detail* :submission-intent)
               (return-from fnn-owner-complete-bp-transit-submission
                 (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
             (fnn-owner-feed-flush service)

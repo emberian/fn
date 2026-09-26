@@ -2042,6 +2042,32 @@
         "tests/reclaim_lifecycle_native.py",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
       ]
+    },
+    {
+      "id": "SCN-074",
+      "title": "The signed mission: A's hybrid-signed report crosses four fn nodes and two dtn7-rs relays to B, B's signed reply comes back, every refusal names its reason, and a relay takes no custody from a channel its policy refused",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-009",
+        "REP-007"
+      ],
+      "steps": [
+        "A's author signs the report (Ed25519 + ML-DSA-65) and hybrid-author stores its portable carrier; both authors are enrolled at A and B through hybrid-enroll.",
+        "The SCN-066 sequence runs with the signed report: fragmentation at X, the relays each listening on the boundary of the neighbour that sends toward them, restarts of all four nodes.",
+        "B verifies the delivered copy with hybrid-verify-source, consumes it and returns a signed reply the same way.",
+        "The ambiguous-peer case: X's two boundaries on one listener; A's transfer to X."
+      ],
+      "expected": [
+        "B answers request-accepted for the signed report and A for the signed reply; both receipts release their pins (pinned=no); all seven steps hold.",
+        "Every refused delivered request prints `BP node delivery refused result=... reason=...` with ACL2's reason.",
+        "In the ambiguous-peer case X logs `BP refused xfer=N reason=ambiguous-peer`, takes no kind-5 custody, and A's obligation stays pinned."
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-signed-2026-09-26.md"
+      ],
+      "note": "Not passing (PKT-247). On image f1734955 steps 0-2 and 5 hold with the signed report (fragmentation at X, X SIGKILL and restart, B's stored copy verifies with hybrid-verify-source); B stores A's signed report and then refuses the delivery with reason=history (the BP receiver's Store binding does not see the kind-4 acceptance), and A refuses B's signed reply the same way. Layer 1 (reason=intent-store-conflict, the injecting agent's check on transit) is fixed. The ambiguous-peer case: see planning/evidence/mission-signed-2026-09-26.md."
     }
   ]
 }
