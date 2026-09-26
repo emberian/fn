@@ -349,6 +349,15 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertIn("nodeB4", listed)
         self.assertIn(pb, listed)
         self.refused(a, ("peer", "confirm", str(acc), str(inv)), "already-confirmed")
+        # PKT-211: `peer list' renders the carriage budget at the end of the
+        # peer's line (books/native-admin-peer-budget.lisp).
+        self.assertNotIn("budget-octets=", listed)
+        self.run_ok(a, "peer", "budget", "nodeB4", "1048576", "16")
+        budgeted = [line for line in out(a.operator("peer", "list")).splitlines()
+                    if line.startswith("nodeB4 ")]
+        print("NATIVE-PEER-INVITE A4 peer list with a budget:", budgeted)
+        self.assertEqual(len(budgeted), 1)
+        self.assertTrue(budgeted[0].endswith(" budget-octets=1048576 budget-count=16"))
         # The superseded keys: a fresh node D accepts another invitation of A
         # under B's genesis key set; A refuses it.
         d = Node(self, self.root, "D4")
