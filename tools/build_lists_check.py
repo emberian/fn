@@ -118,6 +118,11 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
         "to the :control surface, which build-dtn.lisp names in "
         "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage exit) "
         "before this call",
+    ("host/native/operator.lisp", "fnn-keys-execute"):
+        "operator.lisp's `keys redecide` executor (host/native/keys.lisp, PRF-166); "
+        "fnn-operator-dispatch-plan maps :keys to the :control surface, which "
+        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
+        "refuses it (the usage exit) before this call",
     ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
         "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
         "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",

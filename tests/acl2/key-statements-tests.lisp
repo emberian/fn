@@ -585,3 +585,184 @@
          (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
                        (kst-replay-rows *kst-admission*)
                        *kst-ml* :verified :verified 5 6 7))))
+
+; =============================================================================
+; PRF-166 (PKT-325): `keys redecide MSGID'.  The statement declined at
+; acceptance for want of a grant (kst-declined: records (statement prior),
+; the keyring at generation 4); the grant was published after its txid
+; (*kst-grant-after*); the operator redecides at its own txid, later still.
+(defconst *kst-rtx* (+ 2 *kst-tx*))
+(defconst *kst-after* (list *kst-grant-after*))
+(defmacro kst-redecide (st msgid rows)
+  `(fn-ks-redecide ,st ,msgid ,rows *kst-ml* :verified :verified 8 *kst-rtx* 10))
+(defmacro kst-redecided ()
+  '(kst-redecide (kst-declined) *kst-msgid* (kst-replay-rows *kst-after*)))
+(assert-event (equal (fn-ks-find-statement *kst-msgid* (car (kst-declined)))
+                     *kst-event*))
+(assert-event (not (fn-ks-acted-p *kst-event* (cdr (kst-declined)))))
+
+; fn-ks-redecide-decides-under-the-configuration-at-its-own-txid, reached:
+; every antecedent literal, and the conclusion with an acting redecide.
+(assert-event (fn-ctl-configs-all-through-p *kst-rtx* *kst-after*))
+(assert-event (not (equal (fn-config-replay 0 510 *kst-after*) :fault)))
+(assert-event (equal (kst-redecided)
+                     (kst-redecide (kst-declined) *kst-msgid*
+                                   (fn-ks-redecide-rows *kst-rtx* *kst-after*))))
+(assert-event (not (equal (kst-redecided) (kst-declined))))
+(assert-event
+ (equal (fn-ks-redecide-log-line
+         (fn-ks-redecide-plan *kst-event* *kst-snapshots*
+                              (kst-replay-rows *kst-after*)
+                              *kst-ml* :verified :verified)
+         :committed)
+        (fn-record-string-octets
+         "key-statement redecide enrol-successor committed")))
+; Hypothesis removal (every journal record precedes the redecide's txid): at
+; the statement's own txid the grant is not yet in force; the replay holds.
+(assert-event (not (fn-ctl-configs-all-through-p *kst-tx* *kst-after*)))
+(must-fail
+ (assert-event
+  (equal (kst-redecide (kst-declined) *kst-msgid* (kst-replay-rows *kst-after*))
+         (fn-ks-redecide (kst-declined) *kst-msgid*
+                         (fn-ks-redecide-rows *kst-tx* *kst-after*)
+                         *kst-ml* :verified :verified 8 *kst-tx* 10))))
+; Hypothesis removal (the journal replays): a grant whose generation does not
+; follow is folded at the txid but faults the replay; all-through holds.
+(assert-event (fn-ctl-configs-all-through-p *kst-rtx*
+                                            (list *kst-grant-bad-generation*)))
+(must-fail
+ (assert-event
+  (equal (kst-redecide (kst-declined) *kst-msgid*
+                       (kst-replay-rows (list *kst-grant-bad-generation*)))
+         (kst-redecide (kst-declined) *kst-msgid*
+                       (fn-ks-redecide-rows *kst-rtx*
+                                            (list *kst-grant-bad-generation*))))))
+
+; fn-ks-reopen-after-a-redecide, both arms reached (no hypotheses).  Acting:
+; the open's recovery under the journal with a later revocation appended
+; leaves the redecided Store.  Not acting (no grant): the recovery is that of
+; the unchanged declined Store, which declines again.
+(assert-event
+ (equal (fn-ks-recover-recorded (kst-redecided)
+                                (append *kst-after* (list *kst-revoke*))
+                                *kst-ml* :verified :verified 11 12 13)
+        (kst-redecided)))
+(assert-event (equal (kst-redecide (kst-declined) *kst-msgid* nil) (kst-declined)))
+(assert-event
+ (equal (fn-ks-recover-recorded (kst-redecide (kst-declined) *kst-msgid* nil)
+                                *kst-after* *kst-ml* :verified :verified 11 12 13)
+        (fn-ks-recover-recorded (kst-declined) *kst-after*
+                                *kst-ml* :verified :verified 11 12 13)))
+
+; fn-ks-redecide-of-no-stored-statement-is-refused-by-name, reached.
+(defconst *kst-absent* "<absent@fn-keys.invalid>")
+(assert-event (not (fn-ks-find-statement *kst-absent* (car (kst-declined)))))
+(assert-event
+ (equal (fn-ks-redecide-plan (fn-ks-find-statement *kst-absent*
+                                                   (car (kst-declined)))
+                             *kst-snapshots* (kst-replay-rows *kst-after*)
+                             *kst-ml* :verified :verified)
+        '(:refused :not-a-key-statement)))
+(assert-event (equal (kst-redecide (kst-declined) *kst-absent*
+                                   (kst-replay-rows *kst-after*))
+                     (kst-declined)))
+(assert-event
+ (equal (fn-ks-redecide-log-line '(:refused :not-a-key-statement) nil)
+        (fn-record-string-octets
+         "key-statement redecide refused not-a-key-statement")))
+; Hypothesis removal: the stored statement's Message-ID is found and acts.
+(must-fail
+ (assert-event (equal (kst-redecided) (kst-declined))))
+
+; fn-ks-redecide-of-an-acted-statement-is-refused-by-name and
+; fn-ks-a-redecide-that-acted-is-refused-the-second-time, reached: the same
+; MSGID after the redecide acted, under the same grants.
+(defmacro kst-redecided-twice-plan (rows)
+  `(fn-ks-redecide-plan (fn-ks-find-statement *kst-msgid* (car (kst-redecided)))
+                        (cdr (kst-redecided)) ,rows *kst-ml* :verified
+                        :verified))
+(assert-event (fn-ks-redecide-event *kst-event* *kst-snapshots*
+                                    (kst-replay-rows *kst-after*) *kst-ml*
+                                    :verified :verified 8 *kst-rtx* 10))
+(assert-event (< 4 (fn-hl-next-generation *kst-snapshots*)))
+(assert-event (fn-ks-acted-p *kst-event* (cdr (kst-redecided))))
+(assert-event (equal (kst-redecided-twice-plan (kst-replay-rows *kst-after*))
+                     '(:refused :already-acted)))
+(assert-event (equal (kst-redecide (kst-redecided) *kst-msgid*
+                                   (kst-replay-rows *kst-after*))
+                     (kst-redecided)))
+; Hypothesis removal (acted): before the redecide the statement has not
+; acted, and the plan is not the refusal.
+(must-fail
+ (assert-event
+  (equal (fn-ks-redecide-plan *kst-event* *kst-snapshots*
+                              (kst-replay-rows *kst-after*) *kst-ml* :verified
+                              :verified)
+         '(:refused :already-acted))))
+; Hypothesis removal (the redecide acted): with no grant it declined, and the
+; same MSGID is decided again (declined no-grant), not refused.
+(assert-event (not (fn-ks-redecide-event *kst-event* *kst-snapshots* nil
+                                         *kst-ml* :verified :verified 8
+                                         *kst-rtx* 10)))
+(must-fail
+ (assert-event
+  (equal (fn-ks-redecide-plan
+          (fn-ks-find-statement *kst-msgid*
+                                (car (kst-redecide (kst-declined) *kst-msgid* nil)))
+          *kst-snapshots* nil *kst-ml* :verified :verified)
+         '(:refused :already-acted))))
+; Hypothesis removal (the statement's generation precedes the next one),
+; CORRUPTED STATE: a keyring whose newest snapshot (another principal's, at
+; generation 1) is older than the statement's generation 4.  The redecide
+; still acts, at generation 2, which is not after 4; the second is not refused.
+(make-event `(defconst *kst-stale-head*
+               ',(fn-hsig-keyring-event 1 1 1 1 (make-list 32 :initial-element 8)
+                                        *tha-other-keys*)))
+(make-event `(defconst *kst-stale-state*
+               ',(cons (car (kst-declined))
+                       (cons *kst-stale-head* *kst-snapshots*))))
+(assert-event (fn-ks-redecide-event *kst-event* (cdr *kst-stale-state*)
+                                    (kst-replay-rows *kst-after*) *kst-ml*
+                                    :verified :verified 8 *kst-rtx* 10))
+(assert-event (not (< 4 (fn-hl-next-generation (cdr *kst-stale-state*)))))
+(must-fail
+ (assert-event
+  (equal (let ((st2 (kst-redecide *kst-stale-state* *kst-msgid*
+                                  (kst-replay-rows *kst-after*))))
+           (fn-ks-redecide-plan (fn-ks-find-statement *kst-msgid* (car st2))
+                                (cdr st2) (kst-replay-rows *kst-after*)
+                                *kst-ml* :verified :verified))
+         '(:refused :already-acted))))
+
+; fn-ks-redecide-of-an-unacted-statement-is-its-acceptance-decision, reached.
+(assert-event
+ (equal (fn-ks-redecide-plan *kst-event* *kst-snapshots*
+                             (kst-replay-rows *kst-after*) *kst-ml* :verified
+                             :verified)
+        (list :enroll *tha-principal* *kst-new-keys*)))
+(assert-event
+ (equal (fn-ks-redecide-event *kst-event* *kst-snapshots*
+                              (kst-replay-rows *kst-after*) *kst-ml* :verified
+                              :verified 8 *kst-rtx* 10)
+        (fn-ks-execute *kst-event* *kst-snapshots* (kst-replay-rows *kst-after*)
+                       *kst-ml* :verified :verified 8 *kst-rtx* 10)))
+; Hypothesis removal (a statement): an absent MSGID's refusal is not the
+; plan of nothing (nil).
+(must-fail
+ (assert-event
+  (equal (fn-ks-redecide-plan nil *kst-snapshots* (kst-replay-rows *kst-after*)
+                              *kst-ml* :verified :verified)
+         (fn-ks-plan nil *kst-snapshots* (kst-replay-rows *kst-after*)
+                     *kst-ml* :verified :verified))))
+; Hypothesis removal (not acted): after the redecide the refusal is not the
+; plan (which declines not-current).
+(assert-event
+ (equal (fn-ks-plan *kst-event* (cdr (kst-redecided))
+                    (kst-replay-rows *kst-after*) *kst-ml* :verified :verified)
+        '(:decline :not-current)))
+(must-fail
+ (assert-event
+  (equal (kst-redecided-twice-plan (kst-replay-rows *kst-after*))
+         (fn-ks-plan *kst-event* (cdr (kst-redecided))
+                     (kst-replay-rows *kst-after*) *kst-ml* :verified
+                     :verified))))

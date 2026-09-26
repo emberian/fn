@@ -308,3 +308,34 @@
  (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil *pat-carries*
                                                 :verified :verified)
                       :verified)))
+
+; PKT-240: fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class (no
+; hypotheses), reached on each of the four refusal classes, the carried arm,
+; the verified arm and the unsigned arm.
+(assert-event (equal (fn-pcb-admission-verdict *pat-malformed* *pat-snapshots* nil nil nil)
+                     :malformed))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil)
+                     :unenrolled))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                               :refused :verified)
+                     :cryptographically-invalid))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                               :verified :verified)
+                     :verified))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil *pat-carries* nil nil)
+                     :carried))
+(assert-event (equal (fn-pcb-admission-verdict *tha-root-source* *pat-snapshots* nil nil nil)
+                     :unsigned))
+(assert-event
+ (and (equal (fn-pcb-verdict-refusal-class
+              (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                        :refused :verified))
+             (fn-pcb-refusal-class *pat-relayed* *pat-snapshots* nil
+                                   :refused :verified))
+      (equal (fn-pcb-verdict-refusal-class
+              (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil))
+             :no-local-binding)
+      (equal (fn-pcb-verdict-refusal-class
+              (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                        :verified :verified))
+             nil)))

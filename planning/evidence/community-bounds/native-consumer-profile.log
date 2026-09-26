@@ -1,0 +1,6 @@
+test_the_operator_raises_the_consumer_count (tests.test_native_consumer_profile.NativeConsumerProfileTests.test_the_operator_raises_the_consumer_count) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 24.965s
+
+OK

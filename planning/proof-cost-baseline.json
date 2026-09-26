@@ -4,10 +4,24 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/native-admin": {
+      "seconds": 10.032,
+      "run": "certify-20260926T100254Z-46471",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/owner-invariants": {
       "seconds": 10.291,
       "run": "certify-20260926T064807Z-632722",
       "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-node-invariants": {
+      "seconds": 11.29,
+      "run": "certify-20260926T100254Z-46471",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     }

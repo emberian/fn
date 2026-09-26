@@ -149,9 +149,12 @@ values.
 | `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
 | `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
 | `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
-| `max-group-name-octets` | one group name | 128 (the record codec's today) |
+| `max-group-name-octets` | one group name (validated, not yet enforced on `group create`: PKT-435) | 256 (the record codec's and the configuration label's width today) |
 | `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
-| `max-consumers`, `max-bp-rows`, `max-config-generations`, `max-credentials`, `max-policy-members` | namespace counts | 1,048,576 each |
+| `max-consumers` | consumers registered; the next `consumer register` past it is refused | 1,048,576 |
+| `max-config-generations` | configuration generations ever published | 1,048,576 |
+| `max-credentials` | AUTHINFO logins in `auth.toml` | 1,048,576 |
+| `max-bp-rows`, `max-policy-members` | reserved: validated (`1..2^32-1`) and read by nothing; the BP rows are the journal's (PKT-296), and 64 policy members is statement schema v1's grammar limit (PKT-229) | 1,048,576 each |
 
 The D27 defaults are 64 MiB records, 16 MiB articles, 4096 groups and
 460-octet names; each default is capped at the codec ceiling the tree carries
@@ -1169,6 +1172,33 @@ login is not bound to this signing principal`. A login without a binding,
 and every login on a node whose policy is `open` (the default: `policy set
 posting-policy open`), posts as before. The service log names the login of
 each decision (`post login=alice bound=...`).
+
+### Re-decide a declined key statement: `keys redecide`
+
+A key statement (a signed succession or revocation posted to `fn.keys`) is
+decided once, when the node accepts it, under the `keys` grants in force
+then. One that declined (`key-statement declined no-grant` in the service
+log, say, because the grant came later) stays declined across restarts: an
+open re-decides nothing under later configuration (PRF-124). To decide it
+again under today's grants, ask the running node:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml control grant PRINCIPAL-HEX keys fn.keys
+packaging/fn-native operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
+```
+
+The owner decides it as a new acceptance of the stored statement under the
+grants of the configuration in force at the redecide's own transaction
+(books/key-statements.lisp `fn-ks-redecide-plan`, PRF-166). When it acts,
+the key change (the successor's enrolment, or the revocation) is the one
+durable record it writes, the service log says `key-statement redecide
+enrol-successor committed`, and the command exits 0; a restart repeats
+nothing. It is refused (exit 1, the Store unchanged) when the Message-ID
+names no stored key statement (`key-statement redecide refused
+not-a-key-statement`), when the statement's change is already made
+(`refused already-acted`), or when it declines again (`key-statement
+redecide declined REASON`). The verb needs the running owner: offline it is
+refused, like every control verb.
 
 ## Expose a node to strangers
 
