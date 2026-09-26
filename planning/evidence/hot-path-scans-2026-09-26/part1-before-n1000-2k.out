@@ -1,0 +1,11 @@
+greeting             median 0.359 ms  p95 0.724 ms  max 3.169 ms
+post_first_quarter   median 58.498 ms  p95 250.645 ms  max 383.948 ms
+post_last_quarter    median 99.996 ms  p95 416.913 ms  max 1100.192 ms
+stat_present         median 0.106 ms  p95 0.203 ms  max 0.253 ms
+article_present      median 2.965 ms  p95 3.027 ms  max 3.050 ms
+over_present         median 0.785 ms  p95 1.118 ms  max 1.221 ms
+residency_after_load             rss 474448 KiB  hwm 474448 KiB  live 310717568
+residency_after_reopen           rss 584032 KiB  hwm 584032 KiB  live 312809776
+first_open_seconds               0.106 s
+load_seconds                     171.037 s
+reopen_seconds                   1.299 s

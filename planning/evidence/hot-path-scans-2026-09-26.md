@@ -167,7 +167,10 @@ PKT-474.
 ### What changed for a user
 
 A POST no longer walks the committed history to learn how many records and
-octets the Store holds, nor its completion debt or carriage usage. The count
+octets the Store holds, nor its completion debt or carriage usage. It still
+rebuilds the group index from the whole visible list (PKT-324 (1)), and the
+bytes consed by a steady-state POST are unchanged (7.97 MB before, 7.96 MB
+after at N=10,000). The count
 is read from the Store's derived event index; the three per-POST caches are
 advanced through that index by one lookup and one fold step per record
 committed since the previous query. The first verdict after open no longer
@@ -342,6 +345,76 @@ POSTs after the open went from 26,184 samples (about 840 MB) to 512 (about
 
 The runs' exit lines and the profile rows are in `hot-path-scans-2026-09-26/part1-runs.log`. It was produced by tools/rep_measure.py through `run.sh`, and by `allocprof.py`.
 
+**The N=10,000 figures, read plainly (hot-path-scans-3).** All four
+rep_measure runs and all six allocation profiles ran on hbox while the
+qualification's units were running on the same box. The load average at
+each run's end (from `runs.out`): before N=1,000 7.70, after N=1,000 11.33,
+before N=10,000 8.36, after N=10,000 6.57 (one-minute figure). Times below
+are therefore indicative only; bytes consed and sample counts are counts.
+
+| figure (N=10,000, 2 KiB) | before (`5c6825b2`) | after (`ff2eacb3`) | box |
+| --- | ---: | ---: | --- |
+| POST bytes consed / op, rep_measure K=32 | 7,965,868 | 7,955,659 (-0.13%) | load 8.4 / 6.6, qualification running |
+| byte-count fold, 200 POSTs after reopen (samples of ~32 KB) | 20,752 | 0 (advance 401; after2 405) | same |
+| debt fold, 200 POSTs after reopen | 5,432 | 5,436 (after2 107) | same |
+| all samples, 200 POSTs after reopen | 72,177 | 51,857 (after2 47,187) | same |
+| `FN-INDEX-BUILD` (the group-index rebuild) | 19,891 (27.6%) | 19,878 (38.3%) (after2 20,304, 43.0%) | same |
+| greeting median / p95 ms (32; taken before the store loads) | 0.412 / 0.731 | 0.357 / 0.653 | same |
+| POST median / p95 ms (32 after load) | 386.7 / 480.7 | 157.9 / 306.9 | same |
+| load (10,000 POSTs) | 2,669.3 s | 2,485.7 s | same |
+
+- **Bytes consed per POST did not fall.** The steady-state figure moved by
+  0.13 percent. What fell is the per-open cost: the first POST after the
+  open no longer re-encodes or re-classifies the history (20,752 + 5,432
+  samples, about 840 MB, down to 512 samples over 200 POSTs at after2).
+  The lane's claim is about the walks and the first-query folds; it never
+  was a per-POST allocation claim, and the figure is left as measured.
+- **The per-POST group-index rebuild is still there.** `FN-INDEX-BUILD` is
+  about 19,900 samples at N=10,000 in all three images, against 2,282 to
+  2,670 at N=1,000: it grows with N and this lane did not touch it. The
+  profile's stacks are truncated (`SB-SPROF::UNAVAILABLE-FRAMES` is the
+  caller of 99.7 percent of it; `FN-GIDX-BUILD` names about 560 samples,
+  `FN-OWN-REFRESH`'s own attributed total is about 1,072), so this profile
+  does not itself attribute the rebuild to `fn-own-refresh`; that
+  attribution is §4's code reading (PKT-324 (1), owned by served-path-scale).
+  "A POST no longer walks the committed history" above holds for the count,
+  octets, debt and carriage usage only; the POST still rebuilds the group
+  index from the whole visible list.
+- **The count's O(1) is not observed here.** The `len` and `nthcdr` walks
+  it replaced cons nothing, so the allocation profile cannot see them, and
+  the POST timings are load noise (at N=1,000 the after median is slower,
+  58.5 to 85.3 ms). That the count is read from the index rests on the
+  definition and `fn-sbud-count-is-used`, not on this measurement. A quiet
+  CPU re-measure is PKT-475.
+- **Greeting rows** were taken, but before the store loads (PKT-335's
+  caveat), so they say nothing about N.
+
+**Evidence files** (fetched from `/tank/fn/scratch/hot-path-scans-2/`,
+bytes identical to the box's `results/` and `alloc-*/flat.txt`):
+
+| file | SHA-256 |
+| --- | --- |
+| part1-before-n1000-2k.json | 0b26bd88cda92d32b036ef743f694fe19f17e9c3dd5863a4d7f2d77c9fb71ca2 |
+| part1-after-n1000-2k.json | 946969fa52314c462b6e58c123ada3cb37f4d94055ffdecbe0ee71c8cc968f8d |
+| part1-before-n10000-2k.json | 01f257f0edd636859472ec41f95b2780febacd4ecc159ca41c13d0296c8f8a41 |
+| part1-after-n10000-2k.json | c12a483f9d06d6f59fe69ef4889cbb8246d6f8cf6a4f4cfc0424e1f099848a10 |
+| part1-before-n1000-2k.out | 04aac00453927b92129889e2b752926f3cf4cce2e773cefbcb9fc56c59abd417 |
+| part1-after-n1000-2k.out | fb3cc241e52b3bd49ab4127f9af27c801bb8f691992be09eb6e8e438e9e8e084 |
+| part1-before-n10000-2k.out | c8985be639272ac6814d6fe7c1f066afaf07c1ffb2b6e4085480e4e7bd64ce15 |
+| part1-after-n10000-2k.out | c93c4d2aee009cc386f28e264536f8204a673f46c0b8d9350dd33163945a75b7 |
+| part1-alloc-before-n1000-flat.txt | d5f494e2a55eb393cb37950ac585f267dea79bbdab14cfedc25e47005c2a34dc |
+| part1-alloc-after-n1000-flat.txt | d4a2d30102d04de13416951b83b9e1c19dba337372a4d5156fae903a3c559429 |
+| part1-alloc-after2-n1000-flat.txt | 89061630fb46f35d46433dbdc1ff98c34ade5ada604ec5f26bfe9fc1918a71f8 |
+| part1-alloc-before-n10000-flat.txt | d4a328505dbe2c64da5e3bbbf8273020a893d16728a9a345fdcef0834ed63754 |
+| part1-alloc-after-n10000-flat.txt | f329970b0de0064be827672473fa07a683e9bc0b16a6b1256b07d959a1166de1 |
+| part1-alloc-after2-n10000-flat.txt | 221e9374500655e2817c381fcb1cda45b3d064915ad47ce35deb223fdcc104e1 |
+
+The call graphs (about 165 KB each) stay on the box, by SHA-256:
+before-n1000 `10c70097…`, after-n1000 `a47abdc2…`, after2-n1000 `5eff507e…`,
+before-n10000 `c9b9bbeb…`, after-n10000 `1f8c1fd6…`, after2-n10000 `7df65fd8…`
+(`alloc-*/graph.txt`). The unprefixed `alloc-before-n10000-flat.txt` in this
+directory is §1's earlier run, not this one.
+
 **Visits per POST**, from the definitions:
 
 | | per query of the three caches | first query after open |
@@ -367,7 +440,7 @@ production image. Its test_native_profile_upgrade errors were missing images
 (`build/fn-host`), and `test_native_peer_carriage` was a module name that
 does not exist. Both are harness errors, not behaviour.
 
-### Not done (PKT-474)
+### Not done (PKT-474, PKT-475)
 
 - **The prepare's candidate test.** It still takes `len` and the last cons of
   the history (`fn-pcar-candidatep`, `fn-pcar-next-lower`). These are pointer
@@ -392,3 +465,10 @@ does not exist. Both are harness errors, not behaviour.
   The debt step takes its kind through `fn-record-p`. A length-only twin of
   the encoder, and the concrete-twin kind, would remove both. Both are
   constant in N.
+- **PKT-475: the measurement's own gaps.** The count's O(1) and the removed
+  `len`/`nthcdr` walks are CPU, not allocation, and were not observed: every
+  run shared hbox with the qualification (load 6.6 to 11.3). Owed: a quiet
+  CPU re-measure of POST at N=1,000 and 10,000 (before `5c6825b2`, after
+  `97a3a5ac`), and an allocation profile with deeper stacks so the
+  `FN-INDEX-BUILD` share is attributed by the profile rather than by §4's
+  reading.
