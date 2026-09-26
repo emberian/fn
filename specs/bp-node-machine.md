@@ -2973,7 +2973,26 @@ Other ceilings still bound a family:
 - the bundle decoder's 1 MiB input (`*fn-bpb-max-input*`);
 - the ADU record's 65,538 octets (`*fn-bpa-max-octets*`);
 - the machine's job slots and octet budget.
-These are P5 of `planning/design-2026-09-25-bounds.md`.
+These are P5 of `planning/design-2026-09-25-bounds.md`. The job slots bind
+first on the image: `*fn-bpn-machine-max-jobs*` (64) held rows, so the
+receiver refuses the 65th held fragment of one family with XFER_REFUSE No
+Resources (observed 2026-09-26 on the 0069b282 image); a family of 64
+fragments across a SIGKILL reassembles once.
+
+Landed 2026-09-26 (PRF-121, lane bp-lifecycle-2): the family's rows and the
+job table agree. The job table is the held list: slots 10 to 13 of a row are
+its dispatch record, next hop, job state and kind-8 attempt. The progress
+selector never dispatches a fragment row, so its one job is reassembly.
+`fn-bpnf-family-jobs-agreep` states it: every active fragment row carries
+`(:dispatch-pending)` with no dispatch record, next hop or attempt. Under it,
+kind-18 replacement consumes only such rows and installs the whole row with
+`(:dispatch-pending)`, so discarding the carriers erases no unfinished job
+(`fn-bpnf-family-apply-conserves-jobs`). `fn-bpnp-step` keeps the relation on
+the two events of `fnn-bps-fragment-progress`: `(:family A OBS)` and the
+kind-18 `(:persist-result ...)` (`fn-bpnp-step-family-events-keep-jobs-agreeing`).
+The relation holds at a cold start (empty held list). Its establishment by
+recovery replay and its preservation by the dispatch, forward, delivery and
+deletion arms are not yet proved.
 
 ### 7.5 The routing table's configuration home (F-I, §12 D-3)
 

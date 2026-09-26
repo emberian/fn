@@ -6,10 +6,12 @@ Python only writes those bytes and drives real native processes.
 
 import os
 from pathlib import Path
+import select
 import shutil
 import socket
 import subprocess
 import tempfile
+import time
 import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
@@ -258,6 +260,83 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # SCN-067: 70 fragments, beyond the old 64-fragment reassembly
         # ceiling, with the receiver killed after 35.
         self.kill_across_family(70, 35)
+
+    def rotate(self, stop=None):
+        """`bp-node checkpoint` on the stopped receiver; with STOP, the
+        developer cut stops it there and the test kills it with SIGKILL."""
+        env = dict(self.env)
+        if stop:
+            env["FN_BP_ROTATION_TEST_STOP"] = stop
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "bp-node", "checkpoint",
+             str(self.journal), "dtn://receiver/"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        if not stop:
+            out, err = process.communicate(timeout=120)
+            self.assertEqual(process.returncode, 0, (out, err))
+            return out
+        marker = b"BP journal rotation stopped at=" + stop.encode()
+        seen = b""
+        deadline = time.monotonic() + 120
+        while marker not in seen and time.monotonic() < deadline:
+            ready, _, _ = select.select([process.stdout], [], [], 1)
+            if ready:
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                seen += chunk
+        self.assertIn(marker, seen, seen)
+        process.kill()
+        process.wait(timeout=15)
+        process.stdout.close()
+        process.stderr.close()
+        return seen
+
+    def recovered_held(self):
+        reopened = self.invoke(
+            "bp-node", "dispatch", self.journal, self.store,
+            self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
+            "dtn://receiver/", "native-policy", "dtn://receiver/",
+            "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
+        )
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        for line in reopened.stdout.splitlines():
+            if line.startswith(b"BP FNBS recovered held="):
+                return int(line.split(b"=", 1)[1])
+        self.fail(reopened.stdout)
+
+    def test_rotation_with_a_family_in_flight_loses_no_fragment(self):
+        # N16 under load (item 5): seven of eight fragments are held when
+        # the journal rotates, killed after the rename, killed inside the
+        # retirement program, then clean.  Every reopen recovers the seven;
+        # the offset-zero fragment then completes the family once.
+        fragments = self.author_fragments(8)
+        first, port = self.start_receiver(once=False)
+        for number in range(7, 0, -1):
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        first.terminate()
+        out, err = first.communicate(timeout=120)
+        self.assertNotIn(b"BP fragment family durable", out)
+        self.assertEqual(self.recovered_held(), 7)
+        for stop in ("replace", "retire-2"):
+            self.rotate(stop)
+            self.assertEqual(self.recovered_held(), 7, stop)
+        out = self.rotate()
+        self.assertIn(b"BP journal generation retired name=lifecycle", out)
+        self.assertEqual(self.recovered_held(), 7)
+        self.assertFalse((self.journal / "lifecycle").exists())
+        last, port = self.start_receiver()
+        sent = self.send_fragment(port, fragments[0], 0)
+        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        out, err = last.communicate(timeout=300)
+        self.assertEqual(last.returncode, 0, (out, err))
+        self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
+        self.assertEqual(out.count(b"BP application handoff durable"), 1,
+                         (out, err))
+        self.assertEqual(self.article_count(), 1)
 
 if __name__ == "__main__":
     unittest.main()
