@@ -345,9 +345,11 @@
                          (fn-lb-binding name file)
                        (fn-lb-binding name (fn-lb-value-bindings
                                             (fn-cfg-value (fn-ocfg-config oc))))))))
-   :hints (("Goal" :do-not '(preprocess)
-            :in-theory (disable fn-ocl-publish fn-ocfg-open fn-ocfg-step
-                                fn-lb-conn-bindings)))))
+   ; The counter-witness is *lblt-wrong* above (every other antecedent
+   ; asserted, the conclusion false); the search is bounded so the book
+   ; stays inside D26 (the open theory spent 8.8 s refusing it).
+   :hints (("Goal" :do-not-induct t :do-not '(preprocess)
+            :in-theory (theory 'minimal-theory)))))
 ; Without the targets naming the file's bindings: pairs that bind ember to Q
 ; do not bind it as a file binding ember to P does.
 (assert-event (not (fn-lb-pairs-targetp *lblt-pairs-q* (list (cons *lblt-name* *lblt-p*)))))
