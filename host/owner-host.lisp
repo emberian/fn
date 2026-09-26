@@ -52,6 +52,7 @@
 (include-book "../books/store-budget-article")
 ; PKT-169: the maintenance reservation (the served gates below).
 (include-book "../books/store-maintenance-reserve")
+(include-book "../books/store-capacity-vector")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -290,6 +291,7 @@
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
                (state (f-put-global 'fn-owner-record-octets nil state))
+               (state (f-put-global 'fn-owner-record-debt nil state))
                ; PRF-099: the carried-usage cache restarts from the Store
                ; this open replayed (fn-pcb-usage-extend walks it once).
                (state (f-put-global 'fn-owner-carried-usage nil state)))
@@ -430,17 +432,36 @@
                               (cons (len records) bytes) state)))
     (mv bytes state)))
 
+; The completion debt of the carried Store (the open forward undertakings,
+; each owing a release record), carried as (K . DEBT) and extended by the
+; records committed since (books/store-capacity-vector.lisp
+; `fn-cvec-debt-extend'; equal to `fn-cvec-record-debt' when the cache is
+; valid, `fn-cvec-debt-extend-is-the-record-debt'), reset with the octets
+; when a profile is installed at open.
+(defun fn-owner-record-debt (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+         (cache (if (boundp-global 'fn-owner-record-debt state)
+                    (f-get-global 'fn-owner-record-debt state)
+                  nil))
+         (debt (fn-cvec-debt-extend cache records))
+         (state (f-put-global 'fn-owner-record-debt
+                              (cons (len records) debt) state)))
+    (mv debt state)))
+
 ; The owner's verdict on one more record of KIND: the carried profile's count
-; and history gates against the Store it carries, and the maintenance
-; reservation (books/store-maintenance-reserve.lisp `fn-smr-verdict-at': a
-; release consumes it, every other kind leaves it,
-; `fn-smr-admission-keeps-the-reserve').
+; and history gates against the Store it carries, and the capacity vector
+; (books/store-capacity-vector.lisp `fn-cvec-verdict-at': a release
+; discharges a debt or consumes the maintenance release, every other kind
+; keeps room for every open undertaking's release, its own included, and the
+; maintenance release, `fn-cvec-admission-keeps-the-vector').
 (defun fn-owner-publication-verdict (kind state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (bytes state) (fn-owner-record-octets state)
-    (let ((s (fn-owner-store state)))
-      (value (fn-smr-verdict-at (fn-owner-store-profile state) kind
-                                (fn-sbud-used s) bytes)))))
+    (mv-let (debt state) (fn-owner-record-debt state)
+      (let ((s (fn-owner-store state)))
+        (value (fn-cvec-verdict-at (fn-owner-store-profile state) kind
+                                   (fn-sbud-used s) bytes debt))))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -571,6 +592,7 @@
         (if existing
             (value existing)
           (mv-let (bytes state) (fn-owner-record-octets state)
+          (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid payload groups
@@ -592,13 +614,14 @@
                  ; test reads the last record's txid instead of folding
                  ; every record's through fn-record-p.
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
-                 ; one release record still fits after the article
-                 ; (books/store-maintenance-reserve.lisp
-                 ; `fn-smr-prepare-keeps-the-reserve').
-                 (budget (fn-smr-article-budget-for
+                 ; (books/store-budget-article.lisp), and PRF-138: 0 unless
+                 ; the capacity vector (a release per open undertaking and
+                 ; the maintenance release) still holds after the article
+                 ; (books/store-capacity-vector.lisp
+                 ; `fn-cvec-prepare-keeps-the-vector').
+                 (budget (fn-cvec-article-budget-for
                           (fn-owner-store-profile state) (fn-sbud-used s)
-                          bytes record))
+                          bytes record debt))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -609,7 +632,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared)))))))))))
+              (value :prepared))))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -657,6 +680,7 @@
         (if existing
             (value existing)
           (mv-let (bytes state) (fn-owner-record-octets state)
+          (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid (fn-octets-list fn-octets) groups
@@ -665,13 +689,14 @@
                           (fn-store-octets->string evidence-octets)
                           charge))
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
-                 ; one release record still fits after the article
-                 ; (books/store-maintenance-reserve.lisp
-                 ; `fn-smr-prepare-keeps-the-reserve').
-                 (budget (fn-smr-article-budget-for
+                 ; (books/store-budget-article.lisp), and PRF-138: 0 unless
+                 ; the capacity vector (a release per open undertaking and
+                 ; the maintenance release) still holds after the article
+                 ; (books/store-capacity-vector.lisp
+                 ; `fn-cvec-prepare-keeps-the-vector').
+                 (budget (fn-cvec-article-budget-for
                           (fn-owner-store-profile state) (fn-sbud-used s)
-                          bytes record))
+                          bytes record debt))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -682,7 +707,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared)))))))))))
+              (value :prepared))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)

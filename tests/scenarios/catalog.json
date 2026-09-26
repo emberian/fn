@@ -2510,6 +2510,33 @@
         "The cut leaves the history at generation 1; the first restart logs `key-statement enrol-successor committed at-open` and the history shows generation 2 active, 1 retired; the second restart logs nothing new and the history is unchanged.",
         "Each restart logs `key-statement declined no-grant at-open` and the history is unchanged."
       ]
+    },
+    {
+      "id": "SCN-081",
+      "title": "A store filled until ordinary admission refuses completes its outstanding forward obligation, releases content, compacts and reclaims across every crash cut, recovers and accepts the next POST",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Init a store with max_history_octets 300,000; post the BP article; undertake its forwarding obligation; read `status`.",
+        "POST 1 KiB articles over NNTP until the first refusal; read `status`.",
+        "Deliver the article over BP and write its receipt with `bp-obligation receipt`; read `bp-obligation status` and `status`.",
+        "`retention set released-by-all-holders`; `store compact` and `store reclaim`, each first on copies cut at every publication, selection and retirement point (and reclaim's kill and EIO faults), reopening and rerunning each copy.",
+        "Run the clean compact and reclaim; read `status`; POST three articles."
+      ],
+      "expected": [
+        "`maintenance-reserve ... debt=1 held`.",
+        "The refused POST is 441; `status` still shows `debt=1 held`.",
+        "The receipt exits 0 in the full store; `pinned=no`; `debt=0`.",
+        "Every cut copy reopens (`status` exit 0), every rerun exits 0 and converges to the clean run's pack.",
+        "Reclaim exits 0 and frees octets; the next POSTs are 240."
+      ],
+      "evidence": [
+        "tests/test_native_capacity_vector.py",
+        "planning/evidence/capacity-vector-2026-09-26.md"
+      ]
     }
   ]
 }

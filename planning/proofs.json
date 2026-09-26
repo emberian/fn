@@ -5656,6 +5656,55 @@
         "planning/evidence/manifests/certify-20260926T070754Z-693820.json",
         "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ]
+    },
+    {
+      "id": "PRF-138",
+      "title": "The Store's capacity is a resource vector maintained by every admission: a release per open undertaking and the maintenance release stay admissible, and every admitted history of mixed record kinds is within H and T",
+      "statement": "Subjects: fn-cvec-verdict-at (host/owner-host.lisp fn-owner-publication-verdict, every served non-article Store record, BP admission's retention included; host/store-node-host.lisp fn-store-sn-publication-verdict), fn-cvec-article-budget-for (host/owner-host.lisp fn-owner-prepare and fn-owner-prepare-buffer, the served POST and BP transit, handed to fn-pcar-sbud-prepare), fn-cvec-article-verdict-at (host/store-node-host.lisp fn-store-sn-article-verdict), fn-cvec-debt-extend (host/owner-host.lisp fn-owner-record-debt, the carried (K . DEBT)), fn-cvec-config-generations (host/store-node-host.lisp fn-store-cfg-native-admin-authorize, handed to fn-native-admin-publication-authorize). The vector fn-cvec-roomp profile used bytes debt is fn-smr-roomp at (used+debt, bytes+debt*R), R the release ceiling 4096: the profile's gate admits debt+1 release records in turn. DEBT is the history's open undertakings (fn-cvec-record-debt: +1 per :undertake, -1 per :release), equal to the carried cache when valid (fn-cvec-debt-extend-is-the-record-debt) and moving as the ledger's :forward pins do (fn-cvec-admit-forward-adds-one-debt, fn-cvec-release-forward-removes-one-debt). Established at init (fn-cvec-admitted-profile-starts-held); preserved by every admitted non-release record with the debt its own undertaking adds (fn-cvec-admission-keeps-the-vector), by a release against an open debt (fn-cvec-release-keeps-the-vector), by the served article prepare (fn-cvec-prepare-keeps-the-vector) and the developer article verdict (fn-cvec-article-verdict-keeps-the-vector, and at any producer width with a u32 charge fn-cvec-article-verdict-keeps-the-vector-at-producer-width), by a reclaim (fn-cvec-roomp-antitone-in-octets) and a profile upgrade (fn-cvec-profile-upgrade-keeps-the-vector). fn-cvec-roomp-discharges-every-debt: where it holds, the j-th release (j <= debt) is admitted after j releases of at most R octets. The composed statement fn-cvec-admitted-history-keeps-the-vector / -from-init: a history of mixed record kinds each admitted at its prefix by the gate of its kind (fn-cvec-history-admittedp; an article within its figure under a u32 charge, PRF-126; every other kind within its publication ceiling, a premise its producer's codec discharges; a release only against an open debt) leaves the vector holding at the committed count, the actual committed record octets fn-sbud-record-octets and the history's debt, and is within H (fn-profile-replay-within-boundp) and below T. With no debt the vector and the gate are PRF-129's except for :undertake (fn-cvec-roomp-without-debt-is-the-reserve, fn-cvec-verdict-without-debt-is-the-reserve-gate). The charge component is pre-paid (fn-cvec-release-never-raises-the-charge). fn-cvec-config-publication-keeps-the-release-generation: a configuration record other than the retention rule is accepted only below max-config-generations.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-129",
+        "PRF-126",
+        "PRF-123",
+        "PRF-086",
+        "PRF-102"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-capacity-vector.lisp",
+        "books/store-capacity-config.lisp",
+        "tests/acl2/store-capacity-vector-tests.lisp",
+        "tests/test_native_capacity_vector.py",
+        "planning/evidence/capacity-vector-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T073035Z-2680334.json"
+      ],
+      "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here.",
+      "events": [
+        "fn-cvec-admitted-history-keeps-the-vector",
+        "fn-cvec-admitted-history-from-init",
+        "fn-cvec-record-keeps-the-vector",
+        "fn-cvec-admission-keeps-the-vector",
+        "fn-cvec-release-keeps-the-vector",
+        "fn-cvec-prepare-keeps-the-vector",
+        "fn-cvec-article-verdict-keeps-the-vector",
+        "fn-cvec-article-verdict-keeps-the-vector-at-producer-width",
+        "fn-cvec-roomp-discharges-every-debt",
+        "fn-cvec-admitted-profile-starts-held",
+        "fn-cvec-profile-upgrade-keeps-the-vector",
+        "fn-cvec-roomp-antitone-in-octets",
+        "fn-cvec-roomp-is-within-the-profile",
+        "fn-cvec-roomp-without-debt-is-the-reserve",
+        "fn-cvec-verdict-without-debt-is-the-reserve-gate",
+        "fn-cvec-debt-extend-is-the-record-debt",
+        "fn-cvec-admit-forward-adds-one-debt",
+        "fn-cvec-release-forward-removes-one-debt",
+        "fn-cvec-release-never-raises-the-charge",
+        "fn-cvec-config-publication-keeps-the-release-generation"
+      ]
     }
   ]
 }

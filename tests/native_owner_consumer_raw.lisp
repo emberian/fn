@@ -11,8 +11,8 @@
 ;; (ce27b18d) the host holds no count and no bound: the capacity refusal is
 ;; the owner's verdict, asked by the deployed fnn-owner-preflight-publication
 ;; (host/native/owner.lisp) through fn-owner-publication-verdict
-;; (host/owner-host.lisp), whose word is books/store-maintenance-reserve.lisp
-;; fn-smr-verdict-at's.  Both are loaded here; only the ACL2 call is recorded.
+;; (host/owner-host.lisp), whose word is books/store-capacity-vector.lisp
+;; fn-cvec-verdict-at's.  Both are loaded here; only the ACL2 call is recorded.
 (defun load-deployed-forms (path wanted)
   (let ((missing (copy-list wanted)))
     (with-open-file (stream path)
@@ -45,20 +45,20 @@
         ((consp tree) (append (keyword-leaves (car tree)) (keyword-leaves (cdr tree))))
         (t nil)))
 
-;; ACL2's verdict words.  The host's verdict call is fn-smr-verdict-at's (the
-;; maintenance reservation over fn-sbud-verdict-at, PKT-169), which answers
+;; ACL2's verdict words.  The host's verdict call is fn-cvec-verdict-at's (the
+;; capacity vector over fn-sbud-verdict-at, PRF-138), which answers
 ;; :admissible when the record fits with the release's room kept and one other
 ;; word otherwise; that word is the one the owner hands the host at capacity.
 ;; Its body also names the kind :release, which is no verdict word.
 (defparameter *verdict-words*
   (let ((host (read-acl2-defun "host/owner-host.lisp" 'fn-owner-publication-verdict))
-        (book (read-acl2-defun "books/store-maintenance-reserve.lisp" 'fn-smr-verdict-at)))
-    (unless (tree-mentions (cdddr host) 'fn-smr-verdict-at)
-      (error "fn-owner-publication-verdict no longer answers fn-smr-verdict-at's word"))
+        (book (read-acl2-defun "books/store-capacity-vector.lisp" 'fn-cvec-verdict-at)))
+    (unless (tree-mentions (cdddr host) 'fn-cvec-verdict-at)
+      (error "fn-owner-publication-verdict no longer answers fn-cvec-verdict-at's word"))
     (let ((words (remove :release
                          (remove :guard (remove-duplicates (keyword-leaves (car (last book))))))))
       (unless (and (= (length words) 2) (member :admissible words))
-        (error "fn-smr-verdict-at's words changed: ~s" words))
+        (error "fn-cvec-verdict-at's words changed: ~s" words))
       words)))
 (defparameter *at-capacity* (car (remove :admissible *verdict-words*)))
 
@@ -124,7 +124,7 @@
                       '(:action fn-owner-refuse-reservation)))
          "refused reservation was not consumed before refusal")
 
-  ;; At capacity the owner's verdict is fn-smr-verdict-at's refusing word: the
+  ;; At capacity the owner's verdict is fn-cvec-verdict-at's refusing word: the
   ;; deployed preflight refuses on it before a transaction id is taken, the
   ;; frontier advanced or anything prepared.
   (setf *verdict* *at-capacity* *prepare-result* :prepared *calls* nil)

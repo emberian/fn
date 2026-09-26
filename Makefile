@@ -339,6 +339,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-budget-article-tests \
 	books/store-maintenance-reserve \
 	tests/acl2/store-maintenance-reserve-tests \
+	books/store-capacity-vector \
+	tests/acl2/store-capacity-vector-tests \
+	books/store-capacity-config \
+	tests/acl2/store-capacity-config-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
