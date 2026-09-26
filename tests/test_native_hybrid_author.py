@@ -2,6 +2,7 @@
 """Opt-in saved-image vertical for the mandatory hybrid author profile."""
 import base64
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -357,17 +358,65 @@ class NativeHybridAuthorTest(unittest.TestCase):
                               str(self.ml_public))
         self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
-        # The source alone is under the article cap, but adding the required
-        # carrier would exceed it.  The ACL2 total bound refuses emission.
+        # The source alone is under this Store's article bound, but adding
+        # the required carrier exceeds it.  D27 (bounds P2/P4): the signer's
+        # bound is the codec's (fn-hsig-host-max-source-octets, and
+        # fn-hc-render-at-most at *fn-article-max-octets*, the record
+        # ceiling); the operator's bound is the Store profile's
+        # max-article-octets, decided at injection.  So the signer emits the
+        # carrier, and the node whose profile it exceeds refuses it: 441 with
+        # the size line, nothing stored, the Message-ID still free.
+        status = self.invoke("operator", str(self.config), "status")
+        self.assertEqual(status.returncode, 0, status.stderr.decode())
+        bound = int(re.search(rb"max-article-octets=(\d+)",
+                              status.stdout).group(1))
         large_source = self.root / "large-source.eml"
         large_source.write_bytes(source.read_bytes() + b"x" * 26000)
-        refused_output = self.root / "too-large-carried.eml"
-        refused = self.invoke(
+        self.assertLessEqual(large_source.stat().st_size, bound)
+        large_carried = self.root / "large-carried.eml"
+        signed = self.invoke(
             "hybrid-sign-carrier", str(self.principal), str(self.ed_public),
             str(self.ed_secret), str(self.ml_public), str(self.ml_private),
-            str(large_source), str(refused_output))
-        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
-        self.assertFalse(refused_output.exists())
+            str(large_source), str(large_carried))
+        self.assertEqual(signed.returncode, 0, signed.stderr.decode())
+        self.assertGreater(large_carried.stat().st_size, bound)
+
+        def post(octets):
+            with socket.create_connection(("127.0.0.1", self.port),
+                                          timeout=30) as sock:
+                stream = sock.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"POST\r\n")
+                self.assertTrue(stream.readline().startswith(b"340 "))
+                body = b"".join(
+                    (b"." + line if line.startswith(b".") else line)
+                    for line in octets.splitlines(keepends=True))
+                try:
+                    stream.write(body + b".\r\n")
+                except OSError:
+                    # The node refused and closed mid-body: the refusal
+                    # arriving early (test_native_owner's oversize case).
+                    pass
+                try:
+                    return stream.readline()
+                except OSError:
+                    return b""
+
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+            self.assertEqual(
+                post(large_carried.read_bytes()),
+                b"441 posting failed; the article exceeds the configured size\r\n")
+            # The same Message-ID, within the bound, is then accepted: the
+            # refusal was the size alone and stored nothing.
+            self.assertTrue(post(received).startswith(b"240 "))
+            self.assertIsNone(owner.poll(), "an oversize carrier stopped the owner")
+        finally:
+            self.stop_owner(owner)
 
     def test_local_revocation_targets_one_principal(self):
         other_principal = self.root / "other-principal.bin"
