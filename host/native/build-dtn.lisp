@@ -117,9 +117,13 @@
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
 ;; D31: the history requirement and the recovery catch-up: io.lisp
-;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
-;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+;; fnn-check-history-marker and fnn-recover call
+;; fn-hmr-open-verdict and fn-hmr-catch-up.
 (include-book "books/store-history-required")
+;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
+;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
+;; fn-sxp-import-plan.
+(include-book "books/store-export")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")

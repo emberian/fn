@@ -193,9 +193,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-budget-tests \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
-	books/store-profile-upgrade \
-	books/byte-store-profile-program \
-	tests/acl2/store-profile-upgrade-tests \
+	books/store-profile-facts \
+	books/store-export \
+	tests/acl2/store-export-tests \
+	tests/acl2/store-profile-facts-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \

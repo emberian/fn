@@ -958,3 +958,19 @@ Model logical transactions before selecting sector alignment, frame lengths,
 segment sizes, checkpoint layout, or a disk index. Then refine to bytes and the
 chosen platform contract. These choices are M2 exit criteria, not details to
 invent independently inside a file-writing adapter.
+
+## One format and the archive
+
+STO-028: A store has one format, `fn-store-8` (D34, fresh deploys). The open
+refuses a profile frame of any other format by name (`open refused
+reason=store-format: reinstall from the release and import`, exit 1) and
+translates nothing. `store export DIR` writes the committed history the open
+reads (the profile frame, the allocation frontier, each configuration record
+and each committed record, packs included, in sequence order) with a
+MANIFEST whose names and SHA-256 lines ACL2 renders; `store import DIR
+[--FIELD N ...]` builds a new store from it, refusing a MANIFEST mismatch, a
+record out of sequence and a profile the codec cannot represent by name, and
+admits it by the ordinary open (full replay) before it appears at its path.
+The import of an export replays the same history under the same profile
+(PRF-205). The MANIFEST is a transport check: the digest seam is abstract.
+

@@ -9,7 +9,7 @@
 
 (in-package "ACL2")
 (include-book "native-operator")
-(include-book "store-profile-upgrade")
+(include-book "store-profile-facts")
 
 (defun fn-native-mission-profile (name)
   (declare (xargs :guard t))

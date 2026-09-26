@@ -625,7 +625,7 @@
     },
     {
       "id": "STO-009",
-      "title": "A lost committed suffix is detected at open, and after migration a missing marker is damage",
+      "title": "A lost committed suffix is detected at open, and under a required marker a missing marker is damage",
       "specification": "specs/storage.md#the-committed-history-boundary",
       "milestone": "M5",
       "status": "implemented",
@@ -3326,6 +3326,49 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "STO-028",
+      "title": "A store has one format: another format is refused at open by name, and store export/import carry a store's history across a reinstall",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-205"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-profile-open.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_store_export.py"
+      ],
+      "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open."
+    },
+    {
+      "id": "HST-014",
+      "title": "A deploy is a reinstall: stop, remove, install the release, init or import, start; no upgrade verb, no versioned release directory, no store rollback",
+      "specification": "specs/host.md#hst-014-the-deploy-is-a-reinstall",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-205"
+      ],
+      "verification": [
+        "inspection",
+        "integration"
+      ],
+      "evidence": [
+        "docs/operator.md",
+        "packaging/install-native.sh",
+        "tools/runbooks/README.md",
+        "tests/test_native_store_export.py"
+      ],
+      "implementation_note": "D34. upgrade-profile, needs-upgrade, rollback-check, repair and packaging/upgrade-native.sh were removed."
     }
   ]
 }

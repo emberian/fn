@@ -8,16 +8,15 @@
 ;
 ; (1) Absence must not mean legacy once the marker is in use.  The profile
 ;     (books/byte-store-frame.lisp, format 8) carries `history-marker':
-;     `unmarked' (every format-7 store, and a format-8 store not migrated)
-;     or `required'.  Under `required' an absent marker is damage
+;     `unmarked' or `required'.  Under `required' an absent marker is damage
 ;     (`fn-hmr-open-verdict', :marker-missing); under `unmarked' the open is
-;     today's `fn-hm-open-verdict'.  The requirement becomes durable only by
-;     `store upgrade-profile', whose verdict (`fn-hmr-upgrade-verdict')
-;     refuses `required' unless the marker is present and counts exactly the
-;     reconstructed history; the command's open has written that marker
-;     already (case 2), so the command is the two-step: the marker program,
-;     then the profile program.  `init' never writes `required'
-;     (`fn-bs-profile-init-verdict').
+;     today's `fn-hm-open-verdict'.  The word is fixed at birth (D34: the
+;     profile is written once, by `init' or `store import', never rewritten;
+;     no step changes it, `fn-hmr-step-keeps-the-profile').  `init' refuses
+;     `required' (`fn-bs-profile-init-verdict': it writes no marker), so
+;     every store is born `unmarked' today: the `required' arm is
+;     unreachable-in-composition until a birth writes the covering marker of
+;     the empty history first (`fn-hmr-birth' models that birth; PKT-587).
 ;
 ; (2) A success answered after recovery, with no later commit.  A record can
 ;     be durable while its marker is not (the process died between
@@ -34,8 +33,7 @@
 ; open, from the replay paths of `fnn-recover') calls `fn-hmr-open-verdict'
 ; and `fn-hmr-catch-up'; `fnn-recover' writes the catch-up frame through
 ; `fnn-mark-committed' (the marker program and its five cuts) after its fifth
-; barrier and before the staging sweep; `fnn-command-upgrade-profile' calls
-; `fn-hmr-upgrade-verdict'.
+; barrier and before the staging sweep.
 ;
 ; The model.  A state is (COUNT MARKER ACKED PROFILE LIVE): D, the marker's
 ; observation, A as a count (every record below it has been answered as a
@@ -43,13 +41,10 @@
 ; process has completed an open and not since crashed or become uncertain.
 ; Crash images follow the byte model: the marker's is `fn-hm-crash-image'
 ; (books/byte-store-marker-program.lisp derives it,
-; fn-bs-marker-crash-is-the-history-table), the profile's is old or new
-; (books/byte-store-profile-program.lisp
-; fn-bs-profile-program-crash-is-old-or-new), which the model takes at every
-; profile cut.
+; fn-bs-marker-crash-is-the-history-table).
 (in-package "ACL2")
 (include-book "store-history-marker")
-(include-book "store-profile-upgrade")
+(include-book "store-profile-facts")
 
 ; -----------------------------------------------------------------------------
 ; The decisions the host calls.
@@ -81,20 +76,6 @@
            (not (fn-hmr-coveringp observation record-count)))
       (fn-hm-encode record-count)
     nil))
-
-; `store upgrade-profile': the profile verdict, and `required' only over a
-; marker that counts the reconstructed history.  A store already `required'
-; needs no gate (its open refused an absent marker).
-(defun fn-hmr-upgrade-verdict (current target observation record-count)
-  (declare (xargs :guard t))
-  (let ((verdict (fn-profile-upgrade-verdict current target)))
-    (if (and (consp verdict) (equal (car verdict) :upgrade)
-             (not (fn-bs-profile-marker-requiredp current))
-             (fn-bs-profile-marker-requiredp
-              (fn-profile-upgrade-target current target))
-             (not (fn-hmr-coveringp observation record-count)))
-        (list :refused :history-marker-not-covering)
-      verdict)))
 
 ; -----------------------------------------------------------------------------
 ; The model.
@@ -129,10 +110,6 @@
 ;                         because the marker already covers the history)
 ;   (:resolve K)          a live process answers that record K is stored
 ;                         (a retry resolved as already stored, a 240)
-;   (:migrate TARGET C)   `store upgrade-profile TARGET' in a live process:
-;                         on an :upgrade verdict the profile program runs,
-;                         and its crash image is the old or the new profile
-;                         (C); the offline command then exits
 (defun fn-hmr-step (op st)
   (declare (xargs :guard t :verify-guards nil))
   (let ((count (fn-hmr-count st)) (marker (nth 1 st))
@@ -168,14 +145,6 @@
       (if (and live (natp a1) (< a1 count))
           (fn-hmr-state count marker (max acked (1+ a1)) profile live)
         st))
-     ((equal word :migrate)
-      (fn-hmr-state count marker acked
-                    (if (and live a2
-                             (equal (car (fn-hmr-upgrade-verdict profile a1 marker count))
-                                    :upgrade))
-                        (fn-profile-upgrade-target profile a1)
-                      profile)
-                    nil))
      (t st))))
 
 (defun fn-hmr-run (ops st)
@@ -260,91 +229,10 @@
             :in-theory (disable fn-hm-encode fn-hm-decode fn-hmr-catch-up
                                 fn-hmr-catch-up-shape fn-hmr-encode-decodes)))))
 
-; A migrate step that writes `required' over an `unmarked' profile had a
-; covering marker (the verdict's gate).
-(local
- (defthm fn-hmr-upgrade-verdict-gate
-   (implies (and (equal (car (fn-hmr-upgrade-verdict current target obs k)) :upgrade)
-                 (not (fn-bs-profile-marker-requiredp current))
-                 (fn-bs-profile-marker-requiredp
-                  (fn-profile-upgrade-target current target)))
-            (fn-hmr-coveringp obs k))
-   :hints (("Goal" :in-theory (disable fn-profile-upgrade-verdict
-                                       fn-profile-upgrade-target
-                                       fn-hmr-coveringp
-                                       fn-bs-profile-marker-requiredp)))))
-
-; An upgrade keeps `required'.
-(local
- (defthm fn-hmr-valid-profile-marker-word
-   (implies (fn-bs-profile-validp values)
-            (<= (fn-bs-pf 14 values) 1))
-   :rule-classes :linear
-   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp fn-bs-profile-invalid-reason)
-                                   (fn-bs-pf fn-frame-values-okp
-                                    fn-record-encoded-octets-ceiling))))))
-
-(local
- (defthm fn-hmr-upgrade-verdict-is-the-profile-verdict
-   (implies (equal (car (fn-hmr-upgrade-verdict current target obs k)) :upgrade)
-            (equal (car (fn-profile-upgrade-verdict current target)) :upgrade))
-   :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (e/d (fn-hmr-upgrade-verdict)
-                                   (fn-profile-upgrade-verdict fn-hmr-coveringp
-                                    fn-profile-upgrade-target
-                                    fn-bs-profile-marker-requiredp))))))
-
-(local
- (defthm fn-hmr-upgrade-is-an-upgrade
-   (implies (equal (car (fn-profile-upgrade-verdict current target)) :upgrade)
-            (fn-profile-upgradep current (fn-profile-upgrade-target current target)))
-   :hints (("Goal" :use ((:instance fn-profile-upgrade-verdict-writes-only-upgrades))
-            :in-theory (disable fn-profile-upgrade-verdict fn-profile-upgrade-target
-                                fn-profile-upgradep
-                                fn-profile-upgrade-verdict-writes-only-upgrades
-                                fn-bs-config-decode (:e fn-bs-config-decode))))))
-
-(local
- (defthm fn-hmr-upgradep-marker-field
-   (implies (fn-profile-upgradep old new)
-            (and (fn-bs-profile-validp new)
-                 (<= (fn-bs-profile-field 14 old) (fn-bs-profile-field 14 new))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-profile-upgradep fn-profile-bound)
-                                   (fn-bs-profile-field fn-bs-profile-validp
-                                    fn-bs-profile-admittedp))))))
-
-(local
- (defthm fn-hmr-valid-marker-field
-   (implies (fn-bs-profile-validp new)
-            (<= (fn-bs-profile-field 14 new) 1))
-   :rule-classes nil
-   :hints (("Goal" :use ((:instance fn-hmr-valid-profile-marker-word (values new)))
-            :in-theory (e/d (fn-bs-profile-field)
-                            (fn-bs-profile-validp fn-bs-pf
-                             fn-hmr-valid-profile-marker-word))))))
-
-(local
- (defthm fn-hmr-upgrade-keeps-the-requirement
-   (implies (and (equal (car (fn-hmr-upgrade-verdict current target obs k)) :upgrade)
-                 (fn-bs-profile-marker-requiredp current))
-            (fn-bs-profile-marker-requiredp
-             (fn-profile-upgrade-target current target)))
-   :hints (("Goal"
-            :use ((:instance fn-hmr-upgradep-marker-field
-                             (old current)
-                             (new (fn-profile-upgrade-target current target)))
-                  (:instance fn-hmr-valid-marker-field
-                             (new (fn-profile-upgrade-target current target))))
-            :in-theory (e/d (fn-bs-profile-marker-requiredp)
-                            (fn-profile-upgrade-verdict fn-hmr-upgrade-verdict
-                             fn-profile-upgrade-target fn-profile-upgradep
-                             fn-bs-profile-field fn-bs-profile-validp))))))
-
-(local (in-theory (disable fn-hmr-upgrade-verdict fn-hmr-catch-up
+(local (in-theory (disable fn-hmr-catch-up
                            fn-hmr-coveringp fn-hmr-open-verdict
                            fn-hm-open-verdict fn-hm-decode fn-hm-encode
-                           fn-hm-after-commit fn-profile-upgrade-target
+                           fn-hm-after-commit
                            fn-bs-profile-marker-requiredp fn-hmr-catch-up-shape
                            (:e fn-hm-encode) (:e fn-hm-decode) (:e fn-hmr-catch-up)
                            (:e fn-hm-after-commit) (:e fn-hmr-coveringp)
@@ -354,7 +242,7 @@
 ; Keystone 1: A <= M <= D and the live coverage are invariant.  Every step --
 ; a burn, an uncertain publication, a commit crashed at any marker cut or
 ; finished, an open crashed at any catch-up cut or completed, a resolution
-; answered, a migration crashed on either side of the profile's rename --
+; answered --
 ; keeps the open admitted, every answered record below the marker, and a
 ; live process's marker equal to the history.
 (defthm fn-hmr-step-preserves-the-invariant
@@ -395,7 +283,7 @@
                                fn-hmr-invariant-below-an-answer-refuses))))
 
 ; Keystone 3: a required store never admits an absent marker.  The
-; requirement survives every step (an upgrade never lowers it), so whatever
+; requirement survives every step (no step writes the profile), so whatever
 ; history follows, deleting the marker is refused as :marker-missing.
 (local
  (defthm fn-hmr-step-keeps-the-requirement
@@ -416,64 +304,40 @@
            :in-theory (e/d (fn-hmr-open-verdict)
                            (fn-hmr-run fn-hmr-run-keeps-the-requirement)))))
 
-; Keystone 4: the requirement becomes durable only after a covering marker.
-; The one step that turns an `unmarked' profile `required' is a migration, in
-; a live process (whose open wrote or found the marker), over a marker that
-; counts exactly the history, and it leaves that marker as it was.
-(defthm fn-hmr-requirement-follows-a-covering-marker
-  (implies (and (not (fn-bs-profile-marker-requiredp (nth 3 st)))
-                (fn-bs-profile-marker-requiredp (nth 3 (fn-hmr-step op st))))
-           (and (equal (car op) :migrate)
-                (nth 4 st)
-                (fn-hmr-coveringp (nth 1 st) (fn-hmr-count st))
-                (equal (nth 1 (fn-hmr-step op st)) (nth 1 st))))
-  :hints (("Goal" :in-theory (disable fn-hmr-covering-means))))
+; Keystone 4 (D34): the profile is the birth profile for the whole history;
+; no step writes it.
+(defthm fn-hmr-step-keeps-the-profile
+  (equal (nth 3 (fn-hmr-step op st)) (nth 3 st)))
 
-; Keystone 5: migration of a store at rest is exactly the two-step.  From an
-; `unmarked' store no process holds (every open is a new process), two steps
-; reach `required' only as the open that makes the marker count the history
-; (the catch-up program, run to its barrier) followed by the profile program
-; of `store upgrade-profile'; the marker is then the covering one.
-(local
- (defthm fn-hmr-catch-up-covers
-   (implies (fn-hmr-catch-up p obs k)
-            (fn-hmr-coveringp (list :present (fn-hmr-catch-up p obs k)) k))))
+(defthm fn-hmr-run-keeps-the-profile
+  (equal (nth 3 (fn-hmr-run ops st)) (nth 3 st))
+  :hints (("Goal" :in-theory (disable fn-hmr-step))))
 
-(local
- (defthm fn-hmr-live-only-after-an-open
-   (implies (and (not (nth 4 st)) (nth 4 (fn-hmr-step op st)))
-            (and (equal (car op) :open)
-                 (fn-hmr-coveringp (nth 1 (fn-hmr-step op st))
-                                   (fn-hmr-count (fn-hmr-step op st)))))
-   :hints (("Goal" :in-theory (e/d (fn-hm-crash-image)
-                                   (fn-hmr-covering-means))))))
+; The birth of a store (`init', or `store import''s init): no record, nothing
+; answered, no live process; under `unmarked' no marker (the birth `init'
+; runs today), under `required' the covering marker of the empty history
+; (`fn-hmr-birth-marker': the birth PKT-587 proposes; unreachable-in-
+; composition until then).  Keystone 5: the birth state holds the invariant,
+; so keystones 1 to 3 apply from it.
+(defun fn-hmr-birth-marker (profile)
+  (declare (xargs :guard t))
+  (if (fn-bs-profile-marker-requiredp profile) (fn-hm-encode 0) nil))
 
-(local
- (defthm fn-hmr-step-keeps-rest-without-requirement
-   (implies (and (not (nth 4 st))
-                 (not (fn-bs-profile-marker-requiredp (nth 3 st))))
-            (not (fn-bs-profile-marker-requiredp (nth 3 (fn-hmr-step op st)))))
-   :hints (("Goal" :use ((:instance fn-hmr-requirement-follows-a-covering-marker))
-            :in-theory (disable fn-hmr-requirement-follows-a-covering-marker)))))
+(defun fn-hmr-birth (profile)
+  (declare (xargs :guard t))
+  (fn-hmr-state 0
+                (if (fn-bs-profile-marker-requiredp profile)
+                    (list :present (fn-hmr-birth-marker profile))
+                  '(:absent))
+                0 profile nil))
 
-(defthm fn-hmr-legacy-store-migrates-by-the-two-step
-  (let ((mid (fn-hmr-step op1 st)))
-    (implies (and (not (nth 4 st))
-                  (not (fn-bs-profile-marker-requiredp (nth 3 st)))
-                  (fn-bs-profile-marker-requiredp (nth 3 (fn-hmr-step op2 mid))))
-             (and (equal (car op1) :open)
-                  (equal (car op2) :migrate)
-                  (fn-hmr-coveringp (nth 1 mid) (fn-hmr-count mid))
-                  (equal (nth 1 (fn-hmr-step op2 mid)) (nth 1 mid)))))
-  :hints (("Goal" :use ((:instance fn-hmr-requirement-follows-a-covering-marker
-                                   (op op2) (st (fn-hmr-step op1 st)))
-                        (:instance fn-hmr-step-keeps-rest-without-requirement
-                                   (op op1))
-                        (:instance fn-hmr-live-only-after-an-open (op op1)))
-           :in-theory (disable fn-hmr-step fn-hmr-coveringp fn-hmr-count
-                               fn-hmr-requirement-follows-a-covering-marker
-                               fn-hmr-step-keeps-rest-without-requirement
-                               fn-hmr-live-only-after-an-open))))
+(defthm fn-hmr-birth-holds-the-invariant
+  (fn-hmr-invp (fn-hmr-birth profile))
+  :hints (("Goal" :use ((:instance fn-hmr-encode-decodes (n 0)))
+           :in-theory (e/d (fn-hmr-open-verdict fn-hm-open-verdict
+                            fn-hmr-birth-marker fn-hmr-marker-count)
+                           (fn-hmr-encode-decodes fn-hm-encode fn-hm-decode
+                            (:e fn-hm-encode) (:e fn-hm-decode))))))
 
 ; Export: the decisions stay executable; the model closes.
 (in-theory (disable fn-hmr-step fn-hmr-run fn-hmr-invp fn-hmr-marker-count

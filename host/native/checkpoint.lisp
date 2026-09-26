@@ -104,7 +104,7 @@ covers (the chain's coverage for SUMMARY)."
            (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
                                  generations (fnn-store-config store))))
       (when (eq generation :exhausted)
-        (fnn-refuse "pack generations at the profile's capacity (max-transactions + 1): retire older generations or raise it with store upgrade-profile"))
+        (fnn-refuse "pack generations at the profile's capacity (max-transactions + 1): retire older generations or reinstall with a larger max-transactions: store export, then store import --max-transactions N"))
       (unless (and (integerp generation) (>= generation 0)
                    (listp captured) (eq (first captured) :ok)
                    (fnn-octet-list-p (second captured))
@@ -435,7 +435,7 @@ selection marker (`fn-cpp-generation-capacity')."
                                                generations (fnn-store-config store))))
                          (case answer
                            (:bad (fnn-fault "checkpoint generation namespace is not gap-free"))
-                           (:exhausted (fnn-refuse "checkpoint generations at the profile's capacity (max-transactions + 1); raise it with store upgrade-profile"))
+                           (:exhausted (fnn-refuse "checkpoint generations at the profile's capacity (max-transactions + 1); reinstall with a larger max-transactions: store export, then store import --max-transactions N"))
                            (otherwise (fnn-nat answer)))))
            (frame (fnn-checkpoint-capture records store))
            (stage (fnn-join (fnn-staging store)
@@ -452,7 +452,7 @@ selection marker (`fn-cpp-generation-capacity')."
                      (= (second authorization) generation))
           (case (second authorization)
             (:occupied (fnn-fault "checkpoint next generation is already occupied"))
-            (:exhausted (fnn-refuse "checkpoint generations at the profile's capacity (max-transactions + 1); raise it with store upgrade-profile"))
+            (:exhausted (fnn-refuse "checkpoint generations at the profile's capacity (max-transactions + 1); reinstall with a larger max-transactions: store export, then store import --max-transactions N"))
             (otherwise (fnn-fault "ACL2 refused checkpoint publication authority: ~s"
                                   authorization))))
         (setf (fnn-store-fenced store) t)

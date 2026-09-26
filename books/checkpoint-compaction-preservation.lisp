@@ -29,7 +29,7 @@
 ; configuration records; reclaim writes none of the three.
 (in-package "ACL2")
 (include-book "checkpoint-compaction")
-(include-book "store-profile-upgrade")
+(include-book "store-profile-facts")
 (include-book "byte-store-compaction-correspondence")
 
 (local (in-theory (disable fn-cc-decode-exact)))
@@ -521,22 +521,7 @@
 
 ; -----------------------------------------------------------------------------
 ; One owner of the namespace bound: the reclaim plan and the coverage check
-; read the profile's max_transactions the way the open path does, so an offline
-; profile upgrade keeps both answers.
-
-(defthm fn-ccp-profile-upgrade-keeps-reclaim-plan
-  (implies (and (fn-profile-upgradep old new)
-                (not (equal (fn-bs-pack-reclaim-plan
-                             names (fn-bs-profile-max-transactions old) lower)
-                            :invalid)))
-           (equal (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions new) lower)
-                  (fn-bs-pack-reclaim-plan names (fn-bs-profile-max-transactions old) lower)))
-  :hints (("Goal" :use ((:instance fn-profile-upgrade-keeps-txn-observation
-                                   (selected-lower lower)))
-           :in-theory (e/d (fn-bs-pack-reclaim-plan)
-                           (fn-profile-upgrade-keeps-txn-observation
-                            fn-bs-profile-max-transactions
-                            fn-profile-upgradep fn-profile-txn-observation)))))
+; read the profile's max_transactions the way the open path does.
 
 (defthm fn-ccp-larger-count-keeps-coverage
   (implies (and (equal (car (fn-ccp-coverage-framed framed digest old frontier))

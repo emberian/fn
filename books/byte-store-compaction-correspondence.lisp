@@ -3,7 +3,7 @@
 (include-book "byte-store-programs")
 (include-book "byte-store-txn-name")
 (include-book "checkpoint-compaction")
-(include-book "store-profile-upgrade")
+(include-book "store-profile-facts")
 
 ; The plan's gate is a four-conjunct wrapper; the proofs below reason about
 ; the scan under it.
@@ -22,7 +22,7 @@
 ; names are removed; missing covered names are an interrupted prior attempt,
 ; and the selected observer separately requires an exact contiguous suffix.
 ; The namespace bound and grammar are the open path's own gate,
-; `fn-profile-txn-observation' (books/store-profile-upgrade): the plan reads
+; `fn-profile-txn-observation' (books/store-profile-facts): the plan reads
 ; the same observation the next open reads, with one owner of field 4.
 (defun fn-bs-pack-reclaim-plan (names maximum selected-lower)
   (declare (xargs :guard t))
