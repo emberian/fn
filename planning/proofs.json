@@ -7335,6 +7335,30 @@
         "planning/evidence/catalog-slice-2026-09-26.md"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); the continuation lane takes it (PKT-585)."
+    },
+    {
+      "id": "PRF-194",
+      "title": "HELP lists the served command table: a keyword HELP does not list is answered 500 by the served step, submits nothing and changes nothing; HELP's lines are the table's rows",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-038"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "statement": "books/nntp-help.lisp. KEYSTONE fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list: for every AS, LINE, ARCHIVE, INDEX, VERDICTS, CONFIG, OBSERVATION and INJECTION, if (fn-auth-sessionp AS), AS is not handshaking TLS, its peer session awaits no transit article, its POST session awaits no body, its reader session is open (openp = t), (fn-nntp-command-inputp LINE), the first token of LINE is a keyword token, the arguments are within RFC 3977 section 3.1's bound, and (not (fn-nntp-served-keywordp keyword)), then (fn-auth-step-pinned AS ... (list :command LINE)) has effects (fn-auth-single AS \"500 command not recognized\"), no submission, and session AS. fn-auth-step-pinned is the dispatcher books/served.lisp fn-served-dispatch calls for every framed command line (host/native/owner.lisp fnn-owner-serve-client -> fn-own-read -> fn-served-step -> fn-served-feed -> fn-served-dispatch). fn-nntp-served-keywordp is membership (RFC 3977 section 3.1 case-insensitively, fn-nntp-keywordp) in *fn-nntp-served-command-table*, 28 keywords in six rows; fn-nntp-served-keywordp-unfolds writes it out as the disjunction the dispatchers test. fn-nntp-help-renders-the-served-command-table-by-definition: (fn-nntp-help SESSION) = (fn-nntp-multi SESSION \"100 help text follows\" (fn-nntp-help-table-lines *fn-nntp-served-command-table*)). Not proved (PKT-571): the converse, that each listed keyword draws a reply other than 500 for every argument list; tests/acl2/nntp-help-tests.lisp checks it by evaluation on a served session for all 28.",
+      "evidence": [
+        "books/nntp-help.lisp",
+        "tests/acl2/nntp-help-tests.lisp",
+        "books/nntp-responses.lisp",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "progress_note": "Lane reader-clients (2026-09-26). REPL on persvati (~/fn-gates/reader-clients-repl): books/nntp-responses admitted (339 forms); books/nntp-help's 20 forms and tests/acl2/nntp-help-tests' forms admitted against dev's cached closure with fn-nntp-help redefined to the new lines in the session (the certified closure has the old HELP); the keystone 0.5 s, the slowest must-fail 5.6 s. Teeth: a reachable witness (XPATH, RFC 2980 section 2.10, on a served session) asserting the antecedent and the whole conclusion; a must-fail per hypothesis (nine) with the keystone's hints; concrete removal values for seven hypotheses (handshaking, awaiting a POST body, closed, over-long line, non-keyword, over-long argument, a listed keyword). Certification is the batch's.",
+      "events": [
+        "fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list",
+        "fn-nntp-help-renders-the-served-command-table-by-definition",
+        "fn-nntp-served-keywordp-unfolds"
+      ]
     }
   ]
 }

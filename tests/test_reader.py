@@ -369,7 +369,7 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(sock, b"501 unsupported LIST variant\r\n")
 
     def test_help_lists_every_dispatched_command(self):
-        """RFC 3977 section 7.2.  The list is the dispatcher's, not a subset."""
+        """RFC 3977 section 7.2.  The list is the served command table (PRF-194)."""
         sock = self.reader.connect()
         self.addCleanup(sock.close)
         sock.sendall(b"HELP\r\n")
@@ -377,9 +377,11 @@ class ReaderSocketTests(unittest.TestCase):
             sock,
             b"100 help text follows\r\n"
             b"CAPABILITIES HELP QUIT MODE DATE POST\r\n"
+            b"AUTHINFO STARTTLS XREDEEM\r\n"
             b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS\r\n"
             b"ARTICLE HEAD BODY STAT\r\n"
-            b"OVER XOVER HDR XHDR XPAT\r\n.\r\n")
+            b"OVER XOVER HDR XHDR XPAT\r\n"
+            b"IHAVE CHECK TAKETHIS\r\n.\r\n")
 
     def test_newnews_transcript_over_a_real_socket(self):
         """RFC 3977 section 7.4 framing, argument forms and refusals.

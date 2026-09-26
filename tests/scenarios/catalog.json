@@ -3684,6 +3684,32 @@
       "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423.",
       "evidence": [],
       "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585)."
+    },
+    {
+      "id": "SCN-123",
+      "title": "A stranger's HELP names every command the node serves, AUTHINFO, STARTTLS and XREDEEM included, and a command it does not name is answered 500",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-038"
+      ],
+      "steps": [
+        "Open a reader connection to a native node (TLS or clear) and send HELP before any login.",
+        "Send each keyword HELP listed, alone on its line, and one it did not list (XPATH)."
+      ],
+      "expected": [
+        "HELP answers 100 and the six lines of specs/nntp.md's NNT-038 section, then the dot.",
+        "No listed keyword draws 500 command not recognized; XPATH does."
+      ],
+      "evidence": [
+        "tests/acl2/nntp-help-tests.lisp",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/acl2/nntp-help-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/reader-clients-2026-09-26.md"
+      }
     }
   ]
 }
