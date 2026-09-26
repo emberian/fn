@@ -5,7 +5,7 @@
 ; carries, and neither can update what it reads.  Raw Lisp transports the
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
-(include-book "../books/native-live-status")
+(include-book "../books/native-health")
 
 (defun fn-native-live-status-host-offline (kind profile obs state)
   ; `status', `pins', `obligations' and `peer list' with no owner running:
@@ -16,7 +16,7 @@
                          (f-get-global 'fn-store-cfg state)
                          obs))
 
-(defun fn-native-live-status-host-answer (request cached obs state)
+(defun fn-native-live-status-host-answer (request cached obs min state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -35,13 +35,19 @@
              (buffer
               (or stored
                   (fn-nls-buffer
-                   (fn-nls-live-report kind
-                                       (fn-owner-store-profile state)
-                                       (fn-owner-ocfg state)
-                                       (if (boundp-global 'fn-owner-record-octets state)
-                                           (f-get-global 'fn-owner-record-octets state)
-                                         nil)
-                                       obs)))))
+                   ;; :health is books/native-health.lisp's report
+                   ;; (fn-nh-live-report), every other kind the status
+                   ;; report (fn-nls-live-report).  MIN is the owner's
+                   ;; [alerts] headroom_min_percent, ACL2's projection of
+                   ;; the run plan the host carried
+                   ;; (fn-native-operator-result-health-min-percent).
+                   (fn-nh-answer-report kind
+                                        (fn-owner-store-profile state)
+                                        (fn-owner-ocfg state)
+                                        (if (boundp-global 'fn-owner-record-octets state)
+                                            (f-get-global 'fn-owner-record-octets state)
+                                          nil)
+                                        obs min)))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 
@@ -68,3 +74,22 @@
 (defun fn-native-live-status-host-max-restarts ()
   (declare (xargs :mode :program))
   *fn-nls-max-restarts*)
+
+;; PRF-112: the health verdict (books/native-health.lisp).
+(defun fn-native-health-host-offline (profile min state)
+  ; `health' with no owner running: the Store this process replayed; the
+  ; feed table lives only in a running owner and is reported unobserved.
+  (declare (xargs :stobjs state :mode :program))
+  (fn-nh-offline-report profile (f-get-global 'fn-store-sn state)
+                        (f-get-global 'fn-store-cfg state) min))
+
+(defun fn-native-health-host-fenced (route lock clone-fence-present)
+  ; The fenced report when the host's observations say the Store is fenced
+  ; (fn-nh-fence-of), else nil and the host opens the Store.
+  (declare (xargs :mode :program))
+  (let ((reason (fn-nh-fence-of route lock clone-fence-present)))
+    (if reason (fn-nh-fenced-report reason) nil)))
+
+(defun fn-native-health-host-exit (octets)
+  (declare (xargs :mode :program))
+  (fn-nh-report-exit octets))

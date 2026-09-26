@@ -2064,6 +2064,30 @@
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
     },
     {
+      "id": "HST-007",
+      "title": "The operator's health names which of eight things is wrong, each with its own line and exit code",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-112"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/operator.lisp",
+        "host/native/control.lisp",
+        "planning/evidence/operator-health-2026-09-25.md"
+      ],
+      "implementation_note": "`operator CONFIG health` asks the owner whose control socket the configuration names (FNLS kind 6, fn-nh-live-report over its Store, configuration and feed table, with its run plan's [alerts] headroom_min_percent); with no owner answering, the host observes the writer lock and the clone fence file and ACL2 (fn-nh-fence-of) either renders the fenced report or the Store is opened read-only (fn-nh-offline-report, the feed states unobserved). Exit 20 to 27 names the first held state, 19 some unobserved, 0 all clear; the host reads the code back from the octets it prints (fn-nh-report-exit).",
+      "note": "The mandate's section 11 list. Stranded transfer and unavailable peer are read from the NNTP owner's outbound feed table; the DTN image's BP forwarding rows (`bp-node resume`) and contacts are not yet a source (open, in the evidence)."
+    },
+    {
       "id": "STO-014",
       "title": "Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs",
       "specification": "specs/storage.md#content-reclamation-under-d13-sto-014",

@@ -350,6 +350,52 @@ configuration plan and authentication startup. Native SIGTERM enters the owner
 stop boundary, wakes and joins connection, control, and feed workers, closes
 TLS and journals, and preserves the owner's exit outcome.
 
+### Health: which of eight things is wrong
+
+`operator CONFIG health` (HST-007) answers with one line per state, always
+in this order, then exits with a code that names the first one held:
+
+```
+$ fn-native operator fn.toml health
+health exit=22 state=unqualified-profile
+fenced clear
+exhausted clear
+unqualified-profile held format=8 development
+space-pressure clear
+no-route clear
+stranded-transfer clear
+unavailable-peer held peers: hub
+receipt-debt clear
+accepted operator health
+```
+
+| exit | state | held when | what to do |
+|---|---|---|---|
+| 20 | `fenced` | a clone fence awaits its incarnation rollover; a process holds the store's writer lock and the configured control socket does not reach it; or the socket accepted and did not answer | find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
+| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
+| 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
+| 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
+| 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
+| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection | check the peer's host and port (`peer list`) and its reachability |
+| 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
+| 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
+| 0 | (healthy) | every state is `clear` | |
+
+Each state is its own line, and several can hold at once; the exit code is
+the first held one in the table's order, so a script can branch on it and
+a person reads every line. `unobserved` is never `clear`: with no owner
+running the feed table does not exist, and a fenced store is not opened, so
+those lines say why they were not observed.
+
+With the control socket live, the running owner renders the verdict from the
+Store, configuration and feed table it carries, under its mutex, with the
+`headroom_min_percent` of the `fn.toml` it was started with; offline the
+store is opened read-only with the current `fn.toml`'s threshold. The
+first line (`health exit=NN`) is what the command exits with: ACL2 renders
+it and reads it back from the same octets
+(`fn-nh-report-exit-of-render`, books/native-health.lisp).
+
 ### Install the native production entry
 
 Build or select a source-pinned frozen image with `packaging/freeze-native-image.sh`

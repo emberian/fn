@@ -192,6 +192,9 @@
 (defun fn-native-operator-host-result-status-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status-control-path-octets result))
+(defun fn-native-operator-host-result-health-min-percent (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-health-min-percent result))
 
 ;; PKT-096 and PKT-097.
 (defun fn-native-operator-host-preflight-needs-config-path-p (result)

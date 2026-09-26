@@ -1942,6 +1942,30 @@
         "tests/reclaim_lifecycle_native.py",
         "planning/evidence/reclaim-lifecycle-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-070",
+      "title": "Operator health names each of its states on a scratch node, with its own line and exit code",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-007"
+      ],
+      "steps": [
+        "Initialize a scratch node with the development profile and run `health` offline.",
+        "Upgrade the profile, start the owner, add an outbound peer on a closed port and post into its groups; run `health`.",
+        "Raise [alerts] headroom_min_percent to 100; run `health`.",
+        "Undertake a BP forwarding obligation with no bp-route; run `health`; add a route; run `health`.",
+        "Remove the control socket of a running owner; run `health`."
+      ],
+      "expected": [
+        "Each run prints eight lines in the fixed order and exits with the code of the first held state: 22 unqualified-profile, 26 unavailable-peer, 23 space-pressure, 24 no-route then 27 receipt-debt, 20 fenced (store-held); offline the feed states are unobserved, never clear."
+      ],
+      "evidence": [
+        "planning/evidence/operator-health-2026-09-25/native.sh",
+        "planning/evidence/operator-health-2026-09-25.md",
+        "tests/acl2/native-health-tests.lisp"
+      ]
     }
   ]
 }
