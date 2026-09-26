@@ -259,7 +259,107 @@ SHA-256s below).
 
 ## 5. The measurement: N = 40,000 x 2 KiB on tmpfs, dynamic space unchanged
 
-(filled in below from the run)
+The case that could not run: `tools/service_envelope.py measure --steps load
+--load-to 40000` (the scale-1m profile, 2 KiB articles, one in 256
+hybrid-signed, the envelope's own harness) on hbox, tmpfs (`/dev/shm`), ONE
+owner process posting from 0 with no restart, in `ccs-t40k-load-a` under
+`systemd-run --user -p MemoryMax=40G -p MemorySwapMax=0`, the production
+image of `native-auto2` (`fn-host.core`
+229a09efeae567061a8557573ea41f6dd28b0328284bace8390e969631d280ad) whose
+launcher passes `--dynamic-space-size 32000` exactly as before (not raised;
+the checkpoint interval K not raised; the store not built offline). Driver
+`ccs-40k.sh` beside the JSON. The box carried a qualification
+(`qual-dfa810fc`, three units at MemoryMax=24G, about 1 GB used each) and
+its certify run; load average about 7.
+
+**The owner reached N = 40,000 alive**: 40,000 POSTs in 669.8 s (14:47:00Z
+to 14:58:10Z), 994 s of owner CPU, memory at the end RSS 4.25 GB, **VmHWM
+5.55 GB** (`hwm_kib` 5,549,868); the unit's `MemoryPeak` 5.8 GB. Before
+(same harness, the image after served-path-scale): the owner died at
+32,729 with the heap at 31.7 GB and, restarted, at 36,208 with VmHWM 29.7 GB.
+The high-water mark is 5.4 times lower and the two death points are passed
+without a restart.
+
+**Every automatic checkpoint** the owner published (its `CHECKPOINT auto`
+lines, `t40k-load-a-owner.stderr`): sequence, suffix, octets, ms:
+
+| sequence | suffix | octets | ms |
+| ---: | ---: | ---: | ---: |
+| 2,131 | 2,131 | 16,767,220 | 2,571 |
+| 4,226 | 2,095 | 33,296,133 | 3,849 |
+| 6,447 | 2,221 | 50,762,060 | 6,196 |
+| 8,577 | 2,130 | 67,524,502 | 9,118 |
+| 10,661 | 2,084 | 83,968,422 | 9,200 |
+| 12,887 | 2,226 | 101,473,111 | 11,335 |
+| 14,998 | 2,111 | 118,125,830 | 15,670 |
+| 17,058 | 2,060 | 134,347,259 | 21,508 |
+| 19,118 | 2,060 | 150,568,678 | 21,470 |
+| 21,211 | 2,093 | 167,045,207 | 26,925 |
+| 23,319 | 2,108 | 183,637,701 | 34,427 |
+| 25,428 | 2,109 | 200,237,915 | 35,422 |
+| 27,522 | 2,094 | 216,759,214 | 37,933 |
+| 29,593 | 2,071 | 233,065,668 | 42,049 |
+| 31,642 | 2,049 | 249,202,062 | 46,936 |
+| 33,782 | 2,140 | 266,041,922 | 39,673 |
+| 35,841 | 2,059 | 282,255,611 | 46,884 |
+| 37,911 | 2,070 | 298,554,335 | 57,787 |
+| 39,996 | 2,085 | 314,969,009 | 54,164 |
+
+Nineteen publications, none deferred (the scale-1m budget is about 12.9 GB;
+the largest file 315.0 MB), none refused, none failed; the octets column is
+ACL2's estimate, which is the file's length (`fn-ockb-file-len-is-len-file-octets`)
+and what `fnn-plan-write-all` wrote. The capture's time still grows with N
+(2.6 s at 2,131 to 54 to 58 s at 37,911 and 39,996: the freeze's index-records walk, the
+three walks over the tree and the encode are each linear in the history,
+and the history is octet lists on the heap; before, 90.1 s at 29,453 with
+the heap dying), and it runs on the publication thread while the served
+path continues: the load's POST rate did not pause visibly at the captures
+(1,000 POSTs every 15 to 30 s throughout). No `Heap exhausted` line; no
+connection lost; no uncertain POST (the load's `uncertain_post_was_stored`
+never set). Files beside this record: `t40k-load-a.json`
+(0ab2a65304ce40ed2ce639e4c550216863b0c75338fda60703059a7d23c556a7, the
+harness's rows: the open, the load row with `memory`), `t40k-load-a-owner.stderr`
+(587dd761031f1b44c24b5fb9f6a97100744d02ae9b58f488298507e229e01193: the
+owner's 40,000 `accepted` lines, its OWNER-OPEN and the nineteen CHECKPOINT
+lines), `ccs-40k.sh` (the driver).
+
+**The reopen from the automatic checkpoint** (`ccs-t40k-reopen-a`, the same
+unit shape, `--steps restart`): the owner opened the 40,000-article store
+with `OWNER-OPEN open=checkpoint:39996 suffix=5` in 63.4 s (63.3 s of owner
+CPU), RSS 8.21 GB, VmHWM 8.45 GB, reading the 314,969,009-octet file the
+owner had published (`t40k-reopen-a.json`
+fc1c2cabf93374a3ae2a4200eb7d15fce7836e2a87b87388729d0036d75e68b3,
+`t40k-reopen-a-owner.stderr`
+803d1792b407f92c75adb8bf8deb6f8c88b01a0d44251aa591911182b4b171a4). The
+reader is untouched by this lane (rep-wave-d-3's buffer decoder), and its
+figure sits beside the old image's reopen at 36,208 (51.2 s from
+`checkpoint:32730 suffix=3479`, VmHWM 8.2 GB): the decoded value is the
+same value at sixteen bytes per octet, which is the arena's result, not
+this lane's.
+
+**The throughput gate's checkpoint phase** (`tools/throughput_gate.py run
+--image <native-auto2 fn-host-developer> --revision d5b0cdf1 --label ccs
+--under-load --wait-quiet 0`; JSON
+`throughput-gate-d5b0cdf1c375-ccs-under-load.json`
+29a8a9c5e01807c51adac075aea404a3c5799fb4d8f9bb9090e9da13039bf844 beside
+this record, not under planning/evidence/throughput/, per the brief; the
+box busy 0.523 with the 40k load, the qualification and its runs live): 64
+POSTs of 31,744 octets on the development profile, the owner published at
+K/2: `checkpoint_sequence` 64, `checkpoint_octets` 6,196,494,
+`checkpoint_publish_ms` 670. Under load the gate compares only the
+deterministic counter (PKT-477 (1)): `probe_bytes_consed_per_commit`
+1,406,383 against the baseline's dev 1,651,892 and floor 262,144: passed
+(the POST path is untouched here; the figure is the box's). The checkpoint
+phase's wall-clock, 670 ms against the baseline's 350 (release) and 405
+(dev) ms, is NOT compared under load and is not a comparison: the old
+figure is the list codec on a quiet box, this one the buffer path on a box
+at 0.52 busy; a quiet run of both is owed (PKT-494 (5)). What the buffer
+path adds per publication is three linear walks before the encode
+(`fn-sccb-treep`, the estimate, `fn-sccb-plan`'s own `fn-sccb-treep`) and
+one concrete write per octet inside `fn-oct-write-list`; what it removes is
+the five to six list copies of the file. At 6 MB either is well under a
+second; at 315 MB only the buffer path finishes.
+
 
 ## 6. Not done (PKT-494), and the deferrals
 
@@ -277,6 +377,9 @@ SHA-256s below).
   (PKT-293/PKT-167) removes both. The estimate is recomputed from scratch at
   each publication (O(N)); a carried per-record length would make it
   O(suffix).
+- (5) The checkpoint phase's wall-clock on a quiet box, buffer path against
+  list path at the gate's 6 MB (this run: 670 ms at box busy 0.52 against
+  the quiet baseline's 405): not compared, owed.
 - The natural deferral (a real profile whose admitted history's checkpoint
   exceeds 3H + framing) is not exercised natively: no preset reaches it and
   the geometry with tiny bounds is borderline (section 3), so the native
