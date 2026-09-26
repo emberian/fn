@@ -26,11 +26,17 @@ Static mode lists and checks
     command it names is listed and must be neither Python nor, where it
     resolves on this machine, a script whose interpreter is Python.
 
-Tree mode walks every file of the release: no *.py/*.pyc, no Python
-shebang; every executable is a /bin/sh script or an ELF object; every ELF
-object's DT_NEEDED list is read and must not name libpython; the scripts'
-external commands are checked as above; each service file must start
-`PREFIX/bin/fn`.
+Tree mode walks every file of the release (HST-018): no *.py/*.pyc, no
+Python shebang; every executable is a /bin/sh script or an ELF object; the
+scripts' external commands are checked as above, and a command named by an
+absolute path must be the platform's shell or rc.subr; a symbolic link must
+stay inside the release; every ELF object's program interpreter must be the
+platform's C library loader, its DT_RPATH/DT_RUNPATH may not name a
+directory outside the release, and each DT_NEEDED name must be a file the
+release carries or the platform's C library (PLATFORM_LIBC); every shared
+object name the saved core may dlopen (the lib*.so strings in the core) must
+be carried by the release, the C library, or the system TLS library D35
+chose (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`.
 
 It cannot decide what an operator-supplied program is (the ION helper path
 is an argument), what a shell variable holds at run time (it lists
@@ -70,7 +76,7 @@ LIB_LITERAL_RE = re.compile(r'"([^"\s]*lib[^"\s]*\.(?:so[.\d]*|dylib)[^"\s]*)"')
 LIB_SOURCES = ("host/native/crypto.lisp", "host/native/tls.lisp")
 
 # Files a release ships whose commands run on the deployed path.
-SHIPPED_SCRIPTS = ("packaging/fn",)
+SHIPPED_SCRIPTS = ("packaging/fn", "packaging/install.sh")
 SHIPPED_SERVICES = ("packaging/fn-native.service.in", "packaging/net.fn.native.plist.in",
                     "packaging/fn.rc.in")
 FREEZE_SCRIPT = "packaging/freeze-native-image.sh"
@@ -89,6 +95,20 @@ PYTHON_RE = re.compile(r"(?:^|/)(?:python[\d.]*|pip[\d.]*|py)$|libpython", re.IG
 RC_VARIABLES = {"daemon", "daemon_flags", "daemon_user", "daemon_logger",
                 "daemon_timeout", "daemon_execdir", "rc_bg", "rc_reload",
                 "rc_usercheck", "rc_cmd", "pexp"}
+
+
+# The platform's C library, the one thing outside the release an ELF object
+# may name (ld.so resolves it): glibc on Linux, libc on OpenBSD.
+PLATFORM_LIBC = re.compile(
+    r"^(?:libc\.so(?:\.[\d.]+)?|libm\.so(?:\.[\d.]+)?|libdl\.so\.2|libpthread\.so(?:\.[\d.]+)?|"
+    r"librt\.so\.1|ld-linux-x86-64\.so\.2|libutil\.so(?:\.[\d.]+)?|libc\+\+abi\.so[\d.]*)$")
+LIBC_LOADERS = {"/lib64/ld-linux-x86-64.so.2", "/usr/libexec/ld.so"}
+# The system TLS library the image loads by dlopen: D35 as ember confirmed it
+# on 2026-09-26 ("no OpenSSL 3.5, the system libssl"; lane crypto-deps).
+SYSTEM_TLS = re.compile(r"^lib(?:ssl|crypto)\.so(?:\.[\d.]+)?$")
+# Absolute paths a shipped script may run: the shell and OpenBSD's rc.subr.
+SYSTEM_SCRIPTS = {"/bin/sh", "/bin/ksh", "/etc/rc.d/rc.subr"}
+CORE_LIB_RE = re.compile(rb"lib[A-Za-z0-9_+-][A-Za-z0-9_+.-]*?\.so(?:\.\d+)*")
 
 
 class Findings:
@@ -197,7 +217,12 @@ def split_commands(line: str) -> list[str]:
     # holds a command substitution, whose words are commands.
     line = re.sub(r'"([^"]*)"', lambda m: m.group(0) if "$(" in m.group(1) else (
         m.group(1) if re.fullmatch(r"\$[\w{}/.-]*", m.group(1)) else "STR"), line)
-    for part in re.split(r"\$\(|`|\|\||&&|;|\||\(|\)", line):
+    pieces = re.split(r"(\$\(|`|\|\||&&|;|\||\(|\))", line)
+    for index in range(0, len(pieces), 2):
+        part = pieces[index]
+        # A word glued to a closing parenthesis continues it: `$(pwd)/fn-host'.
+        if index and pieces[index - 1] == ")" and part[:1] not in ("", " ", "\t"):
+            continue
         words = part.strip().split()
         while words and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0])
                          or words[0] in SH_KEYWORDS):
@@ -306,8 +331,26 @@ def static_check(root: Path) -> Findings:
 
 def elf_needed(data: bytes) -> list[str] | None:
     """DT_NEEDED names of a 64-bit little-endian ELF object, or None if not ELF64LE."""
+    facts = elf_facts(data)
+    return None if facts is None else facts["needed"]
+
+
+def elf_facts(data: bytes) -> dict | None:
+    """DT_NEEDED, DT_RPATH/DT_RUNPATH and PT_INTERP of an ELF64LE object."""
     if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
         return None
+    interp = None
+    phoff, = struct.unpack_from("<Q", data, 0x20)
+    phentsize, phnum = struct.unpack_from("<HH", data, 0x36)
+    for i in range(phnum):
+        base = phoff + i * phentsize
+        if base + 56 > len(data):
+            break
+        p_type, = struct.unpack_from("<I", data, base)
+        if p_type == 3:  # PT_INTERP
+            p_offset, = struct.unpack_from("<Q", data, base + 8)
+            p_filesz, = struct.unpack_from("<Q", data, base + 32)
+            interp = data[p_offset:p_offset + p_filesz].rstrip(b"\0").decode("latin-1")
     shoff, = struct.unpack_from("<Q", data, 0x28)
     shentsize, shnum = struct.unpack_from("<HH", data, 0x3A)
     sections = []
@@ -319,7 +362,7 @@ def elf_needed(data: bytes) -> list[str] | None:
         sh_offset, sh_size = struct.unpack_from("<QQ", data, base + 0x18)
         sh_link, = struct.unpack_from("<I", data, base + 0x28)
         sections.append((sh_type, sh_offset, sh_size, sh_link))
-    needed = []
+    needed, rpaths = [], []
     for sh_type, offset, size, link in sections:
         if sh_type != 6 or link >= len(sections):  # SHT_DYNAMIC
             continue
@@ -328,10 +371,26 @@ def elf_needed(data: bytes) -> list[str] | None:
             tag, val = struct.unpack_from("<qQ", data, pos)
             if tag == 0:
                 break
-            if tag == 1:  # DT_NEEDED
+            if tag in (1, 15, 29):  # DT_NEEDED, DT_RPATH, DT_RUNPATH
                 end = data.index(b"\0", str_offset + val)
-                needed.append(data[str_offset + val:end].decode("latin-1"))
-    return needed
+                text = data[str_offset + val:end].decode("latin-1")
+                (needed if tag == 1 else rpaths).append(text)
+    return {"needed": needed, "rpaths": rpaths, "interp": interp}
+
+
+def core_dlopen_names(path: Path) -> set[str]:
+    """The lib*.so names a saved core carries as strings (what it may dlopen)."""
+    names: set[str] = set()
+    tail = b""
+    with open(path, "rb") as handle:
+        while True:
+            chunk = handle.read(1 << 24)
+            if not chunk:
+                break
+            block = tail + chunk
+            names.update(m.group(0).decode("latin-1") for m in CORE_LIB_RE.finditer(block))
+            tail = block[-128:]
+    return names
 
 
 def tree_check(top: Path) -> Findings:
@@ -340,12 +399,17 @@ def tree_check(top: Path) -> Findings:
         findings.fail(f"{top}: no bin/fn")
         return findings
     fasls = 0
+    carried = {p.name for p in top.rglob("*") if p.is_file()}
     for path in sorted(p for p in top.rglob("*") if p.is_file() or p.is_symlink()):
         rel = path.relative_to(top).as_posix()
         if path.is_symlink():
             target = os.readlink(path)
             if PYTHON_RE.search(target):
                 findings.fail(f"{rel}: links to {target}")
+            resolved = os.path.normpath(os.path.join(os.path.dirname(str(path)), target))
+            if os.path.isabs(target) or not (resolved + "/").startswith(str(top.resolve()) + "/") \
+                    and not (resolved + "/").startswith(str(top) + "/"):
+                findings.fail(f"{rel}: links outside the release to {target}")
             continue
         if path.suffix in (".py", ".pyc", ".pyo") or "__pycache__" in rel:
             findings.fail(f"{rel}: Python source or bytecode in the release")
@@ -361,28 +425,56 @@ def tree_check(top: Path) -> Findings:
             if rel.startswith("share/doc/"):
                 continue
             if re.fullmatch(r"/bin/k?sh", interp):
-                check_shell_script(rel, path.read_text(encoding="utf-8", errors="replace"), findings)
+                for word in check_shell_script(rel, path.read_text(encoding="utf-8",
+                                                                    errors="replace"), findings):
+                    if word.startswith("/") and word not in SYSTEM_SCRIPTS \
+                            and not word.startswith("@PREFIX@/"):
+                        findings.fail(f"{rel}: runs {word}, outside the release")
             elif path.suffix == ".fasl" and re.search(r"/sbcl --script$", interp):
                 fasls += 1  # SBCL's fasl header line: loaded by the runtime
             else:
                 findings.fail(f"{rel}: interpreter {interp} is neither /bin/sh nor SBCL")
             continue
         if head[:4] == b"\x7fELF":
-            needed = elf_needed(path.read_bytes())
-            if needed is None:
+            facts = elf_facts(path.read_bytes())
+            if facts is None:
                 findings.fail(f"{rel}: ELF object that is not ELF64 little-endian")
                 continue
+            needed = facts["needed"]
             for name in needed:
                 if PYTHON_RE.search(name):
                     findings.fail(f"{rel}: DT_NEEDED {name}")
-            findings.note(f"{rel}: ELF; needs {' '.join(needed) or '(none)'}")
+                elif not (PLATFORM_LIBC.match(name) or name in carried):
+                    findings.fail(f"{rel}: DT_NEEDED {name} is neither carried by the "
+                                  "release nor the platform C library")
+            for rpath in facts["rpaths"]:
+                for entry in rpath.split(":"):
+                    if entry and not entry.startswith("$ORIGIN"):
+                        findings.fail(f"{rel}: DT_RPATH/RUNPATH {entry} outside the release")
+            if facts["interp"] is not None and facts["interp"] not in LIBC_LOADERS:
+                findings.fail(f"{rel}: program interpreter {facts['interp']} is not the "
+                              "platform C library loader")
+            findings.note(f"{rel}: ELF; needs {' '.join(needed) or '(none)'}"
+                          + (f"; interpreter {facts['interp']}" if facts["interp"] else ""))
+            continue
+        if path.suffix == ".core" and rel.startswith("libexec/"):
+            names = core_dlopen_names(path)
+            outside = sorted(n for n in names if not (
+                n in carried or PLATFORM_LIBC.match(n) or SYSTEM_TLS.match(n)
+                or any(c.startswith(n + ".") for c in carried)))
+            for name in outside:
+                findings.fail(f"{rel}: may dlopen {name}, which the release does not carry")
+            findings.note(f"{rel}: dlopen names {' '.join(sorted(names)) or '(none)'}; "
+                          "the system's: " + (" ".join(sorted(n for n in names if SYSTEM_TLS.match(n)))
+                                             or "(none)"))
             continue
         if executable and not rel.startswith("share/"):
             findings.fail(f"{rel}: executable that is neither a /bin/sh script nor ELF")
     if fasls:
         findings.note(f"{fasls} SBCL contrib fasls (#!.../sbcl --script headers, loaded by the runtime)")
     services = [p for p in top.rglob("*") if p.is_file() and (
-        p.suffix in (".service", ".plist") or p.parent.name == "rc.d")]
+        p.suffix in (".service", ".plist") or p.name.endswith(".service.in")
+        or p.parent.name == "rc.d")]
     if not services:
         findings.fail("the release carries no service file")
     for path in services:
