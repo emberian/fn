@@ -3126,7 +3126,8 @@
         "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
         "planning/evidence/manifests/certify-20260926T020047Z-3945658.json",
-        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json"
+        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json",
+        "planning/evidence/manifests/certify-20260926T021052Z-4035158.json"
       ],
       "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5).",
       "events": [
@@ -3641,7 +3642,8 @@
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
         "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
-        "planning/evidence/manifests/certify-20260926T020047Z-3945658.json"
+        "planning/evidence/manifests/certify-20260926T020047Z-3945658.json",
+        "planning/evidence/manifests/certify-20260926T021052Z-4035158.json"
       ],
       "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
@@ -3822,7 +3824,8 @@
         "planning/evidence/reclaim-host-2026-09-25.md",
         "books/reclaim-admission.lisp",
         "tests/acl2/reclaim-admission-tests.lisp",
-        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
+        "planning/evidence/manifests/certify-20260926T021052Z-4035158.json"
       ],
       "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048).",
       "events": [
@@ -4812,7 +4815,8 @@
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
         "planning/evidence/manifests/certify-20260926T020047Z-3945658.json",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json"
+        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json",
+        "planning/evidence/manifests/certify-20260926T021052Z-4035158.json"
       ],
       "progress_note": "Open: the replay correspondence of the reclaimed record (the open of the reclaiming pack equals fn-rcl-reclaim-state of the open of the history: PRF-088's own open step); guard verification of books/store-reclaim-pack (all :verify-guards nil, called through a :program host wrapper); holders from feed state, FNBS rows and BP obligations are not read (the BP journal is a separate namespace; the offline verb reads the Store's consumer projection only); chained packs for N above one pack (4,096 events, 4 MiB). Lane reclaim-lifecycle-2 (2026-09-26): PKT-169 retired by PRF-129 (fn-smr-admission-keeps-the-reserve, fn-cverb-pack-fits-the-disk); the retention charge falls to the history unit on reclaim (fn-rclp-rewritten-charge-is-the-history-unit).",
       "events": [
@@ -4853,7 +4857,8 @@
         "host/native-live-status-host.lisp",
         "host/native/operator.lisp",
         "planning/evidence/operator-health-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
+        "planning/evidence/manifests/certify-20260926T021052Z-4035158.json"
       ],
       "progress_note": "See planning/evidence/operator-health-2026-09-25.md for the farm manifest and the native cases.",
       "events": [
@@ -4968,7 +4973,8 @@
         "tests/acl2/store-reclaim-pack-tests.lisp",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T015147Z-3864087.json",
-        "planning/evidence/manifests/certify-20260926T015552Z-3901153.json"
+        "planning/evidence/manifests/certify-20260926T015552Z-3901153.json",
+        "planning/evidence/manifests/certify-20260926T021052Z-4035158.json"
       ],
       "progress_note": "Lane reclaim-lifecycle-2 (2026-09-26). Open: the free-octet observation is the host's statvfs, an environmental fact not modelled (a concurrent writer can take the space between the observation and the write; the write then fails before the selection, which the pack publication cuts cover). The BP namespace's own reservation is the FNBS debt cover (books/bp-node-debt.lisp), not restated here. Every book under 10 s.",
       "events": [
