@@ -83,7 +83,12 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         start = self.bridge.index("(defun fn-native-admin-host-owner-reconfigure")
         end = self.bridge.index("(defun fn-native-admin-host-apply", start)
         body = self.bridge[start:end]
-        self.assertIn("(fn-native-admin-plan-deltas plan)", body)
+        # PRF-099: the delta list is built over the live owner's peer table
+        # (`fn-native-admin-plan-deltas-over`), which is
+        # `fn-native-admin-plan-deltas` for every plan but :extend-peer
+        # (fn-native-admin-plan-deltas-over-other-plans-by-definition).
+        self.assertIn("(fn-native-admin-plan-deltas-over\n                 plan "
+                      "(fn-cfg-peers (fn-cfg-value (fn-owner-config state))))", body)
         self.assertIn("(fn-owner-reconfigure-deltas id deltas state)", body)
         # No delta constructor and no octet/string conversion in the bridge:
         # the labels' type is decided once, in the book.
@@ -92,6 +97,9 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
                           "fn-cfg-set-policy", "octets->string"):
             self.assertNotIn(forbidden, body)
         self.assertIn("(defun fn-native-admin-plan-deltas (plan)", self.admin)
+        self.assertIn("(defun fn-native-admin-plan-deltas-over (plan peers)", self.admin)
+        self.assertIn("(defthm fn-native-admin-plan-deltas-over-other-plans-by-definition",
+                      self.admin)
         self.assertIn("(defthm fn-native-admin-live-group-delta-is-a-typed-delta", self.admin)
 
     def test_completion_publishes_what_recovery_replays(self):
