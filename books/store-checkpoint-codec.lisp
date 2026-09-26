@@ -1,6 +1,8 @@
-; fn: the byte encoding of a Store checkpoint (P3, `fn-c' schema 2 in the
-; design's table; magic FNSC here because the value differs from schema 1's
-; node checkpoint).
+; fn: the byte encoding of a Store checkpoint (P3; magic FNSC; schema 3 since
+; lane checkpoint-pipeline, 2026-09-26: the file is four TABLES, each a run
+; of these segments, books/store-checkpoint-tables.lisp; schema 2 (one
+; postfix program over the whole checkpoint value) is refused by name at the
+; open, D34).
 ;
 ; A checkpoint value (books/store-checkpoint-open.lisp) is an ACL2 tree: the
 ; record list and each replay fold's accumulator.  The existing TREE codec
@@ -37,7 +39,7 @@
    (equal (append (append a b) c) (append a (append b c)))))
 
 (defconst *fn-scc-magic* '(70 78 83 67))         ; "FNSC"
-(defconst *fn-scc-schema* 2)
+(defconst *fn-scc-schema* 3)
 (defconst *fn-scc-segment-header-octets* 37)    ; 4 + 1 + 4 * 8
 (defconst *fn-scc-op-nil* 0)
 (defconst *fn-scc-op-nat* 1)
@@ -776,57 +778,52 @@
  (defthm fn-scc-len-take
    (equal (len (take k x)) (nfix k))))
 
-(local
- (defthm fn-scc-chunks-shape
-   (implies (and (true-listp payload) (< (len payload) *fn-scc-u64-bound*))
-            (and (fn-scc-chunk-listp (fn-scc-chunks payload seg))
-                 (<= (len (fn-scc-chunks payload seg)) (+ 1 (len payload)))
-                 (consp (fn-scc-chunks payload seg))))))
+(defthm fn-scc-chunks-shape
+  (implies (and (true-listp payload) (< (len payload) *fn-scc-u64-bound*))
+           (and (fn-scc-chunk-listp (fn-scc-chunks payload seg))
+                (<= (len (fn-scc-chunks payload seg)) (+ 1 (len payload)))
+                (consp (fn-scc-chunks payload seg)))))
 
 (local
  (defthm fn-scc-concat-true-listp
    (true-listp (fn-scc-concat x))))
 
-(local
- (defthm fn-scc-join-of-chunks
-   (implies (and (true-listp p) (< (+ 1 (len p)) *fn-scc-u64-bound*)
-                 (natp q) (< q *fn-scc-u64-bound*))
-            (equal (fn-scc-join (fn-scc-frames (fn-scc-chunks p seg) 0
-                                               (len (fn-scc-chunks p seg)) q prev)
-                                0 (len (fn-scc-chunks p seg)) q prev nil)
-                   (list :ok p)))
-   :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-scc-chunks-shape (payload p))
-                  (:instance fn-scc-join-of-frames (chunks (fn-scc-chunks p seg))
-                             (i 0) (n (len (fn-scc-chunks p seg))) (racc nil)))
-            :in-theory (e/d () (fn-scc-chunks-shape fn-scc-join-of-frames
-                                fn-scc-chunks fn-scc-frames fn-scc-join))))))
+(defthm fn-scc-join-of-chunks
+  (implies (and (true-listp p) (< (+ 1 (len p)) *fn-scc-u64-bound*)
+                (natp q) (< q *fn-scc-u64-bound*))
+           (equal (fn-scc-join (fn-scc-frames (fn-scc-chunks p seg) 0
+                                              (len (fn-scc-chunks p seg)) q prev)
+                               0 (len (fn-scc-chunks p seg)) q prev nil)
+                  (list :ok p)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-scc-chunks-shape (payload p))
+                 (:instance fn-scc-join-of-frames (chunks (fn-scc-chunks p seg))
+                            (i 0) (n (len (fn-scc-chunks p seg))) (racc nil)))
+           :in-theory (e/d () (fn-scc-chunks-shape fn-scc-join-of-frames
+                               fn-scc-chunks fn-scc-frames fn-scc-join)))))
 
-(local
- (defthm fn-scc-parse-header-of-first-frame
-   (implies (and (consp chunks) (fn-scc-chunk-listp chunks)
-                 (natp n) (< n *fn-scc-u64-bound*)
-                 (natp q) (< q *fn-scc-u64-bound*))
-            (equal (nth 1 (fn-scc-parse-header (car (fn-scc-frames chunks 0 n q prev))))
-                   n))
-   :hints (("Goal" :expand ((fn-scc-frames chunks 0 n q prev))
-            :in-theory (e/d () (fn-scc-header fn-scc-seal))))))
+(defthm fn-scc-parse-header-of-first-frame
+  (implies (and (consp chunks) (fn-scc-chunk-listp chunks)
+                (natp n) (< n *fn-scc-u64-bound*)
+                (natp q) (< q *fn-scc-u64-bound*))
+           (equal (nth 1 (fn-scc-parse-header (car (fn-scc-frames chunks 0 n q prev))))
+                  n))
+  :hints (("Goal" :expand ((fn-scc-frames chunks 0 n q prev))
+           :in-theory (e/d () (fn-scc-header fn-scc-seal)))))
 
-(local
- (defthm fn-scc-parse-header-of-first-frame-sequence
-   (implies (and (consp chunks) (fn-scc-chunk-listp chunks)
-                 (natp n) (< n *fn-scc-u64-bound*)
-                 (natp q) (< q *fn-scc-u64-bound*))
-            (and (fn-scc-parse-header (car (fn-scc-frames chunks 0 n q prev)))
-                 (equal (nth 3 (fn-scc-parse-header
-                                (car (fn-scc-frames chunks 0 n q prev))))
-                        q)))
-   :hints (("Goal" :expand ((fn-scc-frames chunks 0 n q prev))
-            :in-theory (e/d () (fn-scc-header fn-scc-seal))))))
+(defthm fn-scc-parse-header-of-first-frame-sequence
+  (implies (and (consp chunks) (fn-scc-chunk-listp chunks)
+                (natp n) (< n *fn-scc-u64-bound*)
+                (natp q) (< q *fn-scc-u64-bound*))
+           (and (fn-scc-parse-header (car (fn-scc-frames chunks 0 n q prev)))
+                (equal (nth 3 (fn-scc-parse-header
+                               (car (fn-scc-frames chunks 0 n q prev))))
+                       q)))
+  :hints (("Goal" :expand ((fn-scc-frames chunks 0 n q prev))
+           :in-theory (e/d () (fn-scc-header fn-scc-seal)))))
 
-(local
- (defthm fn-scc-frames-consp
-   (equal (consp (fn-scc-frames chunks i n q prev)) (consp chunks))))
+(defthm fn-scc-frames-consp
+  (equal (consp (fn-scc-frames chunks i n q prev)) (consp chunks)))
 
 (local
  (defthm fn-scc-decode-tree-of-program

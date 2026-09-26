@@ -76,6 +76,8 @@ STORE_FORMS = (
     # The state checkpoint read from the octet buffer (rep-wave-d-3):
     # fn-store-sco-decode calls fn-sccr-decode-plan.
     '(include-book "books/store-checkpoint-reader")',
+    '(include-book "books/store-checkpoint-tables")',
+    '(include-book "books/store-checkpoint-tables-reader")',
     '(ld "host/store-node-host.lisp"' + LD,
     '(ld "host/checkpoint-host.lisp"' + LD,
     '(ld "host/anchor-host.lisp"' + LD,

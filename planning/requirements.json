@@ -1077,7 +1077,9 @@
         "PRF-018",
         "PRF-029",
         "PRF-046",
-        "PRF-081"
+        "PRF-081",
+        "PRF-214",
+        "PRF-215"
       ],
       "verification": [
         "proof",
@@ -1120,7 +1122,8 @@
         "PRF-081",
         "PRF-082",
         "PRF-114",
-        "PRF-190"
+        "PRF-190",
+        "PRF-214"
       ],
       "verification": [
         "proof",
@@ -1329,7 +1332,8 @@
         "PRF-028",
         "PRF-067",
         "PRF-074",
-        "PRF-189"
+        "PRF-189",
+        "PRF-206"
       ],
       "verification": [
         "proof",
@@ -1344,7 +1348,9 @@
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/nntp-xref.lisp",
+        "tests/test_native_reader_index.py"
       ],
       "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open. LIST COUNTS (RFC 6048 section 2.2) answers each group's exact count from the pinned buckets (PRF-073), and a Message-ID retrieval answers the article's number in the selected group, or 0 (RFC 3977 section 6.2.1.2).",
       "keystones": [
@@ -2019,7 +2025,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-083",
-        "PRF-104"
+        "PRF-104",
+        "PRF-199"
       ],
       "verification": [
         "proof",
@@ -3300,22 +3307,23 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-183"
+        "PRF-183",
+        "PRF-200"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
       "evidence": [
-        "books/owner-checkpoint-stream.lisp",
-        "tests/acl2/owner-checkpoint-stream-tests.lisp",
         "books/octets-stobj.lisp",
         "books/store-checkpoint-buffer.lisp",
         "books/native-live-status.lisp",
         "tests/test_native_checkpoint_auto.py",
-        "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
+        "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "books/owner-checkpoint-pipeline.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp"
       ],
-      "implementation_note": "The publication thread (host/native/owner.lisp fnn-owner-publish-captured) calls fn-ock-publication-stream with its own buffer fn-octets-pub; ACL2 computes the file's exact length first (fn-ockb-file-len) against the profile's checkpoint budget (fn-ock-capture-budget, the reader's file bound: 3 x max-history-octets plus one segment's framing) and defers by name (CHECKPOINT deferred reason=exceeds-budget estimate=E budget=B; `status' carries ` deferred=... estimate=E budget=B' on its checkpoint-file line; the retry waits until the budget covers E, fn-ock-publication-blockedp on the due path); else it encodes once into the buffer and the host writes the plan straight from the array through the unchanged fn-bs-scp-program cuts. The frozen checkpoint value itself (the records twice) still lives on the heap at sixteen bytes per octet: the arena (PKT-293/PKT-167) and PKT-314 remain."
+      "implementation_note": "Since lane checkpoint-pipeline (2026-09-26) the decision is the pipeline's (books/owner-checkpoint-pipeline.lisp fn-ockp-setup/fn-ockp-decide): the estimate is the file's length computed from the tables' metadata without encoding or touching a payload octet (fn-ockp-estimate-is-len-file-octets), compared with the profile's checkpoint budget (fn-ock-capture-budget, unchanged) and with the free space less the maintenance reserve; the deferral names its reason (exceeds-budget or exceeds-space), the estimate and the bound (CHECKPOINT deferred reason=R estimate=E budget=B; `status' carries it); the retry waits until the bound covers E (fn-ock-publication-blockedp on the due path). The encode is the batched writer of STO-026."
     },
     {
       "id": "HST-012",
@@ -3477,11 +3485,15 @@
         "measurement"
       ],
       "evidence": [
-        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/catalog-commit.lisp",
+        "books/catalog-delta.lisp",
+        "books/catalog-record.lisp",
         "books/catalog.lisp",
-        "books/catalog-record.lisp"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "tests/acl2/catalog-commit-tests.lisp",
+        "tests/acl2/catalog-delta-tests.lisp"
       ],
-      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585).",
+      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
     },
     {
@@ -3501,7 +3513,7 @@
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585).",
+      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585). catalog-slice-2 (2026-09-26): the relation between the catalog's columns and the store's history is proved at every entry (fn-cat-load-establishes-relation) and preserved by the completion; the served reads (PRF-204) remain PKT-585.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
     },
     {
@@ -3781,6 +3793,108 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "HST-021",
+      "title": "The Linux release runs on glibc 2.36 (Debian 12) and later: no bundled ELF object needs a GLIBC symbol version above tools/runpath_check.py's GLIBC_FLOOR",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "tests/test_release_tarball.py",
+        "packaging/floor-runtime.sh",
+        "packaging/freeze-native-image.sh",
+        "packaging/release-tarball.sh",
+        "docs/operator.md",
+        "planning/evidence/release-glibc-floor-2026-09-26.md"
+      ],
+      "implementation_note": "The floor runtime is SBCL 2.6.8 rebuilt from its signed source with the binary release's build-id in debian:12 (runtime GLIBC_2.34; libsodium and libfn-mldsa65 GLIBC_2.33 unchanged). Rehearsed on the AJ core (088f6de7) repackaged with --frozen, so that tarball is ungated; the next gated Linux release must pass --runtime-from, or its runpath check refuses it."
+    },
+    {
+      "id": "NNT-042",
+      "title": "A reader connection's view is a version that advances at GROUP and LISTGROUP between commands and is fixed within a command; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it advances past it",
+      "specification": "specs/nntp.md#sessions-and-framing",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-203",
+        "PRF-202"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "books/catalog-delta.lisp",
+        "tests/acl2/catalog-delta-tests.lisp",
+        "planning/evidence/catalog-slice-2026-09-26.md"
+      ],
+      "keystones": [
+        "fn-view-cancel-after-target"
+      ],
+      "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
+      "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
+    },
+    {
+      "id": "STO-026",
+      "title": "The state checkpoint is four tables (schema 3), each a run of FNSC segments, holding every payload once, written by one resumable pipeline in bounded batches through the publication buffer and read back as the capture; a file of another schema is refused by name and the journal replays",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-199",
+        "PRF-200",
+        "PRF-133",
+        "PRF-135",
+        "PRF-183"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-tables.lisp",
+        "books/store-checkpoint-tables-reader.lisp",
+        "books/owner-checkpoint-pipeline.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      ],
+      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy); the loop theorem fn-ockp-run-writes-the-file (PKT-583)."
+    },
+    {
+      "id": "HST-020",
+      "title": "A running owner takes a renewed TLS certificate and key for new connections without a restart, keeps open sessions on theirs, and refuses bad material by name leaving the served certificate in place; status prints the served names and notAfter",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-212"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/tls-reload.lisp",
+        "tests/acl2/tls-reload-tests.lisp",
+        "host/native/tls-reload.lisp",
+        "host/native/tls.lisp",
+        "tests/test_native_tls_reload.py",
+        "docs/operator.md",
+        "planning/evidence/tls-reload-2026-09-26.md"
+      ],
+      "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
     }
   ]
 }

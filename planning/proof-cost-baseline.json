@@ -4,6 +4,27 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/bp-node-forward-plan": {
+      "seconds": 11.335,
+      "run": "certify-20260926T231416Z-3967178",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-live": {
+      "seconds": 12.44,
+      "run": "certify-20260926T231416Z-3967178",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/owner-checkpoint-pipeline": {
+      "seconds": 46.296,
+      "run": "certify-20260926T231416Z-3967178",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/owner-invariants": {
       "seconds": 10.881,
       "run": "certify-20260926T204406Z-2347753",

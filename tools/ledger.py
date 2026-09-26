@@ -774,7 +774,7 @@ def record(book: Book, form: object, line: int, *, local: bool,
             book.definitions.add(str(form[1]))
             book.macros.add(str(form[1]))
         return
-    if name in ("defun-sk", "defstobj", "defabbrev") and len(form) >= 2 \
+    if name in ("defun-sk", "defstobj", "defabsstobj", "defabbrev") and len(form) >= 2 \
             and isinstance(form[1], Sym):
         book.definitions.add(str(form[1]))
         return

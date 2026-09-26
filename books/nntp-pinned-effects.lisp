@@ -3,6 +3,7 @@
 (include-book "nntp-post")
 (include-book "nntp-verdict-effects")
 (include-book "group-bucket-invariants")
+(include-book "nntp-xref-invariants")
 
 (local (defthm fn-pinned-effects-projection-is-state
          (implies (fn-nntp-projectionp archive) (fn-statep archive))
@@ -59,6 +60,84 @@
                                    fn-nov-lines-for-numbers-numbered
                                    fn-nntp-index-group-range-numbers
                                    fn-nntp-parse-range fn-nntp-single)))))
+
+;; R3 (PRF-206): the served OVER/XOVER renderers carrying the Xref field.
+;; Their lines are clean (books/nntp-xref-invariants.lisp) whenever the
+;; server is absent or a server word, which `fn-nntp-xref-server' always is.
+(defthm fn-nntp-served-over-block-is-block-text
+  (implies (or (null server) (fn-xref-serverp server))
+           (fn-nntp-block-textp
+            (fn-nov-served-lines-numbered numbers nidx trie server)))
+  :hints (("Goal" :use ((:instance fn-nov-served-lines-numbered-are-clean))
+           :in-theory (disable fn-nov-served-lines-numbered-are-clean
+                               fn-nov-served-lines-numbered fn-xref-serverp))))
+
+(defthm fn-nntp-served-over-one-line-is-block-text
+  (implies (and (fn-nov-okp (fn-nov-overview article))
+                (or (null server) (fn-xref-serverp server)))
+           (fn-nntp-block-textp
+            (list (fn-nov-served-line number (fn-nov-overview article)
+                                      server article2))))
+  :hints (("Goal" :use ((:instance fn-nov-served-line-is-a-clean-line
+                         (over (fn-nov-overview article))
+                         (article article2))
+                        (:instance fn-nov-overview-is-an-overview))
+           :in-theory (e/d (fn-nntp-block-textp)
+                           (fn-nov-served-line-is-a-clean-line
+                            fn-nov-overview-is-an-overview fn-xref-serverp
+                            fn-nov-served-line fn-nov-overview fn-nov-overviewp)))))
+
+(defthm fn-nntp-effects-over-range-served
+  (implies (or (null server) (fn-xref-serverp server))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-over-range-served session buckets trie token legacyp
+                                        server))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
+                                  (fn-nov-served-lines-numbered fn-xref-serverp
+                                   fn-nntp-index-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
+(defthm fn-nntp-effects-over-current-served
+  (implies (or (null server) (fn-xref-serverp server))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-over-current-served session archive server))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-current-served)
+                                  (fn-nov-overview fn-nov-served-line
+                                   fn-xref-serverp
+                                   fn-nntp-available-article fn-nntp-single)))))
+
+(defthm fn-nntp-effects-over-msgid-served
+  (implies (or (null server) (fn-xref-serverp server))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-over-msgid-served session archive token server))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid-served)
+                                  (fn-nov-overview fn-nov-served-line
+                                   fn-xref-serverp
+                                   fn-find-article fn-nntp-single
+                                   fn-nntp-token-string)))))
+
+(defthm fn-nntp-effects-list-overview-fmt-served
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-list-overview-fmt-served session)))
+  :hints (("Goal" :use fn-nov-fmt-xref-lines-are-clean
+           :in-theory (e/d (fn-nntp-list-overview-fmt-served)
+                           (fn-nov-fmt-xref-lines-are-clean)))))
+
+(defthm fn-nntp-effects-xref-reply
+  (implies (fn-nntp-xref-reply session archive index env keyword args)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-xref-reply session archive index env keyword args))))
+  :hints (("Goal" :use ((:instance fn-nntp-xref-server-is-a-server))
+           :in-theory (e/d (fn-nntp-xref-reply)
+                           (fn-nntp-xref-server fn-xref-serverp fn-nntp-keywordp
+                            fn-nntp-over-range-served fn-nntp-over-current-served
+                            fn-nntp-over-msgid-served
+                            fn-nntp-list-overview-fmt-served
+                            fn-nntp-effectsp fn-nntp-result-effects)))))
 
 ; LIST COUNTS over the pinned buckets (books/nntp.lisp).  The lines carry the
 ; same group names and decimal fields as the archive fold's, whatever the
@@ -155,7 +234,8 @@
                  (:instance fn-nntp-withdrawn-reply-effects (msgidp t))
                  (:instance fn-nntp-effects-gidx-list-counts-command
                             (buckets (fn-gidx-pin-buckets index))
-                            (args (cdr args))))
+                            (args (cdr args)))
+                 (:instance fn-nntp-effects-xref-reply))
            :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
@@ -163,6 +243,14 @@
                  fn-nntp-effects-gidx-list-counts-command
                  fn-gidx-listgroup-command fn-gidx-build
                  fn-nntp-over-range-indexed
+                 fn-nntp-over-range-served fn-nntp-over-current-served
+                 fn-nntp-over-msgid-served fn-nntp-list-overview-fmt-served
+                 fn-nntp-effects-over-range-served
+                 fn-nntp-effects-over-current-served
+                 fn-nntp-effects-over-msgid-served
+                 fn-nntp-effects-list-overview-fmt-served
+                 fn-nntp-xref-server fn-xref-serverp
+                 fn-nntp-xref-reply fn-nntp-effects-xref-reply
                  fn-nntp-verdict-hdr-response fn-nntp-effectsp
                  fn-nntp-result-effects fn-nntp-projectionp fn-nntp-keywordp
                  fn-midx-correspondencep

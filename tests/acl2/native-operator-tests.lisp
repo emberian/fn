@@ -1212,6 +1212,32 @@
                                (fn-nop-test-argv '("principal" "list"))))))
 (assert-event (fn-nop-help-subjectp "keys"))
 
+; PRF-212: `tls reload' is an accepted plan whose native action is :tls and
+; whose control path the host asks; any other word, or a trailing one, is
+; usage.
+(defconst *fn-nop-tls*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("tls" "reload"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-tls*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-tls*) :tls))
+(assert-event (fn-native-operator-result-needs-storep *fn-nop-tls*))
+(assert-event (equal (fn-native-operator-result-tls-control-path-octets *fn-nop-tls*)
+                     (fn-record-string-octets
+                      (fn-native-config-control-path
+                       (fn-native-operator-result-config *fn-nop-tls*)))))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("tls" "reload" "now"))))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("tls"))))
+        :usage))
+(assert-event
+ (not (fn-native-operator-result-tls-control-path-octets *fn-nop-keys*)))
+(assert-event (fn-nop-help-subjectp "tls"))
+
 ; -----------------------------------------------------------------------------
 ; PRF-171 (PKT-451 (C)): `init' under a profile whose field 7 is 100
 ; (fn-nop-init-plain-groups-are-within-the-profile).

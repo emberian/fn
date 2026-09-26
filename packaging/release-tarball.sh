@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build the release a stranger downloads: one tarball per platform (D35).
 #
-#   packaging/release-tarball.sh PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]
+#   packaging/release-tarball.sh [--runtime-from DIR] PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]
 #   packaging/release-tarball.sh --frozen FROZEN_DIR PLATFORM REV OUT_DIR
 #
 # PLATFORM is linux-x86_64 or openbsd-amd64 and must be the system this runs
@@ -28,6 +28,11 @@
 #   4. stages it (packaging/install-native.sh), checks that no Python is on
 #      the deployed path (tools/runpath_check.py --tree) and that
 #      `bin/fn --version' prints REV, and packs it.
+# --runtime-from DIR bundles DIR/sbcl as the SBCL runtime (the freeze's
+# FN_FREEZE_RUNTIME): on Linux, DIR is packaging/floor-runtime.sh's output,
+# the build's SBCL rebuilt in Debian 12 so the release runs on glibc 2.36
+# (tools/runpath_check.py GLIBC_FLOOR; step 4 refuses a bundled object above
+# it, so a Linux release built on a newer glibc needs this).
 # The second form packages an already frozen production image (tests,
 # tests/friends_tarball.sh); its share/fn/release-gate.txt says it was not
 # gated, and it is not a release.
@@ -46,12 +51,18 @@
 #                                runpath-check.txt
 set -eu
 usage() {
-  echo 'usage: release-tarball.sh PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]' >&2
+  echo 'usage: release-tarball.sh [--runtime-from DIR] PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]' >&2
   echo '       release-tarball.sh --frozen FROZEN_DIR PLATFORM REV OUT_DIR' >&2
   exit 2
 }
-frozen=
-if [ "${1:-}" = --frozen ]; then
+frozen='' runtime_from=''
+if [ "${1:-}" = --runtime-from ]; then
+  [ "$#" -ge 2 ] || usage
+  runtime_from=$2; shift 2
+  case $runtime_from in /*) ;; *) echo 'release-tarball: --runtime-from DIR must be absolute' >&2; exit 2;; esac
+  [ -x "$runtime_from/sbcl" ] || { echo "release-tarball: no runtime $runtime_from/sbcl" >&2; exit 4; }
+  [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
+elif [ "${1:-}" = --frozen ]; then
   [ "$#" -eq 5 ] || usage
   frozen=$2; shift 2
   [ "$#" -eq 3 ] || usage
@@ -111,7 +122,8 @@ if [ -z "$frozen" ]; then
   FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp \
     FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG="$work/native-build.log" \
     $wrap sh tools/build_native_host.sh
-  FN_FREEZE_VARIANTS=fn-host sh packaging/freeze-native-image.sh "$work/src/build" "$work/frozen"
+  FN_FREEZE_VARIANTS=fn-host FN_FREEZE_RUNTIME=${runtime_from:+$runtime_from/sbcl} \
+    sh packaging/freeze-native-image.sh "$work/src/build" "$work/frozen"
   frozen=$work/frozen
   stage=$work/stage
   {
@@ -120,6 +132,7 @@ if [ -z "$frozen" ]; then
     echo "acquire: $(tail -1 "$work/acquire.txt")"
     echo "validate: $(tail -1 "$work/validate.txt")"
     echo "acl2: $FN_ACL2"
+    [ -z "$runtime_from" ] || echo "runtime-from: $($sums "$runtime_from/sbcl")"
   } > "$work/release-gate.txt"
   gate=$work/release-gate.txt
 else
@@ -145,7 +158,8 @@ version=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
 [ "$version" = "fn $rev" ] || {
   echo "release-tarball: bin/fn --version printed '$version', not 'fn $rev'" >&2; exit 4; }
 "${PYTHON:-python3}" tools/runpath_check.py --tree "$top" > "$stage/runpath-check.txt" 2>&1 || {
-  cat "$stage/runpath-check.txt" >&2; echo 'release-tarball: Python on the deployed path' >&2; exit 4; }
+  cat "$stage/runpath-check.txt" >&2
+  echo 'release-tarball: the runpath check failed (Python on the deployed path, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
 install -m 0644 "$stage/runpath-check.txt" "$top/share/fn/runpath-check.txt"
 tail -1 "$stage/runpath-check.txt"
 (cd "$top" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs $sums > SHA256SUMS)

@@ -4196,22 +4196,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sco-thaw-of-freeze"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sco-freeze-of-capture-carries-the-count"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ock-published-segments-decode-to-the-checkpoint"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ock-publication-is-the-capture-at-the-capture-point"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ks-distinctp-is-nodupp"
         },
         {
@@ -5208,19 +5192,23 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sccb-plan-is-file-octets"
+          "name": "fn-sct-renc-is-program"
         },
         {
           "kind": "theorem",
-          "name": "fn-sccb-renc-is-program"
+          "name": "fn-ockp-encode-batch-is-rows-program"
         },
         {
           "kind": "theorem",
-          "name": "fn-sccb-plan-refuses-what-the-codec-refuses"
+          "name": "fn-ockp-chunks-of-append-cut"
         },
         {
           "kind": "theorem",
-          "name": "fn-sccb-treep-encodes-octets"
+          "name": "fn-ockp-frames-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-counts-are-chunk-counts"
         }
       ]
     },
@@ -5302,15 +5290,23 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sccr-decode-of-plan"
+          "name": "fn-sct-load-is-decode-file"
         },
         {
           "kind": "theorem",
-          "name": "fn-sccr-decode-plan-is-decode-segments"
+          "name": "fn-sctr-run-decode-is-run-decode"
         },
         {
           "kind": "theorem",
-          "name": "fn-sccr-run-is-run"
+          "name": "fn-sctr-run-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sctr-step-is-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccr-join-is-join"
         },
         {
           "kind": "theorem",
@@ -6462,27 +6458,23 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-ock-publication-stream-writes-the-file"
+          "name": "fn-ockp-estimate-is-len-file-octets"
         },
         {
           "kind": "theorem",
-          "name": "fn-ock-publication-stream-refuses-what-the-codec-refuses"
+          "name": "fn-ockp-len-acc-is-len-program"
         },
         {
           "kind": "theorem",
-          "name": "fn-ock-publication-stream-defers-by-the-estimate"
+          "name": "fn-ockp-rows-len-is-len-rows-program"
         },
         {
           "kind": "theorem",
-          "name": "fn-ockb-file-len-is-len-file-octets"
+          "name": "fn-ockp-run-len-is-len-run"
         },
         {
           "kind": "theorem",
-          "name": "fn-ock-publication-blockedp-by-definition"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ock-publication-stream-next-is-the-capture"
+          "name": "fn-ockp-decide-defers-by-the-estimate"
         }
       ]
     },
@@ -6577,10 +6569,6 @@
         {
           "kind": "theorem",
           "name": "fn-osi-ocar-exp-open-keeps-store"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sco-thaw-checked-accepts-own-publication"
         }
       ]
     },
@@ -6794,6 +6782,34 @@
         {
           "kind": "theorem",
           "name": "fn-cat-visible-at-withdrawn"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-at-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-row-keeps-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-from-empty"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-complete"
         }
       ]
     },
@@ -7125,6 +7141,200 @@
           "kind": "theorem",
           "name": "fn-ocfg-read-tls-prefix-carries-at-most-one-submission",
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
+        }
+      ]
+    },
+    {
+      "id": "PRF-199",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-file-of-file-is-the-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-capture-of-tables-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-of-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-of-rows-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-rows-of-rows-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-agreep-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-programs-of-table-programs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-decode-of-run-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-file-of-file-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-writes-the-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-is-the-remaining"
+        }
+      ]
+    },
+    {
+      "id": "PRF-200",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-decide-defers-by-the-estimate"
+        }
+      ]
+    },
+    {
+      "id": "PRF-206",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xref-pairs-exact"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xref-pair-is-an-index-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-lines-numbered-has-the-article-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-lines-numbered-extend-the-eight-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-lines-numbered-without-a-server"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-served-without-a-server"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-current-served-without-a-server"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-msgid-served-without-a-server"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-line-is-a-clean-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-lines-numbered-are-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xref-field-is-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-fmt-xref-lines-are-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-over-range-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-over-current-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-over-msgid-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-list-overview-fmt-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-over-range-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-over-range-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-over-range-carries-the-xref"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-listing-server-is-the-path-identity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-212",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-decide-accepts-exactly-loaded-matching-current-covering-material"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-decide-carries-the-facts-or-a-named-refusal"
+        }
+      ]
+    },
+    {
+      "id": "PRF-214",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-replay-rows-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-held-octets-of-cons"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-replay-from-is-bpnr"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphp-recover-auto-event-is-bpnr"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-recovery-heldp-fast-is-logic"
+        }
+      ]
+    },
+    {
+      "id": "PRF-215",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bphh-request-article-matches-is-wire"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
     }

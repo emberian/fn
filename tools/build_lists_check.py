@@ -102,6 +102,11 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
         "which build-dtn.lisp does not load: the operator refuses `peer "
         "genesis|invite|accept|confirm` on an image that omits :control", {}),
+    "host/tls-reload-host.lisp": (
+        "`tls reload` and the served certificate line (PRF-212); used only by "
+        "host/native/tls-reload.lisp, which build-dtn.lisp does not load: the "
+        "operator refuses `tls` on an image that omits :control, and `status` asks "
+        "no owner there", {}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
     "host/topic-history-metadata-host.lisp": (
@@ -134,6 +139,16 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
         "fnn-operator-dispatch-plan maps :keys to the :control surface, which "
         "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
         "refuses it (the usage exit) before this call",
+    ("host/native/operator.lisp", "fnn-tls-execute"):
+        "operator.lisp's `tls reload` executor (host/native/tls-reload.lisp, PRF-212); "
+        "fnn-operator-dispatch-plan maps :tls to the :control surface, which "
+        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
+        "refuses it (the usage exit) before this call",
+    ("host/native/operator.lisp", "fnn-tls-status-line"):
+        "operator.lisp's live `status` arm (PRF-212's served line); it runs only when "
+        "the owner answered over the control socket, and fnn-operator-status-once "
+        "takes that arm only when the image does not omit :control, which "
+        "build-dtn.lisp names in *fnn-image-omitted-surfaces*",
     ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
         "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
         "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",
