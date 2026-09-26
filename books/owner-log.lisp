@@ -232,29 +232,46 @@ the owner resolved the source address to, or nil for a reader."
        (symbolp (car detail)) (car detail)
        (symbolp (cadr detail)) (cadr detail)))
 
-(defun fn-olog-detail-fields (detail)
+; VERDICT (PKT-473, PRF-184) is an accepted arm's verdict
+; (books/peer-carriage.lisp fn-pcb-transit-verdict, relayed by the host), or
+; nil; a refusal's (CLASS VERDICT) detail carries its own.
+(defun fn-olog-detail-fields (detail verdict)
   (declare (xargs :guard t))
-  (if (fn-olog-verdict-detailp detail)
-      (append (fn-olog-field "detail" (fn-olog-symbol-text (car detail)))
-              (cons 32 (fn-olog-field "verdict"
-                                      (fn-olog-symbol-text (cadr detail)))))
-    (fn-olog-field "detail" (fn-olog-symbol-text detail))))
+  (cond ((fn-olog-verdict-detailp detail)
+         (append (fn-olog-field "detail" (fn-olog-symbol-text (car detail)))
+                 (cons 32 (fn-olog-field "verdict"
+                                         (fn-olog-symbol-text (cadr detail))))))
+        ((and (symbolp verdict) verdict)
+         (append (fn-olog-field "detail" (fn-olog-symbol-text detail))
+                 (cons 32 (fn-olog-field "verdict"
+                                         (fn-olog-symbol-text verdict)))))
+        (t (fn-olog-field "detail" (fn-olog-symbol-text detail)))))
 
 ; The two words a relayed (CLASS VERDICT) prints are exactly its two names.
 (defthm fn-olog-detail-fields-print-the-class-and-the-verdict
   (implies (fn-olog-verdict-detailp detail)
-           (equal (fn-olog-detail-fields detail)
+           (equal (fn-olog-detail-fields detail verdict)
                   (append (fn-olog-field "detail" (fn-olog-symbol-text (car detail)))
                           (cons 32 (fn-olog-field
                                     "verdict" (fn-olog-symbol-text (cadr detail))))))))
 
-(defun fn-olog-transit-line (o id kind reason word detail)
+; PKT-473: an accepted arm's detail word, then its verdict.
+(defthm fn-olog-detail-fields-print-an-accepted-arms-verdict
+  (implies (and (not (fn-olog-verdict-detailp detail))
+                (symbolp verdict) verdict)
+           (equal (fn-olog-detail-fields detail verdict)
+                  (append (fn-olog-field "detail" (fn-olog-symbol-text detail))
+                          (cons 32 (fn-olog-field
+                                    "verdict" (fn-olog-symbol-text verdict)))))))
+
+(defun fn-olog-transit-line (o id kind reason word detail verdict)
   "The line for transit submission ID completing with KIND, REASON and WORD.
 
 Read from the owner before fn-own-transit-outcome consumes the in-flight
 submission, with the same arguments.  DETAIL is the ACL2 refusal the host
 relays from the ingress attempt (fn-pa-current-plan's `:local-enrollment',
-for one), or nil."
+for one), or nil.  VERDICT is an accepted arm's
+fn-pcb-transit-verdict (PKT-473), or nil."
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))
     (fn-olog-join
@@ -266,7 +283,7 @@ for one), or nil."
                           (fn-olog-decimal (fn-olog-transit-code o kind reason word)))
            (fn-olog-field "decision" (fn-olog-symbol-text kind))
            (fn-olog-field "reason" (fn-olog-symbol-text reason))
-           (fn-olog-detail-fields detail)
+           (fn-olog-detail-fields detail verdict)
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 
 ;; ----------------------------------------------------------------------------
@@ -503,7 +520,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
             (fn-olog-no-breakp (fn-olog-join parts)))))
 
 (local (defthm fn-olog-detail-fields-is-no-break
-  (fn-olog-no-breakp (fn-olog-detail-fields detail))
+  (fn-olog-no-breakp (fn-olog-detail-fields detail verdict))
   :hints (("Goal" :in-theory (disable fn-olog-symbol-text)))))
 
 (local (in-theory (disable fn-olog-field fn-olog-class-word fn-olog-no-breakp
@@ -528,7 +545,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
                                       fn-olog-no-breakp)))))
 
 (defthm fn-olog-transit-line-is-one-line
-  (fn-olog-no-breakp (fn-olog-transit-line o id kind reason word detail))
+  (fn-olog-no-breakp (fn-olog-transit-line o id kind reason word detail verdict))
   :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word)
                                   (fn-olog-join fn-olog-code-class-word
                                    fn-olog-detail-fields
@@ -593,7 +610,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
 ; so the log names the refusal the wire carried, never a host word.
 (defthm fn-olog-transit-line-says-refused-iff-rejected
   (equal (equal (fn-olog-line-word
-                 (fn-olog-transit-line o id kind reason word detail))
+                 (fn-olog-transit-line o id kind reason word detail verdict))
                 (fn-olog-text "refused"))
          (and (not (equal (fn-olog-transit-completion o kind word) :uncertain))
               (if (member-equal (fn-olog-transit-code o kind reason word)

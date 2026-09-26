@@ -836,6 +836,17 @@ follows is justified only by this line."
 ;;; to any decision.  Bound per submission by fnn-owner-drain-one.
 (defvar *fnn-owner-transit-detail* nil)
 
+;;; PKT-473 (PRF-184): the accepted arm's verdict (ACL2's
+;;; fn-pcb-transit-verdict through fn-owner-transit-verdict), read before
+;;; the kind-4 commit, for the same log line.  A log field only.  Bound per
+;;; submission with the detail.
+(defvar *fnn-owner-transit-verdict* nil)
+
+(defun fnn-owner-note-transit-verdict (payload nntp-transit-p ed ml)
+  (setq *fnn-owner-transit-verdict*
+        (fnn-owner-core 'fn-owner-transit-verdict (fnn-octet-list payload)
+                        (and nntp-transit-p t) ed ml)))
+
 (defun fnn-owner-transit-refused (detail)
   (setq *fnn-owner-transit-detail*
         (if (and (consp detail) (eq (first detail) :refused)
@@ -891,6 +902,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                               (fnn-octet-list payload))))
     (cond
       ((eq form :absent)
+       (fnn-owner-note-transit-verdict payload nntp-transit-p nil nil)
        (fnn-owner-attempt service msgid payload groups evidence))
       ((not (and (consp form) (eq (first form) :ok)))
        (fnn-owner-transit-refused
@@ -947,6 +959,8 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      ;; A log detail only (fn-olog-transit-line): the Store
                      ;; record's token, not an input to any decision.
                      (setq *fnn-owner-transit-detail* :carried)
+                     (fnn-owner-note-transit-verdict payload nntp-transit-p
+                                                     nil nil)
                      (return-from fnn-owner-attempt-transit
                        (fnn-owner-statement-committed
                         service event
@@ -1012,6 +1026,9 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                    (when (eq (first plan) :revoked)
                      ;; A log detail only: the Store record's token.
                      (setq *fnn-owner-transit-detail* :revoked))
+                   (fnn-owner-note-transit-verdict payload nntp-transit-p
+                                                   (first observations)
+                                                   (first ml-observation))
                    (fnn-owner-statement-committed
                     service event
                     (fnn-owner-identity-commit service event))))))))))))
@@ -1125,7 +1142,8 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 ;;; verdict continues into the unchanged attempt.  The verdict's log line
 ;;; names the login.
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
-  (setq *fnn-owner-transit-detail* nil)
+  (setq *fnn-owner-transit-detail* nil
+        *fnn-owner-transit-verdict* nil)
   (let ((gate (fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))))
     (unless (and (consp gate) (member (first gate) '(:pass :refused)))
       (fnn-fault "owner returned malformed login gate ~a" gate))
@@ -1134,7 +1152,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                     (fnn-owner-transit-refused gate)
                   (fnn-owner-attempt-transit service msgid payload groups
                                              evidence))))
-      (fnn-owner-core 'fn-owner-served-carried-word word
+      (fnn-owner-core 'fn-owner-served-post-word word
                       *fnn-owner-transit-detail*))))
 
 (defun fnn-owner-retention-commit (service event)
@@ -1344,7 +1362,7 @@ word ACL2 chooses from WORD and the ingress detail (fn-pa-served-word, as
 fnn-owner-attempt-served does for POST), so a relayed reason reaches the
 peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
   (fnn-owner-action 'fn-owner-transit-log-line cid kind reason word
-                    *fnn-owner-transit-detail*)
+                    *fnn-owner-transit-detail* *fnn-owner-transit-verdict*)
   (fnn-owner-action 'fn-owner-transit-outcome cid kind reason
                     (fnn-owner-core 'fn-owner-served-carried-word word
                                     *fnn-owner-transit-detail*))
@@ -1352,7 +1370,8 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
 
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid/reply."
-  (setq *fnn-owner-transit-detail* nil)
+  (setq *fnn-owner-transit-detail* nil
+        *fnn-owner-transit-verdict* nil)
   (let ((taken (fnn-owner-action 'fn-owner-take)))
     (unless (member taken '(:idle :taken :taken-control :taken-transit))
       (fnn-fault "owner returned unexpected take result"))

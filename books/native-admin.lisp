@@ -283,8 +283,8 @@
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
-       ; query (no digest or verifier is rendered, books/accounts.lisp
-       ; `fn-acct-list-report').  `account invite DIGEST SECONDS' is the
+       ; query (no digest or verifier is rendered, books/account-list.lisp
+       ; `fn-acct-kinds-list-report').  `account invite DIGEST SECONDS' is the
        ; form the operator's `account invite [--expires SECONDS]' sends
        ; after ACL2 rendered the code and its digest on the operator's side
        ; (host/native/operator.lisp): the code itself never reaches this

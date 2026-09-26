@@ -856,7 +856,9 @@
         (fn-own-conn-observation conn) (fn-own-clock ,o)
         (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
         (fn-own-conn-group-index conn) (fn-own-conn-control conn))
-       (if (equal ,word :durable) :durable :uncertain)))))
+       (cond ((equal ,word :durable) :durable)
+             ((equal ,word :durable-key-change-refused) ,word)
+             (t :uncertain))))))
 (defmacro own-w2-with (o conns inflight)
   `(fn-own-make (fn-own-store ,o) (fn-own-view ,o) ,conns (fn-own-next-id ,o)
                 (fn-own-max-conns ,o) (fn-own-pending ,o) (fn-own-ledger ,o)
@@ -899,6 +901,30 @@
  (defthm own-w2-needs-the-connection
    (equal (car (fn-own-outcome *own-w2-no-conn* 4 :refused))
           (own-w2-rhs *own-w2-no-conn* 4 :refused))
+   :rule-classes nil))
+; PKT-473 (PRF-184): the durable word naming a refused key change.  After the
+; consumed completion it is the 240 naming the refusal, the same owner state
+; as :durable (the poster re-pinned, the feeds as durable), the conclusion's
+; third arm; before any completion is consumed it is not a 240 at all.
+(assert-event (equal (car (fn-own-outcome *own-p-done* 4 :durable-key-change-refused))
+                     (own-w2-rhs *own-p-done* 4 :durable-key-change-refused)))
+(assert-event (equal (fn-served-reply-octets
+                      (car (fn-own-outcome *own-p-done* 4 :durable-key-change-refused)))
+                     (append (fn-nntp-string-octets
+                              "240 article received OK; the key change it carries was refused (key-change-refused)")
+                             '(13 10))))
+(assert-event (not (equal (car (fn-own-outcome *own-p-done* 4 :durable-key-change-refused))
+                          (car (fn-own-outcome *own-p-done* 4 :durable)))))
+(assert-event (equal (cdr (fn-own-outcome *own-p-done* 4 :durable-key-change-refused))
+                     (cdr (fn-own-outcome *own-p-done* 4 :durable))))
+(assert-event (equal (fn-own-outcome-completion *own-p-done* :durable-key-change-refused)
+                     :durable))
+(assert-event (equal (car (fn-own-outcome *own-taken* 4 :durable-key-change-refused))
+                     (car (fn-own-outcome *own-taken* 4 :uncertain))))
+(must-fail
+ (defthm own-w2-kc-needs-a-consumed-completion
+   (equal (car (fn-own-outcome *own-taken* 4 :durable-key-change-refused))
+          (own-w2-rhs *own-taken* 4 :durable-key-change-refused))
    :rule-classes nil))
 (assert-event (not (equal (car (fn-own-outcome *own-p-done* 4 :uncertain)) (car *own-240*))))
 (assert-event (equal (car (fn-own-outcome *own-p-done* 4 :fault))

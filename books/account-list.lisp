@@ -4,18 +4,18 @@
 ; kinds told apart by the row's mark alone: a pending invitation (mark 0,
 ; books/accounts.lisp), a redeemed account (mark 1) and a login binding
 ; (mark 2, PKT-221's rows, books/login-binding-live.lisp).
-; books/accounts.lisp fn-acct-list-report printed every row that was not
-; redeemed as `pending expires EXPIRY', so a binding row showed as a pending
-; account with an empty expiry.  This book's report is the one
-; books/native-live-status.lisp serves for `account list':
+; The older books/accounts.lisp fn-acct-list-report (removed, PKT-473)
+; printed every row that was not redeemed as `pending expires EXPIRY', so a
+; binding row showed as a pending account with an empty expiry.  This
+; book's report is the one books/native-live-status.lisp serves for
+; `account list':
 ;
 ;   pending expires EXPIRY
 ;   redeemed LOGIN PRINCIPAL-HEX
 ;   binding LOGIN PRINCIPAL-HEX
 ;   unknown                         (a mark no writer makes)
 ;
-; Never a digest or a verifier.  A book of its own so books/accounts.lisp
-; (under books/owner's closure) does not change.
+; Never a digest or a verifier.
 (in-package "ACL2")
 (include-book "accounts")
 
