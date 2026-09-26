@@ -83,7 +83,8 @@
 (must-fail
  (defthm rst-walk-without-the-parse
    (equal (fn-hc-authored-source (fn-article-result-article (fn-article-parse y)))
-          (fn-rs-source-walk (fn-pu-strip y nil) nil))))
+          (fn-rs-source-walk (fn-pu-strip y nil) nil))
+   :hints (("Goal" :in-theory (disable fn-hc-authored-source fn-rs-source-walk fn-pu-strip fn-article-parse) :do-not-induct t :do-not (quote (generalize fertilize eliminate-destructors))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-rs-relaying-keeps-the-authored-source over fn-peer-relayed-octets
@@ -141,7 +142,8 @@
                     (fn-article-result-article
                      (fn-article-parse (fn-peer-relayed-octets cfg peer octets))))
                    (fn-hc-authored-source
-                    (fn-article-result-article (fn-article-parse octets)))))))
+                    (fn-article-result-article (fn-article-parse octets)))))
+   :hints (("Goal" :in-theory (disable fn-hc-authored-source fn-peer-relayed-octets fn-article-parse) :do-not-induct t :do-not (quote (generalize fertilize eliminate-destructors))))))
 
 ; Hypothesis removal, the parse of what is stored: a received Path line of
 ; 995 octets parses, and B's splice pushes it past 998.
@@ -163,7 +165,8 @@
                     (fn-article-result-article
                      (fn-article-parse (fn-peer-relayed-octets cfg peer octets))))
                    (fn-hc-authored-source
-                    (fn-article-result-article (fn-article-parse octets)))))))
+                    (fn-article-result-article (fn-article-parse octets)))))
+   :hints (("Goal" :in-theory (disable fn-hc-authored-source fn-peer-relayed-octets fn-article-parse) :do-not-induct t :do-not (quote (generalize fertilize eliminate-destructors))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-rs-a-wanted-transfer-keeps-the-authored-source (NNTP transit)
@@ -207,7 +210,8 @@
           (equal (fn-hc-authored-source
                   (fn-article-result-article (fn-article-parse stored)))
                  (fn-hc-authored-source
-                  (fn-article-result-article (fn-article-parse octets))))))))
+                  (fn-article-result-article (fn-article-parse octets))))))
+   :hints (("Goal" :in-theory (disable fn-hc-authored-source fn-peer-injection-arguments fn-article-parse fn-peer-relayed-octets) :do-not-induct t :do-not (quote (generalize fertilize eliminate-destructors))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-rs-a-bp-transit-keeps-the-authored-source (the BP route)
@@ -257,4 +261,5 @@
                   (fn-article-result-article
                    (fn-article-parse (fn-bpaj-transit-stored-octets plan))))
                  (fn-hc-authored-source
-                  (fn-article-result-article (fn-article-parse article))))))))
+                  (fn-article-result-article (fn-article-parse article))))))
+   :hints (("Goal" :in-theory (disable fn-hc-authored-source fn-bpaj-transit-plan fn-bpaj-transit-stored-octets fn-bpaj-request fn-bpa-request-article fn-article-parse) :do-not-induct t :do-not (quote (generalize fertilize eliminate-destructors))))))
