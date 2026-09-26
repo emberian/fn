@@ -137,3 +137,28 @@ def refused_port():
     reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     reservation.bind(("127.0.0.1", 0))
     return reservation, reservation.getsockname()[1]
+
+
+def start_filed(argv, log_path, **popen):
+    """Start a native process with stdout on a pipe and stderr in LOG_PATH.
+
+    A native server logs to stderr for as long as it serves.  On a pipe the
+    test does not read, the 64 KiB kernel buffer fills and the server's next
+    log write blocks, in the owner while it holds its log mutex (PKT-505), so
+    a long test wedges the server it is measuring.  A file never fills.  The
+    returned process's `stderr' is a read handle on LOG_PATH (reading it after
+    the process stops yields the whole log, as the pipe did) and
+    `stderr_path' names the file.
+    """
+    with open(log_path, "wb") as log:
+        process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=log,
+                                   bufsize=0, **popen)
+    process.stderr = open(log_path, "rb")
+    process.stderr_path = log_path
+    return process
+
+
+def next_log_number(case):
+    """1, 2, ... per test case: one stderr file per process a test starts."""
+    case.native_log_count = getattr(case, "native_log_count", 0) + 1
+    return case.native_log_count

@@ -20,7 +20,6 @@ Run on hbox with FN_NATIVE_HOST naming the image under test.
 import shutil
 import signal
 import socket
-import threading
 import unittest
 
 from tests import test_native_operator_verbs as verbs
@@ -161,27 +160,11 @@ class LargeReplyTests(JoinFixture):
     OVER_ARTICLES = 2000
     OVER_REFERENCES = 2000  # octets of folded References per article
 
-    def start_drained_owner(self):
-        """start_owner, with its stderr read as it is written.
-
-        The fixture's owner writes one log line per accepted POST to a pipe
-        nobody reads until it stops; about 500 POSTs fill the pipe's 64 KiB,
-        the writing thread blocks in pipe_write holding the owner's log
-        mutex, and every later request waits (harness trap found here: 512
-        transactions, the control socket fenced as owner-unanswering)."""
-        owner = self.start_owner(self.image)
-        lines = []
-        reader = threading.Thread(
-            target=lambda: lines.extend(iter(owner.stderr.readline, b"")), daemon=True)
-        reader.start()
-        return owner, reader, lines
-
-    def stop_drained(self, owner, reader, lines):
+    def stop_serving(self, owner):
         owner.send_signal(signal.SIGTERM)
         code = owner.wait(timeout=60)
-        reader.join(timeout=60)
-        self.assertEqual(code, EXIT_OK,
-                         b"".join(lines[-20:]).decode("utf-8", "replace"))
+        self.assertEqual(code, EXIT_OK, b"".join(owner.stderr.readlines()[-20:])
+                         .decode("utf-8", "replace"))
 
     def references(self, i):
         ids, total, j = [], 0, 0
@@ -195,7 +178,7 @@ class LargeReplyTests(JoinFixture):
     def test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving(self):
         created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner, reader, log = self.start_drained_owner()
+        owner = self.start_owner(self.image)
         rows = self.post_and_reread([1048576, 2097152, 3145728])
         for n in (1048576, 2097152, 3145728):
             self.assertTrue(rows[n][0].startswith("240"), rows)
@@ -240,7 +223,7 @@ class LargeReplyTests(JoinFixture):
             self.assertTrue(client.stream.readline().startswith(b"223"))
         finally:
             client.close()
-        self.stop_drained(owner, reader, log)
+        self.stop_serving(owner)
 
 
 @unittest.skipUnless(FORMAT7_IMAGE, "FN_FORMAT7_IMAGE names a pre-D27 image")
