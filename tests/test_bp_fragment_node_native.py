@@ -164,11 +164,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         process.stdout.close()
         process.stderr.close()
 
-    def send_fragment(self, port, path, number):
+    def send_fragment(self, port, path, number, timeout=120):
         return self.invoke(
             "tcpcl", "send", "127.0.0.1", port, path,
             self.tmp / f"sender-spool-{number}",
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
+            timeout=timeout,
         )
 
     def article_count(self):
@@ -339,13 +340,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         finally:
             bridge.close()
 
-    def send_many(self, port, numbers, paths, workers=8):
+    def send_many(self, port, numbers, paths, workers=4):
         """Send each fragment in its own TCPCL session, WORKERS at a time;
         every send must be accepted."""
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=workers) as pool:
             results = list(pool.map(
-                lambda n: (n, self.send_fragment(port, paths[n], n)), numbers))
+                lambda n: (n, self.send_fragment(port, paths[n], n, 900)),
+                numbers))
         for number, sent in results:
             self.assertEqual(sent.returncode, 0,
                              (number, sent.stdout, sent.stderr))

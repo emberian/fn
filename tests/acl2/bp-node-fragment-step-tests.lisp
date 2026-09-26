@@ -147,3 +147,27 @@
                           *bpnfs-expiry-state*
                           (list :family 0 *bpnfs-age-later*)))))
                      nil))
+
+;; fn-bpnf-family-without-offset-zero-is-not-ready (PRF-134): the selector
+;; skips a family whose offset-zero row is not held.  Witness: p3 held
+;; without p0 has no offset-zero source and is not ready; hypothesis removal:
+;; with p0 held the same anchor's plan is ready.
+(defconst *bpnfs-no-zero-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*) (list *bpnff-p3*)
+                 nil nil nil nil nil 3 0))
+(assert-event
+ (and (not (fn-bpnf-offset-zero-source
+            (fn-bpnf-active-set *bpnfs-no-zero-state* *bpnff-p3*)))
+      (not (equal (fn-cbor-ag-car (fn-bpnf-family-plan-at
+                                   *bpnfs-no-zero-state* *bpnff-p3*
+                                   *bpnfs-live-observation*))
+                  :ready))
+      (null (fn-bpnf-family-next *bpnfs-no-zero-state*
+                                 *bpnfs-live-observation*))))
+(assert-event
+ (and (fn-bpnf-offset-zero-source
+       (fn-bpnf-active-set *bpnff-state* *bpnff-p3*))
+      (equal (fn-cbor-ag-car (fn-bpnf-family-plan-at
+                              *bpnff-state* *bpnff-p3*
+                              *bpnfs-live-observation*))
+             :ready)))

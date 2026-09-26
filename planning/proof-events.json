@@ -5326,6 +5326,14 @@
         {
           "kind": "theorem",
           "name": "fn-bpnpf-restart-names-held-beyond-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-without-offset-zero-is-not-ready"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-memo-is-aux"
         }
       ]
     }
