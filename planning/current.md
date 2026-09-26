@@ -158,9 +158,9 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
-- Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:190.
+- Host-called subject: `fn-bpnj-step` at host/native/bp-service.lisp:195, equated by `fn-bpnj-step-delegates-every-other-event` (books/bp-node-job-offer.lisp:181).
 - Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:153; PRF-046 (in-progress), PRF-103 (in-progress)); no archived manifest certifies the current closure; `certify-20260925T100537Z-3113587` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/bp-node-progress.lisp` and 38 more changed.
-- Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; changed since it: `books/bp-node-forward-retry.lisp`, `host/native/bp-service.lisp`.
+- Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; absent from it: `books/bp-node-job-offer.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: on the frozen DTN images: bp_node 19/19 (N07, N08, N11), bp_service 16/16, receive_integrity 4/4, bp_app 5/5 and bp_obligation 4/4 on `fn-host-dtn-developer`; on `fn-host-dtn` every failure is a refused developer selector; through dtn7-rs a first hop SIGKILLed mid-transfer leaves A uncertain, resume is accepted, and the carrier-killed interrupted contact delivers once on both DTN images ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
 - Remaining obstruction: the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; the retry budget is not persisted across restarts; `bp-node resume` and busy-delivery deferral (BP-R17) are post-cut, and dev's cases for them fail on c3420013 ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
