@@ -323,12 +323,40 @@ observation into the outcome and this function only carries it out."
                ;; An image without the control socket has no live owner
                ;; to hand the plan to: the direct executor takes the
                ;; exclusive lock, so a live owner of another image refuses it.
-               (livep (and control-path
-                           (not (fnn-image-omits-p :control))
-                           (fnn-control-socket-path-p
-                            (fnn-lstat (fnn-octets-string control-path)))))
+               ;; PKT-344: two observations, ACL2's decision
+               ;; (fn-native-control-liveness-decides): a socket node with
+               ;; the lock free or absent is a crashed owner's (:stale), and
+               ;; only a free or absent lock starts the offline executor.
+               (socket-path (and (fnn-octet-list-p control-path-list)
+                                 (consp control-path-list)
+                                 (not (fnn-image-omits-p :control))
+                                 (fnn-octets control-path-list)))
+               ;; An image without the control surface (the DTN image)
+               ;; loads neither the decision nor the socket code: it has no
+               ;; socket to observe, and its executor's exclusive lock
+               ;; refuses a held store, as before PKT-344.
+               (liveness
+                 (if (fnn-image-omits-p :control)
+                     :offline
+                   (fnn-core 'fn-native-control-host-liveness
+                             (and socket-path
+                                  (fnn-control-socket-path-p
+                                   (fnn-lstat (fnn-octets-string socket-path)))
+                                  t)
+                             (fnn-store-owner-observation root))))
+               (note (and (not (fnn-image-omits-p :control))
+                          (fnn-core 'fn-native-control-host-liveness-note liveness)))
+               (livep (and control-path (eq liveness :live)))
                (code
-                 (cond
+                 (progn
+                  (when (eq liveness :stale)
+                    (fnn-control-remove-stale-offline socket-path))
+                  ;; A query does not use the :held arm (the read-only
+                  ;; executor's own shared lock answers it), so it prints
+                  ;; only the :stale note.
+                  (when (and (stringp note) (or (not queryp) (eq liveness :stale)))
+                    (fnn-err "~a" note))
+                  (cond
                    ;; A query publishes no configuration record, so it has
                    ;; nothing to send the live owner and nothing to serialize
                    ;; behind its mutex: the read-only executor is the only
@@ -346,7 +374,9 @@ observation into the outcome and this function only carries it out."
                    (livep
                     (fnn-core 'fn-native-control-host-status-exit-code
                               (fnn-control-admin control-path argv)))
-                   (t (fnn-admin-execute root plan)))))
+                   ((eq liveness :held)
+                    (fnn-core 'fn-native-control-host-status-exit-code :refused))
+                   (t (fnn-admin-execute root plan))))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
           code)
       (error (condition)
@@ -473,7 +503,11 @@ observation into the outcome and this function only carries it out."
             :refused
           (or (fnn-core 'fn-native-health-host-fenced route
                         (fnn-store-owner-observation root)
-                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t))
+                        (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
+                        ;; Would an owner listen at all: a configured socket
+                        ;; in an image that has one (an observation; ACL2's
+                        ;; fn-nh-fence-of decides :starting from it).
+                        (and control-path (not (fnn-image-omits-p :control)) t))
               (multiple-value-bind (store records) (fnn-open-live-store root nil)
                 (declare (ignore records))
                 (unwind-protect

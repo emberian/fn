@@ -483,6 +483,65 @@ distinguish an unobserved refusal from a durable acceptance."
     (:after-submission :uncertain)
     (otherwise :fault)))
 
+;; ---------------------------------------------------------------------------
+; Which path an offline `control' or `peer' verb takes (PKT-344).  The host
+; observes two things before it acts (host/native/operator.lisp
+; fnn-operator-execute-admin): whether a socket node sits at the configured
+; control path (SOCKET-NODE), and the Store's writer lock
+; (`fnn-store-owner-observation': :held :free :absent :unknown).  ACL2
+; decides:
+;   :live     a socket node and a lock not seen free: hand the vector to the
+;             owner (a failed connect is `fn-native-control-transport-outcome'
+;             :before-submission, :refused);
+;   :stale    a socket node and a free or absent lock: no owner holds the
+;             Store, so the node is a crashed owner's; the host removes it
+;             under the control-path lease (as `fnn-control-remove-stale' does
+;             at listen) and the verb runs offline;
+;   :offline  no socket node and a free or absent lock: the verb runs offline;
+;   :held     no socket node and a lock held or unreadable: refused, reason
+;             store-held; the offline executor is not started.
+; The offline executor still takes the exclusive writer lock itself, so a
+; race with a starting owner is refused by the lock, never served twice.
+(defun fn-native-control-liveness (socket-node lock)
+  (declare (xargs :guard t))
+  (let ((freep (and (member-equal lock '(:free :absent)) t)))
+    (cond ((and socket-node freep) :stale)
+          (socket-node :live)
+          (freep :offline)
+          (t :held))))
+
+(defun fn-native-control-liveness-offlinep (decision)
+  "The decisions under which the host starts the offline executor."
+  (declare (xargs :guard t))
+  (and (member-equal decision '(:offline :stale)) t))
+
+; The line the verb prints before its result for a decision, or nil.
+(defun fn-native-control-liveness-note (decision)
+  (declare (xargs :guard t))
+  (cond ((equal decision :stale)
+         "stale control socket removed (no owner holds the store; the node was left by an owner that stopped without closing it)")
+        ((equal decision :held)
+         "refused store-held (a process holds the store lock and no control socket is there to reach it: an owner starting, or an offline command; retry)")
+        (t nil)))
+
+; KEYSTONE (PKT-344).  The subject is `fn-native-control-liveness', which the
+; host calls through `fn-native-control-host-liveness'
+; (host/native/operator.lisp fnn-operator-execute-admin).  A stale socket
+; never refuses an offline verb: a socket node with the lock free or absent
+; is :stale and the verb runs offline.  A held lock never lets an offline
+; verb open the Store: the executor starts exactly when the lock was seen
+; free or absent, whatever the socket node shows.
+(defthm fn-native-control-liveness-decides
+  (and (iff (fn-native-control-liveness-offlinep
+             (fn-native-control-liveness socket-node lock))
+            (member-equal lock '(:free :absent)))
+       (iff (equal (fn-native-control-liveness socket-node lock) :stale)
+            (and socket-node (member-equal lock '(:free :absent))))
+       (member-equal (fn-native-control-liveness socket-node lock)
+                     '(:live :stale :offline :held)))
+  :hints (("Goal" :in-theory (enable fn-native-control-liveness
+                                     fn-native-control-liveness-offlinep))))
+
 (defun fn-native-control-max-active-clients ()
   "The fixed local transport worker ceiling selected by ACL2 policy."
   (declare (xargs :guard t))

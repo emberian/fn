@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import select
 import signal
+import stat
 import socket
 import subprocess
 import tempfile
@@ -225,6 +226,67 @@ class NativeControlTests(unittest.TestCase):
             [str(IMAGE), "--fn", "store", str(store), "inspect", message_id],
             cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=180, check=False)
+
+    def operator(self, *words, image=None, timeout=120):
+        return subprocess.run(
+            [str(image or IMAGE), "--fn", "operator", str(self.config)] + list(words),
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=timeout, check=False)
+
+    def test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline(self):
+        # PKT-344: an owner killed without cleanup leaves its socket node; the
+        # lock is free, so ACL2 decides :stale (fn-native-control-liveness):
+        # the offline verb removes the node and answers, never refused.
+        owner = self.start_owner()
+        owner.kill()
+        owner.wait(timeout=30)
+        owner.stdout.close()
+        owner.stderr.close()
+        self.assertTrue(stat.S_ISSOCK(os.lstat(self.control).st_mode))
+        listed = self.operator("control", "list")
+        self.assertEqual(listed.returncode, 0, listed.stderr.decode())
+        self.assertIn(b"stale control socket removed", listed.stderr)
+        self.assertFalse(os.path.lexists(self.control))
+        # A restarted owner binds its socket as before.
+        restarted = self.start_owner()
+        restarted.send_signal(signal.SIGTERM)
+        self.assertEqual(restarted.wait(timeout=30), 0,
+                         restarted.stderr.read().decode("utf-8", "replace"))
+        restarted.stdout.close()
+        restarted.stderr.close()
+
+    def test_health_during_a_slow_start_says_starting(self):
+        # PKT-283: the owner holds the recovered Store's lock and its control
+        # socket is not listening yet: `health' says starting (exit 20, the
+        # fenced state, reason starting), not store-held.
+        if not executable(DEVELOPER):
+            raise unittest.SkipTest(
+                DEVELOPER_REASON.format("FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"))
+        env = environment()
+        env["FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"] = "1"
+        process = subprocess.Popen(
+            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        try:
+            ready = select.select([process.stdout], [], [], 180)[0]
+            self.assertTrue(ready, "the paused owner printed nothing")
+            self.assertEqual(process.stdout.readline(),
+                             b"OWNER-PAUSED-BEFORE-LISTEN\n")
+            self.assertFalse(os.path.lexists(self.control))
+            health = self.operator("health")
+            self.assertEqual(health.returncode, 20, health.stderr.decode())
+            self.assertTrue(health.stdout.startswith(
+                b"health exit=20 state=fenced reason=starting"), health.stdout)
+            process.send_signal(signal.SIGTERM)
+            self.assertEqual(process.wait(timeout=60), 0,
+                             process.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
 
     def test_shared_control_path_is_not_stolen_by_another_store(self):
         owner = self.start_owner()

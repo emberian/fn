@@ -1974,7 +1974,7 @@ OBSERVED (the markers found beside the store root) is empty."
 ;
 ; Until 2026-09-26 the host handed (SEQUENCE . FILE-LENGTH) pairs instead, and
 ; two histories whose records agree in number and length but not in content
-; passed as one history (gpt-6's answers §7).  Counters and lengths are not
+; passed as one history (gpt-6's answers section 7).  Counters and lengths are not
 ; compared here at all: not as a filter, not as a count.
 
 (defun fn-nop-history-prefixp (snap cur)

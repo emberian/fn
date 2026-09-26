@@ -2074,7 +2074,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-112"
+        "PRF-112",
+        "PRF-172"
       ],
       "verification": [
         "proof",
@@ -2981,7 +2982,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-143"
+        "PRF-143",
+        "PRF-172"
       ],
       "verification": [
         "proof",
@@ -3113,6 +3115,29 @@
         "planning/evidence/publish-program-2026-09-26/post_n.py"
       ],
       "implementation_note": "A served commit makes seven fsyncs (strace over `store probe`: 7.2 per commit with the reopen), two renames, one link and one unlink: the frontier's stage and root, the record's stage, transactions directory and staging directory, the marker's stage and root. On the pool `tank` (ZFS, about 90 percent full, no SLOG) each is one ZIL commit; the marker's two fence its stage inode and the root entry, and neither can be shared with a barrier that precedes the record's or follows the acknowledgement (PRF-169). The measured cost and the sound sharing are in the record; the reservation pulled into the completion window is PKT-441."
+    },
+    {
+      "id": "HST-010",
+      "title": "The operator's daily verbs distinguish an owner starting, a fenced store, a stale control socket and a refusal by name, each decided in ACL2 from the host's observations",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-172"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/native-health.lisp",
+        "books/native-control.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_control.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name for the control post and live reconfiguration is PKT-453 (not yet)."
     }
   ]
 }

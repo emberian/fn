@@ -86,12 +86,17 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
     "host/native-control-host.lisp": (
         "control socket; used by control/hybrid-control/operator/topic-local/consumer-local; "
         "the DTN image loads only operator.lisp of these",
-        {name: "operator.lisp's `post` executor and live-owner admin arm; the DTN "
+        {**{name: "operator.lisp's `post` executor and live-owner admin arm; the DTN "
                "image names :nntp-service and :control in *fnn-image-omitted-surfaces*, "
                "so the operator refuses `post` (exit 5) and never takes the live arm"
          for name in ("fn-native-control-host-status-class",
                       "fn-native-control-host-status-exit-code",
-                      "fn-native-control-host-refusal-status")}),
+                      "fn-native-control-host-refusal-status")},
+         **{name: "operator.lisp's offline control/peer liveness decision (PKT-344); "
+                 "the DTN image names :control in *fnn-image-omitted-surfaces*, so "
+                 "fnn-operator-execute-admin takes :offline without calling it"
+           for name in ("fn-native-control-host-liveness",
+                        "fn-native-control-host-liveness-note")}}),
     "host/peer-invite-host.lisp": (
         "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
         "which build-dtn.lisp does not load: the operator refuses `peer "
@@ -113,6 +118,7 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
        "*fnn-image-omitted-surfaces*, so the operator refuses `run` and `post` "
        "(exit 5) and never takes the live arm"
        for name in ("fnn-control-admin", "fnn-control-live-status", "fnn-control-owner-run-normalized",
+                    "fnn-control-remove-stale-offline",
                     "fnn-control-socket-path-p", "fnn-control-submit",
                     "fnn-feed-service-close", "fnn-feed-service-start",
                     "fnn-pull-service-close", "fnn-pull-service-start", "fnn-pull-service-wake",

@@ -61,6 +61,24 @@
       (ignore-errors (fnn-flock fd +fnn-lock-un+))
       (ignore-errors (fnn-close fd)))))
 
+(defun fnn-control-remove-stale-offline (path-octets)
+  "Remove a crashed owner's socket node for an offline verb (PKT-344), after
+ACL2 decided :stale (fn-native-control-liveness).  Performed as
+`fnn-control-listen' does: under the ACL2-derived control-path lease, so an
+owner that starts meanwhile (it takes the lease before it binds) is never
+unlinked; the lease is released before the verb runs."
+  (let* ((lease-octets (fnn-core 'fn-native-control-host-lease-path
+                                 (fnn-octet-list path-octets)))
+         (lease-path (and (fnn-octet-list-p lease-octets)
+                          (fnn-octets-string (fnn-octets lease-octets))))
+         (control (%make-fnn-control-state
+                   :path (fnn-octets-string path-octets)
+                   :lease-path lease-path)))
+    (unwind-protect
+         (progn (fnn-control-acquire-lease control)
+                (fnn-control-remove-stale (fnn-control-state-path control)))
+      (fnn-control-release-lease control))))
+
 (defun fnn-control-listen (path)
   (fnn-control-remove-stale path)
   (let ((listener (make-instance 'sb-bsd-sockets:local-socket
@@ -377,9 +395,18 @@ transition."
              (fnn-store-fault (condition)
                (fnn-err "control request fault; owner stopped: ~a" condition)
                :fault)
-             (fnn-store-error () :refused)
-             (fnn-os-error () :refused)
-             (sb-bsd-sockets:socket-error () :refused)
+             ;; PKT-264 (2): a refusal is no longer silent in the owner's
+             ;; log; the line names the condition's class and its message
+             ;; (the operator's reply word is still :refused).
+             (fnn-store-error (condition)
+               (fnn-err "control request refused (store-error): ~a" condition)
+               :refused)
+             (fnn-os-error (condition)
+               (fnn-err "control request refused (os-error): ~a" condition)
+               :refused)
+             (sb-bsd-sockets:socket-error (condition)
+               (fnn-err "control request refused (socket-error): ~a" condition)
+               :refused)
              (error (condition)
                (fnn-owner-fault-service service nil condition)
                :fault))))
