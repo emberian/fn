@@ -18,7 +18,13 @@ stays at its current value.  These witnesses run the saved images:
 * the core's dynamic content is under 128 MiB (271 MiB before the strip and
   the residue drop), and
   a fresh node started with a 256 MB dynamic space takes a POST and serves
-  it back.
+  it back;
+* the control stack books/heap-reservation.lisp decides for the small,
+  development and scale profiles (1,192 KiB: 512 KiB + 40 octets for each
+  of the 16,384 + 1,024 lines a 32,768-octet article can have) posts, serves,
+  reopens and serves again the worst such article, every body line empty; and
+  a third of it (384 KiB) does not (the owner faults on control-stack
+  exhaustion), so the witness measures the stack and not the harness.
 
 Each witness skips, naming the image, when that image is absent.
 """
@@ -41,6 +47,7 @@ EXIT_FAULT, EXIT_USAGE = 4, 5
 GUARD_LINE = (b"store: ACL2 error in fn-sha256-of-string: "
               b"(EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)\n")
 CORE_CEILING_KIB = 128 * 1024
+SMALL_STACK_KIB = 1192          # fn-heap-stack-kib of the 32,768-octet presets
 
 
 def environment(**extra):
@@ -104,6 +111,24 @@ class ProductionTests(unittest.TestCase):
                                  timeout=600)
         doc = json.loads(res.stdout)
         self.assertEqual(doc["trials"][0][:2], [256, True], doc)
+
+    def stack_trial(self, kib):
+        with tempfile.TemporaryDirectory() as work:
+            res = subprocess.run([sys.executable, str(MEASURE), "stack-floor", str(IMAGE),
+                                  work, "--octets", "32768", "--line-octets", "2",
+                                  "--heap", "1024", "--hi", str(kib), "--lo", str(kib - 1)],
+                                 env=environment(), stdout=subprocess.PIPE, check=True,
+                                 timeout=900)
+        return json.loads(res.stdout)
+
+    def test_decided_stack_holds_the_largest_small_article(self):
+        doc = self.stack_trial(SMALL_STACK_KIB)
+        self.assertEqual(doc["trials"][0][:2], [SMALL_STACK_KIB, True], doc)
+
+    def test_a_third_of_the_stack_does_not(self):
+        doc = self.stack_trial(384)
+        self.assertEqual(doc["trials"][0][:2], [384, False], doc)
+        self.assertIsNone(doc["stack_floor_kib"], doc)
 
 
 if __name__ == "__main__":

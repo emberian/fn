@@ -378,9 +378,27 @@ a copying collection of the nursery needs as much again free); after recovery
 one full collection returns the recovery's garbage pages to the system; from
 `LISTENING` it collects every 8 MiB. The figures and the ACL2 8.7 source that
 reads each kept property are in `planning/evidence/image-floor-2026-09-26.md`;
-the native case is `tests/test_native_image_floor.py`. The heap and the
-thread stacks a profile needs are still heap-from-profile's derivation
-(HST-013), which the list representation of the retained history dominates.
+the native case is `tests/test_native_image_floor.py`. The heap a profile
+needs is still heap-from-profile's derivation (HST-013), which the list
+representation of the retained history dominates.
+
+The thread stacks are the reservation's second part
+(`books/heap-reservation.lisp` `fn-heap-reserve-decide`, called by
+`host/native/heap.lisp` `fnn-heap-reservation` from the `heap -- ARGV` probe).
+SBCL reserves for every thread its control stack and about 2.5 MiB of runtime
+areas; the image's own launcher gave every thread 64 MiB, so a node with 32
+connections reserved about 4 GB beside its heap, and on OpenBSD, where a
+reservation counts against the login class's datasize, the fourteenth thread
+was refused at 1,536 MiB. The figure is the heap-figure heap plus THREADS x
+(STACK + 3 MiB): THREADS the run's `max-connections`, the 16 control clients
+and 12 fixed threads; STACK 512 KiB plus 40 octets for each line the
+profile's largest article can have (half its octets, plus 1,024 header lines),
+from the measured 144 KiB plus 32 octets per line of the served path's
+per-line recursion. A total the machine cannot hold is refused by name
+before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
+machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
+with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
+stack=KB KB threads=N`.
 
 ### The served reader path
 

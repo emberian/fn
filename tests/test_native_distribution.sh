@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     }
     /* The installed launcher's heap probe (PKT-016): answer a figure. */
     if (!strcmp(argv[i], "--fn") && !strcmp(argv[i+1], "heap")) {
-      puts("heap=64 MB profile=none machine=64 MB");
+      puts("heap=64 MB profile=none machine=64 MB stack=2048 KB threads=1");
       return 0;
     }
   }

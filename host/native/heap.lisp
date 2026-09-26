@@ -11,10 +11,11 @@
 ;;;
 ;;;   heap -- ARGV...   the installed launcher's probe (packaging/fn): the
 ;;;                     figure for the command ARGV names, one line on stdout
-;;;                     `heap=MB MB profile=WORD machine=M MB', exit 0; or
+;;;                     `heap=MB MB profile=WORD machine=M MB stack=KB KB
+;;;                     threads=N' (books/heap-reservation.lisp), exit 0; or
 ;;;                     ACL2's refusal line on stderr, exit 1 (outcome-class
 ;;;                     :refused).  The launcher then execs the image with
-;;;                     `--dynamic-space-size MB'.
+;;;                     `--dynamic-space-size MB --control-stack-size KBKB'.
 ;;;
 ;;; `operator CONFIG status' and `health' print the same line after their
 ;;; report; `operator CONFIG init' with a bare request resolves ACL2's
@@ -144,28 +145,46 @@ that)."
                  (root (fnn-core 'fn-native-operator-host-result-store-root result)))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))
-              (if (eq (fnn-core 'fn-native-operator-host-result-native-action result) :init)
-                  (let ((request (fnn-core 'fn-native-operator-host-result-init-profile
-                                           result)))
-                    (and (consp request)
-                         (let ((profile (fnn-core 'fn-bs-profile-resolve
-                                                  (fnn-heap-init-request request) nil)))
-                           (and (not (eq (car profile) :invalid)) profile))))
-                (fnn-heap-store-profile (fnn-absolute root)))))))
+              (values
+               (if (eq (fnn-core 'fn-native-operator-host-result-native-action result) :init)
+                   (let ((request (fnn-core 'fn-native-operator-host-result-init-profile
+                                            result)))
+                     (and (consp request)
+                          (let ((profile (fnn-core 'fn-bs-profile-resolve
+                                                   (fnn-heap-init-request request) nil)))
+                            (and (not (eq (car profile) :invalid)) profile))))
+                 (fnn-heap-store-profile (fnn-absolute root)))
+               ;; The owner's client workers a `run' admits (0 for any other
+               ;; verb): ACL2's figure, the one fnn-operator-execute passes on.
+               (fnn-core 'fn-native-operator-host-result-run-max-connections
+                         result))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)
+  "The command's store profile (or NIL) and the client connections its run
+admits (0 when it is not a run)."
   (cond ((and (string= (or (first argv) "") "operator") (second argv))
-         (fnn-heap-operator-profile (second argv) (cddr argv)))
+         (multiple-value-bind (profile connections)
+             (fnn-heap-operator-profile (second argv) (cddr argv))
+           (values profile (if (integerp connections) connections 0))))
         ((and (string= (or (first argv) "") "store") (third argv))
-         (fnn-heap-store-profile (second argv)))
-        (t nil)))
+         (values (fnn-heap-store-profile (second argv)) 0))
+        (t (values nil 0))))
+
+;; The whole reservation (books/heap-reservation.lisp fn-heap-reserve-decide,
+;; HST-017): heap-figure's heap, then the thread stacks the node's threads
+;; reserve beside it; the launcher passes `--control-stack-size KB' too.
+(defun fnn-heap-reservation (profile connections)
+  (fnn-core 'fn-heap-reserve-decide profile (fnn-heap-core-octets)
+            +fnn-gc-nursery-octets+ (fnn-heap-observations) connections))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
-  (let* ((decision (fnn-heap-decision (fnn-heap-command-profile argv)))
-         (line (fnn-core 'fn-heap-report-line decision))
+  (let* ((decision (multiple-value-bind (profile connections)
+                       (fnn-heap-command-profile argv)
+                     (fnn-heap-reservation profile connections)))
+         (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     (if (eql code +fnn-exit-ok+)
         (fnn-out "~a" line)

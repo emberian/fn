@@ -72,7 +72,8 @@ unset ACL2_SYSTEM_BOOKS
 #                 (books/heap-figure.lisp fn-heap-decide) in a first run of
 #                 the same image, `heap -- ARGV', which reads the command's
 #                 store profile and this machine's memory and prints
-#                 `heap=MB MB profile=WORD machine=M MB'; a profile the
+#                 `heap=MB MB profile=WORD machine=M MB stack=KB KB threads=N'
+#                 (books/heap-reservation.lisp adds the thread stacks); a profile the
 #                 machine cannot hold is refused there by name, exit 1, and
 #                 nothing else runs.  That probe itself runs in the core's
 #                 size plus two 64 MiB collection nurseries: a bound on the
@@ -96,7 +97,16 @@ if [ -n "$installed" ]; then
     case $mb in
         ''|*[!0-9]*) echo "fn: the heap probe printed no figure: $figure" >&2; exit 4 ;;
     esac
-    SBCL_USER_ARGS="--dynamic-space-size $mb"
+    # The control stack every thread reserves (books/heap-reservation.lisp,
+    # HST-017): the measured need of the profile's largest article.
+    stack=
+    case $figure in
+        *" stack="*) stack=${figure##* stack=}; stack=${stack%% *} ;;
+    esac
+    case $stack in
+        ''|*[!0-9]*) echo "fn: the heap probe printed no stack figure: $figure" >&2; exit 4 ;;
+    esac
+    SBCL_USER_ARGS="--dynamic-space-size $mb --control-stack-size ${stack}KB"
     export SBCL_USER_ARGS
 elif [ -n "${FN_TEST_HEAP_MB:-}" ]; then
     case $FN_TEST_HEAP_MB in

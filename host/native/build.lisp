@@ -102,6 +102,7 @@
 (include-book "books/native-operator")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
+(include-book "books/heap-reservation")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.

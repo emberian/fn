@@ -78,7 +78,19 @@ def fresh(image, work, env, profile=DEVELOPMENT):
 
 def rss(pid):
     if os.path.exists("/proc/%d/status" % pid):
-        return {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+        doc = {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+        # The resident set counts the core file's clean pages, and how many of
+        # those a first touch maps depends on the page cache (fault-around);
+        # the anonymous figure is the process's own memory, the same whatever
+        # the cache holds.
+        try:
+            for row in Path("/proc/%d/smaps_rollup" % pid).read_text().splitlines():
+                key = row.split(":")[0]
+                if key in ("Anonymous", "Private_Dirty", "Pss"):
+                    doc[key.lower() + "_kib"] = int(row.split()[1])
+        except OSError:
+            pass
+        return doc
     # OpenBSD (no /proc): ps(1)'s resident set in KiB; no high-water mark.
     out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], stdout=subprocess.PIPE,
                          check=True).stdout
@@ -304,6 +316,67 @@ def reopen_floor(a):
     return {"image": str(image), "reopen_floor_mb": hi, "failed_at_mb": lo, "trials": rows}
 
 
+def stack_trial(image, work, heap, stack_kib, octets):
+    """One article of OCTETS under a control stack of STACK_KIB per thread:
+    POST, ARTICLE back, stop, reopen, ARTICLE back again."""
+    env = env_for(heap)
+    env["SBCL_USER_ARGS"] = env.get("SBCL_USER_ARGS", "") + " --control-stack-size %dKB" % stack_kib
+    try:
+        config, port = fresh(image, work, env, ["--profile", "default"])
+    except RuntimeError as e:
+        return False, "init: %s" % str(e)[:200]
+    for phase in ("post", "reopen"):
+        try:
+            proc, _, err = r.start_owner(image, config, env, work / "owner.stderr", timeout=300)
+        except BaseException as e:
+            return False, "%s start: %s" % (phase, str(e)[:160])
+        try:
+            if phase == "post":
+                c = m.Conn(port)
+                r.post(c, 0, octets)
+                c.close()
+            c = m.Conn(port)
+            _, reply, _ = r.timed_multiline(c, "ARTICLE %s" % m.msgid(0))
+            c.close()
+            if not reply.startswith(b"220"):
+                return False, "%s ARTICLE: %r" % (phase, reply[:60])
+        except BaseException as e:
+            return False, "%s session: %s" % (phase, str(e)[:160])
+        finally:
+            try:
+                r.stop_owner(proc, err)
+            except BaseException:
+                pass
+    return True, "posted, served, reopened, served"
+
+
+def stack_floor(a):
+    """(lane image-floor) the smallest control stack (KiB, per thread) at which
+    one article of --octets is posted, served, reopened and served again;
+    bisection to 64 KiB."""
+    image, work = Path(a.image), Path(a.work)
+    if a.line_octets:
+        # Body lines of LINE_OCTETS octets (CRLF included), none starting with
+        # a dot: the stack a request needs grows with its line count.
+        r.LINE = b"x" * (a.line_octets - 2) + b"\r\n"
+    lo, hi = a.lo, a.hi
+    rows = []
+    ok, why = stack_trial(image, work, a.heap, hi, a.octets)
+    rows.append([hi, ok, why])
+    if not ok:
+        return {"image": str(image), "octets": a.octets, "stack_floor_kib": None, "trials": rows}
+    while hi - lo > 64:
+        mid = (lo + hi) // 2
+        ok, why = stack_trial(image, work, a.heap, mid, a.octets)
+        rows.append([mid, ok, why])
+        if ok:
+            hi = mid
+        else:
+            lo = mid
+    return {"image": str(image), "octets": a.octets, "heap_mb": a.heap,
+            "line_octets": a.line_octets or 80, "stack_floor_kib": hi, "failed_at_kib": lo, "trials": rows}
+
+
 def core(a):
     text = Path(a.image).read_text()
     line = next(l for l in text.splitlines() if l.startswith("exec "))
@@ -402,13 +475,21 @@ def main():
     q.add_argument("image"); q.add_argument("work")
     q.add_argument("--lo", type=int, default=128)
     q.add_argument("--hi", type=int, default=1024)
+    q = s.add_parser("stack-floor")
+    q.add_argument("image"); q.add_argument("work")
+    q.add_argument("--octets", type=int, default=32768)
+    q.add_argument("--heap", type=int, default=4096)
+    q.add_argument("--lo", type=int, default=64)
+    q.add_argument("--hi", type=int, default=65536)
+    q.add_argument("--line-octets", type=int, default=0)
     q = s.add_parser("checkpoint")
     q.add_argument("image"); q.add_argument("work")
     q.add_argument("--heap", type=int, default=1024)
     q.add_argument("--max-posts", type=int, default=200)
     a = p.parse_args()
     doc = {"run": run, "floor": floor, "core": core, "probe": probe,
-           "checkpoint": checkpoint, "reopen-floor": reopen_floor}[a.cmd](a)
+           "checkpoint": checkpoint, "reopen-floor": reopen_floor,
+           "stack-floor": stack_floor}[a.cmd](a)
     print(json.dumps(doc, sort_keys=True))
 
 

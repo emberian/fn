@@ -198,6 +198,7 @@
 ; which the operator loaded below calls.  After every `ld': no host wrapper
 ; above uses it, and it would otherwise serve their books transitively.
 (include-book "books/heap-figure")
+(include-book "books/heap-reservation")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

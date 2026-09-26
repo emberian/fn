@@ -6985,6 +6985,22 @@
         {
           "kind": "theorem",
           "name": "fn-heap-decision-exit-code-of-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-holds-every-thread-the-node-runs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-refuses-exactly-past-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-keeps-heap-figures-refusals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-thread-refusal-exits-1"
         }
       ]
     }
