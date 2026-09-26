@@ -113,6 +113,26 @@
                    (< 0 (- (len (nth (rpt-i) (rpt-events))) (len (nth (rpt-i) (rpt-new)))))))
 (assert-event (equal (fn-rclp-octets (rpt-new)) (- (fn-rclp-octets (rpt-events)) (rpt-freed))))
 
+; fn-rclp-rewritten-charge-is-the-history-unit (step 2): the rewritten
+; article's pin keeps one unit of the charge it had, so the ledger's reserved
+; charge falls by the rest once the pack is replayed; the witness charge is
+; above the unit, so the release is non-degenerate.
+(assert-event (and (< 1 (fn-record-charge (rpt-old)))
+                   (equal (fn-rclp-charge-of (nth (rpt-i) (rpt-new))) 1)
+                   (equal (fn-rclp-charge-of (nth (rpt-i) (rpt-events)))
+                          (fn-record-charge (rpt-old)))))
+(assert-event (and (< 0 (fn-rclp-freed-charge (rpt-events) *rpt-ctx*))
+                   (equal (fn-rclp-charges (rpt-new))
+                          (- (fn-rclp-charges (rpt-events))
+                             (fn-rclp-freed-charge (rpt-events) *rpt-ctx*)))))
+; Tooth (the rewrite test): under keep-forever nothing is rewritten and the
+; article keeps its whole charge; it is not the unit.
+(must-fail (assert-event
+            (equal (fn-rclp-charge-of
+                    (nth (rpt-i) (fn-rclp-events (rpt-events)
+                                                 (fn-rclp-ctx '(:keep-forever) 0 *rpt-s*))))
+                   1)))
+
 ; The decision.  The fixture's profile: the development preset.
 (defconst *rpt-profile* *fn-bs-profile-development*)
 (assert-event (fn-bs-profile-admittedp *rpt-profile*))

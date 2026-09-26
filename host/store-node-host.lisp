@@ -84,14 +84,6 @@
                                       (fn-sbud-bytes-used s)
                                       payload-length group-count))))
 
-; The maintenance reservation `status' prints: (octets transactions
-; :held|:short) at the replayed Store (books/store-maintenance-reserve.lisp
-; `fn-smr-report').
-(defun fn-store-sn-maintenance-reserve (profile state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((s (f-get-global 'fn-store-sn state)))
-    (value (fn-smr-report profile (fn-sbud-used s) (fn-sbud-bytes-used s)))))
-
 (defun fn-store-sn-headroom (profile state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sbud-headroom profile (f-get-global 'fn-store-sn state))))
