@@ -229,7 +229,7 @@
        (fn-record-encoded-octets-ceiling (len (fn-record-payload record))
                                          (len (fn-record-groups record))))
    :rule-classes nil
-   :hints (("Goal" :use ((:instance fn-record-encode-producer-length-bound))))))
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory) :use ((:instance fn-record-encode-producer-length-bound))))))
 
 ; fn-sn-prepare-stages-an-article-record-within-its-ceiling: the reachable
 ; witness is the fixture store's record at charge 2; the charge hypothesis's
@@ -255,14 +255,19 @@
                                             obligation-id subject evidence
                                             charge)))
                 (fn-record-encoded-octets-ceiling (len payload) (len groups))))
-   :rule-classes nil))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
 
-; fn-bs-profile-admits-every-producer-record at the saved scale profile: the
-; wide G = 1 record above is within A and G and encodes within R.
+; fn-bs-profile-admits-every-producer-record at the saved scale profile: a
+; wide G = 1 record at the profile's A (32 768) encodes within R.
 (assert-event
- (let ((r (rwpt-wide (list *rwpt-group256*) 4294967295)))
+ (let ((r (fn-record-make 4294967296 4294967296 4294967296 *rwpt-msgid250*
+                          (make-list 32768 :initial-element 65)
+                          (list *rwpt-group256*) *rwpt-meta* *rwpt-meta*
+                          *rwpt-meta* 4294967295 4294967296)))
    (and (fn-bs-profile-admittedp *rwpt-scale*)
-        (<= 65536 (fn-bs-profile-max-article-octets *rwpt-scale*))
+        (fn-record-p r) (fn-record-widep r)
+        (<= 32768 (fn-bs-profile-max-article-octets *rwpt-scale*))
         (<= 1 (fn-bs-profile-max-groups-per-article *rwpt-scale*))
         (<= (len (fn-record-encode r))
             (fn-bs-profile-max-record-octets *rwpt-scale*)))))
