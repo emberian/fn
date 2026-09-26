@@ -1843,7 +1843,7 @@
       "id": "SCN-066",
       "title": "A signed report crosses four native fn nodes and two dtn7-rs relays with outages and restarts; its receipt settles before the receiver's consumer wakes; the reply returns",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "REP-009",
         "REP-007"
@@ -1861,9 +1861,10 @@
       ],
       "evidence": [
         "tests/bp-dtn7/run_mission_four_node.py",
-        "planning/evidence/mission-four-node-2026-09-25.md"
+        "planning/evidence/mission-four-node-2026-09-25.md",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "note": "Unsigned report and reply pass on image abbd8aef (all seven steps); the signed report is refused at B (request-refused, reason not logged): the scenario stays specified until the signed run passes. planning/evidence/mission-four-node-2026-09-25.md."
+      "note": "Passes on the lane image aa0f6c16 (not deployed; loopback on hbox): the signed report and the signed reply, all seven steps, 153.9 s (native-aa0f6c16/signed-r2, report.json 55580c3b36fb66dd...), and the unsigned control, all seven steps (unsigned-r2, 25bcafe453675d7e...). Relays listen per boundary, so the driver turns a relay's listener and restarts the node whose receipt is owed (PKT-291). planning/evidence/mission-signed-2-2026-09-26.md."
     },
     {
       "id": "SCN-071",
@@ -2047,7 +2048,7 @@
       "id": "SCN-074",
       "title": "The signed mission: A's hybrid-signed report crosses four fn nodes and two dtn7-rs relays to B, B's signed reply comes back, every refusal names its reason, and a relay takes no custody from a channel its policy refused",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "REP-009",
         "REP-007"
@@ -2065,9 +2066,10 @@
       ],
       "evidence": [
         "tests/bp-dtn7/run_mission_four_node.py",
-        "planning/evidence/mission-signed-2026-09-26.md"
+        "planning/evidence/mission-signed-2026-09-26.md",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "note": "Not passing (PKT-247). On image f1734955 steps 0-2 and 5 hold with the signed report (fragmentation at X, X SIGKILL and restart, B's stored copy verifies with hybrid-verify-source); B stores A's signed report and then refuses the delivery with reason=history (the BP receiver's Store binding does not see the kind-4 acceptance), and A refuses B's signed reply the same way. Layer 1 (reason=intent-store-conflict, the injecting agent's check on transit) is fixed. The ambiguous-peer case: see planning/evidence/mission-signed-2026-09-26.md."
+      "note": "Passes on the lane image aa0f6c16 (not deployed): B answers request-accepted for A's hybrid-signed report and its copy verifies with hybrid-verify-source (authored source f7fe359e...), A's receipt-accepted releases A's pin (pinned=no) before B's consumer wakes, B's signed reply is request-accepted at A and A's receipt releases B's pin; all seven steps (signed-r2). The ambiguous-peer case holds (X refuses with reason=ambiguous-peer, no BP accepted, A's obligation stays pinned). PRF-132 closed the layer-2 refusal (reason=history, PKT-247). planning/evidence/mission-signed-2-2026-09-26.md."
     }
   ]
 }
