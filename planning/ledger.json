@@ -793,6 +793,8 @@
     "books/poster-bytes-invariants",
     "tests/acl2/poster-bytes-tests",
     "tests/acl2/source-routes-tests",
+    "books/consumer-artifact-retry",
+    "tests/acl2/consumer-artifact-retry-tests",
     "books/relay-source",
     "tests/acl2/relay-source-routes-tests",
     "tests/acl2/owner-served-invariants-tests",
@@ -926,25 +928,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 940,
-    "books_in_root_closure": 936,
-    "roots": 922,
-    "theorems": 13145,
-    "functions": 9125,
-    "assert_events": 13558,
-    "must_fails": 1533,
+    "books": 942,
+    "books_in_root_closure": 938,
+    "roots": 924,
+    "theorems": 13166,
+    "functions": 9133,
+    "assert_events": 13562,
+    "must_fails": 1535,
     "encapsulates": 65,
     "guards": {
       "verified": 2194,
       "declared-off": 719,
-      "default-guarded": 4858,
-      "default-unguarded": 1354
+      "default-guarded": 4860,
+      "default-unguarded": 1360
     },
     "suspect_theorems": 114,
     "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 134,
-    "include_hygiene_warnings": 947,
+    "include_hygiene_warnings": 950,
     "host_names_warnings": 1060,
     "hand_written_record_warnings": 18
   },
@@ -7144,6 +7146,31 @@
       "includes": [
         "clock",
         "records-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-artifact-retry.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "source-routes"
       ],
       "system_includes": [],
       "suspects": [],
@@ -20015,6 +20042,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 2,
+      "defconsts": 17,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/consumer-artifact-retry"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-event-index-store-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31075,6 +31130,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/consumer-artifact-retry.lisp",
+        "line": 30,
+        "include": "source-routes",
+        "included": "books/source-routes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/consumer-owner-index-invariants.lisp",
         "line": 4,
         "include": "consumer-owner-local",
@@ -34318,6 +34380,20 @@
       {
         "book": "tests/acl2/config-tests.lisp",
         "line": 20,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "line": 13,
+        "include": "../../books/consumer-artifact-retry",
+        "included": "books/consumer-artifact-retry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "line": 14,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
