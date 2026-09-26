@@ -4604,6 +4604,35 @@
           "name": "fn-bpfs-views-of-cut"
         }
       ]
+    },
+    {
+      "id": "PRF-118",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-keeps-sealed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seals-keep-sealed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-new-handle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arn-store-corr-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arn-store-corr-of-open"
+        }
+      ]
     }
   ]
 }

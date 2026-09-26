@@ -643,8 +643,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
+	books/payload-arena \
 	books/poster-bytes-buffer \
 	tests/acl2/octets-stobj-tests \
+	tests/acl2/payload-arena-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
