@@ -21,11 +21,21 @@
 ; verdict, :held-beyond-profile (books/bp-fnbs-family-replay.lisp), never
 ; truncated.
 ;
+;
+; Profile 2 (PRF-134, the codec half of P5) adds two fields: ADU octets, the
+; largest application data unit the node admits (a whole bundle's payload or
+; a fragment's total ADU length), and bundle octets, the largest bundle the
+; node decodes from a peer.  Both are machine limits, raise only, with the
+; pre-P5 constants as defaults (65,538 and 1 MiB); the held image's bound is
+; OCTETS.  A format-1 file still opens, with those defaults
+; (fn-bpnpf-profile-read-of-format-1).  The codec widths (*fn-bpa-max-octets*,
+; *fn-bpb-max-input*, *fn-bpnf-max-held-image*) are the fields' ceiling,
+; 2^24, so no profile is refused by a codec
+; (books/bp-node-profile-admission, fn-bpnpf-profile-within-codec-widths).
+;
 ; Work bounds stay constants and say so: *fn-bpn-machine-max-records* (4096
 ; lifecycle records between rotations), the TCPCL segment and transfer MRUs,
-; and the ADU (*fn-bpa-max-octets*), bundle decoder (*fn-bpb-max-input*) and
-; held-image (*fn-bpnf-max-held-image*) ceilings, which are data caps this
-; profile does not yet carry (PKT-276).
+; and the profile file's read bound.
 (in-package "ACL2")
 (include-book "bp-node-machine")
 (include-book "frame-invariants")
@@ -160,3 +170,203 @@
              (and (equal (fn-bpnpf-read t w) (list rows octets))
                   (<= (car old) rows) (<= (cadr old) octets))))
   :hints (("Goal" :in-theory (disable fn-bpnpf-read fn-bpnpf-octets))))
+
+; -----------------------------------------------------------------------------
+; Profile 2 (PRF-134): (ROWS OCTETS ADU BUNDLE).
+
+(defconst *fn-bpnpf-format-2*
+  '(102 110 45 98 112 45 112 114 111 102 105 108 101 45 50)) ; fn-bp-profile-2
+(defconst *fn-bpnpf-spec-2* '(:text :nat :nat :nat :nat))
+; The pre-P5 ADU record (65,538) and bundle decoder (1 MiB) bounds.
+(defconst *fn-bpnpf-default-adu* 65538)
+(defconst *fn-bpnpf-default-bundle* 1048576)
+
+(defun fn-bpnpf-profile-validp (rows octets adu bundle)
+  (declare (xargs :guard t))
+  (and (fn-bpnpf-validp rows octets)
+       (fn-bpn-machine-limitp adu) (fn-bpn-machine-limitp bundle)))
+
+(defun fn-bpnpf-profilep (p)
+  (declare (xargs :guard t))
+  (and (true-listp p) (equal (len p) 4)
+       (fn-bpnpf-profile-validp (car p) (cadr p) (caddr p) (cadddr p))))
+
+(defun fn-bpnpf-adu-octets (p) (declare (xargs :guard t)) (fn-bpn-nth 2 p))
+(defun fn-bpnpf-bundle-octets (p) (declare (xargs :guard t)) (fn-bpn-nth 3 p))
+
+(defun fn-bpnpf-profile-default ()
+  (declare (xargs :guard t))
+  (list *fn-bpnpf-default-rows* *fn-bpnpf-default-octets*
+        *fn-bpnpf-default-adu* *fn-bpnpf-default-bundle*))
+
+(local
+ (defthm fn-bpnpf-profile-values-ok
+   (implies (fn-bpnpf-profile-validp rows octets adu bundle)
+            (fn-frame-values-okp *fn-bpnpf-spec-2*
+                                 (list *fn-bpnpf-format-2* rows octets adu bundle)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(defun fn-bpnpf-profile-octets (rows octets adu bundle)
+  (declare (xargs :guard t))
+  (if (fn-bpnpf-profile-validp rows octets adu bundle)
+      (fn-frame-fields-octets *fn-bpnpf-spec-2*
+                              (list *fn-bpnpf-format-2* rows octets adu bundle))
+    nil))
+
+; The profile a journal opens under (the function the host calls,
+; host/native/bp-service.lisp fnn-bps-read-profile).  A format-1 file, or
+; none, is read by fn-bpnpf-read and takes the default ADU and bundle
+; octets; a format-2 file is exactly one frame of a valid profile 2; anything
+; else is NIL (the host refuses to open).
+(defun fn-bpnpf-profile-read (present bytes)
+  (declare (xargs :guard t))
+  (let ((old (fn-bpnpf-read present bytes)))
+    (if old
+        (list (car old) (cadr old) *fn-bpnpf-default-adu*
+              *fn-bpnpf-default-bundle*)
+      (if (not (and present (fn-cbor-octet-listp bytes)))
+          nil
+        (let ((parsed (fn-frame-fields-parse *fn-bpnpf-spec-2* bytes)))
+          (if (not (fn-frame-parse-okp parsed))
+              nil
+            (let ((v (fn-frame-parse-value parsed)))
+              (if (and (true-listp v) (equal (len v) 5)
+                       (equal (car v) *fn-bpnpf-format-2*)
+                       (fn-bpnpf-profile-validp (nth 1 v) (nth 2 v)
+                                                (nth 3 v) (nth 4 v)))
+                  (list (nth 1 v) (nth 2 v) (nth 3 v) (nth 4 v))
+                nil))))))))
+
+(defun fn-bpnpf-profile-upgradep (old rows octets adu bundle)
+  (declare (xargs :guard t))
+  (and (fn-bpnpf-profilep old)
+       (fn-bpnpf-profile-validp rows octets adu bundle)
+       (<= (car old) rows) (<= (cadr old) octets)
+       (<= (caddr old) adu) (<= (cadddr old) bundle)))
+
+; The octets `bp-node profile' publishes: NIL (refused) unless the write
+; raises or keeps every field of the profile in force.
+(defun fn-bpnpf-profile-write-octets (old rows octets adu bundle)
+  (declare (xargs :guard t))
+  (if (fn-bpnpf-profile-upgradep old rows octets adu bundle)
+      (fn-bpnpf-profile-octets rows octets adu bundle)
+    nil))
+
+(local
+ (defthm fn-bpnpf-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+; A format-2 frame is not a format-1 profile: the format-1 spec parses its
+; first three fields and refuses the two that follow as trailing octets.
+(local
+ (defthm fn-bpnpf-format-2-octets-split
+   (equal (fn-frame-fields-octets *fn-bpnpf-spec-2*
+                                  (list f rows octets adu bundle))
+          (append (fn-frame-fields-octets *fn-bpnpf-spec* (list f rows octets))
+                  (fn-frame-fields-octets '(:nat :nat) (list adu bundle))))
+   :hints (("Goal" :in-theory (e/d (fn-frame-fields-octets)
+                                   (fn-frame-field-octets))
+            :expand ((:free (x y) (append (fn-frame-field-octets :nat x)
+                                          (fn-frame-field-octets :nat y))))))))
+
+(local
+ (defthm fn-bpnpf-two-nats-are-consp
+   (consp (fn-frame-fields-octets '(:nat :nat) (list adu bundle)))
+   :hints (("Goal" :in-theory (enable fn-frame-fields-octets
+                                      fn-frame-field-octets)))))
+
+(local
+ (defthm fn-bpnpf-format-2-head-values-ok
+   (implies (fn-bpnpf-validp rows octets)
+            (fn-frame-values-okp *fn-bpnpf-spec*
+                                 (list *fn-bpnpf-format-2* rows octets)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(local
+ (defthm fn-bpnpf-two-nats-values-ok
+   (implies (and (fn-bpn-machine-limitp adu) (fn-bpn-machine-limitp bundle))
+            (fn-frame-values-okp '(:nat :nat) (list adu bundle)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(local
+ (defthm fn-bpnpf-format-2-is-not-format-1
+   (implies (fn-bpnpf-profile-validp rows octets adu bundle)
+            (not (fn-bpnpf-read t (fn-bpnpf-profile-octets rows octets adu bundle))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpnpf-profile-octets fn-frame-fields-parse)
+                            (fn-frame-fields-octets fn-frame-fields-parse-aux
+                             fn-bpnpf-validp fn-bpn-machine-limitp))
+            :use ((:instance fn-frame-fields-parse-aux-of-octets
+                   (specs *fn-bpnpf-spec*)
+                   (values (list *fn-bpnpf-format-2* rows octets))
+                   (rest (fn-frame-fields-octets '(:nat :nat) (list adu bundle))))
+                  (:instance fn-frame-fields-octets-are-octets
+                   (specs *fn-bpnpf-spec-2*)
+                   (values (list *fn-bpnpf-format-2* rows octets adu bundle)))
+                  (:instance fn-frame-fields-octets-are-octets
+                   (specs '(:nat :nat))
+                   (values (list adu bundle)))
+                  (:instance fn-bpnpf-format-2-head-values-ok)
+                  (:instance fn-bpnpf-two-nats-values-ok)
+                  (:instance fn-bpnpf-profile-values-ok))))))
+
+(defthm fn-bpnpf-profile-default-is-valid
+  (fn-bpnpf-profilep (fn-bpnpf-profile-default)))
+
+; Keystone: a saved profile 2 opens.  The octets written for every profile
+; the relation admits read back as exactly that profile: no valid profile is
+; one the file cannot carry.
+(defthm fn-bpnpf-profile-read-of-octets
+  (implies (fn-bpnpf-profile-validp rows octets adu bundle)
+           (equal (fn-bpnpf-profile-read
+                   t (fn-bpnpf-profile-octets rows octets adu bundle))
+                  (list rows octets adu bundle)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnpf-profile-octets)
+                           (fn-frame-fields-octets fn-frame-fields-parse
+                            fn-bpnpf-validp fn-bpnpf-read
+                            fn-bpnpf-format-2-octets-split))
+           :use ((:instance fn-bpnpf-format-2-is-not-format-1)
+                 (:instance fn-frame-fields-parse-of-octets
+                  (specs *fn-bpnpf-spec-2*)
+                  (values (list *fn-bpnpf-format-2* rows octets adu bundle)))
+                 (:instance fn-frame-fields-octets-are-octets
+                  (specs *fn-bpnpf-spec-2*)
+                  (values (list *fn-bpnpf-format-2* rows octets adu bundle)))))))
+
+(local
+ (defthm fn-bpnpf-read-absent
+   (equal (fn-bpnpf-read nil bytes) (fn-bpnpf-default))))
+
+; A profile saved before P5 (format 1), or none, opens with its rows and
+; octets and the default ADU and bundle octets.
+(defthm fn-bpnpf-profile-read-of-format-1
+  (and (implies (fn-bpnpf-validp rows octets)
+                (equal (fn-bpnpf-profile-read t (fn-bpnpf-octets rows octets))
+                       (list rows octets *fn-bpnpf-default-adu*
+                             *fn-bpnpf-default-bundle*)))
+       (equal (fn-bpnpf-profile-read nil bytes) (fn-bpnpf-profile-default)))
+  :hints (("Goal" :in-theory (disable fn-bpnpf-read fn-bpnpf-octets
+                                      fn-bpnpf-validp)
+           :use ((:instance fn-bpnpf-read-of-octets)
+                 (:instance fn-bpnpf-read-absent)))))
+
+; What the node reads is always a valid profile or a refusal.
+(defthm fn-bpnpf-profile-read-is-valid
+  (let ((p (fn-bpnpf-profile-read present bytes)))
+    (implies p (fn-bpnpf-profilep p)))
+  :hints (("Goal" :use ((:instance fn-bpnpf-read-is-valid))
+           :in-theory (disable fn-bpnpf-read fn-bpnpf-read-is-valid
+                               fn-frame-fields-parse))))
+
+; Keystone: an admitted write never lowers a field in force, and it is read
+; back as written.
+(defthm fn-bpnpf-profile-write-never-lowers
+  (let ((w (fn-bpnpf-profile-write-octets old rows octets adu bundle)))
+    (implies w
+             (and (equal (fn-bpnpf-profile-read t w)
+                         (list rows octets adu bundle))
+                  (<= (car old) rows) (<= (cadr old) octets)
+                  (<= (caddr old) adu) (<= (cadddr old) bundle))))
+  :hints (("Goal" :in-theory (disable fn-bpnpf-profile-read
+                                      fn-bpnpf-profile-octets))))

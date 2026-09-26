@@ -18,6 +18,7 @@
 (include-book "../books/bp-channel-ingress")
 (include-book "../books/bp-run-class")
 (include-book "../books/bp-node-profile")
+(include-book "../books/bp-node-profile-admission")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.

@@ -73,19 +73,31 @@ own profile rather than the Store's: the FNBS journal is not a Store
 namespace, and `bp-service`, `bp-contact` and `bp send` run with no Store.
 The file `bp-node-profile` in the journal root (books/bp-node-profile.lisp,
 PRF-131) is one frame of `fn-bp-profile-1`, `max-held-rows` and
-`max-held-octets`; its absence is 64 rows and 16 MiB, the machine every
-earlier journal ran under. Each field is a machine limit (1 to 2^24, the
+`max-held-octets`, or (PRF-134) one frame of `fn-bp-profile-2`, which adds
+`max-adu-octets` (the largest application data unit the node admits: a
+whole bundle's payload, or the total ADU length a fragment names) and
+`max-bundle-octets` (the largest bundle the node decodes from a peer); its
+absence is 64 rows, 16 MiB, 65,538 and 1 MiB, the machine every earlier
+journal ran under. A format-1 file opens with the last two at those
+defaults (`fn-bpnpf-profile-read-of-format-1`). Each field is a machine limit (1 to 2^24, the
 machine state's representation ceiling), the frame carries every value that
 relation admits (`fn-bpnpf-read-of-octets`: a saved profile opens), and
 every valid profile opens a machine with exactly those limits
-(`fn-bpnpf-valid-profile-opens`). `bp-node profile JOURNAL NODE ROWS
-OCTETS` only raises it (`fn-bpnpf-write-never-lowers`). A journal whose rows
+(`fn-bpnpf-valid-profile-opens`; profile 2:
+`fn-bpnpf-profile-read-of-octets`). `bp-node profile JOURNAL NODE ROWS
+OCTETS [ADU BUNDLE]` only raises it (`fn-bpnpf-write-never-lowers`,
+`fn-bpnpf-profile-write-never-lowers`). A journal whose rows or held octets
 exceed the profile it opens under is refused at replay with the named
 verdict `:held-beyond-profile`, never truncated
-(`fn-bpnpf-replay-past-the-profile-is-refused`). The Store profile's
-`max-bp-rows` field is still not read (PKT-276); the ADU (65,538), bundle
-decoder (1 MiB) and held-image (131,072) ceilings are still constants
-(specs/bp-node-machine.md 7.1).
+(`fn-bpnpf-replay-past-the-profile-is-refused`,
+`fn-bpnpf-replay-past-the-octets-is-refused`). The receive boundary refuses
+a wire past `max-bundle-octets` before decoding it and a bundle whose ADU is
+past `max-adu-octets` before custody, by name
+(`fn-bpnpf-admission-refuses-beyond-the-profile`). The codec widths the
+three former ceilings became (ADU, bundle decoder input, held image) are
+2^24, every field's ceiling, so no profile names a value a codec refuses
+(`fn-bpnpf-profile-within-codec-widths`; specs/bp-node-machine.md 7.1). The
+Store profile's `max-bp-rows` field is still not read (PKT-294).
 
 STO-013: a record's sequence, transaction ID, generation, charge and stamp
 are u64 (design 2026-09-25-bounds §2.3, packet P6). A record that needs a

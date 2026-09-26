@@ -164,11 +164,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         process.stdout.close()
         process.stderr.close()
 
-    def send_fragment(self, port, path, number):
+    def send_fragment(self, port, path, number, timeout=120):
         return self.invoke(
             "tcpcl", "send", "127.0.0.1", port, path,
             self.tmp / f"sender-spool-{number}",
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
+            timeout=timeout,
         )
 
     def article_count(self):
@@ -266,6 +267,227 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                               "dtn://receiver/", 64, 16777216)
         self.assertEqual(lowered.returncode, 1, lowered.stderr)
         self.kill_across_family(70, 35)
+
+    # -- SCN-077 (PRF-134): a 10 MiB article through 4 KiB fragments -------
+
+    def author_large_fragments(self, body_octets, piece):
+        """ACL2 authors one request ADU carrying an article of about
+        BODY_OCTETS octets and cuts it (fn-bpf-cut-fast, the linear twin of
+        fn-bpf-cut, fn-bpf-cut-fast-is-cut) into extents of PIECE octets;
+        each fragment's bundle is ACL2's.  Returns the fragment paths in
+        offset order and the ADU's length."""
+        msgid = b"<bp-scn-077@example.invalid>"
+        line = b"x" * 76 + b"\r\n"
+        body = line * (body_octets // len(line))
+        article = (
+            b"From: sender@example.invalid\r\n"
+            b"Newsgroups: fn.test\r\n"
+            b"Subject: ten mebibytes through four KiB fragments\r\n"
+            b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
+            b"Message-ID: " + msgid + b"\r\n\r\n" + body
+        )
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            for book in ("bp-adu", "bp-fragment", "bp-fragment-fast",
+                         "bp-bundle"):
+                bridge.call('(include-book "books/' + book + '")')
+            _archive, subject, _provenance = run_store.metadata(msgid, article)
+
+            def text(value):
+                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
+
+            fields = [
+                b"work-bp-scn-077", subject, b"dtn://sender/",
+                b"dtn://receiver/", b"native-policy", b"origin-native",
+                b"wire-auth", b"terms-native",
+            ]
+            bridge.call("(defconst *bpl4-article* '" + bridge.literal(article)
+                        + ")", timeout=3600)
+            bridge.call(
+                "(defconst *bpl4-adu* (fn-bpa-encode (fn-bpa-make-request "
+                + " ".join(text(value) for value in fields)
+                + " *bpl4-article*)))", timeout=3600)
+            total = int(run_store.acl2_result(
+                bridge.call("(len *bpl4-adu*)")))
+            self.assertGreater(total, len(article))
+            cuts = list(range(piece, total, piece))
+            bridge.call("(defconst *bpl4-parts* (fn-bpf-cut-fast *bpl4-adu* 0 '("
+                        + " ".join(map(str, cuts)) + ") " + str(total) + "))",
+                        timeout=3600)
+            primary = (
+                "(fn-bpp-make-block 0 1 "
+                "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47)) "
+                "(cons :dtn '(47 47 115 101 110 100 101 114 47)) "
+                "(cons :dtn '(47 47 115 101 110 100 101 114 47)) "
+                "1000 3 3600000 nil nil)"
+            )
+            paths = []
+            for index in range(len(cuts) + 1):
+                form = (
+                    "(let* ((parent " + primary + ") "
+                    "(part (nth " + str(index) + " *bpl4-parts*))) "
+                    "(fn-bpb-encode (fn-bpb-make-bundle "
+                    "(fn-bpf-fragment-block parent (fn-bpf-offset part) "
+                    "(fn-bpf-total part)) nil "
+                    "(fn-bpb-payload-block 1 (fn-bpf-bytes part)))))"
+                )
+                wire = run_store.acl2_octets(bridge.call(form))
+                self.assertLessEqual(len(wire), 4096, index)
+                path = self.tmp / f"large-{index}.bp"
+                path.write_bytes(wire)
+                paths.append(path)
+            return paths, total
+        finally:
+            bridge.close()
+
+    @staticmethod
+    def drain(process):
+        """Read PROCESS's stdout in a thread so a receiver that prints a line
+        per session never blocks on a full pipe; returns a function that
+        joins the thread and answers what was read."""
+        import threading
+        chunks = []
+        errors = []
+
+        def pump(stream, into):
+            while True:
+                chunk = os.read(stream.fileno(), 65536)
+                if not chunk:
+                    return
+                into.append(chunk)
+
+        threads = [threading.Thread(target=pump, args=(process.stdout, chunks),
+                                    daemon=True),
+                   threading.Thread(target=pump, args=(process.stderr, errors),
+                                    daemon=True)]
+        for thread in threads:
+            thread.start()
+
+        def finish(timeout):
+            process.wait(timeout=timeout)
+            for thread in threads:
+                thread.join(timeout=60)
+            finish.stderr = b"".join(errors)
+            return b"".join(chunks)
+        return finish
+
+    def send_many(self, port, numbers, paths, workers=4):
+        """Send each fragment in its own TCPCL session, WORKERS at a time;
+        every send must be accepted."""
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(
+                lambda n: (n, self.send_fragment(port, paths[n], n, 900)),
+                numbers))
+        for number, sent in results:
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+
+    def test_ten_mebibyte_article_through_four_kib_fragments(self):
+        # SCN-077: under a profile that admits it (4,096 held rows, 16 MiB
+        # held, an 11 MiB ADU), a 10 MiB article's ADU is cut into fragments
+        # whose bundles are at most 4 KiB; the receiver is killed with
+        # SIGKILL halfway through the family, the journal rotates while the
+        # family is in flight, and the rest arrive at a restarted receiver.
+        started = time.monotonic()
+        paths, total = self.author_large_fragments(10 * 1024 * 1024, 4000)
+        authored = time.monotonic()
+        count = len(paths)
+        print(f"SCN-077 adu-octets={total} fragments={count} "
+              f"author-seconds={authored - started:.1f}", flush=True)
+        self.assertGreater(count, 2560)
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 4096, 16777216,
+                             11 * 1024 * 1024, 1048576)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertIn(b"max-adu-octets=11534336", raised.stdout)
+        order = list(reversed(range(count)))
+        half = count // 2
+        first, port = self.start_receiver(once=False)
+        first_out = self.drain(first)
+        self.send_many(port, order[:half], paths)
+        first.kill()
+        out = first_out(120)
+        self.assertNotIn(b"BP fragment family durable", out)
+        killed = time.monotonic()
+        print(f"SCN-077 first-half-seconds={killed - authored:.1f}", flush=True)
+        # The journal rotates with the family's first half held.
+        rotated = self.rotate()
+        self.assertIn(b"BP journal generation retired", rotated)
+        self.assertEqual(self.recovered_held(), half)
+        second, port = self.start_receiver(once=False)
+        second_out = self.drain(second)
+        self.send_many(port, order[half:-1], paths)
+        second.terminate()
+        out = second_out(300)
+        self.assertNotIn(b"BP fragment family durable", out)
+        before_last = time.monotonic()
+        print(f"SCN-077 second-half-seconds={before_last - killed:.1f}",
+              flush=True)
+        third, port = self.start_receiver()
+        third_out = self.drain(third)
+        number = order[-1]
+        sent = self.send_fragment(port, paths[number], number, 3600)
+        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        out = third_out(3600)
+        err = third_out.stderr
+        done = time.monotonic()
+        print(f"SCN-077 reassembly-and-handoff-seconds={done - before_last:.1f}",
+              flush=True)
+        self.assertEqual(third.returncode, 0, (out[-4000:], err[-4000:]))
+        self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
+        self.assertEqual(out.count(b"BP application handoff durable"), 1,
+                         (out, err))
+        self.assertEqual(self.article_count(), 1)
+
+    def test_adu_past_the_profile_is_refused_before_custody(self):
+        # PRF-134: under the default profile (ADU 65,538 octets) a fragment
+        # of a 70,000-octet ADU is refused by name and nothing is held.
+        paths, total = self.author_large_fragments(69000, 4000)
+        self.assertGreater(total, 65538)
+        receiver, port = self.start_receiver()
+        sent = self.send_fragment(port, paths[-1], 0)
+        out, err = receiver.communicate(timeout=120)
+        self.assertIn(b"ADU-BEYOND-PROFILE", (out + err).upper(), (out, err))
+        self.assertEqual(self.recovered_held(), 0)
+
+    def test_journal_past_its_profile_is_refused_at_open(self):
+        # PRF-131/PRF-134 natively: 70 fragments held under a 128-row profile;
+        # the profile file removed (the default, 64 rows), the journal's open
+        # is refused with the named verdict and the held rows are not lost.
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 128, 16777216)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
+        fragments = self.author_fragments(71)
+        first, port = self.start_receiver(once=False)
+        for number in range(70, 0, -1):
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        first.terminate()
+        first.communicate(timeout=120)
+        self.assertEqual(self.recovered_held(), 70)
+        profile = self.journal / "bp-node-profile"
+        saved = profile.read_bytes()
+        profile.unlink()
+        reopened = self.invoke(
+            "bp-node", "dispatch", self.journal, self.store,
+            self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
+            "dtn://receiver/", "native-policy", "dtn://receiver/",
+            "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
+        )
+        self.assertEqual(reopened.returncode, 3, (reopened.stdout, reopened.stderr))
+        self.assertIn(b"HELD-BEYOND-PROFILE",
+                      (reopened.stdout + reopened.stderr).upper(),
+                      (reopened.stdout, reopened.stderr))
+        # `bp-node profile' opens the journal too, so it cannot raise a
+        # profile the journal is already past (PKT-294); the operator puts
+        # the profile file back, and every row is there.
+        refused = self.invoke("bp-node", "profile", self.journal,
+                              "dtn://receiver/", 128, 16777216)
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        profile.write_bytes(saved)
+        self.assertEqual(self.recovered_held(), 70)
 
     def rotate(self, stop=None):
         """`bp-node checkpoint` on the stopped receiver; with STOP, the

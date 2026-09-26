@@ -21,7 +21,12 @@
 ; the durable Bundle Age/monotonic anchor, exact route, encoded peer EID and
 ; exact encoded bundle.  The maximum is below the generic frame layer's cap
 ; and is the only whole-payload bound the host uses.
-(defconst *fn-bpn-lifecycle-max-payload* 134144)
+; A codec width (D27; PRF-134): the widest lifecycle record, a kind-5 or
+; kind-18 row carrying a held image of the held-image width (2^24,
+; books/bp-node-foundation) and its fixed fields, with the 3,072 octets the
+; row fields beside the image take.  The frame's LENGTH is a u32, so it is
+; below the frame layer's cap.  Before P5 it was 134,144 (a 131,072 image).
+(defconst *fn-bpn-lifecycle-max-payload* 16780288)
 (defconst *fn-bpn-lifecycle-max-hidden-stages* 16)
 (defconst *fn-bpn-lifecycle-max-stage-name-chars* 128)
 (defconst *fn-bpn-lifecycle-name-suffix* '(#\. #\f #\n #\b))

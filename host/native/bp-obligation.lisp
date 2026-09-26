@@ -118,7 +118,9 @@
                        work-id attempt-id)))
        (destructuring-bind (tag attempt outcome key adu destination retry) plan
          (declare (ignore tag))
-         (unless (and (fnn-octet-list-p adu) (<= 1 (length adu) 65538)
+         ;; The ADU's width is ACL2's (fn-bpa-encoding-bound); the host only
+         ;; checks the plan's shape.
+         (unless (and (fnn-octet-list-p adu) (<= 1 (length adu))
                       (stringp destination))
            (fnn-fault "ACL2 returned an invalid request plan"))
          ;; A restart-observed attempt is retried by the journaled policy
