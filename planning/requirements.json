@@ -3326,6 +3326,30 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "NNT-038",
+      "title": "HELP lists every command the served dispatcher recognizes, and a command HELP does not list is answered 500",
+      "specification": "specs/nntp.md#help-the-served-command-table-nnt-038",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-194"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-help.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-help-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tests/test_reader.py",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
     }
   ]
 }
