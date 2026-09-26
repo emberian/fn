@@ -176,6 +176,37 @@
   (equal (fn-bpf-reassemble (fn-bpfs-views (cdr (bpfst-big-plan))) 70000)
          (list :ok (bpfst-payload 70000 nil)))))
 
+;; -----------------------------------------------------------------------------
+;; fn-bpfs-plan-fragments-reassemble-uncapped (PRF-121): the uncapped
+;; reassembler answers the payload for exactly the two families the capped
+;; one refuses above: 100 fragments, and a 70000-octet ADU.
+(assert-event
+ (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (bpfst-plan 1000 (bpfst-small-mru)))) 1000)
+        (list :ok (bpfst-payload 1000 nil))))
+(assert-event
+ (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (bpfst-big-plan))) 70000)
+        (list :ok (bpfst-payload 70000 nil))))
+(assert-event
+ (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (bpfst-plan 1000 300))) 1000)
+        (list :ok (bpfst-payload 1000 nil))))
+;; Hypothesis :fragments: a whole answer has no views; refused.
+(assert-event (not (equal (car (bpfst-plan 100 100000)) :fragments)))
+(must-fail
+ (assert-event
+  (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (bpfst-plan 100 100000))) 100)
+         (list :ok (bpfst-payload 100 nil)))))
+;; Hypothesis whole parent: the plan is :fragments, the parent is a
+;; fragment, and its pieces carry the total 3000, not the payload length.
+(assert-event
+ (and (equal (car (fn-bpfs-plan (bpfst-fparent-wire) 300)) :fragments)
+      (fn-bpp-fragmentp
+       (fn-bpp-flags (fn-bpb-bundle-primary (fn-bpfs-parent (bpfst-fparent-wire)))))))
+(must-fail
+ (assert-event
+  (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (fn-bpfs-plan (bpfst-fparent-wire) 300)))
+                             1000)
+         (list :ok (bpfst-payload 1000 nil)))))
+
 ; -----------------------------------------------------------------------------
 ; fn-bpfs-fragment-outcome: the first fragment's :failed stays :failed (the
 ; job was certainly not sent); a later one is :uncertain.
