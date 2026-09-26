@@ -42,6 +42,8 @@ import acl2_slots  # noqa: E402
 # `timeout(1)`'s exit code for "the command was killed by the time limit", so a
 # lane's shell can tell a timed-out search from ACL2's own failure exits.
 TIMEOUT_EXIT = 124
+# EX_TEMPFAIL: no slot freed within --wait-seconds (ACL2 never started).
+SLOT_WAIT_EXIT = 75
 # How long a terminated ACL2 gets to unwind before SIGKILL.
 GRACE_SECONDS = 5.0
 
@@ -114,6 +116,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--label", default=None,
                         help="what to call this run in the slot-wait line "
                              "(default: ld <working directory name>)")
+    parser.add_argument("--wait-seconds", type=float, default=None, metavar="SECONDS",
+                        help="refuse (exit 75, naming the slot holders) when no slot "
+                             "frees within this many seconds (default: "
+                             "FN_ACL2_SLOT_WAIT, else wait)")
     parser.add_argument("acl2_arguments", nargs="*", metavar="ARG",
                         help=argparse.SUPPRESS)
     arguments = parser.parse_args(sys.argv[1:] if argv is None else argv)
@@ -134,11 +140,15 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     label = arguments.label or f"ld {Path.cwd().name}"
-    with acl2_slots.slot(label) as held:
-        if held.seconds > 0.5:
-            print(f"fn: acquired ACL2 slot {held.index} of {held.slots} after "
-                  f"{held.seconds:g}s", file=sys.stderr, flush=True)
-        return run(executable, arguments.acl2_arguments, arguments.timeout)
+    try:
+        with acl2_slots.slot(label, wait_seconds=arguments.wait_seconds) as held:
+            if held.seconds > 0.5:
+                print(f"fn: acquired ACL2 slot {held.index} of {held.slots} after "
+                      f"{held.seconds:g}s", file=sys.stderr, flush=True)
+            return run(executable, arguments.acl2_arguments, arguments.timeout)
+    except acl2_slots.SlotWaitExpired as refusal:
+        print(refusal, file=sys.stderr, flush=True)
+        return SLOT_WAIT_EXIT
 
 
 if __name__ == "__main__":
