@@ -3101,7 +3101,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/records-shape.lisp",
         "tests/acl2/records-shape-tests.lisp",
@@ -3767,7 +3767,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -4148,7 +4148,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-carriage-rows.lisp",
         "books/peer-carriage.lisp",
@@ -4516,7 +4516,7 @@
     {
       "id": "PRF-100",
       "title": "The NEWNEWS pull feed advances its cursor past a round only when every listed Message-ID drew 235, 435 or 437 from the local node, and a crash mid-round recovers the cursor that round asked with",
-      "statement": "Over the functions host/native/pull-service.lisp calls (fn-pull-begin, fn-pull-step through fn-pull-step-pair, fn-pull-close, fn-pull-replay over fn-pull-journal-scan): closing a round moves the cursor only if the round ran to its end and every Message-ID its NEWNEWS listed has a 235, 435 or 437 answer, the new instant being the peer's DATE less one second (fn-pull-close-advances-only-past-a-fully-answered-round; per id fn-pull-unanswered-id-holds-the-cursor); an answer is recorded only by a local reply and is that reply's own code for the article in hand (fn-pull-step-answers-only-from-the-local-node); no step changes the round's cursor or journals anything (fn-pull-step-keeps-the-cursor-and-journals-nothing) and every NEWNEWS it sends names the round's cursor instant (fn-pull-step-newnews-names-the-cursor); if the FNPL journal replays to the owner's cursor, it replays after the begin, after any events and after the close to that cut's cursor (fn-pull-journal-is-the-cursor-at-every-cut), so the round begun after a crash asks the dead round's instant (fn-pull-recovery-asks-the-dead-rounds-newnews). The schedule starts only a due, idle peer and spaces rounds by the operator's interval (fn-sched-pull-due-is-due-and-idle, fn-sched-pull-started-is-not-due, fn-sched-pull-finished-waits-its-interval). That the peer lists again what it listed for the same instant is RFC 3977 7.4's NEWNEWS semantics, not proved.",
+      "statement": "Over the functions host/native/pull-service.lisp calls (fn-pull-begin, fn-pull-step through fn-pull-step-pair, fn-pull-close, fn-pull-replay over fn-pull-journal-scan): closing a round moves the cursor only if the round ran to its end and every Message-ID its NEWNEWS listed has a 235, 435 or 437 answer, the new instant being the peer's DATE less one second (fn-pull-close-advances-only-past-a-fully-answered-round; per id fn-pull-unanswered-id-holds-the-cursor); an answer is recorded only by a local reply and is that reply's own code for the article in hand (fn-pull-step-answers-only-from-the-local-node); no step changes the round's cursor or journals anything (fn-pull-step-keeps-the-cursor-and-journals-nothing) and every NEWNEWS it sends names the round's cursor instant (fn-pull-step-newnews-names-the-cursor); if the FNPL journal replays to the owner's cursor, it replays after the begin, after any events and after the close to that cut's cursor (fn-pull-journal-is-the-cursor-at-every-cut), so the round begun after a crash asks the dead round's instant (fn-pull-recovery-asks-the-dead-rounds-newnews). The schedule starts only a due, idle peer and spaces rounds by the operator's interval (fn-sched-pull-due-is-due-and-idle, fn-sched-pull-started-is-not-due, fn-sched-pull-finished-waits-its-interval). That the peer lists again what it listed for the same instant is RFC 3977 7.4's NEWNEWS semantics, not proved. Restated 2026-09-26 by PRF-165 (PKT-213): the cursor carries PENDING (per-id consecutive 430 counts) and fn-pull-close-advances-only-past-a-fully-answered-round / fn-pull-unanswered-id-holds-the-cursor now admit an id the peer answered 430 for BOUND consecutive complete rounds; PRF-165 states them.",
       "milestone": "M3",
       "requirements": [
         "NNT-018"
@@ -4525,7 +4525,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull.lisp",
         "books/scheduler-peers.lisp",
@@ -4649,7 +4649,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -4921,7 +4921,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull-session.lisp",
         "books/peer-pull.lisp",
@@ -5059,7 +5059,7 @@
         "PRF-089"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp",
@@ -5144,7 +5144,7 @@
         "PRF-112"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-operator.lisp",
         "books/feed-connection.lisp",
@@ -5644,7 +5644,7 @@
         "PRF-130"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-operator.lisp",
         "tests/acl2/native-operator-tests.lisp",
@@ -5704,7 +5704,7 @@
         "PRF-102"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-capacity-vector.lisp",
         "books/store-capacity-config.lisp",
@@ -5827,7 +5827,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served-implicit-tls.lisp",
         "tests/acl2/served-implicit-tls-tests.lisp",
@@ -5891,6 +5891,48 @@
         "fn-ccc-links-count-within-boundary",
         "fn-cverb-pack-decision-capture-succeeds",
         "fn-rclp-reclaiming-pack-is-a-first-link"
+      ]
+    },
+    {
+      "id": "PRF-165",
+      "title": "Pull liveness: a peer's 430 for a listed id is an answer of the class unavailable; the round goes on, the id holds the cursor for at most BOUND consecutive complete rounds and is dropped, logged, exactly at the bound; the counts are durable in FNPL",
+      "statement": "Over the functions host/native/pull-service.lisp fnn-pull-round calls (fn-pull-session-step through fn-pull-session-step-pair, fn-pull-session-close, fn-pull-session-close-effects; books/peer-pull-session.lisp) and fnn-pull-journal-open / fnn-pull-journal-append call (fn-pull-journal-scan with its committed offset, fn-pull-records-replay, fn-pull-cursor-envelope; books/peer-pull.lisp). A peer's 430 to the round's ARTICLE for a listed id is an answer of the class unavailable: the round records the id, reopens the local transit connection (:reopen-local) and goes on with the remaining ids. fn-pull-session-step-marks-unavailable-only-on-the-peers-reply: a host step that changes the unavailable ids is a (:remote . octets) event after the preamble, in phase :article, and adds exactly the article in hand. fn-pull-session-close-advances-only-past-a-fully-answered-round (PRF-100's keystone restated; its conclusion strengthened per id, not weakened): if the host's close moves the advance count, the round is :done, every listed id drew 235/435/437 from the local node OR was answered 430 by the peer in this round with its consecutive count reaching the bound, the new instant is the peer's DATE less the overlap, and PENDING is nil; fn-pull-close-advances-past-all-answered-when-nothing-is-unavailable keeps PRF-100's conclusion verbatim for a round with nothing unavailable, and the old form is a must-fail witness in tests/acl2/peer-pull-tests.lisp. fn-pull-session-unavailable-id-is-retried-below-the-bound: an id unavailable with 1 + its count below the bound leaves the instant and advance count where they were (so the peer lists it again: RFC 3977 7.4, not proved) and a complete round journals its count as exactly one more; fn-pull-session-complete-round-past-the-bound-advances: a complete round in which every unavailable id reached the bound advances and clears PENDING, the log naming each id whose count reached the bound in that round (dropped exactly at the bound, never before). fn-pull-records-replay-is-the-replay: the records the open scans back from a journal of cursor appends (one :pull-unavailable frame per PENDING entry, then the committing :pull-cursor frame) fold to exactly fn-pull-replay's cursor, so fn-pull-journal-is-the-cursor-at-every-cut (PRF-100, cited, its statement over the four-field cursor) holds of the on-disk journal; fn-pull-records-replay-ignores-an-uncommitted-tail: unavailable records whose cursor record never became durable change nothing (and the scan truncates them). BOUND is the peer row pull-unavailable-rounds (`peer pull NAME SECONDS ROUNDS`), else the local policy *fn-pull-default-unavailable-rounds* = 5: a work bound on re-listing, not a data cap. Trusted, not proved: that the peer lists again what it listed for the same instant (RFC 3977 7.4).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-035"
+      ],
+      "depends_on": [
+        "PRF-100",
+        "PRF-125"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/peer-pull.lisp",
+        "books/peer-pull-session.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peer-feeds-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T102136Z-292994.json",
+        "planning/evidence/manifests/certify-20260926T102946Z-380804.json"
+      ],
+      "events": [
+        "fn-pull-session-close-advances-only-past-a-fully-answered-round",
+        "fn-pull-session-unavailable-id-is-retried-below-the-bound",
+        "fn-pull-session-complete-round-past-the-bound-advances",
+        "fn-pull-session-step-marks-unavailable-only-on-the-peers-reply",
+        "fn-pull-close-advances-only-past-a-fully-answered-round",
+        "fn-pull-close-advances-past-all-answered-when-nothing-is-unavailable",
+        "fn-pull-unanswered-id-holds-the-cursor",
+        "fn-pull-unavailable-id-is-retried-below-the-bound",
+        "fn-pull-complete-round-past-the-bound-advances",
+        "fn-pull-step-marks-unavailable-only-on-the-peers-reply",
+        "fn-pull-records-replay-is-the-replay",
+        "fn-pull-records-replay-ignores-an-uncommitted-tail"
       ]
     }
   ]

@@ -43,6 +43,7 @@ Run: FN_NATIVE_HOST=<launcher> [FN_INN_SRC=/tank/fn/inn/2.7.4] \
      python3 -m unittest -v tests.test_native_peer_pull
 """
 
+import calendar
 import hashlib
 import json
 import os
@@ -216,6 +217,7 @@ class ScriptedPeer:
     def __init__(self, listed, articles, tls=None):
         self.listed = list(listed)
         self.articles = dict(articles)
+        self.arrived = int(time.time())
         # TLS: (certificate, key) -- STARTTLS is answered 382 and the
         # session continues inside TLS, so ARTICLE is counted HERE, on the
         # server side, where a proxy in front could not read it (PKT-236 b).
@@ -254,7 +256,16 @@ class ScriptedPeer:
                     stream.write(time.strftime("111 %Y%m%d%H%M%S\r\n",
                                                time.gmtime()).encode("ascii"))
                 elif word == "NEWNEWS":
-                    body = b"".join(m.encode("ascii") + b"\r\n" for m in self.listed)
+                    # RFC 3977 7.4: ids that ARRIVED at or after the instant;
+                    # all of this peer's ids arrived when it was built.
+                    words = text.split()
+                    try:
+                        since = calendar.timegm(time.strptime(words[2] + words[3],
+                                                              "%Y%m%d%H%M%S"))
+                    except (IndexError, ValueError):
+                        since = 0
+                    listed = self.listed if self.arrived >= since else []
+                    body = b"".join(m.encode("ascii") + b"\r\n" for m in listed)
                     stream.write(b"230 list follows\r\n" + body + b".\r\n")
                 elif word == "ARTICLE":
                     mid = text.split(" ", 1)[1] if " " in text else ""
@@ -1013,6 +1024,67 @@ class NativePeerPullTests(unittest.TestCase):
         self.assertIn("AUTHINFO USER nodeB", commands)
         self.assertNotIn("STARTTLS", commands)
         self.assertTrue(any("transport=clear" in l and "cursor=advanced" in l for l in lines), lines)
+
+    # ------------------------------------------------------------ the soak
+
+    @unittest.skipUnless(os.environ.get("FN_PULL_SOAK_SECONDS"),
+                         "set FN_PULL_SOAK_SECONDS for the bounded soak (runbook)")
+    def test_soak_two_nodes_and_an_unproducible_listing(self):
+        """SCN-095's bounded native form: B pulls a fn node A and the
+        scripted peer S (which keeps listing <ghost> and answers it 430)
+        once a minute for FN_PULL_SOAK_SECONDS; A receives an article every
+        two minutes; B is restarted cleanly half-way.  "Days" is the claim;
+        this is its bounded evidence: every article A held reaches B once,
+        <ghost> is dropped exactly once at the bound (the count survives the
+        restart), B's cursor for S advances, and B's RSS is sampled."""
+        seconds = int(os.environ["FN_PULL_SOAK_SECONDS"])
+        bound = 3
+        a = self.initialize("A", ["fn.test"], "a.pull.example.invalid")
+        self.start(a)
+        peer, b, ghost, real = self.unavailable_pair("soak", bound)
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "A",
+                      "a.pull.example.invalid", "127.0.0.1", str(a["port"]), "fn.*",
+                      "-", "127.0.0.8", "true"])
+        for name in ("A", "S"):
+            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull",
+                          name, "60", str(bound)])
+        self.start(b)
+        posted, rss, restarted = [], [], False
+        begin = time.monotonic()
+        k = 0
+        while time.monotonic() - begin < seconds:
+            if k % 4 == 0:
+                mid = "<soak-{}@example.invalid>".format(k)
+                self.post(a, article(mid, "soak-{}".format(k)))
+                posted.append(mid)
+            try:
+                rss.append(int(Path("/proc/{}/status".format(b["process"].pid)).read_text()
+                               .split("VmRSS:")[1].split()[0]))
+            except (OSError, IndexError, ValueError):
+                pass
+            if not restarted and time.monotonic() - begin > seconds / 2:
+                self.stop(b)
+                self.start(b)
+                restarted = True
+            time.sleep(30)
+            k += 1
+        for mid in posted + real:
+            self.await_article(b, mid, timeout=180)
+        self.await_log(b, "dropped=" + ghost, 1, timeout=240)
+        lines = self.pull_lines(b)
+        counts = {m: self.count_article(b, m) for m in posted + real}
+        self.stop(b)
+        self.stop(a)
+        self.witness("soak", {"seconds": seconds, "posted": len(posted),
+                              "counts_all_one": all(v == 1 for v in counts.values()),
+                              "rounds": len(lines),
+                              "dropped_lines": [l for l in lines if "dropped=" in l],
+                              "ghost_article_commands": peer.count("ARTICLE " + ghost),
+                              "rss_kib_first_last_max": [rss[0], rss[-1], max(rss)] if rss else [],
+                              "restarted": restarted}, [a, b])
+        self.assertTrue(all(v == 1 for v in counts.values()), counts)
+        self.assertEqual(sum("dropped=" + ghost in l for l in lines), 1, lines)
+        self.assertEqual(peer.count("ARTICLE " + ghost), bound)
 
     @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
     def test_pull_from_inn(self):

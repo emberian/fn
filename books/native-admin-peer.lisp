@@ -184,6 +184,37 @@ decoded as source-address for durable command compatibility."
   (declare (xargs :guard t))
   (floor (nfix octets) *fn-id-charge-page-octets*))
 
+;; PRF-100: `peer pull NAME SECONDS' sets the NEWNEWS pull interval
+;; (books/peer-pull.lisp); 0 stops pulling.  SECONDS is a uint32.  PRF-165:
+;; `peer pull NAME SECONDS ROUNDS' also sets how many consecutive complete
+;; rounds an id the peer lists but answers 430 holds the cursor; ROUNDS is a
+;; positive uint32.  The rows, or nil for words of any other shape.  Kept
+;; closed so the admin plan's case analysis does not grow with it.
+(defun fn-native-admin-pull-rows (words)
+  (declare (xargs :guard (true-listp words)
+                  :guard-hints
+                  (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-decimal-value)))))
+  (if (and (or (equal (len words) 4)
+               (and (equal (len words) 5)
+                    (fn-native-admin-decimalp (nth 4 words))
+                    (posp (fn-native-admin-decimal-value
+                           (coerce (nth 4 words) 'list)))))
+           (stringp (nth 2 words))
+           (fn-native-admin-decimalp (nth 3 words)))
+      (cons (fn-cfg-row-make (nth 2 words) *fn-pcb-pull-interval-slot* ""
+                             (fn-native-admin-decimal-value
+                              (coerce (nth 3 words) 'list)))
+            (if (equal (len words) 5)
+                (list (fn-cfg-row-make (nth 2 words)
+                                       *fn-pcb-pull-unavailable-slot* ""
+                                       (fn-native-admin-decimal-value
+                                        (coerce (nth 4 words) 'list))))
+              nil))
+    nil))
+
+(in-theory (disable fn-native-admin-pull-rows))
+
 (defun fn-native-admin-peer-extend-plan (words)
   (declare (xargs :guard t))
   (let ((words (if (true-listp words) words nil)))
@@ -208,31 +239,15 @@ decoded as source-address for durable command compatibility."
              (fn-native-admin-decimal-value (coerce (nth 3 words) 'list)))
             (fn-native-admin-decimal-value (coerce (nth 4 words) 'list))))
         (fn-native-admin-result :refused :budget nil nil 0 nil nil)))
-     ; PRF-100: `peer pull NAME SECONDS' sets the NEWNEWS pull interval
-     ; (books/peer-pull.lisp); 0 stops pulling.  SECONDS is a uint32.
-     ; PRF-165: `peer pull NAME SECONDS ROUNDS' also sets how many
-     ; consecutive complete rounds an id the peer cannot produce (430) holds
-     ; the cursor; ROUNDS is a positive uint32.
+     ; PRF-100 / PRF-165: `peer pull NAME SECONDS [ROUNDS]'
+     ; (`fn-native-admin-pull-rows').
      ((equal (nth 1 words) "pull")
-      (if (and (or (equal (len words) 4)
-                   (and (equal (len words) 5)
-                        (fn-native-admin-decimalp (nth 4 words))
-                        (posp (fn-native-admin-decimal-value
-                               (coerce (nth 4 words) 'list)))))
-               (fn-native-admin-decimalp (nth 3 words)))
-          (fn-native-admin-result
-           :accepted nil :extend-peer
-           (fn-record-string-octets (nth 2 words)) 0 nil
-           (cons (fn-cfg-row-make (nth 2 words) *fn-pcb-pull-interval-slot* ""
-                                  (fn-native-admin-decimal-value
-                                   (coerce (nth 3 words) 'list)))
-                 (if (equal (len words) 5)
-                     (list (fn-cfg-row-make (nth 2 words)
-                                            *fn-pcb-pull-unavailable-slot* ""
-                                            (fn-native-admin-decimal-value
-                                             (coerce (nth 4 words) 'list))))
-                   nil)))
-        (fn-native-admin-result :refused :pull nil nil 0 nil nil)))
+      (let ((rows (fn-native-admin-pull-rows words)))
+        (if (consp rows)
+            (fn-native-admin-result
+             :accepted nil :extend-peer
+             (fn-record-string-octets (nth 2 words)) 0 nil rows)
+          (fn-native-admin-result :refused :pull nil nil 0 nil nil))))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))

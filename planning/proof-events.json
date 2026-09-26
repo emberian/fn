@@ -5729,6 +5729,59 @@
           "name": "fn-rclp-reclaiming-pack-is-a-first-link"
         }
       ]
+    },
+    {
+      "id": "PRF-165",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-close-advances-only-past-a-fully-answered-round"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-unavailable-id-is-retried-below-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-complete-round-past-the-bound-advances"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-step-marks-unavailable-only-on-the-peers-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-close-advances-only-past-a-fully-answered-round"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-close-advances-past-all-answered-when-nothing-is-unavailable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-unanswered-id-holds-the-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-unavailable-id-is-retried-below-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-complete-round-past-the-bound-advances"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-step-marks-unavailable-only-on-the-peers-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-records-replay-is-the-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-records-replay-ignores-an-uncommitted-tail"
+        }
+      ]
     }
   ]
 }
