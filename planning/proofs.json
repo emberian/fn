@@ -6095,6 +6095,44 @@
         "fn-native-control-conflict-is-a-refusal",
         "fn-nctrl-conflict-keeps-every-earlier-octet"
       ]
+    },
+    {
+      "id": "PRF-172",
+      "title": "The operator's daily verbs decide starting, stale and the exit scale in ACL2: health's code never overlaps the seven outcome codes, a held lock where an owner would listen is starting, and an offline control verb runs offline exactly when the lock was seen free",
+      "statement": "books/native-health.lisp: fn-nh-exit-code-is-zero-or-past-the-outcome-codes: for every V, (fn-nh-exit-code V) is 0 or at least 19, and it satisfies fn-outcome-codep (books/outcome-class.lisp, reading *fn-outcome-codes*) exactly when it equals (fn-outcome-code :accepted); host: fnn-operator-execute-health (host/native/operator.lisp) returns fn-native-health-host-exit of the rendered report, which is fn-nh-exit-code (fn-nh-report-exit-of-render). fn-nh-exit-code-cases (exported): with at most eight outcomes the code is in (0 19 20..27). fn-nh-fence-of-starting-iff: with no clone fence and a route that did not reach an owner, fn-nh-fence-of is :starting exactly when the lock is :held and an owner would listen, and a free or absent lock is never fenced; host: fn-native-health-host-fenced from fnn-operator-health-report. fn-nh-fence-of-route restated over the fourth observation. books/native-control.lisp fn-native-control-liveness-decides: the offline executor starts (fn-native-control-liveness-offlinep) exactly when the lock was observed :free or :absent, the decision is :stale exactly when a socket node is present and the lock is free or absent, and it is one of :live :stale :offline :held; host: fn-native-control-host-liveness from fnn-operator-execute-admin, which removes a :stale node under the control-path lease (fnn-control-remove-stale-offline) and refuses :held without starting the executor.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-010",
+        "HST-007",
+        "HST-009"
+      ],
+      "depends_on": [
+        "PRF-112",
+        "PRF-143"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-health.lisp",
+        "books/native-control.lisp",
+        "books/outcome-class.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "tests/acl2/native-control-tests.lisp",
+        "host/native/operator.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native-control-host.lisp",
+        "tests/test_native_control.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "progress_note": "Lane operator-daily (2026-09-26, wave 4 lane 5): PKT-329 (1), PKT-283, PKT-344. Teeth in the two test books. Open: PKT-453.",
+      "events": [
+        "fn-nh-exit-code-is-zero-or-past-the-outcome-codes",
+        "fn-nh-exit-code-cases",
+        "fn-nh-fence-of-starting-iff",
+        "fn-nh-fence-of-route",
+        "fn-native-control-liveness-decides"
+      ]
     }
   ]
 }

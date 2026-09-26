@@ -2073,7 +2073,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-112"
+        "PRF-112",
+        "PRF-172"
       ],
       "verification": [
         "proof",
@@ -2979,7 +2980,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-143"
+        "PRF-143",
+        "PRF-172"
       ],
       "verification": [
         "proof",
@@ -2995,6 +2997,29 @@
       ],
       "implementation_note": "exit(f, x) = code(classify(f, x)): 0 accepted, 1 refused (NO-STORE, CONFLICT and every other reason printed as a word), 3 fenced (indeterminate local durable authority, nothing else), 4 fault, 5 usage, 6 interrupted, 7 not connected. The host's +fnn-exit-*+ constants are ACL2's fn-outcome-code. The table is the native executable's; tools/fn_client.py's --json record carries scope server. Outside it: health's verdict 0/19..27 (HST-007; PKT-329) and signal exits (128+N).",
       "note": "An fn image from before :conflict answers a conflict uncertain (exit 3): clients are upgraded with the node (docs/agents.md)."
+    },
+    {
+      "id": "HST-010",
+      "title": "The operator's daily verbs distinguish an owner starting, a fenced store, a stale control socket and a refusal by name, each decided in ACL2 from the host's observations",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-172"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/native-health.lisp",
+        "books/native-control.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_control.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name for the control post and live reconfiguration is PKT-453 (not yet)."
     }
   ]
 }
