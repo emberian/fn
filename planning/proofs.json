@@ -7029,7 +7029,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-carried.lisp",
         "books/owner-prepare-carried.lisp",

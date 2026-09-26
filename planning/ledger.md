@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1006 |
-| Certification roots in the Makefile | 981 |
-| Books inside the root closure | 999 |
-| `defthm` and `defthmd` events | 14073 |
-| `defun` events | 9804 |
+| Books read | 1008 |
+| Certification roots in the Makefile | 983 |
+| Books inside the root closure | 1001 |
+| `defthm` and `defthmd` events | 14088 |
+| `defun` events | 9820 |
 | Functions with verified guards | 2253 |
 | Functions declared `:verify-guards nil` and never verified | 772 |
-| Functions left at the default with an explicit guard | 5327 |
-| Functions left at the default with no guard | 1452 |
-| `assert-event` checks | 15074 |
-| `must-fail` checks | 1795 |
+| Functions left at the default with an explicit guard | 5341 |
+| Functions left at the default with no guard | 1454 |
+| `assert-event` checks | 15090 |
+| `must-fail` checks | 1802 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 73 |
 | Theorems flagged SUSPECT by shape | 135 |
 | Export-hygiene warnings | 157 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 150 |
-| Include-hygiene warnings | 1012 |
+| Include-hygiene warnings | 1015 |
 | Host-names warnings | 1154 |
 | Hand-written-record warnings | 18 |
 
@@ -371,10 +371,11 @@ that `make certify` requests.
 | `books/frame-trailer.lisp` | root | 7 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/frame.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/group-bucket-article-invariants.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/group-bucket-article.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/group-bucket-article.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/group-bucket-cursor-invariants.lisp` | closure | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/group-bucket-index.lisp` | root | 23 | 19 | 0/1/18/0 | 0 | 0 | 0 |
+| `books/group-bucket-index.lisp` | root | 27 | 21 | 0/1/20/0 | 0 | 0 | 0 |
 | `books/group-bucket-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/group-number-index.lisp` | root | 2 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/hybrid-carrier.lisp` | root | 18 | 33 | 0/0/33/0 | 0 | 0 | 0 |
 | `books/hybrid-lifecycle-store-invariants.lisp` | root | 21 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/hybrid-lifecycle.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -434,12 +435,12 @@ that `make certify` requests.
 | `books/nntp-list-counts.lisp` | root | 24 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/nntp-newnews.lisp` | root | 12 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-overview.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
-| `books/nntp-pinned-effects.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-pinned-effects.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-pinned-msgid.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-post.lisp` | root | 24 | 22 | 16/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-range-indexed-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-range-indexed.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/nntp-range-indexed.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/nntp-reclaimed.lisp` | root | 13 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/nntp-responses.lisp` | root | 13 | 152 | 152/0/0/0 | 0 | 0 | 1 |
 | `books/nntp-search-scope.lisp` | root | 12 | 1 | 0/0/0/1 | 0 | 0 | 1 |
@@ -491,7 +492,7 @@ that `make certify` requests.
 | `books/owner-store-indexed.lisp` | root | 46 | 7 | 0/5/2/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-verdict-read.lisp` | root | 21 | 2 | 0/0/1/1 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 87 | 162 | 0/5/157/0 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 89 | 162 | 0/5/157/0 | 0 | 0 | 0 |
 | `books/path-update-tail.lisp` | root | 67 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -875,6 +876,7 @@ that `make certify` requests.
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 79 | 0 | 0 |
 | `tests/acl2/frame-trailer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/group-bucket-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 14 | 5 | 0 |
+| `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
 | `tests/acl2/hybrid-carrier-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 4 | 0 |
 | `tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 2 | 0 |
 | `tests/acl2/hybrid-lifecycle-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
