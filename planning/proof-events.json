@@ -5440,6 +5440,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-report-observe-held-needs-an-administrative-header"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-held-expiry-header-of-held"
         }
       ]
     },
