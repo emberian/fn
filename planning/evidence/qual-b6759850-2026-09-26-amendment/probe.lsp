@@ -1,0 +1,8 @@
+(include-book "books/byte-store-programs")
+(include-book "books/records-concrete-owner")
+(include-book "books/octets-stobj")
+(include-book "books/store-checkpoint-buffer")
+(ld "host/store-node-host.lisp" :ld-error-action :error)
+(fgetprop (quote fn-store-group-name) (quote formals) :none (w state))
+(fgetprop (quote fn-store-sn-group-next) (quote formals) :none (w state))
+(fgetprop (quote fn-store-sn-group-next) (quote symbol-class) :none (w state))

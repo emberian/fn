@@ -1,0 +1,14 @@
+# c18-served-crash-model.prod start 2026-09-26T10:17:05Z cwd /tank/fn/scratch/qual-harness-c18/tree
+# FN_NATIVE_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host
+# FN_NATIVE_CRASH_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-developer
+# FN_NATIVE_BP_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-dtn FN_NATIVE_BP_NODE_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-dtn-developer
+# overlay ae80c7ed3bc632874882ef086d4e91ce16a6c689df4783f08ebbc6686a5be0bf  tests/test_native_served_crash_model.py 891462e47519c3831e76be038105399372a28685227f6fffd72fdf4631cbbf07  tests/campaign/model_images.py 4c0ae8f5ae186bf486c60f839f4cb9259e7b2db04f25724dda9c2e5470c316c9  tools/build_lists_check.py 
+test_five_served_recovery_barriers_are_distinct_model_cuts (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_five_served_recovery_barriers_are_distinct_model_cuts) ... ok
+test_served_prepare_publish_finish_cuts (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_served_prepare_publish_finish_cuts) ... ok
+test_the_served_frame_is_the_injected_articles_not_anothers (tests.test_native_served_crash_model.NativeServedCrashModelTests.test_the_served_frame_is_the_injected_articles_not_anothers) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 210.519s
+
+OK
+# rc=0 wall=211 end 2026-09-26T10:20:36Z

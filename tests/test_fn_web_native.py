@@ -484,10 +484,14 @@ class NativeProtectedWebClientTests(unittest.TestCase):
         # Threaded view: root, its reply, the reply's reply, then the unrelated article.
         group = self.http(server, "GET", "/g?name=fn.agents")
         self.assertEqual(group[0], 200)
-        # The article links only: each row with replies also links its
-        # conversation (/t, f1941527), which is not a thread position.
+        # The article links (/a) in thread order; each reply also carries a
+        # conversation link (/t, reader-daily), and the two unrelated roots
+        # carry none.
         order = [int(n) for n in re.findall(r"href='/a\?[^']*number=(\d+)'>", group[2])]
         self.assertEqual(order, [root_number, reply_number, reply_number + 1, root_number + 1])
+        conversations = [int(n) for n in re.findall(r"href='/t\?[^']*number=(\d+)'>conversation<",
+                                                    group[2])]
+        self.assertEqual(conversations, [reply_number, reply_number + 1])
         margins = [int(m) for m in re.findall(r"margin-left:(\d+)px", group[2])]
         self.assertEqual(margins, [0, 18, 36, 0])
 
@@ -512,7 +516,10 @@ class NativeProtectedWebClientTests(unittest.TestCase):
         article = self.http(server, "GET", "/a?group=fn.agents&number=%d" % root_number)
         self.assertEqual(article[0], 200)
         self.assertIn("<span class='badge absent'>node verdict: absent</span>", article[2])
-        self.assertIn("<code>absent: no-field</code>", article[2])
+        # The node's whole recorded verdict line, as its historical record
+        # (reader-daily f1941527 moved it under this heading).
+        self.assertIn("<dt>The node's historical verdict</dt><dd><span class='badge absent'>"
+                      "absent</span> <code>absent: no-field</code>", article[2])
         group = self.http(server, "GET", "/g?name=fn.agents")
         self.assertIn("<span class='badge absent' title='absent: no-field'>absent</span>",
                       group[2])
