@@ -139,17 +139,15 @@
 ; -----------------------------------------------------------------------------
 ; Record level: leaving out covered pairs does not change the answer
 
-(local
- (defthm fn-ccp-sublist-keeps-agreement
+(defthm fn-ccp-sublist-keeps-agreement
    (implies (and (fn-ccp-covered-sublistp sub whole boundary)
                  (fn-cc-observation-agrees whole events boundary))
-            (fn-cc-observation-agrees sub events boundary))))
+            (fn-cc-observation-agrees sub events boundary)))
 
-(local
- (defthm fn-ccp-sublist-keeps-suffix
+(defthm fn-ccp-sublist-keeps-suffix
    (implies (fn-ccp-covered-sublistp sub whole boundary)
             (equal (fn-cc-observation-suffix sub boundary)
-                   (fn-cc-observation-suffix whole boundary)))))
+                   (fn-cc-observation-suffix whole boundary))))
 
 (defthm fn-ccp-covered-deletion-keeps-reconstruction
   (implies (and (equal (car (fn-ccp-observe-framed framed digest observed frontier))
@@ -191,8 +189,7 @@
    (implies (and (natp n) (<= (len events) n))
             (not (consp (nthcdr n events))))))
 
-(local
- (defthm fn-ccp-contiguous-agreement-reconstructs
+(defthm fn-ccp-contiguous-agreement-reconstructs
    (implies (and (natp n)
                  (fn-ccp-contiguousp observed n)
                  (fn-cc-observation-agrees observed events (len events))
@@ -200,7 +197,7 @@
             (equal (append (nthcdr n events)
                            (fn-cc-observation-suffix observed (len events)))
                    (fn-ccp-records observed)))
-   :hints (("Goal" :induct (fn-ccp-contiguousp observed n)))))
+   :hints (("Goal" :induct (fn-ccp-contiguousp observed n))))
 
 (defthm fn-ccp-complete-observation-reconstructs-its-records
   (implies (and (equal (car (fn-ccp-observe-framed framed digest observed frontier))
@@ -413,14 +410,13 @@
             :in-theory (enable fn-bs-txn-observation-covered
                                fn-bs-pack-covered-names)))))
 
-(local
- (defthm fn-ccp-reclaim-plan-names-are-below
+(defthm fn-ccp-reclaim-plan-names-are-below
    (implies (not (equal (fn-bs-pack-reclaim-plan names maximum lower) :invalid))
             (subsetp-equal (fn-bs-pack-reclaim-plan names maximum lower)
                            (fn-ccp-names-below lower)))
    :hints (("Goal" :in-theory (enable fn-bs-pack-reclaim-plan
                                       fn-profile-txn-observation
-                                      fn-bs-txn-observation-selected)))))
+                                      fn-bs-txn-observation-selected))))
 
 (local
  (defthm fn-ccp-subsetp-transitive
@@ -454,8 +450,7 @@
  (defthm fn-ccp-read-true-listp
    (true-listp (fn-ccp-read pairs contents))))
 
-(local
- (defthm fn-ccp-removed-read-is-a-covered-sublist
+(defthm fn-ccp-removed-read-is-a-covered-sublist
    (implies (and (natp s) (natp lower) (<= s lower)
                  (not (equal (fn-bs-txn-observation-covered names s lower)
                              :invalid))
@@ -470,7 +465,7 @@
    :hints (("Goal" :induct (fn-ccp-covered-induction names s lower)
             :in-theory (disable fn-bs-txn-observation-covered))
            ("Subgoal *1/2" :use ((:instance fn-ccp-covered-invalid-steps)))
-           ("Subgoal *1/1" :use ((:instance fn-ccp-covered-invalid-steps))))))
+           ("Subgoal *1/1" :use ((:instance fn-ccp-covered-invalid-steps)))))
 
 ; -----------------------------------------------------------------------------
 ; The composition: reclaim at any cut, then open

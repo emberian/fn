@@ -881,6 +881,7 @@ round policy."
     (declare (ignore store sequences actual-lower)) records))
 (defvar *fnn-pack-lower-bound-callback*
   (lambda (store) (declare (ignore store)) 0))
+(defvar *fnn-pack-status-callback* nil)
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
@@ -2810,6 +2811,11 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
             (fnn-core 'fn-native-live-status-host-offline kind
                       (fnn-store-config store) (fnn-store-observation store)
                       *the-live-state*))
+           ;; The selected pack chain (books/checkpoint-pack-chain via
+           ;; host/native/checkpoint.lisp): ACL2 computes the links and the
+           ;; boundary; the offline report does not carry them yet.
+           (when (and (eq kind :status) *fnn-pack-status-callback*)
+             (fnn-out "~a" (funcall *fnn-pack-status-callback* store)))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -2856,9 +2862,33 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
                     +fnn-exit-ok+)))
       (fnn-store-close store))))
 
-(defun fnn-command-probe (root count)
+(defun fnn-probe-article (sequence size)
+  "A well-formed article of exactly SIZE octets for probe record SEQUENCE: a
+head naming its Message-ID, groups and Subject, a blank line, and a body of
+CRLF lines of x padding the rest.  Developer fixture bytes, not a decision:
+the Store and the served projection judge them like any posted article."
+  (let* ((head (format nil "Message-ID: <capacity-~d@example.invalid>~c~cNewsgroups: fn.letters,fn.test~c~cSubject: capacity ~d~c~cFrom: probe@example.invalid~c~c~c~c"
+                       sequence #\Return #\Newline #\Return #\Newline sequence
+                       #\Return #\Newline #\Return #\Newline #\Return #\Newline))
+         (octets (make-array size :element-type '(unsigned-byte 8)
+                                  :initial-element (char-code #\x)))
+         (at (length head)))
+    (when (> (+ at 2) size) (fnn-fault "probe article head exceeds the payload"))
+    (loop for i from 0 below at do (setf (aref octets i) (char-code (char head i))))
+    ;; Lines of at most 76 x and CRLF; never leave one octet over.
+    (loop while (< at size)
+          do (let ((take (min 78 (- size at))))
+               (when (= (- size at take) 1) (decf take))
+               (setf (aref octets (+ at take -2)) 13
+                     (aref octets (+ at take -1)) 10)
+               (incf at take)))
+    octets))
+
+(defun fnn-command-probe (root count &optional articlep)
   "tests/store_capacity_probe.py's sequence in-process: commit COUNT maximum
-payloads, close, reopen, and report both timings as JSON on stdout."
+payloads, close, reopen, and report both timings as JSON on stdout.  With
+ARTICLEP (`probe N article') each payload is a well-formed article of the
+same size (fnn-probe-article), so the served reader can frame it."
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
          (payload nil))
@@ -2872,7 +2902,10 @@ payloads, close, reopen, and report both timings as JSON on stdout."
     (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
       (dotimes (sequence count)
         (let ((msgid (fnn-octets (fnn-ascii-octet-list
-                                  (format nil "<capacity-~d@example.invalid>" sequence)))))
+                                  (format nil "<capacity-~d@example.invalid>" sequence))))
+              (payload (if articlep
+                           (fnn-probe-article sequence (length payload))
+                         payload)))
           (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
             (fnn-advance-frontier store (fnn-bridge-next-txid))
             (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
@@ -2901,7 +2934,9 @@ payloads, close, reopen, and report both timings as JSON on stdout."
                                 (= (fnn-bridge-group-next 1) (1+ count))
                                 (equalp (fnn-bridge-lookup
                                          (fnn-octets (fnn-ascii-octet-list "<capacity-0@example.invalid>")))
-                                        payload)
+                                        (if articlep
+                                            (fnn-probe-article 0 (length payload))
+                                          payload))
                                 (= (fnn-bridge-reserved) (* count (fnn-charge (length payload)))))
                      (fnn-fault "probe reopen state mismatch"))
                    (fnn-out "{\"host\":\"native\",\"transactions\":~d,\"payload_bytes\":~d,~
@@ -3486,7 +3521,13 @@ serialized profile when the saved image later starts."
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
-                 ((string= command "probe") (need 4) (fnn-command-probe root (parse-integer (first rest))))
+                 ((string= command "probe")
+                  (need 4)
+                  (fnn-command-probe root (parse-integer (first rest))
+                                     (cond ((null (second rest)) nil)
+                                           ((string= (second rest) "article") t)
+                                           (t (error 'fnn-usage-error
+                                                     :message "probe form must be article")))))
                  ((string= command "post")
                   (need 8)
                   (fnn-command-post root (first rest) (second rest) (fnn-dash-nil (third rest))

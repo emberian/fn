@@ -2609,6 +2609,54 @@
         "log": "planning/evidence/sanding-2026-09-26/tin-walk/owner.log",
         "record": "planning/evidence/sanding-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-046",
+      "title": "A scale store above one pack's quantum compacts into a chain; reads and the next number are unchanged; every chain publication cut from both entries reopens whole and resumes",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-012"
+      ],
+      "steps": [
+        "Init a scale-profile store with max-transactions 1048576 and max-article-octets 2048 and commit N = 20,000 2 KiB articles (store probe).",
+        "operator store compact; status; recover; GROUP, ARTICLE by number and Message-ID for a sample across the link boundaries; post one more article; compact again.",
+        "On a 4,500-record copy (three links of 4 MiB), stop and kill `operator store compact` and `checkpoint pack STORE select` at each chain publication cut (candidate-file, -link, -directory, selection-file, -replace, -directory, pack-chain-link), first and second link; reopen, then rerun the entry.",
+        "On a compacted 4,500-record copy with one more article, fail each syscall of the next link's publication with EIO (candidate stage, file-barrier, link, namespace; selection-file, -replace, -directory) from both entries; reopen, then rerun the entry."
+      ],
+      "expected": [
+        "compact reports records=20000 reclaimed=20000 and links=L with L at least 5 (4096 events a link) and in practice about 12 (4 MiB a link of 2 KiB articles); status prints pack-chain links=L boundary=20000; no transaction file remains; the served view is identical and the next number is N+1; the second compaction adds one link and retires nothing.",
+        "After every cut the chain is the old one or the old one plus one complete link, recover reads every record, and the rerun completes the chain.",
+        "An EIO of a syscall that cannot have published the name (candidate stage, file barrier; selection file) is refused; a failed link, rename or directory barrier is uncertain. After each, the chain is the old one or the old one plus the new link, recover reads every record, and the rerun completes the chain."
+      ],
+      "evidence": [
+        "tests/test_native_pack_chain.py",
+        "planning/evidence/bounds-p5-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-064",
+      "title": "A chain's covered-file reclaim and generation retirement are cut at every unlink and barrier over a multi-link chain with an uncovered suffix; every cut reopens to the whole history and the reclaim and retire entries finish",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-012"
+      ],
+      "steps": [
+        "Init a scale-profile store (max-transactions 1048576, max-article-octets 2048) and commit N = 4,500 well-formed 2 KiB articles (store probe N article); an uncut `checkpoint pack STORE select` of a copy gives the chain's length L (at least 2).",
+        "On copies, stop and kill `operator store compact` after the first, second and 4096th covered unlink (pack-reclaim-unlink 1, 2, 4096: the developer stop selector names occurrences up to 4096) and at the reclaim directory barrier; status; count the transaction files; recover; `checkpoint pack-reclaim`; recover; compact again.",
+        "Compact the store, post one article (the uncovered suffix), recover; twice stop and kill `operator store compact` at selection-file, leaving two complete candidates that were never selected; recover after each.",
+        "On copies, stop and kill the next `operator store compact` after the first and second retirement unlink (pack-retire-unlink 1, 2) and at the retirement directory barrier; status; recover; `checkpoint pack-retire`; recover; compact again."
+      ],
+      "expected": [
+        "After each reclaim cut the chain is whole (links=L boundary=N), exactly N-k transaction files remain after the k-th unlink (404 after the 4096th, none after the barrier), and recover reads all N records from the chain and the remaining files; pack-reclaim reports exactly the remaining files and leaves none; the verb then refuses as already-compact (exit 1) with the chain unchanged.",
+        "With a suffix and two unselected candidates the chain stays links=L boundary=N and recover reads N+1 records.",
+        "After each retirement cut the chain has the new link (links=L+1 boundary=N+1), no transaction file remains, and recover reads N+1 records; pack-retire retires exactly the orphans left (1 after the first unlink, 0 after the second or the barrier) and never a chain link; the verb then refuses as already-compact."
+      ],
+      "evidence": [
+        "tests/test_native_pack_chain.py",
+        "planning/evidence/bounds-p5-2026-09-25.md"
+      ]
     }
   ]
 }

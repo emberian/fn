@@ -68,24 +68,44 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
-(defun fnn-pack-publish-generation (store records &optional summary)
-  "Capture RECORDS into the next pack generation and publish it, unselected.
-SUMMARY, when given, is the encoded summary ACL2 already captured (the
-reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
+(defun fnn-pack-publish-generation (store records &key chain coverage selected summary)
+  "Publish one pack generation, unselected.  The one publication of both pack
+callers:
+- the chain (`fnn-pack-extend-chain'): capture the next link of the selected
+  CHAIN (RECORDS above its COVERAGE boundary, one quantum,
+  `fn-store-checkpoint-chain-capture'); :NOTHING-UNCOVERED and ACL2's line
+  when the chain already covers RECORDS
+  (`fn-ccc-nothing-uncovered-leaves-files-and-marker-by-definition'), before
+  any directory operation;
+- the reclaiming pack (`fnn-reclaim-steps'): SUMMARY is the encoded summary
+  ACL2 already captured (`fn-store-reclaim-decide'), a version-0 pack, which
+  the chain decodes as a first link covering what the selected chain covered
+  (`fn-rclp-reclaiming-pack-is-a-first-link'); RECORDS is then ignored.
+Returns the generation, the sealed frame and the boundary the new generation
+covers (the chain's coverage for SUMMARY)."
   (fnn-checkpoint-require-mutation-ready store)
-  (let ((directory (fnn-pack-directory store)))
+  (let ((directory (fnn-pack-directory store))
+        (captured (if summary
+                      (list :ok summary (if coverage (second coverage) 0))
+                      (fnn-core 'fn-store-checkpoint-chain-capture
+                                (mapcar #'fnn-octet-list records)
+                                (if coverage (second coverage) 0)
+                                (if coverage (third coverage) 0)
+                                (or selected 0)
+                                (if chain (third (first chain)) nil)))))
+    (when (and (listp captured) (eq (first captured) :nothing-uncovered))
+      (unless (stringp (second captured))
+        (fnn-fault "ACL2 returned an invalid no-op line: ~s" captured))
+      (return-from fnn-pack-publish-generation
+        (values :nothing-uncovered (second captured))))
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-pack-generations store))
            (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
-                                 generations))
-           (captured (if summary
-                         (list :ok summary)
-                         (fnn-core 'fn-store-checkpoint-compaction-capture
-                                   (mapcar #'fnn-octet-list records)
-                                   (fnn-store-frontier store)))))
+                                 generations)))
       (unless (and (integerp generation) (>= generation 0)
                    (listp captured) (eq (first captured) :ok)
-                   (fnn-octet-list-p (second captured)))
+                   (fnn-octet-list-p (second captured))
+                   (integerp (third captured)))
         (fnn-refuse "ACL2 refused pack capture/publication"))
       (let* ((stage (fnn-join (fnn-staging store)
                               (format nil ".pack-~d-~a" (sb-posix:getpid)
@@ -110,7 +130,7 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
                       (fnn-refuse "pack generation publication refused"))
             (:uncertain (fnn-indeterminate "pack generation publication is uncertain"))
             (otherwise (fnn-fault "invalid pack publication outcome"))))
-        generation))))
+        (values generation frame (third captured))))))
 
 (defun fnn-pack-select (store generation)
   "Replace the pack selection marker under the ACL2 marker driver."
@@ -127,10 +147,61 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
       (otherwise (fnn-fault "pack selection marker remained pending")))))
 
 (defun fnn-pack-publish (store records selectp)
-  (let ((generation (fnn-pack-publish-generation store records)))
-    (when selectp (fnn-pack-select store generation))
-    (setf (fnn-store-fenced store) nil)
-    generation))
+  "`checkpoint pack ROOT [select]': with select, extend the selected chain
+until it covers RECORDS; without, publish the next link unselected.  Returns
+the generation, or :NOTHING-UNCOVERED and ACL2's line when the selected chain
+already covers RECORDS (nothing written)."
+  (if selectp
+      (multiple-value-bind (generation links line)
+          (fnn-pack-extend-chain store records)
+        (if (zerop links) (values :nothing-uncovered line) generation))
+    (multiple-value-bind (chain coverage selected)
+        (fnn-pack-selected-raw-and-coverage store)
+      (multiple-value-bind (generation line)
+          (fnn-pack-publish-generation store records :chain chain :coverage coverage
+                                             :selected selected)
+        (setf (fnn-store-fenced store) nil)
+        (values generation line)))))
+
+(defun fnn-pack-extend-chain (store records &key admit)
+  "Publish and select links, each over the records above the selected chain,
+until the chain covers RECORDS.  Each link is its own publication and
+selection, so a cut leaves the previous chain selected
+(`fn-ccc-publication-crash-walks-old-or-new-chain').  ACL2's capture ends the
+loop with its no-op.  ADMIT, when given, is called with the chain's coverage
+before every link after the first and refuses (by name, through ACL2's
+decision) a link the disk cannot hold; the first link was admitted by the
+caller's own decision.  Returns the newest generation, the number of links
+written and ACL2's no-op line."
+  (multiple-value-bind (chain coverage selected)
+      (fnn-pack-selected-raw-and-coverage store)
+    (let ((links 0) (generation selected) (line nil))
+      (loop do (when (and admit (plusp links)
+                          (< (second coverage) (length records)))
+                 (funcall admit coverage links))
+               (multiple-value-bind (next frame boundary)
+                   (fnn-pack-publish-generation store records :chain chain
+                                                :coverage coverage :selected selected)
+                 (when (eq next :nothing-uncovered)
+                   (setq line frame)
+                   (loop-finish))
+                 (unless (> boundary (if coverage (second coverage) 0))
+                   (fnn-fault "ACL2 captured a link that covers nothing"))
+                 (fnn-pack-select store next)
+                 (fnn-checkpoint-test-stop "pack-chain-link")
+                 (incf links)
+                 (setq generation next selected next
+                       chain (cons (list next (fnn-octet-list frame) (fnn-digest-of frame))
+                                   chain))
+                 (let ((c (fnn-core 'fn-store-checkpoint-chain-coverage
+                                    chain (fnn-config-max-transactions store)
+                                    (fnn-store-frontier store)
+                                    (fnn-pack-link-bound store))))
+                   (unless (and (listp c) (eq (first c) :ok) (= (second c) boundary))
+                     (fnn-fault "ACL2 refused the chain it just extended: ~s" c))
+                   (setq coverage c))))
+      (setf (fnn-store-fenced store) nil)
+      (values generation links line))))
 
 (defun fnn-pack-prefix-reclaim (store)
   (fnn-checkpoint-require-mutation-ready store)
@@ -165,20 +236,19 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
   (fnn-checkpoint-require-mutation-ready store)
   ; This resolves an interrupted marker replacement, checks the selected
   ; generation frame and its coverage, and refuses any missing authority.
-  (multiple-value-bind (raw coverage selected)
+  (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
-    (declare (ignore raw))
     (unless (and coverage (integerp selected) (>= selected 0))
       (fnn-refuse "no selected pack generation to retain"))
     (let* ((generations (fnn-pack-generations store))
-           (plan (fnn-core 'fn-store-checkpoint-pack-retire-plan
-                           generations selected)))
+           (plan (fnn-core 'fn-store-checkpoint-chain-retire-plan
+                           generations chain (fnn-pack-link-bound store))))
       (unless (and (listp plan)
                    (<= (length plan) (length generations))
                    (every (lambda (generation)
                             (and (integerp generation) (>= generation 0)
-                                 (< generation selected)
-                                 (member generation generations)))
+                                 (member generation generations)
+                                 (not (member generation (mapcar #'first chain)))))
                           plan))
         (fnn-fault "ACL2 refused pack generation retirement plan"))
       (when (null plan) (return-from fnn-pack-retire-older-generations nil))
@@ -195,7 +265,44 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
         (fnn-os-error (e)
           (fnn-indeterminate "pack generation retirement is uncertain: ~a" e))))))
 
+(defun fnn-pack-link-bound (store)
+  (let ((bound (fnn-core 'fn-store-checkpoint-chain-link-bound (fnn-store-config store))))
+    (unless (and (integerp bound) (> bound 0))
+      (fnn-fault "ACL2 returned invalid pack link read bound"))
+    bound))
+
+(defun fnn-pack-walk (store head)
+  "Read the chain from HEAD, newest first, one bounded link read per step.
+ACL2 decodes each link and names its predecessor; the walk is given the
+profile's max-transactions links (every link covers a record)."
+  (let ((bound (fnn-pack-link-bound store))
+        (fuel (fnn-core 'fn-store-checkpoint-chain-walk-bound (fnn-store-config store)))
+        (chain nil)
+        (generation head))
+    (unless (and (integerp fuel) (> fuel 0))
+      (fnn-fault "ACL2 returned invalid pack chain walk bound"))
+    (loop
+      (when (<= fuel 0)
+        (fnn-checkpoint-corrupt "pack chain exceeds the profile's walk bound"))
+      (decf fuel)
+      (let ((path (fnn-pack-generation-path store generation)))
+        (unless (fnn-check-regular path)
+          (fnn-checkpoint-corrupt "pack chain generation ~d is missing" generation))
+        (let* ((raw (fnn-read-regular-bounded path (+ (fnn-constant :trailer) bound)))
+               (octets (fnn-octet-list raw))
+               (digest (fnn-digest-of raw))
+               (step (fnn-core 'fn-store-checkpoint-chain-step octets digest bound)))
+          (unless (and (listp step) (eq (first step) :ok)
+                       (integerp (second step)) (>= (second step) 0)
+                       (integerp (third step)) (>= (third step) 0))
+            (fnn-checkpoint-corrupt "pack chain link ~d does not decode" generation))
+          (push (list generation octets digest) chain)
+          (when (= (second step) 0) (return (nreverse chain)))
+          (setq generation (third step)))))))
+
 (defun fnn-pack-selected-raw-and-coverage (store)
+  "The selected chain (newest first, (GENERATION OCTETS DIGEST) each), its
+coverage (:ok BOUNDARY FRONTIER) and the selected generation."
   ; Resolve any prior process-death window in generation/marker publication
   ; before consulting selected authority.  A barrier error cannot authorize a
   ; zero-start fallback or prefix deletion.
@@ -206,23 +313,16 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
         (fnn-indeterminate "cannot resolve selected pack namespace: ~a" e))))
   (let ((generation (fnn-pack-selected-generation store)))
     (unless generation (return-from fnn-pack-selected-raw-and-coverage (values nil nil)))
-    (let ((path (fnn-pack-generation-path store generation)))
-      (unless (fnn-check-regular path)
-        (fnn-checkpoint-corrupt "selected pack generation ~d is missing" generation))
-      (let* ((payload-bound
-               (fnn-core 'fn-store-checkpoint-compaction-max-octets))
-             (_ (unless (and (integerp payload-bound) (> payload-bound 0))
-                  (fnn-fault "ACL2 returned invalid compaction read bound")))
-             (raw (fnn-read-regular-bounded
-                   path (+ (fnn-constant :trailer) payload-bound)))
-             (coverage (fnn-core 'fn-store-checkpoint-compaction-coverage
-                                 (fnn-octet-list raw) (fnn-digest-of raw)
-                                 (fnn-config-max-transactions store)
-                                 (fnn-store-frontier store))))
-        (unless (and (listp coverage) (eq (first coverage) :ok)
-                     (integerp (second coverage)) (>= (second coverage) 0))
-          (fnn-checkpoint-corrupt "selected pack coverage is invalid"))
-        (values raw coverage generation)))))
+    (let* ((chain (fnn-pack-walk store generation))
+           (coverage (fnn-core 'fn-store-checkpoint-chain-coverage
+                               chain
+                               (fnn-config-max-transactions store)
+                               (fnn-store-frontier store)
+                               (fnn-pack-link-bound store))))
+      (unless (and (listp coverage) (eq (first coverage) :ok)
+                   (integerp (second coverage)) (>= (second coverage) 0))
+        (fnn-checkpoint-corrupt "selected pack chain coverage is invalid: ~s" coverage))
+      (values chain coverage generation))))
 
 (defun fnn-pack-lower-bound (store)
   (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
@@ -230,7 +330,7 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
     (if coverage (second coverage) 0)))
 
 (defun fnn-pack-recover-records (store records sequences actual-lower)
-  (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
+  (multiple-value-bind (chain coverage) (fnn-pack-selected-raw-and-coverage store)
     (unless coverage (return-from fnn-pack-recover-records records))
     (let* ((sequence (second coverage))
            (_ (unless (= actual-lower sequence)
@@ -239,14 +339,24 @@ reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
            (observed (mapcar (lambda (number record)
                                (list number (fnn-octet-list record)))
                              sequences records))
-           (answer (fnn-core 'fn-store-checkpoint-compaction-observe
-                             (fnn-octet-list raw) (fnn-digest-of raw)
-                             observed
-                             (fnn-store-frontier store))))
+           (answer (fnn-core 'fn-store-checkpoint-chain-observe
+                             chain observed
+                             (fnn-store-frontier store)
+                             (fnn-pack-link-bound store))))
       (unless (and (listp answer) (eq (first answer) :ok))
         (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
       (mapcar #'fnn-as-octets (second answer)))))
 
+(defun fnn-pack-chain-report (store)
+  "The `status' line for the selected pack chain: its links, newest first,
+and the boundary ACL2 computed over them."
+  (multiple-value-bind (chain coverage) (fnn-pack-selected-raw-and-coverage store)
+    (if (null coverage)
+        "pack-chain none"
+      (format nil "pack-chain links=~d boundary=~d generations=~{~d~^,~}"
+              (length chain) (second coverage) (mapcar #'first chain)))))
+
+(setq *fnn-pack-status-callback* #'fnn-pack-chain-report)
 (setq *fnn-pack-recover-callback* #'fnn-pack-recover-records)
 (setq *fnn-pack-lower-bound-callback* #'fnn-pack-lower-bound)
 
@@ -554,9 +664,11 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-checkpoint-command-pack (root selectp)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
     (unwind-protect
-         (let ((generation (fnn-pack-publish store records selectp)))
-           (fnn-out "packed generation=~d records=~d selected=~a"
-                    generation (length records) (if selectp "yes" "no"))
+         (multiple-value-bind (generation line) (fnn-pack-publish store records selectp)
+           (if (eq generation :nothing-uncovered)
+               (fnn-out "~a" line)
+               (fnn-out "packed generation=~d records=~d selected=~a"
+                        generation (length records) (if selectp "yes" "no")))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 (defun fnn-checkpoint-command-pack-reclaim (root)
@@ -621,12 +733,24 @@ selection-* process-death cuts (fn-cpp-marker-step)."
           (min free n))
         free)))
 
-(defun fnn-compact-steps (store records)
-  "Observe, ask ACL2, and carry out its steps.  Returns the report line."
-  (fnn-checkpoint-require-mutation-ready store)
-  (multiple-value-bind (raw coverage selected)
+(defun fnn-pack-retirable-generations (store chain selected generations)
+  "The generations the compact and reclaim decisions may count as older and
+retirable: ACL2's plan outside the selected chain (a chain link is never
+older-and-retirable, `fn-ccc-retire-plan-keeps-the-chain'), plus the
+selected head it counts from."
+  (if chain
+      (let ((plan (fnn-core 'fn-store-checkpoint-chain-retire-plan
+                            generations chain (fnn-pack-link-bound store))))
+        (unless (listp plan)
+          (fnn-fault "ACL2 refused the pack retirement plan"))
+        (sort (cons selected (copy-list plan)) #'<))
+      generations))
+
+(defun fnn-compact-decide (store records)
+  "Observe the store (the selected chain's coverage, the transaction and pack
+namespaces, the disk's free octets) and ask ACL2's one compaction decision."
+  (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
-    (declare (ignore raw))
     (let* ((lower (if coverage (second coverage) 0))
            (names (sort (fnn-list-directory-bounded
                          (fnn-transactions store) (fnn-config-max-transactions store)
@@ -636,26 +760,50 @@ selection-* process-death cuts (fn-cpp-marker-step)."
            (decision (fnn-core 'fn-store-compact-decide
                                (fnn-store-config store)
                                (mapcar #'fnn-octet-list records)
-                               lower names generations selected
+                               lower names
+                               (fnn-pack-retirable-generations store chain selected
+                                                               generations)
+                               selected
                                (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
-      (when (eq (first decision) :refused)
-        (fnn-refuse "compaction refused: ~(~a~)" (second decision)))
-      (let ((generation nil) (reclaimed nil) (retired nil))
-        (dolist (step (second decision))
-          (case step
-            (:pack (setq generation (fnn-pack-publish-generation store records)))
-            (:select
-             (unless generation (fnn-fault "ACL2 selected a pack it did not publish"))
-             (fnn-pack-select store generation))
-            (:reclaim (setq reclaimed (fnn-pack-prefix-reclaim store)))
-            (:retire (setq retired (fnn-pack-retire-older-generations store)))
-            (otherwise (fnn-fault "ACL2 returned an unknown compaction step ~s" step))))
-        (format nil "compacted steps=~{~(~a~)~^,~} records=~d generation=~a reclaimed=~d retired=~d"
-                (second decision) (length records)
-                (or generation (fnn-pack-selected-generation store))
-                (length reclaimed) (length retired))))))
+      decision)))
+
+(defun fnn-compact-steps (store records)
+  "Observe, ask ACL2, and carry out its steps.  Returns the report line.
+The pack step asks the same decision again, over a fresh observation, before
+every further link (`fn-cverb-pack-fits-the-disk' is over one link): a link
+the disk cannot hold is refused by name with the links already selected
+kept, and a rerun continues from them."
+  (fnn-checkpoint-require-mutation-ready store)
+  (let ((decision (fnn-compact-decide store records)))
+    (when (eq (first decision) :refused)
+      (fnn-refuse "compaction refused: ~(~a~)" (second decision)))
+    (let ((generation nil) (links 0) (reclaimed nil) (retired nil))
+      (dolist (step (second decision))
+        (case step
+          (:pack (multiple-value-setq (generation links)
+                   (fnn-pack-extend-chain
+                    store records
+                    :admit (lambda (coverage written)
+                             (declare (ignore coverage))
+                             (let ((next (fnn-compact-decide store records)))
+                               (when (eq (first next) :refused)
+                                 (fnn-refuse "compaction refused: ~(~a~) links=~d"
+                                             (second next) written))
+                               (unless (equal next decision)
+                                 (fnn-fault "ACL2 changed the compaction steps mid-chain: ~s"
+                                            next)))))))
+          ;; Each link was selected as it was published (fnn-pack-extend-chain).
+          (:select
+           (unless generation (fnn-fault "ACL2 selected a pack it did not publish")))
+          (:reclaim (setq reclaimed (fnn-pack-prefix-reclaim store)))
+          (:retire (setq retired (fnn-pack-retire-older-generations store)))
+          (otherwise (fnn-fault "ACL2 returned an unknown compaction step ~s" step))))
+      (format nil "compacted steps=~{~(~a~)~^,~} records=~d generation=~a links=~d reclaimed=~d retired=~d"
+              (second decision) (length records)
+              (or generation (fnn-pack-selected-generation store))
+              links (length reclaimed) (length retired)))))
 
 (defun fnn-command-compact (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
@@ -727,9 +875,8 @@ selection-* process-death cuts (fn-cpp-marker-step)."
         (fnn-indeterminate "state checkpoint removal is uncertain: ~a" e)))))
 
 (defun fnn-reclaim-observe (store records dry)
-  (multiple-value-bind (raw coverage selected)
+  (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
-    (declare (ignore raw))
     (let* ((lower (if coverage (second coverage) 0))
            (names (sort (fnn-list-directory-bounded
                          (fnn-transactions store) (fnn-config-max-transactions store)
@@ -741,7 +888,10 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                                      (fnn-store-prepare-observation)
                                      (mapcar #'fnn-octet-list records)
                                      (fnn-store-frontier store)
-                                     lower names generations selected
+                                     lower names
+                                     (fnn-pack-retirable-generations store chain selected
+                                                                     generations)
+                                     selected
                                      (fnn-disk-free-octets store)
                                      (if dry t nil))))
       (unless (and (listp decision)
@@ -793,7 +943,8 @@ selection-* process-death cuts (fn-cpp-marker-step)."
              (case step
                (:drop-state-checkpoint (fnn-reclaim-drop-state-checkpoint store))
                (:pack
-                (setq generation (fnn-pack-publish-generation store records summary))
+                (setq generation (fnn-pack-publish-generation store records
+                                                              :summary summary))
                 (handler-case (fnn-reclaim-at "reclaim-pack-published")
                   (fnn-os-error (e) (fnn-indeterminate "reclaim is uncertain: ~a" e))))
                (:select
