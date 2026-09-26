@@ -1724,7 +1724,7 @@
       "id": "SCN-067",
       "title": "A family of more fragments than the old 64-fragment ceiling, interrupted by a receiver kill, reassembles once and is delivered once",
       "milestone": "M4",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "REP-008"
       ],
