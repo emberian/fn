@@ -21,7 +21,10 @@
 # tests that need those build the explicit `developer` image profile.
 set -eu
 
-here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+self=$0
+# A link to bin/fn (say /usr/local/bin/fn) finds the release it points into.
+if [ -L "$self" ] && resolved=$(readlink -f -- "$self" 2>/dev/null); then self=$resolved; fi
+here=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
 if [ -n "${FN_NATIVE_HOST:-}" ]; then
     image=$FN_NATIVE_HOST
 elif [ -x "$here/../libexec/fn/fn-host" ]; then
