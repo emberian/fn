@@ -259,17 +259,6 @@
       (fn-cvec-roomp (fn-bs-config-for-profile :scale) 0 0 0)
       (not (fn-cvec-roomp '(1 2 3) 0 0 0))))
 
-; fn-cvec-profile-upgrade-keeps-the-vector: raising T and H keeps it; the
-; tooth, lowering H loses it.
-(defconst *cvt-lower*
-  (fn-bs-profile-set-fields *fn-bs-profile-defaults*
-                            '((2 . 8) (3 . 240000) (4 . 196608) (5 . 32768)
-                              (6 . 500) (8 . 4))))
-(assert-event
- (and (fn-cvec-roomp *cvt-p* 1 *cvt-b* 2)
-      (not (fn-profile-upgradep *cvt-p* *cvt-lower*))
-      (not (fn-cvec-roomp *cvt-lower* 1 *cvt-b* 2))))
-
 ; -----------------------------------------------------------------------------
 ; The composed statement (fn-cvec-admitted-history-keeps-the-vector,
 ; fn-cvec-admitted-history-from-init): an undertaking, packet 1's article

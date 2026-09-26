@@ -84,15 +84,6 @@
 (assert-event (and (not (fn-bs-profile-admittedp '(7 1 2 3 4 5)))
                    (not (fn-smr-roomp '(7 1 2 3 4 5) 0 0))))
 
-; fn-smr-profile-upgrade-keeps-the-reserve: packet 1's upgrade keeps the
-; boundary state; the tooth, H lowered (not an upgrade), loses it.
-(assert-event (and (fn-profile-upgradep *pmt-old* *pmt-new*)
-                   (fn-smr-roomp *pmt-new* 3 (- *smt-h* 4096))))
-(defconst *smt-lower-h* (fn-bs-profile-set-fields *pmt-old* '((3 . 240000))))
-(assert-event (and (fn-bs-profile-validp *smt-lower-h*)
-                   (not (fn-profile-upgradep *pmt-old* *smt-lower-h*))
-                   (not (fn-smr-roomp *smt-lower-h* 3 (- *smt-h* 4096)))))
-
 ; -----------------------------------------------------------------------------
 ; The article gates (fn-smr-article-verdict-keeps-the-reserve and
 ; fn-smr-prepare-keeps-the-reserve).  Packet 1's article (32 768 octets,

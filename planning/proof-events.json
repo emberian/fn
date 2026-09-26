@@ -2039,20 +2039,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-k0-profile-cuts-relation-by-step",
-          "note": "The profile program (fn-bs-profile-program, config.json) under the checkpoint theorem's hypotheses and (fn-bs-config-okp octets): the same five-cut statement. The landed resolution at the replaced cut names the new inode at config.json, which fn-bs-k0s-with-config-entry-preserves-relation relates. Teeth include octets the configuration check refuses.",
-          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-step-at-state-checkpoint-pairs-preserves-k0-coverage",
           "note": "Every step of the state-checkpoint program, taken from the pair the successful run reaches before it, with any outcome (the stage fsync with :ok or a well-formed crash selection of its writes): the result is covered and the kernel unchanged. The host's error arms (known failure before the rename, uncertain at or after it) are these steps' error outcomes.",
-          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-step-at-profile-pairs-preserves-k0-coverage",
-          "note": "The profile program's every step with any outcome, as for the checkpoint, under (fn-bs-config-okp octets).",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         },
         {
@@ -3110,35 +3098,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-txn-observation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-replay-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-publication-admissibility"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-verdict"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-verdict-writes-only-upgrades"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-config-decode-of-encode"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-program-crash-is-old-or-new"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-program-crash-budget-is-old-or-new"
         }
       ]
     },
@@ -3160,10 +3120,6 @@
         {
           "kind": "theorem",
           "name": "fn-ccp-reclaim-preserves-reconstructed-history"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccp-profile-upgrade-keeps-reclaim-plan"
         },
         {
           "kind": "theorem",
@@ -3295,14 +3251,6 @@
         {
           "kind": "theorem",
           "name": "fn-hmr-required-store-never-admits-an-absent-marker"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hmr-requirement-follows-a-covering-marker"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hmr-legacy-store-migrates-by-the-two-step"
         }
       ]
     },
@@ -4015,19 +3963,6 @@
         {
           "kind": "theorem",
           "name": "fn-native-auth-admin-effect-word-restart-unless-no-owner"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-format-7-store-needs-upgrade"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-rollback-sound-iff-records-within"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-rollback-keeps-a-required-marker",
-          "note": "KEYSTONE (qual-e747dbcc U1). Host: host/native/io.lisp fnn-command-rollback-check passes the store's own profile as CURRENT. Teeth: tests/acl2/store-profile-upgrade-tests (the kept format-7 scale tuple over the scale preset marked required refuses by name; a required kept profile is sound; must-fail without the current requirement and without the :sound verdict)."
         }
       ]
     },
@@ -4053,10 +3988,6 @@
         {
           "kind": "theorem",
           "name": "fn-bs-profile-namespace-counts-within-width"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-namespace-counts"
         }
       ]
     },
@@ -4725,10 +4656,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-article-verdict"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-sbud-article-figure-bounds-the-record"
         }
       ]
@@ -5020,10 +4947,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-smr-profile-upgrade-keeps-the-reserve"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cverb-pack-fits-the-disk"
         },
         {
@@ -5136,10 +5059,6 @@
         {
           "kind": "theorem",
           "name": "fn-native-operator-store-outcome-passes-a-present-store"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-snapshot-loss-counts-the-suffix"
         },
         {
           "kind": "theorem",
@@ -5468,16 +5387,7 @@
     },
     {
       "id": "PRF-141",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-history-loss-is-ancestry"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-history-loss-is-snapshot-loss"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-139",
@@ -5543,10 +5453,6 @@
         {
           "kind": "theorem",
           "name": "fn-cvec-admitted-profile-starts-held"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cvec-profile-upgrade-keeps-the-vector"
         },
         {
           "kind": "theorem",
@@ -6376,10 +6282,6 @@
         {
           "kind": "theorem",
           "name": "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
         }
       ]
     },
@@ -6667,6 +6569,21 @@
         {
           "kind": "theorem",
           "name": "fn-sco-thaw-checked-accepts-own-publication"
+        }
+      ]
+    },
+    {
+      "id": "PRF-205",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-import-of-export-replays-the-same-history",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export calls fn-sxp-entries and fn-sxp-manifest. Teeth: tests/acl2/store-export-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+          "note": "KEYSTONE (D34, one format). Host: host/native/io.lisp fnn-metadata-config-decode via fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp."
         }
       ]
     }
