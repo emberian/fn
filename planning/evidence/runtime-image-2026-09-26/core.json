@@ -1,0 +1,1 @@
+{"core_file_octets": 394842952, "core_required_kib": 277888, "image": "build/fn-host", "said": "fatal error encountered in SBCL pid 2767812 tid 2767812:\ndynamic space too small for core: 277888KiB required, 8192KiB available."}

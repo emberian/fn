@@ -1,0 +1,4 @@
+bare_sbcl_rss_kib=8276
+bare_acl2_rss_kib=38232
+bare_sbcl_core_required: 13248KiB required
+bare_acl2_core_required: 163360KiB required
