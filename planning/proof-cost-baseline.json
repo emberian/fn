@@ -5,8 +5,15 @@
   "max_jobs": 2,
   "books": {
     "books/native-admin": {
-      "seconds": 10.032,
-      "run": "certify-20260926T100254Z-46471",
+      "seconds": 15.948,
+      "run": "certify-20260926T112155Z-967430",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/native-operator": {
+      "seconds": 11.837,
+      "run": "certify-20260926T112155Z-967430",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
@@ -21,6 +28,20 @@
     "books/peer-authored-accept": {
       "seconds": 11.487,
       "run": "certify-20260926T110838Z-807334",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/peer-pull": {
+      "seconds": 10.284,
+      "run": "certify-20260926T112155Z-967430",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/peer-pull-session": {
+      "seconds": 11.684,
+      "run": "certify-20260926T112155Z-967430",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
