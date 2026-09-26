@@ -4787,6 +4787,37 @@
         "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action",
         "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
       ]
+    },
+    {
+      "id": "PRF-112",
+      "title": "The operator's health verdict: eight states, each decided by the status report's sources, one line and one exit code each",
+      "statement": "Over fn-nh-verdict (books/native-health.lisp), which fn-nh-offline-report, fn-nh-fenced-report and fn-nh-live-report render and host/native-live-status-host.lisp fn-native-health-host-offline, fn-native-health-host-fenced and fn-native-live-status-host-answer call (host/native/operator.lisp fnn-operator-health-report; host/native/control.lisp fnn-control-live-status-answer): fn-nh-verdict-states, the verdict has eight outcomes in *fn-nh-states* order, each :held, :clear or :unobserved exactly as the report's sources decide: fenced from the host's fence observation; exhausted from the headroom at the transaction-id or ledger codec ceiling; unqualified-profile from fn-bs-profile-validp and the development profile; space-pressure from free headroom below the operator's [alerts] headroom_min_percent on transactions, history octets or retention charge, when not exhausted; no-route from held :forward obligations with an empty fn-bprt-table; stranded-transfer from feed entries dropped at their retry bound; unavailable-peer from feeds with pending work and no connection; receipt-debt from held :forward obligations; a source not observed is :unobserved. fn-nh-exit-code-decodes: the exit code names the first held state (fn-nh-code-state) and is 0 exactly when no state is held or unobserved. fn-nh-report-exit-of-render: the code the host returns, read back from the rendered octets by fn-nh-report-exit (fn-native-health-host-exit, fnn-operator-execute-health), is the verdict's code for every verdict of at most eight outcomes. fn-nh-first-held-monotone: a verdict holding every state another holds has a first held state no later. fn-nh-pressedp-monotone: more use or a higher threshold never clears pressure. fn-nh-live-report-is-the-store-report: with the carried octet sum valid, the owner's report is the verdict over its Store's own committed octets, configuration and feed table. fn-nh-fence-of-route: an uncertain control-socket route is always fenced; otherwise the clone fence and the lock decide.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-007"
+      ],
+      "depends_on": [
+        "PRF-089"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/operator.lisp",
+        "planning/evidence/operator-health-2026-09-25.md"
+      ],
+      "progress_note": "See planning/evidence/operator-health-2026-09-25.md for the farm manifest and the native cases.",
+      "events": [
+        "fn-nh-verdict-states",
+        "fn-nh-exit-code-decodes",
+        "fn-nh-report-exit-of-render",
+        "fn-nh-first-held-monotone",
+        "fn-nh-pressedp-monotone",
+        "fn-nh-live-report-is-the-store-report",
+        "fn-nh-fence-of-route"
+      ]
     }
   ]
 }

@@ -1,0 +1,9 @@
+health exit=20 state=fenced
+fenced held reason=store-held (a process holds the store and the configured control socket does not reach it)
+exhausted unobserved (the store was not opened)
+unqualified-profile unobserved (the store was not opened)
+space-pressure unobserved (the store was not opened)
+no-route unobserved (the store was not opened)
+stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+receipt-debt unobserved (the store was not opened)

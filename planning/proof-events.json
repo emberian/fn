@@ -4994,6 +4994,39 @@
           "name": "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
         }
       ]
+    },
+    {
+      "id": "PRF-112",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-first-held-monotone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-pressedp-monotone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-live-report-is-the-store-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-fence-of-route"
+        }
+      ]
     }
   ]
 }
