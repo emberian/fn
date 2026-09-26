@@ -112,7 +112,11 @@ closure), manifests in planning/evidence/manifests/:
 
 The change sits under group-bucket-index, a high-fan-in book: 341 affected
 roots (`certify_books.py --dry-run --affected-by` over the changed books);
-the batch certifies them. `make check-lane`: green after this record.
+the batch certifies them. `make check-lane` at a559831b: green with dev's
+`tools/native_program_check.py` (48a21162) and `planning/hot-path-findings.json`
+(096df0a2) in place; on this lane's base (6407de33) it stops at those two, a
+native_program_check crash on a host program and a store-budget hot-path
+find, neither in a file this lane touches (harness, fixed on dev).
 
 Native (hbox, `tools/hbox_native.sh --label r1 068fe7d1 tests.test_native_owner`,
 image core `f22e32df...`, launcher `fc5d0b40...`): 18 ran, 16 passed, 2
