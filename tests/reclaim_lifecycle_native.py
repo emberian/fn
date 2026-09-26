@@ -109,9 +109,17 @@ def status(cfg):
 
 
 def selected_pack(store):
+    """The content of every pack generation file present, by digest.  The
+    generation number (the file name and the selection marker) is not
+    compared: a rerun after a cut before the selection publishes the next
+    number over the same bytes."""
     packs = Path(store) / "packs"
-    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(packs.iterdir())} if packs.exists() else {}
+    if not packs.exists():
+        return []
+    files = [p for p in packs.iterdir() if p.is_file()]
+    sizes = sorted((p.stat().st_size, p) for p in files)
+    marker = sizes[0][1] if len(sizes) > 1 else None
+    return sorted(hashlib.sha256(p.read_bytes()).hexdigest() for p in files if p != marker)
 
 
 def build(name, n, body=BODY, hist=HIST):
@@ -192,6 +200,7 @@ def run():
     code, so, se = native("operator", cfg, "store", "reclaim", "--dry-run")
     out(tag="dry-run", exit=code, head=so.splitlines()[:1], stdout_lines=len(so.splitlines()))
     # Compact first (the ordinary verb), so the cut copies isolate reclaim.
+    out(tag="before-compact", footprint=footprint(store))
     code, so, se = native("operator", cfg, "store", "compact")
     out(tag="compact", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:])
     before = footprint(store)
