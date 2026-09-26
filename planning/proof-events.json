@@ -6669,6 +6669,19 @@
           "name": "fn-sco-thaw-checked-accepts-own-publication"
         }
       ]
+    },
+    {
+      "id": "PRF-192",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-to-buffer-is-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-to-buffer-refusal-keeps-the-buffer"
+        }
+      ]
     }
   ]
 }

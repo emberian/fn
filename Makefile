@@ -905,6 +905,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \
 	tests/acl2/public-exposure-reply-tests \
+	books/served-reply-buffer \
+	tests/acl2/served-reply-buffer-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/topic-history-metadata \

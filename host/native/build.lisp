@@ -28,6 +28,9 @@
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
+;; PRF-192: the served read's reply as a range of the octet buffer:
+;; host/owner-host.lisp fn-owner-reply-buffer calls fn-served-reply-to-buffer.
+(include-book "books/served-reply-buffer")
 (include-book "books/owner-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
