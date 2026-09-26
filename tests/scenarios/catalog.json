@@ -2172,6 +2172,30 @@
         "tests/acl2/store-checkpoint-buffer-tests.lisp",
         "planning/evidence/rep-wave-d-2-2026-09-26.md"
       ]
+    },
+    {
+      "id": "SCN-079",
+      "title": "The state checkpoint is read from the octet buffer: the node reopens from the N = 10,000 x 32 KiB checkpoint it published, and a file past the profile's bounds is refused by name",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010"
+      ],
+      "steps": [
+        "On a live local buffer, plan the ground checkpoint-shaped value at segment sizes 7, 0, 1000, 56 and 55 and decode each plan back with fn-sccr-decode-plan; compare with fn-scc-decode-segments over the frames' octets; corrupt the buffer (a flipped octet) and the plan (a dropped frame, a broken first header, frames sealed under the wrong sequence, a non-contiguous plan, a short header) and compare the verdicts; run the index machine against the list machine on the program and its every suffix; admit a header at, one short of, and past the segment bound and the file bound.",
+        "On hbox, copies of rep-wave-d-2's measured stores with the checkpoint files that lane published (N = 1,000 x 32 KiB: 70,877,827 octets; N = 10,000 x 2 KiB: 52,080,773; N = 10,000 x 32 KiB: 670,413,555), under the same 40G scope: the owner opened from the checkpoint to its LISTENING line, timed, VmRSS and VmHWM read from /proc, `status' read for the open it served; before = the same on rep-wave-d-2's image in the same hour.",
+        "tests.test_native_state_checkpoint on the image built from the lane's tree: a corrupt checkpoint falls back to full replay (reason=corrupt), a checkpoint whose first segment claims a length past the profile's segment bound is refused by name (reason=checkpoint-exceeds-bound) and the journal replays, the checkpoint open equals the full replay, and the host's source calls the reader's subjects."
+      ],
+      "expected": [
+        "Every plan decodes to its value; every corrupted plan draws the same verdict from the reader and the list decoder, except the mis-shaped plans, which the reader alone refuses as :layout; the admission refuses exactly past either bound.",
+        "The N = 10,000 x 32 KiB reopen completes inside the 40G scope where the untouched reader died by heap exhaustion after 56 s, within the full replay's residency (22.5 GB VmHWM at that point); the numbers are in the record's table.",
+        "The native module passes on both images; `status' names checkpoint-exceeds-bound."
+      ],
+      "evidence": [
+        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md"
+      ]
     }
   ]
 }

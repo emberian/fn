@@ -5223,6 +5223,34 @@
         "planning/evidence/manifests/certify-20260926T035409Z-754998.json"
       ],
       "progress_note": "Lane rep-wave-d-2 (2026-09-26): certified on persvati (run-20260926T035337Z-d860, no book over 10 s at two jobs; run 1 found the book at 20.2 s and the leaf codecs were closed in the hints; run 2 preceded the accumulator forms that the stack exhaustion on hbox demanded). The id was assigned by the brief to the records-shape freeze's correspondence theorems; that freeze did not start (its interface needs PKT-293), and the lane's one certified keystone is registered here; the coordinator renumbers at merge if it prefers."
+    },
+    {
+      "id": "PRF-135",
+      "title": "The state checkpoint read from the octet buffer decodes to the value the list decoder gives: the buffer decode of the writer's plan is the value, and on any plan it is the list decode of the frames' octets",
+      "statement": "books/store-checkpoint-reader.lisp. fn-sccr-decode-plan (the host-called entry: host/store-node-host.lisp fn-store-sco-decode, called by host/native/io.lisp fnn-state-checkpoint-load at the store's open after fnn-state-checkpoint-plan has read the file's chunks into the octet buffer) reads a plan of (HEADER A B TRAILER) per FNSC segment, the chunk as the buffer's cells A..B, and decodes the postfix program by index (fn-sccr-run, the stack machine reading the buffer; a payload leaf is fn-sccb-slice-acc of its range, the record's own octet list, built once). KEYSTONE fn-sccr-decode-of-plan: (implies (and (fn-sccb-treep c) (< (+ 1 (len (fn-scc-encode c))) *fn-scc-u64-bound*) (< (fn-scc-value-sequence c) *fn-scc-u64-bound*)) (equal (fn-sccr-decode-plan (mv-nth 0 (fn-sccb-plan c seg st)) (mv-nth 1 (fn-sccb-plan c seg st))) (list :ok c))): the buffer decode of the writer's plan over the buffer it leaves is the value, the inverse of fn-sccb-plan-is-file-octets (PRF-133). The twin fn-sccr-decode-plan-is-decode-segments: for a well-shaped plan (fn-sccr-planp: 37-octet headers, 32-octet trailers, ranges within the buffer, contiguous) and any buffer contents, corrupt ones included, (equal (fn-sccr-decode-plan plan st) (fn-scc-decode-segments (fn-sccr-plan-segments plan st))), the frames' octets being fn-sccb-frame-octets, what the host's file bytes are; the verdicts (:header, :segment, :truncated, :tree, :value) agree, and a mis-shaped plan is (:refused :layout), a verdict the list decoder never gives (fn-sccr-decode-plan-refuses-layout-by-definition, the branch by definition). fn-sccr-run-is-run: the index machine over the cells [i, end) is fn-scc-run over that slice. fn-sccr-admitted-within-bounds: a segment ACL2 admits (fn-sccr-admit-segment, called per segment before the host reads it, host/store-node-host.lisp fn-store-sco-segment-admit) has the extent the codec sizes it, within the profile's segment bound and, with the running total, within the file bound fn-sccr-file-read-bound (three times max-history-octets plus one segment's framing); a refusal is named :exceeds-bound, which fn-sco-select maps to (:full-replay :checkpoint-exceeds-bound). Every executable function is guard-verified. What it does not say: that the host's plan holds the file's bytes (A-HOST, as for every buffer fill); anything about the seal's digest beyond fn-frame-trailer being closed (the seal reads each chunk once as a transient list of at most one segment, as the writer does); or that the file bound admits every checkpoint of an admitted history (it is a policy from the profile: past it the journal replays).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-133"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "events": [
+        "fn-sccr-decode-of-plan",
+        "fn-sccr-decode-plan-is-decode-segments",
+        "fn-sccr-run-is-run",
+        "fn-sccr-admitted-within-bounds"
+      ],
+      "evidence": [
+        "books/store-checkpoint-reader.lisp",
+        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md"
+      ],
+      "progress_note": "Lane rep-wave-d-3 (2026-09-26): in the REPL on persvati; farm run pending."
     }
   ]
 }
