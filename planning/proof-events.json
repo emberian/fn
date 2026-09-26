@@ -4650,6 +4650,59 @@
           "name": "fn-vj-a-held-message-id-is-answered-441"
         }
       ]
+    },
+    {
+      "id": "PRF-123",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-a-narrow-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-admitted-article-record-is-within-r"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-staged-record-is-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-u32-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-prepare-record-stages-u32-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-article-record-stamp-and-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-admits-a-u32-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-under-article-budget-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-admitted-article-keeps-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-article-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-figure-bounds-the-record"
+        }
+      ]
     }
   ]
 }
