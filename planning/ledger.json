@@ -759,6 +759,7 @@
     "tests/acl2/owner-tests",
     "books/poster-bytes-invariants",
     "tests/acl2/poster-bytes-tests",
+    "tests/acl2/source-routes-tests",
     "tests/acl2/owner-served-invariants-tests",
     "tests/acl2/owner-numbering-tests",
     "tests/acl2/owner-fault-tests",
@@ -888,26 +889,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 900,
-    "books_in_root_closure": 896,
-    "roots": 884,
-    "theorems": 12480,
-    "functions": 8727,
-    "assert_events": 13057,
-    "must_fails": 1430,
-    "encapsulates": 61,
+    "books": 902,
+    "books_in_root_closure": 898,
+    "roots": 885,
+    "theorems": 12495,
+    "functions": 8739,
+    "assert_events": 13078,
+    "must_fails": 1437,
+    "encapsulates": 63,
     "guards": {
       "verified": 2181,
-      "declared-off": 657,
+      "declared-off": 659,
       "default-guarded": 4607,
-      "default-unguarded": 1282
+      "default-unguarded": 1292
     },
     "suspect_theorems": 108,
     "export_hygiene_warnings": 149,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 107,
-    "include_hygiene_warnings": 905,
-    "host_names_warnings": 1015,
+    "include_hygiene_warnings": 909,
+    "host_names_warnings": 1016,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -12411,6 +12412,33 @@
       "read_error": null
     },
     {
+      "book": "books/source-routes.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 15,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "hybrid-store-injected",
+        "poster-bytes-invariants",
+        "store-reclaim"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/statement-attach.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -23165,6 +23193,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/source-routes-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 10
+      },
+      "verify_guards_events": 0,
+      "assert_events": 21,
+      "must_fails": 7,
+      "defconsts": 32,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/source-routes"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/stack-depth-twins-tests.lisp",
       "in_root_closure": false,
       "is_root": false,
@@ -30345,6 +30401,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/source-routes.lisp",
+        "line": 26,
+        "include": "poster-bytes-invariants",
+        "included": "books/poster-bytes-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/source-routes.lisp",
+        "line": 27,
+        "include": "store-reclaim",
+        "included": "books/store-reclaim.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/statement-attach.lisp",
         "line": 16,
         "include": "statement-codec",
@@ -33702,6 +33772,20 @@
         "line": 7,
         "include": "../../books/source-projection-bridge",
         "included": "books/source-projection-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/source-routes-tests.lisp",
+        "line": 15,
+        "include": "../../books/source-routes",
+        "included": "books/source-routes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/source-routes-tests.lisp",
+        "line": 16,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -39056,119 +39140,126 @@
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 174,
+        "line": 192,
         "name": "*fnn-hybrid-control-handler*",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-octet-list-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-control-connect",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-socket-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-send-all",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-control-read-frame",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-control-transport-outcome",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 176,
+        "line": 194,
         "name": "fnn-socket-shut",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 197,
+        "line": 215,
         "name": "fnn-hsig-command-read-exact",
         "source": "host/native/signature-command.lisp",
         "reason": "defined in host/native/signature-command.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 197,
+        "line": 215,
         "name": "fnn-hsig-ml-dsa-65-public-key",
         "source": "host/native/signatures.lisp",
         "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 214,
+        "line": 232,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 249,
+        "line": 232,
+        "name": "fnn-err",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/hybrid-control.lisp",
+        "line": 272,
         "name": "fnn-open-live-store",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 249,
+        "line": 272,
         "name": "fnn-core-state",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 249,
+        "line": 272,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 249,
+        "line": 272,
         "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 249,
+        "line": 272,
         "name": "fnn-store-close",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 265,
+        "line": 288,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
