@@ -4693,7 +4693,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fragment-send.lisp",
         "tests/acl2/bp-fragment-send-tests.lisp",
@@ -7116,6 +7116,28 @@
         "fn-gidx-numbers-okp-of-put",
         "fn-gidx-numbers-okp-of-put-all",
         "fn-gidx-numbers-okp-of-refresh"
+      ]
+    },
+    {
+      "id": "PRF-190",
+      "title": "The executed BP CRC-32C and exclusive-or are the bitwise definitions: fn-bpp-crc32c-scan runs a table-driven scan and fn-bpp-xor runs logxor under a mask, each proved equal to the bitwise body every codec theorem reasons about",
+      "statement": "books/bp-primary.lisp. fn-bpp-xor-is-masked-logxor (hypotheses (natp a), (natp b)): (fn-bpp-xor a b k) = (logand (logxor a b) (+ -1 (expt 2 k))), the :exec body of fn-bpp-xor's mbe, for every k (a k that is not a natural gives 0 on both sides). fn-bpp-crc32c-scan-table-is-scan (hypotheses (natp crc), (fn-cbor-octet-listp xs)): (fn-bpp-crc32c-scan-table crc xs) = (fn-bpp-crc32c-scan crc xs), where fn-bpp-crc32c-scan-table, the :exec body of fn-bpp-crc32c-scan's mbe, advances the register an octet at a time by one lookup in *fn-bpp-crc32c-table* and a shift, and the logical body advances it eight bitwise register steps (fn-bpp-crc32c-octet). The table is a defconst evaluated from fn-bpp-crc32c-octet at every octet value, and fn-bpp-crc32c-table-agrees checks all 256 entries by evaluation inside the proof. Both keystones are used by the guard proofs of the mbe functions (verify-guards fn-bpp-xor, verify-guards fn-bpp-crc32c-scan), so the executed bodies are what the guard-verified host path runs. Host lines: host/bp-node-host.lisp calls fn-bpn-send (the authoring path: fn-bpb-encode, fn-bpb-block-crc, fn-bpp-crc-octets, fn-bpp-crc32c) and fn-bpb-decode (fn-bpn-host-authored-retry; the decoder's CRC check computes the same fn-bpp-crc-octets). The logical bodies of fn-bpp-xor, fn-bpp-crc32c-scan and fn-bpp-crc32c are unchanged, so every existing codec theorem (PRF-038's round trip, bp-primary-invariants' CRC width and octet facts) holds unchanged; none is restated. CRC-16 (type 1) keeps the bitwise scan over the executed exclusive-or. Scope: a CRC is a checksum, not a digest; nothing here is a claim about integrity against an adversary.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-primary.lisp",
+        "tests/acl2/bp-primary-tests.lisp",
+        "planning/evidence/bp-crc-exec-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-crc-exec (2026-09-26; PKT-414, the performance ledger's row 11). Admitted in a persvati proof_repl session over the whole book (bp-primary-invariants' 50 forms and the test book's 160 forms sent over it); the batch certifies. Teeth: tests/acl2/bp-primary-tests.lisp (the table check; a 4,096-octet differential against the bitwise register steps from two registers; a reachable witness of each keystone's antecedent and conclusion; a hypothesis-removal witness per hypothesis; the width hypothesis of the exclusive-or keystone was removed after the weakened theorem was proved).",
+      "events": [
+        "fn-bpp-crc32c-scan-table-is-scan",
+        "fn-bpp-xor-is-masked-logxor"
       ]
     }
   ]

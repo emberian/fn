@@ -41,13 +41,116 @@
 
 (defun fn-bpp-xor (a b k)
   (declare (xargs :guard (and (natp a) (natp b) (natp k))
-                  :measure (nfix k)))
-  (if (zp k)
-      0
-    (+ (if (equal (mod a 2) (mod b 2)) 0 1)
-       (* 2 (fn-bpp-xor (floor a 2) (floor b 2) (- k 1))))))
+                  :measure (nfix k)
+                  :verify-guards nil))
+  (mbe :logic (if (zp k)
+                  0
+                (+ (if (equal (mod a 2) (mod b 2)) 0 1)
+                   (* 2 (fn-bpp-xor (floor a 2) (floor b 2) (- k 1)))))
+       :exec (logand (logxor a b) (+ -1 (expt 2 k)))))
 
-(verify-guards fn-bpp-xor)
+; The executed body is the machine exclusive-or masked to k bits; the logical
+; body above is the definition every theorem in this book and its includers
+; reasons about.  The keystone equating them, which the guard proof below
+; uses (PRF-190).  The lemmas are local: the arithmetic of `logxor' and
+; `logand' never reaches an includer.
+(encapsulate
+  ()
+  (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+  (local (encapsulate
+           ()
+           (local (include-book "arithmetic-5/top" :dir :system))
+           (defthm fn-bpp-logxor-mod-2
+             (implies (and (natp a) (natp b))
+                      (equal (mod (logxor a b) 2)
+                             (if (equal (mod a 2) (mod b 2)) 0 1))))
+           (defthm fn-bpp-logxor-floor-2
+             (implies (and (natp a) (natp b))
+                      (equal (floor (logxor a b) 2)
+                             (logxor (floor a 2) (floor b 2)))))
+           (defthm fn-bpp-logand-mod-2
+             (implies (and (integerp x) (natp y))
+                      (equal (mod (logand x y) 2)
+                             (if (and (equal (mod x 2) 1) (equal (mod y 2) 1))
+                                 1
+                               0))))
+           (defthm fn-bpp-logand-floor-2
+             (implies (and (integerp x) (natp y))
+                      (equal (floor (logand x y) 2)
+                             (logand (floor x 2) (floor y 2)))))
+           (defthm fn-bpp-expt-2-negative
+             (implies (and (integerp k) (< k 0))
+                      (and (< 0 (expt 2 k)) (< (expt 2 k) 1)))
+             :rule-classes :linear)))
+  (local (defthm fn-bpp-mod-expt-2-step
+           (implies (and (integerp x) (not (zp k)))
+                    (equal (mod x (expt 2 k))
+                           (+ (mod x 2) (* 2 (mod (floor x 2) (expt 2 (- k 1)))))))))
+  (local (defthm fn-bpp-integer-halves
+           (implies (integerp x)
+                    (equal (+ (mod x 2) (* 2 (floor x 2))) x))
+           :rule-classes nil))
+  (local (defun fn-bpp-halving-induction (x k)
+           (declare (xargs :measure (nfix k)))
+           (if (zp k)
+               x
+             (fn-bpp-halving-induction (floor x 2) (- k 1)))))
+  (local (defthm fn-bpp-bit-plus-twice
+           (implies (and (natp r) (or (equal bit 0) (equal bit 1)))
+                    (and (equal (mod (+ bit (* 2 r)) 2) bit)
+                         (equal (floor (+ bit (* 2 r)) 2) r)))))
+  (local (defthm fn-bpp-mask-floor-2
+           (implies (not (zp k))
+                    (and (equal (floor (+ -1 (expt 2 k)) 2) (+ -1 (expt 2 (- k 1))))
+                         (equal (mod (+ -1 (expt 2 k)) 2) 1)))
+           :hints (("Goal" :use ((:instance fn-bpp-bit-plus-twice
+                                            (bit 1) (r (+ -1 (expt 2 (- k 1))))))
+                           :expand ((expt 2 k))
+                           :in-theory (disable fn-bpp-bit-plus-twice)))))
+  (local (defthm fn-bpp-logand-mask-is-mod
+           (implies (and (integerp x) (natp k))
+                    (equal (logand x (+ -1 (expt 2 k))) (mod x (expt 2 k))))
+           :hints (("Goal" :induct (fn-bpp-halving-induction x k))
+                   ("Subgoal *1/2" :use ((:instance fn-bpp-integer-halves
+                                                    (x (logand x (+ -1 (expt 2 k))))))))))
+  (local (defthm fn-bpp-xor-is-mod-logxor
+           (implies (and (natp a) (natp b) (natp k))
+                    (equal (fn-bpp-xor a b k) (mod (logxor a b) (expt 2 k))))
+           :hints (("Goal" :induct (fn-bpp-xor a b k)
+                           :in-theory (disable floor mod binary-logxor))
+                   ("Subgoal *1/2" :use ((:instance fn-bpp-mod-expt-2-step
+                                                    (x (logxor a b))))))))
+  (local (defthm fn-bpp-xor-is-masked-logxor-at-a-width
+           (implies (and (natp a) (natp b) (natp k))
+                    (equal (fn-bpp-xor a b k)
+                           (logand (logxor a b) (+ -1 (expt 2 k)))))))
+  ;; A width that is not a natural is no width: both sides are 0 (a negative
+  ;; width's mask is a fraction, a non-integer one's is 0), so the keystone
+  ;; carries no hypothesis on k.
+  (local (defthm fn-bpp-mask-of-negative-width
+           (implies (and (integerp k) (< k 0))
+                    (equal (logand x (+ -1 (expt 2 k))) 0))
+           :hints (("Goal" :expand ((binary-logand x (+ -1 (expt 2 k))))))))
+  (local (defthm fn-bpp-xor-is-masked-logxor-at-no-width
+           (implies (and (natp a) (natp b) (not (natp k)))
+                    (equal (fn-bpp-xor a b k)
+                           (logand (logxor a b) (+ -1 (expt 2 k)))))
+           :hints (("Goal" :cases ((integerp k))
+                           :in-theory (disable binary-logxor)))))
+  (defthmd fn-bpp-xor-is-masked-logxor
+    (implies (and (natp a) (natp b))
+             (equal (fn-bpp-xor a b k)
+                    (logand (logxor a b) (+ -1 (expt 2 k)))))
+    :hints (("Goal" :use (fn-bpp-xor-is-masked-logxor-at-a-width
+                          fn-bpp-xor-is-masked-logxor-at-no-width)
+                    :in-theory (disable binary-logxor fn-bpp-xor
+                                        fn-bpp-xor-is-masked-logxor-at-a-width
+                                        fn-bpp-xor-is-masked-logxor-at-no-width))))
+
+  (verify-guards fn-bpp-xor
+    :hints (("Goal" :use (fn-bpp-xor-is-masked-logxor (:definition fn-bpp-xor))
+                    :in-theory (disable fn-bpp-xor floor mod binary-logxor
+                                        binary-logand)))))
 
 (defthm fn-bpp-xor-is-natural
   (natp (fn-bpp-xor a b k))
@@ -111,17 +214,354 @@
       (nfix crc)
     (fn-bpp-crc32c-octet (fn-bpp-crc32c-bit crc) (- k 1))))
 
-(defun fn-bpp-crc32c-scan (crc xs)
-  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))))
+; The executed CRC-32C (PRF-190).  One octet of the bitwise register above is
+; eight steps of `fn-bpp-crc32c-bit'; the executed scan does those eight steps
+; as one lookup in a 256-entry table, the classic table-driven CRC.  The table
+; is not written out: the defconst below evaluates `fn-bpp-crc32c-octet' at
+; every octet value, so it cannot drift from the bitwise definition, and
+; `fn-bpp-crc32c-table-agrees' checks every one of the 256 entries by
+; evaluation inside the proof.  It is kept as 16 rows of 16 so a lookup walks
+; at most 30 conses.
+
+(defun fn-bpp-crc32c-table-row (r j)
+  (declare (xargs :guard (and (natp r) (natp j))
+                  :measure (nfix (- 16 (nfix j)))))
+  (if (and (natp j) (< j 16))
+      (cons (fn-bpp-crc32c-octet (+ (* 16 (nfix r)) j) 8)
+            (fn-bpp-crc32c-table-row r (+ 1 j)))
+    nil))
+
+(defun fn-bpp-crc32c-table-rows (r)
+  (declare (xargs :guard (natp r)
+                  :measure (nfix (- 16 (nfix r)))))
+  (if (and (natp r) (< r 16))
+      (cons (fn-bpp-crc32c-table-row r 0)
+            (fn-bpp-crc32c-table-rows (+ 1 r)))
+    nil))
+
+(defconst *fn-bpp-crc32c-table* (fn-bpp-crc32c-table-rows 0))
+
+(defun fn-bpp-crc32c-table-ref (i)
+  (declare (xargs :guard (and (natp i) (< i 256))
+                  :verify-guards nil))
+  (nth (logand i 15) (nth (ash i -4) *fn-bpp-crc32c-table*)))
+
+(defun fn-bpp-crc32c-scan-table (crc xs)
+  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))
+                  :verify-guards nil))
   (if (consp xs)
-      (fn-bpp-crc32c-scan
-       (fn-bpp-crc32c-octet (fn-bpp-xor crc (car xs) 32) 8)
-       (cdr xs))
-    (nfix crc)))
+      (let ((c (logand (logxor crc (car xs)) 4294967295)))
+        (fn-bpp-crc32c-scan-table
+         (logand (logxor (ash c -8) (fn-bpp-crc32c-table-ref (logand c 255)))
+                 4294967295)
+         (cdr xs)))
+    crc))
+
+(defun fn-bpp-crc32c-scan (crc xs)
+  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))
+                  :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (fn-bpp-crc32c-scan
+                   (fn-bpp-crc32c-octet (fn-bpp-xor crc (car xs) 32) 8)
+                   (cdr xs))
+                (nfix crc))
+       :exec (fn-bpp-crc32c-scan-table crc xs)))
 
 (defun fn-bpp-crc32c (xs)
-  (declare (xargs :guard (fn-cbor-octet-listp xs)))
+  (declare (xargs :guard (fn-cbor-octet-listp xs)
+                  :verify-guards nil))
   (fn-bpp-xor (fn-bpp-crc32c-scan 4294967295 xs) 4294967295 32))
+
+;; The table-driven scan equals the bitwise one (PRF-190).  The argument is the
+;; textbook one, over the bitwise definitions: one register step is linear in
+;; the register under exclusive-or, so eight steps of a register c are eight
+;; steps of its low octet exclusive-or eight steps of its high part, and eight
+;; steps of a register whose low octet is zero only shift it down by eight.
+(encapsulate
+  ()
+  (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+  (local (encapsulate
+           ()
+           (local (include-book "arithmetic-5/top" :dir :system))
+           (defthm fn-bpp-crc-shift-and-mask
+             (implies (natp c)
+                      (and (equal (ash c -8) (floor c 256))
+                           (equal (ash c -4) (floor c 16))
+                           (equal (logand c 255) (mod c 256))
+                           (equal (logand c 15) (mod c 16)))))
+           (defthm fn-bpp-crc-masked-bounds
+             (implies (integerp x)
+                      (and (natp (logand x 4294967295))
+                           (natp (logand x 255))
+                           (< (logand x 255) 256))))))
+  (local (in-theory (disable fn-bpp-crc-masked-bounds)))
+  (local (defthm fn-bpp-crc-bit-plus-twice
+           (implies (and (natp r) (or (equal bit 0) (equal bit 1)))
+                    (and (equal (mod (+ bit (* 2 r)) 2) bit)
+                         (equal (floor (+ bit (* 2 r)) 2) r)))))
+  (local (defthm fn-bpp-crc-mod-2-cases
+           (implies (natp a) (or (equal (mod a 2) 0) (equal (mod a 2) 1)))
+           :rule-classes nil))
+  (local (defthm fn-bpp-crc-mod-expt-step
+           (implies (and (integerp x) (not (zp k)))
+                    (equal (mod x (expt 2 k))
+                           (+ (mod x 2) (* 2 (mod (floor x 2) (expt 2 (- k 1)))))))))
+  (local (defthm fn-bpp-crc-mod-mod-2
+           (implies (and (natp c) (not (zp j)))
+                    (equal (mod (mod c (expt 2 j)) 2) (mod c 2)))))
+  (local (defthm fn-bpp-crc-floor-mod-2
+           (implies (and (natp c) (not (zp j)))
+                    (equal (floor (mod c (expt 2 j)) 2)
+                           (mod (floor c 2) (expt 2 (- j 1)))))
+           :hints (("Goal" :use ((:instance fn-bpp-crc-mod-expt-step (x c) (k j))
+                                 (:instance fn-bpp-crc-mod-2-cases (a c)))
+                           :in-theory (disable fn-bpp-crc-mod-expt-step
+                                               fn-bpp-crc-mod-mod-2)))))
+  (local (defthm fn-bpp-crc-floor-expt-step
+           (implies (and (natp c) (not (zp j)))
+                    (equal (floor c (expt 2 j))
+                           (floor (floor c 2) (expt 2 (- j 1)))))
+           :hints (("Goal" :use ((:instance floor-floor-integer
+                                            (x c) (i 2) (j (expt 2 (- j 1)))))
+                           :in-theory (disable floor-floor-integer)))))
+  (local (defthm fn-bpp-crc-shifted-halves
+           (implies (and (natp f) (not (zp j)))
+                    (and (equal (mod (* (expt 2 j) f) 2) 0)
+                         (equal (floor (* (expt 2 j) f) 2)
+                                (* (expt 2 (- j 1)) f))))))
+  (local (in-theory (disable floor mod)))
+
+  ;; Exclusive-or over k bits: parity, halving, and the group laws.
+  (local (defthm fn-bpp-xor-mod-2
+           (implies (not (zp k))
+                    (equal (mod (fn-bpp-xor a b k) 2)
+                           (if (equal (mod a 2) (mod b 2)) 0 1)))
+           :hints (("Goal" :expand ((fn-bpp-xor a b k))))))
+  (local (defthm fn-bpp-xor-floor-2
+           (implies (not (zp k))
+                    (equal (floor (fn-bpp-xor a b k) 2)
+                           (fn-bpp-xor (floor a 2) (floor b 2) (- k 1))))
+           :hints (("Goal" :expand ((fn-bpp-xor a b k))))))
+  (local (defthm fn-bpp-xor-commutes
+           (equal (fn-bpp-xor b a k) (fn-bpp-xor a b k))
+           :rule-classes ((:rewrite :loop-stopper ((a b))))))
+  (local (defun fn-bpp-crc-induct-3 (a b c k)
+           (declare (xargs :measure (nfix k)))
+           (if (zp k)
+               (list a b c)
+             (fn-bpp-crc-induct-3 (floor a 2) (floor b 2) (floor c 2) (- k 1)))))
+  (local (defthm fn-bpp-xor-associates
+           (implies (and (natp a) (natp b) (natp c))
+                    (equal (fn-bpp-xor (fn-bpp-xor a b k) c k)
+                           (fn-bpp-xor a (fn-bpp-xor b c k) k)))
+           :hints (("Goal" :induct (fn-bpp-crc-induct-3 a b c k)
+                           :expand ((fn-bpp-xor (fn-bpp-xor a b k) c k)
+                                    (fn-bpp-xor a (fn-bpp-xor b c k) k))))))
+  (local (defthm fn-bpp-xor-commutes-2
+           (implies (and (natp a) (natp b) (natp c))
+                    (equal (fn-bpp-xor a (fn-bpp-xor b c k) k)
+                           (fn-bpp-xor b (fn-bpp-xor a c k) k)))
+           :rule-classes ((:rewrite :loop-stopper ((a b))))
+           :hints (("Goal" :use ((:instance fn-bpp-xor-associates)
+                                 (:instance fn-bpp-xor-associates (a b) (b a)))
+                           :in-theory (disable fn-bpp-xor-associates)))))
+  (local (defthm fn-bpp-xor-self
+           (equal (fn-bpp-xor a a k) 0)))
+  (local (defthm fn-bpp-xor-self-2
+           (implies (and (natp a) (natp c) (natp k) (< c (expt 2 k)))
+                    (equal (fn-bpp-xor a (fn-bpp-xor a c k) k) c))
+           :hints (("Goal" :use ((:instance fn-bpp-xor-associates (b a)))
+                           :in-theory (disable fn-bpp-xor-associates)))))
+  (local (defthm fn-bpp-xor-zero
+           (implies (and (natp b) (natp k) (< b (expt 2 k)))
+                    (equal (fn-bpp-xor 0 b k) b))))
+  (local (defthm fn-bpp-xor-widen
+           (implies (and (natp a) (natp b) (natp k)
+                         (< a (expt 2 k)) (< b (expt 2 k)))
+                    (equal (fn-bpp-xor a b (+ 1 k)) (fn-bpp-xor a b k)))
+           :hints (("Goal" :induct (fn-bpp-crc-induct-3 a b c k)))))
+  (local (defthm fn-bpp-xor-32-floor-2
+           (implies (and (natp x) (natp y) (< x 4294967296) (< y 4294967296))
+                    (equal (floor (fn-bpp-xor x y 32) 2)
+                           (fn-bpp-xor (floor x 2) (floor y 2) 32)))
+           :hints (("Goal" :use ((:instance fn-bpp-xor-widen
+                                            (a (floor x 2)) (b (floor y 2)) (k 31)))
+                           :in-theory (disable fn-bpp-xor-widen)))))
+  (local (in-theory (disable fn-bpp-xor-floor-2)))
+
+  ;; A low part and a high part (S): c = (c mod 2^j) xor 2^j * floor(c / 2^j).
+  (local (defun fn-bpp-crc-induct-split (c j k)
+           (declare (xargs :measure (nfix j)))
+           (if (or (zp j) (zp k))
+               (list c k)
+             (fn-bpp-crc-induct-split (floor c 2) (- j 1) (- k 1)))))
+  (local (defthm fn-bpp-xor-splits
+           (implies (and (natp c) (natp j) (natp k) (< c (expt 2 k)))
+                    (equal (fn-bpp-xor (mod c (expt 2 j))
+                                       (* (expt 2 j) (floor c (expt 2 j)))
+                                       k)
+                           c))
+           :hints (("Goal" :induct (fn-bpp-crc-induct-split c j k))
+                   ("Subgoal *1/2" :expand ((fn-bpp-xor (mod c (expt 2 j))
+                                                        (* (expt 2 j) (floor c (expt 2 j)))
+                                                        k))))))
+
+  ;; The register step (C1, C2, C3, C4).
+  (local (defthm fn-bpp-crc32c-bit-bounded
+           (implies (and (natp c) (< c 4294967296))
+                    (and (natp (fn-bpp-crc32c-bit c))
+                         (< (fn-bpp-crc32c-bit c) 4294967296)))))
+  (local (defthm fn-bpp-xor-pair-cancels
+           (implies (and (natp a) (natp b) (natp p) (< b 4294967296))
+                    (equal (fn-bpp-xor (fn-bpp-xor a p 32) (fn-bpp-xor b p 32) 32)
+                           (fn-bpp-xor a b 32)))
+           :hints (("Goal" :use ((:instance fn-bpp-xor-associates
+                                            (b p) (c (fn-bpp-xor b p 32)) (k 32))
+                                 (:instance fn-bpp-xor-commutes-2
+                                            (a p) (c p) (k 32))
+                                 (:instance fn-bpp-xor-self (a p) (k 32))
+                                 (:instance fn-bpp-xor-commutes (a 0) (k 32))
+                                 (:instance fn-bpp-xor-zero (k 32)))
+                           :in-theory (disable fn-bpp-xor fn-bpp-xor-associates
+                                               fn-bpp-xor-commutes-2 fn-bpp-xor-self
+                                               fn-bpp-xor-self-2 fn-bpp-xor-commutes
+                                               fn-bpp-xor-zero)))))
+  (local (defthm fn-bpp-xor-rotates
+           (implies (and (natp a) (natp b) (natp p))
+                    (equal (fn-bpp-xor (fn-bpp-xor a b 32) p 32)
+                           (fn-bpp-xor (fn-bpp-xor a p 32) b 32)))
+           :rule-classes nil
+           :hints (("Goal" :use ((:instance fn-bpp-xor-associates (c p) (k 32))
+                                 (:instance fn-bpp-xor-associates (b p) (c b) (k 32))
+                                 (:instance fn-bpp-xor-commutes (a b) (b p) (k 32)))
+                           :in-theory (disable fn-bpp-xor fn-bpp-xor-associates
+                                               fn-bpp-xor-commutes-2 fn-bpp-xor-self
+                                               fn-bpp-xor-self-2 fn-bpp-xor-commutes
+                                               fn-bpp-xor-zero)))))
+  (local (defthm fn-bpp-crc32c-bit-linear
+           (implies (and (natp x) (natp y) (< x 4294967296) (< y 4294967296))
+                    (equal (fn-bpp-crc32c-bit (fn-bpp-xor x y 32))
+                           (fn-bpp-xor (fn-bpp-crc32c-bit x) (fn-bpp-crc32c-bit y) 32)))
+           :hints (("Goal" :use ((:instance fn-bpp-crc-mod-2-cases (a x))
+                                 (:instance fn-bpp-crc-mod-2-cases (a y))
+                                 (:instance fn-bpp-xor-rotates
+                                            (a (floor x 2)) (b (floor y 2))
+                                            (p *fn-bpp-crc32c-poly*))
+                                 (:instance fn-bpp-xor-rotates
+                                            (a (floor y 2)) (b (floor x 2))
+                                            (p *fn-bpp-crc32c-poly*)))
+                           :in-theory (disable fn-bpp-xor-associates
+                                               fn-bpp-xor-commutes-2
+                                               fn-bpp-xor-self-2)))))
+  (local (in-theory (disable fn-bpp-crc32c-bit)))
+  (local (defun fn-bpp-crc-induct-2 (x y k)
+           (declare (xargs :measure (nfix k)))
+           (if (zp k)
+               (list x y)
+             (fn-bpp-crc-induct-2 (fn-bpp-crc32c-bit x) (fn-bpp-crc32c-bit y) (- k 1)))))
+  (local (defthm fn-bpp-crc32c-octet-linear
+           (implies (and (natp x) (natp y) (< x 4294967296) (< y 4294967296))
+                    (equal (fn-bpp-crc32c-octet (fn-bpp-xor x y 32) k)
+                           (fn-bpp-xor (fn-bpp-crc32c-octet x k)
+                                       (fn-bpp-crc32c-octet y k)
+                                       32)))
+           :hints (("Goal" :induct (fn-bpp-crc-induct-2 x y k)))))
+  (local (defthm fn-bpp-crc32c-octet-shifts
+           (implies (and (natp h) (natp k))
+                    (equal (fn-bpp-crc32c-octet (* (expt 2 k) h) k) h))
+           :hints (("Goal" :in-theory (enable fn-bpp-crc32c-bit)))))
+
+  ;; K: eight register steps are one table entry and a shift.
+  (local (defthmd fn-bpp-crc32c-octet-is-table-step
+    (implies (and (natp c) (< c 4294967296))
+             (equal (fn-bpp-crc32c-octet c 8)
+                    (fn-bpp-xor (fn-bpp-crc32c-octet (mod c 256) 8)
+                                (floor c 256)
+                                32)))
+    :hints (("Goal" :use ((:instance fn-bpp-xor-splits (j 8) (k 32))
+                          (:instance fn-bpp-crc32c-octet-linear
+                                     (x (mod c 256)) (y (* 256 (floor c 256))) (k 8))
+                          (:instance fn-bpp-crc32c-octet-shifts (h (floor c 256)) (k 8)))
+                    :in-theory (disable fn-bpp-xor-splits fn-bpp-crc32c-octet-linear
+                                        fn-bpp-crc32c-octet-shifts)))))
+
+  ;; The table: every entry checked by evaluation.
+  (local (defthm fn-bpp-crc-nth-of-true-list-list
+           (implies (true-list-listp l)
+                    (true-listp (nth r l)))))
+  (local (defthm fn-bpp-crc32c-table-rows-are-true-lists
+           (true-listp (nth r *fn-bpp-crc32c-table*))
+           :hints (("Goal" :use ((:instance fn-bpp-crc-nth-of-true-list-list
+                                            (l *fn-bpp-crc32c-table*)))
+                           :in-theory (disable fn-bpp-crc-nth-of-true-list-list nth)))))
+  (verify-guards fn-bpp-crc32c-table-ref)
+  (defun fn-bpp-crc32c-table-agrees (n)
+    (declare (xargs :guard (and (natp n) (<= n 256))))
+    (if (zp n)
+        t
+      (and (equal (fn-bpp-crc32c-table-ref (- n 1))
+                  (fn-bpp-crc32c-octet (- n 1) 8))
+           (fn-bpp-crc32c-table-agrees (- n 1)))))
+  (local (defthm fn-bpp-crc32c-table-agrees-means
+           (implies (and (fn-bpp-crc32c-table-agrees n) (natp n) (natp i) (< i n))
+                    (equal (fn-bpp-crc32c-table-ref i)
+                           (fn-bpp-crc32c-octet i 8)))
+           :hints (("Goal" :in-theory (disable fn-bpp-crc32c-table-ref
+                                               fn-bpp-crc32c-octet)))))
+  (local (defthmd fn-bpp-crc32c-table-ref-is-octet
+    (implies (and (natp i) (< i 256))
+             (equal (fn-bpp-crc32c-table-ref i) (fn-bpp-crc32c-octet i 8)))
+    :hints (("Goal" :use ((:instance fn-bpp-crc32c-table-agrees-means (n 256)))
+                    :in-theory (disable fn-bpp-crc32c-table-agrees-means
+                                        fn-bpp-crc32c-table-ref
+                                        fn-bpp-crc32c-octet)))))
+
+  ;; The keystone: the executed scan is the bitwise scan.
+  (local (defthm fn-bpp-crc32c-scan-table-step
+           (implies (and (natp crc) (natp x))
+                    (equal (logand (logxor (ash (logand (logxor crc x) 4294967295) -8)
+                                           (fn-bpp-crc32c-table-ref
+                                            (logand (logand (logxor crc x) 4294967295) 255)))
+                                   4294967295)
+                           (fn-bpp-crc32c-octet (fn-bpp-xor crc x 32) 8)))
+           :hints (("Goal" :use ((:instance fn-bpp-xor-is-masked-logxor
+                                            (a crc) (b x) (k 32))
+                                 (:instance fn-bpp-xor-is-masked-logxor
+                                            (a (floor (fn-bpp-xor crc x 32) 256))
+                                            (b (fn-bpp-crc32c-octet
+                                                (mod (fn-bpp-xor crc x 32) 256) 8))
+                                            (k 32))
+                                 (:instance fn-bpp-crc32c-octet-is-table-step
+                                            (c (fn-bpp-xor crc x 32)))
+                                 (:instance fn-bpp-crc32c-table-ref-is-octet
+                                            (i (mod (fn-bpp-xor crc x 32) 256))))
+                           :in-theory (disable fn-bpp-crc32c-table-ref
+                                               fn-bpp-crc32c-octet binary-logxor
+                                               binary-logand ash)))))
+  (defthmd fn-bpp-crc32c-scan-table-is-scan
+    (implies (and (natp crc) (fn-cbor-octet-listp xs))
+             (equal (fn-bpp-crc32c-scan-table crc xs)
+                    (fn-bpp-crc32c-scan crc xs)))
+    :hints (("Goal" :induct (fn-bpp-crc32c-scan-table crc xs)
+                    :in-theory (disable fn-bpp-crc32c-table-ref
+                                        fn-bpp-crc32c-octet binary-logxor
+                                        binary-logand ash))))
+  (local (defthm fn-bpp-crc32c-table-ref-is-natural
+           (implies (and (natp i) (< i 256))
+                    (natp (fn-bpp-crc32c-table-ref i)))
+           :hints (("Goal" :use ((:instance fn-bpp-crc32c-table-ref-is-octet))
+                           :in-theory (disable fn-bpp-crc32c-table-ref)))))
+  (verify-guards fn-bpp-crc32c-scan-table
+    :hints (("Goal" :use ((:instance fn-bpp-crc32c-table-ref-is-natural
+                                     (i (logand (logand (logxor crc (car xs)) 4294967295)
+                                                255)))
+                          (:instance fn-bpp-crc-masked-bounds
+                                     (x (logand (logxor crc (car xs)) 4294967295)))
+                          (:instance fn-bpp-crc-masked-bounds
+                                     (x (logxor crc (car xs)))))
+                    :in-theory (disable fn-bpp-crc32c-table-ref binary-logxor
+                                        binary-logand ash fn-bpp-crc-shift-and-mask
+                                        fn-bpp-crc32c-table-ref-is-natural)))))
 
 (verify-guards fn-bpp-crc16-bit)
 (verify-guards fn-bpp-crc16-octet)
@@ -129,7 +569,8 @@
 (verify-guards fn-bpp-crc16)
 (verify-guards fn-bpp-crc32c-bit)
 (verify-guards fn-bpp-crc32c-octet)
-(verify-guards fn-bpp-crc32c-scan)
+(verify-guards fn-bpp-crc32c-scan
+  :hints (("Goal" :use ((:instance fn-bpp-crc32c-scan-table-is-scan)))))
 (verify-guards fn-bpp-crc32c)
 
 (defthm fn-bpp-crc16-is-natural

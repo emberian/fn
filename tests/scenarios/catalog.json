@@ -3511,6 +3511,33 @@
         "record": "planning/evidence/over-number-index-2026-09-26.md",
         "log": "planning/evidence/over-number-index-2026-09-26/after.json"
       }
+    },
+    {
+      "id": "SCN-119",
+      "title": "A BP bundle's CRC-32C runs the table: on the lane's developer image a bundle of 48 KiB, 256 KiB and 1 MiB encodes and decodes with wire bytes identical to the base image's, and the encode and decode cost about 1 percent of the base's",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "On hbox, with the base developer image (the perf-ledger's, dev f314a5a3, whose codec books are dev's) and the lane's developer image (tools/hbox_native.sh), load planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp into each image's raw Lisp with bpenc.sh, back to back on the same box.",
+        "For each payload (49,152, 262,144 and 1,048,576 octets) record the guard, encode and decode seconds, the wire length, a digest of the wire computed in raw Lisp (not by the CRC under test) and whether the decode returns the bundle."
+      ],
+      "expected": [
+        "The wire length and digest of every payload are the same on both images, and both decode their wire back to the bundle.",
+        "The lane's encode and decode are each about 1 percent of the base's at the same payload on the same box, the box load stated beside each figure."
+      ],
+      "evidence": [
+        "planning/evidence/bp-crc-exec-2026-09-26.md",
+        "planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp"
+      ],
+      "implementation": {
+        "test": "planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp",
+        "native": true,
+        "record": "planning/evidence/bp-crc-exec-2026-09-26.md",
+        "log": "planning/evidence/bp-crc-exec-2026-09-26/bpenc-after-1.out"
+      }
     }
   ]
 }
