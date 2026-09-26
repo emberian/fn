@@ -1170,6 +1170,33 @@ and every login on a node whose policy is `open` (the default: `policy set
 posting-policy open`), posts as before. The service log names the login of
 each decision (`post login=alice bound=...`).
 
+### Re-decide a declined key statement: `keys redecide`
+
+A key statement (a signed succession or revocation posted to `fn.keys`) is
+decided once, when the node accepts it, under the `keys` grants in force
+then. One that declined (`key-statement declined no-grant` in the service
+log, say, because the grant came later) stays declined across restarts: an
+open re-decides nothing under later configuration (PRF-124). To decide it
+again under today's grants, ask the running node:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml control grant PRINCIPAL-HEX keys fn.keys
+packaging/fn-native operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
+```
+
+The owner decides it as a new acceptance of the stored statement under the
+grants of the configuration in force at the redecide's own transaction
+(books/key-statements.lisp `fn-ks-redecide-plan`, PRF-166). When it acts,
+the key change (the successor's enrolment, or the revocation) is the one
+durable record it writes, the service log says `key-statement redecide
+enrol-successor committed`, and the command exits 0; a restart repeats
+nothing. It is refused (exit 1, the Store unchanged) when the Message-ID
+names no stored key statement (`key-statement redecide refused
+not-a-key-statement`), when the statement's change is already made
+(`refused already-acted`), or when it declines again (`key-statement
+redecide declined REASON`). The verb needs the running owner: offline it is
+refused, like every control verb.
+
 ## Expose a node to strangers
 
 Everything below is what runs on the branch and what the SCN-091 campaign

@@ -3127,7 +3127,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/records-shape.lisp",
         "tests/acl2/records-shape-tests.lisp",
@@ -4182,7 +4182,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-carriage-rows.lisp",
         "books/peer-carriage.lisp",
@@ -4516,7 +4516,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4684,7 +4684,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -5187,7 +5187,7 @@
         "PRF-112"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-operator.lisp",
         "books/feed-connection.lisp",
@@ -5615,7 +5615,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -5691,7 +5691,7 @@
         "PRF-130"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-operator.lisp",
         "tests/acl2/native-operator-tests.lisp",
@@ -5800,7 +5800,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -5877,7 +5877,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served-implicit-tls.lisp",
         "tests/acl2/served-implicit-tls-tests.lisp",
@@ -5972,6 +5972,47 @@
         "fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group",
         "fn-own-submission-target-of-a-control-article-is-in-its-scope",
         "fn-own-sub-feed-groups-of-an-ordinary-article"
+      ]
+    },
+    {
+      "id": "PRF-166",
+      "title": "The operator's `keys redecide MSGID` decides a stored key statement as a new acceptance under the grants in force at its own txid, repeats nothing at the next open, and is refused by name for a Message-ID that names no stored statement or a statement already acted; and the transit refusal class the owner prints is the seven-class admission verdict's refusal arm",
+      "statement": "Subject fn-ks-redecide / fn-ks-redecide-plan / fn-ks-redecide-event (books/key-statements.lisp), which host/owner-host.lisp fn-owner-key-statement-redecide-find/-plan/-event compute over the owner's Store records, keyring snapshots and live authorities rows, called by host/native/keys.lisp fnn-keys-owner-redecide under the owner mutex (control request 12, `operator CONFIG keys redecide MSGID`). (1) fn-ks-redecide-decides-under-the-configuration-at-its-own-txid: when every record of the journal CONFIGS is at or before TXID and CONFIGS replays, the redecide under the replay's authorities (the live rows the host passes) equals the redecide under fn-ks-redecide-rows TXID CONFIGS (fn-ctl-config-at the redecide's own txid). (2) fn-ks-reopen-after-a-redecide (no hypotheses): the open's recorded recovery fn-ks-recover-recorded of the redecided state, under any journal and any coordinates, is the redecided state when the redecide committed a kind-3 change and the recovery of the unchanged state otherwise, so PRF-124 and PRF-140 carry over. (3) fn-ks-redecide-of-no-stored-statement-is-refused-by-name and fn-ks-redecide-of-an-acted-statement-is-refused-by-name: the plan is (:refused :not-a-key-statement) / (:refused :already-acted) and the state is unchanged. (4) fn-ks-redecide-of-an-unacted-statement-is-its-acceptance-decision: for a stored statement that has not acted, the plan and kind-3 event are fn-ks-plan and fn-ks-execute of it, so the PRF-098 keystones over them apply. (5) fn-ks-a-redecide-that-acted-is-refused-the-second-time: after a redecide that acted, when the statement's verdict generation precedes the keyring's next generation, the same MSGID is refused :already-acted under any grants. The record is the kind-3 change itself at the redecide's coordinates (no re-filed composite, no new record kind, no cut). Teeth: tests/acl2/key-statements-tests.lisp section PRF-166 (decline, later grant, redecide at a later txid; one must-fail per hypothesis; the generation hypothesis's removal is a CORRUPTED-STATE witness). Not covered: live rows = replay of fn-sn-config-history is the owner's maintained relation (P6/PRF-028, uncertified at the current digest), not proved here; the host-to-model link of fnn-keys-owner-redecide is by construction (it calls the named functions), as PRF-098. (6) fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class (books/peer-carriage.lisp, PKT-240, no hypotheses): fn-pcb-verdict-refusal-class of fn-pcb-admission-verdict equals fn-pcb-refusal-class on every input; host/owner-host.lisp fn-owner-transit-refusal-class, called by host/native/owner.lisp fnn-owner-transit-class inside fnn-owner-attempt-transit, computes the former. Witnesses for all seven verdicts in tests/acl2/peer-carriage-tests.lisp.",
+      "milestone": "M3",
+      "requirements": [
+        "SEC-005"
+      ],
+      "depends_on": [
+        "PRF-098",
+        "PRF-124",
+        "PRF-140"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/key-statements.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/keys.lisp",
+        "tests/test_native_key_statements.py",
+        "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T100646Z-90653.json",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T100935Z-127907.json"
+      ],
+      "events": [
+        "fn-ks-redecide-decides-under-the-configuration-at-its-own-txid",
+        "fn-ks-reopen-after-a-redecide",
+        "fn-ks-redecide-of-no-stored-statement-is-refused-by-name",
+        "fn-ks-redecide-of-an-acted-statement-is-refused-by-name",
+        "fn-ks-redecide-of-an-unacted-statement-is-its-acceptance-decision",
+        "fn-ks-a-redecide-that-acted-is-refused-the-second-time",
+        "fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class"
       ]
     }
   ]

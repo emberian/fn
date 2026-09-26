@@ -641,6 +641,33 @@
                  fn-pa-absent-is-only-parser-confirmed-absence
                  fn-pcb-absent-carrier-plan-is-absent))))
 
+;; PKT-240 (keys-and-accounts): the host's transit refusal class IS the
+;; seven-class verdict's refusal arm.  host/owner-host.lisp
+;; fn-owner-transit-refusal-class (called by host/native/owner.lisp
+;; fnn-owner-transit-class inside fnn-owner-attempt-transit) now computes
+;; fn-pcb-verdict-refusal-class of fn-pcb-admission-verdict, and the keystone
+;; below says that is fn-pcb-refusal-class on every input, so the reply and
+;; log words are unchanged and the verdict is on the served path.
+(defun fn-pcb-verdict-refusal-class (verdict)
+  (declare (xargs :guard t))
+  (cond ((eq verdict :malformed) :malformed)
+        ((eq verdict :cryptographically-invalid) :signature-failed)
+        ((eq verdict :unenrolled) :no-local-binding)
+        ((eq verdict :unsupported-profile) :unsupported-profile)
+        (t nil)))
+
+; KEYSTONE (PKT-240; no hypotheses).  Subject: fn-pcb-admission-verdict
+; through fn-owner-transit-refusal-class.
+(defthm fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class
+  (equal (fn-pcb-verdict-refusal-class
+          (fn-pcb-admission-verdict received snapshots carried ed ml))
+         (fn-pcb-refusal-class received snapshots carried ed ml))
+  :hints (("Goal" :in-theory (e/d (fn-pcb-refusal-class fn-pcb-admission-verdict)
+                                  (fn-pa-current-plan fn-pa-carrier-kind
+                                   fn-pcb-unsupported-profilep))
+           :use ((:instance fn-pa-current-plan-outcomes (transitp nil))
+                 fn-pa-current-plan-off-transit-never-revoked))))
+
 (in-theory (disable fn-pcb-usage fn-pcb-tally-records
                     fn-pcb-usage-extend fn-pcb-cache-validp fn-pcb-admission
                     fn-pcb-carried-event fn-pcb-admitted-from

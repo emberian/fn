@@ -1760,11 +1760,15 @@
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
 ; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
 ; are the host's two primitive outcomes (nil when not observed).
+; PKT-240: through the seven-class verdict, whose refusal arm is
+; fn-pcb-refusal-class on every input
+; (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class).
 (defun fn-owner-transit-refusal-class (received transitp ed ml state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-pcb-refusal-class
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state) ed ml)))
+  (value (fn-pcb-verdict-refusal-class
+          (fn-pcb-admission-verdict
+           received (fn-sn-keyring-snapshots (fn-owner-store state))
+           (fn-owner-transit-carried-list transitp state) ed ml))))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
@@ -1865,6 +1869,42 @@
     (value (if (and (consp records) (null (cdr records)))
                (fn-ks-pending (car records))
              nil))))
+
+;; PRF-166 (PKT-325): `keys redecide MSGID' (books/key-statements.lisp
+;; fn-ks-find-statement, fn-ks-redecide-plan, fn-ks-redecide-event).  The
+;; stored statement MSGID (octets) names among the Store's records, or nil;
+;; its plan and kind-3 event under the Store's keyring now and the live
+;; configuration's grants -- the configuration in force at the redecide's own
+;; txid (fn-ks-redecide-decides-under-the-configuration-at-its-own-txid).
+;; Called by host/native/keys.lisp fnn-keys-owner-redecide under the owner
+;; mutex; the host observes, commits and logs.
+(defun fn-owner-key-statement-redecide-find (msgid state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-find-statement
+          (fn-store-octets->string msgid)
+          (fn-sf-records (fn-sn-files (fn-owner-store state))))))
+
+(defun fn-owner-key-statement-redecide-plan
+    (event observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-redecide-plan event
+                              (fn-sn-keyring-snapshots (fn-owner-store state))
+                              (fn-owner-key-statement-rows event nil state)
+                              observed-ml-key ed-observation ml-observation)))
+
+(defun fn-owner-key-statement-redecide-event
+    (event observed-ml-key ed-observation ml-observation coordinates state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-redecide-event event
+                               (fn-sn-keyring-snapshots (fn-owner-store state))
+                               (fn-owner-key-statement-rows event nil state)
+                               observed-ml-key ed-observation ml-observation
+                               (first coordinates) (second coordinates)
+                               (third coordinates))))
+
+(defun fn-owner-key-statement-redecide-log-line (plan outcome state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-redecide-log-line plan outcome)))
 
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):

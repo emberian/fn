@@ -602,7 +602,10 @@ one `init' makes; nothing is opened or locked."
                          (:principal :credentials)
                          ;; peer genesis|invite|accept|confirm reach the owner
                          ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
-                         (:peering :control))))
+                         (:peering :control)
+                         ;; keys redecide reaches the owner as control
+                         ;; request 12 (host/native/keys.lisp).
+                         (:keys :control))))
           (when (and (member action '(:reclaim :reclaim-dry-run))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
@@ -633,6 +636,7 @@ one `init' makes; nothing is opened or locked."
           (:admin (fnn-operator-execute-admin result))
           (:peering (fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))
+          (:keys (fnn-keys-execute result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)
