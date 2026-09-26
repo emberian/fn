@@ -1,0 +1,17 @@
+test_download_sums_list_the_tarball (tests.test_release_tarball.ReleaseTarballTests.test_download_sums_list_the_tarball) ... ok
+test_inner_sums_cover_every_file (tests.test_release_tarball.ReleaseTarballTests.test_inner_sums_cover_every_file) ... ok
+test_install_is_one_directory (tests.test_release_tarball.ReleaseTarballTests.test_install_is_one_directory) ... ok
+test_install_refuses_a_format_7_store (tests.test_release_tarball.ReleaseTarballTests.test_install_refuses_a_format_7_store) ... skipped "FN_FORMAT7_FIXTURE unset: the store-format refusal needs migration-removal's one-format open and its fixture"
+test_one_top_directory_and_the_layout (tests.test_release_tarball.ReleaseTarballTests.test_one_top_directory_and_the_layout) ... ok
+test_runpath_check_passes_and_a_planted_python_fails (tests.test_release_tarball.ReleaseTarballTests.test_runpath_check_passes_and_a_planted_python_fails) ... runpath: FAIL bin/python3: links to /usr/bin/python3
+runpath: FAIL bin/python3: links outside the release to /usr/bin/python3
+runpath_check /tmp/tmplu8o1hzq/fn: 2 finding(s)
+ok
+test_the_release_was_gated (tests.test_release_tarball.ReleaseTarballTests.test_the_release_was_gated) ... ok
+test_version_prints_the_source_revision (tests.test_release_tarball.ReleaseTarballTests.test_version_prints_the_source_revision) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 15.662s
+
+OK (skipped=1)
+runpath_check /tmp/fn-release-test.5a4y23y0/fn: no Python on the deployed path

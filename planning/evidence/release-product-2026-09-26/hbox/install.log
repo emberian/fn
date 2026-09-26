@@ -1,0 +1,72 @@
++ cp /tank/fn/scratch/release-product/out/fn-c755569badf5-linux-x86_64.tar.gz /tank/fn/scratch/release-product/out/SHA256SUMS /tank/fn/scratch/release-product/rehearsal/download/
++ cd /tank/fn/scratch/release-product/rehearsal/download
++ sha256sum -c --ignore-missing SHA256SUMS
+fn-c755569badf5-linux-x86_64.tar.gz: OK
++ tar -xzf fn-c755569badf5-linux-x86_64.tar.gz
++ sh fn/install.sh --prefix /tank/fn/scratch/release-product/rehearsal/opt/fn --node /tank/fn/scratch/release-product/rehearsal/node --no-service
+== checking the release against SHA256SUMS
+fn c755569badf5839f85750619d6b7fa1a370e7e94
+installed /tank/fn/scratch/release-product/rehearsal/opt/fn
+rendered /tank/fn/scratch/release-product/rehearsal/node/fn.service (not installed; --no-service)
++ cd /tank/fn/scratch/release-product/rehearsal/node
++ F=/tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn C=/tank/fn/scratch/release-product/rehearsal/node/fn.toml
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml mission small-community --host 192.168.50.39 --port 11995
+wrote /tank/fn/scratch/release-product/rehearsal/node/fn.toml
+accepted operator mission
++ cat /tank/fn/scratch/release-product/rehearsal/node/fn.toml
+[store]
+path="/tank/fn/scratch/release-product/rehearsal/node/store"
+[listener]
+host="192.168.50.39"
+port=11995
+tls_cert="/tank/fn/scratch/release-product/rehearsal/node/tls/cert.pem"
+tls_key="/tank/fn/scratch/release-product/rehearsal/node/tls/key.pem"
+[auth]
+required=true
+protected_only=true
+path="/tank/fn/scratch/release-product/rehearsal/node/store/auth.toml"
+[posting]
+enabled=true
+[anchor]
+[acl2]
+[log]
+path="/tank/fn/scratch/release-product/rehearsal/node/log/fn.log"
+[control]
+path="/tank/fn/scratch/release-product/rehearsal/node/store/control.sock"
+[alerts]
+headroom_min_percent=10
+refusal_rate_per_minute=30
+cooldown_seconds=900
+[ops]
+mission="small-community"
+scope="user"
+keep_releases=3
+log_max_bytes=67108864
+log_keep=7
++ openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 -subj /CN=release-rehearsal.fn.invalid -addext subjectAltName=DNS:release-rehearsal.fn.invalid,IP:192.168.50.39 -keyout tls/key.pem -out tls/cert.pem
+-----
++ chmod 600 tls/key.pem
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml init
+initialized /tank/fn/scratch/release-product/rehearsal/node/store
+accepted operator init
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml policy set path-identity release-rehearsal.fn.invalid
+configured generation=2 record=00000002.cfg verification=VERIFIED
+accepted operator policy
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml+  principal set-passwordprintf rehearsal rehearsal-pw-7\nrehearsal-pw-7\n --posting
+
+Password: Confirm password: rehearsal principal=ea985bc6d2e8ff4ce1a5a9223f0675cdd102c1b96779ad8fbfb2075ade1f6c19 posting=true
+accepted operator principal set-password effective-at-next-start
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml status
+transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=8 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=0 transactions-budget=4294967295 bytes-used=0 history-bound=1099511627776 charge-reserved=0 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 debt=0 held
+open=full-replay reason=absent
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file=absent
+pins=0 reserved=0 connections=0
+pack-chain none
+accepted operator status
++ echo PHASE install DONE
+PHASE install DONE

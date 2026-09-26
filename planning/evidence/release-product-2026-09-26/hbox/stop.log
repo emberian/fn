@@ -1,0 +1,6 @@
++ systemctl --user stop fn-release-rehearsal
++ + headsystemctl -4 --user
+ --no-pager status fn-release-rehearsal
+Unit fn-release-rehearsal.service could not be found.
++ echo PHASE stop DONE
+PHASE stop DONE

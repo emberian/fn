@@ -1,0 +1,28 @@
+== persvati persvati 2026-09-26T18:54:12Z
+group          articles   first    last
+local.general         0       1       0
+local.test            0       1       0
+done 192.168.50.39:11995 served 2 group name(s)
+rc=0
+{
+ "node": "192.168.50.39:11995",
+ "command": "post",
+ "outcome": "accepted",
+ "exit": 0,
+ "scope": "server",
+ "detail": "192.168.50.39:11995 <fn-client.20260926T185412Z.c67ac60f@rehearsal.invalid> 240 article received OK",
+ "status_lines": [
+  "201 fn-nntp experimental reader ready",
+  "101 capability list follows",
+  "382 continue with TLS negotiation",
+  "101 capability list follows",
+  "381 password required",
+  "281 authentication accepted",
+  "340 send article to be posted",
+  "240 article received OK"
+ ],
+ "group": "local.general",
+ "message_id": "<fn-client.20260926T185412Z.c67ac60f@rehearsal.invalid>"
+}
+accepted 192.168.50.39:11995 <fn-client.20260926T185412Z.c67ac60f@rehearsal.invalid> 240 article received OK
+rc=0

@@ -14,12 +14,14 @@ session. None of them is a gate or a claim; each says what it does at the top.
   mode. A measurement, not a toolchain: see `planning/evidence/acl2p-2026-09-23.md`.
 - `hbox-matrix-provision.sh <image>`: two clean loopback stores for
   `tools/v0_matrix.py --backend native-operator` (ports 11190/11191).
-- `hbox-node-deploy.sh <frozen-tree> <shortrev> <listen-ipv4>`: install the
-  production image under `/tank/fn/node`, a self-signed STARTTLS pair,
-  `[auth] required` + `protected_only`, path identity `hbox.ember.software`,
-  groups, principals `ember`/`yue`/`tulip` with generated passwords kept only
-  in `/tank/fn/node/credentials.txt` (mode 0600), and a user systemd unit
-  `fn-node.service`. Refuses to touch an existing `/tank/fn/node/store`.
+- `hbox-node-deploy.sh TARBALL SHA256 NODE PREFIX LISTEN_IPV4 PORT PATH_IDENTITY`:
+  a node from a RELEASE TARBALL (packaging/release-tarball.sh; D35), never
+  from a checkout: the sum checked, the tarball's own `install.sh
+  --no-service` into PREFIX (one directory), `mission small-community`, a
+  self-signed pair, `init`, the path identity, principals `ember`/`yue`/`tulip`
+  with generated passwords kept only in `NODE/credentials.txt` (mode 0600),
+  and `systemd-run --user --unit fn-node`. Refuses an existing `NODE/store`,
+  and `/tank/fn/node` unless `FN_DEPLOY_LIVE=yes`.
 - `two-host-protected-gate.md`: stage one source-pinned frozen image in
   separate hbox and persvati scratch paths and run the protected NNTP gate
   after its image hashes are supplied. It never uses the live node store.
@@ -57,23 +59,15 @@ launchers resolve these from their own directory. Verify `image.sha256` with
 `(cd IMAGE && sha256sum -c image.sha256)` and exercise `IMAGE/fn-host --fn
 reader invalid-port 1 -` (production refusal 5) before installation. The
 source tree and original `build/*.core` are not runtime inputs. The initial
-`hbox-node-deploy.sh` takes the full frozen image directory as fourth argument.
+`hbox-node-deploy.sh` deploys only a release tarball (above).
 It still refuses an existing store.
 
 A deploy is a reinstall (D34): stop the node, `fn operator NODE/fn.toml store
-export DIR` if its data must survive, remove the node, install the release
-(`packaging/install-native.sh`, one `libexec/fn/` replaced whole), then `init`
-or `fn operator NODE/fn.toml store import DIR`, and start. There is no release
-switching, no versioned release directory and no rollback of a store: a store
-of another format is refused at open by name (`open refused
-reason=store-format: reinstall from the release and import`).
+export DIR` if its data must survive, remove the installation, install the new
+release (its `install.sh`, which replaces one `libexec/fn/` whole), then `init`
+or `fn operator NODE/fn.toml store import DIR`, and start (docs/install.md
+section 4). There is no release switching, no versioned release directory, no
+`current` symlink and no rollback of a store: a store of another format is
+refused at open by name (`open refused reason=store-format: reinstall from the
+release and import`).
 
-The tool verifies and stages the candidate before stopping, switches the
-`current` symlink atomically, then starts/checks. A failed start/check restores
-the prior symlink and restarts/checks it. The persistent paths are never copied
-into a release; the tool checks their hashes and the store directory identity.
-The old release remains available. This is tested only on isolated fixture
-nodes. It has not been run on `/tank/fn/node`; that existing unit names a
-versioned executable and must first be migrated to `current` during a planned
-operator maintenance window. No automatic migration or live-node action is
-part of this runbook.

@@ -3341,6 +3341,78 @@
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
     },
     {
+      "id": "HST-016",
+      "title": "The native host needs only the system's TLS library (OpenSSL 3.0+ or LibreSSL 3+), libsodium and the release's vendored ML-DSA-65; no specific OpenSSL build",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "host/native/tls.lisp",
+        "host/native/signatures.lisp",
+        "host/native/fn-mldsa65.c",
+        "third_party/pqclean-ml-dsa-65/UPSTREAM.txt",
+        "tools/build_mldsa65.sh",
+        "packaging/freeze-native-image.sh",
+        "packaging/install-native.sh",
+        "tests/mldsa65_interop.py",
+        "tests/native_hybrid_signatures.lisp",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/crypto-deps-2026-09-26.md",
+        "tests/test_native_starttls.py",
+        "tests/native_tls_transport.lisp",
+        "planning/evidence/release-openbsd-2026-09-26.md"
+      ],
+      "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
+    },
+    {
+      "id": "HST-017",
+      "title": "The release is one tarball per platform built from a git archive of REV behind the green gate of the default profile's closure, installed as one directory",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "packaging/release-tarball.sh",
+        "packaging/install-native.sh",
+        "packaging/install.sh",
+        "tools/green_check.py",
+        "tests/test_release_tarball.py",
+        "tests/test_native_distribution.sh",
+        "docs/install.md",
+        "planning/evidence/release-product-2026-09-26.md"
+      ],
+      "implementation_note": "The Linux tarball is built and rehearsed on hbox (record); the OpenBSD tarball follows release-openbsd's VM recipe. store export/import (the reinstall's data path) is lane migration-removal's; install.md marks those two lines until it lands."
+    },
+    {
+      "id": "HST-018",
+      "title": "No Python on the path a deployed node or its operator verbs execute: tools/runpath_check.py over the tree and over every release",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/release-tarball.sh",
+        "Makefile",
+        "planning/evidence/release-product-2026-09-26.md"
+      ],
+      "implementation_note": "Static mode runs in make check (lane release-openbsd); --tree runs in every release build and in tests.test_release_tarball; witnesses in tests/test_runpath_check.py (a planted python symlink among them)."
+    },
+    {
       "id": "REP-012",
       "title": "The wire machine's ingress reads the octet buffer in place: the host fills the buffer once from the socket vector and the served read consumes the range by index, proved equal to the reference list read; no per-read cons list on the served hot path",
       "specification": "specs/store-refinement.md#abstraction-relation",
@@ -3544,35 +3616,6 @@
         "tests/test_native_store_export.py"
       ],
       "implementation_note": "D34. upgrade-profile, needs-upgrade, rollback-check, repair and packaging/upgrade-native.sh were removed."
-    },
-    {
-      "id": "HST-016",
-      "title": "The native host needs only the system's TLS library (OpenSSL 3.0+ or LibreSSL 3+), libsodium and the release's vendored ML-DSA-65; no specific OpenSSL build",
-      "specification": "specs/host.md#trust-boundary-of-the-native-host",
-      "milestone": "M4",
-      "status": "implemented",
-      "proof_targets": [],
-      "verification": [
-        "integration",
-        "test"
-      ],
-      "evidence": [
-        "host/native/tls.lisp",
-        "host/native/signatures.lisp",
-        "host/native/fn-mldsa65.c",
-        "third_party/pqclean-ml-dsa-65/UPSTREAM.txt",
-        "tools/build_mldsa65.sh",
-        "packaging/freeze-native-image.sh",
-        "packaging/install-native.sh",
-        "tests/mldsa65_interop.py",
-        "tests/native_hybrid_signatures.lisp",
-        "tests/test_native_hybrid_author.py",
-        "planning/evidence/crypto-deps-2026-09-26.md",
-        "tests/test_native_starttls.py",
-        "tests/native_tls_transport.lisp",
-        "planning/evidence/release-openbsd-2026-09-26.md"
-      ],
-      "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
     },
     {
       "id": "HST-015",

@@ -1,0 +1,13 @@
+--- <fn-client.20260926T185412Z.c67ac60f@rehearsal.invalid>
+Path: release-rehearsal.fn.invalid!not-for-mail
+Injection-Date: Sat, 26 Sep 2026 18:54:12 +0000
+Date: Sat, 26 Sep 2026 18:54:12 +0000
+Injection-Info: release-rehearsal.fn.invalid
+From: rehearsal <rehearsal@192.168.50.39>
+Newsgroups: local.general
+Subject: release-product rehearsal
+Message-ID: <fn-client.20260926T185412Z.c67ac60f@rehearsal.invalid>
+
+posted from persvati to the release rehearsal node over STARTTLS
+done 192.168.50.39:11995 <fn-client.20260926T185412Z.c67ac60f@rehearsal.invalid>
+rc=0

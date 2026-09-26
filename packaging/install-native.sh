@@ -1,7 +1,21 @@
 #!/bin/sh
+# Stage the release layout of one production image into ONE directory:
+#
+#   FN_NATIVE_HOST=IMAGE [FN_NATIVE_CORE=CORE] FN_NATIVE_SOURCE_REVISION=REV \
+#     [DESTDIR=STAGE] [PREFIX=DIR] sh packaging/install-native.sh
+#
+# PREFIX (default /opt/fn; /usr/local/fn on OpenBSD) receives bin/fn,
+# libexec/fn/ (launcher, core, SBCL runtime, the bundled libraries,
+# source-revision), share/fn/ (the service templates, native-artifacts.txt)
+# and install.sh, the installer a release carries (packaging/install.sh).
+# It refuses a PREFIX that exists and is not empty: an installation is one
+# directory, never a versioned sibling of another, and a reinstall removes
+# the old one first (D34: stop, export, remove, install, import, start).
+# packaging/release-tarball.sh stages every release through this script.
 set -eu
 
-prefix=${PREFIX:-/usr/local}
+case $(uname -s) in OpenBSD) default_prefix=/usr/local/fn ;; *) default_prefix=/opt/fn ;; esac
+prefix=${PREFIX:-$default_prefix}
 destdir=${DESTDIR:-}
 image=${FN_NATIVE_HOST:-build/fn-host}
 core=${FN_NATIVE_CORE:-$image.core}
@@ -12,7 +26,7 @@ case $prefix in *[!A-Za-z0-9_./-]*) echo "install-native: PREFIX contains unsupp
 case $source_revision in ''|*[!A-Za-z0-9._-]*) echo "install-native: invalid FN_NATIVE_SOURCE_REVISION" >&2; exit 2;; esac
 [ -x "$image" ] || { echo "install-native: missing executable image: $image" >&2; exit 4; }
 [ -s "$core" ] || { echo "install-native: missing image core: $core" >&2; exit 4; }
-for support in packaging/fn packaging/fn-native.service.in packaging/net.fn.native.plist.in packaging/fn.rc.in; do
+for support in packaging/fn packaging/fn-native.service.in packaging/fn.rc.in packaging/install.sh; do
   [ -r "$support" ] || { echo "install-native: missing package input: $support" >&2; exit 4; }
 done
 grep -q '^#!.*sh' "$image" || { echo "install-native: image launcher is not the generated shell form" >&2; exit 4; }
@@ -115,6 +129,10 @@ fi
 rm -f "$profile_out"
 trap - EXIT HUP INT TERM
 
+if [ -d "$destdir$prefix" ] && [ -n "$(ls -A "$destdir$prefix")" ]; then
+  echo "install-native: $destdir$prefix exists and is not empty; an installation is one directory: remove the installed release first (stop, export, remove, install, import, start)" >&2
+  exit 4
+fi
 bindir=$destdir$prefix/bin
 libdir=$destdir$prefix/libexec/fn
 sharedir=$destdir$prefix/share/fn
@@ -146,15 +164,16 @@ case $source_revision in
      fi ;;
 esac
 
+# The service templates; install.sh renders the platform's one with the
+# prefix, the node directory and the service account it installs.
 if [ "$(uname -s)" = OpenBSD ]; then
   mkdir -p "$sharedir/rc.d"
-  sed "s|@PREFIX@|$prefix|g" packaging/fn.rc.in > "$sharedir/rc.d/fn"
-  chmod 0555 "$sharedir/rc.d/fn"
+  install -m 0644 packaging/fn.rc.in "$sharedir/rc.d/fn.rc.in"
 else
-  mkdir -p "$sharedir/systemd" "$sharedir/launchd"
-  sed "s|@PREFIX@|$prefix|g" packaging/fn-native.service.in > "$sharedir/systemd/fn.service"
-  sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd/net.fn.plist"
+  mkdir -p "$sharedir/systemd"
+  install -m 0644 packaging/fn-native.service.in "$sharedir/systemd/fn.service.in"
 fi
+install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
 
 {
   echo "profile=production (verified by disabled reader entrypoint)"

@@ -1,0 +1,15 @@
+== 1. release gate: the default profile's closure green at REV's digests
+green-check profile=default: 403 books in the closure of 185 roots, 403 green at their current digest; not green: none
+== 2. certificates from the cache: acquire and validate
+profile=default image=build/fn-host artifact-set=768967bc1630e7df6f2cd201fd18a86434babd4dae9c5dd95c57080531eabcf9 origin=composed books=403 source=69b87de456ba8eeaf3ad3f69b16e77bb9e4fb382d13cc4864da3963e24991c6e toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+profile=default image=build/fn-host roots=185 result=loaded
+== 3. the production image
+built build/lib/libfn-mldsa65.so
+built build/fn-host profile=production (142M core)
+== 4. stage, check, pack
+installed native fn under /tank/fn/scratch/release-product/out/build-c755569badf5-linux-x86_64/stage/opt/fn
+runpath_check /tank/fn/scratch/release-product/out/build-c755569badf5-linux-x86_64/stage/opt/fn: no Python on the deployed path
+release /tank/fn/scratch/release-product/out/fn-c755569badf5-linux-x86_64.tar.gz
+version fn c755569badf5839f85750619d6b7fa1a370e7e94
+26d56fba0b3b0017ded52e5f846ee6ff336c711b40efc1a41de78a4b55f66c75  fn-c755569badf5-linux-x86_64.tar.gz
+EXIT 0

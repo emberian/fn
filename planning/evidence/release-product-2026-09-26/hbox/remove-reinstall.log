@@ -1,0 +1,52 @@
++ rm -rf /tank/fn/scratch/release-product/rehearsal/opt/fn
++ cd /tank/fn/scratch/release-product/rehearsal/download
++ mkdir -p /tank/fn/scratch/release-product/rehearsal/opt/fn
++ touch /tank/fn/scratch/release-product/rehearsal/opt/fn/keep
++ sh fn/install.sh --prefix /tank/fn/scratch/release-product/rehearsal/opt/fn --node /tank/fn/scratch/release-product/rehearsal/node --no-service
+== checking the release against SHA256SUMS
+fn c755569badf5839f85750619d6b7fa1a370e7e94
+== /tank/fn/scratch/release-product/rehearsal/node/fn.toml exists: asking this release whether it opens that node's store
+   transactions=1 articles=1 staging-orphans=0 unsigned-legacy-experiment
+   profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=8 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+   open-cost replay-records=4294967295 list-memory-octets=35184372088832
+   headroom transactions-used=1 transactions-budget=4294967295 bytes-used=802 history-bound=1099511627776 charge-reserved=2 charge-capacity=1048576
+   maintenance-reserve octets=4096 transactions=1 debt=0 held
+   open=full-replay reason=absent
+   reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+   checkpoint-file=absent
+   pins=1 reserved=2 connections=0
+   pack-chain none
+   accepted operator status
+install: /tank/fn/scratch/release-product/rehearsal/opt/fn exists: an installation is one directory; stop the node and remove /tank/fn/scratch/release-product/rehearsal/opt/fn first (its store lives in /tank/fn/scratch/release-product/rehearsal/node, not there)
++ rm -rf /tank/fn/scratch/release-product/rehearsal/opt/fn
++ sh fn/install.sh --prefix /tank/fn/scratch/release-product/rehearsal/opt/fn --node /tank/fn/scratch/release-product/rehearsal/node --no-service
+== checking the release against SHA256SUMS
+fn c755569badf5839f85750619d6b7fa1a370e7e94
+== /tank/fn/scratch/release-product/rehearsal/node/fn.toml exists: asking this release whether it opens that node's store
+   transactions=1 articles=1 staging-orphans=0 unsigned-legacy-experiment
+   profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=8 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+   open-cost replay-records=4294967295 list-memory-octets=35184372088832
+   headroom transactions-used=1 transactions-budget=4294967295 bytes-used=802 history-bound=1099511627776 charge-reserved=2 charge-capacity=1048576
+   maintenance-reserve octets=4096 transactions=1 debt=0 held
+   open=full-replay reason=absent
+   reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+   checkpoint-file=absent
+   pins=1 reserved=2 connections=0
+   pack-chain none
+   accepted operator status
+installed /tank/fn/scratch/release-product/rehearsal/opt/fn
+rendered /tank/fn/scratch/release-product/rehearsal/node/fn.service (not installed; --no-service)
++ /tank/fn/scratch/release-product/rehearsal/opt/fn/bin/fn operator /tank/fn/scratch/release-product/rehearsal/node/fn.toml status
+transactions=1 articles=1 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=8 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=1 transactions-budget=4294967295 bytes-used=802 history-bound=1099511627776 charge-reserved=2 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 debt=0 held
+open=full-replay reason=absent
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file=absent
+pins=1 reserved=2 connections=0
+pack-chain none
+accepted operator status
++ echo PHASE remove-reinstall DONE
+PHASE remove-reinstall DONE

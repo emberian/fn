@@ -1,0 +1,11 @@
+runpath: bin/fn: /bin/sh; commands: dirname $image
+runpath: install.sh: /bin/sh; commands: dirname uname $system Linux OpenBSD $1 --prefix --node --user --no-service path $path $user sha256sum sha256 $here/bin/fn sed $answer mkdir cp render id useradd chown chmod systemctl
+runpath: libexec/fn/fn-host: /bin/sh; commands: dirname $here/runtime/sbcl
+runpath: libexec/fn/fn-host.core: dlopen names libcrypto.so libcrypto.so.3 libfn-mldsa65.so libsodium.so libsodium.so.23 libssl.so libssl.so.3; the system's: libcrypto.so libcrypto.so.3 libssl.so libssl.so.3
+runpath: libexec/fn/lib/libfn-mldsa65.so: ELF; needs libc.so.6 ld-linux-x86-64.so.2
+runpath: libexec/fn/lib/libsodium.so.23: ELF; needs libc.so.6 ld-linux-x86-64.so.2
+runpath: libexec/fn/runtime/sbcl: ELF; needs libm.so.6 libc.so.6; interpreter /lib64/ld-linux-x86-64.so.2
+runpath: libexec/fn/runtime/sbcl-home/sbcl.core: dlopen names (none); the system's: (none)
+runpath: 23 SBCL contrib fasls (#!.../sbcl --script headers, loaded by the runtime)
+runpath: share/fn/systemd/fn.service.in: starts @PREFIX@/bin/fn
+runpath_check /tank/fn/scratch/release-product/out/fn-c755569badf5-linux-x86_64.tar.gz: no Python on the deployed path

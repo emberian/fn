@@ -23,15 +23,15 @@ mkdir -p "$scratch"
 cd "$tree"
 FN_FREEZE_VARIANTS='fn-host fn-host-developer' \
   sh packaging/freeze-native-image.sh "$tree/build" "$scratch/frozen"
-sh packaging/release-tarball.sh "$scratch/frozen" "$rev" "$scratch/release"
-# The friend's side: no checkout, only the tarball and its sum.
+sh packaging/release-tarball.sh --frozen "$scratch/frozen" linux-x86_64 "$rev" "$scratch/release"
+# The friend's side: no checkout, only the tarball and SHA256SUMS
+# (docs/install.md section 1; --no-service: the harness runs the node).
 mkdir -p "$scratch/friend"
-cp "$scratch/release/fn-$short-linux-x86_64.tar.gz" \
-   "$scratch/release/fn-$short-linux-x86_64.tar.gz.sha256" "$scratch/friend/"
-(cd "$scratch/friend" && sha256sum -c "fn-$short-linux-x86_64.tar.gz.sha256" \
+cp "$scratch/release/fn-$short-linux-x86_64.tar.gz" "$scratch/release/SHA256SUMS" "$scratch/friend/"
+(cd "$scratch/friend" && sha256sum -c --ignore-missing SHA256SUMS \
    && tar xzf "fn-$short-linux-x86_64.tar.gz" \
-   && cd "fn-$short" && sha256sum -c --quiet SHA256SUMS)
-echo "friends_tarball: installed $scratch/friend/fn-$short"
+   && sh fn/install.sh --prefix "$scratch/friend/opt/fn" --node "$scratch/friend/node" --no-service)
+echo "friends_tarball: installed $scratch/friend/opt/fn"
 FN_NATIVE_HOST="$scratch/frozen/fn-host-developer" \
-FN_FRIEND_FN="$scratch/friend/fn-$short/bin/fn" \
+FN_FRIEND_FN="$scratch/friend/opt/fn/bin/fn" \
   python3 -m unittest -v tests.test_native_friends_feed
