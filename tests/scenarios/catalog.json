@@ -2677,6 +2677,30 @@
         "log": "planning/evidence/bounds-p5-2026-09-25.md",
         "record": "planning/evidence/bounds-p5-2026-09-25.md"
       }
+    },
+    {
+      "id": "SCN-096",
+      "title": "A key statement declined for want of a grant is re-decided by `operator CONFIG keys redecide MSGID` after the grant, enrols the successor without a restart, and is refused by name the second time and for an unknown Message-ID",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "SEC-005"
+      ],
+      "steps": [
+        "Node E: enrol P; POST a succession signed by the old keys with no `keys` grant; `control grant P keys fn.keys` live; `keys redecide MSGID`; `keys redecide MSGID` again; `keys redecide <absent@keys.invalid>`; stop; `keys redecide MSGID` offline; restart E."
+      ],
+      "expected": [
+        "The log reads `key-statement declined no-grant`, then `key-statement redecide enrol-successor committed` (exit 0), `key-statement redecide refused already-acted` (exit 1), `key-statement redecide refused not-a-key-statement` (exit 1); the history shows generation 2 active and 1 retired; the offline redecide exits non-zero; the restart logs no key-statement line and leaves the history unchanged."
+      ],
+      "implementation": {
+        "test": "tests.test_native_key_statements",
+        "cases": [
+          "NativeKeyStatementTests.test_redecide_a_declined_statement_after_its_grant"
+        ],
+        "native": true,
+        "log": "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "record": "planning/evidence/keys-and-accounts-2026-09-26.md"
+      }
     }
   ]
 }

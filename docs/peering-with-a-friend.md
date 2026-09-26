@@ -188,6 +188,13 @@ answers `430 withdrawn` on the other node too, once the cancel arrives
 there: the other node verifies the cancel under the author's enrolled keys
 (the node principals are enrolled by the exchange above).
 
+A friend who rotates keys posts a signed succession to `fn.keys` (the
+node needs a `keys` grant for the friend's principal: `operator CONFIG
+control grant PRINCIPAL-HEX keys fn.keys`). If the statement arrived before
+the grant, it declined; after granting, `operator CONFIG keys redecide
+MESSAGE-ID` enrols the successor without a restart (docs/operator.md, "Re-decide
+a declined key statement").
+
 ## What is not here
 
 - A stranger's own account on your node: today you make it
