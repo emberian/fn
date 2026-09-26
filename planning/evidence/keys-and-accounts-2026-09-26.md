@@ -421,8 +421,14 @@ FN_NATIVE_HOST, FN_OPENSSL / FN_TEST_OPENSSL (openssl 3.5.8) and FN_RUN_HYBRID_E
   `NATIVE-REFUSAL-CLASS unsupported-profile unsupported-profile`, `no-local-binding unenrolled`,
   `signature-failed cryptographically-invalid` (the new signature-failed row: the relay enrols the
   author, one body letter's case flipped). test_portable_carrier_verifies_exact_source_and_keyset
-  FAILED (hybrid-verify-carrier accepted an altered key field: exit 0, not 1): the CLI verifier path
-  (host/native/signature-command.lisp) is untouched by this lane; classified unexamined, PKT-473.
+  FAILED at line 369: `hybrid-sign-carrier` of a source 26,000 octets over the fixture EMITTED a
+  carrier (exit 0) where the test expects the total-article bound to refuse. It is NOT the
+  altered-key check (lines 354-358 pass). Classified a DEV defect: the same single test fails on
+  dev's own developer image (dev 1770d687, /tank/fn/scratch/throughput-gate/native-img-1770d68709bb,
+  log ae4bbcb1a8bdb46f9aa3835dd9e67bbe7d4fbadcd691f471ef55af3be3f59959) exactly as on this lane's
+  (log d12b3cfed7ff257b1b23e3e91854965a1ebc93e5293218c20c6446a160e99017). Candidate cause: carrier v2
+  (bounds-p4-carrier, e2b17943 / merge 6166adc1) raised the signer's source bound, so the fixture no
+  longer exceeds it; whether the test's expectation or the emission bound is wrong is the fix lane's.
 - tests.test_native_key_statements: 5 OK (regression over the owner changes).
 
 ```
@@ -441,4 +447,4 @@ invariants: its own lane); the verdict field on accepted transit arms; fn_verify
 native node; the must-fails owed for fn-lb-a-connection-opened-after-a-publication-is-bound-anew
 beyond its durable hypothesis; a succession-era inviter known to the invitee (still
 `already-enrolled` at the accept); a succession chain carried with the document for nodes that
-never enrolled the principal; the dead fn-acct-list-report; the hybrid-verify-carrier failure above.
+never enrolled the principal; the dead fn-acct-list-report. The hybrid_author failure is dev's (above).
