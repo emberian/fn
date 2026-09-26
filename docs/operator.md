@@ -148,9 +148,9 @@ values.
 | --- | --- | --- |
 | `max-transactions` (T) | committed transactions | 4,294,967,295 (the u32 txid width) |
 | `max-history-octets` (H) | total committed record octets | 1 TiB |
-| `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
-| `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
-| `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
+| `max-record-octets` (R) | one encoded Store event | 67,108,864 (64 MiB; at least 196,608, the worst-case Store event) |
+| `max-article-octets` (A) | one article's payload | 16,777,216 (16 MiB) |
+| `max-groups-per-article` (G) | newsgroups on one article | 4,096 |
 | `max-group-name-octets` | one group name (validated, not yet enforced on `group create`: PKT-435) | 256 (the record codec's and the configuration label's width today) |
 | `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
 | `max-consumers` | consumers registered; the next `consumer register` past it is refused | 1,048,576 |
@@ -842,7 +842,8 @@ the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
-`--group` seeds them once, and `fn group` changes them afterwards. The
+`init` seeds them once, and `fn operator CONFIG group create|retire`
+changes them afterwards, live or offline. The
 configuration file holds only what the host needs in order to start.
 
 A peer this node pulls by NEWNEWS (RFC 3977 section 7.4) gets an interval,
@@ -1383,17 +1384,17 @@ per-address and failed-login allowance.
 ## Add a group
 
 ```
-systemctl stop fn
-fn --config /etc/fn/fn.toml group create fn.announce
-systemctl start fn
+fn operator /etc/fn/fn.toml group create fn.announce
 ```
 
-The stop is required today. A group is a durable configuration record, and
-writing one needs the exclusive writer lock the running owner holds, so
-`fn group` refuses while the service is live and says so. `fn group retire
-<name>` retires a name: the articles already bound to it and its watermark
-are kept, and the name stops being served. Creating a retired name again
-revives it with its numbering intact.
+No stop is needed. A group is a durable configuration record: with the
+owner running and its `[control] path` live, the verb asks the owner, which
+publishes the record as a new configuration generation at once
+(`fn-native-admin-plan-deltas`, books/native-admin.lisp); with no owner
+running, the verb writes it offline and `run` serves it at the next start.
+`fn operator CONFIG group retire <name>` retires a name: the articles already
+bound to it and its watermark are kept, and the name stops being served.
+Creating a retired name again revives it with its numbering intact.
 
 **Special-purpose names are a local agreement, not ordinary groups.** RFC
 5536 section 3.1.4 names two kinds of restricted `<newsgroup-name>`. The

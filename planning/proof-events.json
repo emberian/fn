@@ -6669,6 +6669,23 @@
           "name": "fn-sco-thaw-checked-accepts-own-publication"
         }
       ]
+    },
+    {
+      "id": "PRF-194",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-help-renders-the-served-command-table-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-served-keywordp-unfolds"
+        }
+      ]
     }
   ]
 }
