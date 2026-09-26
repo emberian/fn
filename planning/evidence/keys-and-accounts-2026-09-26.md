@@ -397,7 +397,10 @@ account-list 10 and tests 18; must-fails checked to fail.
   native-live-status) at fb3a1e13: passed 28, failed 0, 200 from the cache, no book over 10 s
   (native-admin 9.9 s, native-operator 7.8 s, peer-invite-tests 4.4 s). Manifest
   planning/evidence/manifests/certify-20260926T125534Z-1995979.json.
-- r2: see below (the two new test books, made Makefile roots after r1).
+- r2: persvati run-20260926T130249Z-3583 (`--affected-by` native-admin-peer-budget, account-list) at
+  6567be5e: tests/acl2/native-admin-peer-budget-tests and tests/acl2/account-list-tests passed, 214
+  from the cache, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T130312Z-2065168.json.
 - `make check-lane` green at 6567be5e.
 
 ### Native (hbox /tank/fn/scratch/keys-and-accounts-3/native-n1, fb3a1e13)
