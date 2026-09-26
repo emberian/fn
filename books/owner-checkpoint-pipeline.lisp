@@ -62,6 +62,20 @@
  (defthm fn-ockp-append-assoc
    (equal (append (append a b) c) (append a (append b c)))))
 
+; The codec's leaf functions and the pack-id bound stay closed in this book:
+; a proof that needs one opens it in its hint.  Left enabled, the rewriter
+; opened them on symbolic rows while relieving hypotheses (an encodability
+; hypothesis unfolded to the digits of a length), which was most of the
+; loop lemmas' cost (checkpoint-pipeline-5, record section 6).
+(local (in-theory (disable fn-sccb-treep fn-scc-atom-octets fn-scc-string-octets fn-scc-le-digits
+                           fn-scc-nat-octets fn-cp-idp fn-cp-id-length-bound floor
+                           ; imported rules that backchain from (true-listp x) into an
+                           ; unrelated recognizer (the NNTP response text, the NOV line,
+                           ; the octet list): every buffer term met them
+                           fn-nntp-response-text-true-listp fn-nntp-clean-line-is-response-text
+                           fn-nov-clean-linep fn-nntp-response-textp fn-scc-octet-listp-true
+                           fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp fn-octets$c-bufp)))
+
 ; -----------------------------------------------------------------------------
 ; The publication buffer: the second abstract stobj congruent to
 ; `fn-octets' (owner-checkpoint-stream, moved here; the stream book goes).
@@ -404,6 +418,11 @@
 
 (in-theory (disable fn-ockp-run-len fn-ockp-estimate))
 
+; From here the encodability recognizers and the octet-list facts about the
+; programs are opened only where a proof asks (the same reason as above).
+(local (in-theory (disable fn-ockp-rows-encodablep fn-ockp-tables-encodablep
+                           fn-ockp-rows-program-octets fn-ockp-program-octets)))
+
 ; -----------------------------------------------------------------------------
 ; The decision, before any allocation.  (:deferred :exceeds-budget ESTIMATE
 ; BUDGET), (:deferred :exceeds-space ESTIMATE SPACE), or (:plan ESTIMATE).
@@ -528,14 +547,40 @@
                             fn-sccb-treep-is-treep)))))
 
 ; The rows of a batch: at most B rows from REST, row i with candidate i
-; when SELFP.  (mv REST' I' fn-octets)
-(defun fn-ockp-encode-batch (rest i b selfp mtrie n table fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (fn-ockp-rows-encodablep rest) (natp i) (natp b))))
+; when SELFP, each row's encodability (`fn-sccb-treep': the leaves the
+; encoder writes) checked as the row is reached and never beyond the batch:
+; the walk one step makes is its B rows' (D27), and the state carries
+; nothing the host's entry must re-check (`fn-ockp-statep' below is O(1));
+; the encodability of the rows not yet reached is the invariant the setup's
+; one check establishes and every step preserves
+; (`fn-ockp-step-preserves-encodable').  Two bounds per step (gpt-6,
+; review 2026-09-26 section 2: one record can be large): at most B rows, and
+; the step ends after the row that brings the buffer's fill to BYTES octets
+; or more, so a step's residency is under BYTES plus one row plus the
+; residue; at least one row per step (progress).  (mv OKP REST' I' fn-octets):
+; OKP nil at the first row the codec refuses, REST' at that row, nothing of
+; it written.
+(defun fn-ockp-encode-batch (rest i b bytes selfp mtrie n table fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (and (natp i) (natp b) (natp bytes))))
+  (cond ((or (zp b) (not (consp rest))) (mv t rest i fn-octets))
+        ((not (fn-sccb-treep (car rest))) (mv nil rest i fn-octets))
+        (t (let ((fn-octets (fn-sct-renc (car rest) (if selfp i nil) mtrie n table 0 fn-octets)))
+             (if (>= (fn-octets-len fn-octets) bytes)
+                 (mv t (cdr rest) (+ 1 i) fn-octets)
+               (fn-ockp-encode-batch (cdr rest) (+ 1 i) (1- b) bytes selfp mtrie n table
+                                     fn-octets))))))
+
+; The rows one step takes, from the rows' programs and the fill it starts
+; at (the logic's account of the two bounds; the encoder is this count's
+; take and drop).
+(defun fn-ockp-batch-rows (rest i b bytes selfp mtrie n table sofar)
+  (declare (xargs :guard t :verify-guards nil))
   (if (or (zp b) (not (consp rest)))
-      (mv rest i fn-octets)
-    (let ((fn-octets (fn-sct-renc (car rest) (if selfp i nil) mtrie n table 0 fn-octets)))
-      (fn-ockp-encode-batch (cdr rest) (+ 1 i) (1- b) selfp mtrie n table fn-octets))))
+      0
+    (let ((sofar2 (+ sofar (len (fn-sct-program (car rest) (if selfp i nil) mtrie n table)))))
+      (if (>= sofar2 bytes)
+          1
+        (+ 1 (fn-ockp-batch-rows (cdr rest) (+ 1 i) (1- b) bytes selfp mtrie n table sofar2))))))
 
 ; The first B rows, and the rest, as lists.
 (defun fn-ockp-take (b rows)
@@ -546,15 +591,48 @@
   (declare (xargs :guard (natp b)))
   (if (or (zp b) (not (consp rows))) rows (fn-ockp-drop (1- b) (cdr rows))))
 
+(local
+ (defthm fn-ockp-batch-rows-bounded
+   (<= (fn-ockp-batch-rows rest i b bytes selfp mtrie n table sofar) (nfix b))
+   :rule-classes :linear))
+
+; The batch's verdict is the encodability of the rows it takes, exactly
+; (stated over `car': the rewriter meets `mv-nth 0' as `car').
+(defthm fn-ockp-encode-batch-ok-is-encodable
+  (implies (true-listp fn-octets)
+           (iff (car (fn-ockp-encode-batch rest i b bytes selfp mtrie n table fn-octets))
+                (fn-ockp-rows-encodablep
+                 (fn-ockp-take (fn-ockp-batch-rows rest i b bytes selfp mtrie n table
+                                                   (len fn-octets))
+                               rest))))
+  :hints (("Goal" :induct (fn-ockp-encode-batch rest i b bytes selfp mtrie n table fn-octets)
+           :in-theory (e/d (fn-ockp-rows-encodablep fn-sct-renc-is-program)
+                           (fn-sct-renc fn-sct-program)))))
+
+; The encoder is the count's take and drop: the rows it takes are appended
+; to the buffer as their programs, the rest and the next index follow.
 (defthm fn-ockp-encode-batch-is-rows-program
-  (implies (and (true-listp fn-octets) (natp i))
-           (equal (fn-ockp-encode-batch rest i b selfp mtrie n table fn-octets)
-                  (mv (fn-ockp-drop b rest) (+ (nfix i) (len (fn-ockp-take b rest)))
-                      (append fn-octets
-                              (fn-sct-rows-program (fn-ockp-take b rest) i selfp mtrie n table)))))
-  :hints (("Goal" :induct (fn-ockp-encode-batch rest i b selfp mtrie n table fn-octets)
-           :in-theory (e/d (fn-sct-rows-program fn-scc-repeat)
+  (let ((m (fn-ockp-batch-rows rest i b bytes selfp mtrie n table (len fn-octets))))
+    (implies (and (true-listp fn-octets) (natp i)
+                  (fn-ockp-rows-encodablep (fn-ockp-take m rest)))
+             (equal (fn-ockp-encode-batch rest i b bytes selfp mtrie n table fn-octets)
+                    (mv t (fn-ockp-drop m rest) (+ i (len (fn-ockp-take m rest)))
+                        (append fn-octets
+                                (fn-sct-rows-program (fn-ockp-take m rest) i selfp mtrie n
+                                                     table))))))
+  :hints (("Goal" :induct (fn-ockp-encode-batch rest i b bytes selfp mtrie n table fn-octets)
+           :in-theory (e/d (fn-sct-rows-program fn-scc-repeat fn-ockp-rows-encodablep
+                            fn-sct-renc-is-program)
                            (fn-sct-program fn-sct-renc)))))
+
+; Encodable rows stay encodable under a batch's take and drop.
+(defthm fn-ockp-rows-encodablep-take
+  (implies (fn-ockp-rows-encodablep rows) (fn-ockp-rows-encodablep (fn-ockp-take b rows)))
+  :hints (("Goal" :in-theory (enable fn-ockp-rows-encodablep))))
+
+(defthm fn-ockp-rows-encodablep-drop
+  (implies (fn-ockp-rows-encodablep rows) (fn-ockp-rows-encodablep (fn-ockp-drop b rows)))
+  :hints (("Goal" :in-theory (enable fn-ockp-rows-encodablep))))
 
 (in-theory (disable fn-sct-renc fn-ockp-encode-batch))
 
@@ -662,12 +740,15 @@
 ; The step.  TABLES: the four row lists (F P E R); K: the table being
 ; written (0..3); REST: its rows not yet encoded; I: the next row's index;
 ; INDEX, PREV: the run's next segment index and chain trailer; W: where the
-; residue begins in the buffer; B: rows per step; COUNTS: each run's
+; residue begins in the buffer; B, BYTES: rows and octets per step; COUNTS: each run's
 ; segment count (from the estimate); N = S; MTRIE, TABLE: the capture's
 ; Message-ID trie and event index; TOTAL: the file octets admitted so far.
 ; Answers (mv VERDICT FRAMES K' REST' I' INDEX' PREV' W' TOTAL' fn-octets):
 ; VERDICT :ok, or (:refused REASON) when a frame the reader would refuse
-; was produced (the host then abandons the staged file).  The frames
+; was produced, or :unencodable (the setup's word) at a row the codec cannot
+; write (the host abandons the staged file on either; after a setup that
+; did not say :unencodable the step never does:
+; `fn-ockp-setup-not-unencodable-never-refuses-a-row').  The frames
 ; reference the buffer as left; the host writes them before the next step,
 ; which moves the residue to the front first.
 
@@ -683,19 +764,20 @@
   (declare (xargs :guard t))
   (nfix (fn-sco-at (nfix k) counts)))
 
-(defun fn-ockp-batch (tables k rest i index prev w b seg s counts n mtrie table
+(defun fn-ockp-batch (tables k rest i index prev w b bytes seg s counts n mtrie table
                              total segment-bound file-bound fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (fn-ockp-rows-encodablep rest) (natp k) (natp i) (natp index)
+                  :guard (and (natp k) (natp i) (natp index)
                               (natp w) (<= w (fn-octets-len fn-octets))
-                              (natp b) (natp seg) (natp s) (natp total)
-                              (true-listp prev))
+                              (natp b) (natp bytes) (natp seg) (natp s) (natp total))
                   :verify-guards nil))
   (let* ((residue (fn-sccb-slice-acc w (fn-octets-len fn-octets) nil fn-octets))
          (fn-octets (fn-octets-clear fn-octets))
          (fn-octets (fn-octets-append-list residue fn-octets)))
-    (mv-let (rest2 i2 fn-octets)
-      (fn-ockp-encode-batch rest i b (eql k 2) (if (eql k 3) mtrie nil) n table fn-octets)
+    (mv-let (okp rest2 i2 fn-octets)
+      (fn-ockp-encode-batch rest i b bytes (eql k 2) (if (eql k 3) mtrie nil) n table fn-octets)
+      (if (not okp)
+          (mv :unencodable nil k rest2 i2 index prev 0 total fn-octets)
       (mv-let (frames a prev2 index2)
         (fn-ockp-cut-frames 0 index (fn-ockp-count counts k) s prev seg nil fn-octets)
         (if (consp rest2)
@@ -709,7 +791,7 @@
             (if (eq (car admitted) :ok)
                 (mv :ok frames (+ 1 k) (fn-ockp-table-rows tables (+ 1 k)) 0 0
                     *fn-scc-genesis* (fn-octets-len fn-octets) (nth 1 admitted) fn-octets)
-              (mv admitted nil k nil i2 index2 prev2 a total fn-octets))))))))
+              (mv admitted nil k nil i2 index2 prev2 a total fn-octets)))))))))
 
 ; The pipeline's start: the F table's one row, from the genesis, an empty
 ; buffer.  The counts: each run's segment count from its rows' length.
@@ -727,6 +809,21 @@
            (fn-ockp-rows-len (fn-sct-tables-r tables) 0 nil (fn-cei-msgid-trie index) n index 0)
            seg))))
 
+; One run's count from its rows' length (proved once; the four runs below
+; are four instances).
+(local
+ (defthm fn-ockp-rows-treep-of-singleton
+   (equal (fn-sct-rows-treep (list x)) (fn-scc-treep x))
+   :hints (("Goal" :in-theory (enable fn-sct-rows-treep)))))
+
+(local
+ (defthm fn-ockp-run-count-is-len-chunks
+   (implies (fn-sct-rows-treep rows)
+            (equal (fn-sccb-chunk-count (fn-ockp-rows-len rows i selfp mtrie n table 0) seg)
+                   (len (fn-scc-chunks (fn-sct-rows-program rows i selfp mtrie n table) seg))))
+   :hints (("Goal" :in-theory (e/d () (fn-sccb-chunk-count fn-scc-chunks fn-sct-rows-program
+                                       fn-ockp-rows-len fn-sct-rows-treep))))))
+
 (defthm fn-ockp-counts-are-chunk-counts
   (implies (fn-sct-tables-treep tables)
            (let ((progs (fn-sct-table-programs tables index)))
@@ -736,8 +833,10 @@
                           (len (fn-scc-chunks (nth 2 progs) seg))
                           (len (fn-scc-chunks (nth 3 progs) seg))))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sct-table-programs fn-sct-tables-treep)
-                           (fn-sccb-chunk-count fn-scc-chunks fn-sct-rows-program)))))
+           :in-theory (e/d (fn-ockp-counts fn-sct-table-programs fn-sct-tables-treep)
+                           (fn-sccb-chunk-count fn-scc-chunks fn-sct-rows-program fn-ockp-rows-len
+                            fn-sct-rows-treep fn-ockp-rows-len-is-len-rows-program
+                            fn-sccb-chunk-count-is-len-chunks fn-cei-msgid-trie)))))
 
 (in-theory (disable fn-ockp-admit-frames fn-ockp-batch fn-ockp-counts fn-ockp-table-rows
                     fn-ockp-count))
@@ -774,28 +873,42 @@
   (declare (xargs :stobjs fn-octets :guard t))
   (list 0 (fn-ockp-table-rows tables 0) 0 0 *fn-scc-genesis* (fn-octets-len fn-octets) 0))
 
+; The shape the host's entry checks per step (the *1* entry evaluates the
+; guard, so the guard is a runtime check): seven cells and their naturals,
+; O(1).  The rows' encodability is NOT here: before checkpoint-pipeline-5
+; it was, a walk of every remaining row's leaves per step, quadratic over a
+; publication (record section 5); it is the invariant the setup's one check
+; establishes and every step preserves (`fn-ockp-state-encodablep').  The
+; trailer PREV is read by no guard (the seal fixes its argument).
 (defun fn-ockp-statep (pst fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
   (and (true-listp pst) (equal (len pst) 7)
-       (natp (nth 0 pst)) (fn-ockp-rows-encodablep (nth 1 pst))
-       (natp (nth 2 pst)) (natp (nth 3 pst)) (true-listp (nth 4 pst))
+       (natp (nth 0 pst))
+       (natp (nth 2 pst)) (natp (nth 3 pst))
        (natp (nth 5 pst)) (<= (nth 5 pst) (fn-octets-len fn-octets))
        (natp (nth 6 pst))))
+
+; The invariant carried between steps, never re-checked: the rows not yet
+; encoded are encodable.
+(defun fn-ockp-state-encodablep (pst)
+  (declare (xargs :guard t))
+  (fn-ockp-rows-encodablep (fn-sco-at 1 pst)))
 
 (defun fn-ockp-donep (pst)
   (declare (xargs :guard t))
   (not (< (nfix (fn-sco-at 0 pst)) 4)))
 
 ; (mv VERDICT FRAMES STATE' fn-octets)
-(defun fn-ockp-step (setup pst b seg s segment-bound file-bound fn-octets)
+(defun fn-ockp-step (setup pst b bytes seg s segment-bound file-bound fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (fn-ockp-statep pst fn-octets) (natp b) (natp seg) (natp s))
+                  :guard (and (fn-ockp-statep pst fn-octets) (natp b) (natp bytes) (natp seg)
+                              (natp s))
                   :verify-guards nil))
   (let ((tables (fn-sco-at 1 setup)) (counts (fn-sco-at 2 setup))
         (mtrie (fn-sco-at 3 setup)) (table (fn-sco-at 4 setup)) (n (nfix (fn-sco-at 5 setup))))
     (mv-let (verdict frames k rest i index prev w total fn-octets)
       (fn-ockp-batch tables (nth 0 pst) (nth 1 pst) (nth 2 pst) (nth 3 pst)
-                     (nth 4 pst) (nth 5 pst) b seg s counts n mtrie table
+                     (nth 4 pst) (nth 5 pst) b bytes seg s counts n mtrie table
                      (nth 6 pst) segment-bound file-bound fn-octets)
       (mv verdict frames (list k rest i index prev w total) fn-octets))))
 
@@ -803,23 +916,23 @@
 ; the four tables are written; FUEL bounds it (the host stops at K = 4), and
 ; a loop that runs out of fuel before K = 4 says so (:fuel), so that :ok
 ; means the four tables were written.  (mv VERDICT OCTETS fn-octets)
-(defun fn-ockp-run (setup pst b seg s segment-bound file-bound fuel fn-octets)
+(defun fn-ockp-run (setup pst b bytes seg s segment-bound file-bound fuel fn-octets)
   (declare (xargs :stobjs fn-octets :measure (nfix fuel) :verify-guards nil))
   (if (fn-ockp-donep pst)
       (mv :ok nil fn-octets)
     (if (zp fuel)
         (mv :fuel nil fn-octets)
     (mv-let (verdict frames pst2 fn-octets)
-      (fn-ockp-step setup pst b seg s segment-bound file-bound fn-octets)
+      (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets)
       (if (not (eq verdict :ok))
           (mv verdict nil fn-octets)
         (let ((octets (fn-sccb-plan-octets frames fn-octets)))
           (mv-let (verdict2 more fn-octets)
-            (fn-ockp-run setup pst2 b seg s segment-bound file-bound (1- fuel) fn-octets)
+            (fn-ockp-run setup pst2 b bytes seg s segment-bound file-bound (1- fuel) fn-octets)
             (mv verdict2 (append octets more) fn-octets))))))))
 
-(in-theory (disable fn-ockp-setup fn-ockp-initial-state fn-ockp-statep fn-ockp-donep
-                    fn-ockp-step fn-ockp-run))
+(in-theory (disable fn-ockp-setup fn-ockp-initial-state fn-ockp-statep fn-ockp-state-encodablep
+                    fn-ockp-donep fn-ockp-step fn-ockp-run))
 
 ; -----------------------------------------------------------------------------
 ; The loop KEYSTONE (PRF-199's buffer half): the octets of the steps, in
@@ -1157,13 +1270,13 @@
             (let* ((buf2 (append (nthcdr w buf)
                                  (fn-sct-rows-program (fn-ockp-take b rest) i selfp mtrie n table)))
                    (c (fn-ockp-cut-frames 0 index count s prev seg nil buf2)))
-              (equal (append (fn-sccb-plan-octets (car c) buf2)
+              (equal (fn-ockp-run-remaining rest i selfp mtrie n table index count s prev w seg
+                                            buf)
+                     (append (fn-sccb-plan-octets (car c) buf2)
                              (fn-ockp-run-remaining (fn-ockp-drop b rest)
                                                     (+ i (len (fn-ockp-take b rest)))
                                                     selfp mtrie n table (mv-nth 3 c) count s
-                                                    (mv-nth 2 c) (mv-nth 1 c) seg buf2))
-                     (fn-ockp-run-remaining rest i selfp mtrie n table index count s prev w seg
-                                            buf))))
+                                                    (mv-nth 2 c) (mv-nth 1 c) seg buf2)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-ockp-cut-frames-is-cut (a 0) (acc nil)
@@ -1209,12 +1322,12 @@
             (let* ((buf2 (append (nthcdr w buf)
                                  (fn-sct-rows-program (fn-ockp-take b rest) i selfp mtrie n table)))
                    (c (fn-ockp-cut-frames 0 index count s prev seg nil buf2)))
-              (equal (fn-sccb-plan-octets
+              (equal (fn-ockp-run-remaining rest i selfp mtrie n table index count s prev w seg
+                                            buf)
+                     (fn-sccb-plan-octets
                       (append (car c)
                               (fn-ockp-last-frame (mv-nth 1 c) (mv-nth 3 c) count s (mv-nth 2 c) buf2))
-                      buf2)
-                     (fn-ockp-run-remaining rest i selfp mtrie n table index count s prev w seg
-                                            buf))))
+                      buf2))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-ockp-cut-frames-is-cut (a 0) (acc nil)
@@ -1269,7 +1382,7 @@
  (defthm fn-ockp-batch-writes-the-remaining
    (implies (and (natp k) (< k 4) (natp i) (natp index) (natp w) (<= w (len fn-octets))
                  (true-listp fn-octets) (natp seg))
-            (let ((r (fn-ockp-batch tables k rest i index prev w b seg s counts n mtrie table
+            (let ((r (fn-ockp-batch tables k rest i index prev w b bytes seg s counts n mtrie table
                                     total segment-bound file-bound fn-octets)))
               (implies (equal (mv-nth 0 r) :ok)
                        (and (equal (fn-ockp-remaining tables k rest i index prev w n mtrie table
@@ -1287,19 +1400,24 @@
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-ockp-run-step-continues
                              (selfp (eql k 2)) (mtrie (if (eql k 3) mtrie nil))
-                             (count (fn-ockp-count counts k)) (buf fn-octets))
+                             (count (fn-ockp-count counts k)) (buf fn-octets)
+                             (b (fn-ockp-batch-rows rest i b bytes (eql k 2) (if (eql k 3) mtrie nil)
+                                                    n table (+ (- w) (len fn-octets)))))
                   (:instance fn-ockp-run-step-ends
                              (selfp (eql k 2)) (mtrie (if (eql k 3) mtrie nil))
-                             (count (fn-ockp-count counts k)) (buf fn-octets)))
+                             (count (fn-ockp-count counts k)) (buf fn-octets)
+                             (b (fn-ockp-batch-rows rest i b bytes (eql k 2) (if (eql k 3) mtrie nil)
+                                                    n table (+ (- w) (len fn-octets))))))
             :in-theory (e/d (fn-ockp-batch)
                             (fn-ockp-remaining fn-ockp-later fn-ockp-run-remaining
                              fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames fn-scc-concat
-                             fn-sct-rows-program fn-ockp-table-rows fn-ockp-count
+                             fn-sct-rows-program fn-ockp-table-rows fn-ockp-count fn-ockp-batch-rows
                              fn-ockp-admit-frames fn-ockp-cut fn-ockp-cut-frames fn-ockp-last-frame
                              fn-ockp-chain-end fn-ockp-take fn-ockp-drop
                              fn-ockp-chunks-of-append-cut fn-ockp-frames-of-append
                              fn-ockp-cut-frames-is-cut fn-ockp-cut-frames-octets
-                             fn-ockp-last-frame-octets))))))
+                             fn-ockp-last-frame-octets fn-sccb-plan-octets fn-sccb-frame-octets
+                             fn-ockp-nthcdr-past-end nthcdr))))))
 
 ; The step fact as the rewriter meets it in the loop's induction: over
 ; `fn-ockp-step' and the state list's components, in normal form (`nth',
@@ -1314,10 +1432,10 @@
    (implies (and (natp (nth 0 pst)) (< (nth 0 pst) 4) (natp (nth 2 pst)) (natp (nth 3 pst))
                  (natp (nth 5 pst)) (<= (nth 5 pst) (len fn-octets)) (true-listp fn-octets)
                  (natp seg)
-                 (equal (mv-nth 0 (fn-ockp-step setup pst b seg s segment-bound file-bound
+                 (equal (mv-nth 0 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
                                                 fn-octets))
                         :ok))
-            (let ((r (fn-ockp-step setup pst b seg s segment-bound file-bound fn-octets)))
+            (let ((r (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets)))
               (and (equal (append (fn-sccb-plan-octets (mv-nth 1 r) (mv-nth 3 r))
                                   (fn-ockp-remaining (nth 1 setup)
                                                      (nth 0 (mv-nth 2 r)) (nth 1 (mv-nth 2 r))
@@ -1348,19 +1466,144 @@
                              fn-ockp-remaining-unfold fn-ockp-later-unfold
                              fn-ockp-remaining-at-start-k))))))
 
+
+; -----------------------------------------------------------------------------
+; The invariants carried between steps (PKT-583 (a)).  The shape the host's
+; entry checks (`fn-ockp-statep', O(1)) is preserved by an :ok step, so the
+; host's loop meets no guard violation at the *1* entry; the encodability of
+; the rows not yet encoded (`fn-ockp-state-encodablep'), established at the
+; start from the setup's one check, is preserved by every step, and a step
+; over an encodable state never refuses a row: after a :plan the pipeline's
+; only refusals are the reader's.
+
+(local
+ (defthm fn-ockp-admit-frames-total-natp
+   (implies (and (natp total)
+                 (equal (car (fn-ockp-admit-frames frames total segment-bound file-bound)) :ok))
+            (natp (nth 1 (fn-ockp-admit-frames frames total segment-bound file-bound))))
+   :hints (("Goal" :induct (fn-ockp-admit-frames frames total segment-bound file-bound)
+            :in-theory (union-theories (theory 'minimal-theory)
+                                       '(fn-ockp-admit-frames natp nth zp car-cons cdr-cons
+                                         (:executable-counterpart zp)
+                                         (:executable-counterpart nth)
+                                         (:executable-counterpart natp)))))))
+
+(local
+ (defthm fn-ockp-batch-total-natp
+   (implies (and (natp total)
+                 (equal (mv-nth 0 (fn-ockp-batch tables k rest i index prev w b bytes seg s counts n mtrie
+                                                 table total segment-bound file-bound fn-octets))
+                        :ok))
+            (natp (mv-nth 8 (fn-ockp-batch tables k rest i index prev w b bytes seg s counts n mtrie
+                                           table total segment-bound file-bound fn-octets))))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-batch)
+                                   (fn-ockp-encode-batch fn-ockp-cut-frames fn-ockp-last-frame
+                                    fn-ockp-admit-frames fn-ockp-table-rows fn-ockp-count
+                                    fn-ockp-encode-batch-is-rows-program
+                                    fn-ockp-encode-batch-ok-is-encodable
+                                    fn-sccb-slice-acc-is-slice-list fn-ockp-residue-is-nthcdr))))))
+
+(defthm fn-ockp-step-preserves-statep
+  (implies (and (fn-ockp-statep pst fn-octets) (not (fn-ockp-donep pst))
+                (true-listp fn-octets) (natp seg)
+                (equal (mv-nth 0 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets))
+                       :ok))
+           (fn-ockp-statep (mv-nth 2 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
+                                                   fn-octets))
+                           (mv-nth 3 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
+                                                   fn-octets))))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ockp-step-writes-the-remaining
+                 (:instance fn-ockp-batch-total-natp
+                            (tables (nth 1 setup)) (k (nth 0 pst)) (rest (nth 1 pst))
+                            (i (nth 2 pst)) (index (nth 3 pst)) (prev (nth 4 pst))
+                            (w (nth 5 pst)) (counts (nth 2 setup))
+                            (n (nfix (nth 5 setup))) (mtrie (nth 3 setup))
+                            (table (nth 4 setup)) (total (nth 6 pst))))
+           :in-theory (e/d (fn-ockp-step fn-ockp-statep fn-ockp-donep fn-sco-at)
+                           (nth nfix fn-ockp-batch fn-ockp-remaining fn-ockp-later
+                            fn-ockp-run-remaining fn-ockp-remaining-unfold fn-ockp-later-unfold
+                            fn-ockp-remaining-at-start-k fn-ockp-step-writes-the-remaining
+                            fn-ockp-batch-total-natp fn-scc-header fn-scc-seal fn-scc-chunks
+                            fn-scc-frames fn-scc-concat fn-sct-rows-program fn-ockp-table-rows
+                            fn-ockp-count)))))
+
+(local
+ (defthm fn-ockp-encode-batch-rest-encodable
+   (implies (fn-ockp-rows-encodablep rest)
+            (fn-ockp-rows-encodablep
+             (mv-nth 1 (fn-ockp-encode-batch rest i b bytes selfp mtrie n table fn-octets))))
+   :hints (("Goal" :induct (fn-ockp-encode-batch rest i b bytes selfp mtrie n table fn-octets)
+            :in-theory (e/d (fn-ockp-encode-batch fn-ockp-rows-encodablep)
+                            (fn-sct-renc fn-ockp-encode-batch-is-rows-program
+                             fn-ockp-encode-batch-ok-is-encodable))))))
+
+(local
+ (defthm fn-ockp-table-rows-encodable
+   (implies (fn-ockp-tables-encodablep tables)
+            (fn-ockp-rows-encodablep (fn-ockp-table-rows tables k)))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-table-rows fn-ockp-tables-encodablep
+                                    fn-ockp-rows-encodablep)
+                                   (fn-sct-tables-f fn-sct-tables-p fn-sct-tables-e
+                                    fn-sct-tables-r))))))
+
+(local
+ (defthm fn-ockp-slice-acc-true-listp
+   (implies (true-listp acc)
+            (true-listp (fn-sccb-slice-acc i n acc fn-octets)))
+   :hints (("Goal" :induct (fn-sccb-slice-acc i n acc fn-octets)
+            :in-theory (e/d (fn-sccb-slice-acc) (fn-sccb-slice-acc-is-slice-list))))))
+
+(local
+ (defthm fn-ockp-batch-preserves-encodable
+   (implies (and (fn-ockp-tables-encodablep tables) (fn-ockp-rows-encodablep rest))
+            (let ((r (fn-ockp-batch tables k rest i index prev w b bytes seg s counts n mtrie table
+                                    total segment-bound file-bound fn-octets)))
+              (and (not (equal (car r) :unencodable))
+                   (fn-ockp-rows-encodablep (mv-nth 3 r)))))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-batch)
+                                   (fn-ockp-encode-batch fn-ockp-cut-frames fn-ockp-last-frame
+                                    fn-ockp-admit-frames fn-ockp-table-rows fn-ockp-count
+                                    fn-sccb-treep fn-ockp-tables-encodablep
+                                    fn-ockp-encode-batch-is-rows-program
+                                    fn-sccb-slice-acc-is-slice-list fn-ockp-residue-is-nthcdr))))))
+
+(defthm fn-ockp-initial-state-encodable
+  (implies (fn-ockp-tables-encodablep tables)
+           (fn-ockp-state-encodablep (fn-ockp-initial-state tables fn-octets)))
+  :hints (("Goal" :in-theory (e/d (fn-ockp-initial-state fn-ockp-state-encodablep)
+                                  (fn-ockp-table-rows fn-ockp-tables-encodablep)))))
+
+(defthm fn-ockp-step-preserves-encodable
+  (implies (and (fn-ockp-tables-encodablep (fn-sco-at 1 setup))
+                (fn-ockp-state-encodablep pst))
+           (let ((r (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets)))
+             (and (not (equal (car r) :unencodable))
+                  (fn-ockp-state-encodablep (mv-nth 2 r)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ockp-batch-preserves-encodable
+                            (tables (nth 1 setup)) (k (nth 0 pst)) (rest (nth 1 pst))
+                            (i (nth 2 pst)) (index (nth 3 pst)) (prev (nth 4 pst))
+                            (w (nth 5 pst)) (counts (nth 2 setup))
+                            (n (nfix (nth 5 setup))) (mtrie (nth 3 setup))
+                            (table (nth 4 setup)) (total (nth 6 pst))))
+           :in-theory (e/d (fn-ockp-step fn-ockp-state-encodablep fn-sco-at)
+                           (nth nfix fn-ockp-batch fn-ockp-tables-encodablep
+                            fn-ockp-rows-encodablep fn-ockp-batch-preserves-encodable)))))
+
 (defthm fn-ockp-run-is-the-remaining
   (implies (and (natp (nth 0 pst)) (natp (nth 2 pst)) (natp (nth 3 pst)) (natp (nth 5 pst))
                 (<= (nth 5 pst) (len fn-octets)) (true-listp fn-octets) (natp seg)
-                (equal (mv-nth 0 (fn-ockp-run setup pst b seg s segment-bound file-bound fuel
+                (equal (mv-nth 0 (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel
                                               fn-octets))
                        :ok))
-           (equal (mv-nth 1 (fn-ockp-run setup pst b seg s segment-bound file-bound fuel
+           (equal (mv-nth 1 (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel
                                          fn-octets))
                   (fn-ockp-remaining (fn-sco-at 1 setup) (nth 0 pst) (nth 1 pst) (nth 2 pst)
                                      (nth 3 pst) (nth 4 pst) (nth 5 pst)
                                      (nfix (fn-sco-at 5 setup)) (fn-sco-at 3 setup)
                                      (fn-sco-at 4 setup) (fn-sco-at 2 setup) seg s fn-octets)))
-  :hints (("Goal" :induct (fn-ockp-run setup pst b seg s segment-bound file-bound fuel fn-octets)
+  :hints (("Goal" :induct (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel fn-octets)
            :in-theory (e/d (fn-ockp-run fn-ockp-donep fn-sco-at)
                            (nth nfix fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames
                             fn-scc-concat fn-sct-rows-program fn-ockp-table-rows fn-ockp-count
@@ -1384,7 +1627,7 @@
   (let* ((setup (fn-ockp-setup next frontier revision seg budget free))
          (tables (fn-sct-tables-of-capture next frontier revision))
          (run (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets)
-                           b seg s segment-bound file-bound fuel fn-octets)))
+                           b bytes seg s segment-bound file-bound fuel fn-octets)))
     (implies (and (fn-ockp-tables-encodablep tables)
                   (true-listp fn-octets) (natp seg)
                   (equal (mv-nth 0 run) :ok))
@@ -1401,12 +1644,40 @@
                             fn-sct-tables-r fn-ockp-tables-encodablep fn-sco-event-index
                             fn-sct-tables-treep fn-ockp-counts-are-chunk-counts)))))
 
+; The loop over an encodable state never refuses a row (its verdicts are
+; :ok, :fuel and the reader's refusals), and after a setup that did not
+; answer :unencodable neither does the run the host starts from it.  The
+; verdict is written `car' (the rewriter's form of `mv-nth 0').
+(defthm fn-ockp-run-of-encodable-never-refuses-a-row
+  (implies (and (fn-ockp-tables-encodablep (fn-sco-at 1 setup))
+                (fn-ockp-state-encodablep pst))
+           (not (equal (car (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel fn-octets))
+                       :unencodable)))
+  :hints (("Goal" :induct (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel fn-octets)
+           :in-theory (e/d (fn-ockp-run)
+                           (fn-ockp-step fn-ockp-donep fn-ockp-tables-encodablep
+                            fn-ockp-state-encodablep fn-sccb-plan-octets)))))
+
+(defthm fn-ockp-setup-not-unencodable-never-refuses-a-row
+  (let* ((setup (fn-ockp-setup next frontier revision seg budget free))
+         (tables (fn-sct-tables-of-capture next frontier revision)))
+    (implies (not (equal (car setup) :unencodable))
+             (not (equal (car (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets)
+                                           b bytes seg s segment-bound file-bound fuel fn-octets))
+                         :unencodable))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ockp-setup fn-sco-at)
+                           (nth fn-ockp-run fn-ockp-initial-state fn-ockp-tables-encodablep
+                            fn-sct-tables-of-capture fn-ockp-estimate fn-ockp-counts
+                            fn-ockp-decide fn-cei-msgid-trie fn-sco-event-index
+                            fn-ockp-state-encodablep)))))
+
 ; -----------------------------------------------------------------------------
 ; The host's entries are guard-verified (here, after the cut lemmas they
-; need): the per-step entry runs raw, and its guard is checked once per
-; step (the walk over the remaining rows' encodability is that check:
-; record section 5).  The frames the cut and the last frame produce are
-; lists of lists, which the admission's guard asks.
+; need): the per-step entry runs raw, and its guard (`fn-ockp-statep',
+; O(1)) is checked once per step at the *1* entry.  The frames the cut and
+; the last frame produce are lists of lists, which the admission's guard
+; asks.
 (local
  (defthm fn-ockp-true-list-listp-revappend
    (implies (and (true-list-listp x) (true-list-listp y))

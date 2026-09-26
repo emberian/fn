@@ -3449,6 +3449,22 @@
         {
           "kind": "theorem",
           "name": "fn-bs-read-ranges-concatenate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-one-publication-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-next-decides-by-the-rule"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-finish-binds-the-captured-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-fast-path-within-k-by-definition"
         }
       ]
     },
@@ -6716,6 +6732,26 @@
         {
           "kind": "theorem",
           "name": "fn-ockp-run-is-the-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-encode-batch-ok-is-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-of-encodable-never-refuses-a-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-setup-not-unencodable-never-refuses-a-row"
         }
       ]
     },

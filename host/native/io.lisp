@@ -2220,6 +2220,14 @@ handed to fnn-state-checkpoint-write."
   "Rows of a table per pipeline step: a work bound per scheduling step (D27),
 never a bound on the store; the file is the same at every batch size.")
 
+(defconstant +fnn-checkpoint-batch-octets+ (* 4 1024 1024)
+  "Octets per pipeline step: the step ends after the row that brings the
+publication buffer's fill to this (fn-ockp-encode-batch), so a step's
+residency is under this plus one row plus one segment's residue whatever the
+rows' sizes (gpt-6, review 2026-09-26 section 2: one record can be large).
+A work bound per step, never a bound on the store; the file is the same at
+every value.")
+
 (defun fnn-checkpoint-revision ()
   "The writer's source revision for the checkpoint's F row: the recorded one
 (fnn-source-revision), or \"unknown\" on an image that records none (a
@@ -2249,6 +2257,7 @@ which the process is killed, or NIL."
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
       (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
+                              +fnn-checkpoint-batch-octets+
                               segment sequence segment-bound file-bound st)))
         ;; fnn-call answers the multiple-value list: VERDICT FRAMES STATE'
         ;; and the stobj.
@@ -2257,8 +2266,10 @@ which the process is killed, or NIL."
         (destructuring-bind (verdict frames next &rest stobj) answer
           (declare (ignore stobj))
           (unless (eq verdict :ok)
-            (fnn-refuse-io "the checkpoint pipeline refused a frame the open would refuse: ~a"
-                           verdict))
+            ;; (:refused REASON): a frame the open would refuse; :unencodable:
+            ;; a row the codec cannot write (unreachable after a setup that
+            ;; did not say so: fn-ockp-setup-not-unencodable-never-refuses-a-row)
+            (fnn-refuse-io "the checkpoint pipeline refused by name: ~a" verdict))
           (unless (or (null frames) (fnn-plan-p frames st))
             (fnn-fault "ACL2 returned a malformed checkpoint step"))
           (fnn-plan-write-all fd frames st)

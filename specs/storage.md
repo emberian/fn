@@ -397,10 +397,26 @@ stays authoritative, and the file may be deleted at any time.
   open of the whole history (`fn-sn-recover-from-checkpoint-equals-full-recover`).
   Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
   or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
-  suffix-exceeds-k).
+  suffix-exceeds-k). **K is the fast path's threshold, not a guaranteed
+  maximum suffix** (decided 2026-09-26, gpt-6's review section 2; ember may
+  choose the guarantee later): a suffix within K is served from the
+  checkpoint, a longer one is the full replay, the honest fallback to the
+  same state (`fn-ock-fast-path-within-k-by-definition`,
+  books/owner-checkpoint-open.lisp). The suffix a publication leaves is
+  about the commits made while it ran, which no due rule can bound; when it
+  exceeds K the remedies are a cheaper publication, reserved service or
+  admission limiting, never a second capture meanwhile.
 - **Not yet.** K0 coverage of the publish program's root rename is open.
   (The owner opens from the checkpoint and publishes at K/2 since
-  owner-checkpoint-open, PRF-083.)
+  owner-checkpoint-open, PRF-083. The recovery-lag policy since
+  checkpoint-pipeline-5, `fn-ock-publication-next`: ONE publication in
+  flight, a due observation meanwhile ONE coalesced request (recorded, and
+  nothing else: no second capture, no second estimate, no cancellation of
+  the publication running), and when it finishes the owner decides again at
+  the newest committed frontier by the same rule, at once rather than at
+  the next accept; the durable S a finish records is the count the capture
+  was handed, never the count when the write returned
+  (`fn-ock-one-publication-in-flight`, `fn-ock-finish-binds-the-captured-prefix`).)
 
 STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.

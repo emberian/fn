@@ -44,6 +44,9 @@
       ; the host's per-step entry, its step, and the reader's load (checkpoint-pipeline-4)
       (eq (symbol-class 'fn-ockp-batch (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ockp-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ockp-statep (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ockp-initial-state (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ockp-donep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sct-load (w state)) :common-lisp-compliant)))
 
 (defconst *sctt-events*
@@ -105,8 +108,8 @@
                           (cons (list header a (+ a (len chunk)) trailer) acc)
                           (1- fuel) fn-octets))))))
 
-(defun sctt-run (b budget free)
-  ; (VERDICT-OF-SETUP OCTETS STEPS LOADED)
+(defun sctt-run (b bytes budget free)
+  ; (VERDICT-OF-SETUP OCTETS STEPS LOADED); B rows and BYTES octets per step
   (declare (xargs :guard (and (natp b) (natp budget)) :verify-guards nil))
   (with-local-stobj fn-octets
     (mv-let (result fn-octets)
@@ -115,8 +118,8 @@
         (if (not (and (consp verdict) (eq (car verdict) :plan)))
             (mv (list verdict nil 0 nil) fn-octets)
           (mv-let (v octets fn-octets)
-            (fn-ockp-run setup (fn-ockp-initial-state (cadr setup) fn-octets) b *sctt-seg* *sctt-s*
-                         100000 100000000 1000 fn-octets)
+            (fn-ockp-run setup (fn-ockp-initial-state (cadr setup) fn-octets) b bytes *sctt-seg*
+                         *sctt-s* 100000 100000000 1000 fn-octets)
             (let ((fn-octets (fn-octets-clear fn-octets)))
               (mv-let (plan fn-octets)
                 (sctt-frames-of octets *fn-scc-segment-header-octets*
@@ -133,17 +136,21 @@
 
 ; KEYSTONE witness (PRF-199): at batch size 1 and 3 and 1000 the pipeline's
 ; octets are the file the tables book specifies, byte for byte; the host's
-; plan of them loads to the tables; the tables mean the capture.
+; plan of them loads to the tables; the tables mean the capture.  The octet
+; bound per step: unbounded (1000000), one octet (every step ends after its
+; first row) and the segment size.
 (assert-event
- (let ((r (sctt-run 1 (len (sctt-file)) *sctt-free*)))
+ (let ((r (sctt-run 1 1000000 (len (sctt-file)) *sctt-free*)))
    (and (equal (car r) (list :plan (len (sctt-file))))
         (equal (cadr r) (sctt-file))
         (eq (caddr r) :ok)
         (equal (cadddr r) (list :ok *sctt-tables*))
         (equal (fn-sct-capture-of-tables (cadr (cadddr r))) *sctt-capture*))))
 (assert-event
- (and (equal (cadr (sctt-run 3 (len (sctt-file)) *sctt-free*)) (sctt-file))
-      (equal (cadr (sctt-run 1000 (len (sctt-file)) *sctt-free*)) (sctt-file))))
+ (and (equal (cadr (sctt-run 3 1000000 (len (sctt-file)) *sctt-free*)) (sctt-file))
+      (equal (cadr (sctt-run 1000 1000000 (len (sctt-file)) *sctt-free*)) (sctt-file))
+      (equal (cadr (sctt-run 1000 1 (len (sctt-file)) *sctt-free*)) (sctt-file))
+      (equal (cadr (sctt-run 1000 *sctt-seg* (len (sctt-file)) *sctt-free*)) (sctt-file))))
 
 ; The refusal at the budget boundary, both sides (PRF-200): one octet
 ; below the file's length is deferred by name with both numbers and NOTHING
@@ -151,10 +158,10 @@
 ; figure less the reserve is below the estimate.
 (assert-event
  (let* ((n (len (sctt-file)))
-        (below (sctt-run 1 (1- n) *sctt-free*))
-        (unobserved (sctt-run 1 (+ n 1000) nil))
-        (space (sctt-run 1 (+ n 1000) (+ n (fn-smr-reserve-octets) -1)))
-        (enough (sctt-run 1 (+ n 1000) (+ n (fn-smr-reserve-octets)))))
+        (below (sctt-run 1 1000000 (1- n) *sctt-free*))
+        (unobserved (sctt-run 1 1000000 (+ n 1000) nil))
+        (space (sctt-run 1 1000000 (+ n 1000) (+ n (fn-smr-reserve-octets) -1)))
+        (enough (sctt-run 1 1000000 (+ n 1000) (+ n (fn-smr-reserve-octets)))))
    (and (equal (car below) (list :deferred :exceeds-budget n (1- n)))
         (equal (cadr below) nil)
         (equal (car space) (list :deferred :exceeds-space n (1- n)))
@@ -225,6 +232,138 @@
         (equal (fn-sccr-admit-segment h2 0 1000 100000) (list :refused :schema))
         (equal (fn-sco-select-named :schema 0 5 10) (list :full-replay :checkpoint-schema))
         (equal (fn-sco-select-named :ok 3 5 10) (list :checkpoint 3)))))
+
+; -----------------------------------------------------------------------------
+; The invariants carried between steps (checkpoint-pipeline-5, PKT-583 (a)).
+; The host's entry checks fn-ockp-statep (O(1)) per step and nothing else;
+; the rows' encodability is established once by the setup and preserved by
+; every step.  A witness from the ground capture: the initial state is
+; encodable and well shaped, the first step answers :ok, its state is both
+; again; a state holding a row the codec refuses (a natural of 2^2040) makes
+; the step answer :unencodable with nothing written.
+
+(defun sctt-step (setup pst)
+  ; (VERDICT FRAMES STATE' STATEP' ENCODABLE') over a fresh buffer
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (result fn-octets)
+      (mv-let (verdict frames pst2 fn-octets)
+        (fn-ockp-step setup pst 1000 1000000 *sctt-seg* *sctt-s* 100000 100000000 fn-octets)
+        (mv (list verdict frames pst2 (fn-ockp-statep pst2 fn-octets) (fn-ockp-state-encodablep pst2))
+            fn-octets))
+      result)))
+
+(defconst *sctt-setup* (fn-ockp-setup *sctt-capture* 9 "rev-test" *sctt-seg* 100000000 *sctt-free*))
+
+(defun sctt-initial (tables)
+  ; (STATE STATEP) of the pipeline's start over a fresh buffer
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (mv (list (fn-ockp-initial-state tables fn-octets)
+                (fn-ockp-statep (fn-ockp-initial-state tables fn-octets) fn-octets))
+          fn-octets)
+      r)))
+
+(defun sctt-run-from (setup pst)
+  ; (VERDICT OCTETS) of the loop from a given state over a fresh buffer
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (mv-let (v octets fn-octets)
+        (fn-ockp-run setup pst 1000 1000000 *sctt-seg* *sctt-s* 100000 100000000 10 fn-octets)
+        (mv (list v octets) fn-octets))
+      r)))
+(defconst *sctt-bad-capture* (fn-sco-capture *sctt-configs* (list (expt 2 2040))))
+(defconst *sctt-bad-tables* (fn-sct-tables-of-capture *sctt-bad-capture* 9 "r"))
+; A hand-made setup over the unencodable tables (fn-ockp-setup refuses them,
+; so the step is never reached this way in the composition: the witness
+; for the hypothesis that says so).
+(defconst *sctt-bad-setup*
+  (list (list :plan 0) *sctt-bad-tables* (list 1 1 1 1) nil (fn-sco-event-index *sctt-bad-capture*)
+        1 0))
+
+(assert-event
+ (and (equal (car *sctt-setup*) (list :plan (len (sctt-file))))
+      (fn-ockp-tables-encodablep (cadr *sctt-setup*))
+      (let* ((init (sctt-initial (cadr *sctt-setup*)))
+             (pst (car init))
+             (r (sctt-step *sctt-setup* pst)))
+        (and (cadr init)
+             (fn-ockp-state-encodablep pst)
+             (eq (car r) :ok) (consp (cadr r))
+             (nth 3 r) (nth 4 r)))
+      ; a row the codec refuses: :unencodable, nothing written
+      (let ((r (sctt-step *sctt-setup* (list 1 (list (expt 2 2040)) 0 0 *fn-scc-genesis* 0 0))))
+        (and (eq (car r) :unencodable) (null (cadr r))))
+      ; the run from such a state answers :unencodable
+      (equal (sctt-run-from *sctt-setup* (list 1 (list (expt 2 2040)) 0 0 *fn-scc-genesis* 0 0))
+             (list :unencodable nil))
+      ; unencodable tables behind an encodable state: the run's end hands the
+      ; step the E table the codec refuses, so the next state is not encodable
+      (not (fn-ockp-tables-encodablep *sctt-bad-tables*))
+      (let ((r (sctt-step *sctt-bad-setup* (list 1 nil 0 0 *fn-scc-genesis* 0 0))))
+        (and (eq (car r) :ok) (not (nth 4 r))))))
+
+; A state that is not well shaped (K a string; one row per step so the run
+; continues and K is carried) leaves the next state not well shaped.  A ground theorem, not an evaluation: the
+; call is outside the step's guard (fn-ockp-statep), so a proof evaluates it
+; by the logic where an evaluation refuses (as sctt-decide-without-natp-
+; estimate-witness).
+(defthm sctt-step-without-shape-witness
+  (let ((r (fn-ockp-step *sctt-setup* (list "a" (list nil nil) 0 0 *fn-scc-genesis* 0 0)
+                         1 1000000 *sctt-seg* *sctt-s* 100000 100000000 nil)))
+    (and (not (fn-ockp-statep (list "a" (list nil nil) 0 0 *fn-scc-genesis* 0 0) nil))
+         (equal (car r) :ok)
+         (not (fn-ockp-statep (mv-nth 2 r) (mv-nth 3 r)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ockp-step fn-ockp-statep))))
+
+; fn-ockp-step-preserves-encodable without its state hypothesis (the
+; :unencodable witness above), and without its tables hypothesis (the
+; unencodable tables behind an encodable state).
+(must-fail
+ (defthm sctt-r-step-preserves-encodable-without-state
+   (implies (fn-ockp-tables-encodablep (fn-sco-at 1 setup))
+            (let ((r (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets)))
+              (and (not (equal (car r) :unencodable))
+                   (fn-ockp-state-encodablep (mv-nth 2 r)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-ockp-step fn-ockp-step-preserves-encodable)))))
+(must-fail
+ (defthm sctt-r-step-preserves-encodable-without-tables
+   (implies (fn-ockp-state-encodablep pst)
+            (fn-ockp-state-encodablep
+             (mv-nth 2 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-ockp-step fn-ockp-step-preserves-encodable)))))
+
+; fn-ockp-step-preserves-statep without its shape hypothesis (the string K
+; above).
+(must-fail
+ (defthm sctt-r-step-preserves-statep-without-shape
+   (fn-ockp-statep (mv-nth 2 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
+                                           fn-octets))
+                   (mv-nth 3 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
+                                           fn-octets)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-ockp-step fn-ockp-step-preserves-statep)))))
+
+; fn-ockp-run-of-encodable-never-refuses-a-row without its state hypothesis
+; (the run above answers :unencodable).
+(must-fail
+ (defthm sctt-r-run-never-refuses-without-state
+   (implies (fn-ockp-tables-encodablep (fn-sco-at 1 setup))
+            (not (equal (car (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel
+                                          fn-octets))
+                        :unencodable)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-ockp-run fn-ockp-run-of-encodable-never-refuses-a-row
+                                fn-ockp-setup-not-unencodable-never-refuses-a-row)))))
 
 ; -----------------------------------------------------------------------------
 ; Per hypothesis (each must-fail closes the codec in its hint).
