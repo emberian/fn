@@ -385,12 +385,14 @@ representation of the retained history dominates.
 The thread stacks are the reservation's second part
 (`books/heap-reservation.lisp` `fn-heap-reserve-decide`, called by
 `host/native/heap.lisp` `fnn-heap-reservation` from the `heap -- ARGV` probe).
-SBCL reserves for every thread its control stack and about 2.5 MiB of runtime
+SBCL reserves for every thread its control stack and 2.5 to 3 MiB of runtime
 areas; the image's own launcher gave every thread 64 MiB, so a node with 32
 connections reserved about 4 GB beside its heap, and on OpenBSD, where a
 reservation counts against the login class's datasize, the fourteenth thread
-was refused at 1,536 MiB. The figure is the heap-figure heap plus THREADS x
-(STACK + 3 MiB): THREADS the run's `max-connections`, the 16 control clients
+was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
+image's own mappings outside the dynamic space (at most the core file), plus
+THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
+THREADS the run's `max-connections`, the 16 control clients
 and 12 fixed threads; STACK 512 KiB plus 40 octets for each line the
 profile's largest article can have (half its octets, plus 1,024 header lines),
 from the measured 144 KiB plus 32 octets per line of the served path's

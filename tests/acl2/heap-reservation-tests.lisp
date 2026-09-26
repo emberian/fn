@@ -27,6 +27,7 @@
                    (fn-heap-article-lines-bound profile)))
              (* 1024 (fn-heap-reserve-stack-kib r)))
          (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+                (nfix core)
                 (* (fn-heap-reserve-threads r)
                    (+ (* 1024 (fn-heap-reserve-stack-kib r))
                       *fn-heap-thread-runtime-octets*)))
@@ -43,22 +44,22 @@
 ; -----------------------------------------------------------------------------
 ; The decisions.  The small preset on the OpenBSD datasize with the default
 ; 32 connections: heap-figure's 814 MB, 60 threads of a 1,192 KiB stack
-; (512 KiB + 40 x (16,384 + 1,024) lines), 1,064 MB in all.  With the old
-; 64 MiB stacks the same threads reserved 4,020 MB beside the heap.
+; (512 KiB + 40 x (16,384 + 1,024) lines), and the core once more: 1,308 MB in all.  With the old
+; 64 MiB stacks the same threads reserved 4,080 MB beside the heap.
 (assert! (equal (fn-heap-stack-kib *fn-heap-small-profile*) 1192))
 (assert! (equal (fn-heap-thread-count 32) 60))
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         (list *hrt-datasize*) 32)
                 '(:heap 814 "small" 1536 1192 60)))
 (assert! (< *hrt-datasize*
-            (fn-heap-reservation-octets 814 (* 64 1024) 60)))
+            (fn-heap-reservation-octets 814 *hrt-core* (* 64 1024) 60)))
 ; The threads push it past a machine the heap alone fits.
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                      (list (* 900 *fn-heap-mib*))))
                 :heap))
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         (list (* 900 *fn-heap-mib*)) 32)
-                '(:refused :machine-cannot-hold-threads 1064 900)))
+                '(:refused :machine-cannot-hold-threads 1308 900)))
 ; The default profile's 16 MiB article: heap-figure refuses it first.
 (assert! (equal (fn-heap-stack-kib *fn-bs-profile-defaults*) 328232))
 (assert! (equal (car (fn-heap-reserve-decide *fn-bs-profile-defaults* *hrt-core*
@@ -151,7 +152,7 @@
 ; The refusal is exact at the boundary: the machine exactly the reservation
 ; is accepted, one octet less is refused.
 (defconst *hrt-exact*
-  (fn-heap-reservation-octets 814 1192 60))
+  (fn-heap-reservation-octets 814 *hrt-core* 1192 60))
 (assert! (equal (car (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core*
                                              *hrt-nursery* (list *hrt-exact*) 32))
                 :heap))
@@ -168,12 +169,12 @@
 (assert! (equal (fn-heap-reserve-report-line '(:heap 814 "small" 1536 1192 60))
                 "heap=814 MB profile=small machine=1536 MB stack=1192 KB threads=60"))
 (assert! (equal (fn-heap-reserve-report-line
-                 '(:refused :machine-cannot-hold-threads 1064 900))
-                "refused machine-cannot-hold-threads reservation=1064 MB machine=900 MB"))
+                 '(:refused :machine-cannot-hold-threads 1308 900))
+                "refused machine-cannot-hold-threads reservation=1308 MB machine=900 MB"))
 (assert! (equal (fn-heap-reserve-report-line
                  '(:refused :machine-cannot-hold-profile 2671 2048))
                 "refused machine-cannot-hold-profile heap=2671 MB machine=2048 MB"))
 (assert! (equal (fn-heap-decision-exit-code
-                 '(:refused :machine-cannot-hold-threads 1064 900))
+                 '(:refused :machine-cannot-hold-threads 1308 900))
                 1))
 (assert! (equal (fn-heap-decision-exit-code '(:heap 814 "small" 1536 1192 60)) 0))

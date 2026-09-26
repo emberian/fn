@@ -32,10 +32,17 @@
 ; publisher, the outbound feed and pull workers, the control accept loop,
 ; the TLS, implicit-TLS and extra plain listeners; twelve with two spare.
 ;
+; THE RUNTIME per thread beyond the control stack: 2,596 KiB on hbox (SBCL
+; 2.6.8, from VmSize), at most 3 MiB on OpenBSD (SBCL 2.6.3: 64 more threads
+; of a 1 MiB stack per 256 MiB more datasize); the figure takes 4 MiB.  THE
+; IMAGE's own mappings outside the dynamic space (static, read-only and text
+; spaces, 80 MB of the lane's 192 MB core) are at most the core file, which
+; the reservation counts once more beside heap-figure's heap.
+;
 ; The decision (`fn-heap-reserve-decide'): heap-figure's decision, and when
 ; that accepts an admitted profile, the stack for its largest article and
-; the total HEAP + THREADS x (STACK + RUNTIME), refused by name when it
-; exceeds the machine (the least observation, as heap-figure's).
+; the total HEAP + CORE + THREADS x (STACK + RUNTIME), refused by name when
+; it exceeds the machine (the least observation, as heap-figure's).
 ;
 ;   (:heap MB WORD MACHINE-MB STACK-KB THREADS)
 ;   (:refused REASON MB MACHINE-MB)      heap-figure's refusals, unchanged
@@ -50,7 +57,7 @@
 (defconst *fn-heap-stack-base-octets* (* 512 1024))
 (defconst *fn-heap-stack-octets-per-line* 40)
 (defconst *fn-heap-stack-header-lines* 1024)
-(defconst *fn-heap-thread-runtime-octets* (* 3 *fn-heap-mib*))
+(defconst *fn-heap-thread-runtime-octets* (* 4 *fn-heap-mib*))
 (defconst *fn-heap-fixed-threads* 12)
 ; The stack when no store profile is named (help, --version): SBCL's own
 ; default, 2 MiB.
@@ -81,9 +88,10 @@
   (+ (nfix connections) (fn-native-control-max-active-clients)
      *fn-heap-fixed-threads*))
 
-(defun fn-heap-reservation-octets (mb stack-kib threads)
+(defun fn-heap-reservation-octets (mb core stack-kib threads)
   (declare (xargs :guard t))
   (+ (* *fn-heap-mib* (nfix mb))
+     (nfix core)
      (* (nfix threads) (+ (* 1024 (nfix stack-kib)) *fn-heap-thread-runtime-octets*))))
 
 (defthm fn-heap-decide-true-listp
@@ -107,7 +115,7 @@
            (let* ((stack (fn-heap-stack-kib profile))
                   (threads (fn-heap-thread-count connections))
                   (total (fn-heap-reservation-octets (fn-heap-decision-mb d)
-                                                     stack threads))
+                                                     core stack threads))
                   (machine (fn-heap-machine-octets observations)))
              (if (<= total machine)
                  (list :heap (fn-heap-decision-mb d) (nth 2 d) (nth 3 d)
@@ -150,7 +158,7 @@
              (equal (fn-heap-reserve-decide profile core nursery observations
                                             connections)
                     (let ((total (fn-heap-reservation-octets
-                                  (fn-heap-decision-mb d)
+                                  (fn-heap-decision-mb d) core
                                   (fn-heap-stack-kib profile)
                                   (fn-heap-thread-count connections))))
                       (if (<= total (fn-heap-machine-octets observations))
@@ -200,6 +208,7 @@
                             (fn-heap-article-lines-bound profile)))
                       (* 1024 (fn-heap-reserve-stack-kib r)))
                   (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+                         (nfix core)
                          (* (fn-heap-reserve-threads r)
                             (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                *fn-heap-thread-runtime-octets*)))
