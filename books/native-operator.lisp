@@ -366,6 +366,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; `store reclaim [--dry-run]': content reclamation's durable step (D13,
 ; STO-017, books/store-reclaim-pack.lisp).  What it removes is
 ; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
+; A Message-ID as a command word: "<", printable US-ASCII, ">" (RFC 3977
+; section 3.6), within the store's Message-ID bound (fn-record-msgidp).
+(defun fn-nop-msgid-wordp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (fn-record-msgidp word)
+       (<= 3 (length word))
+       (equal (char word 0) #\<)
+       (equal (char word (1- (length word))) #\>)))
+
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
   (cond ((and (consp words) (equal (car words) "upgrade-profile"))
@@ -411,7 +421,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ; re-send meets the login or posting gate (PKT-164).
         ((and (consp words) (equal (car words) "inspect")
               (consp (cdr words)) (null (cddr words))
-              (stringp (cadr words)) (fn-record-msgidp (cadr words)))
+              (fn-nop-msgid-wordp (cadr words)))
          (fn-nop-result :accepted :plan "store" config
                         (list :inspect (cadr words))))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
