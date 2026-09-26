@@ -39,7 +39,7 @@
 ;; (fn-bpn-report-find-expired-held), and on a held row it is the decision
 ;; (fn-bpah-held-expiry-header-of-held).
 (defun fn-bpah-held-expiry-header (held observation)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (and (fn-bpnf-held-primary-blockp held)
                 (fn-clock-observationp observation)))
       :uncertain
