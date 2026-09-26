@@ -2760,6 +2760,32 @@
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-094",
+      "title": "A friend redeems an invitation code over TLS, logs in as the account, and the code is refused a second time, across a crash of the inviter",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-034"
+      ],
+      "steps": [
+        "Node A (the operator) runs with a protected listener; `operator CONFIG account invite` prints one code.",
+        "F's client opens TLS (STARTTLS) and sends XREDEEM CODE robin, then a password.",
+        "A is killed between the publication of the redeem and the reply, and restarted; F retries the same XREDEEM.",
+        "F logs in with AUTHINFO USER robin / PASS and posts a signed article; another client redeems the same code as mallory."
+      ],
+      "expected": [
+        "XREDEEM before STARTTLS is 483; 381 then 281 after it.",
+        "The retry after the crash is 281 (already redeemed by this login) and the configuration holds one redeemed row.",
+        "AUTHINFO answers 281 and the post is accepted as the account's principal; the second redeem is 482."
+      ],
+      "implementation": {
+        "test": "tests.test_native_friends_accounts",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/friends-accounts-2026-09-26.md"
+      }
     }
   ]
 }

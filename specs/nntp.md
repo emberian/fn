@@ -779,6 +779,68 @@ ownership and stable `MSG_PEEK`/consume behavior are explicit scheduling and
 platform premises; a short, changed or failed consume closes the connection
 without replaying the logical transition.
 
+### Invitation-code accounts (NNT-034)
+
+NNT-034: An operator's one-use invitation code lets a friend make their own AUTHINFO account over TLS, bound once and only once across a crash, without the operator editing auth.toml or restarting
+
+An account for a friend is made by the friend, from a code the operator hands
+them, and lands in the configuration the owner publishes live. None of this is
+an RFC requirement: `XREDEEM` is **an fn extension**, not RFC 4643's AUTHINFO
+(section 2.3 defines USER/PASS and nothing here overloads it); the reply codes
+reuse RFC 4643's 381, 281, 482 and 483 in the classes RFC 3977 section 3.2
+gives them.
+
+- **The code.** `operator CONFIG account invite [--expires SECONDS]` prints one
+  code, once, and stages the pending row. The code is never stored: the row is
+  keyed on the crypto seam's tagged SHA-256 digest of it
+  (`fn-acct-code-digest`, tag `"fn-account-code-v1"`). That a code the
+  operator did not print finds no row is the seam's preimage resistance
+  (A-CRYPTO), not a theorem here.
+- **The slot.** The configuration's tenth slot `accounts` (books/config.lisp
+  `fn-cfg-accounts`) holds `(DIGEST ISSUER EXPIRY 0)` pending and
+  `(DIGEST LOGIN VERIFIER 1)` redeemed; VERIFIER is the text of the
+  books/auth-secret.lisp verifier (salt and digest, 96 hexadecimal
+  characters; `fn-acct-text-verifier-of-verifier-text` is the round trip). The
+  kinds are `:account-invite` (code 15) and `:account-redeem` (code 16). A
+  row is never removed.
+- **Admission** (`fn-cfg-delta-reason`): an invite of a digest that keys a row
+  is `:account-digest-reused`; a redeem of no row is `:account-unknown`, of a
+  pending row whose expiry the record's stamp does not lie wholly before (or
+  a stamp without a wall clock) `:account-expired`, under a login a redeemed
+  row holds `:account-login-taken`, and of a redeemed row
+  `:account-redeemed` unless it is the identical row.
+- **Once only** (PRF-164): a redeemed row is the same row after every later
+  acceptable record the owner replays (`fn-acct-redeemed-row-stays-across-replay`);
+  the redeem plan (`fn-acct-redeem-plan`, a pure function of the
+  configuration value and the request) plans a redeem only of a delta the
+  configuration admits (`fn-acct-redeem-plan-is-admitted-and-redeems`), and
+  after that delta is published the same request plans "already redeemed by
+  this login" and stages nothing
+  (`fn-acct-redeem-plan-after-its-redeem-is-already-redeemed`: the crash cut
+  after `fn-ocl-publish`'s root barrier and before the reply). Another login
+  is refused (`fn-acct-redeem-plan-refuses-another-login`); an unknown code
+  stages nothing (`fn-acct-redeem-plan-of-an-unknown-code-stages-nothing`).
+- **The credential table.** One table, two producers: auth.toml's credentials
+  read at start, then one credential per redeemed row of the configuration a
+  connection pins at open (books/nntp-auth.lisp
+  `fn-auth-config-with-accounts`, called by books/owner-config.lisp
+  `fn-ocfg-open`). auth.toml wins a login both name. A redeemed account's
+  credential is its login, the login's local principal
+  (`fn-acct-local-principal`, the principal `fn principal set-password`
+  gives a login without `--principal`), the row's verifier and the posting
+  allowance; its AUTHINFO USER/PASS then binds exactly that principal
+  (`fn-auth-config-with-accounts-finds-the-redeemed-credential` with
+  `fn-auth-step-principal-login-binds-exactly-the-unique-match`). The
+  login-to-signing-key binding is not this section's (specs/identity.md).
+- **The wire** (designed; PKT-439): `XREDEEM CODE NAME` answers `381` (send
+  the password); the next line is the password, answered `281` once the
+  redeem is published (or already published for this login and password) and
+  `482` refused, with the reason class in the log and never the code or its
+  digest. Before a TLS layer is active on a listener that requires one, it is
+  `483`, AUTHINFO's rule above. It is refused `502` on an authenticated
+  connection. The salt is the host's observation, through the path
+  `fnn-native-auth-admin-csprng-salt` uses; ACL2 computes the verifier.
+
 ### The posting allowance
 
 Posting is the AUTHENTICATED PRINCIPAL's, not the connection's.

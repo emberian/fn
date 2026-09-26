@@ -337,6 +337,11 @@
   (fn-auth-cred-listp (fn-auth-account-creds rows))
   :hints (("Goal" :in-theory (disable fn-auth-credp fn-auth-account-cred))))
 
+(local (defthm fn-auth-cred-listp-is-true-listp
+  (implies (fn-auth-cred-listp x) (true-listp x))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (disable fn-auth-credp)))))
+
 (defun fn-auth-config-with-accounts (acfg v)
   ; The snapshot the host-called opener pins (fn-ocfg-open).
   (declare (xargs :guard t))
@@ -361,10 +366,12 @@
                                   (fn-auth-cred-listp fn-auth-account-creds)))))
 
 (local (defthm fn-auth-find-cred-of-append
-  (equal (fn-auth-find-cred name (append a b))
-         (if (fn-auth-find-cred name a)
-             (fn-auth-find-cred name a)
-           (fn-auth-find-cred name b)))))
+  (implies (fn-auth-cred-listp a)
+           (equal (fn-auth-find-cred name (append a b))
+                  (if (fn-auth-find-cred name a)
+                      (fn-auth-find-cred name a)
+                    (fn-auth-find-cred name b))))
+  :hints (("Goal" :in-theory (enable fn-auth-credp fn-auth-cred-shapep)))))
 
 ; KEYSTONE (the snapshot).  A login auth.toml does not name is looked up in
 ; the redeemed rows: the credential AUTHINFO USER/PASS checks against is the
