@@ -188,8 +188,11 @@
 (defthm fn-ockp-rows-len-natp
   (implies (natp acc) (natp (fn-ockp-rows-len rows i selfp mtrie n table acc)))
   :rule-classes :type-prescription
+  ; the length theorem just above would rewrite the sum away and backchain
+  ; into the rows' shape; the type comes from the accumulator alone
   :hints (("Goal" :induct (fn-ockp-rows-len rows i selfp mtrie n table acc)
-           :in-theory (e/d (fn-ockp-rows-len) (fn-ockp-len-acc)))))
+           :in-theory (e/d (fn-ockp-rows-len)
+                           (fn-ockp-len-acc fn-ockp-rows-len-is-len-rows-program)))))
 
 (in-theory (disable fn-ockp-len-acc fn-ockp-rows-len))
 
@@ -1298,6 +1301,53 @@
                              fn-ockp-cut-frames-is-cut fn-ockp-cut-frames-octets
                              fn-ockp-last-frame-octets))))))
 
+; The step fact as the rewriter meets it in the loop's induction: over
+; `fn-ockp-step' and the state list's components, in normal form (`nth',
+; `nfix' kept closed so that `(nfix (nth 5 setup))' matches itself; `nfix'
+; opens only where a natural is known).
+(local
+ (defthm fn-ockp-nfix-when-natp
+   (implies (natp x) (equal (nfix x) x))))
+
+(local
+ (defthm fn-ockp-step-writes-the-remaining
+   (implies (and (natp (nth 0 pst)) (< (nth 0 pst) 4) (natp (nth 2 pst)) (natp (nth 3 pst))
+                 (natp (nth 5 pst)) (<= (nth 5 pst) (len fn-octets)) (true-listp fn-octets)
+                 (natp seg)
+                 (equal (mv-nth 0 (fn-ockp-step setup pst b seg s segment-bound file-bound
+                                                fn-octets))
+                        :ok))
+            (let ((r (fn-ockp-step setup pst b seg s segment-bound file-bound fn-octets)))
+              (and (equal (append (fn-sccb-plan-octets (mv-nth 1 r) (mv-nth 3 r))
+                                  (fn-ockp-remaining (nth 1 setup)
+                                                     (nth 0 (mv-nth 2 r)) (nth 1 (mv-nth 2 r))
+                                                     (nth 2 (mv-nth 2 r)) (nth 3 (mv-nth 2 r))
+                                                     (nth 4 (mv-nth 2 r)) (nth 5 (mv-nth 2 r))
+                                                     (nfix (nth 5 setup)) (nth 3 setup)
+                                                     (nth 4 setup) (nth 2 setup) seg s
+                                                     (mv-nth 3 r)))
+                          (fn-ockp-remaining (nth 1 setup) (nth 0 pst) (nth 1 pst)
+                                             (nth 2 pst) (nth 3 pst) (nth 4 pst) (nth 5 pst)
+                                             (nfix (nth 5 setup)) (nth 3 setup)
+                                             (nth 4 setup) (nth 2 setup) seg s
+                                             fn-octets))
+                   (natp (nth 0 (mv-nth 2 r))) (natp (nth 2 (mv-nth 2 r)))
+                   (natp (nth 3 (mv-nth 2 r))) (natp (nth 5 (mv-nth 2 r)))
+                   (<= (nth 5 (mv-nth 2 r)) (len (mv-nth 3 r))) (true-listp (mv-nth 3 r)))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-ockp-batch-writes-the-remaining
+                             (tables (nth 1 setup)) (k (nth 0 pst)) (rest (nth 1 pst))
+                             (i (nth 2 pst)) (index (nth 3 pst)) (prev (nth 4 pst))
+                             (w (nth 5 pst)) (counts (nth 2 setup))
+                             (n (nfix (nth 5 setup))) (mtrie (nth 3 setup))
+                             (table (nth 4 setup)) (total (nth 6 pst))))
+            :in-theory (e/d (fn-ockp-step fn-sco-at)
+                            (nth nfix fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames
+                             fn-scc-concat fn-sct-rows-program fn-ockp-table-rows fn-ockp-count
+                             fn-ockp-batch fn-ockp-remaining fn-ockp-later fn-ockp-run-remaining
+                             fn-ockp-remaining-unfold fn-ockp-later-unfold
+                             fn-ockp-remaining-at-start-k))))))
+
 (defthm fn-ockp-run-is-the-remaining
   (implies (and (natp (nth 0 pst)) (natp (nth 2 pst)) (natp (nth 3 pst)) (natp (nth 5 pst))
                 (<= (nth 5 pst) (len fn-octets)) (true-listp fn-octets) (natp seg)
@@ -1310,22 +1360,13 @@
                                      (nth 3 pst) (nth 4 pst) (nth 5 pst)
                                      (nfix (fn-sco-at 5 setup)) (fn-sco-at 3 setup)
                                      (fn-sco-at 4 setup) (fn-sco-at 2 setup) seg s fn-octets)))
-  ; The step lemma is used in every case the induction produces (the step
-  ; is the one that needs it; ACL2 numbers the cases, not the caller).
   :hints (("Goal" :induct (fn-ockp-run setup pst b seg s segment-bound file-bound fuel fn-octets)
-           :in-theory (e/d (fn-ockp-run fn-ockp-step fn-ockp-donep fn-sco-at)
-                           (fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames fn-scc-concat
-                            fn-sct-rows-program fn-ockp-table-rows fn-ockp-count fn-ockp-batch
-                            fn-ockp-remaining fn-ockp-later fn-ockp-run-remaining
-                            fn-ockp-remaining-unfold fn-ockp-later-unfold
-                            fn-ockp-remaining-at-start-k)))
-          (and (equal (car id) '(0 1)) (equal (cddr id) 0)
-               '(:use ((:instance fn-ockp-batch-writes-the-remaining
-                                  (tables (fn-sco-at 1 setup)) (k (nth 0 pst)) (rest (nth 1 pst))
-                                  (i (nth 2 pst)) (index (nth 3 pst)) (prev (nth 4 pst))
-                                  (w (nth 5 pst)) (counts (fn-sco-at 2 setup))
-                                  (n (nfix (fn-sco-at 5 setup))) (mtrie (fn-sco-at 3 setup))
-                                  (table (fn-sco-at 4 setup)) (total (nth 6 pst))))))))
+           :in-theory (e/d (fn-ockp-run fn-ockp-donep fn-sco-at)
+                           (nth nfix fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames
+                            fn-scc-concat fn-sct-rows-program fn-ockp-table-rows fn-ockp-count
+                            fn-ockp-batch fn-ockp-step fn-ockp-remaining fn-ockp-later
+                            fn-ockp-run-remaining fn-ockp-remaining-unfold fn-ockp-later-unfold
+                            fn-ockp-remaining-at-start-k)))))
 
 (local
  (defthm fn-ockp-later-from-0-is-the-file
