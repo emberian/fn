@@ -45,7 +45,8 @@
 # --jobs N (certify, default 8), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
-# and the per-module environment show there).
+# and the per-module environment show there).  Options may come before or
+# after REV and the modules.
 #
 # Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
 # (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
@@ -62,7 +63,8 @@ DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
-usage() { sed -n '2,51p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+POSITIONAL=
+usage() { sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -85,9 +87,14 @@ while [ $# -gt 0 ]; do
             ENVS="$ENVS $2"; shift 2 ;;
         -h|--help) usage ;;
         -*) echo "hbox_native: unknown option $1" >&2; usage ;;
-        *) break ;;
+        # An option may follow REV or a module (PKT-490 (3)): positionals are
+        # collected and every option still applies.  REV and module names
+        # hold no blank (each is validated below), so the list re-splits.
+        *) POSITIONAL="$POSITIONAL $1"; shift ;;
     esac
 done
+# shellcheck disable=SC2086
+set -- $POSITIONAL
 [ $# -ge 2 ] || usage
 REV=$1; shift
 for module in "$@"; do
