@@ -2353,14 +2353,14 @@ existing port only after fn-fc has made this connection ready."
                  (stop (fn-fc-streaming-refusal-p input step))
                  (kind (if stop :streaming-refused
                          (fn-owner-feed-connection-result-kind step)))
+                 (stopped (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
+                                             (fn-owner-feed-stopped state)))
                  (state (if stop
-                            (f-put-global
-                             'fn-owner-feed-log-line (fn-fc-stop-log-line peer)
-                             (f-put-global
-                              'fn-owner-feed-stopped
-                              (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
-                                                 (fn-owner-feed-stopped state))
-                              state))
+                            (f-put-global 'fn-owner-feed-stopped stopped state)
+                          state))
+                 (state (if stop
+                            (f-put-global 'fn-owner-feed-log-line
+                                          (fn-fc-stop-log-line peer) state)
                           state))
                  (state (f-put-global
                          'fn-owner-feed-inputs

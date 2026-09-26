@@ -91,6 +91,39 @@ entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
 locked to find that out. An existing store is adopted by `run` and repaired by
 `recover`; `init` does not reinitialise one.
 
+The converse is refused too, with its own code. Every verb that opens the
+store (`run`, `post`, `status`, `pins`, `obligations`, `health`, `recover`,
+`store ...`, `group`, `capacity`, `peer`, `policy`, `bp-boundary`,
+`bp-route`, `retention`, `control`, `principal`) first looks for the same
+five entries, by `lstat` alone. With none of them there is no store here: the
+node was never initialized (or `[store] path` names the wrong directory), and
+the answer is **`refused` with exit 6** and the line
+
+```
+no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)
+refused operator status NO-STORE
+```
+
+never a fault (4). ACL2 decides it (`fn-native-operator-store-outcome`,
+`fn-native-operator-absent-store-is-refused`, books/native-operator.lisp);
+a store with some of its entries (an interrupted `init`) is not "no store"
+and goes to the open, which recovers or refuses it.
+
+**Init under a mission.** A `fn.toml` written by `mission NAME` carries
+`[ops] mission`, and the mission fixes the store profile: `init` then takes
+GROUP words only, and with none a small community serves `local.general`
+and `local.test` (relay and archive have no default groups and need them).
+A profile flag or `--profile` there is a usage error (5) whose first line
+says so:
+
+```
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise it afterwards offline with: fn operator CONFIG store upgrade-profile [scale|default] [--FIELD N ...]; or delete the mission line from fn.toml to choose a profile at init
+usage operator init MISSION-FIXES-PROFILE
+```
+
+Every usage error prints ACL2's line for what the command accepts before its
+result line, so `init` with a stray word shows the full `init` grammar.
+
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
 (format `fn-store-8`, `books/byte-store-frame.lisp`) and only the offline
@@ -409,6 +442,15 @@ FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
   DESTDIR=/tmp/fn-package PREFIX=/usr/local packaging/install-native.sh
 ```
 
+`bin/fn` is `packaging/fn` (`packaging/fn-native` is a link to it): it finds
+the image (`FN_NATIVE_HOST`, else `../libexec/fn/fn-host` beside itself, else
+the checkout's `build/fn-host`) and execs it with every argument, deciding
+nothing. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
+the other image verbs are as below. The spike's bash `fn` wrapper made its
+own decisions; each is now the image's (its header lists where each went:
+`mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
+SIGHUP log reopen) or is gone.
+
 The layout is `bin/fn`, `libexec/fn/fn-host`,
 `libexec/fn/fn-host.core`, and `libexec/fn/runtime/`. The installer copies the
 SBCL executable and its `SBCL_HOME` support tree out of the generated launcher,
@@ -704,6 +746,25 @@ limits and outbound queue/backoff limits, builds the typed peer record and
 selects the configuration delta. Run these while the owner is stopped; the
 exclusive store lock refuses offline administration against a live owner.
 
+The last word is the streaming flag. `true` opens each connection with
+`MODE STREAM` and offers with `CHECK`/`TAKETHIS` (RFC 4644); `false` offers
+with `IHAVE` (RFC 3977 section 6.3.2). A peer that does not stream answers
+`MODE STREAM` with something other than 203 (501 in practice, RFC 4644
+section 2.3). The owner then stops feeding that peer for the rest of its
+run and says why, once, in its log:
+
+```
+refused feed peer=hub stopped reason=mode-stream-refused (RFC 4644 2.3: the peer does not stream; this owner does not dial it again; re-add the peer with streaming false to feed it with IHAVE)
+```
+
+It does not re-dial it with `MODE STREAM` (before 2026-09-26 it did, at
+every backoff, indefinitely). `health` shows the peer under
+`unavailable-peer` while articles wait for it. Re-add the peer with the flag
+`false` (stop the node, `peer remove NAME`, `peer add ... false`) and start
+it again. The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
+books/feed-connection.lisp) and lasts one owner process: a restart spends
+one `MODE STREAM` exchange again.
+
 `[listener] host` accepts loopback aliases or an explicit numeric IPv4
 address. ACL2 parses the literal and supplies the exact bind address; the host
 does not resolve or reinterpret it. The wildcard `0.0.0.0` remains refused so
@@ -919,6 +980,7 @@ outcome, and exits with the code for that outcome:
 | `uncertain` | 3 | Whether it is durable is not known. See below. |
 | `fault` | 4 | The host could not carry out the operation. |
 | `usage` | 5 | The command line or the configuration file is wrong. |
+| `refused` | 6 | (native `fn operator`) No store at the configured `[store] path`: run `init`. |
 
 These three outcomes stay distinct everywhere: the exit code, the stderr
 line, the log line, and the reply on the control socket. Never map
@@ -1062,6 +1124,45 @@ point-to-point (`to.*` with `ihave`), wildcard or junk handling from a
 group's name, and the name grants no creation, moderation, deletion or
 forwarding authority. The plan for creating one is exactly the plan for any
 other valid name (`fn-native-admin-plan-create-ignores-special-purpose`).
+
+## Upgrade, and what a rollback loses
+
+Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
+`fn.toml` whose paths point into the copy and whose listener is on loopback,
+and run the steps below against the copy with the new release's `bin/fn`.
+`packaging/upgrade-native.sh` switches a managed node's `current` release.
+
+```
+fn operator COPY/fn.toml store needs-upgrade            # needs-upgrade | current
+cp -p COPY/store/config.json KEPT/config.json.format-7  # the file a lossless rollback restores
+cp -a COPY/store SNAPSHOT/store                          # the pre-migration snapshot
+fn operator COPY/fn.toml store upgrade-profile           # format 7 -> 8, bounds unchanged
+fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
+fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
+```
+
+There are two rollbacks, and they are not the same:
+
+- **Restoring the kept `config.json`** (the old release reads the new
+  history under the old profile). `rollback-check KEPT` says `rollback sound
+  transactions=N` when every committed record fits the older profile and the
+  store does not require the committed-history marker; nothing is lost. It
+  refuses `history-marker-required-dropped` once the store requires the
+  marker: that requirement is never undone by a kept file.
+- **Restoring a pre-migration snapshot** (the whole store as it was).
+  **Restoring a pre-migration snapshot loses every article accepted after
+  it.** `rollback-check --snapshot SNAPSHOT` counts them: ACL2 compares the
+  two committed histories (`fn-native-operator-snapshot-loss`) and answers
+
+  ```
+  rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
+  restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
+  ```
+
+  or `rollback snapshot refused snapshot-not-a-prefix` (1) when the snapshot
+  is not an earlier state of this store. The count is of committed
+  transaction files; a compacted history (its records in a pack) is not
+  counted by this verb.
 
 ## Back up
 

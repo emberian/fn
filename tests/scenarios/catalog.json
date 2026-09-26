@@ -1966,6 +1966,31 @@
         "planning/evidence/operator-health-2026-09-25.md",
         "tests/acl2/native-health-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-076",
+      "title": "The operator walk: one installed fn from nothing to a recovered node on two scratch nodes",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-008"
+      ],
+      "steps": [
+        "Install the production image with packaging/install-native.sh into a scratch prefix; every later command is PREFIX/bin/fn.",
+        "Write a small-community fn.toml with `mission`; ask status, health and run before init; init with a profile word, then init.",
+        "Enrol a login; peer two nodes; start both; status and health live; post; post over the article bound.",
+        "Add a peer that answers 501 to MODE STREAM; post; watch the dial.",
+        "Stop, back up, post two more; on a copy with rewritten paths upgrade the profile, rollback-check the kept config and the snapshot, restore the snapshot and recover.",
+        "SIGKILL the owner; status, recover, run, health."
+      ],
+      "expected": [
+        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store."
+      ],
+      "evidence": [
+        "planning/evidence/operator-walk-2026-09-26/walk.sh",
+        "planning/evidence/operator-walk-2026-09-26.md",
+        "tests/acl2/native-operator-tests.lisp"
+      ]
     }
   ]
 }

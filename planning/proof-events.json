@@ -5027,6 +5027,31 @@
           "name": "fn-nh-fence-of-route"
         }
       ]
+    },
+    {
+      "id": "PRF-130",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-absent-store-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-store-outcome-passes-a-present-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-snapshot-loss-counts-the-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-mode-stream-refusal-stops-the-dial"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-dial-allowedp-of-put-other"
+        }
+      ]
     }
   ]
 }

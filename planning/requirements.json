@@ -2570,6 +2570,30 @@
         "planning/evidence/reclaim-lifecycle-2026-09-25.md"
       ],
       "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Not implemented: the maintenance reservation in admission (PKT-169), release of the retention charge, a per-article release verb, BP/feed holders, chained packs."
+    },
+    {
+      "id": "HST-008",
+      "title": "One installed fn takes an operator from nothing to a recovered node, each verb answering every store state with a distinct outcome",
+      "specification": "specs/host.md#operator-walk",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-130"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/feed-connection.lisp",
+        "packaging/fn",
+        "host/native/operator.lisp",
+        "docs/operator.md",
+        "planning/evidence/operator-walk-2026-09-26.md"
+      ],
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot counts what restoring a snapshot loses.",
+      "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
     }
   ]
 }
