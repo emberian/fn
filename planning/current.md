@@ -19,7 +19,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | no: closure moved | no: source changed since c3420013 | no: dev source not on the node |
 | [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260925T214919Z-3947867` | no: source changed since c3420013 | no: dev source not on the node |
 | [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260925T214919Z-3947867` | no: source changed since c3420013 | no: dev source not on the node |
-| [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | no: closure moved | lab only: `9cb82454` | no: dev source not on the node |
+| [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | cache only: `certify-20260925T234352Z-2671972` | lab only: `9cb82454` | no: dev source not on the node |
 | [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260925T214919Z-3947867` | no: source changed since c3420013 | no: dev source not on the node |
 | [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260925T214919Z-3947867` | no: source changed since c3420013 | no: dev source not on the node |
 | [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | no: closure moved | no: source changed since c3420013 | no: dev source not on the node |
@@ -75,7 +75,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **one owner decides duplicate versus conflict.** A resubmission with the same poster bytes (the octets without Path, Xref, Injection-Date, Injection-Info and a node-generated Date) is answered already stored; different poster bytes under the same Message-ID are a conflict.
 
 - Host-called subject: `fn-rcl-existing-action` at host/owner-host.lisp:555, equated by `fn-rcl-existing-action-is-pb-without-a-tombstone` (books/store-reclaim.lisp:573).
-- Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:451; in no registry row); no archived manifest certifies the current closure; `certify-20260925T211010Z-1315802` passed this source of `books/poster-bytes-invariants.lisp`, and since then `books/config.lisp`, `books/nntp-newnews.lisp`, `books/nntp-range-indexed.lisp` and 1 more changed.
+- Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:451; in no registry row); no archived manifest records it passed at the current source and closure; `certify-20260925T234352Z-2671972` installed a cached pair for them, made by a run not archived.
 - Tested: lane image of `9cb82454` ([d25-dup-conflict-2026-09-24](evidence/d25-dup-conflict-2026-09-24.md)), profile the matrix postcycle phase against one owner; not a shared qualification.
 - Deployed: no: node image `bbf52159`; changed since it: `books/poster-bytes-invariants.lisp`, `host/owner-host.lisp`.
 - Latest positive result: a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).

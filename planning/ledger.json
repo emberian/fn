@@ -285,6 +285,8 @@
     "tests/acl2/store-reclaim-tests",
     "books/store-reclaim-buffer",
     "tests/acl2/store-reclaim-buffer-tests",
+    "books/visibility-join",
+    "tests/acl2/visibility-join-tests",
     "books/store-reclaim-holders",
     "tests/acl2/store-reclaim-holders-tests",
     "books/reclaim-admission",
@@ -881,25 +883,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 893,
-    "books_in_root_closure": 889,
-    "roots": 877,
-    "theorems": 12454,
-    "functions": 8710,
-    "assert_events": 12979,
-    "must_fails": 1422,
+    "books": 895,
+    "books_in_root_closure": 891,
+    "roots": 879,
+    "theorems": 12464,
+    "functions": 8716,
+    "assert_events": 12999,
+    "must_fails": 1427,
     "encapsulates": 61,
     "guards": {
       "verified": 2181,
-      "declared-off": 655,
-      "default-guarded": 4602,
-      "default-unguarded": 1272
+      "declared-off": 657,
+      "default-guarded": 4603,
+      "default-unguarded": 1275
     },
     "suspect_theorems": 108,
     "export_hygiene_warnings": 149,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 104,
-    "include_hygiene_warnings": 894,
+    "include_hygiene_warnings": 899,
     "host_names_warnings": 1015,
     "hand_written_record_warnings": 18
   },
@@ -14568,6 +14570,33 @@
       "read_error": null
     },
     {
+      "book": "books/visibility-join.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "poster-bytes-invariants",
+        "store-node-retention",
+        "store-reclaim-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/wildmat-matcher-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24848,6 +24877,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/visibility-join-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 5,
+      "defconsts": 26,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/control-visible",
+        "../../books/visibility-join",
+        "poster-bytes-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/wildmat-parser-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -30491,6 +30550,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/visibility-join.lisp",
+        "line": 51,
+        "include": "store-node-retention",
+        "included": "books/store-node-retention.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/visibility-join.lisp",
+        "line": 52,
+        "include": "poster-bytes-invariants",
+        "included": "books/poster-bytes-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/wildmat-parser-invariants.lisp",
         "line": 10,
         "include": "wildmat-utf8-invariants",
@@ -34072,6 +34145,27 @@
         "line": 4,
         "include": "../../books/transfer-public-bound",
         "included": "books/transfer-public-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/visibility-join-tests.lisp",
+        "line": 18,
+        "include": "../../books/visibility-join",
+        "included": "books/visibility-join.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/visibility-join-tests.lisp",
+        "line": 20,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/visibility-join-tests.lisp",
+        "line": 22,
+        "include": "poster-bytes-tests",
+        "included": "tests/acl2/poster-bytes-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
