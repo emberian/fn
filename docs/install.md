@@ -233,6 +233,7 @@ A refused POST is answered `441` with the reply below, and the log line for it s
 | reason | the reply |
 | --- | --- |
 | `unparsable` | `441 posting failed; the article is not valid syntax` |
+| `group-read-only` | `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)` |
 | `injection-info` | `441 posting failed; Injection-Info must not be supplied` |
 | `xref` | `441 posting failed; Xref must not be supplied` |
 | `injection-date-present` | `441 posting failed; Injection-Date must not be supplied` |
