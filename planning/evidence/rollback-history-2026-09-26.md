@@ -3,7 +3,7 @@
 Lane `lane/rollback-history` from dev 8f5f9d0b, 2026-09-26. Brief:
 `build/coordinator/queue/w3-rollback-history.txt`, on gpt-6's answers §7
 ("the rollback checker proves the wrong abstraction") and the mandate's §5.6.
-Commits: 85f35331 (book, host, tests), the registry/docs/record commit.
+Commits: 85f35331 (book, host, tests), 94579ffc (registry, docs, record, native evidence), b131fd0f (theorems over the host-called composition), and the manifest commit.
 
 ## The misstep, reproduced natively first
 
@@ -120,6 +120,7 @@ Teeth (tests/acl2/native-operator-tests.lisp):
 | run | box | what | result | manifest |
 |---|---|---|---|---|
 | run-20260926T064737Z-0e41 | persvati | `--affected-by books/native-operator.lisp` at 85f35331 | passed, 6 certified, 146 installed; native-operator 6.7 s, native-operator-tests 2.7 s, native-mission 2.0 s, native-operator-host 1.9 s; no book over 10 s | [`certify-20260926T064940Z-2305911.json`](manifests/certify-20260926T064940Z-2305911.json) |
+| run-20260926T065645Z-3793 | persvati | the same at b131fd0f (the theorems restated over the host-called composition) | passed, 6 certified, 146 installed; no book over 10 s | [`certify-20260926T065706Z-2375300.json`](manifests/certify-20260926T065706Z-2375300.json) |
 
 Proof development: an hbox `proof_repl.py` session over the qualified
 w28 toolchain and /tank/fn/certcache (persvati's 16 slots were all held by
