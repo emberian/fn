@@ -34,6 +34,49 @@
            observation))
          (t :uncertain))))))
 
+;; PRF-136: the same decision read from the row's primary block, without
+;; fn-bpnf-heldp's re-encoding; a served scan asks it first
+;; (fn-bpn-report-find-expired-held), and on a held row it is the decision
+;; (fn-bpah-held-expiry-header-of-held).
+(defun fn-bpah-held-expiry-header (held observation)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (and (fn-bpnf-held-primary-blockp held)
+                (fn-clock-observationp observation)))
+      :uncertain
+    (let* ((primary (fn-bpb-bundle-primary
+                     (fn-bpnf-held-bundle held)))
+           (anchor (fn-bpn-nth 9 held))
+           (creation (fn-bpp-creation-time primary))
+           (lifetime (fn-bpp-lifetime primary)))
+      (if (not (and (fn-clock-timep creation)
+                    (fn-clock-timep lifetime)))
+          :uncertain
+        (cond
+         ((equal anchor '(:wall))
+          (fn-clock-expiry-decision
+           creation lifetime nil observation))
+         ((and (true-listp anchor) (equal (len anchor) 3)
+               (equal (car anchor) :observed-age)
+               (fn-clock-timep (cadr anchor))
+               (fn-clock-timep (caddr anchor))
+               (fn-clock-age-anchorp
+                (cons (cadr anchor) (caddr anchor))))
+          (fn-clock-expiry-decision
+           creation lifetime (cons (cadr anchor) (caddr anchor))
+           observation))
+         (t :uncertain))))))
+
+(defthm fn-bpah-held-expiry-header-of-held
+  (implies (fn-bpnf-heldp held)
+           (equal (fn-bpah-held-expiry-header held observation)
+                  (fn-bpah-held-expiry held observation)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-heldp-primary-blockp))
+           :in-theory (e/d (fn-bpah-held-expiry-header fn-bpah-held-expiry
+                            fn-bpnf-held-primary-blockp)
+                           (fn-bpnf-heldp fn-bpb-bundlep fn-bpp-blockp))))
+  :rule-classes nil)
+
 (defun fn-bpah-select-oldest-at (held-list node observation selected)
   (declare (xargs :guard t :measure (acl2-count held-list)))
   (if (atom held-list)
@@ -136,6 +179,13 @@
   :rule-classes nil)
 
 (verify-guards fn-bpah-held-expiry)
+(local
+ (defthm fn-bpah-primary-blockp-true-listp
+   (implies (fn-bpp-blockp primary) (true-listp primary))
+   :rule-classes :forward-chaining))
+(verify-guards fn-bpah-held-expiry-header
+  :hints (("Goal" :in-theory (e/d (fn-bpnf-held-primary-blockp)
+                                  (fn-bpp-blockp)))))
 (verify-guards fn-bpah-select-oldest-at)
 (verify-guards fn-bpah-select-oldest-uncertain-at)
 (verify-guards fn-bpah-pending-decision-at)

@@ -9,21 +9,55 @@
 (verify-guards fn-bpaj-eid-text)
 
 (defun fn-bpah-local-pendingp (held node)
-  (declare (xargs :guard t))
-  (and (fn-bpnf-heldp held)
-       (fn-bpp-eidp node)
-       (let ((bundle (fn-bpnf-held-bundle held)))
-         (and (fn-bpb-bundlep bundle)
-              (let ((primary (fn-bpb-bundle-primary bundle)))
-                (and (fn-bpp-blockp primary)
-                     (natp (fn-bpp-flags primary))
-                     (not (fn-bpp-fragmentp (fn-bpp-flags primary)))
-                     (equal (fn-bpp-destination primary) node)
-                     (null (fn-bpn-nth 10 held))
-                     (equal (fn-bpn-nth 12 held) '(:dispatch-pending))
-                     (null (fn-bpn-nth 14 held))
-                     (member-equal (fn-bpah-held-class held)
-                                   '(:request :receipt))))))))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :do-not-induct t
+                    :use ((:instance fn-bpnf-heldp-primary-blockp))
+                    :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep
+                                        fn-bpp-blockp fn-bpp-eidp
+                                        fn-bpah-held-class)))))
+  ;; A fragment is never a local delivery: the header answers that before
+  ;; fn-bpnf-heldp re-encodes the row (PRF-136).
+  (mbe :logic
+    (and (fn-bpnf-heldp held)
+         (fn-bpp-eidp node)
+         (let ((bundle (fn-bpnf-held-bundle held)))
+           (and (fn-bpb-bundlep bundle)
+                (let ((primary (fn-bpb-bundle-primary bundle)))
+                  (and (fn-bpp-blockp primary)
+                       (natp (fn-bpp-flags primary))
+                       (not (fn-bpp-fragmentp (fn-bpp-flags primary)))
+                       (equal (fn-bpp-destination primary) node)
+                       (null (fn-bpn-nth 10 held))
+                       (equal (fn-bpn-nth 12 held) '(:dispatch-pending))
+                       (null (fn-bpn-nth 14 held))
+                       (member-equal (fn-bpah-held-class held)
+                                     '(:request :receipt)))))))
+       :exec (and (fn-bpnf-held-nonfragment-headerp held)
+         (and (fn-bpnf-heldp held)
+              (fn-bpp-eidp node)
+              (let ((bundle (fn-bpnf-held-bundle held)))
+                (and (fn-bpb-bundlep bundle)
+                     (let ((primary (fn-bpb-bundle-primary bundle)))
+                       (and (fn-bpp-blockp primary)
+                            (natp (fn-bpp-flags primary))
+                            (not (fn-bpp-fragmentp (fn-bpp-flags primary)))
+                            (equal (fn-bpp-destination primary) node)
+                            (null (fn-bpn-nth 10 held))
+                            (equal (fn-bpn-nth 12 held) '(:dispatch-pending))
+                            (null (fn-bpn-nth 14 held))
+                            (member-equal (fn-bpah-held-class held)
+                                          '(:request :receipt))))))))))
+
+;; PRF-136: the executable body's header prefilter refuses only rows the
+;; definition refuses (the guard proof's equality, stated).
+(defthm fn-bpah-local-pendingp-has-a-nonfragment-header
+  (implies (fn-bpah-local-pendingp held node)
+           (fn-bpnf-held-nonfragment-headerp held))
+  :hints (("Goal" :use ((:instance fn-bpnf-heldp-primary-blockp))
+           :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep fn-bpp-blockp
+                               fn-bpp-eidp fn-bpah-held-class)))
+  :rule-classes nil)
 
 (defun fn-bpah-select-oldest (held-list node selected)
   (declare (xargs :guard t))

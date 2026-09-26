@@ -2864,10 +2864,13 @@ every node-profile field; kind 5 and kind 18 carry the image in a
 a node applies are its profile's (below). The ADU's fields are record
 items: byte-identical to the generic CBOR entry at or below 65,535 octets,
 a u32 head above. `fn-bpn-limits-compose-at-the-codec-widths`
-(`books/bp-limits.lisp`) states how the widths nest; it replaces
-`fn-bpn-limits-compose`, whose content (an ADU of 65,538 octets plus 65,534
-octets of header fits one sender job image of 131,072) is the finite
-machine P5 removes. The sender machine's job image
+(`books/bp-limits.lisp`) states how the widths nest: an ADU of the ADU width
+is one bundle's payload data, the held image width is the decoder's input
+width and a lifecycle record carries it with 3,072 octets of fields, every
+width is the profile ceiling 2^24, and the sender's job image is unchanged.
+It replaces the retired composition of the finite machine P5 removes (an
+ADU of 65,538 octets plus 65,534 octets of header in one sender job image
+of 131,072), which is false at the new widths. The sender machine's job image
 (`*fn-bpn-machine-max-job-octets*`, the plain `:blob`) is not widened: a
 sender cannot yet hold an ADU above about 64 KiB as one job (PKT-294).
 The planned explicit header cap, stage slots and stage octets are not yet
@@ -3132,10 +3135,21 @@ lengths). `fn-bpfw-reassemble-is-spec` equates it, on every input, with
 recognizer. `fn-bpf-reassemble-is-capped-spec` shows the old reference is
 that spec restricted to the caps. `fn-bpnf-fragment-query`, the query that
 `fn-bpnf-family-plan` calls, now calls the sweep. The family selector
-`fn-bpnf-family-next` (host: `fnn-bps-fragment-progress`) runs a memo that
-plans each family once per call, not once per member.
-`fn-bpnf-family-next-memo-is-aux` equates the memo with the per-member
-selector, anchor included. Measured once in a proof session on persvati
+`fn-bpnf-family-next` (host: `fnn-bps-fragment-progress`, after every
+accepted arrival) runs `fn-bpnf-family-select` (PRF-136): one pass reads each
+held row's primary block and collects the family keys of the offset-zero
+fragments (`fn-bpnf-zero-family-keys`); the walk then plans a row, which
+re-encodes its bundle (`fn-bpnf-heldp`) and reassembles its family, only
+when the row's family holds its offset-zero fragment, and plans each such
+family at most once per call. `fn-bpnf-family-select-is-aux` equates it with
+the per-member selector, anchor included (as `fn-bpnf-family-next-memo-is-aux`
+did the memo it replaces); `fn-bpnf-family-select-plans-bound` bounds the
+rows planned by the rows whose family holds offset zero, and
+`fn-bpnf-family-select-steps-bound` bounds a call that plans nothing by
+|held| x (1 + |zero| + |tried|) header steps. An arrival into a family whose
+offset-zero fragment has not arrived re-encodes no held row. A family whose
+offset-zero fragment is held is still planned on every arrival until it is
+complete (PKT-308). Measured once in a proof session on persvati
 (not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
 twice and in no particular order, reassembles in 0.62 s with 673 MB
 allocated as octet lists.
@@ -3945,12 +3959,14 @@ projections.
 
 **C1: lemmas and the fast refinement. Opus. any free lane, local closure (about 8 books). 3 to 4 lane-days.**
 - Edits: `books/bp-fragment.lisp` (the length bound), new
-  `books/bp-limits.lisp` (`fn-bpn-limits-compose`, in the same batch as the
-  raise), `books/bp-fragment-invariants.lisp` (the two commented lemmas),
+  `books/bp-limits.lisp` (the limit composition, in the same batch as the
+  raise; since 9ebf5f0e `fn-bpn-limits-compose-at-the-codec-widths`, how the
+  codec widths nest at 2^24), `books/bp-fragment-invariants.lisp` (the two commented lemmas),
   new `books/bp-fragment-fast.lisp`, `tests/acl2/bp-fragment-tests.lisp`.
 - Theorems: T4's first five (inverse, the two fast equalities, whole-parent
   restoration, re-fragmentation), `fn-bpn-plan-child-image-bounded` (§7.3)
-  and `fn-bpn-limits-compose`; the fix of D20 (a composing
+  and the limit composition (now
+  `fn-bpn-limits-compose-at-the-codec-widths`); the fix of D20 (a composing
   `fn-bpn-refragment-primaries` beside `fn-bpf-fragment-block`). Traces:
   N09 (the contract half). No machine book is
   edited; `bp-limits` only includes the codec, so C1 runs beside A1, and
@@ -4130,8 +4146,10 @@ The twelve questions of the first draft, answered by the review and adopted
 - **D-8 One receive record.** Kind 5 is the one authoritative receive record
   on the machine path; the interop verbs and receive-evidence namespace stay
   until their replacement passes its gate (§9.2, §10).
-- **D-9 Reassembly limit.** 65538, raised only with `fn-bpn-limits-compose`
-  over every limit it composes with (§7.1).
+- **D-9 Reassembly limit.** Since 9ebf5f0e the ADU bound is the BP node
+  profile's ADU octets (`bp-node profile`, PRF-134), within the ADU codec
+  width 2^24; `fn-bpn-limits-compose-at-the-codec-widths` states how that
+  width nests with the bundle, held-image and lifecycle widths (§7.1).
 - **D-10 Replay order.** The replay proof follows the schema (A2 after A1's
   batch 1) and co-lands with the receive path whose ACK depends on it (§11).
 - **D-11 `:resume`.** Kept, as a bounded, serialized loop action with

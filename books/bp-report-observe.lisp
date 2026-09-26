@@ -23,27 +23,64 @@
 
 (defun fn-bpn-report-observe-held (st held node)
   (declare (xargs :guard t))
-  (if (not (and (fn-bpnf-heldp held)
-                (fn-bpp-eidp node)
-                (null (fn-bpn-nth 14 held))
-                (null (fn-bpn-nth 10 held))))
-      nil
-    (let* ((bundle (fn-bpnf-held-bundle held))
-           (primary (fn-bpb-bundle-primary bundle))
-           (flags (fn-bpp-flags primary)))
-      (if (not (and (fn-bpp-administrativep flags)
-                    (fn-bpp-flags-conformantp primary)
-                    (equal (fn-bpp-destination primary) node)))
-          nil
-        (let* ((decoded (fn-bpn-report-decode (fn-bpb-payload bundle)))
-               (report (and (fn-cbor-result-okp decoded)
-                            (fn-cbor-result-value decoded))))
-          (if report
-              (list :observed (fn-bpn-nth 3 held)
-                    (fn-bpn-report-correlate-job
-                     (fn-bpn-machine-state-jobs (fn-bpnf-base st)) report)
-                    report)
-            (list :malformed (fn-bpn-nth 3 held))))))))
+  ;; Only an administrative bundle is a report: the header answers that
+  ;; before fn-bpnf-heldp re-encodes the row (PRF-136).
+  (mbe :logic
+    (if (not (and (fn-bpnf-heldp held)
+                  (fn-bpp-eidp node)
+                  (null (fn-bpn-nth 14 held))
+                  (null (fn-bpn-nth 10 held))))
+        nil
+      (let* ((bundle (fn-bpnf-held-bundle held))
+             (primary (fn-bpb-bundle-primary bundle))
+             (flags (fn-bpp-flags primary)))
+        (if (not (and (fn-bpp-administrativep flags)
+                      (fn-bpp-flags-conformantp primary)
+                      (equal (fn-bpp-destination primary) node)))
+            nil
+          (let* ((decoded (fn-bpn-report-decode (fn-bpb-payload bundle)))
+                 (report (and (fn-cbor-result-okp decoded)
+                              (fn-cbor-result-value decoded))))
+            (if report
+                (list :observed (fn-bpn-nth 3 held)
+                      (fn-bpn-report-correlate-job
+                       (fn-bpn-machine-state-jobs (fn-bpnf-base st)) report)
+                      report)
+              (list :malformed (fn-bpn-nth 3 held)))))))
+       :exec (if (not (fn-bpnf-held-administrative-headerp held))
+                 nil
+             (if (not (and (fn-bpnf-heldp held)
+                           (fn-bpp-eidp node)
+                           (null (fn-bpn-nth 14 held))
+                           (null (fn-bpn-nth 10 held))))
+                 nil
+               (let* ((bundle (fn-bpnf-held-bundle held))
+                      (primary (fn-bpb-bundle-primary bundle))
+                      (flags (fn-bpp-flags primary)))
+                 (if (not (and (fn-bpp-administrativep flags)
+                               (fn-bpp-flags-conformantp primary)
+                               (equal (fn-bpp-destination primary) node)))
+                     nil
+                   (let* ((decoded (fn-bpn-report-decode (fn-bpb-payload bundle)))
+                          (report (and (fn-cbor-result-okp decoded)
+                                       (fn-cbor-result-value decoded))))
+                     (if report
+                         (list :observed (fn-bpn-nth 3 held)
+                               (fn-bpn-report-correlate-job
+                                (fn-bpn-machine-state-jobs (fn-bpnf-base st)) report)
+                               report)
+                       (list :malformed (fn-bpn-nth 3 held))))))))))
+
+;; PRF-136: a row whose primary block is not an administrative bundle's is
+;; no report, which the executable body reads before fn-bpnf-heldp.
+(defthm fn-bpn-report-observe-held-needs-an-administrative-header
+  (implies (not (fn-bpnf-held-administrative-headerp held))
+           (not (fn-bpn-report-observe-held st held node)))
+  :hints (("Goal" :use ((:instance fn-bpnf-heldp-primary-blockp))
+           :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep fn-bpp-blockp
+                               fn-bpp-eidp fn-bpn-report-decode
+                               fn-bpp-flags-conformantp)))
+  :rule-classes nil)
 
 (defun fn-bpn-report-observe-next-aux (st held-list node after selected)
   (declare (xargs :guard t :measure (acl2-count held-list)))

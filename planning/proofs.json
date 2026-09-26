@@ -5487,6 +5487,53 @@
       "events": [
         "fn-ks-accepted-statement-finishes-under-its-admission-context"
       ]
+    },
+    {
+      "id": "PRF-136",
+      "title": "One BP arrival's fragment selection reads the held rows' primary blocks and re-encodes and plans only rows whose family holds its offset-zero fragment, answering what the reference selector answers",
+      "statement": "books/bp-node-fragment-step.lisp: host/native/bp-service.lisp fnn-bps-fragment-progress (called after every accepted arrival by fnn-bps-receive and at open by fnn-bps-open) calls fn-bpnf-family-next, whose :exec (guard verified in books/bp-node-fragment-guards.lisp) is (fn-bpnf-family-select st (fn-bpnf-held-list st) observation nil (fn-bpnf-zero-family-keys (fn-bpnf-held-list st))). fn-bpnf-zero-family-keys collects, from each row's primary block alone, the family key (principal, ADU key, coherence key) of every candidate row (fn-bpnf-fragment-candidatep: primary block, fragment flag, not deleted, not consumed; fn-bpnf-active-fragment-is-candidate) at offset zero. fn-bpnf-family-select-is-aux: for HELD a subset of the held list, TRIED a list of family keys every active held row of which has a plan that is not ready (fn-bpnf-family-keys-not-readyp, true of nil), and ZERO those offset-zero keys, the select equals fn-bpnf-family-next-aux, the reference selector (the anchor included); with fn-bpnf-family-next-memo-is-aux both equal the memo it replaces. fn-bpnf-family-without-zero-key-is-not-ready: a held active row whose family key has no offset-zero candidate has a plan that is not ready (from fn-bpnf-family-without-offset-zero-is-not-ready, PRF-134). Work, counted over the select's own control flow: fn-bpnf-family-select-plans-bound: the rows the select re-encodes (fn-bpnf-active-fragmentp, whose fn-bpnf-heldp re-encodes the bundle) and plans (fn-bpnf-family-plan-at, whose reassembly is linear in the family's octets, PRF-121) are at most the candidate rows whose family key is in ZERO; fn-bpnf-family-select-steps-bound: a call that plans no row makes at most |held| * (1 + |zero| + |tried|) header steps (one visit and the key comparisons of its two membership tests per row). So an arrival into a family whose offset-zero fragment is not held re-encodes no held row. Scope: the maintained relation is the call's own (TRIED, established empty at each host call and preserved by each step of the walk); nothing is carried across calls. A family whose offset-zero fragment is held is planned on every call until it is complete (its plan is linear in its octets): a family arriving in offset order costs its octets per arrival (PKT-308). The session's post-arrival scans ask every held row the same kind of question: books/bp-app-handoff.lisp fn-bpah-local-pendingp (per row in fn-bpah-select-oldest-at and -uncertain-at, host fnn-bpnode-dispatch-pending) and books/bp-report-observe.lisp fn-bpn-report-observe-held (per row in fn-bpn-report-observe-next, host fnn-bpnode-observe-reports) now have an :exec (mbe, guard verified; their :logic bodies and every statement about them unchanged) that reads the row's primary block first: fn-bpnf-held-nonfragment-headerp and fn-bpnf-held-administrative-headerp (books/bp-node-foundation.lisp). fn-bpah-local-pendingp-has-a-nonfragment-header and fn-bpn-report-observe-held-needs-an-administrative-header state why the prefilter refuses only rows the definition refuses (with fn-bpnf-heldp-primary-blockp: a held row's primary block is a block), so a fragment row costs those scans its header, not a re-encoding. The expiry scan books/bp-report-deletion.lisp fn-bpn-report-find-expired-held (host fnn-bpnode-delete-expired, after every session) asked fn-bpnf-heldp twice per row (fn-bpn-report-held-delete-pendingp and fn-bpah-held-expiry); its :exec asks first fn-bpah-held-expiry-header (books/bp-app-handoff-time.lisp: the same clock decision read from the primary block and the anchor), and fn-bpah-held-expiry-header-of-held equates it with fn-bpah-held-expiry on every held row, so a live row costs the scan its header. The receive step's own per-row work (fn-bpnf-held-octets walks each held wire's length, fn-bpnf-find-held compares keys) is outside these theorems.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-121",
+        "PRF-134"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "books/bp-node-fragment-guards.lisp",
+        "tests/acl2/bp-node-fragment-step-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp.lisp",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md",
+        "books/bp-node-foundation.lisp",
+        "books/bp-app-handoff.lisp",
+        "books/bp-report-observe.lisp",
+        "books/bp-report-guards.lisp",
+        "tests/acl2/bp-app-handoff-tests.lisp",
+        "tests/acl2/bp-report-observe-tests.lisp",
+        "host/native/bp-node.lisp",
+        "books/bp-app-handoff-time.lisp",
+        "books/bp-report-deletion.lisp",
+        "tests/acl2/bp-app-handoff-time-tests.lisp"
+      ],
+      "progress_note": "Lane bp-lifecycle-5 (2026-09-26, wave 2), PKT-294 item 1, PKT-308. See the record.",
+      "events": [
+        "fn-bpnf-family-select-is-aux",
+        "fn-bpnf-family-select-plans-bound",
+        "fn-bpnf-family-select-steps-bound",
+        "fn-bpnf-family-without-zero-key-is-not-ready",
+        "fn-bpnf-active-fragment-is-candidate",
+        "fn-bpnf-zero-family-keys-bound",
+        "fn-bpnf-heldp-primary-blockp",
+        "fn-bpah-local-pendingp-has-a-nonfragment-header",
+        "fn-bpn-report-observe-held-needs-an-administrative-header",
+        "fn-bpah-held-expiry-header-of-held"
+      ]
     }
   ]
 }
