@@ -109,18 +109,25 @@ class ThroughputGateTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertNotIn("STALE", text)
 
-    def test_an_under_load_run_is_compared_on_cpu_and_allocation_only(self):
+    def test_an_under_load_run_is_compared_on_the_deterministic_counters_only(self):
+        # PKT-477 (1): CPU under load never gates; bytes consed per commit does.
+        tg.BASELINE.write_text(json.dumps({"metrics": {
+            "probe_cpu_s": {"value": 4.0, "floor": 0.5},
+            "probe_bytes_consed_per_commit": {"value": 1000000, "floor": 262144},
+            "post_median_ms": {"value": 1.6, "floor": 1.0}}}))
         self.record("load.json", self.first, "2026-09-26T01:00:00Z", quiet=False,
-                    probe_cpu_s=4.1, post_median_ms=50.0)
+                    probe_cpu_s=80.0, probe_bytes_consed_per_commit=1000000, post_median_ms=50.0)
         code, text = self.check()
         self.assertEqual(code, 0)
-        self.assertIn("1 of 2 metrics compared", text)
+        self.assertIn("1 of 3 metrics compared", text)
         self.record("load2.json", self.first, "2026-09-26T02:00:00Z", quiet=False,
-                    probe_cpu_s=80.0, post_median_ms=1.0)
-        self.assertEqual(self.check()[0], 1)
+                    probe_cpu_s=4.0, probe_bytes_consed_per_commit=2000000, post_median_ms=1.0)
+        code, text = self.check()
+        self.assertEqual(code, 1)
+        self.assertIn("REGRESSION probe_bytes_consed_per_commit", text)
         # A quiet run of the same revision is preferred over a newer loaded one.
         self.record("quiet.json", self.first, "2026-09-26T00:00:00Z", quiet=True,
-                    probe_cpu_s=4.0, post_median_ms=1.6)
+                    probe_cpu_s=4.0, probe_bytes_consed_per_commit=1000000, post_median_ms=1.6)
         code, text = self.check()
         self.assertEqual(code, 0)
         self.assertIn("quiet.json", text)
@@ -134,18 +141,20 @@ class ThroughputGateTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("NOT MEASURED", text)
 
-    def test_the_signed_row_catches_a_return_of_the_replay_under_load(self):
+    def test_the_signed_row_catches_a_return_of_the_replay_on_a_quiet_run_only(self):
         tg.BASELINE.write_text(json.dumps({"metrics": {
             "post_signed_owner_cpu_ms": {"value": 90.0, "floor": 25.0},
             "post_signed_p95_ms": {"value": 120.0, "floor": 50.0}}}))
-        # Under load only the owner's CPU is compared: the wall figure is not.
+        # Under load neither figure is compared (PKT-477 (1)): a loaded run
+        # cannot pass or fail the signed row; it says so.
         self.record("a.json", self.first, "2026-09-26T01:00:00Z", quiet=False,
-                    post_signed_owner_cpu_ms=100.0, post_signed_p95_ms=900.0)
+                    post_signed_owner_cpu_ms=340.0, post_signed_p95_ms=900.0)
         code, text = self.check()
         self.assertEqual(code, 0)
-        self.assertIn("1 of 2 metrics compared", text)
-        # signed-history-index's before row: 0.355 s against 0.101 s at N = 1,000.
-        self.record("b.json", self.first, "2026-09-26T02:00:00Z", quiet=False,
+        self.assertIn("0 of 2 metrics compared", text)
+        # signed-history-index's before row: 0.355 s against 0.101 s at N = 1,000,
+        # caught by a quiet run.
+        self.record("b.json", self.first, "2026-09-26T02:00:00Z", quiet=True,
                     post_signed_owner_cpu_ms=340.0, post_signed_p95_ms=400.0)
         code, text = self.check()
         self.assertEqual(code, 1)
