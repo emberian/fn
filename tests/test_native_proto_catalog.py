@@ -36,9 +36,10 @@ def invoke(image, *words):
 class ProtoCatalogSourceTests(unittest.TestCase):
     def test_the_image_attaches_the_arena_before_introducing_the_generic(self):
         arena = (ROOT / "books" / "proto-catalog-arena.lisp").read_text(encoding="ascii")
-        attach = arena.index("(attach-stobj fn-pcat fn-arena)")
-        self.assertLess(arena.index('(include-book "payload-arena")'), attach)
-        self.assertLess(attach, arena.index('(include-book "proto-catalog")'))
+        # The events at column 0, not the comment's mention of them.
+        attach = arena.index("\n(attach-stobj fn-pcat fn-arena)")
+        self.assertLess(arena.index('\n(include-book "payload-arena")'), attach)
+        self.assertLess(attach, arena.index('\n(include-book "proto-catalog")'))
         generic = (ROOT / "books" / "proto-catalog.lisp").read_text(encoding="ascii")
         self.assertIn(":attachable t", generic)
         build = (ROOT / "host" / "native" / "build.lisp").read_text(encoding="ascii")
@@ -53,7 +54,7 @@ class ProtoCatalogSourceTests(unittest.TestCase):
                      "build the developer native image (FN_NATIVE_DEVELOPER_HOST)")
 class ProtoCatalogImageTests(unittest.TestCase):
     def test_the_developer_image_runs_the_generic_over_the_arena(self):
-        run = invoke(DEVELOPER, "proto-catalog")
+        run = invoke(DEVELOPER, "proto-catalog", "smoke")
         self.assertEqual(run.returncode, verbs.EXIT_OK, run.stderr)
         line = run.stdout.decode("ascii").strip().splitlines()[-1]
         self.assertEqual(
@@ -63,6 +64,6 @@ class ProtoCatalogImageTests(unittest.TestCase):
     @unittest.skipUnless(verbs.executable(PRODUCTION),
                          "build the production native image (FN_NATIVE_HOST)")
     def test_the_production_image_does_not_register_the_verb(self):
-        run = invoke(PRODUCTION, "proto-catalog")
+        run = invoke(PRODUCTION, "proto-catalog", "smoke")
         self.assertNotEqual(run.returncode, verbs.EXIT_OK)
         self.assertNotIn(b"foundation=", run.stdout)
