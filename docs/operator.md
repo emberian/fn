@@ -1251,74 +1251,11 @@ not-a-key-statement`), when the statement's change is already made
 redecide declined REASON`). The verb needs the running owner: offline it is
 refused, like every control verb.
 
-## What one node sustains (the measured envelope)
-
-These figures are measured, not promised. They were taken for one named
-profile on one box, by `tools/service_envelope.py`, on 2026-09-26. Each
-figure is tied to its image and its run's JSON in
-`planning/evidence/service-envelope-2026-09-26.md` (SCN-109).
-
-- **The workload.** `operator init --profile scale --max-transactions 1048576
-  --max-history-octets 4294967296 --max-article-octets 16384 fn.test`, one
-  group. Articles are 2 KiB; one in 256 is a hybrid-signed carrier (9.5 KiB).
-  There are no pins, no relay debt and no TLS.
-- **The client.** It runs on the same machine as the node, over loopback. Latency
-  rows use one client at a time; the rate rows run 3 connections reading
-  `ARTICLE` beside the posters.
-- **The box.** hbox has 24 CPUs and is shared with other work (load average 7
-  to 14 throughout).
-- **The storage.** tmpfs, or the ZFS pool `tank`: 91 percent full,
-  fragmentation 47 percent, no separate log device (SLOG).
-- **The image.** The developer image of dev 1770d687 (after
-  served-path-scale).
-
-A loopback, scripted measurement on one machine is not a multi-machine
-deployment result, not a network measurement and not a human study. Read the
-tmpfs column as the node's own work, never as what a disk-backed deployment
-does.
-
-| N = 10,000 | tmpfs | ZFS (`tank`, above) | the v1 target |
-| --- | ---: | ---: | ---: |
-| greeting on the loaded store, p95 | 1.3 s | 1.5 s | 50 ms |
-| `OVER` of a 40-article window, p95 | 317 ms | 321 ms | 50 ms |
-| unsigned POST, last line to durable `240`, p95 | 6.5 ms | **607 ms** | 250 ms |
-| hybrid-signed POST, p95 | 282 ms | **786 ms** | 500 ms |
-| sustained POSTs, 1 connection with 3 readers | 73 /s | **1.4 /s** | 10 /s |
-| sustained POSTs, 8 connections with 3 readers | 62 /s | **2.1 /s** | 10 /s |
-| restart to `LISTENING`, full replay | 12.7 s | 72 s | 30 s |
-| restart to `LISTENING`, from a fresh checkpoint | 11.9 s | 10.6 s | 15 s |
-| peak owner memory (VmHWM) | 16.9 GB | 3.7 GB | — |
-
-N = 100,000 (tmpfs only): being measured (the record's section 3).
-
-**The published tier.** On a pool like `tank` (nearly full, no SLOG), expect:
-
-- a durable POST reply in about half a second (p95 0.6 s unsigned, 0.8 s
-  signed);
-- about two POSTs a second sustained, not ten.
-
-Almost all of that time is the durable publication, not fn's own work: the
-same POST costs 16 ms of owner CPU. A separate log device, a less full pool,
-or the fewer barriers that marker-sharing is building are the levers. fn will
-not acknowledge a POST before it is durable to buy the difference.
-
-**Where fn itself misses its targets.** These rows miss on every filesystem:
-
-- **The greeting.** Each connection still walks the whole state under the
-  owner's lock; PKT-455 carries this.
-- **`OVER`.** About 8 ms a row; PKT-476 carries this.
-
-The owner's memory grows with sustained posting. Watch `VmHWM`
-(`/proc/PID/status`) and size the host for it.
-
 ## Expose a node to strangers
 
 Everything below is what runs on the branch and what the SCN-091 campaign
 measured on hbox (`planning/evidence/public-exposure-2026-09-26.md`); no fn
-node is exposed yet, and whether and how one is is PKT-404. What one node
-sustains, and the weaker tier a disk-backed pool gives, is the measured
-envelope in the section before this one: size an exposed node's limits
-(`exposure-posts-per-minute`, `exposure-connections`) against it.
+node is exposed yet, and whether and how one is is PKT-404. What one node sustains, and the weaker tier a disk-backed pool gives, is the measured envelope in "What one node sustains" at the end of this guide: size an exposed node's limits (`exposure-posts-per-minute`, `exposure-connections`) against it.
 
 A listener outside 127.0.0.0/8 and `::1` changes the default of every
 exposure row the configuration does not set. Loopback keeps the old
@@ -1641,3 +1578,80 @@ When you see it:
 4. **Keep the distinction in your automation.** Any wrapper, monitor or
    cron job around fn must keep 0, 1 and 3 apart. Collapsing them is how a
    node ends up reporting an article as accepted that it never stored.
+
+## What one node sustains (the measured envelope)
+
+These figures are measured, not promised. They were taken for one named
+profile on one box, by `tools/service_envelope.py`, on 2026-09-26. Each
+figure is tied to its image and its run's JSON in
+`planning/evidence/service-envelope-2026-09-26.md` (SCN-109).
+
+- **The workload.** `operator init --profile scale --max-transactions 1048576
+  --max-history-octets 4294967296 --max-article-octets 16384 fn.test`, one
+  group. Articles are 2 KiB; one in 256 is a hybrid-signed carrier (9.5 KiB).
+  There are no pins, no relay debt and no TLS.
+- **The client.** It runs on the same machine as the node, over loopback. Latency
+  rows use one client at a time; the rate rows run 3 connections reading
+  `ARTICLE` beside the posters.
+- **The box.** hbox has 24 CPUs and is shared with other work (load average 7
+  to 14 throughout).
+- **The storage.** tmpfs, or the ZFS pool `tank`: 91 percent full,
+  fragmentation 47 percent, no separate log device (SLOG).
+- **The image.** The developer image of dev 1770d687 (after
+  served-path-scale).
+
+A loopback, scripted measurement on one machine is not a multi-machine
+deployment result, not a network measurement and not a human study. Read the
+tmpfs column as the node's own work, never as what a disk-backed deployment
+does.
+
+| N = 10,000 | tmpfs | ZFS (`tank`, above) | the v1 target |
+| --- | ---: | ---: | ---: |
+| greeting on the loaded store, p95 | 1.3 s | 1.5 s | 50 ms |
+| `OVER` of a 40-article window, p95 | 317 ms | 321 ms | 50 ms |
+| unsigned POST, last line to durable `240`, p95 | 6.5 ms | **607 ms** | 250 ms |
+| hybrid-signed POST, p95 | 282 ms | **786 ms** | 500 ms |
+| sustained POSTs, 1 connection with 3 readers | 73 /s | **1.4 /s** | 10 /s |
+| sustained POSTs, 8 connections with 3 readers | 62 /s | **2.1 /s** | 10 /s |
+| restart to `LISTENING`, full replay | 12.7 s | 72 s | 30 s |
+| restart to `LISTENING`, from a fresh checkpoint | 11.9 s | 10.6 s | 15 s |
+| peak owner memory (VmHWM), after the rate rows | 16.9 GB (N 18,260) | 3.7 GB (N 10,368) | — |
+
+N = 100,000 (tmpfs only): **could not run**; see below. At the largest N the
+node reached, 36,208 on tmpfs, the greeting's p95 was 8.5 s, `OVER` of 40
+articles 4.2 s, an unsigned POST 12 ms and a signed POST 963 ms; the reopen
+from a checkpoint took 51 s and the owner's heap stood at 29.7 GB.
+
+**The published tier.** On a pool like `tank` (nearly full, no SLOG), expect:
+
+- a durable POST reply in about half a second (p95 0.6 s unsigned, 0.8 s
+  signed);
+- about two POSTs a second sustained, not ten.
+
+Almost all of that time is the durable publication, not fn's own work: the
+same POST costs 16 ms of owner CPU. A separate log device, a less full pool,
+or the fewer barriers that marker-sharing is building are the levers. fn will
+not acknowledge a POST before it is durable to buy the difference.
+
+**Where fn itself misses its targets.** These rows miss on every filesystem:
+
+- **The greeting.** Each connection still walks the whole state under the
+  owner's lock; PKT-455 carries this.
+- **`OVER`.** About 8 ms a row; PKT-476 carries this.
+
+The owner's memory grows with sustained posting. Watch `VmHWM`
+(`/proc/PID/status`) and size the host for it.
+
+**N = 100,000 could not run.** Neither could anything much past 36,000 while
+the node was taking POSTs. An owner posting steadily from an empty store
+stopped at N = 32,729 with `Heap exhausted, game over.` (SBCL's 32,000 MiB
+dynamic space), inside the automatic checkpoint capture. By N = 29,453 that
+capture took 90 s.
+
+A restarted owner opened in 49 s and died the same way at N = 36,208, at its
+next capture (PKT-191).
+
+- The POST each dead owner was answering is uncertain until you ask the node
+  (`STAT`) whether it was stored.
+- On this image, keep a node that takes posts well under about 30,000 articles.
+- Watch `VmHWM` against the dynamic space.
