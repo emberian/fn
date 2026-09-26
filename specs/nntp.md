@@ -521,6 +521,30 @@ changed source under it is the conflict line
 (`fn-pb-an-existing-action-writes-nothing`); a deliberate second post of the
 same text under a new Message-ID is a new article.
 
+### One source, one identity across routes (NNT-020)
+
+NNT-020: one authored source keeps one identity through every route the node offers, and each layer's equality is the one its contract means
+
+The mandate's cross-route corpus (`tests/fixtures/source-corpus`) is driven
+through every route by `tests/test_native_source_corpus.py`, which prints the
+identity table. What each identity is, and which equality holds:
+
+| Layer | Identity | Equality the contract means |
+| --- | --- | --- |
+| Application operation | the client's own (a persisted Message-ID) | a client that omits Message-ID has no retry identity: its resend is a new article (NNT-005) |
+| Message-ID | RFC 5536 s3.1.3 | transit (IHAVE, CHECK, TAKETHIS) and BP admission decide duplicates by it alone (RFC 3977 s6.3.2, RFC 4644); `fn-peer-decide-offer`, `fn-peer-decide-transfer` |
+| Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-rcl-existing-action`: same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
+| Stored representation | the record payload (`store inspect`), its SHA-256 | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
+| Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); unreachable-in-composition until a program writes tombstones (`store reclaim` is not implemented) |
+| Bundle identity | RFC 9171 (source EID, creation time, sequence) | one per carried request; a re-offer of an uncertain forwarding attempt keeps it (specs/bp-node-machine.md s4.3.1) |
+| Forwarding attempt | one durable kind-8 FNBS row | settled by kind 9; never an article identity |
+| Local sequence and number | per node, per group | never compared across nodes; kept across reopen |
+
+The relayed copy's authored source is not a value the receiving node
+recomputes for unsigned articles: its duplicate key is the Message-ID. For a
+signed carrier the receiver verifies the author's signature over
+`fn-hc-authored-source`, which drops exactly the node-added fields.
+
 ### Not yet true of POST
 
 There is no

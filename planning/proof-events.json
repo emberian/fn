@@ -4604,6 +4604,39 @@
           "name": "fn-bpfs-views-of-cut"
         }
       ]
+    },
+    {
+      "id": "PRF-117",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sr-an-injection-is-not-a-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-retry-is-already-stored"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-changed-source-is-a-conflict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-the-tombstone-keeps-the-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-retry-after-reclaim-is-already-stored"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-changed-source-after-reclaim-is-a-conflict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sr-an-injection-is-a-cons"
+        }
+      ]
     }
   ]
 }
