@@ -45,10 +45,12 @@ present, the node's historical verdict (`HDR :fn-verified`, what the node
 recorded at acceptance, unchanged by a later key retirement), that current
 enrollment is not served by the node, and that no independent verification was
 performed here. An uncertain submission, including an in-flight intent found
-after restart, is sent again only on the person's explicit request, with the
-same bytes and Message-ID; the intent of that re-send is recorded before the
-connection opens and its answer is recorded beside the original, which never
-changes. Local HTTP refuses a request its browser marks as coming from another
+after restart, is settled only on the person's explicit request, by NNT-019's
+reconciliation: the same bytes under the same Message-ID, the answer recorded
+beside the original, which never changes. A compose form's identifier is
+minted once and named in the page's URL, so Back, refresh and a restored tab
+return to the same identifier and a posted form says so instead of posting
+again. Local HTTP refuses a request its browser marks as coming from another
 site (`Sec-Fetch-Site`) before any NNTP command or local write; reading never
 posts, and the lookup and the re-send are form POSTs with the per-process
 token.

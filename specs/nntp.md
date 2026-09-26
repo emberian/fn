@@ -521,6 +521,58 @@ changed source under it is the conflict line
 (`fn-pb-an-existing-action-writes-nothing`); a deliberate second post of the
 same text under a new Message-ID is a new article.
 
+### Stored, visible and absent: settling a lost reply (NNT-019)
+
+NNT-019: 430/423 is a visibility observation, not acceptance evidence;
+acceptance is settled by re-submitting the same source; an ordinary reader
+that cannot resubmit reports unresolved.
+
+A posting agent that lost the reply to a POST does not know whether the node
+accepted the article. A Message-ID lookup does not tell it: the node answers
+`430` for an article it never stored, and also for one it accepted and a
+cancel since withdrew from newly published views (`430 withdrawn`, NNT-011,
+D29 C3), for one whose content was reclaimed (D13), and for one this reader is
+not served. None of these erases the identity history the Store keeps.
+
+The honest question is the re-submission of the SAME source under the SAME
+Message-ID (D25). The node answers it from the Store, not from a reader view:
+
+- `240`: the re-submission is accepted, and it is the one acceptance;
+- `441 posting failed; this article is already stored here`: the source was
+  accepted earlier;
+- `441 posting failed; a different article with this Message-ID is stored
+  here`: this source is not stored under that Message-ID;
+- any other answer (a refusal by a policy the poster no longer satisfies, a
+  lost connection, the node's own uncertain line): unresolved.
+
+What is proved, over the decision the host calls
+(`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
+through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
+decision is `fn-rclb-existing-action`; the carried-signature ingress through
+`fn-owner-existing-action`, `fn-rcl-existing-action`): once a Message-ID is
+held, the decision answers `:duplicate` or `:conflict`, never nil, after any
+Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
+cancel that withdraws the target is such a completion, `fn-sn-finish`) and
+after reclamation (`fn-vj-reclamation-keeps-a-held-message-id-answered`); the
+served reply to it while the re-submission is in flight is one of the two
+441 lines (`fn-vj-a-held-message-id-is-answered-441`). The host returns that
+word before any reservation or prepare, so no transaction or article number
+is allocated. That the same source is `:duplicate` rather than `:conflict`
+after reclamation is `fn-rcl-existing-action-after-reclaim` with its stated
+SHA-256 collision disjuncts. Not proved: the login-binding gate and the
+posting allowance run before the Store's decision, so a poster whose
+authorization changed is answered by them (unresolved); PKT-164 in
+`planning/evidence/visibility-join-2026-09-25.md` is the decision on a
+privileged query for that case.
+
+This is a stronger fn guarantee and a client contract, not an RFC
+requirement: RFC 3977 §6.3.1 allows 441 for any posting failure; the two
+duplicate answers and their meaning are fn's (D25). The clients
+(`tools/fn_client.py` `post --draft` / `reconcile`, `tools/fn_web.py`
+`/reconcile`) keep the original observed outcome, record each
+reconciliation beside it, re-send the stored bytes, and never mint a second
+Message-ID; `docs/agents.md` states it for agents.
+
 ### Not yet true of POST
 
 There is no

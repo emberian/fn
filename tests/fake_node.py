@@ -53,7 +53,7 @@ class FakeNode(threading.Thread):
                  uncertain_post=False, drop_after_article=False, fail_article=None,
                  echo_password=False, groups=("fn.agents",), drop_before_greeting=False,
                  host="127.0.0.1", refusal="441 posting failed; the article was refused",
-                 close_after_382=False):
+                 close_after_382=False, d25=False, commit_then_drop=False):
         super().__init__(daemon=True)
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(cert, key)
@@ -70,13 +70,19 @@ class FakeNode(threading.Thread):
         self.close_after_382 = close_after_382
         self.fail_article = fail_article
         self.echo_password = echo_password
+        # d25: a POST under a held Message-ID is answered from what is held,
+        # as fn's Store does (books/nntp-post.lisp's two lines), and stores
+        # nothing.  commit_then_drop: the article is stored and the reply is
+        # lost.  withdrawn: Message-IDs a cancel hid from readers (C3:
+        # `423 withdrawn` by number, `430 withdrawn` by Message-ID; OVER and
+        # XPAT omit them), still held.
+        self.d25 = d25
+        self.commit_then_drop = commit_then_drop
+        self.withdrawn = set()
         self.articles = {}
         # Optional literal HDR :fn-verified values used by reader-client tests.
         self.verdicts = {}
         self.numbers = {name: {} for name in groups}
-        # Message-IDs the node answers as withdrawn (C3: `423 withdrawn` by
-        # number, `430 withdrawn` by Message-ID; OVER and XPAT omit them).
-        self.withdrawn = set()
         self.summary_overrides = {}
         self.host = host
         family = socket.AF_INET6 if ":" in host else socket.AF_INET
@@ -349,18 +355,19 @@ class FakeNode(threading.Thread):
                     if self.uncertain_post:
                         send("441 posting failed; the outcome is uncertain, do not repost")
                         continue
-                    posted = header(lines, "message-id")
-                    if posted in self.articles:
-                        # The node's two duplicate lines (books/nntp-post.lisp;
-                        # planning/evidence/path-and-login-2026-09-25.md P2, P3).
+                    held = header(lines, "message-id")
+                    if self.d25 and held in self.articles:
                         send("441 posting failed; this article is already stored here"
-                             if self.articles[posted] == lines else
+                             if self.articles[held] == lines else
                              "441 posting failed; a different article with this "
                              "Message-ID is stored here")
                         continue
                     groups = (header(lines, "newsgroups") or "").split(",")
                     for name in [g.strip() for g in groups if g.strip()] or ["fn.agents"]:
                         self.inject(name, lines)
+                    if self.commit_then_drop:
+                        self.commit_then_drop = False
+                        return
                     send("240 article received OK")
                 elif verb == "QUIT":
                     send("205 bye")

@@ -4414,6 +4414,76 @@
       ]
     },
     {
+      "id": "PRF-124",
+      "title": "Peering composed: the confirm's one configuration record consumes the invitation and configures the peer; a declined key statement is decided at reopen under the configuration in force at its txid; the admission verdict names its class",
+      "statement": "fn-pinv-confirm-record-configures-the-issued-invitations-peer: a (:configure DELTAS) from fn-pinv-confirm-record-plan RECEIVED INVITATION OBS ED ML INVITATIONS SNAPSHOTS PEERS (books/peer-invite.lisp; host/native/peer-invite.lisp fnn-pinv-owner-confirm calls it through fn-pinv-host-confirm-record-plan) has fn-pinv-confirm-plan :consume, the row pending, the invitation of kind invitation whose authored-source identity is the row's, the confirmed peer fn-cfg-peerp with auth (:principal ACCEPTOR) and a name no peer of PEERS has, and DELTAS = (consume-delta, fn-cfg-set-peer-delta peer). fn-pinv-confirm-record-fold-consumes-and-configures: over fn-cfg-apply V GEN STAMP DELTAS (the fold fn-cfg-apply-record runs when the owner completes the publication) the invitation row is consumed by exactly this acceptor and acceptance source identity, the peers table holds exactly the peer's rows under its name, and (not enrolled) the next confirm plan is :enrol. fn-ks-reopen-is-blind-to-later-configuration and fn-ks-a-decline-replays-as-a-decline: fn-ks-recover-recorded (the open's recovery; host/native/owner.lisp fnn-owner-key-statement-recover with AT-OPEN, rows from host/owner-host.lisp fn-owner-key-statement-rows under *fn-ks-reopen-policy* :recorded) decides the pending statement under fn-ctl-config-at its own txid, so configuration records later than the statement change nothing, and a statement whose plan declined is left as the acceptance left it. fn-ks-recorded-recovery-completes-the-cut: when every configuration record precedes the txid and the journal replays, the recorded recovery of the cut is the uninterrupted acceptance under the live grants. fn-pcb-admission-verdict-names-its-class: the verdict is one of :unsigned :carried :malformed :cryptographically-invalid :unenrolled :unsupported-profile :verified; :verified iff the plan is :ok under both verified observations; :carried iff the D23 arm; a present carrier is never :unsigned. Not covered: pull over TLS (packet 8), the observation determinism the decline theorem assumes (A-CRYPTO), fn-pcb-admission-verdict has no host caller yet (its classes are the transit refusal detail's plus :carried/:verified).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-022"
+      ],
+      "depends_on": [
+        "PRF-097",
+        "PRF-098",
+        "PRF-099"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/key-statements.lisp",
+        "books/peer-carriage.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_invite.py",
+        "tests/test_native_key_statements.py",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-compose-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T235912Z-4066344.json"
+      ],
+      "events": [
+        "fn-pinv-confirm-record-configures-the-issued-invitations-peer",
+        "fn-pinv-confirm-record-fold-consumes-and-configures",
+        "fn-ks-reopen-is-blind-to-later-configuration",
+        "fn-ks-a-decline-replays-as-a-decline",
+        "fn-ks-recorded-recovery-completes-the-cut",
+        "fn-pcb-admission-verdict-names-its-class"
+      ]
+    },
+    {
+      "id": "PRF-115",
+      "title": "A resend of an accepted source after its withdrawal or reclamation is answered from the Store (duplicate or conflict), never prepared as a fresh acceptance, and is served a 441 line",
+      "statement": "Over the decision the host calls at POST (fn-rclb-existing-action, host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-rcl-existing-action, fn-owner-existing-action from fnn-owner-attempt-transit): for a string Message-ID held in the Store's article list, both answer :duplicate or :conflict after fn-sn-finish of that Store, whatever the completed record (fn-vj-a-completion-keeps-a-held-message-id-answered; a cancel that withdraws the target is accepted by such a completion, and the owner's carried commit is fn-sn-finish by fn-ccar-sn-finish-is-sn-finish), and for any Store whose article list is fn-rcl-reclaim-state of an acceptance state holding it (fn-vj-reclamation-keeps-a-held-message-id-answered); while the resend is the connection's in-flight submission with no completion consumed, fn-own-outcome renders the duplicate or the conflict 441 line for it (fn-vj-a-held-message-id-is-answered-441). The host returns the word before fnn-advance-frontier and fn-owner-prepare-buffer, so no number is allocated (host control flow, observed natively, not a theorem). The same source being :duplicate rather than :conflict after reclamation is fn-rcl-existing-action-after-reclaim with its SHA-256 collision disjuncts.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-019"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/visibility-join.lisp",
+        "tests/acl2/visibility-join-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T000258Z-2861655.json",
+        "planning/evidence/visibility-join-2026-09-25.md",
+        "tests/test_native_visibility_join.py"
+      ],
+      "progress_note": "Certified persvati run-20260926T000228Z-6d61 (2 jobs, w25): books/visibility-join 1.4 s, its tests 1.6 s. Teeth: a reachable Store built by fn-sn-io/fn-spc-prepare/fn-sn-finish with target, cancel (withdrawn under a namespace grant) and the reclaimed tombstone; one must-fail per hypothesis (the stringp removals are corrupted-state witnesses). Native SCN-060 passed on the developer image (hbox).",
+      "events": [
+        "fn-vj-a-completion-keeps-a-held-message-id-answered",
+        "fn-vj-reclamation-keeps-a-held-message-id-answered",
+        "fn-vj-a-held-message-id-is-answered-441"
+      ]
+    },
+    {
       "id": "PRF-122",
       "title": "The reader's search scope: the served XPAT reply over a range is XHDR's lines for exactly the served, matching numbers in it, and a withdrawn number is never a hit",
       "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which the served path reaches for every non-POST reader command (host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk, fn-served-step, fn-served-dispatch, fn-auth-step-pinned, fn-nntp-post-step-pinned): fn-nntp-step-pinned-xpat-range-is-the-scope, for an open, well-formed, projected session with a selected group and a command line within the preflight whose keyword is XPAT, whose field is a header name or metadata item, whose second argument is a range and whose joined pattern parses, the step's result is fn-nntp-multi of the 221 initial line and fn-nntp-hdr-lines-for-numbers of the field over fn-nss-hits of the range's numbers in the served archive. fn-nss-hits-are-the-scope: a number is in that set iff it is positive, within the range's bounds, the group's served archive holds an available article at it, the field renders, and fn-nntp-xpat-matchesp accepts the rendered field. fn-nss-withdrawn-number-is-never-a-hit: a token the pinned step answers 423 withdrawn for (fn-nntp-number-withdrawn-p) never names a hit, for any field, pattern or number list. tools/fn_web.py Backend.search and Backend.thread send exactly these commands and keep no index.",
