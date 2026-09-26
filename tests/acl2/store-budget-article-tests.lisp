@@ -166,4 +166,4 @@
             (fn-profile-replay-within-boundp
              profile (+ bytes-used (len (fn-record-encode record)))))
    :rule-classes nil
-   :hints (("Goal" :use ((:instance fn-sbud-article-verdict-keeps-history-at-producer-width))))))
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory) :use ((:instance fn-sbud-article-verdict-keeps-history-at-producer-width))))))

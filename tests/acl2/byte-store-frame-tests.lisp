@@ -292,16 +292,16 @@
 ; KEYSTONE fn-bs-frontier-impl-round-trip, positive witnesses on both sides
 ; of 2^32 and at 2^64 - 1; the separating witness: the frame for 2^32 has a
 ; nine-octet payload, which the format-2 reader refuses and format 3 reads.
-(defconst *bsft-f2-top* (fn-bs-frontier-encode-impl 4294967295))
-(defconst *bsft-f3-first* (fn-bs-frontier-encode-impl 4294967296))
-(defconst *bsft-f3-top* (fn-bs-frontier-encode-impl 18446744073709551615))
-(assert-event (equal (fn-bs-frontier-decode-impl *bsft-f2-top*) 4294967295))
-(assert-event (equal (fn-bs-frontier-v2-decode *bsft-f2-top*) 4294967295))
-(assert-event (equal (fn-bs-frontier-decode-impl *bsft-f3-first*) 4294967296))
-(assert-event (null (fn-bs-frontier-v2-decode *bsft-f3-first*)))
-(assert-event (equal (fn-bs-frontier-decode-impl *bsft-f3-top*)
+(defmacro bsft-f2-top () '(fn-bs-frontier-encode-impl 4294967295))
+(defmacro bsft-f3-first () '(fn-bs-frontier-encode-impl 4294967296))
+(defmacro bsft-f3-top () '(fn-bs-frontier-encode-impl 18446744073709551615))
+(assert-event (equal (fn-bs-frontier-decode-impl (bsft-f2-top)) 4294967295))
+(assert-event (equal (fn-bs-frontier-v2-decode (bsft-f2-top)) 4294967295))
+(assert-event (equal (fn-bs-frontier-decode-impl (bsft-f3-first)) 4294967296))
+(assert-event (null (fn-bs-frontier-v2-decode (bsft-f3-first))))
+(assert-event (equal (fn-bs-frontier-decode-impl (bsft-f3-top))
                      18446744073709551615))
-(assert-event (equal (- (len *bsft-f3-first*) (len *bsft-f2-top*)) 4))
+(assert-event (equal (- (len (bsft-f3-first)) (len (bsft-f2-top))) 4))
 ; The round trip's width hypothesis: 2^64 has no frame, so without it the
 ; conclusion fails.
 (assert-event (null (fn-bs-frontier-encode-impl 18446744073709551616)))
@@ -312,14 +312,16 @@
  (defthm bsft-round-trip-without-the-width
    (implies (natp n)
             (equal (fn-bs-frontier-decode-impl (fn-bs-frontier-encode-impl n))
-                   n))))
+                   n))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (theory 'minimal-theory)))))
 ; A nine-octet head holding a value below 2^32 is not canonical (RFC 8949
 ; §4.2.1) and no reader accepts it.
-(defconst *bsft-noncanonical*
-  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
-                 *fn-bs-meta-frontier-kind* '(27 0 0 0 0 0 0 0 5)))
-(assert-event (null (fn-bs-frontier-decode-impl *bsft-noncanonical*)))
-(assert-event (null (fn-bs-frontier-v2-decode *bsft-noncanonical*)))
+(defmacro bsft-noncanonical ()
+  '(fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                  *fn-bs-meta-frontier-kind* '(27 0 0 0 0 0 0 0 5)))
+(assert-event (null (fn-bs-frontier-decode-impl (bsft-noncanonical))))
+(assert-event (null (fn-bs-frontier-v2-decode (bsft-noncanonical))))
 ; KEYSTONE fn-bs-frontier-decode-extends-format-2: every format-2 frame the
 ; old reader accepts (0, 2, 2^32 - 1 here, and the frame init writes) reads
 ; the same under format 3.  Its hypothesis: at the format-3 frame for 2^32 the
@@ -329,11 +331,13 @@
                      (fn-bs-frontier-v2-decode (fn-bs-initial-frontier-octets))))
 (assert-event (equal (fn-bs-frontier-decode-impl (fn-bs-frontier-encode-impl 2))
                      (fn-bs-frontier-v2-decode (fn-bs-frontier-encode-impl 2))))
-(assert-event (not (equal (fn-bs-frontier-decode-impl *bsft-f3-first*)
-                          (fn-bs-frontier-v2-decode *bsft-f3-first*))))
+(assert-event (not (equal (fn-bs-frontier-decode-impl (bsft-f3-first))
+                          (fn-bs-frontier-v2-decode (bsft-f3-first)))))
 (must-fail
  (defthm bsft-extends-without-the-format-2-hypothesis
    (equal (fn-bs-frontier-decode-impl octets)
-          (fn-bs-frontier-v2-decode octets))))
+          (fn-bs-frontier-v2-decode octets))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (theory 'minimal-theory)))))
 ; The allocator ceiling is unchanged: no successor at 2^32 - 1 (PKT-244).
 (assert-event (null (fn-bs-frontier-next 4294967295)))
