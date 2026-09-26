@@ -3425,6 +3425,36 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-122",
+      "title": "A signed POST's owner CPU does not grow with the retained history: at N = 1,000 and N = 10,000 (32 hybrid-signed carriers in each history) the lane's image spends about the same owner CPU per signed POST, where its base grows about linearly with N",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-004"
+      ],
+      "steps": [
+        "On hbox load a store of N POSTs of about 2 KiB, 32 of them hybrid-signed carriers spread evenly, one hybrid author enrolled (planning/evidence/signed-post-linear-2026-09-26/prof_signed.py load, /dev/shm, profile scale), for N = 1,000 and N = 10,000.",
+        "On a fresh copy of each store, open it with the base image (dev 6407de336) and with the lane's image, warm with one unsigned and one signed POST, then time 20 unsigned and 20 signed POSTs, each batch on one connection opened before it, with the owner's CPU (/proc/PID/stat) over each batch (prof_signed.py run).",
+        "Profile the base's signed batch with sb-sprof (the profiling twin, --sprof) at both N and name the term that grows."
+      ],
+      "expected": [
+        "Every POST answers 240.",
+        "The lane's signed POST owner CPU at N = 10,000 is within a small factor of its figure at N = 1,000, and well below the base's at N = 10,000; the box load is stated beside each figure.",
+        "The base's profile at N = 10,000 attributes the growth to fn-sf-next-lower under fn-ccar-sn-prepare-identity."
+      ],
+      "evidence": [
+        "planning/evidence/signed-post-linear-2026-09-26.md",
+        "planning/evidence/signed-post-linear-2026-09-26/prof_signed.py",
+        "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
+      ],
+      "implementation": {
+        "test": "planning/evidence/signed-post-linear-2026-09-26/prof_signed.py",
+        "native": true,
+        "record": "planning/evidence/signed-post-linear-2026-09-26.md",
+        "log": "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
+      }
     }
   ]
 }

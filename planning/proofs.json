@@ -7015,6 +7015,36 @@
         "fn-osi-ocar-exp-open-keeps-store",
         "fn-sco-thaw-checked-accepts-own-publication"
       ]
+    },
+    {
+      "id": "PRF-193",
+      "title": "A signed POST's identity prepare reads the history's last record, not every record: the candidate test's txid fold no longer re-recognizes each record's octets",
+      "statement": "host/owner-host.lisp fn-owner-prepare-identity (called by host/native/owner.lisp fnn-owner-identity-commit for every signed POST's kind-4 composite, every keyring snapshot and every key statement's kind-3 event) installs fn-ccar-ocfg-prepare-identity, whose store step fn-ccar-sn-prepare-identity (books/owner-commit-carried.lisp) now stages through fn-pcar-stage-record (books/owner-prepare-carried.lisp; fn-pcar-stage-record-is-stage-record, no hypothesis, PRF-014) instead of fn-spc-stage-record. The candidate test's fold fn-sf-next-lower computed fn-store-event-txid of every record, and that dispatcher runs fn-record-p over each record's octets: 69.9 percent of a signed POST's owner CPU at N = 10,000 in the before profile (planning/evidence/signed-post-linear-2026-09-26.md). fn-pcar-next-lower reads the last record's txid through the concrete twins. KEYSTONE fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record (no hypothesis but that the prepare moved the store): when (fn-ccar-sn-prepare-identity s event) differs from s, its files are :record-staged with EVENT as the record candidate, the history and the node are unchanged, EVENT's sequence is (len records), (+ 1 txid(EVENT)) is the frontier, and on a non-empty history txid(EVENT) is above the txid of (car (last records)). PRF-144's keystones fn-ccar-sn-prepare-identity-is-sn-prepare-identity-under-relation and fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation are re-proved over the new body, statements unchanged; with them the staged event is the specification's. The signed POST's verdict and served bytes are unchanged (the staging is equal to the former one on every input).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-014"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/owner-commit-carried.lisp",
+        "books/owner-prepare-carried.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/store-events-carried-tests.lisp",
+        "planning/evidence/signed-post-linear-2026-09-26.md",
+        "planning/evidence/signed-post-linear-2026-09-26/prof_signed.py",
+        "planning/evidence/manifests/certify-20260926T154328Z-3575872.json",
+        "planning/evidence/manifests/certify-20260926T154437Z-3587055.json",
+        "planning/evidence/manifests/certify-20260926T154510Z-3592253.json"
+      ],
+      "progress_note": "Lane signed-post-linear, 2026-09-26 (PKT-330 (2), ledger row 4). The 20 affected roots certified on persvati in the lane's tree (w25, 2 jobs); the batch certifies the union. What remains of the signed POST's per-request cost is PKT-552.",
+      "events": [
+        "fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record"
+      ]
     }
   ]
 }

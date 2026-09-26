@@ -814,8 +814,11 @@
       ;; fn-ocfg-step of this event on every owner fn-own-relation admits
       ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
       ;; it stages without replaying the appended history, whose replay the
-      ;; maintained store relation carries.  Guard-verified under fn-sn-statep
-      ;; of the store, which fn-ocl-relation carries.
+      ;; maintained store relation carries, and its candidate test reads the
+      ;; history's last record, not every record (PRF-193,
+      ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
+      ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
+      ;; carries.
       (let ((state (fn-owner-install-ocfg
                     (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
                     state)))
