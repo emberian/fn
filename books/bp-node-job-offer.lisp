@@ -463,14 +463,19 @@
                         (fn-bpn-find-job (fn-bpn-record-key record)
                                          (fn-bpn-machine-state-jobs st)))
                        :attempting)))
-  :hints (("Goal" :in-theory (enable fn-bpn-proposal-effectsp fn-bpnj-forwarded-transport-p
-                                     fn-bpn-nth fn-cbor-ag-car)))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpn-proposal-effectsp fn-bpnj-forwarded-transport-p
+                                               fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                                               (:e fn-bpn-nth) (:e fn-cbor-ag-car) (:e equal) (:e zp)
+                                               (:e natp) (:e binary-+) (:e fn-bpnj-forwarded-transport-p))
+                                             (theory 'minimal-theory))))
   :rule-classes nil)
 (defthm fn-bpnj-authorized-refusal-and-uncertainty-are-not-transport
   (implies (fn-bpn-proposal-effectsp st record success refusal uncertain)
            (and (not (equal (fn-cbor-ag-car refusal) :transport))
                 (not (equal (fn-cbor-ag-car uncertain) :transport))))
-  :hints (("Goal" :in-theory (enable fn-bpn-proposal-effectsp fn-cbor-ag-car)))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpn-proposal-effectsp fn-cbor-ag-car car-cons cdr-cons
+                                               (:e fn-cbor-ag-car) (:e equal))
+                                             (theory 'minimal-theory))))
   :rule-classes nil)
 (defthm fn-bpnj-base-forwarded-needs-a-durable-finished-record
   (implies
