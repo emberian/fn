@@ -1449,7 +1449,8 @@
         "PRF-094",
         "PRF-188",
         "PRF-191",
-        "PRF-192"
+        "PRF-192",
+        "PRF-208"
       ],
       "verification": [
         "proof",
@@ -3842,6 +3843,32 @@
         "planning/evidence/checkpoint-pipeline-2026-09-26.md"
       ],
       "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy); the loop theorem fn-ockp-run-writes-the-file (PKT-583)."
+    },
+    {
+      "id": "HST-019",
+      "title": "The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index",
+      "specification": "specs/host.md#typed-results-across-the-native-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-208"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/owner-results.lisp",
+        "tests/acl2/owner-results-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/feed-service.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/native_live_config_cache_raw.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md"
+      ],
+      "implementation_note": "First half (lane adapter-retirement): the feed results (FeedPublication) and the configuration staging results (ConfigResult) are typed; fnn-owner-name-list and fnn-owner-config-names are deleted and the feed flush consumes one sealed frame plan. The submission-taken, served-step and capture results are defined in books/owner-results.lisp and still travel through their globals until the continuation wires them (and the catalog slice's completion token)."
     }
   ]
 }

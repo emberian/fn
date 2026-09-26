@@ -175,7 +175,7 @@ class NativeControlCutGateTests(unittest.TestCase):
         source = (ROOT / "host/native/feed-service.lisp").read_text(encoding="ascii")
         reply = source[source.index("(defun fnn-feed-reply-step"):
                        source.index("(defun fnn-feed-lost")]
-        self.assertLess(reply.index("(fnn-owner-feed-flush service)"),
+        self.assertLess(reply.index("(fnn-owner-feed-flush service publication)"),
                         reply.index("(values word"))
         consume = source[source.index("(defun fnn-feed-consume"):
                          source.index("(defun fnn-feed-pump-link")]

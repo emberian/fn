@@ -42,8 +42,12 @@
     (fn-owner-bp-transit-outcome
      (assert (equal args '(:durable))) :accepted)
     (otherwise (error "unexpected action ~s" name))))
-(defun fnn-owner-feed-flush (service)
-  (declare (ignore service)) (push :flush *calls*))
+;; A FeedPublication (books/owner-results.lisp) is stood for by its word
+;; here: the step is the recording action stub and the flush counts.
+(defun fnn-owner-feed-step (name &rest args) (apply #'fnn-owner-action name args))
+(defun fnn-owner-feed-word (publication) publication)
+(defun fnn-owner-feed-flush (service publication)
+  (declare (ignore service publication)) (push :flush *calls*))
 (defun fnn-owner-attempt-transit (&rest args)
   (declare (ignore args)) (push :attempt-transit *calls*) :durable)
 
