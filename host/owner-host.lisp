@@ -816,18 +816,13 @@
 
 (defun fn-owner-consumer-local-poll (consumer state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((decision (fn-col-poll (fn-owner-core state) consumer)))
-    (value
-     (if (eq (car decision) :poll)
-         (list :poll (cadr decision)
-               (if (caddr decision)
-                   (if (fn-stxa-p (caddr decision))
-                       (fn-stxa-encode (caddr decision))
-                     ; fn-rcon-record-encode-impl-is-record-encode-impl
-                     ; (books/records-codec-concrete, no hypothesis).
-                     (fn-rcon-record-encode-impl (caddr decision)))
-                 nil))
-       decision))))
+  ;; PKT-254: ACL2 encodes the selected event and refuses a report the
+  ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
+  ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
+  ;; books/consumer-owner-local-progress.lisp).  The legacy record's encoder
+  ;; is fn-rcon-record-encode-impl (fn-rcon-record-encode-impl-is-record-
+  ;; encode-impl, books/records-codec-concrete, no hypothesis).
+  (value (fn-col-poll-report (fn-owner-core state) consumer)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
