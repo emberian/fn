@@ -366,3 +366,57 @@
                                                    nil nil)))
 (assert-event (null (fn-pcb-transit-refusal-detail *tha-root-source* *pat-snapshots*
                                                    nil nil nil)))
+
+; =============================================================================
+; PKT-473 (PRF-184): fn-pcb-transit-verdict-names-the-accepted-arm (no
+; hypotheses; each implication's antecedent reached and its conclusion
+; asserted, and each antecedent's omission shown to change the verdict).
+; Unsigned (absent carrier):
+(assert-event (equal (fn-pa-current-plan *tha-root-source* *pat-snapshots* nil t) :absent))
+(assert-event (equal (fn-pcb-transit-verdict *tha-root-source* *pat-snapshots* nil t nil nil)
+                     :unsigned))
+; Carried (the D23 arm, on transit):
+(assert-event (equal (car (fn-pa-current-plan *pat-relayed* nil *pat-carries* t)) :carried))
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* nil *pat-carries* t nil nil)
+                     :carried))
+; Verified (current enrolment, both observations verified):
+(assert-event (equal (car (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil t)) :ok))
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-snapshots* nil t
+                                             :verified :verified)
+                     :verified))
+; ... one observation refused: not :verified (the refusal's verdict).
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-snapshots* nil t
+                                             :verified :refused)
+                     :cryptographically-invalid))
+; Revoked (on transit, the tombstone of keys once enrolled here):
+(assert-event (equal (car (fn-pa-current-plan *pat-relayed* *pat-after-revocation* nil t))
+                     :revoked))
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil t
+                                             :verified :verified)
+                     :revoked))
+; ... the admission verdict (off transit) calls the same input a refusal:
+; the reason the accepted arm needs its own verdict.
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
+                                               :verified :verified)
+                     :unenrolled))
+; ... off transit (TRANSITP nil) there is no :revoked arm, and the verdict
+; is the admission verdict's refusal.
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil nil
+                                             :verified :verified)
+                     :unenrolled))
+; ... a revoked arm with a failed observation is never :revoked.
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil t
+                                             :refused :verified)
+                     :cryptographically-invalid))
+; The last conjunct: off the :revoked arm the verdict is the admission
+; verdict (on each witness above that is not revoked).
+(assert-event (equal (fn-pcb-transit-verdict *pat-malformed* *pat-snapshots* nil t nil nil)
+                     (fn-pcb-admission-verdict *pat-malformed* *pat-snapshots* nil nil nil)))
+(assert-event (equal (fn-pcb-transit-verdict *pat-relayed* nil nil t nil nil)
+                     (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil)))
+; Its hypothesis matters: on the :revoked arm the two differ.
+(must-fail
+ (assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil t
+                                              :verified :verified)
+                      (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
+                                                :verified :verified))))

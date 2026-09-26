@@ -1498,11 +1498,14 @@
 ; fn-olog-transit-line), with the same id, kind, reason and word.  DETAIL is
 ; the ingress refusal the host relays (host/native/owner.lisp
 ; fnn-owner-transit-refused), a log field only.
-(defun fn-owner-transit-log-line (id kind reason word detail state)
+; VERDICT (PKT-473) is the accepted arm's fn-pcb-transit-verdict
+; (fn-owner-transit-verdict below), or nil.
+(defun fn-owner-transit-log-line (id kind reason word detail verdict state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-owner-log-line
                              (fn-olog-transit-line (fn-owner-core state)
-                                                   id kind reason word detail)
+                                                   id kind reason word detail
+                                                   verdict)
                              state)))
     (value :ok)))
 
@@ -1707,6 +1710,13 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-served-word word detail)))
 
+; The served POST's word (PKT-473, PRF-184): fn-pa-served-post-word names a
+; durable composite whose key change the Store refused.  Called by
+; host/native/owner.lisp fnn-owner-attempt-served only.
+(defun fn-owner-served-post-word (word detail state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-served-post-word word detail)))
+
 ; PRF-099: the carried usage of the boundary whose release evidence is
 ; EVIDENCE (a string), from the owner's (K . TALLY) cache over the committed
 ; records extended by the records committed since
@@ -1769,6 +1779,17 @@
   (value (fn-pcb-transit-refusal-detail
           received (fn-sn-keyring-snapshots (fn-owner-store state))
           (fn-owner-transit-carried-list transitp state) ed ml)))
+
+; PKT-473 (PRF-184): an accepted transit arm's verdict
+; (books/peer-carriage.lisp fn-pcb-transit-verdict) under the same keyring
+; snapshots and carried list as fn-owner-peer-carrier-plan, read before the
+; kind-4 commit.
+(defun fn-owner-transit-verdict (received transitp ed ml state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pcb-transit-verdict
+          received (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t) ed ml)))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge

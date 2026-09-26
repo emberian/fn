@@ -127,6 +127,13 @@ from a revoked principal `revoked`. A node that has never enrolled the friend
 still decides by the genesis identity and refuses current keys that are not
 the genesis ones (`genesis`): no succession chain travels with the document.
 
+The same holds the other way round. When the friend's node already holds
+*your* principal at the keys your invitation is signed with, its `peer
+accept` configures you as a peer and enrols nothing (its log says `peer
+accept: the inviter's current keys; nothing to enrol`), and the acceptance
+is written as usual. Accepting the same invitation again is refused
+`already-enrolled`: there is nothing left to do.
+
 ### An account for the friend on your node
 
 To let the friend read and post on your node as themselves, hand them one

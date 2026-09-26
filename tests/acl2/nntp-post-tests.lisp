@@ -364,6 +364,34 @@
  (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :refused))
         (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable))))
 
+;; PKT-473 (PRF-184): fn-post-outcome-names-a-refused-key-change-only-for-its-completion.
+;; Reachable witness: the session POST left awaiting; the reply is the one
+;; line, a 240, and differs from the plain 240, the uncertain line and a 441.
+(defconst *fn-tp-kc-ps* (fn-post-result-session *fn-tp-r2*))
+(assert-event (fn-post-sessionp *fn-tp-kc-ps*))
+(assert-event
+ (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :durable-key-change-refused))
+        (fn-post-single *fn-tp-kc-ps*
+                        "240 article received OK; the key change it carries was refused (key-change-refused)")))
+(assert-event
+ (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :durable))
+             (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :durable-key-change-refused)))))
+(assert-event
+ (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :uncertain))
+             (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :durable-key-change-refused)))))
+(assert-event
+ (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :signature))
+             (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :durable-key-change-refused)))))
+;; Without fn-post-sessionp the line is not rendered: the 403 for every completion.
+(must-fail
+ (assert-event
+  (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable-key-change-refused))
+         (fn-post-single *fn-tp-too-deep*
+                         "240 article received OK; the key change it carries was refused (key-change-refused)"))))
+(assert-event
+ (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable))
+        (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable-key-change-refused))))
+
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-post-without-a-clock-refuses-with-the-clock-line (D10-a)
 ;

@@ -14,8 +14,10 @@
 ; kind-4 event fnn-owner-identity-commit prepares and publishes.  Its
 ; completion is the owner's (:complete) (host/owner-host.lisp fn-owner-finish,
 ; line 531, via *fnn-finish-callback*).  The poster's word is
-; fn-pa-served-word (fn-owner-served-carried-word, line 1186), and
-; fn-owner-outcome (line 1095) runs fn-own-outcome with it.
+; fn-pa-served-post-word (host/owner-host.lisp fn-owner-served-post-word,
+; since PKT-473; equal to fn-pa-served-word except for a durable composite
+; whose key change the Store refused), and fn-owner-outcome runs
+; fn-own-outcome with it.
 ;
 ; Premise of the valid arm, not proved here: that the Store's completion
 ; record after the identity prepare and publication is the event ACL2 built
@@ -387,10 +389,80 @@
            :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
                             fn-own-outcome-rendering fn-own-refusal-wordp
                             fn-post-store-refusalp fn-served-post-outcome
-                            fn-pa-served-word)
+                            fn-own-post-rendering fn-pa-served-word)
                            (fn-nntp-post-outcome fn-own-completion-consumedp
                             fn-own-feed-durable fn-own-advance
                             )))))
+
+; KEYSTONE (PKT-473, PRF-184).  The served POST whose kind-4 composite is
+; durable and whose key change the Store refused.  Host path:
+; host/native/owner.lisp fnn-owner-statement-committed sets the detail
+; :key-change-refused only after a :durable commit whose executor answered
+; :refused; fnn-owner-attempt-served returns fn-owner-served-post-word
+; (fn-pa-served-post-word) over that word and detail; fnn-owner-drain-one
+; hands it to fn-owner-outcome (fn-own-outcome).  Once the completion is
+; consumed the reply is fn-nntp-post-outcome's line naming the refused key
+; change, and the owner moves exactly as for :durable (the poster re-pinned,
+; the feeds as durable): the composite stands.
+(defthm fn-osp-served-post-names-a-refused-key-change
+  (let* ((word (fn-pa-served-post-word attempt detail))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (sub (fn-own-inflight o))
+         (r (fn-own-outcome o id word)))
+    (implies (and conn sub (equal (fn-own-sub-id sub) id)
+                  (fn-own-completion-consumedp o)
+                  (equal attempt :durable)
+                  (equal detail :key-change-refused))
+             (and (equal word :durable-key-change-refused)
+                  (equal (fn-own-outcome-completion o word) :durable)
+                  (equal (car r)
+                         (fn-post-result-effects
+                          (fn-nntp-post-outcome
+                           (fn-auth-post-session (fn-own-conn-session conn))
+                           :durable-key-change-refused)))
+                  (equal (cdr r) (cdr (fn-own-outcome o id :durable))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
+                            fn-own-outcome-rendering fn-own-post-rendering
+                            fn-own-durable-wordp fn-served-post-outcome
+                            fn-pa-served-post-word)
+                           (fn-nntp-post-outcome fn-own-completion-consumedp
+                            fn-own-feed-durable fn-own-advance)))))
+
+; KEYSTONE (PKT-473, PRF-184), the converse: the POST reply names a refused
+; key change ONLY for a durable attempt whose detail is the executor's
+; refusal, and only once the completion is consumed.  No other word the host
+; can pass, and no refusal, is answered with it.
+(defthm fn-osp-key-change-reply-only-for-a-consumed-refused-key-change
+  (let* ((word (fn-pa-served-post-word attempt detail))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (r (fn-own-outcome o id word)))
+    (implies (and (fn-post-sessionp (fn-auth-post-session (fn-own-conn-session conn)))
+                  (not (equal attempt :durable-key-change-refused))
+                  (equal (car r)
+                         (fn-post-result-effects
+                          (fn-nntp-post-outcome
+                           (fn-auth-post-session (fn-own-conn-session conn))
+                           :durable-key-change-refused))))
+             (and (equal attempt :durable)
+                  (equal detail :key-change-refused)
+                  (fn-own-completion-consumedp o))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-post-outcome-names-a-refused-key-change-only-for-its-completion
+                            (ps (fn-auth-post-session (fn-own-conn-session
+                                                       (fn-own-find-conn id (fn-own-conns o)))))
+                            (completion (fn-own-post-rendering
+                                         o (fn-pa-served-post-word attempt detail))))
+                 (:instance fn-pa-served-post-word-names-a-refused-key-change-only-when-durable
+                            (word attempt)))
+           :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
+                            fn-own-outcome-rendering fn-own-post-rendering
+                            fn-own-durable-wordp fn-served-post-outcome)
+                           (fn-nntp-post-outcome fn-own-completion-consumedp
+                            fn-pa-served-post-word fn-post-sessionp
+                            fn-own-feed-durable fn-own-advance)))))
 
 (defthm fn-osp-served-reasons-are-store-refusals
   (implies (member-equal detail *fn-pa-served-reasons*)

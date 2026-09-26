@@ -591,6 +591,36 @@
 
 (defthm fn-pa-served-word-without-detail-by-definition
   (equal (fn-pa-served-word word nil) word))
+;; PKT-473 (PRF-184): the served POST's word after the key-statement
+;; executor.  A kind-4 composite that is durable while the kind-3 key change
+;; it carries was refused by the Store (host/native/owner.lisp
+;; fnn-owner-statement-committed sets the detail :key-change-refused only
+;; after a :durable commit) is :durable-key-change-refused: the owner treats
+;; it as durable (books/owner.lisp fn-own-durable-wordp) and the reply names
+;; both (books/nntp-post.lisp fn-nntp-post-outcome).  Every other pair is
+;; fn-pa-served-word's.  Called by host/owner-host.lisp
+;; fn-owner-served-post-word, from fnn-owner-attempt-served only: transit's
+;; word (and its 235) is fn-pa-served-word's.
+(defun fn-pa-served-post-word (word detail)
+  (declare (xargs :guard t))
+  (if (and (equal word :durable)
+           (equal detail :key-change-refused))
+      :durable-key-change-refused
+    (fn-pa-served-word word detail)))
+
+; WORD is the attempt's own word, which is never the new word itself.
+(defthm fn-pa-served-post-word-names-a-refused-key-change-only-when-durable
+  (implies (not (equal word :durable-key-change-refused))
+           (iff (equal (fn-pa-served-post-word word detail)
+                       :durable-key-change-refused)
+                (and (equal word :durable)
+                     (equal detail :key-change-refused)))))
+
+(defthm fn-pa-served-post-word-is-the-served-word-otherwise
+  (implies (not (and (equal word :durable)
+                     (equal detail :key-change-refused)))
+           (equal (fn-pa-served-post-word word detail)
+                  (fn-pa-served-word word detail))))
 
 ;; ---------------------------------------------------------------------------
 ;; Control messages, packet C1 (planning/design-2026-09-25-control-messages.md

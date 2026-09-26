@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -199,6 +200,32 @@ class NativeKeyStatementTests(unittest.TestCase):
             stream.write(b".\r\n")
             return stream.readline()
 
+    def hdr_verified(self, node, msgid):
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
+            stream = sock.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"HDR :fn-verified " + msgid.encode("ascii") + b"\r\n")
+            status = stream.readline()
+            self.assertTrue(status.startswith(b"225 "), status)
+            item = stream.readline()
+            self.assertEqual(stream.readline(), b".\r\n")
+            return item
+
+    def fn_verify(self, node, msgid, keys):
+        """tools/fn_verify.py against the running node, P pinned at KEYS."""
+        entry = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"),
+                                "keyring-entry", str(self.principal_file),
+                                str(keys["ed_public"]), str(keys["ml_public"])],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        keyring = self.write("verify-keyring.json",
+                             ('{"format": "fn-verify-keyring-v1", "principals": [%s]}'
+                              % entry.stdout.decode().strip()).encode("ascii"))
+        run = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"), msgid,
+                              "--node", "127.0.0.1:{}".format(node["port"]), "--plain",
+                              "--keyring", str(keyring)],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
+        return run.returncode, (run.stdout + run.stderr).decode("utf-8", "replace")
+
     def enrol_and_grant(self, node):
         old = self.keys["old"]
         self.fn("hybrid-enroll", node["control"], "1", self.principal_file,
@@ -255,6 +282,31 @@ class NativeKeyStatementTests(unittest.TestCase):
                                              self.ordinary("<late@keys.invalid>"), "late"))
             witness("after-revocation POST", late.strip())
             self.assertTrue(late.startswith(b"441 "), late)
+            # PKT-473 (PRF-184, SCN-113): an article under P's last keys
+            # arriving by transit AFTER this node revoked P is stored as a
+            # revoked composite (PRF-098's :revoked arm); the node's word is
+            # `revoked P keyring G', its transit line names the verdict, and
+            # fn_verify, deciding from the bytes alone, reports revoked.
+            revoked_msgid = "<revoked-transit@keys.invalid>"
+            relayed = (b"Path: a.example.invalid!not-for-mail\r\n"
+                       + self.carrier(self.principal_file, new,
+                                      self.ordinary(revoked_msgid), "revokedtransit"))
+            relayed_reply = self.ihave(b, revoked_msgid, relayed)
+            witness("revoked-transit IHAVE", relayed_reply.strip())
+            self.assertTrue(relayed_reply.startswith(b"235 "), relayed_reply)
+            item = self.hdr_verified(b, revoked_msgid)
+            witness("revoked-transit HDR", item.strip())
+            self.assertTrue(item.startswith(b"0 revoked " + P.hex().encode() + b" keyring "), item)
+            lines = [line for line in self.log(b).splitlines()
+                     if line.startswith("accepted transit ")
+                     and " message-id=" + revoked_msgid + " " in line]
+            witness("revoked-transit log", lines)
+            self.assertEqual(len(lines), 1, self.log(b))
+            self.assertIn(" detail=revoked verdict=revoked ", lines[0])
+            code, out = self.fn_verify(b, revoked_msgid, new)
+            witness("fn_verify revoked", code, out.strip())
+            self.assertEqual(code, 1, out)
+            self.assertIn("the node revoked " + P.hex(), out)
         finally:
             self.stop(b)
         history = self.history(b)
@@ -477,6 +529,71 @@ class NativeKeyStatementTests(unittest.TestCase):
         witness("log after a second restart", again)
         self.assertEqual(again, lines)
         self.assertEqual(self.history(e), history)
+
+    # -- PKT-473 (PRF-184, SCN-113) --------------------------------------------
+    def profiled_node(self, name, max_transactions=None, groups=("fn.test", "fn.keys")):
+        root = self.root / name
+        root.mkdir()
+        store = root / "store"
+        node = {"root": root, "store": store, "port": free_port(),
+                "control": root / "control.sock", "log": root / "service.log",
+                "config": root / "fn.toml"}
+        node["config"].write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
+                store, node["port"], node["control"], node["log"]), encoding="ascii")
+        flags = [] if max_transactions is None else ["--max-transactions", str(max_transactions)]
+        self.fn("operator", node["config"], "init", *flags, *groups)
+        return node
+
+    def transactions_used(self, node):
+        status = self.fn("operator", node["config"], "status").stdout.decode("ascii", "replace")
+        for line in status.splitlines():
+            if line.startswith("headroom "):
+                fields = dict(w.split("=", 1) for w in line.split()[1:])
+                return int(fields["transactions-used"])
+        self.fail(status)
+
+    def test_a_refused_key_change_is_named_in_the_post_reply(self):
+        """PKT-473 (PRF-184): the succession statement's kind-4 composite is
+        durable and the Store refuses its kind-3 key change (the transaction
+        budget holds exactly one more record).  The POST reply is ACL2's 240
+        naming the refused key change (books/nntp-post.lisp
+        *fn-post-durable-key-change-refused-line*), never the plain 240 and
+        never a 441; the statement stands and the keys are unchanged."""
+        # A probe store measures what enrolment, the grant and one owner start
+        # use, so the budget below is exact, not guessed.
+        probe = self.profiled_node("probe")
+        self.start(probe)
+        try:
+            self.enrol_and_grant(probe)
+        finally:
+            self.stop(probe)
+        used = self.transactions_used(probe)
+        d = self.profiled_node("d", max_transactions=used + 1)
+        self.start(d)
+        try:
+            self.enrol_and_grant(d)
+            old, new = self.keys["old"], self.keys["new"]
+            statement = self.carrier(self.principal_file, old,
+                                     self.succession("<kc-refused@keys.invalid>", P, old, new),
+                                     "kc-refused")
+            reply = self.post(d, statement)
+            witness("key-change-refused POST", used + 1, reply.strip())
+            self.assertEqual(reply, b"240 article received OK; the key change it carries "
+                                    b"was refused (key-change-refused)\r\n")
+            self.assertIn("key-statement enrol-successor refused", self.log(d))
+            # The budget is spent: the next article is a capacity refusal.
+            later = self.post(d, self.carrier(self.principal_file, old,
+                                              self.ordinary("<kc-later@keys.invalid>"), "kclater"))
+            witness("after the budget", later.strip())
+            self.assertTrue(later.startswith(b"441 "), later)
+        finally:
+            self.stop(d)
+        self.assertEqual(self.transactions_used(d), used + 1)
+        history = self.history(d)
+        witness("history", history)
+        self.assertEqual(history, ["generation=1 state=active principal=" + P.hex()])
 
 
 if __name__ == "__main__":

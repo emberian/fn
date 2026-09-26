@@ -2734,7 +2734,8 @@
 ; into the ledger after this submission was taken, the reply fn-own-outcome
 ; renders for its connection -- the function the host calls at
 ; host/owner-host.lisp fn-owner-outcome -- is the 240 when the host's word is
-; :durable and the uncertain `441 ... do not repost' for EVERY other word.
+; :durable (the 240 naming a refused key change for
+; :durable-key-change-refused) and the uncertain `441 ... do not repost' for EVERY other word.
 ; No host word, and in particular no OS error the host classified as a
 ; refusal, turns a durable record into `441 ... refused'.
 (defthm fn-own-consumed-completion-is-240-or-uncertain
@@ -2752,10 +2753,15 @@
                        (fn-own-conn-observation conn) (fn-own-clock o)
                        (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
-                      (if (equal word :durable) :durable :uncertain))))))
+                      (cond ((equal word :durable) :durable)
+                            ;; PKT-473 (PRF-184): durable, naming the
+                            ;; refused key change.
+                            ((equal word :durable-key-change-refused) word)
+                            (t :uncertain)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
                                    fn-own-outcome-rendering
+                                   fn-own-post-rendering fn-own-durable-wordp
                                    fn-own-completion-consumedp)
                                   (fn-served-post-outcome fn-own-advance
                                    fn-own-feed-durable fn-own-find-conn

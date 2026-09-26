@@ -320,3 +320,21 @@
   (equal (car (fn-stx-verified-item
                (fn-stx-make-verdict :revoked *tha-principal* 5)))
          118)))
+
+;; PKT-473 (PRF-184): fn-pa-served-post-word.  The durable word with the
+;; executor's detail names the refused key change; every other pair is the
+;; served word.
+(assert-event (equal (fn-pa-served-post-word :durable :key-change-refused)
+                     :durable-key-change-refused))
+(assert-event (equal (fn-pa-served-post-word :durable nil) :durable))
+(assert-event (equal (fn-pa-served-post-word :durable :carried) :durable))
+(assert-event (equal (fn-pa-served-post-word :refused :key-change-refused) :refused))
+(assert-event (equal (fn-pa-served-post-word :refused :signature) :signature))
+;; The hypothesis (WORD is not the new word itself): with it dropped the
+;; word is :durable-key-change-refused while WORD is not :durable.
+(must-fail
+ (assert-event
+  (iff (equal (fn-pa-served-post-word :durable-key-change-refused nil)
+              :durable-key-change-refused)
+       (and (equal :durable-key-change-refused :durable)
+            (equal nil :key-change-refused)))))
