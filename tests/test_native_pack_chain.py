@@ -202,6 +202,72 @@ class NativePackChainTests(unittest.TestCase):
                         shutil.rmtree(store)
 
 
+    def generations(self, store):
+        status = self.native("store", store, "status").stdout
+        match = re.search(r"pack-chain links=\d+ boundary=\d+ generations=([0-9,]+)", status)
+        self.assertIsNotNone(match, status)
+        return [int(g) for g in match.group(1).split(",")]
+
+    def pack_files(self, store):
+        """The pack generation files by name; the selection marker apart."""
+        return {path.name: path.read_bytes()
+                for path in sorted((store / "packs").iterdir())
+                if path.name != "selected.fncp"}
+
+    def test_pack_chain_link_cut_leaves_exactly_the_selected_links(self):
+        """A death at `pack-chain-link' after link N, the chain program's cut
+        (books/checkpoint-pack-chain.lisp fn-ccc-chain-program;
+        fn-ccc-chain-link-cut-walks-the-extended-chain and
+        fn-ccc-chain-link-cut-reopens-to-the-history), from both entries:
+        exactly links 1..N are published, byte-identical to the uncut
+        compaction's first N, and selected, newest first; the transaction
+        files are untouched; the reopen recovers the whole history; and the
+        same entry resumes to the uncut chain, byte for byte."""
+        base, _, _ = self.scale_store("link-base", CUT_N)
+        before = self.transaction_bytes(base)
+        reference = self.base / "link-reference"
+        shutil.copytree(base, reference, symlinks=True)
+        self.native("checkpoint", "pack", reference, "select")
+        whole, boundary = self.chain(reference)
+        self.assertEqual(boundary, CUT_N)
+        self.assertGreaterEqual(whole, 3)
+        order = self.generations(reference)
+        packs = self.pack_files(reference)
+        self.assertEqual(len(packs), whole)
+        shutil.rmtree(reference)
+        entries = {
+            "compact": lambda store, config: ("operator", config, "store", "compact"),
+            "pack": lambda store, config: ("checkpoint", "pack", store, "select"),
+        }
+        boundaries = {}
+        for entry, argv in entries.items():
+            for occurrence in (1, 2):
+                with self.subTest(entry=entry, occurrence=occurrence):
+                    name = "link-{}-{}".format(entry, occurrence)
+                    store = self.base / name
+                    shutil.copytree(base, store, symlinks=True)
+                    config, _ = self.owner_config(store, name)
+                    self.stopped_then_killed(argv(store, config), "pack-chain-link",
+                                             occurrence)
+                    links, covered = self.chain(store)
+                    self.assertEqual(links, occurrence)
+                    self.assertTrue(0 < covered < CUT_N, covered)
+                    self.assertEqual(boundaries.setdefault(occurrence, covered), covered)
+                    # The marker names link N; the walk reads N..1.
+                    self.assertEqual(self.generations(store), order[-occurrence:])
+                    killed = self.pack_files(store)
+                    self.assertEqual(len(killed), occurrence)
+                    for file, octets in killed.items():
+                        self.assertEqual(octets, packs[file], file)
+                    self.assertEqual(self.transaction_bytes(store), before)
+                    self.recovered(store, CUT_N)
+                    self.native(*argv(store, config))
+                    self.assertEqual(self.chain(store), (whole, CUT_N))
+                    self.assertEqual(self.pack_files(store), packs)
+                    self.recovered(store, CUT_N)
+                    shutil.rmtree(store)
+        self.assertLess(boundaries[1], boundaries[2])
+
     def test_eio_at_each_link_publication_cut_from_both_entries(self):
         base, config0, _ = self.scale_store("eio-base", CUT_N)
         self.native("operator", config0, "store", "compact")

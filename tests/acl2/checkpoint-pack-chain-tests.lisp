@@ -260,3 +260,149 @@
 (must-fail
  (thm (equal (fn-ccc-capture-link *ct-h* 4 4 1 *ct-db*)
              (list :nothing-uncovered 4))))
+
+; ---------------------------------------------------------------------------
+; The chain program's between-links cut, `pack-chain-link'
+; (fn-ccc-chain-link-cut-walks-the-extended-chain,
+; fn-ccc-chain-link-cut-reopens-to-the-history).  The host publishes and
+; selects link A under generation 0 on a store with no chain, then link B
+; under generation 1: a two-link compaction.
+(defconst *ct-links* (list (list 0 *ct-fa* *ct-da*) (list 1 *ct-fb* *ct-db*)))
+(defconst *ct-run* (fn-ccc-chain-run nil (fn-ccc-chain-program *ct-links*)))
+; The cut follows each link's selection: steps 2 and 5.
+(assert-event (equal (fn-ccc-chain-program *ct-links*)
+                     (list (list :publish (car *ct-links*)) (list :select 0)
+                           (list :cut "pack-chain-link")
+                           (list :publish (cadr *ct-links*)) (list :select 1)
+                           (list :cut "pack-chain-link"))))
+
+; Reachable witness at the second cut (N = 2, FUEL 0, OLD nil): the complete
+; antecedent of both keystones, then both conclusions.
+(assert-event (and (posp 2) (<= 2 (len *ct-links*)) (natp 0)
+                   (not (equal nil :bad))
+                   (fn-ccc-entry-triplesp (take 2 *ct-links*))
+                   (fn-ccc-new-links-okp (revappend (take 2 *ct-links*) nil) nil *ct-bound*)
+                   (no-duplicatesp-equal
+                    (fn-ccc-entries-generations (revappend (take 2 *ct-links*) nil)))
+                   (equal (revappend (take 2 *ct-links*) nil) *ct-chain*)
+                   (not (equal *ct-entries* :bad))
+                   (fn-ccc-links-okp *ct-entries*)
+                   (fn-ccc-prefixp (fn-ccc-links-events *ct-entries*) *ct-h*)
+                   (true-listp *ct-h*)
+                   (<= 0 (len (fn-ccc-links-events *ct-entries*)))
+                   (fn-ccp-contiguousp *ct-observed* 0)
+                   (fn-ccc-pairs-match *ct-observed* *ct-h*)
+                   (equal (+ 0 (len *ct-observed*)) (len *ct-h*))
+                   (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-entries*)
+                                        (fn-cc-observation-suffix *ct-observed* 5) 6)))
+(assert-event (let ((image (nth 5 *ct-run*)))
+                (and (equal image (nth 4 *ct-run*))
+                     (equal (cdr image) 1)
+                     (equal (fn-ccc-walk (car image) (cdr image) 2 *ct-bound*) *ct-chain*)
+                     (equal (fn-ccc-observe-chain
+                             (fn-ccc-walk (car image) (cdr image) 2 *ct-bound*)
+                             *ct-observed* 6 *ct-bound*)
+                            (list :ok *ct-h* 6)))))
+; And at the first cut (N = 1): link A alone is selected and walked.
+(assert-event (let ((image (nth 2 *ct-run*)))
+                (and (equal image (nth 1 *ct-run*))
+                     (equal (cdr image) 0)
+                     (equal (fn-ccc-walk (car image) (cdr image) 1 *ct-bound*)
+                            (list (car *ct-links*))))))
+
+; Without the order (the host's chain names each predecessor): B published
+; and selected first, then A.  The triples, the distinct generations and the
+; bound hold; the order fails; the image selects A alone, not the chain the
+; host consed, and the reopen misses B's records.
+(defconst *ct-links-swapped* (list (cadr *ct-links*) (car *ct-links*)))
+(defconst *ct-run-swapped*
+  (fn-ccc-chain-run nil (fn-ccc-chain-program *ct-links-swapped*)))
+(assert-event (and (fn-ccc-entry-triplesp (take 2 *ct-links-swapped*))
+                   (no-duplicatesp-equal
+                    (fn-ccc-entries-generations (revappend (take 2 *ct-links-swapped*) nil)))
+                   (not (fn-ccc-new-links-okp (revappend (take 2 *ct-links-swapped*) nil)
+                                              nil *ct-bound*))))
+(local (must-fail (defthm ct-link-cut-without-order
+                    (equal (fn-ccc-walk (car (nth 5 *ct-run-swapped*))
+                                        (cdr (nth 5 *ct-run-swapped*)) 2 *ct-bound*)
+                           (revappend (take 2 *ct-links-swapped*) nil)))))
+(assert-event (not (equal (fn-ccc-walk (car (nth 5 *ct-run-swapped*))
+                                        (cdr (nth 5 *ct-run-swapped*)) 2 *ct-bound*)
+                           (revappend (take 2 *ct-links-swapped*) nil))))
+; With every covered file reclaimed (the empty observation, N = 5, the
+; reopen's hardest case) the swapped image reopens to A's three records, not
+; the history; the same observation over the host's chain answers it.
+(assert-event (equal (fn-ccc-observe-chain *ct-chain* nil 6 *ct-bound*)
+                     (list :ok *ct-h* 6)))
+(local (must-fail (defthm ct-link-cut-reopen-without-order
+                    (equal (fn-ccc-observe-chain
+                            (fn-ccc-walk (car (nth 5 *ct-run-swapped*))
+                                         (cdr (nth 5 *ct-run-swapped*)) 2 *ct-bound*)
+                            nil 6 *ct-bound*)
+                           (list :ok *ct-h* 6)))))
+(assert-event (not (equal (fn-ccc-observe-chain
+                           (fn-ccc-walk (car (nth 5 *ct-run-swapped*))
+                                        (cdr (nth 5 *ct-run-swapped*)) 2 *ct-bound*)
+                           nil 6 *ct-bound*)
+                          (list :ok *ct-h* 6))))
+
+; Without distinct generations: B published under A's generation 0.  The
+; order holds (B names 0); the walk from 0 reads B again and again and runs
+; out of fuel.
+(defconst *ct-links-reused* (list (car *ct-links*) (list 0 *ct-fb* *ct-db*)))
+(defconst *ct-run-reused*
+  (fn-ccc-chain-run nil (fn-ccc-chain-program *ct-links-reused*)))
+(assert-event (and (fn-ccc-entry-triplesp (take 2 *ct-links-reused*))
+                   (fn-ccc-new-links-okp (revappend (take 2 *ct-links-reused*) nil)
+                                         nil *ct-bound*)
+                   (not (no-duplicatesp-equal
+                         (fn-ccc-entries-generations
+                          (revappend (take 2 *ct-links-reused*) nil))))))
+(local (must-fail (defthm ct-link-cut-without-fresh-generations
+                    (equal (fn-ccc-walk (car (nth 5 *ct-run-reused*))
+                                        (cdr (nth 5 *ct-run-reused*)) 2 *ct-bound*)
+                           (revappend (take 2 *ct-links-reused*) nil)))))
+(assert-event (not (equal (fn-ccc-walk (car (nth 5 *ct-run-reused*))
+                                        (cdr (nth 5 *ct-run-reused*)) 2 *ct-bound*)
+                           (revappend (take 2 *ct-links-reused*) nil))))
+
+; Without a readable chain below: B alone on a store whose selected
+; generation 0 has no file.  The order (B names 0) and the rest hold; the
+; walk below B fails.
+(defconst *ct-links-orphan* (list (cadr *ct-links*)))
+(defconst *ct-run-orphan*
+  (fn-ccc-chain-run (cons nil 0) (fn-ccc-chain-program *ct-links-orphan*)))
+(assert-event (and (equal (fn-ccc-walk nil 0 0 *ct-bound*) :bad)
+                   (fn-ccc-entry-triplesp (take 1 *ct-links-orphan*))
+                   (fn-ccc-new-links-okp (revappend (take 1 *ct-links-orphan*) nil)
+                                         0 *ct-bound*)
+                   (no-duplicatesp-equal
+                    (fn-ccc-entries-generations
+                     (revappend (take 1 *ct-links-orphan*) :bad)))))
+(local (must-fail (defthm ct-link-cut-without-old-chain
+                    (equal (fn-ccc-walk (car (nth 2 *ct-run-orphan*))
+                                        (cdr (nth 2 *ct-run-orphan*)) 1 *ct-bound*)
+                           (revappend (take 1 *ct-links-orphan*) :bad)))))
+(assert-event (not (equal (fn-ccc-walk (car (nth 2 *ct-run-orphan*))
+                                        (cdr (nth 2 *ct-run-orphan*)) 1 *ct-bound*)
+                           (revappend (take 1 *ct-links-orphan*) :bad))))
+
+; Without the host's triples: an entry with a fourth element.  The walk
+; answers the triple it read, not the entry.
+(defconst *ct-links-long* (list (list 0 *ct-fa* *ct-da* :extra)))
+(defconst *ct-run-long*
+  (fn-ccc-chain-run nil (fn-ccc-chain-program *ct-links-long*)))
+(assert-event (and (not (fn-ccc-entry-triplesp (take 1 *ct-links-long*)))
+                   (fn-ccc-new-links-okp (revappend (take 1 *ct-links-long*) nil)
+                                         nil *ct-bound*)
+                   (no-duplicatesp-equal
+                    (fn-ccc-entries-generations (revappend (take 1 *ct-links-long*) nil)))))
+(local (must-fail (defthm ct-link-cut-without-triples
+                    (equal (fn-ccc-walk (car (nth 2 *ct-run-long*))
+                                        (cdr (nth 2 *ct-run-long*)) 1 *ct-bound*)
+                           (revappend (take 1 *ct-links-long*) nil)))))
+(assert-event (not (equal (fn-ccc-walk (car (nth 2 *ct-run-long*))
+                                        (cdr (nth 2 *ct-run-long*)) 1 *ct-bound*)
+                           (revappend (take 1 *ct-links-long*) nil))))
+; Not toothed: POSP N, N <= (LEN LINKS) and NATP FUEL.  Past the last cut the
+; image is nil (no cut there); they are not proved redundant, so they stay.
