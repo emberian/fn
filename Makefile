@@ -1175,12 +1175,24 @@ certs-publish:
 model-test: certify
 	$(PYTHON) tools/run_simulator.py
 
-tooling-test:
-	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
+# The tools' own tests, each module in its own process under tools/test_budget.py's
+# rule (180 s a module, 20 s a test, distinct pass/fail/over-budget exits).
+# It was one `unittest` process under a 120 s timeout, which the honest total
+# outgrew: 29 modules take 170 s on the laptop (2026-09-26, tooling-velocity),
+# most of it real-tree reads -- certify_runner 39 s (49 fake-ACL2 runs),
+# green_check 34 s (four command-line runs over every manifest, 6-7 s each),
+# ledger 16 s (a cold tree analysis), reach_check 12 s -- and the 120 s kill
+# landed in whichever module was running then, before the later modules ran
+# (PKT-305).  No module or test is over its budget.
+TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check -v
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
+	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check
+tooling-test:
+	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module
