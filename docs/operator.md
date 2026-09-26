@@ -447,7 +447,7 @@ accepted operator health
 
 | exit | state | held when | what to do |
 |---|---|---|---|
-| 20 | `fenced` | a clone fence awaits its incarnation rollover; a process holds the store's writer lock and the configured control socket does not reach it; or the socket accepted and did not answer | find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
+| 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
 | 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
 | 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
@@ -457,6 +457,18 @@ accepted operator health
 | 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
 | 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
 | 0 | (healthy) | every state is `clear` | |
+
+When the fence is held, the first line also names its reason, so an owner
+that is still recovering its store reads
+
+```
+health exit=20 state=fenced reason=starting (a process holds the store lock and nothing answers on the control socket yet: an owner starting or recovering, or an offline command; retry)
+```
+
+The scale is the one exception to the fn-wide exit table (specs/host.md, "CLI
+exit codes"), and it never overlaps it: the code is 0 or at least 19, and 0
+is the only code it shares, with `accepted`
+(`fn-nh-exit-code-is-zero-or-past-the-outcome-codes`).
 
 Each state is its own line, and several can hold at once; the exit code is
 the first held one in the table's order, so a script can branch on it and
@@ -582,6 +594,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_KEY_STATEMENT_FAULT` | `statement-committed:kill` | the cut between a key statement's commit and its key change's (books/key-statements.lisp `fn-ks-cut`) |
 | `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
 | `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
+| `FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN` | any value | the owner holds the recovered Store and waits for SIGTERM before its control socket and listener start (`health` reads `starting`) |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 The served owner and `store ROOT post` read the post and recovery selectors
@@ -1393,6 +1406,14 @@ backup and check it after the restore.
 A crash needs no special action: the next `fn run` replays the journal
 through ACL2 and reopens. Run `fn recover` first when you want the report
 before the service starts.
+
+An owner killed without its cleanup (SIGKILL, a power cut) leaves its
+control socket node behind. The offline `control` and `peer` verbs see the
+node and a free writer lock, so no owner holds the store: they remove the
+node under the control-path lease, print `stale control socket removed`, and
+run offline (HST-010, `fn-native-control-liveness`). With the lock held and
+no socket node they refuse `store-held` without opening the store; with both,
+they ask the owner. The next `run` removes a stale node itself.
 
 ```
 fn --config /etc/fn/fn.toml recover

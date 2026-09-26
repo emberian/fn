@@ -57,6 +57,7 @@
 
 (in-package "ACL2")
 (include-book "native-live-status")
+(include-book "outcome-class")
 
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
@@ -198,17 +199,24 @@ profile's."
 
 (defun fn-nh-fence-reasonp (x)
   (declare (xargs :guard t))
-  (and (member-equal x '(:clone-fence :store-held :owner-unanswering)) t))
+  (and (member-equal x '(:clone-fence :starting :store-held :owner-unanswering)) t))
 
 ; The host's observations, in the order it takes them (host/native/operator.lisp
-; fnn-operator-execute-health): whether the control socket answered, the
-; writer lock (`fnn-store-owner-observation': :held :free :absent :unknown),
-; and whether the clone fence file exists.  An owner that answered is not
-; fenced.
-(defun fn-nh-fence-of (route lock clone-fence-present)
+; fnn-operator-health-report): whether the control socket answered (ROUTE,
+; `fn-nls-route'), the writer lock (`fnn-store-owner-observation': :held
+; :free :absent :unknown), whether the clone fence file exists, and whether
+; an owner would listen at all (LISTENER-EXPECTED: the configuration names a
+; control socket and the image has one).  An owner that answered is not
+; fenced.  A process that holds the lock where an owner would listen and
+; nothing answers yet is :starting (PKT-283): an owner between taking the
+; lock and listening, recovering its Store, or an offline command holding it;
+; with no listener to expect, or a lock the probe could not read, it is
+; :store-held.
+(defun fn-nh-fence-of (route lock clone-fence-present listener-expected)
   (declare (xargs :guard t))
   (cond ((equal route :uncertain) :owner-unanswering)
         (clone-fence-present :clone-fence)
+        ((and (equal lock :held) listener-expected) :starting)
         ((member-equal lock '(:held :unknown)) :store-held)
         (t nil)))
 
@@ -260,6 +268,8 @@ profile's."
   (declare (xargs :guard t))
   (cond ((equal reason :clone-fence)
          (fn-nls-text " reason=clone-fence (a clone awaits its incarnation rollover)"))
+        ((equal reason :starting)
+         (fn-nls-text " reason=starting (a process holds the store lock and nothing answers on the control socket yet: an owner starting or recovering, or an offline command; retry)"))
         ((equal reason :store-held)
          (fn-nls-text " reason=store-held (a process holds the store and the configured control socket does not reach it)"))
         ((equal reason :owner-unanswering)
@@ -425,6 +435,16 @@ profile's."
   (let ((c (nfix code)))
     (list (+ 48 (floor (mod c 100) 10)) (+ 48 (mod c 10)))))
 
+; When the first held state is the fence, the header also carries its
+; reason, so the first line an operator reads says `starting' (or which other
+; fence) rather than only `fenced' (PKT-283).
+(defun fn-nh-header-reason (v)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-nh-first-held v) :fenced)
+           (consp v) (consp (car v)) (true-listp (cdr (car v))))
+      (cdr (car v))
+    nil))
+
 (defun fn-nh-header (v)
   (declare (xargs :guard t))
   (append (fn-nh-exit-prefix) (fn-nh-digit2 (fn-nh-exit-code v))
@@ -432,6 +452,7 @@ profile's."
           (fn-nls-text (if (and (not (fn-nh-first-held v)) (fn-nh-any-unobservedp v))
                            "none-held (some states unobserved)"
                          (fn-nh-state-word (fn-nh-first-held v))))
+          (fn-nh-header-reason v)
           *fn-nls-lf*))
 
 (defun fn-nh-outcome-word (o)
@@ -622,12 +643,31 @@ and feed table, with the committed octets extended from the carried sum."
                  (< (fn-nh-first-held-index v i) (+ i (len v)))))
    :rule-classes nil))
 
-(local
- (defthm fn-nh-exit-code-cases
-   (implies (<= (len v) 8)
-            (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27)))
-   :hints (("Goal" :use ((:instance fn-nh-first-held-index-bounds (i 0)))
-            :in-theory (disable fn-nh-first-held-index)))))
+; The scale (PKT-329).  For every verdict of at most eight outcomes (the
+; verdict has exactly eight: fn-nh-verdict-states) the code is 0, 19, or
+; 20..27.
+(defthm fn-nh-exit-code-cases
+  (implies (<= (len v) 8)
+           (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27)))
+  :hints (("Goal" :use ((:instance fn-nh-first-held-index-bounds (i 0)))
+           :in-theory (disable fn-nh-first-held-index))))
+
+; KEYSTONE (health's scale is the one exception, and it never overlaps the
+; outcome codes; PKT-329, specs/host.md "CLI exit codes").  The subject is
+; `fn-nh-exit-code', whose value the host returns: `fnn-operator-execute-health'
+; (host/native/operator.lisp) returns `fn-native-health-host-exit' of the
+; report, which is this code (fn-nh-report-exit-of-render).  For EVERY V, not
+; only a well-shaped verdict: the code is 0 or at least 19, and it is one of
+; the seven outcome codes of `*fn-outcome-codes*' (books/outcome-class.lisp)
+; exactly when it is 0, the code of :accepted.  The theorem reads the table
+; through `fn-outcome-codep', so a new outcome code at 19 or above makes it
+; fail: the two tables cannot drift apart.
+(defthm fn-nh-exit-code-is-zero-or-past-the-outcome-codes
+  (and (or (equal (fn-nh-exit-code v) 0)
+           (<= 19 (fn-nh-exit-code v)))
+       (iff (fn-outcome-codep (fn-nh-exit-code v))
+            (equal (fn-nh-exit-code v) (fn-outcome-code :accepted))))
+  :hints (("Goal" :in-theory (enable fn-nh-exit-code fn-outcome-codep))))
 
 ; KEYSTONE (the code names the state).  For every verdict of at most eight
 ; outcomes (the verdict has exactly eight: fn-nh-verdict-states), the exit
@@ -691,7 +731,7 @@ and feed table, with the committed octets extended from the carried sum."
   (implies (<= (len v) 8)
            (equal (fn-nh-report-exit (fn-nh-render v)) (fn-nh-exit-code v)))
   :hints (("Goal" :in-theory (e/d (fn-nh-render fn-nh-header)
-                                  (fn-nh-report-exit fn-nh-exit-code fn-nh-digit2
+                                  (fn-nh-report-exit fn-nh-exit-code fn-nh-digit2 fn-nh-header-reason
                                    fn-nh-exit-prefix (:e fn-nh-exit-prefix) fn-nh-lines fn-nh-first-held fn-nh-any-unobservedp
                                    fn-nls-text fn-nh-state-word)))))
 
@@ -760,16 +800,33 @@ and feed table, with the committed octets extended from the carried sum."
 
 ; An owner that answered is never reported fenced; one whose socket accepted
 ; and did not answer always is, whatever the lock and the clone fence show.
+; A held lock where an owner would listen is :starting, never :store-held
+; (PKT-283); the lock alone never makes the fence :starting.
 (defthm fn-nh-fence-of-route
   (and (implies (not (equal route :uncertain))
-                (equal (fn-nh-fence-of route lock clone)
+                (equal (fn-nh-fence-of route lock clone listener)
                        (cond (clone :clone-fence)
+                             ((and (equal lock :held) listener) :starting)
                              ((member-equal lock '(:held :unknown)) :store-held)
                              (t nil))))
-       (equal (fn-nh-fence-of :uncertain lock clone) :owner-unanswering)
-       (implies (fn-nh-fence-of route lock clone)
-                (fn-nh-fence-reasonp (fn-nh-fence-of route lock clone))))
+       (equal (fn-nh-fence-of :uncertain lock clone listener) :owner-unanswering)
+       (implies (fn-nh-fence-of route lock clone listener)
+                (fn-nh-fence-reasonp (fn-nh-fence-of route lock clone listener))))
   :hints (("Goal" :in-theory (enable fn-nh-fence-of fn-nh-fence-reasonp))))
+
+; KEYSTONE (starting is not store-held; PKT-283).  The subject is
+; `fn-nh-fence-of', which the host calls through `fn-native-health-host-fenced'
+; (host/native/operator.lisp fnn-operator-health-report).  With no clone
+; fence and a route that did not reach an owner, the report says :starting
+; exactly when the lock is held and an owner would listen; a free or absent
+; lock is never fenced.
+(defthm fn-nh-fence-of-starting-iff
+  (implies (and (not (equal route :uncertain)) (not clone))
+           (and (iff (equal (fn-nh-fence-of route lock clone listener) :starting)
+                     (and (equal lock :held) listener))
+                (implies (member-equal lock '(:free :absent))
+                         (not (fn-nh-fence-of route lock clone listener)))))
+  :hints (("Goal" :in-theory (enable fn-nh-fence-of))))
 
 (in-theory (disable fn-nh-verdict fn-nh-render fn-nh-report-exit fn-nh-exit-code
                     fn-nh-live-report fn-nh-offline-report fn-nh-fenced-report))

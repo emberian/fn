@@ -91,11 +91,11 @@
   (fn-nh-offline-report profile (f-get-global 'fn-store-sn state)
                         (f-get-global 'fn-store-cfg state) min))
 
-(defun fn-native-health-host-fenced (route lock clone-fence-present)
+(defun fn-native-health-host-fenced (route lock clone-fence-present listener-expected)
   ; The fenced report when the host's observations say the Store is fenced
   ; (fn-nh-fence-of), else nil and the host opens the Store.
   (declare (xargs :mode :program))
-  (let ((reason (fn-nh-fence-of route lock clone-fence-present)))
+  (let ((reason (fn-nh-fence-of route lock clone-fence-present listener-expected)))
     (if reason (fn-nh-fenced-report reason) nil)))
 
 (defun fn-native-health-host-exit (octets)

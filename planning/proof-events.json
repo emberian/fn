@@ -6006,6 +6006,31 @@
           "name": "fn-hmr-deferred-commit-is-not-caught-up"
         }
       ]
+    },
+    {
+      "id": "PRF-172",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-is-zero-or-past-the-outcome-codes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-cases"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-fence-of-starting-iff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-fence-of-route"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-liveness-decides"
+        }
+      ]
     }
   ]
 }
