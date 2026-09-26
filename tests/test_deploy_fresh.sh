@@ -4,7 +4,11 @@
 # node" is a fixture built from the release tarball under
 # /tank/fn/scratch/deploy-fresh/, served on loopback by a scratch user unit.
 #
-#   sh tests/test_deploy_fresh.sh [TARBALL]
+#   sh tests/test_deploy_fresh.sh [TARBALL [REV40]]
+#
+# TARBALL's digest comes from TARBALL.sha256 or a SHA256SUMS beside it; a
+# release-product tarball (top directory fn) names REV40 itself in
+# libexec/fn/source-revision, so REV40 is needed only to override it.
 #
 # Run it under a memory cap, e.g.
 #   systemd-run --user --scope -p MemoryMax=8G sh tests/test_deploy_fresh.sh 2>&1 | tee LOG
@@ -19,8 +23,11 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 D=$root/tools/deploy_fresh.sh
 PROBE=$root/tools/node_probe.py
 TARBALL=${1:-/tank/fn/scratch/qual-69046a76/friends/release/fn-69046a76798b-linux-x86_64.tar.gz}
-TAR_SHA=$(cut -d' ' -f1 "$TARBALL.sha256")
-REV=69046a76798b8be6169eeed5a66cc46fbe399e51
+if [ -f "$TARBALL.sha256" ]; then TAR_SHA=$(cut -d' ' -f1 "$TARBALL.sha256")
+else TAR_SHA=$(awk -v f="$(basename "$TARBALL")" '$2 == f || $2 == "*" f { print $1 }' "$(dirname "$TARBALL")/SHA256SUMS")
+fi
+[ -n "$TAR_SHA" ] || { echo "no digest for $TARBALL"; exit 2; }
+REV=${2:-$(tar -xzOf "$TARBALL" fn/libexec/fn/source-revision 2>/dev/null || echo 69046a76798b8be6169eeed5a66cc46fbe399e51)}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 RUN=/tank/fn/scratch/deploy-fresh/t-$STAMP
 BASE=$RUN/tank-fn
@@ -43,7 +50,7 @@ trap cleanup EXIT
 # ---- the fixture: an old node on loopback, a login, one article -----------
 PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')
 mkdir "$RUN/unpack"; tar -xzf "$TARBALL" -C "$RUN/unpack"
-mv "$RUN/unpack/fn-${REV%"${REV#????????????}"}" "$OLD/fn-old"; rmdir "$RUN/unpack"
+mv "$RUN/unpack/$(ls "$RUN/unpack")" "$OLD/fn-old"; rmdir "$RUN/unpack"
 OFN=$OLD/fn-old/bin/fn
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 \
   -subj /CN=deploy-fresh.invalid -addext subjectAltName=IP:127.0.0.1 \
@@ -145,7 +152,7 @@ R1=$(ls -d "$OLD"-retired-* 2>/dev/null | head -1)
 check "the old node was renamed, not deleted" sh -c "[ ! -e '$OLD' ] && [ -f '$R1/fn.toml' ] && [ -d '$R1/store' ] && [ -x '$R1/fn-old/bin/fn' ]"
 check "the manifest and sums were written" sh -c "grep -q '^new_node=$NEW1\$' '$R1/DEPLOY-MANIFEST' && (cd '$R1' && sha256sum -c --quiet DEPLOY-SHA256SUMS)"
 check "the imported store's config equals the retired one" cmp -s "$R1/store/config.json" "$NEW1/store/config.json"
-check "the unit runs the release in the new node" sh -c "[ \"\$(sed -n 's/^ExecStart=//p' '$UNIT_FILE')\" = '$NEW1/fn-69046a76798b/bin/fn operator $NEW1/fn.toml run' ]"
+check "the unit runs the release in the new node" sh -c "[ \"\$(sed -n 's/^ExecStart=//p' '$UNIT_FILE')\" = '$NEW1/fn-$(printf %s "$REV" | cut -c1-12)/bin/fn operator $NEW1/fn.toml run' ]"
 check "the rewritten unit dropped every Environment=FN_ line" sh -c "! grep -q '^Environment=FN_' '$UNIT_FILE'"
 check "the unit is active" active
 check "fn.toml names no retired path" sh -c "! grep -q '${OLD}[\"/]' '$NEW1/fn.toml' && ! grep -q retired '$NEW1/fn.toml'"

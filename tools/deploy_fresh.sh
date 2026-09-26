@@ -25,7 +25,9 @@
 #     copy) and SHA256SUMS of fn.toml, store/config.json and the frontier
 #     (allocation-frontier.json, committed-history.json).  Nothing is deleted.
 #  3. install the tarball (digest verified first, then its SHA256SUMS) into
-#     TARGET/fn-REV12; `bin/fn --version` must print the expected revision.
+#     TARGET/fn-REV12, from either layout: top fn-REV12 (the friends release)
+#     or top fn (D35's release product, whose libexec/fn/source-revision must
+#     be the expected revision); `bin/fn --version` must print it too.
 #  4. the store: `--store fresh` (default) inits TARGET/store and enrols the
 #     retired credentials.txt logins (the password fed on stdin, never argv);
 #     `--store import` is `cp -a` of the STOPPED retired store (the release
@@ -342,7 +344,15 @@ else
   if [ "$MODE" = go ]; then
     stage=$TARGET/.unpack-$STAMP; mkdir "$stage"
     tar -xzf "$TARBALL" -C "$stage"
-    top=$(ls "$stage"); [ "$top" = "fn-$REV12" ] || die "the tarball's top directory is $top, not fn-$REV12"
+    # Two layouts: the friends release (top fn-REV12) and D35's release
+    # product (top fn, its revision in libexec/fn/source-revision).
+    top=$(ls "$stage")
+    case $top in
+      "fn-$REV12") ;;
+      fn) src=$(cat "$stage/fn/libexec/fn/source-revision" 2>/dev/null || true)
+          [ "$src" = "$EXPECT_REV" ] || die "the release's source-revision is '$src', expected $EXPECT_REV" ;;
+      *) die "the tarball's top directory is $top, not fn-$REV12 or fn" ;;
+    esac
     ( cd "$stage/$top" && sha256sum -c --quiet SHA256SUMS ) >>"$LOG" 2>&1 || die "the release's SHA256SUMS do not verify"
     mv -T "$stage/$top" "$REL"; rmdir "$stage"
     say "  unpacked, SHA256SUMS verified"
