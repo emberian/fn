@@ -148,9 +148,7 @@
                   (archive (fn-served-conn-archive conn))
                   (index (fn-served-conn-pinned-index conn))
                   (verdicts (fn-served-conn-verdicts conn))
-                  (env (fn-nntp-env (fn-served-conn-observation conn) nil
-                                    (and (fn-inj-config-allow
-                                          (fn-served-conn-config conn)) t)))
+                  (env (fn-post-reader-env (fn-served-conn-config conn) (fn-served-conn-observation conn)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))))))
 

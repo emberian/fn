@@ -465,17 +465,19 @@
 ; it is the codec ceiling `*fn-record-max-payload*'.
 ;
 ; Native operator startup supplies the one posting-policy bit after recovery
-; and after `fn-owner-install-profile'.  Preserve the agent and served groups
+; and after `fn-owner-install-profile'.  Preserve the agent, served and closed groups
 ; ACL2 already installed and set the served bound from the profile; this
 ; changes the same fn-own-config value read by served POST and control.
 (defun fn-owner-posting-configure (allow state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (cfg (fn-own-config owner))
-         (next (fn-inj-make-config (and allow t)
-                                   (fn-inj-config-agent cfg)
-                                   (fn-inj-config-groups cfg)
-                                   (fn-owner-served-post-bound state))))
+         (next (fn-inj-make-config-closed (and allow t)
+                                          (fn-inj-config-agent cfg)
+                                          (fn-inj-config-groups cfg)
+                                          (fn-owner-served-post-bound state)
+                                          ;; O2: keep the closed groups.
+                                          (fn-inj-config-closed cfg))))
     (if (not (fn-inj-configp next))
         (value :refused)
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))

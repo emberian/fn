@@ -56,7 +56,9 @@
     (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
                                 :grant-control :revoke-control :set-retention
                                 ;; PRF-161: an exposure limit row.
-                                :set-exposure))
+                                :set-exposure
+                                ;; O2: a group's LIST ACTIVE status.
+                                :set-group-status))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ; PRF-099: `peer carries' / `peer budget' over the replayed table.
