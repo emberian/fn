@@ -5397,6 +5397,27 @@
           "name": "fn-bpnf-family-next-memo-is-aux"
         }
       ]
+    },
+    {
+      "id": "PRF-135",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sccr-decode-of-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccr-decode-plan-is-decode-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccr-run-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccr-admitted-within-bounds"
+        }
+      ]
     }
   ]
 }
