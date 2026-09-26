@@ -682,6 +682,54 @@ class NativePeeringTests(unittest.TestCase):
                              self.article(message_id, message_id[1:-1]))
         self.assertIsNone(target["process"].poll())
 
+    def test_fragmented_takethis_without_check_answers_every_article(self):
+        """PKT-600 under fragmentation (PRF-213, SCN-144; the gpt-6 review of
+        2026-09-26, section 6): four TAKETHIS with no CHECK before them (RFC
+        4644 section 2.5 permits that), written as many small segments with
+        TCP_NODELAY, the cuts falling inside command lines, bodies and every
+        `.CRLF' terminator (between `.' and CR and between CR and LF).  Every
+        article is answered 239 in order and stored, as in one write
+        (fn-served-drain-run-is-boundary-independent)."""
+        source = self.initialize("frag-source", free_port())
+        target = self.initialize("frag-target", free_port())
+        self.configure_peer(target, source, outbound="-")
+        self.start(target)
+        ids = ["<frag-{}@example.invalid>".format(n) for n in range(4)]
+        blocks = [b"TAKETHIS " + m.encode() + b"\r\n" + self.article(m, m[1:-1]) + b".\r\n"
+                  for m in ids]
+        data = b"".join(blocks)
+        cuts = set(range(5, len(data), 7))
+        end = 0
+        for block in blocks:
+            end += len(block)
+            cuts.update({end - 2, end - 1})
+        pieces, start = [], 0
+        for cut in sorted(cuts):
+            pieces.append(data[start:cut])
+            start = cut
+        pieces.append(data[start:])
+        with socket.create_connection(("127.0.0.1", target["port"]), timeout=15) as client:
+            client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            for piece in pieces:
+                client.sendall(piece)
+                time.sleep(0.002)
+            replies = [stream.readline() for _ in ids]
+            stream.write(b"QUIT\r\n")
+            quit_reply = stream.readline()
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "fragmented-takethis-pkt-600", "segments": len(pieces),
+            "replies": [r.decode("ascii", "replace") for r in replies]}))
+        self.assertEqual([r[:3] for r in replies], [b"239"] * len(ids), replies)
+        for message_id, reply in zip(ids, replies):
+            self.assertTrue(reply.rstrip(b"\r\n").endswith(message_id.encode()), reply)
+        self.assertTrue(quit_reply.startswith(b"205 "), quit_reply)
+        for message_id in ids:
+            self.assertEqual(self.await_article(target, message_id),
+                             self.article(message_id, message_id[1:-1]))
+        self.assertIsNone(target["process"].poll())
+
     def test_pipelined_post_in_one_read_answers_every_article(self):
         """PKT-600 for POST (PRF-213, NNT-044, SCN-144): two POST blocks in
         one write, and then an article followed by the next command in one

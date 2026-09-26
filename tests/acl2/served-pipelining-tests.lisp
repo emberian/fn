@@ -152,6 +152,55 @@
                             (fn-served-drain-run *spt-feed* *spt-split*))))
                      2))
 
+; The review of 2026-09-26 (gpt-6, wave 5, section 6) asks for cuts inside
+; the terminators and arbitrary fragmentation.  Every TAKETHIS here comes
+; with no CHECK before it (RFC 4644 section 2.5 permits that), so no bound on
+; outstanding CHECK replies limits the submissions a read carries.
+(defun spt-cuts-at (xs cuts)
+  ;; XS split before each index in CUTS (ascending), as the network might.
+  (declare (xargs :measure (len cuts)))
+  (if (and (consp cuts) (natp (car cuts)) (< 0 (car cuts)) (< (car cuts) (len xs)))
+      (cons (take (car cuts) xs)
+            (spt-cuts-at (nthcdr (car cuts) xs)
+                         (let ((rest (cdr cuts)))
+                           (if (and (consp rest) (natp (car rest)))
+                               (cons (- (car rest) (car cuts)) (cdr rest))
+                             nil))))
+    (list xs)))
+(defun spt-bytes (xs)
+  ;; one read per octet
+  (if (consp xs) (cons (list (car xs)) (spt-bytes (cdr xs))) nil))
+; The terminator of the first article is its last three octets: cut between
+; `.' and CR, between CR and LF, and right after LF.
+(defconst *spt-dot* (- (len *spt-t1*) 3))
+(defconst *spt-term-cuts*
+  (list (spt-cuts-at *spt-two-takethis* (list (+ *spt-dot* 1)))
+        (spt-cuts-at *spt-two-takethis* (list (+ *spt-dot* 2)))
+        (spt-cuts-at *spt-two-takethis* (list (+ *spt-dot* 1) (+ *spt-dot* 2)
+                                              (+ *spt-dot* 3)))
+        (spt-bytes *spt-two-takethis*)))
+(defun spt-all-same-run (conn cuttings whole)
+  (if (consp cuttings)
+      (and (equal (fn-served-concat (car cuttings)) whole)
+           (equal (fn-served-drain-run conn (car cuttings))
+                  (fn-served-drain-run conn (list whole)))
+           (equal (len (fn-served-submissions
+                        (fn-served-result-effects
+                         (fn-served-drain-run conn (car cuttings)))))
+                  2)
+           (spt-all-same-run conn (cdr cuttings) whole))
+    t))
+(assert-event (equal (len (car *spt-term-cuts*)) 2))
+(assert-event (equal (len (caddr *spt-term-cuts*)) 4))
+(assert-event (equal (len (cadddr *spt-term-cuts*)) (len *spt-two-takethis*)))
+(assert-event (spt-all-same-run *spt-feed* *spt-term-cuts* *spt-two-takethis*))
+; Byte by byte, the read that carries the first terminator's LF is the one
+; that yields with the first submission, and nothing is left over.
+(assert-event (equal (fn-served-drain-taken *spt-feed* *spt-two-takethis*)
+                     (fn-served-submissions
+                      (fn-served-result-effects
+                       (fn-served-drain-run *spt-feed* (spt-bytes *spt-two-takethis*))))))
+
 ; -----------------------------------------------------------------------------
 ; Teeth.
 ;
