@@ -5278,6 +5278,31 @@
           "note": "KEYSTONE (the verdict is the receiving Store's). A (:bind RECORD) answer of fn-bpaj-dispatch-fast names an article record for the dispatcher's Message-ID, accepted by the receiver's Store check (fn-bpaj-store-record-accepted-fast), that is the article record of an event of the Store's own history (fn-bpaj-article-event); when that event is a signed composite, fn-stxa-bindsp binds its kind-2 verdict to exactly RECORD. Teeth: the signed witness names the composite itself and its verdict (:verified, the report's Message-ID); the bound record's transit context replays and the request moves to :prepare-receipt; hypothesis removal: without a :bind answer (the Store before the commit) the conclusion fails."
         }
       ]
+    },
+    {
+      "id": "PRF-127",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rs-authored-source-is-the-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-relaying-keeps-the-authored-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-a-transfer-is-wanted-only-if-both-parse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-a-wanted-transfer-keeps-the-authored-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-a-bp-transit-keeps-the-authored-source"
+        }
+      ]
     }
   ]
 }

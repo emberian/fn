@@ -5161,6 +5161,38 @@
         "fn-bpaj-dispatch-never-resubmits-a-stored-article",
         "fn-bpaj-dispatch-binds-the-stores-own-record"
       ]
+    },
+    {
+      "id": "PRF-127",
+      "title": "Relaying cannot change who wrote an article: the stored transit projection keeps fn-hc-authored-source on the NNTP and BP routes",
+      "statement": "fn-rs-authored-source-is-the-walk (books/relay-source.lisp): for every octet list the parser accepts, fn-hc-authored-source of the parsed article equals fn-rs-source-walk (the reserved-field line walk) of fn-pu-strip of the octets, so the authored source is a function of the octets with Path and Xref stripped. fn-rs-relaying-keeps-the-authored-source (books/relay-source-routes.lisp): when the parser accepts both OCTETS and fn-peer-relayed-octets CFG PEER OCTETS, their authored sources are equal (with fn-peer-relayed-octets-change-only-path-and-xref). fn-rs-a-transfer-is-wanted-only-if-both-parse: fn-peer-decide-transfer answers :want only when both parse. fn-rs-a-wanted-transfer-keeps-the-authored-source: on :want, the payload fn-peer-injection-arguments stages (host/owner-host.lisp fn-owner-take through fn-peer-transfer) parses and has the received article's authored source. fn-rs-a-bp-transit-keeps-the-authored-source: when fn-bpaj-transit-plan (host/bp-native-app-host.lisp fn-owner-app-plan-install) answers :submit, the request's article and fn-bpaj-transit-stored-octets both parse and have the same authored source. No hypothesis beyond the host's own decision on the two route keystones. Scope: bytes, not signatures (PRF-117 and books/injection-path.lisp own A's injection).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-020"
+      ],
+      "depends_on": [
+        "PRF-117"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/relay-source.lisp",
+        "books/relay-source-routes.lisp",
+        "tests/acl2/relay-source-routes-tests.lisp",
+        "tests/test_native_source_corpus_bp.py",
+        "planning/evidence/source-corpus-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T010122Z-3162.json",
+        "planning/evidence/manifests/certify-20260926T010817Z-22211.json",
+        "planning/evidence/manifests/certify-20260926T022246Z-145464.json"
+      ],
+      "progress_note": "Lanes source-corpus-2 and source-corpus-3 (2026-09-26). Certified on hbox: run-20260926T010101Z-8350 and run-20260926T010756Z-cf08 at the lane base; at the dev 43fad7ab merge run-20260926T022220Z-4401 (relay-source-routes 4.2 s, relay-source-routes-tests 4.9 s, relay-source cached at these bytes). Native BP carriage (SCN-073, native-7 on images 6b6378e0/9f38d453 at 1ec78422): all seven carried corpus elements arrive at B as A's records with B's splice, each with its kind-8 attempt and a distinct bundle identity; the signed carrier's binding is PRF-132's.",
+      "events": [
+        "fn-rs-authored-source-is-the-walk",
+        "fn-rs-relaying-keeps-the-authored-source",
+        "fn-rs-a-transfer-is-wanted-only-if-both-parse",
+        "fn-rs-a-wanted-transfer-keeps-the-authored-source",
+        "fn-rs-a-bp-transit-keeps-the-authored-source"
+      ]
     }
   ]
 }

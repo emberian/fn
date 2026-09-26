@@ -790,6 +790,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
 	tests/acl2/source-routes-tests \
+	books/relay-source \
+	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
 	tests/acl2/owner-fault-tests \
