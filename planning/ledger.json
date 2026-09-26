@@ -931,16 +931,16 @@
     "books": 942,
     "books_in_root_closure": 938,
     "roots": 924,
-    "theorems": 13166,
-    "functions": 9133,
-    "assert_events": 13562,
-    "must_fails": 1535,
+    "theorems": 13170,
+    "functions": 9134,
+    "assert_events": 13585,
+    "must_fails": 1540,
     "encapsulates": 65,
     "guards": {
       "verified": 2194,
       "declared-off": 719,
       "default-guarded": 4860,
-      "default-unguarded": 1360
+      "default-unguarded": 1361
     },
     "suspect_theorems": 114,
     "export_hygiene_warnings": 153,
@@ -8876,7 +8876,7 @@
       "book": "books/key-statements.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 35,
       "functions": 25,
       "guards": {
         "verified": 0,
@@ -8887,7 +8887,7 @@
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -21312,18 +21312,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 54,
-      "must_fails": 10,
-      "defconsts": 8,
-      "defmacros": 1,
+      "assert_events": 77,
+      "must_fails": 15,
+      "defconsts": 11,
+      "defmacros": 5,
       "encapsulates": 0,
       "includes": [
         "../../books/key-statements",
@@ -43432,7 +43432,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2128,
+        "line": 2126,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

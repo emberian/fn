@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 942 |
 | Certification roots in the Makefile | 924 |
 | Books inside the root closure | 938 |
-| `defthm` and `defthmd` events | 13166 |
-| `defun` events | 9133 |
+| `defthm` and `defthmd` events | 13170 |
+| `defun` events | 9134 |
 | Functions with verified guards | 2194 |
 | Functions declared `:verify-guards nil` and never verified | 719 |
 | Functions left at the default with an explicit guard | 4860 |
-| Functions left at the default with no guard | 1360 |
-| `assert-event` checks | 13562 |
-| `must-fail` checks | 1535 |
+| Functions left at the default with no guard | 1361 |
+| `assert-event` checks | 13585 |
+| `must-fail` checks | 1540 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 114 |
 | Export-hygiene warnings | 153 |
@@ -385,7 +385,7 @@ that `make certify` requests.
 | `books/injection.lisp` | root | 11 | 77 | 62/0/15/0 | 0 | 0 | 0 |
 | `books/journal-publish.lisp` | root | 5 | 12 | 2/0/0/10 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
-| `books/key-statements.lisp` | root | 31 | 25 | 0/0/25/0 | 0 | 0 | 0 |
+| `books/key-statements.lisp` | root | 35 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/login-binding.lisp` | root | 9 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -842,7 +842,7 @@ that `make certify` requests.
 | `tests/acl2/injection-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 139 | 10 | 0 |
 | `tests/acl2/journal-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 5 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
-| `tests/acl2/key-statements-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 54 | 10 | 0 |
+| `tests/acl2/key-statements-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 77 | 15 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/linear-recognizers-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 24 | 0 | 0 |
 | `tests/acl2/login-binding-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 23 | 11 | 0 |
