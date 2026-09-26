@@ -323,12 +323,33 @@ observation into the outcome and this function only carries it out."
                ;; An image without the control socket has no live owner
                ;; to hand the plan to: the direct executor takes the
                ;; exclusive lock, so a live owner of another image refuses it.
-               (livep (and control-path
-                           (not (fnn-image-omits-p :control))
-                           (fnn-control-socket-path-p
-                            (fnn-lstat (fnn-octets-string control-path)))))
+               ;; PKT-344: two observations, ACL2's decision
+               ;; (fn-native-control-liveness-decides): a socket node with
+               ;; the lock free or absent is a crashed owner's (:stale), and
+               ;; only a free or absent lock starts the offline executor.
+               (socket-path (and (fnn-octet-list-p control-path-list)
+                                 (consp control-path-list)
+                                 (not (fnn-image-omits-p :control))
+                                 (fnn-octets control-path-list)))
+               (liveness
+                 (fnn-core 'fn-native-control-host-liveness
+                           (and socket-path
+                                (fnn-control-socket-path-p
+                                 (fnn-lstat (fnn-octets-string socket-path)))
+                                t)
+                           (fnn-store-owner-observation root)))
+               (note (fnn-core 'fn-native-control-host-liveness-note liveness))
+               (livep (and control-path (eq liveness :live)))
                (code
-                 (cond
+                 (progn
+                  (when (eq liveness :stale)
+                    (fnn-control-remove-stale-offline socket-path))
+                  ;; A query does not use the :held arm (the read-only
+                  ;; executor's own shared lock answers it), so it prints
+                  ;; only the :stale note.
+                  (when (and (stringp note) (or (not queryp) (eq liveness :stale)))
+                    (fnn-err "~a" note))
+                  (cond
                    ;; A query publishes no configuration record, so it has
                    ;; nothing to send the live owner and nothing to serialize
                    ;; behind its mutex: the read-only executor is the only
@@ -346,7 +367,9 @@ observation into the outcome and this function only carries it out."
                    (livep
                     (fnn-core 'fn-native-control-host-status-exit-code
                               (fnn-control-admin control-path argv)))
-                   (t (fnn-admin-execute root plan)))))
+                   ((eq liveness :held)
+                    (fnn-core 'fn-native-control-host-status-exit-code :refused))
+                   (t (fnn-admin-execute root plan))))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
           code)
       (error (condition)
