@@ -1,0 +1,60 @@
+
+Number of samples:   24546
+Sample interval:     0.01 seconds
+Total sampling time: 245.46 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=1206777 "main thread" RUNNING {1200068003}> (1536152/2097152 bytes, 4334 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2   5604  22.8   5633  22.9   5604  22.8        -  FN-AG-REV-ONTO
+   4   3743  15.2   3743  15.2   9347  38.1        -  SB-KERNEL:STRING=*
+   6   1910   7.8   1910   7.8  11257  45.9        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+   8   1675   6.8  13449  54.8  12932  52.7        -  FN-ALL-ARTICLE-MEMBERSHIPS
+  10   1634   6.7   1634   6.7  14566  59.3        -  foreign function pthread_sigmask
+  12    945   3.8    945   3.8  15511  63.2        -  FN-AG-CDR
+  14    808   3.3   4425  18.0  16319  66.5        -  FN-PAIR-EQUALP
+  16    758   3.1   5417  22.1  17077  69.6        -  FN-PAIR-MEMBERP
+  18    694   2.8   1284   5.2  17771  72.4        -  FN-ARTICLE-MEMBERSHIPS
+  20    673   2.7    673   2.7  18444  75.1        -  FN-AG-CAR
+  22    443   1.8    443   1.8  18887  76.9        -  FN-AG-APPEND
+  24    370   1.5    585   2.4  19257  78.5        -  FN-CBOR-OCTET-LISTP
+  26    360   1.5    360   1.5  19617  79.9        -  EQUAL
+  28    348   1.4    375   1.5  19965  81.3        -  REVAPPEND
+  30    294   1.2    649   2.6  20259  82.5        -  FN-RECORD-STRING-OCTETS-AUX
+  32    268   1.1   6504  26.5  20527  83.6        -  FN-AG-APPEND-EXEC
+  34    260   1.1    260   1.1  20787  84.7        -  FN-CBOR-OCTETP
+  36    216   0.9   3408  13.9  21003  85.6        -  FN-RETAIN-FIND-ID
+  38    213   0.9    573   2.3  21216  86.4        -  FN-RECORD-PAYLOADP
+  40    157   0.6   1459   5.9  21373  87.1        -  FN-NODE-FIND-BINDING
+  42    102   0.4    102   0.4  21475  87.5        -  foreign function memcmp
+  44     85   0.3     89   0.4  21560  87.8        -  TAKE
+  46     71   0.3     71   0.3  21631  88.1        -  FN-CBOR-AT-MOSTP
+  48     64   0.3     69   0.3  21695  88.4        -  FN-RECORD-STRING-OCTETS
+  50     61   0.2     61   0.2  21756  88.6        -  FN-SHS-ROUNDS
+  52     59   0.2     59   0.2  21815  88.9        -  FN-RETAIN-OBLIGATION-ID
+  54     55   0.2     73   0.3  21870  89.1        -  FN-SCCB-SLICE-ACC
+  56     44   0.2     44   0.2  21914  89.3        -  FN-NODE-BINDING-MSGID
+  58     33   0.1     50   0.2  21947  89.4        -  FN-SHS-LOAD-LIST-WORD
+  60     33   0.1     33   0.1  21980  89.5        -  NTHCDR
+  62     27   0.1    110   0.4  22007  89.7        -  FN-CCC-FRAMED-LINK
+  64     27   0.1     38   0.2  22034  89.8        -  FN-OCTET-LISTP
+  66     25   0.1    180   0.7  22059  89.9        -  FN-SHS-DIGEST-LIST
+  68     25   0.1     25   0.1  22084  90.0        -  FN-SHS-EXTEND
+  70     23   0.1     23   0.1  22107  90.1        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  72     22   0.1     22   0.1  22129  90.2        -  GENERIC--
+  74     19   0.1     19   0.1  22148  90.2        -  APPEND
+  76     19   0.1     19   0.1  22167  90.3        -  FN-OCTETP
+  78     19   0.1     19   0.1  22186  90.4        -  FN-CBOR-AT-LEASTP
+  80     18   0.1     18   0.1  22204  90.5        -  FN-OCTETS$C-GET
+------------------------------------------------------------------------
+       2011   8.2                                     elsewhere
+
+Number of samples:   24546
+Sample interval:     0.01 seconds
+Total sampling time: 245.46 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=1206777 "main thread" RUNNING {1200068003}> (1536152/2097152 bytes, 4334 hash buckets)

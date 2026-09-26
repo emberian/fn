@@ -1,0 +1,7 @@
+test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2564.248s
+
+OK
+exit=0

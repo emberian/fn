@@ -1,0 +1,1 @@
+compacted steps=pack,select,reclaim,retire records=20000 generation=11 links=12 reclaimed=20000 retired=0
