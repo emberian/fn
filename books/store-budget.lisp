@@ -120,13 +120,31 @@ budget and the kind's worst-case record fits the history bound."
   (and (consp cache) (natp (car cache)) (<= (car cache) (len records))
        (equal (cdr cache) (fn-sbud-record-octets (take (car cache) records)))))
 
+; The records past the first N, with no guard on X: `nthcdr' asks a true
+; list, and the Store's records are one, but a served-path function with
+; guard t may not assume it.  Only the octet sum over it is claimed
+; (`fn-sbud-record-octets-of-drop'), so the logic keeps `nthcdr'.
+(defun fn-sbud-drop (n x)
+  (declare (xargs :guard (natp n)))
+  (if (or (zp n) (atom x)) x (fn-sbud-drop (1- n) (cdr x))))
+
+(local
+ (defthm fn-sbud-record-octets-of-atom
+   (implies (atom x) (equal (fn-sbud-record-octets x) 0))))
+
+(defthm fn-sbud-record-octets-of-drop
+  (equal (fn-sbud-record-octets (fn-sbud-drop n x))
+         (fn-sbud-record-octets (nthcdr n x))))
+
 (defun fn-sbud-bytes-extend (cache records)
   "The record octets of RECORDS from CACHE: the cached sum plus the records
 past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
   (declare (xargs :guard t :verify-guards nil))
   (if (and (consp cache) (natp (car cache)) (natp (cdr cache))
            (<= (car cache) (len records)))
-      (+ (cdr cache) (fn-sbud-record-octets (nthcdr (car cache) records)))
+      (+ (cdr cache)
+         (mbe :logic (fn-sbud-record-octets (nthcdr (car cache) records))
+              :exec (fn-sbud-record-octets (fn-sbud-drop (car cache) records))))
     (fn-sbud-record-octets records)))
 
 ; -----------------------------------------------------------------------------
@@ -245,3 +263,21 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 (in-theory (disable fn-sbud-used fn-sbud-budget fn-sbud-verdict fn-sbud-verdict-at
                     fn-sbud-headroom fn-sbud-headroom-at fn-sbud-bytes-used fn-sbud-record-octets
                     fn-sbud-bytes-extend fn-sbud-octets-cache-validp))
+
+; PKT-269 (PRF-187): the budget figures every health and status report
+; reads run guard-verified, books/store-events.lisp's codec first.  Its
+; guards are verified here, where the served path first calls it, rather than
+; in store-events itself: the proofs are the same (tried there in a REPL),
+; and verifying them there would recertify the 570 books above store-events
+; for an event that only this chain needs.
+; `fn-sbud-octets-cache-validp' stays a logical predicate: no executed
+; function calls it (the theorems' hypothesis only).
+(verify-guards fn-store-event-kind-code)
+(verify-guards fn-store-retention-event-encode)
+(verify-guards fn-store-event-encode)
+(verify-guards fn-sbud-record-octets)
+(verify-guards fn-sbud-bytes-used)
+(verify-guards fn-sbud-verdict)
+(verify-guards fn-sbud-headroom-at)
+(verify-guards fn-sbud-headroom)
+(verify-guards fn-sbud-bytes-extend)

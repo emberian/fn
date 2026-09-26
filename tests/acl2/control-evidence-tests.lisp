@@ -143,3 +143,50 @@
  (equal (fn-cev-any-request-decode (fn-cev-any-request-encode :obligations 7))
         '(:live-status :obligations 7)))
 (assert-event (equal (fn-cev-request-encode '(:control-evidence . "nope") 0) :bad))
+
+; ---------------------------------------------------------------------------
+; PKT-518 (PRF-187): fn-cev-any-request-decode-of-encode and
+; fn-cev-request-decode-of-encode.  The witnesses above are the reachable
+; ones (each hypothesis asserted here, the conclusion above).
+(assert-event (fn-cevg-kindp '(:control-evidence . "<c2@example.invalid>")))
+(assert-event (fn-record-uint32p 131072))
+(assert-event
+ (equal (fn-cev-request-decode
+         (fn-cev-request-encode '(:control-evidence . "<c2@example.invalid>") 4294967295))
+        '(:live-status (:control-evidence . "<c2@example.invalid>") 4294967295)))
+; Without the kind hypothesis: a Message-ID the grammar refuses is not
+; framed (:bad), and the owner reads no kind from it.
+(assert-event (not (fn-cevg-kindp '(:control-evidence . "nope"))))
+(assert-event (not (equal (car (fn-cev-any-request-decode
+                                (fn-cev-any-request-encode '(:control-evidence . "nope") 0)))
+                          :live-status)))
+(must-fail
+ (defthm cevt-any-round-trip-without-kind
+   (implies (fn-record-uint32p offset)
+            (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
+                   (list :live-status kind offset)))
+   :rule-classes nil))
+(must-fail
+ (defthm cevt-round-trip-without-kind
+   (implies (fn-record-uint32p offset)
+            (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
+                   (list :live-status kind offset)))
+   :rule-classes nil))
+; Without the offset hypothesis: 2^32 is not framed.
+(assert-event (not (fn-record-uint32p 4294967296)))
+(assert-event (equal (fn-cev-any-request-encode :control-log 4294967296) :bad))
+(assert-event (not (equal (car (fn-cev-any-request-decode
+                                (fn-cev-any-request-encode :control-log 4294967296)))
+                          :live-status)))
+(must-fail
+ (defthm cevt-any-round-trip-without-offset
+   (implies (or (member-equal kind *fn-nls-kinds*) (fn-cevg-kindp kind))
+            (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
+                   (list :live-status kind offset)))
+   :rule-classes nil))
+(must-fail
+ (defthm cevt-round-trip-without-offset
+   (implies (fn-cevg-kindp kind)
+            (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
+                   (list :live-status kind offset)))
+   :rule-classes nil))
