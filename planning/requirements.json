@@ -1833,9 +1833,10 @@
         "tests/test_native_consumer_exchange.py",
         "tests/test_native_consumer_e2.py",
         "planning/evidence/consumer-e2-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T000312Z-2863061.json"
+        "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
+        "planning/evidence/consumer-e2/test_native_consumer_exchange.gate-eca72d1c.log"
       ],
-      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical signed resend over local control is answered refused today, not D25's duplicate; the consumer settles an uncertain POST by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet)."
+      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical resend over local control is answered D25's duplicate (PKT-166); the consumer settles an uncertain POST by that answer or by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet)."
     },
     {
       "id": "TOP-002",
