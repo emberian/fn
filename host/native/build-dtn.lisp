@@ -194,6 +194,10 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The process heap from the store profile (PKT-016): host/native/heap.lisp,
+; which the operator loaded below calls.  After every `ld': no host wrapper
+; above uses it, and it would otherwise serve their books transitively.
+(include-book "books/heap-figure")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -234,6 +238,9 @@
         ; enrolled BP boundaries) through the one public operator entry.
         (load "host/native/owner.lisp")
         (load "host/native/operator.lisp")
+        ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
+        ; line `status' and `health' print; after operator.lisp, whose plan it reads.
+        (load "host/native/heap.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

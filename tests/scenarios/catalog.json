@@ -3826,6 +3826,40 @@
         "docs/peering-with-a-friend.md"
       ],
       "execution_scope": "Run once by hand on 2026-09-26: the Linux node on hbox (fn-cde3986a5c78 tarball, OpenSSL 3.3.1) and the OpenBSD 7.9 node in a QEMU guest on hbox (fn-a04213276edf tarball, LibreSSL 4.3.0, 1 vCPU, 2 GiB), OpenBSD-to-Linux carried through an ssh reverse tunnel because the guest's container cannot reach the host's docker bridge address. Not a test module: the log SHA-256s are in the record. One unreproduced stop of the OpenBSD node during the first pulls is PKT-591."
+    },
+    {
+      "id": "SCN-127",
+      "title": "On a 2 GiB machine a fresh node takes the small preset, serves 100 POSTs, checkpoints and reopens within its figure; the development profile is refused by name at start",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-013"
+      ],
+      "steps": [
+        "Under systemd-run --user --scope -p MemoryMax=2G, install bin/fn beside libexec/fn/fn-host (the production image); `operator CONFIG init local.test` with no profile word; `status`.",
+        "`run`; POST 100 articles of 2 KiB; ARTICLE the first and last, GROUP and OVER 1-100; wait for `CHECKPOINT auto`; read VmHWM; SIGTERM.",
+        "`status` (open=checkpoint); `run` again; ARTICLE and OVER again; VmHWM; SIGTERM.",
+        "`init --profile development` through bin/fn; the same store made by the image directly; `run` and `status` through bin/fn."
+      ],
+      "expected": [
+        "init writes max-history-octets=8388608; status ends `heap=N MB profile=small machine=2048 MB` with N <= 2048.",
+        "Every POST 240; both ARTICLEs 220 with their Message-ID; 211 100; 100 OVER rows; one automatic checkpoint; the owner exits 0.",
+        "status says open=checkpoint:S; the reopened owner serves the same; both VmHWM below the limit.",
+        "Each is refused, exit 1, `refused machine-cannot-hold-profile heap=H MB machine=2048 MB` with H > 2048, nothing on stdout, no store made by the refused init, nothing listening."
+      ],
+      "evidence": [
+        "planning/evidence/heap-from-profile-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_heap_from_profile",
+        "cases": [
+          "test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+          "test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start"
+        ],
+        "native": true,
+        "log": "planning/evidence/heap-from-profile-2026-09-26/native-heap.log",
+        "record": "planning/evidence/heap-from-profile-2026-09-26.md"
+      }
     }
   ]
 }

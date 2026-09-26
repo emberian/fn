@@ -100,6 +100,8 @@
 (include-book "books/feed-connection")
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
+; The process heap from the store profile (PKT-016): host/native/heap.lisp.
+(include-book "books/heap-figure")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.
@@ -311,6 +313,9 @@
         ; callback is present; it can call the already-loaded private admin
         ; executor for the ACL2-planned group/capacity actions.
         (load "host/native/operator.lisp")
+        ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
+        ; line `status' and `health' print; after operator.lisp, whose plan it reads.
+        (load "host/native/heap.lisp")
         (load "host/native/signature-command.lisp")
         ; Peering invitations (PRF-097): after the hybrid control handler it
         ; wraps, the signing commands it reuses and the admin publisher.

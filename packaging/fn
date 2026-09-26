@@ -38,7 +38,9 @@ self=$0
 # A link to bin/fn (say /usr/local/bin/fn) finds the release it points into.
 if [ -L "$self" ] && resolved=$(readlink -f -- "$self" 2>/dev/null); then self=$resolved; fi
 here=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
+installed=
 if [ -d "$here/../libexec/fn" ]; then
+    installed=1
     image=$(CDPATH= cd -- "$here/../libexec/fn" && pwd)/fn-host
 elif [ -n "${FN_NATIVE_HOST:-}" ]; then
     image=$FN_NATIVE_HOST
@@ -62,4 +64,45 @@ fi
 ACL2_CUSTOMIZATION=NONE
 export ACL2_CUSTOMIZATION
 unset ACL2_SYSTEM_BOOKS
+
+# The process heap (PKT-016, HST-013).  SBCL takes the last
+# --dynamic-space-size, and every image launcher splices ${SBCL_USER_ARGS}
+# after its own, so the figure goes there.
+#   installed  -- the figure is the store profile's, decided by ACL2
+#                 (books/heap-figure.lisp fn-heap-decide) in a first run of
+#                 the same image, `heap -- ARGV', which reads the command's
+#                 store profile and this machine's memory and prints
+#                 `heap=MB MB profile=WORD machine=M MB'; a profile the
+#                 machine cannot hold is refused there by name, exit 1, and
+#                 nothing else runs.  That probe itself runs in the core's
+#                 size plus two 64 MiB collection nurseries: a bound on the
+#                 probe's work (it reads fn.toml and config.json, 16 KiB
+#                 each), not on any data.  The caller's SBCL_USER_ARGS and
+#                 FN_TEST_HEAP_MB are ignored.
+#   developer  -- FN_TEST_HEAP_MB, when set, is the figure (the tests' named
+#                 override); otherwise the image's own launcher figure.
+if [ -n "$installed" ]; then
+    core_octets=$(wc -c < "$image.core" | tr -d ' ')
+    boot=$(( (core_octets + 1048575) / 1048576 + 128 ))
+    status=0
+    figure=$(SBCL_USER_ARGS="--dynamic-space-size $boot" "$image" --fn heap -- "$@") || status=$?
+    [ "$status" -eq 0 ] || exit "$status"
+    mb=${figure#heap=}
+    mb=${mb%% *}
+    case $figure in
+        heap=*) ;;
+        *) mb= ;;
+    esac
+    case $mb in
+        ''|*[!0-9]*) echo "fn: the heap probe printed no figure: $figure" >&2; exit 4 ;;
+    esac
+    SBCL_USER_ARGS="--dynamic-space-size $mb"
+    export SBCL_USER_ARGS
+elif [ -n "${FN_TEST_HEAP_MB:-}" ]; then
+    case $FN_TEST_HEAP_MB in
+        *[!0-9]*) echo "fn: FN_TEST_HEAP_MB is not a decimal: $FN_TEST_HEAP_MB" >&2; exit 5 ;;
+    esac
+    SBCL_USER_ARGS="--dynamic-space-size $FN_TEST_HEAP_MB"
+    export SBCL_USER_ARGS
+fi
 exec "$image" --fn "$@"
