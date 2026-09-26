@@ -1,0 +1,4 @@
+accepted post path=control message-id=<tls-refused@example.invalid> time=2026-09-26T00:45:44Z
+accepted reader connection=0 time=2026-09-26T00:45:45Z
+accepted reader connection=1 time=2026-09-26T00:45:47Z
+accepted reader connection=2 time=2026-09-26T00:45:49Z

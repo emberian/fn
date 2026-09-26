@@ -2354,6 +2354,32 @@
         "planning/evidence/peering-compose-2026-09-25.md"
       ],
       "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule), with *fn-ks-reopen-policy* as the switch. Pull over TLS (packet 8) is not part of this requirement yet."
+    },
+    {
+      "id": "NNT-023",
+      "title": "A pull presents its credential only over a verified TLS channel, is refused before any connection when a credential would cross a clear transport outside the loopback-lab exception, and a wrong principal leaves the cursor where it was",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-125"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull-session.lisp",
+        "books/peer-pull.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "host/native/pull-service.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-tls-pull-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T003614Z-4146295.json"
+      ],
+      "implementation_note": "RFC 4642 section 2.2 (STARTTLS), RFC 4643 section 2.3.2 (AUTHINFO USER/PASS on an unprotected channel is a local-policy refusal) and RFC 3977 section 7.4 (NEWNEWS); the pull reuses the feed's session machine (PRF-047/PRF-051) as its preamble. The clear-transport credential refusal and the loopback-lab exception (profile allow-clear AND a host of 127.0.0.1 or ::1) are fn local policy. The serving side's binding is the reader port's `[auth] required`/`protected_only` and the AUTHINFO principal. The invitation does not yet carry the inviter's address (PKT-236)."
     }
   ]
 }

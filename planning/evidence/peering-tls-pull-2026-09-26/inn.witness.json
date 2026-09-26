@@ -1,0 +1,17 @@
+{
+ "b_head": "221 0 <pull-from-inn@inn.pull.example.invalid> headers follow",
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "fnpl": [
+  "INN.fnfd"
+ ],
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "inn_ihave": "235 Article transferred OK",
+ "kind": "inn",
+ "log_sha256_B": "b4e08715986067800c6857beef82af209c6c6c28042faaf897eff31c9fa381d9",
+ "newnews": [
+  "NEWNEWS fn.* 20260925 004451 GMT"
+ ],
+ "pull_lines": [
+  "pull peer=INN round=done cursor=advanced transport=clear"
+ ]
+}

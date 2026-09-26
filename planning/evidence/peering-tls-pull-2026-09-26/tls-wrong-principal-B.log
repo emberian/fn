@@ -1,0 +1,4 @@
+pull peer=A round=failed cursor=held at=preamble
+pull peer=A round=failed cursor=held at=preamble
+pull peer=A round=failed cursor=held at=preamble
+accepted reader connection=0 time=2026-09-26T00:45:50Z
