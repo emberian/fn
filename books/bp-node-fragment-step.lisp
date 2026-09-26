@@ -653,8 +653,10 @@
 
 (defthm fn-bpnf-zero-family-keys-bound
   (<= (len (fn-bpnf-zero-family-keys held)) (len held))
-  :hints (("Goal" :in-theory (disable fn-bpnf-fragment-candidatep
-                                      fn-bpnf-fragment-family-key)))
+  :hints (("Goal" :induct (fn-bpnf-zero-family-keys held)
+           :in-theory (union-theories '(fn-bpnf-zero-family-keys len
+                                        car-cons cdr-cons)
+                                      (theory 'minimal-theory))))
   :rule-classes :linear)
 
 (in-theory (disable fn-bpnf-family-without-zero-key-is-not-ready
