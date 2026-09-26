@@ -41,6 +41,8 @@
 (include-book "../books/owner-bound-commit")
 (include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
+; PRF-180: the per-POST caches advanced through the derived event index.
+(include-book "../books/store-carried-folds")
 (include-book "../books/owner-advance-carried")
 (include-book "../books/owner-intent-carried")
 (include-book "../books/owner-commit-ocl")
@@ -295,11 +297,27 @@
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
-               (state (f-put-global 'fn-owner-record-octets nil state))
-               (state (f-put-global 'fn-owner-record-debt nil state))
-               ; PRF-099: the carried-usage cache restarts from the Store
-               ; this open replayed (fn-pcb-usage-extend walks it once).
-               (state (f-put-global 'fn-owner-carried-usage nil state)))
+               ; PRF-180: the committed record octets, the completion debt
+               ; and the carried usage are folded once here, over the Store
+               ; this open replayed (valid caches: fn-sbud-full-cache-is-valid,
+               ; fn-cvec-full-debt-cache-is-valid, fn-pcb-full-cache-is-valid);
+               ; every later query advances them through the derived event
+               ; index (fn-owner-record-octets, fn-owner-record-debt,
+               ; fn-owner-carried-usage).
+               (s (fn-owner-store state))
+               (records (fn-sf-records (fn-sn-files s)))
+               (state (f-put-global 'fn-owner-record-octets
+                                    (cons (fn-sbud-count s)
+                                          (fn-sbud-bytes-used s))
+                                    state))
+               (state (f-put-global 'fn-owner-record-debt
+                                    (cons (fn-sbud-count s)
+                                          (fn-cvec-record-debt records))
+                                    state))
+               (state (f-put-global 'fn-owner-carried-usage
+                                    (cons (fn-sbud-count s)
+                                          (fn-pcb-tally-records records nil))
+                                    state)))
           (value :installed))
       (value :refused))))
 
@@ -420,38 +438,42 @@
         (value :configured)))))
 
 ; The committed record octets of the carried Store, from the carried
-; (K . SUM) of the first K records extended by the records committed since
-; (books/store-budget.lisp `fn-sbud-bytes-extend'; equal to
-; `fn-sbud-bytes-used' when the cache is valid,
-; `fn-sbud-bytes-used-is-kernel-sum').  Committed records only grow while one
-; owner runs, and the cache is reset when a profile is installed at open, so
-; each record is encoded once per owner process, not once per POST.
+; (K . SUM) of the first K records advanced over the records committed since
+; through the Store's derived event index (books/store-budget.lisp
+; `fn-sbud-bytes-carried': one index lookup and one record's length per
+; record committed since the last query, never a walk of the history; equal
+; to `fn-sbud-bytes-used' under `fn-ceis-indexedp' when the cache is valid,
+; `fn-sbud-bytes-carried-is-the-fold').  The cache is the fold at open
+; (`fn-owner-install-profile') and stays valid while committed records only
+; grow (`fn-sbud-octets-cache-valid-after-commit'); the count stored with it
+; is the index's (`fn-sbud-count', `fn-sbud-count-is-used').
 (defun fn-owner-record-octets (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+  (let* ((s (fn-owner-store state))
          (cache (if (boundp-global 'fn-owner-record-octets state)
                     (f-get-global 'fn-owner-record-octets state)
                   nil))
-         (bytes (fn-sbud-bytes-extend cache records))
+         (bytes (fn-sbud-bytes-carried cache s))
          (state (f-put-global 'fn-owner-record-octets
-                              (cons (len records) bytes) state)))
+                              (cons (fn-sbud-count s) bytes) state)))
     (mv bytes state)))
 
 ; The completion debt of the carried Store (the open forward undertakings,
-; each owing a release record), carried as (K . DEBT) and extended by the
-; records committed since (books/store-capacity-vector.lisp
-; `fn-cvec-debt-extend'; equal to `fn-cvec-record-debt' when the cache is
-; valid, `fn-cvec-debt-extend-is-the-record-debt'), reset with the octets
-; when a profile is installed at open.
+; each owing a release record), carried as (K . DEBT) and advanced over the
+; records committed since through the Store's derived event index
+; (books/store-carried-folds.lisp `fn-scf-debt-carried'; equal to
+; `fn-cvec-record-debt' under `fn-ceis-indexedp' when the cache is valid,
+; `fn-scf-debt-carried-is-the-record-debt'), reset with the octets when a
+; profile is installed at open.
 (defun fn-owner-record-debt (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+  (let* ((s (fn-owner-store state))
          (cache (if (boundp-global 'fn-owner-record-debt state)
                     (f-get-global 'fn-owner-record-debt state)
                   nil))
-         (debt (fn-cvec-debt-extend cache records))
+         (debt (fn-scf-debt-carried cache s))
          (state (f-put-global 'fn-owner-record-debt
-                              (cons (len records) debt) state)))
+                              (cons (fn-sbud-count s) debt) state)))
     (mv debt state)))
 
 ; The owner's verdict on one more record of KIND: the carried profile's count
@@ -465,16 +487,18 @@
   (mv-let (bytes state) (fn-owner-record-octets state)
     (mv-let (debt state) (fn-owner-record-debt state)
       (let ((s (fn-owner-store state)))
+        ; PRF-180: the count read from the index (fn-sbud-count-is-used).
         (value (fn-cvec-verdict-at (fn-owner-store-profile state) kind
-                                   (fn-sbud-used s) bytes debt))))))
+                                   (fn-sbud-count s) bytes debt))))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
 (defun fn-owner-headroom (state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (bytes state) (fn-owner-record-octets state)
-    (value (fn-sbud-headroom-at (fn-owner-store-profile state)
-                                (fn-owner-store state) bytes))))
+    ; PRF-180: fn-sbud-headroom-carried-is-headroom-at.
+    (value (fn-sbud-headroom-carried (fn-owner-store-profile state)
+                                     (fn-owner-store state) bytes))))
 
 ; The carried profile as the operator reads it (field names and values).
 (defun fn-owner-profile-report (state)
@@ -625,7 +649,7 @@
                  ; (books/store-capacity-vector.lisp
                  ; `fn-cvec-prepare-keeps-the-vector').
                  (budget (fn-cvec-article-budget-for
-                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
@@ -700,7 +724,7 @@
                  ; (books/store-capacity-vector.lisp
                  ; `fn-cvec-prepare-keeps-the-vector').
                  (budget (fn-cvec-article-budget-for
-                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
@@ -1711,20 +1735,23 @@
 
 ; PRF-099: the carried usage of the boundary whose release evidence is
 ; EVIDENCE (a string), from the owner's (K . TALLY) cache over the committed
-; records extended by the records committed since
-; (books/peer-carriage.lisp fn-pcb-usage-extend; equal to the replay
-; projection fn-pcb-usage when the cache is valid,
-; fn-pcb-carried-usage-is-the-projection, and kept valid,
-; fn-pcb-extended-cache-is-valid).  Reset at open (fn-owner-install-profile).
+; records, advanced over the records committed since through the Store's
+; derived event index (PRF-180, books/store-carried-folds.lisp
+; `fn-scf-usage-carried'; read at EVIDENCE it is the replay projection
+; fn-pcb-usage under `fn-ceis-indexedp' when the cache is valid,
+; `fn-scf-usage-carried-is-the-projection', and it is
+; books/peer-carriage.lisp's fn-pcb-usage-extend,
+; `fn-scf-usage-carried-is-usage-extend', so fn-pcb-extended-cache-is-valid
+; keeps the stored cache valid).  Reset at open (fn-owner-install-profile).
 (defun fn-owner-carried-usage (evidence state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+  (let* ((s (fn-owner-store state))
          (cache (if (boundp-global 'fn-owner-carried-usage state)
                     (f-get-global 'fn-owner-carried-usage state)
                   nil))
-         (tally (fn-pcb-usage-extend cache records))
+         (tally (fn-scf-usage-carried cache s))
          (state (f-put-global 'fn-owner-carried-usage
-                              (cons (len records) tally) state)))
+                              (cons (fn-sbud-count s) tally) state)))
     (mv (fn-pcb-tally-get evidence tally) state)))
 
 ; D23 and PRF-099: the carried arm's kind-4 event, for the NNTP transit
