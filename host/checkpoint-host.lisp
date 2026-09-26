@@ -102,9 +102,17 @@
   (declare (xargs :mode :program))
   *fn-cpp-selection-read-bound*)
 
-(defun fn-store-checkpoint-namespace-observation-limit ()
+; D27, PRF-171: the retained-generation capacity is the opened profile's
+; max-transactions plus one (`fn-cpp-generation-capacity'); VALUES is the
+; profile the host opened the store under (`fnn-store-config').
+(defun fn-store-checkpoint-generation-capacity (values)
   (declare (xargs :mode :program))
-  *fn-cpp-namespace-observation-limit*)
+  (fn-cpp-generation-capacity (fn-bs-profile-max-transactions values)))
+
+(defun fn-store-checkpoint-namespace-observation-limit (values)
+  (declare (xargs :mode :program))
+  (fn-cpp-namespace-observation-limit
+   (fn-store-checkpoint-generation-capacity values)))
 
 (defun fn-store-checkpoint-name-octets->chars (octets)
   (declare (xargs :mode :program))
@@ -122,29 +130,33 @@
             (if (equal rest :bad) :bad (cons name rest)))))
     (if (null names) nil :bad)))
 
-(defun fn-store-checkpoint-namespace-plan (name-octets)
+(defun fn-store-checkpoint-namespace-plan (name-octets values)
   (declare (xargs :mode :program))
   (let ((names (fn-store-checkpoint-names-octets->chars name-octets)))
     (if (equal names :bad) '(:error :octets)
-      (fn-cpp-namespace-plan names))))
+      (fn-cpp-namespace-plan names
+                             (fn-store-checkpoint-generation-capacity values)))))
 
 ; The sorted generation plan is gap-checked here.  Exhaustion names both the
 ; finite retained-generation policy and the enclosing uint32 codec domain.
-(defun fn-store-checkpoint-next-generation (generations)
+(defun fn-store-checkpoint-next-generation (generations values)
   (declare (xargs :mode :program))
-  (fn-cpp-next-generation generations))
+  (fn-cpp-next-generation generations
+                          (fn-store-checkpoint-generation-capacity values)))
 
 ; Pack generations may have gaps after ACL2-authorized retirement.  The
 ; selected generation stays present and fixes a monotone next number.
-(defun fn-store-checkpoint-pack-next-generation (generations)
+(defun fn-store-checkpoint-pack-next-generation (generations values)
   (declare (xargs :mode :program))
-  (fn-cprt-next-generation generations))
+  (fn-cprt-next-generation generations
+                           (fn-store-checkpoint-generation-capacity values)))
 
 (defun fn-store-checkpoint-pack-publication-initial
-  (generations proposed-generation exclusivep final-absentp)
+  (generations proposed-generation exclusivep final-absentp values)
   (declare (xargs :mode :program))
   (fn-cprt-publication-initial generations proposed-generation
-                               exclusivep final-absentp))
+                               exclusivep final-absentp
+                               (fn-store-checkpoint-generation-capacity values)))
 
 (defun fn-store-checkpoint-pack-retire-plan (generations selected)
   (declare (xargs :mode :program))
@@ -219,10 +231,11 @@
   (fn-ccp-coverage-framed framed digest observed-count frontier))
 
 (defun fn-store-checkpoint-publication-initial
-  (generations proposed-generation exclusivep final-absentp)
+  (generations proposed-generation exclusivep final-absentp values)
   (declare (xargs :mode :program))
   (fn-cpp-publication-initial generations proposed-generation exclusivep
-                              final-absentp))
+                              final-absentp
+                              (fn-store-checkpoint-generation-capacity values)))
 
 ; Selection replacement is a separate contract from immutable generation
 ; publication.  The native adapter retains this returned phase and asks ACL2

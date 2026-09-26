@@ -6370,6 +6370,39 @@
           "name": "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
         }
       ]
+    },
+    {
+      "id": "PRF-171",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-add-peer-rows-extends-the-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-apply-delta-adds-at-most-the-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-apply-adds-at-most-the-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-extend-deltas-apply-as-the-extend-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+        }
+      ]
     }
   ]
 }

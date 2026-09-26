@@ -1263,11 +1263,21 @@
  (equal (fn-pcb-peer-budget
          "relay"
          (fn-cfg-peers
-          (fn-cfg-apply-delta
+          (fn-cfg-apply
            (fn-cfg-value-make nil 0 nil nil nil *fn-na-pcb-peers* nil nil nil nil) 1 nil
-           (car (fn-native-admin-plan-deltas-over *fn-na-pcb-budget*
-                                                  *fn-na-pcb-peers*)))))
+           (fn-native-admin-plan-deltas-over *fn-na-pcb-budget*
+                                             *fn-na-pcb-peers*))))
         '(256 3)))
+; PRF-171: the budget request publishes the new rows and removes exactly the
+; two superseded budget rows; nothing else of the group is in the record.
+(assert-event
+ (equal (fn-native-admin-plan-deltas-over *fn-na-pcb-budget* *fn-na-pcb-peers*)
+        (list (fn-cfg-add-peer-rows
+               "relay" (list (list "relay" "carried-budget-charge" "" 256)
+                             (list "relay" "carried-budget-count" "" 3)))
+              (fn-cfg-remove-peer-rows
+               "relay" (list (list "relay" "carried-budget-charge" "" 1)
+                             (list "relay" "carried-budget-count" "" 1))))))
 ; No such boundary: no delta.
 (assert-event (null (fn-native-admin-plan-deltas-over *fn-na-pcb-budget* nil)))
 ; Past a uint32 of pages (2^32 pages is 2^44 octets), and a malformed word.
@@ -1293,10 +1303,22 @@
     '("peer" "carries" "relay"
       "0707070707070707070707070707070707070707070707070707070707070707"))))
 (assert-event (equal (fn-native-admin-result-kind *fn-na-pcb-carries*) :extend-peer))
+; PRF-171: the record carries the one new row (:add-peer-rows); applied, the
+; group is the old group followed by it, as the whole-group extension was.
 (assert-event
- (equal (fn-cfg-delta-rows
-         (car (fn-native-admin-plan-deltas-over *fn-na-pcb-carries*
-                                                *fn-na-pcb-peers*)))
+ (equal (fn-native-admin-plan-deltas-over *fn-na-pcb-carries* *fn-na-pcb-peers*)
+        (list (fn-cfg-add-peer-rows
+               "relay"
+               (list (list "relay" "carries-principal"
+                           "0707070707070707070707070707070707070707070707070707070707070707"
+                           0))))))
+(assert-event
+ (equal (fn-cfg-rows-with-key
+         (fn-cfg-peers
+          (fn-cfg-apply
+           (fn-cfg-value-make nil 0 nil nil nil *fn-na-pcb-peers* nil nil nil nil) 1 nil
+           (fn-native-admin-plan-deltas-over *fn-na-pcb-carries* *fn-na-pcb-peers*)))
+         "relay")
         (append *fn-na-pcb-peers*
                 (list (list "relay" "carries-principal"
                             "0707070707070707070707070707070707070707070707070707070707070707"

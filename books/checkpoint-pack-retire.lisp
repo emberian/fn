@@ -9,14 +9,16 @@
   (if (consp generations)
       (and (natp (car generations))
            (< (ifix previous) (car generations))
-           (< (car generations) *fn-cpp-max-generations*)
+           (fn-record-uint32p (car generations))
            (fn-cprt-generations-after-p (cdr generations) (car generations)))
     (null generations)))
 
+; D27, PRF-171: a pack generation is a uint32 (the name codec's width); how
+; many the directory retains is the profile's capacity, checked by the
+; allocator (`fn-cprt-next-generation'), not by the shape of the list.
 (defun fn-cprt-generationsp (generations)
   (declare (xargs :guard t))
-  (and (<= (len generations) *fn-cpp-max-generations*)
-       (fn-cprt-generations-after-p generations -1)))
+  (fn-cprt-generations-after-p generations -1))
 
 ; Pack generations may have gaps left by retirement.  The selected generation
 ; is never retired, so the maximum remains a durable high-water mark.  The
@@ -25,23 +27,23 @@
   (declare (xargs :guard t))
   (if (consp generations)
       (fn-cprt-next-from (cdr generations) (car generations))
-    (if (< (ifix previous) (1- *fn-cpp-max-generations*))
+    (if (< (ifix previous) *fn-cbor-max-uint*)
         (1+ (ifix previous))
       :exhausted)))
 
-(defun fn-cprt-next-generation (generations)
+(defun fn-cprt-next-generation (generations capacity)
   (declare (xargs :guard t))
-  (if (fn-cprt-generationsp generations)
-      (fn-cprt-next-from generations -1)
-    :invalid))
+  (cond ((not (fn-cprt-generationsp generations)) :invalid)
+        ((<= (nfix capacity) (len generations)) :exhausted)
+        (t (fn-cprt-next-from generations -1))))
 
 ; Publication of a replacement pack must use the same gap-aware namespace
 ; contract as its allocator.  Ordinary node checkpoints retain the separate
 ; gap-free fn-cpp-publication-initial policy.
 (defun fn-cprt-publication-initial
-  (generations proposed-generation exclusivep final-absentp)
+  (generations proposed-generation exclusivep final-absentp capacity)
   (declare (xargs :guard t))
-  (let ((next (fn-cprt-next-generation generations)))
+  (let ((next (fn-cprt-next-generation generations capacity)))
     (cond ((equal next :invalid) '(:error :namespace))
           ((equal next :exhausted) '(:error :exhausted))
           ((not (equal proposed-generation next)) '(:error :generation))
@@ -185,16 +187,59 @@
 (defthm fn-cprt-next-after-retirement-is-above-selected
   (implies (and (fn-cprt-generationsp generations)
                 (member-equal selected generations)
-                (not (equal (fn-cprt-next-generation generations) :exhausted)))
-           (< selected (fn-cprt-next-generation generations)))
+                (not (equal (fn-cprt-next-generation generations capacity)
+                            :exhausted)))
+           (< selected (fn-cprt-next-generation generations capacity)))
   :hints (("Goal" :use ((:instance fn-cprt-member-below-next-from
                           (previous -1)))
            :in-theory (enable fn-cprt-next-generation fn-cprt-generationsp))))
+
+;; The pack allocator's two bounds (D27, PRF-171).  The retained names are
+;; the profile's capacity; the numbers run to the uint32 width of the name
+;; codec, and nothing else stops them.
+
+(defun fn-cprt-last (generations)
+  (declare (xargs :guard t))
+  (if (consp generations)
+      (if (consp (cdr generations)) (fn-cprt-last (cdr generations))
+        (car generations))
+    -1))
+
+(local
+ (defthm fn-cprt-next-from-is-after-the-last
+   (implies (and (integerp previous)
+                 (fn-cprt-generations-after-p generations previous))
+            (equal (fn-cprt-next-from generations previous)
+                   (let ((last (if (consp generations)
+                                   (fn-cprt-last generations)
+                                 previous)))
+                     (if (< last *fn-cbor-max-uint*) (+ 1 last) :exhausted))))
+   :hints (("Goal" :induct (fn-cprt-next-from generations previous)
+            :in-theory (enable fn-cprt-next-from fn-cprt-generations-after-p
+                               fn-cprt-last fn-record-uint32p)))))
+
+; KEYSTONE (the pack allocator refuses exactly at the operator's capacity or
+; the codec width).  On a valid namespace the next pack generation is
+; :exhausted exactly when CAPACITY names are already retained or the
+; highest retained number is the uint32 maximum; otherwise it is the number
+; after the highest.  Host: host/native/checkpoint.lisp
+; `fnn-pack-publish-generation' through host/checkpoint-host.lisp
+; `fn-store-checkpoint-pack-next-generation' and
+; `fn-store-checkpoint-pack-publication-initial'.
+(defthm fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity
+  (implies (fn-cprt-generationsp generations)
+           (equal (fn-cprt-next-generation generations capacity)
+                  (cond ((<= (nfix capacity) (len generations)) :exhausted)
+                        ((<= *fn-cbor-max-uint* (fn-cprt-last generations))
+                         :exhausted)
+                        (t (+ 1 (fn-cprt-last generations))))))
+  :hints (("Goal" :in-theory (enable fn-cprt-next-generation
+                                     fn-cprt-generationsp fn-cprt-last))))
 
 (deftheory fn-checkpoint-pack-retire-vocabulary
   '(fn-cprt-generations-after-p fn-cprt-generationsp fn-cprt-next-from
     fn-cprt-next-generation fn-cprt-publication-initial
     fn-cprt-older-prefix fn-cprt-retire-plan
     fn-cprt-retire-steps fn-cprt-retire-program fn-cprt-crash-survivors
-    fn-cprt-prefixp))
+    fn-cprt-prefixp fn-cprt-last))
 (in-theory (disable fn-checkpoint-pack-retire-vocabulary))

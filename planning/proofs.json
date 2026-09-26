@@ -6705,6 +6705,48 @@
         "fn-spo-config-open-refuses-only-what-the-old-open-rejected",
         "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
       ]
+    },
+    {
+      "id": "PRF-171",
+      "title": "A peer's configuration rows and the checkpoint generations are data bounded by the profile or by their records: 1,024 rows is a work bound per delta, and the generation allocator refuses exactly at the profile's capacity",
+      "statement": "Rows: an :add-peer-rows delta for an existing peer with keyed rows is refused by fn-cfg-delta-reason exactly when it carries more than *fn-cfg-max-rows* rows (fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound); applied, the group is the old group less the repeated rows followed by the new ones, with no bound on its length (fn-cfg-add-peer-rows-extends-the-group); any well-formed delta adds at most *fn-cfg-max-rows* rows to the peers slot and a delta list at most that times its length (fn-cfg-apply-delta-adds-at-most-the-work-bound, fn-cfg-apply-adds-at-most-the-work-bound); the deltas the host publishes for `peer carries` / `peer budget` (fn-pcb-extend-deltas, through fn-native-admin-plan-deltas-over from host/native-admin-host.lisp fn-native-admin-host-apply and fn-native-admin-host-owner-reconfigure) apply as the whole-group :set-peer extension (fn-pcb-extend-deltas-apply-as-the-extend-delta), so PRF-099's budget keystone carries. Generations: on a gap-free checkpoint namespace fn-cpp-next-generation is :exhausted exactly when CAPACITY names are retained and is the count otherwise, for CAPACITY within the uint32 width (fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity); on a valid pack namespace fn-cprt-next-generation is :exhausted exactly at CAPACITY retained names or at the uint32 maximum, else the number after the highest (fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity); CAPACITY is max-transactions + 1 of the opened profile (host/checkpoint-host.lisp fn-store-checkpoint-generation-capacity, called from host/native/checkpoint.lisp fnn-checkpoint-publish and fnn-pack-publish-generation).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-023"
+      ],
+      "depends_on": [
+        "PRF-099",
+        "PRF-102"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/config.lisp",
+        "books/peer-carriage-rows.lisp",
+        "books/native-admin.lisp",
+        "books/checkpoint-publish.lisp",
+        "books/checkpoint-pack-retire.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/acl2/checkpoint-publish-tests.lisp",
+        "tests/acl2/checkpoint-pack-retire-tests.lisp",
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T112332Z-985333.json",
+        "planning/evidence/manifests/certify-20260926T113443Z-1122513.json",
+        "planning/evidence/manifests/certify-20260926T113632Z-1144441.json"
+      ],
+      "progress_note": "Open (PKT-451): field 7 governs group names (community-bounds section 3's design; a records-shape and byte-store-frame freeze).",
+      "events": [
+        "fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound",
+        "fn-cfg-add-peer-rows-extends-the-group",
+        "fn-cfg-apply-delta-adds-at-most-the-work-bound",
+        "fn-cfg-apply-adds-at-most-the-work-bound",
+        "fn-pcb-extend-deltas-apply-as-the-extend-delta",
+        "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity",
+        "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+      ]
     }
   ]
 }

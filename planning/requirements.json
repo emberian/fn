@@ -3222,6 +3222,28 @@
       ],
       "implementation_note": "A client contract over fn's peering; not an RFC requirement. The carriage is RFC 3977/4644 peering (IHAVE/TAKETHIS answered 435/438 for a held article, RFC 3977 section 6.3.2; the NEWNEWS pull, section 7.4, NNT-018); the stored-source guarantee is fn's (PRF-177 (a)). The Python consumer is an external client: its database lock, resend and correlation are its own bookkeeping under CNS-003.",
       "note": "Local-owner profile on each node; NNTP peering with source-address authentication on loopback in the scenario. BP carriage through the relay network is PKT-333 phase 2."
+    },
+    {
+      "id": "STO-023",
+      "title": "Stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant: a peer's configuration rows grow by incremental deltas and checkpoint generations are a uint32 numbering under the profile's capacity",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-171"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/peer-carriage-rows.lisp",
+        "books/checkpoint-publish.lisp",
+        "books/checkpoint-pack-retire.lisp",
+        "planning/evidence/caps-to-profile-2026-09-26.md"
+      ],
+      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101). Open: field 7 read by group create and the group-name width 460 (PKT-451)."
     }
   ]
 }
