@@ -346,6 +346,8 @@ observation into the outcome and this function only carries it out."
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
+; And `fnn-command-reclaim' (`store reclaim [--dry-run]', STO-017).
+(defvar *fnn-reclaim-callback* nil)
 
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
@@ -361,6 +363,8 @@ observation into the outcome and this function only carries it out."
                            (fnn-fault "ACL2 accepted a store plan with no profile"))
                          (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))
+                      (:reclaim (funcall *fnn-reclaim-callback* root nil))
+                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
                       (:checkpoint (fnn-command-state-checkpoint root))
                       (:needs-upgrade (fnn-command-needs-upgrade root))
                       (:rollback-check
@@ -478,6 +482,11 @@ configuration usage result."
                          ;; peer genesis|invite|accept|confirm reach the owner
                          ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
                          (:peering :control))))
+          (when (and (member action '(:reclaim :reclaim-dry-run))
+                     (null *fnn-reclaim-callback*))
+            (fnn-operator-emit-status
+             :usage "action" "reclaim needs the checkpoint surface, which this image omits")
+            (return-from fnn-operator-dispatch-plan +fnn-exit-usage+))
           (when (and (eq action :compact) (null *fnn-compact-callback*))
             (fnn-operator-emit-status
              :usage "action" "compact needs the checkpoint surface, which this image omits")
@@ -496,7 +505,7 @@ configuration usage result."
           (:post (fnn-operator-execute-post result))
           (:status (fnn-operator-execute-status result))
           ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
-            :rollback-check)
+            :rollback-check :reclaim :reclaim-dry-run)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:peering (fnn-pinv-execute result))
