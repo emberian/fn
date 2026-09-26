@@ -1793,6 +1793,28 @@
         "tests/acl2/source-routes-tests.lisp",
         "planning/evidence/source-corpus-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-068",
+      "title": "A person reads a conversation across a withdrawn message, searches a stated window, and resends an uncertain post only on request",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-021"
+      ],
+      "steps": [
+        "On a scratch developer-image node, post a root, a signed reply and a further reply; withdraw the signed reply with its author's signed cancel.",
+        "Open the group, the withdrawn number, the conversation of the last reply, and a search of the group in the web reader; reply with a double-click, go Back and press Post again; post while the node is unreachable, restart the client, and press Re-send this same article to settle it."
+      ],
+      "expected": [
+        "The group window lists the withdrawn number with the node's 423 withdrawn; the conversation lists the withdrawn reply with the node's 430 withdrawn and shows the root and the last reply from the node's XPAT References answer.",
+        "The search page names the node's XPAT command and window; the article page shows claimed From, carriers, the node's historical verdict, current enrollment as not served and no independent verification, separately.",
+        "Back after posting shows that the form was already posted and sends nothing; after restart the intent is uncertain and nothing is sent until the button; the reconciliation answer is recorded beside the unchanged original (NNT-019)."
+      ],
+      "evidence": [
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-daily-2026-09-25.md"
+      ]
     }
   ]
 }

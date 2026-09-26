@@ -76,7 +76,9 @@ observation -- the article may have been withdrawn by a cancel, reclaimed, or
 never stored -- never evidence that the post failed, and it does not turn an
 uncertain outcome into a refusal.
 
-Opening a compose form creates a random, local submission identifier. Its
+Opening a compose form creates a random, local submission identifier and
+redirects to `/c?id=<identifier>`, so Back and refresh return to that same
+identifier; once posted, that page says so and offers no form. Its
 first valid POST freezes the exact article lines and Message-ID. A second
 click, concurrent POST, browser back/submit, or lost HTTP redirect with that
 identifier returns the same recorded outcome without another NNTP POST.

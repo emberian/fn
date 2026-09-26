@@ -184,6 +184,8 @@ class NativeWebClientTests(unittest.TestCase):
                 reply = conn.getresponse()
                 answer = reply.status, dict(reply.getheaders()), reply.read().decode("utf-8")
                 conn.close()
+                if method == "GET" and path.startswith("/compose") and answer[0] == 303:
+                    return request("GET", answer[1]["Location"])
                 return answer
 
             def restart_web():
@@ -215,7 +217,7 @@ class NativeWebClientTests(unittest.TestCase):
                 # Uncertain stays its own outcome: the exact text is kept on
                 # the page, reposting is warned against, and no edit path
                 # can turn it into a second article.
-                self.assertIn("Do not repost", result[2])
+                self.assertIn("Do not write this again as a new post", result[2])
                 self.assertIn(final_body, result[2])
                 self.assertNotIn("Edit as a new post", result[2])
                 self.assertEqual(request("GET", "/compose?group=fn.agents&edit=" + token)[0],
@@ -244,7 +246,8 @@ class NativeWebClientTests(unittest.TestCase):
                 owner = start_owner()
                 restart_web()
                 self.assertIn("badge uncertain", request("GET", "/result?id=" + token)[2])
-                observed = request("GET", "/settle?id=" + token)
+                observed = request("GET", request(
+                    "POST", "/settle", {"submission_id": token})[1]["Location"])
                 self.assertIn("now serves this Message-ID", observed[2])
                 self.assertIn("badge uncertain", observed[2])
                 duplicate = request("POST", "/post", {"submission_id": token,
