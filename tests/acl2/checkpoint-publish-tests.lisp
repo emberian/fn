@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-publish")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *cpp-groups* '("fn.letters" "fn.test"))
 (defconst *cpp-r0*
