@@ -243,3 +243,27 @@ ACL2 fn-lb-sync-plan over the file's bindings and the live configuration value -
 (fn-ocfg-reconfigure) and published (fn-ocl-publish) -> relation: live configuration = replay of the
 history (maintained; PRF-028's, uncertified) and each open connection's pin = the configuration it
 opened at (fn-ocfg-statep) -> PRF-175 -> observed: tests.test_native_auth (below).
+
+### Certification
+
+REPL first (persvati /home/ember/fn-gates/keys-and-accounts-2-repl, sessions over books/config and then
+books/login-binding-live): config.lisp, config-invariants.lisp and accounts.lisp over the new config;
+every form of login-binding-live.lisp (75) and its test book's forms (98, the must-fails checked to
+fail) before r3.
+
+- r1: persvati run-20260926T115148Z-e9c3 (`--affected-by` config.lisp, login-binding.lisp,
+  peer-invite.lisp, native-auth-admin.lisp, login-binding-live.lisp, native-operator.lisp: config.lisp's
+  closure, most of the tree), at ddc05fe2: passed 398, failed 4 (login-binding-live's last keystone hit
+  the preprocessor's call depth; host/native-auth-host could not see the owner; the two books that
+  include them). Manifest planning/evidence/manifests/certify-20260926T115220Z-1347243.json. Every
+  other book of the closure passed, config.lisp, accounts.lisp, config-invariants.lisp,
+  native-auth-admin(-tests), peer-invite(-tests), native-operator(-tests) included; over 10 s only
+  books/owner-invariants 10.3 s (unchanged bytes; on the PKT-371 list).
+- r2: run-20260926T120439Z-88c8 certified nothing (explicit root combined with --affected-by
+  selected no book): a harness misuse, not evidence.
+- r3: persvati run-20260926T120522Z-4a12 at fabf99ea, roots books/login-binding-live,
+  tests/acl2/login-binding-live-tests, tests/acl2/native-auth-host-tests,
+  tests/acl2/docs-operator-grammar-tests: passed 5, failed 0, 177 from the cache. Manifest
+  planning/evidence/manifests/certify-20260926T120553Z-1490002.json. OVER 10 s:
+  tests/acl2/login-binding-live-tests 11.8 s at 2 jobs (a defect for PKT-463: split the two test
+  fixtures it includes, or measure quietly first).
