@@ -551,6 +551,68 @@ words prints the operator's usage (it is `fn operator - help`), and `fn
 core (`libexec/fn/source-revision`, written by the installer; exit 1 when
 the image records none).
 
+### On OpenBSD (amd64, 7.9)
+
+`fn-REV12-openbsd-amd64.tar.gz` is the same layout built on OpenBSD 7.9
+(`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
+run in the build VM). It carries the SBCL runtime with its one non-base
+library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
+built with the base `cc`, clang); TLS is the base system's LibreSSL. It
+needs no package: no Lisp, no Python, no OpenSSL. It is built against 7.9's
+libc and LibreSSL majors, so it runs on 7.9.
+
+Three OpenBSD rules decide where it lives and how it starts:
+
+- **W^X.** The SBCL runtime is linked `wxneeded`; OpenBSD runs it only from a
+  file system mounted `wxallowed`. The default install mounts `/usr/local`
+  that way (check with `mount | grep wxallowed`), so unpack under
+  `/usr/local`. Elsewhere it fails at start with `Cannot allocate memory`.
+- **Heap.** The launcher reserves `--dynamic-space-size 1024` (MB), not the
+  32,000 the Linux tarball inherits: OpenBSD counts the reservation against
+  the login class's `datasize` (1,536 MB for `default`, 4,096 MB for
+  `daemon`, the class rc.d uses). `SBCL_USER_ARGS="--dynamic-space-size N"`
+  overrides it per invocation.
+- **Working directory.** The image reads its working directory at start;
+  run it from a directory its user can read (`cd /var/fn`), or it halts with
+  `getcwd: Permission denied`.
+
+As root, with the tarball and its sum in `/tmp`:
+
+```sh
+cd /tmp && sha256 -C fn-REV12-openbsd-amd64.tar.gz.sha256 fn-REV12-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-REV12-openbsd-amd64.tar.gz
+cd fn-REV12 && sha256 -q -c SHA256SUMS               # every file in it
+F=/usr/local/fn-REV12/bin/fn
+C=/var/fn/fn.toml
+useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
+install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
+cd /var/fn
+su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563"
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
+  -subj /CN=fnbsd.friends.fn.invalid -addext subjectAltName=IP:10.0.2.15 \
+  -keyout /var/fn/tls/key.pem -out /var/fn/tls/cert.pem
+chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
+su -s /bin/sh _fn -c "$F operator $C init"
+su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
+su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
+install -m 0555 /usr/local/fn-REV12/share/fn/rc.d/fn /etc/rc.d/fn
+rcctl enable fn && rcctl start fn
+```
+
+The base `openssl` is LibreSSL's and makes the EC pair as shown. The rc.d
+script (`packaging/fn.rc.in`, rendered with the release path) runs
+`bin/fn operator /var/fn/fn.toml run` as `_fn` from `/var/fn`, in the
+background, logging through syslog (`daemon.info`); `rcctl check fn` finds
+the SBCL process by its `--fn operator /var/fn/fn.toml run` arguments. A link
+to `bin/fn` (say `/usr/local/bin/fn`) works: the launcher follows it back
+into the release.
+
+Measured on a QEMU guest with 1 CPU and 2 GB of memory (the record is
+planning/evidence/release-openbsd-2026-09-26.md): the node starts, answers
+STARTTLS over LibreSSL (TLS 1.3), logs in, accepts a post and serves it on a
+fresh connection to a Linux client; the list of its measured heap floor and
+resident size is in the record.
+
 ### Install the native production entry
 
 Build or select a source-pinned frozen image with `packaging/freeze-native-image.sh`
