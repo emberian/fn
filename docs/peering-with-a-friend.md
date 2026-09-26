@@ -115,6 +115,18 @@ persvati path-identity=persvati.friends.fn.invalid address=192.168.50.120 port=1
 An invitation made with `- -` in place of your address still enrols you at
 the friend's node, and configures nothing there.
 
+**A friend whose keys have changed since genesis.** A document binds its
+principal by the keyring of the node that reads it: when your node already
+holds the friend's principal (enrolled, then succeeded by a key statement or
+`hybrid-enroll-next`), the friend signs the acceptance with their *current*
+keys and your confirm takes it (one record consumes the invitation and
+configures the friend; there is nothing to enrol, and the log says `peer
+confirm: the acceptor's current keys; nothing to enrol`). An acceptance under
+a key set the friend has since replaced is refused `not-current-keys`, one
+from a revoked principal `revoked`. A node that has never enrolled the friend
+still decides by the genesis identity and refuses current keys that are not
+the genesis ones (`genesis`): no succession chain travels with the document.
+
 ### An account for the friend on your node
 
 To let the friend read and post on your node as themselves, hand them one

@@ -307,3 +307,144 @@ verdict names in the transit log, fn_verify's `revoked` natively. Teeth gap: fn-
 must-fail for its durable hypothesis and witnesses for every antecedent, not a must-fail for each of
 its seven hypotheses. Decision for ember (joins PKT-440): code 17 makes an older image refuse a store
 that ever published a binding.
+
+## Continuation 2: keys-and-accounts-3 (PKT-463)
+
+Lane keys-and-accounts-3 (Opus 5.5), from dev 5c6825b2. Ids taken: PRF-179 (new target: the
+succession-era documents are a subject of their own, books/peer-invite.lisp, not PRF-175's login
+binding), SEC-005 (extended), SCN-096 (extended), PKT-463 (narrowed to PKT-473), PKT-473.
+Deputy 3's sweep 14 added PKT-391 (done here) and asked about PKT-399 (below).
+
+### What a friend can now do
+
+- A friend whose keys have succeeded since genesis is peered under their current keys: when this
+  node's keyring already holds the friend's principal, the friend's acceptance signed with the
+  current keys is confirmed (consumption and peer record; nothing to enrol). A superseded key set is
+  refused `not-current-keys`, a revoked principal `revoked`; a node that never enrolled the
+  principal decides by the genesis identity as before (`genesis`).
+- `peer list` ends each budgeted peer's line with `budget-octets=OCTETS budget-count=COUNT`.
+- The transit log of a refused present carrier reads `detail=CLASS verdict=VERDICT`
+  (`detail=signature-failed verdict=cryptographically-invalid`, `detail=no-local-binding
+  verdict=unenrolled`, ...): the four class words stay where an older reader finds them.
+- `account list` lists a login-binding row as `binding LOGIN HEX`, never `pending expires `
+  (PKT-391).
+
+### PRF-179 (books/peer-invite.lisp, "PRF-179 (PKT-211)")
+
+Subject fn-pinv-document under the owner's keyring. Host lines: host/native/peer-invite.lisp
+fnn-pinv-owner-issue (fn-pinv-host-issue-plan, now passed fn-owner-hybrid-snapshots),
+fnn-pinv-owner-accept (fn-pinv-host-accept-record-plan, fn-pinv-host-accept-step),
+fnn-pinv-owner-confirm (fn-pinv-host-confirm-record-plan) and fnn-pinv-owner-enrol-confirmed
+(fn-pinv-host-confirm-step: `(:current)` is accepted with a log line).
+
+1. fn-pinv-document-binds-a-known-principal-only-at-its-current-keys.
+2. fn-pinv-document-of-a-current-enrolment-is-accepted (the genesis-keys enrolment is the instance).
+3. fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision (rule-classes nil; the rule
+   before PKT-211).
+4. fn-pinv-an-enrolling-accept-is-the-clis-plan (the CLI's fn-pinv-acceptance-source asks the plan
+   under the empty keyring; equal whenever the owner enrolled).
+5. fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor,
+   fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption.
+6. books/native-admin-peer-budget.lisp (new; books/native-admin-peer.lisp unchanged):
+   fn-native-admin-peer-budget-decode-reads-the-configured-budget,
+   fn-native-admin-peer-extra-decode-reads-past-the-budget,
+   fn-native-admin-peer-budget-row-octets-extends-the-older-line. Served by
+   fn-native-admin-query-report (host fn-native-admin-host-query-report, host/native/admin.lisp) and
+   fn-nls-report :peers.
+7. fn-pcb-transit-refusal-detail-is-the-class-and-the-verdict (books/peer-carriage.lisp, no
+   hypotheses): host/owner-host.lisp fn-owner-transit-refusal-class returns (CLASS VERDICT), called by
+   host/native/owner.lisp fnn-owner-transit-class; books/owner-log.lisp fn-olog-detail-fields prints
+   both (its theorem is a by-definition restatement, flagged SUSPECT by the ledger and not cited).
+8. fn-acct-list-word-is-pending-only-for-a-pending-row (books/account-list.lisp, new, served by
+   books/native-live-status.lisp for `account list`; books/accounts.lisp is unchanged because it is
+   under books/owner's closure).
+
+Teeth: tests/acl2/peer-invite-tests.lisp "PRF-179" (A's keyring: B at genesis keys, then B2 at
+generation 2; every antecedent of 2 asserted, one must-fail per hypothesis: unverified, wrong kind,
+body naming other keys, a 3-octet nonce, the keyring before the succession; for 1: an empty keyring,
+the superseded keys; `revoked` by name; for 3 and 4: the equality and its failure when the principal
+is known / has moved; for 5: the record plan configures, the step answers (:current), each
+conclusion asserted, the genesis step enrols without "current", a superseded acceptance's step is its
+refusal). tests/acl2/native-admin-peer-budget-tests.lisp (through the `peer add` and `peer budget`
+plans; a 4294967295-page budget renders every digit; must-fails: no budget, a digit after the count, a
+dirty group). tests/acl2/peer-carriage-tests.lisp (all four refusal pairs and nil on verified,
+carried, unsigned), tests/acl2/owner-log-tests.lisp (the line), tests/acl2/account-list-tests.lisp
+(the older report's defect reproduced, the new one's lines).
+
+Assurance chain: native entry `operator CONFIG peer confirm` (control request 11) -> owner
+fnn-pinv-owner-confirm -> ACL2 fn-pinv-confirm-record-plan / fn-pinv-confirm-step over the decoded
+acceptance, the invitations slot and fn-sn-keyring-snapshots -> relation: the owner's keyring
+snapshots are the Store's kind-3 records (fn-owner-hybrid-snapshots, maintained by the Store) ->
+PRF-179 1-5 -> observed: SCN-096's new case below.
+
+### PKT-399 (deputy's question)
+
+Not in this lane's path. The redeem admission's USED count ((len creds)) and TAKENP are computed in
+host/native-admin-host.lisp fn-acct-host-owner-redeem-stage (friends-accounts-2's XREDEEM); left for
+control-reply-fit's sweep. fn-lb-sync-plan counts nothing. From the code: binding rows do NOT count
+against max-credentials (fn-auth-account-creds takes only mark-1 rows; the credential file's own
+table is loaded under the bound).
+
+### Certification
+
+REPL first on persvati (/home/ember/fn-gates/keys-and-accounts-3-repl): peer-invite 144 forms and its
+test book 231; native-admin-peer-budget 43, native-admin's 69 over it, its test book 37;
+peer-carriage 70 and the fixture chain (42, 86) and its test book 105; owner-log 73 and tests 114;
+account-list 10 and tests 18; must-fails checked to fail.
+
+- r1: persvati run-20260926T125449Z-5d0b (`--affected-by` peer-invite, native-admin-peer,
+  key-statements, peer-carriage, native-admin-peer-budget, account-list, owner-log,
+  native-live-status) at fb3a1e13: passed 28, failed 0, 200 from the cache, no book over 10 s
+  (native-admin 9.9 s, native-operator 7.8 s, peer-invite-tests 4.4 s). Manifest
+  planning/evidence/manifests/certify-20260926T125534Z-1995979.json.
+- r2: persvati run-20260926T130249Z-3583 (`--affected-by` native-admin-peer-budget, account-list) at
+  6567be5e: tests/acl2/native-admin-peer-budget-tests and tests/acl2/account-list-tests passed, 214
+  from the cache, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T130312Z-2065168.json.
+- r3: persvati run-20260926T130502Z-510f (tests/acl2/docs-operator-grammar-tests, regenerated for the
+  docs/operator.md line shift) at d6721738: passed 1, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T130524Z-2084756.json.
+- `make check-lane` green at the final commit.
+
+### Native (hbox /tank/fn/scratch/keys-and-accounts-3/native-n1, fb3a1e13)
+
+Developer image built under swarm-build; modules under systemd-run MemoryMax=24G with
+FN_NATIVE_HOST, FN_OPENSSL / FN_TEST_OPENSSL (openssl 3.5.8) and FN_RUN_HYBRID_E2E=1.
+
+- tests.test_native_peer_invite (rerun `--no-build` at 6567be5e after the case read the key history
+  while the owner held the store: a test defect): 5 OK, including
+  test_a_succeeded_friend_is_confirmed_under_its_current_keys: A confirm -> 0, a second confirm 1
+  (already-confirmed), `peer list` ends `budget-octets=1048576 budget-count=16`, D's acceptance under
+  B's genesis keys 1 (not-current-keys), C's 1 (genesis), A's history for B: generation 2 active,
+  1 retired, no generation 3.
+- tests.test_native_hybrid_author: test_carried_budget_and_refusal_classes OK with
+  `NATIVE-REFUSAL-CLASS unsupported-profile unsupported-profile`, `no-local-binding unenrolled`,
+  `signature-failed cryptographically-invalid` (the new signature-failed row: the relay enrols the
+  author, one body letter's case flipped). test_portable_carrier_verifies_exact_source_and_keyset
+  FAILED at line 369: `hybrid-sign-carrier` of a source 26,000 octets over the fixture EMITTED a
+  carrier (exit 0) where the test expects the total-article bound to refuse. It is NOT the
+  altered-key check (lines 354-358 pass). Classified a DEV defect: the same single test fails on
+  dev's own developer image (dev 1770d687, /tank/fn/scratch/throughput-gate/native-img-1770d68709bb,
+  log ae4bbcb1a8bdb46f9aa3835dd9e67bbe7d4fbadcd691f471ef55af3be3f59959) exactly as on this lane's
+  (log d12b3cfed7ff257b1b23e3e91854965a1ebc93e5293218c20c6446a160e99017). Candidate cause: carrier v2
+  (bounds-p4-carrier, e2b17943 / merge 6166adc1) raised the signer's source bound, so the fixture no
+  longer exceeds it; whether the test's expectation or the emission bound is wrong is the fix lane's.
+- tests.test_native_key_statements: 5 OK (regression over the owner changes).
+
+```
+0651bfbb2fb3d804851c9605db6b902bc0281338d0da4acc5b49ba7b6599ab76  tree/build/fn-host-developer
+3c5de7a611f0108db6849556e22e52d2a0facbceab11f35bbabb6b36cda10334  tree/build/fn-host-developer.core
+5adb11ea1c32f6b503b0031bb8b0fc50d6c533f7fa6ec63a7683e56116490dc2  logs/test-tests.test_native_peer_invite.log
+26526cf4d1cc39ee6e6bc2dee5dd7f6b0059981138c1da49fc593edb283da8a6  logs/test-tests.test_native_hybrid_author.log
+bae788d8fcaccacf3e0650c90aaedf15e7004ffc6cef2365ffe9ae0aa5fe4897  logs/test-tests.test_native_key_statements.log
+```
+
+### Not done (PKT-473)
+
+PKT-433 (c) the POST reply naming a refused key change (the reply is fn-nntp-post-outcome's from
+the completion word alone; a second durable word runs through books/owner's outcome and its
+invariants: its own lane); the verdict field on accepted transit arms; fn_verify `revoked` against a
+native node; the must-fails owed for fn-lb-a-connection-opened-after-a-publication-is-bound-anew
+beyond its durable hypothesis; a succession-era inviter known to the invitee (still
+`already-enrolled` at the accept); a succession chain carried with the document for nodes that
+never enrolled the principal; the dead fn-acct-list-report. The hybrid_author failure is dev's (above).

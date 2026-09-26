@@ -6268,6 +6268,55 @@
           "name": "fn-gidx-build-of-cons"
         }
       ]
+    },
+    {
+      "id": "PRF-179",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-document-binds-a-known-principal-only-at-its-current-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-document-of-a-current-enrolment-is-accepted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-an-enrolling-accept-is-the-clis-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-peer-budget-decode-reads-the-configured-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-peer-extra-decode-reads-past-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-peer-budget-row-octets-extends-the-older-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-transit-refusal-detail-is-the-class-and-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-list-word-is-pending-only-for-a-pending-row"
+        }
+      ]
     }
   ]
 }

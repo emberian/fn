@@ -38,6 +38,8 @@
 (include-book "native-control")
 (include-book "native-admin")
 (include-book "accounts")
+; PKT-391: `account list' names each row kind.
+(include-book "account-list")
 (include-book "store-budget")
 ; PKT-169: the maintenance reservation `status' prints.
 (include-book "store-capacity-vector")
@@ -378,11 +380,11 @@ configuration pins (nil with no owner), OBS the host's open observation."
   (declare (xargs :guard t :verify-guards nil))
   (cond
    ((equal kind :peers)
-    (fn-native-admin-peer-report (fn-cfg-peers (fn-cfg-value cfg))))
+    (fn-native-admin-peer-budget-report (fn-cfg-peers (fn-cfg-value cfg))))
    ((equal kind :control)
     (fn-native-admin-control-report (fn-cfg-authorities (fn-cfg-value cfg))))
    ; PRF-164: `account list' (books/accounts.lisp, no digest or verifier).
-   ((equal kind :accounts) (fn-acct-list-report (fn-cfg-value cfg)))
+   ((equal kind :accounts) (fn-acct-kinds-list-report (fn-cfg-value cfg)))
    ((equal kind :pins) (fn-nls-pins-line s pins))
    ((equal kind :obligations)
     (append (fn-nls-text "obligations=")
@@ -477,7 +479,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 (defun fn-nls-query-report (plan value)
   (declare (xargs :guard t))
   (if (equal (fn-native-admin-result-kind plan) :list-accounts)
-      (fn-acct-list-report value)
+      (fn-acct-kinds-list-report value)
     (fn-native-admin-query-report plan value)))
 
 (defthm fn-nls-report-of-query-kind-is-query-report

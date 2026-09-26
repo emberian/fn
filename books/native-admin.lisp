@@ -26,6 +26,8 @@
 ; group-name rules, the plan, its deltas and the publication decision.
 (include-book "native-admin-shape")
 (include-book "native-admin-peer")
+; PKT-211: `peer list' renders the carriage budget (its own book, D26).
+(include-book "native-admin-peer-budget")
 ; `bp-route add|remove', the BP route table (books/bp-route.lisp).
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
@@ -545,7 +547,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (cond ((equal (fn-native-admin-result-kind plan) :list-control)
          (fn-native-admin-control-report (fn-cfg-authorities value)))
-        (t (fn-native-admin-peer-report (fn-cfg-peers value)))))
+        (t (fn-native-admin-peer-budget-report (fn-cfg-peers value)))))
 
 
 (encapsulate ()

@@ -883,6 +883,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/login-binding-tests \
 	books/login-binding-live \
 	tests/acl2/login-binding-live-tests \
+	tests/acl2/native-admin-peer-budget-tests \
+	tests/acl2/account-list-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \
 	books/topic-history-metadata \

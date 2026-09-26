@@ -1020,11 +1020,13 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 binary[4] ^= 0xFF
                 return binary
 
-            for name, patch, detail in (
+            # PKT-433 (d): the log names the seven-class verdict beside the
+            # class word (books/peer-carriage.lisp fn-pcb-transit-refusal-detail).
+            for name, patch, detail, verdict in (
                     ("<pcb-unsupported@example.invalid>", suite_two,
-                     "unsupported-profile"),
+                     "unsupported-profile", "unsupported-profile"),
                     ("<pcb-unbound@example.invalid>", other_principal,
-                     "no-local-binding")):
+                     "no-local-binding", "unenrolled")):
                 reply = self._ihave(relay["port"], name,
                                     self._patch_carrier(carried, name, patch))
                 self.assertTrue(reply.startswith(b"437 "), reply)
@@ -1032,7 +1034,29 @@ class NativeHybridAuthorTest(unittest.TestCase):
                          if l.startswith("refused transit ")
                          and " message-id=" + name + " " in l]
                 self.assertEqual(len(lines), 1, relay["log"].read_text())
-                self.assertIn(" detail=" + detail + " ", lines[0])
+                self.assertIn(" detail=" + detail + " verdict=" + verdict + " ",
+                              lines[0])
+                print("NATIVE-REFUSAL-CLASS", detail, verdict, flush=True)
+            # PKT-211: the signature-failed row.  The relay now enrols the
+            # author, so a present carrier is verified there; one octet of the
+            # signed body changed (same length) fails the observation.
+            ok("hybrid-enroll", relay["control"], "1", self.principal,
+               self.ed_public, self.ml_public)
+            name = "<pcb-forged@example.invalid>"
+            patched = self._patch_carrier(carried, name, lambda binary: binary)
+            head, body = patched.split(b"\r\n\r\n", 1)
+            at = next(k for k in range(len(body)) if body[k:k + 1].isalpha())
+            flipped = body[:at] + body[at:at + 1].swapcase() + body[at + 1:]
+            reply = self._ihave(relay["port"], name, head + b"\r\n\r\n" + flipped)
+            self.assertTrue(reply.startswith(b"437 "), reply)
+            lines = [l for l in relay["log"].read_text().splitlines()
+                     if l.startswith("refused transit ")
+                     and " message-id=" + name + " " in l]
+            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertIn(" detail=signature-failed verdict=cryptographically-invalid ",
+                          lines[0])
+            print("NATIVE-REFUSAL-CLASS signature-failed cryptographically-invalid",
+                  flush=True)
         finally:
             for owner in reversed(owners):
                 self.stop_owner(owner)

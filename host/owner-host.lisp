@@ -1765,10 +1765,10 @@
 ; (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class).
 (defun fn-owner-transit-refusal-class (received transitp ed ml state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-pcb-verdict-refusal-class
-          (fn-pcb-admission-verdict
-           received (fn-sn-keyring-snapshots (fn-owner-store state))
-           (fn-owner-transit-carried-list transitp state) ed ml))))
+  ;; PKT-433 (d): (CLASS VERDICT) (fn-pcb-transit-refusal-detail), or nil.
+  (value (fn-pcb-transit-refusal-detail
+          received (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state) ed ml)))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge

@@ -22,7 +22,7 @@
   ; orders nothing, and renders no field: books/native-admin.lisp does all
   ; three and raw Lisp only writes the octets out.
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-native-admin-peer-report
+  (value (fn-native-admin-peer-budget-report
           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 (defun fn-native-admin-host-query-report (plan state)
   ; `peer list' or `control list' over the configuration the store just
