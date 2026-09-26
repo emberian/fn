@@ -188,6 +188,19 @@
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp)))))
 
+(defthm fn-auth-fold-enrollment-hdr-response-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-nntp-enrollment-hdr-response session archive index verdicts args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-enrollment-hdr-response fn-post-offeredp
+                                   fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi
+                                   fn-enr-item fn-stx-reader-lookup fn-midx-lookup
+                                   fn-nntp-hdr-line
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-nntp-token-string fn-octet-listp)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects

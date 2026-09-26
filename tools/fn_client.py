@@ -350,7 +350,10 @@ class Client:
 
     # -------------------------------------------------------------- show
 
-    def show(self, token: str, group: str) -> Result:
+    def show(self, token: str, group: str, keep_lines: bool = False) -> Result:
+        """ARTICLE TOKEN, after GROUP when one is named.  KEEP_LINES keeps the
+        dot-unstuffed article lines as the node sent them (`one["lines"]`), for a
+        reader that checks the article's own bytes; the default output is unchanged."""
         if group:
             status = self.cmd("GROUP " + group)[0]
             if not status.startswith("211"):
@@ -374,6 +377,11 @@ class Client:
         # null, as `render` does.
         found = number(fields[1]) if len(fields) > 1 else None
         one = article(found or None, body)
+        if keep_lines:
+            one["lines"] = list(body)
+            # The node's own identity of what it served (RFC 3977 section
+            # 6.2.1.2: `220 n message-id`), which article data cannot redirect.
+            one["served_id"] = fields[2] if len(fields) > 2 else ""
         return Result(DONE, "%s %s" % (self.node, one["message_id"] or token),
                       {"articles": [one]}, render(one))
 
