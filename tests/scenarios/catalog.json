@@ -2632,7 +2632,18 @@
       "evidence": [
         "tests/test_native_pack_chain.py",
         "planning/evidence/bounds-p5-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_pack_chain",
+        "cases": [
+          "NativePackChainTests.test_every_chain_publication_cut_from_both_entries",
+          "NativePackChainTests.test_eio_at_each_link_publication_cut_from_both_entries",
+          "NativePackChainTests.test_chain_reclaim_retire_and_suffix_cuts_resume"
+        ],
+        "native": true,
+        "log": "planning/evidence/bounds-p5-2026-09-25.md",
+        "record": "planning/evidence/bounds-p5-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-064",
@@ -2656,7 +2667,16 @@
       "evidence": [
         "tests/test_native_pack_chain.py",
         "planning/evidence/bounds-p5-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_pack_chain",
+        "cases": [
+          "NativePackChainTests.test_chain_reclaim_retire_and_suffix_cuts_resume"
+        ],
+        "native": true,
+        "log": "planning/evidence/bounds-p5-2026-09-25.md",
+        "record": "planning/evidence/bounds-p5-2026-09-25.md"
+      }
     }
   ]
 }
