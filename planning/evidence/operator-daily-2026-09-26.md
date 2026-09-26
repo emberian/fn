@@ -339,3 +339,176 @@ health`, alerts and `health --explain`, `[acl2] heap_mb`, the walk as tests;
 (d) PKT-269, the lock age, include hygiene (carried from PKT-453); (e) the
 owner's host-classified refusals (store, OS, socket errors) answer a
 reasoned frame with NONE: no ACL2 decision names them.
+
+## Continuation 2 (operator-daily-3, 2026-09-26)
+
+Brief: build/coordinator/queue/done/w4-operator-daily-3.txt. Base dev
+9cace143; branch lane/operator-daily-3. Ids: PRF-185, HST-011, SCN-114,
+PKT-499, PKT-500. PKT-209 and PKT-220 ticked; PKT-472 narrowed to them.
+
+### What an operator now reads
+
+- `operator CONFIG control log`: `withdrawals=N`, then one line per
+  withdrawal record the owner holds, `withdrawal target=T cause=C
+  principal=P scope=S generation=G` (the canceller's cancel scope when the
+  record was decided, `-` for none; the configuration generation).
+- `operator CONFIG control evidence MESSAGE-ID`: `evidence message-id=M
+  stored=yes txid=N verdict=V` (or `stored=no`), then the article's own
+  decision: `decision=` and the log's line, `decision=declined reason=R`
+  (`unsigned`, `unverified`, `self-target`...), or `decision=none`; then one
+  `withdrawn-by ... effect=E` line per record naming it (`author`,
+  `authority`, `declined reason=R`, or `target-absent`). A malformed
+  Message-ID is usage (exit 5).
+- Both answer live (the owner's committed view) and offline (the replayed
+  Store, records decided as recovery decides them), in the same words.
+- `store ROOT retention` (offline; a store root has no control socket to
+  route by) prints the two figures `operator CONFIG obligations` opens with,
+  now through the same ACL2 functions.
+
+### Theorems and the host lines that call their subjects
+
+- `fn-cev-evidence-decision-is-in-the-log` (books/control-evidence.lisp,
+  KEYSTONE). Hypothesis: WS = `(fn-ctl-articles-withdrawals RAW VERDICTS
+  RECORDS CONFIGS)`, the owner's maintained relation. Conclusion: the
+  decision `fn-cev-plan` of the article `fn-cev-find-article` names for
+  MSGID is a member of WS iff it is a withdrawal record. The first draft
+  also assumed the article was stored; that hypothesis was removed after
+  the weakened theorem was proved (an absent article's decision is nil,
+  which no journal holds: `fn-cev-journal-holds-no-nil`).
+  `fn-cev-decision-line-is-a-log-line`: then the decision's words are
+  `decision=` and the log's line for the record, a member of
+  `fn-cev-log-lines WS`. Supporting: `fn-cev-journal-holds-each-articles-record`,
+  `fn-cev-journal-records-are-withdrawals`,
+  `fn-cev-plan-is-the-article-withdrawal-by-definition` (disabled on export),
+  `fn-cevg-parse-kind-is-a-kind` (the grammar yields a report kind).
+  Host: `fn-cev-live-report` from host/native-live-status-host.lisp
+  `fn-native-live-status-host-answer` (host/native/control.lisp
+  `fnn-control-live-status-answer`, under the owner mutex; the request is
+  read by `fn-cev-any-request-decode`); `fn-cev-offline-report` from
+  `fn-native-live-status-host-offline` (host/native/io.lisp
+  `fnn-command-live-report`); the client encodes with
+  `fn-cev-any-request-encode` (`fn-native-live-status-host-request-encode`,
+  host/native/control.lisp `fnn-control-live-status-page`); the operator's
+  words: books/native-operator.lisp's parse calls `fn-cevg-parse` and
+  dispatches the result as a status report (`fnn-operator-execute-status`).
+- `fn-nls-obligations-figures-are-the-retention-figures`
+  (books/native-health.lisp; PKT-220): the owner's :obligations report
+  (`fn-nls-live-report`, reached through `fn-nh-answer-report`) opens with
+  `fn-rtf-pin-count` and `fn-rtf-reserved` of the owner's Store node
+  (books/retention-figures.lisp), which host/store-node-host.lisp
+  `fn-store-sn-pin-count` / `fn-store-sn-reserved` now call for
+  `fnn-command-retention`. This is a correspondence by unfolding: its worth
+  is that both verbs now read one ACL2 function each. Decision (the brief's
+  either/or): the theorem, not the refusal: the offline verb never answers
+  behind a live owner (its shared lock refuses), and it is the one reading
+  of a stopped node's ledger without a configuration.
+
+The brief's "carrier-render theorem" (what the verb prints is ACL2's
+rendering of the stored evidence record) is the pair above. PKT-209's other
+clause, that the carrier render (books/hybrid-carrier.lisp `fn-hc-render`)
+preserves the Control field, is stated precisely in PKT-499 (a) and not
+proved: it needs the parser-input induction over `fn-article-parse-lines`
+that books/article.lisp records as absent.
+
+### The wire
+
+FNLS gains request frame kind 3: uint CODE (8 `control log`, 9 `control
+evidence`), uint OFFSET, bytes ARGUMENT (the Message-ID's octets; empty for
+the log). Replies are FNLS kind 2 pages, unchanged; the owner's per-kind
+buffer cache keys on the whole kind, `(:control-evidence . MSGID)`, so a
+later page never reads another Message-ID's buffer. An owner before this
+decodes kind 3 as nothing it knows and answers the plain FNCT refusal; the
+client reads that as refused (exit 1), never uncertain. No FNCT kind was
+taken (15, 16, 19 up stay free). The frame codec is covered by executed
+witnesses (round trip of both kinds, the kind-1 decoder refusing kind 3 as
+`:frame`, the either-kind decoder still reading kind 1), not a theorem.
+
+### Assurance chain
+
+`fn operator CONFIG control log|evidence M` -> books/native-operator.lisp
+parse (`fn-cevg-parse`) -> status dispatch -> `fnn-operator-status-once`
+(live if the socket answers) -> FNLS kind 3 (`fn-cev-request-encode`) ->
+owner: `fn-cev-any-request-decode`, `fn-cev-live-report` over
+`fn-own-view-withdrawals`/`-raw`/`-verdicts` and the Store's records and
+configuration journal -> `fn-nls-page` -> client `fn-nls-client-step` ->
+printed octets. The maintained relation (carried records = journal of the
+carried archive) is established by `fn-own-start`'s refresh and preserved
+by every `fn-own-refresh` (`fn-ctl-refresh-withdrawals-is-the-journal`,
+`fn-ctl-articles-withdrawals-is-the-journal`); the offline report
+establishes it by construction. Keystone above; observed result SCN-114.
+
+### Teeth
+
+tests/acl2/control-evidence-tests.lisp: the exact words of the log, the
+cancel's evidence (withdrawal), the target's (`decision=none`, withdrawn-by
+`effect=authority`), an unsigned cancel (`declined reason=unsigned`) and an
+absent Message-ID, over a real signed-cancel article and a real grant
+record; the keystone's reachable witness (relation holds, both sides true)
+and its false side (a decline, not held); a must-fail without the relation
+(no carried records); the decision-line lemma's witness and must-fails
+without the withdrawal hypothesis and without the relation; the grammar;
+the frame. tests/acl2/native-operator-tests.lisp: `control log` and
+`control evidence <c@x>` dispatch as status with their kinds, a bad
+Message-ID is exit 5, `control list` stays :admin.
+tests/acl2/native-health-tests.lisp: the reachable owner's figures 1 and 2
+and the live report's first line `obligations=1 reserved=2` (the theorem
+has no hypothesis). All forms were admitted in persvati REPLs first.
+
+### Certification (persvati, 2 jobs, none over 10 s)
+
+- r1 run-20260926T141708Z-cc49: native-operator, its tests and the
+  grammar book (the new books were not yet in the Makefile's list, so the
+  farm did not select them); planning/evidence/manifests/certify-20260926T141744Z-2764562.json.
+- r2 run-20260926T142123Z-f319: control-evidence 2.1 s, its tests 1.5 s, the
+  docs grammar book; certify-20260926T142149Z-2806462.json.
+- r3 run-20260926T142401Z-dedb: retention-figures, native-health,
+  native-health-tests; certify-20260926T142442Z-2835070.json.
+- r4 run-20260926T142653Z-eeaf: the regenerated docs grammar book;
+  certify-20260926T142733Z-2864915.json.
+
+### Native (hbox, tools/hbox_native.sh, n3 at f5b9948e)
+
+hbox:/tank/fn/scratch/operator-daily-3/native-n3, images developer and
+production, `--env FN_NATIVE_HOST=$T/build/fn-host` (see below); fn-host
+6f83ac5d8b5da37669c67c69926f07282fed4476ddaa4db64b339d5af92421a6,
+fn-host-developer ce647188c40520bf9cf75619f2b4ce05ebc82220b61959e968a06d9e67d0f51e
+(planning/evidence/operator-daily-3/SHA256SUMS-n3). `== modules: 4 OK, 0
+SKIPPED, 0 FAILED`.
+
+| module | result | log (SHA-256) |
+|---|---|---|
+| tests.test_native_control_evidence (SCN-114) | OK (1 ran) | operator-daily-3/native-control_evidence.log 355fca426236eda1cee83b12d18ce17cb7e4384af010a4ff13d8a9311f094722 |
+| tests.test_native_control | OK (18 ran) | operator-daily-3/native-control.log b3b727065dbdf37e28f2582d55b22bb9ec3eff51551270a075c92fbe58337adb |
+| tests.test_native_operator_cli | OK (6 ran) | operator-daily-3/native-operator_cli.log 4e33df0e7bd626b84367a3b7b5d6839839ff2fdcc7283086ad3fcdb753bc6631 |
+| tests.test_native_operator_verdicts | OK (5 ran, 1 skipped: the hybrid E2E's FN_RUN_HYBRID_E2E gate) | operator-daily-3/native-operator_verdicts.log a4396ee0e6f67a9cb6e30e7b053d9d765450008991260a700cbb7ca37b2a090b |
+
+SCN-114 observed: the live log `withdrawals=1` and `withdrawal
+target=<cev-target@...> cause=<cev-cancel@...> principal=55...55 scope=-
+generation=1`; the cancel's evidence `stored=yes txid=2 verdict=verified`
+and `decision=` plus that line; the target's `decision=none` and
+`withdrawn-by ... effect=author`; offline words equal to the live ones.
+
+Earlier runs: n1 (the dirty tree) stopped at certification:
+`fn-cev-log-lines-len`'s hint lacked `car-cons`/`cdr-cons` (implementation,
+my book; the REPL session had run a different hint). n2 (the dirty tree,
+fixed): test_native_control OK 18, test_native_operator_cli OK 6, and two
+modules SKIPPED because tools/native_env.py plans a module's variables from
+its own text: test_native_control_evidence (then taking FN_NATIVE_HOST from
+test_native_control_filing; repaired: it reads the variable itself) and
+test_native_operator_verdicts (not this lane's file; run in n3 with `--env`;
+harness, PKT-499 (d)). The self-contradictory expectation the brief named
+(test_native_control.py line ~654) was already repaired on dev by the
+deputy (1afc4e55: it inspects supplied_id); all 18 cases pass.
+
+### Not done (PKT-499, PKT-500)
+
+- PKT-269: blocked on books/store-events.lisp `fn-store-event-encode`
+  (guard t, `:verify-guards nil`): `fn-sbud-record-octets` calls it, and
+  every health report reaches it through `fn-sbud-bytes-used`/`-extend`.
+  Tried in a REPL: `(verify-guards fn-sbud-headroom-at)` succeeds;
+  `fn-sbud-record-octets`, `fn-sbud-headroom`, `fn-sbud-octets-cache-validp`
+  fail on that callee. The codec's guards come first.
+- PKT-264 (1), PKT-098, PKT-016, PKT-286 and the lock age: not started.
+- PKT-209's carrier-Control clause: stated in PKT-499 (a), not proved.
+- Live `bp-obligation status`: PKT-500, a design packet for the coordinator
+  (trace, constraints, default, rejected alternative, cost); not implemented.

@@ -340,3 +340,13 @@
  (defthm nht-exit-code-cases-without-len
    (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27))
    :rule-classes nil))
+
+; PKT-220 (PRF-185) fn-nls-obligations-figures-are-the-retention-figures: a
+; reachable owner with one retention pin and a reserved charge of 2; the
+; offline verb's figures and the live report's first line agree.
+(assert-event (equal (fn-rtf-pin-count *nht-s*) 1))
+(assert-event (equal (fn-rtf-reserved *nht-s*) 2))
+(assert-event
+ (equal (take 25 (fn-nls-live-report :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs*))
+        (fn-record-string-octets "obligations=1 reserved=2
+")))

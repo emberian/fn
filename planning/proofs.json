@@ -6754,6 +6754,46 @@
         "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity",
         "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
       ]
+    },
+    {
+      "id": "PRF-185",
+      "title": "`control log` and `control evidence MESSAGE-ID` print what the owner decided about withdrawing articles: the evidence's decision for a stored article is a record of the log exactly when it is a withdrawal record, in the log's own words",
+      "milestone": "M4",
+      "requirements": [
+        "HST-011"
+      ],
+      "depends_on": [
+        "PRF-172"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "statement": "books/control-evidence.lisp fn-cev-evidence-decision-is-in-the-log: for every RAW, VERDICTS, RECORDS, CONFIGS and MSGID, with WS equal to (fn-ctl-articles-withdrawals RAW VERDICTS RECORDS CONFIGS) (the owner's maintained relation: the carried records are the journal of the carried archive, established by fn-own-start's refresh and preserved by fn-own-refresh through fn-ctl-refresh-withdrawals-is-the-journal and fn-ctl-articles-withdrawals-is-the-journal; the offline report establishes it by construction), the decision fn-cev-plan of the article fn-cev-find-article names is a member of WS iff it is a withdrawal record (fn-ctl-withdrawalp). fn-cev-decision-line-is-a-log-line: then the decision's words (fn-cev-decision-line) are \"decision=\" followed by the log's line for that record (fn-cev-log-line), a member of fn-cev-log-lines WS. Host: fn-cev-report is rendered by fn-cev-live-report from host/native-live-status-host.lisp fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer, under the owner mutex) and by fn-cev-offline-report from fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report); the operator's words come from books/control-evidence-grammar.lisp fn-cevg-parse through books/native-operator.lisp's parse (fn-cevg-parse-kind-is-a-kind), dispatched as a status report. PKT-220: books/native-health.lisp fn-nls-obligations-figures-are-the-retention-figures: for every PROFILE, OC, CACHE and OBS, the report the running owner renders for :obligations (fn-nls-live-report, from fn-native-live-status-host-answer through fn-nh-answer-report) is \"obligations=\" (fn-rtf-pin-count S) \" reserved=\" (fn-rtf-reserved S) and the obligation lines, with S the owner's Store node; books/retention-figures.lisp fn-rtf-pin-count and fn-rtf-reserved are what the offline `store ROOT retention` prints (host/store-node-host.lisp fn-store-sn-pin-count, fn-store-sn-reserved, from host/native/io.lisp fnn-command-retention).",
+      "evidence": [
+        "books/control-evidence.lisp",
+        "books/control-evidence-grammar.lisp",
+        "tests/acl2/control-evidence-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_control_evidence.py",
+        "planning/evidence/operator-daily-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T141744Z-2764562.json",
+        "books/retention-figures.lisp",
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "host/store-node-host.lisp",
+        "planning/evidence/manifests/certify-20260926T142149Z-2806462.json",
+        "planning/evidence/manifests/certify-20260926T142442Z-2835070.json"
+      ],
+      "progress_note": "Lane operator-daily-3 (2026-09-26): PKT-209's verbs and render theorem; PKT-220's live-equals-offline figures. Open: PKT-499 (PKT-209's carrier-Control clause, PKT-269 blocked on fn-store-event-encode's guards, the rest of the list), PKT-500 (live bp-obligation status: design).",
+      "events": [
+        "fn-cev-evidence-decision-is-in-the-log",
+        "fn-cev-decision-line-is-a-log-line",
+        "fn-cev-journal-holds-each-articles-record",
+        "fn-cev-journal-records-are-withdrawals",
+        "fn-cevg-parse-kind-is-a-kind",
+        "fn-nls-obligations-figures-are-the-retention-figures"
+      ]
     }
   ]
 }
