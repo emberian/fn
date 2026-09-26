@@ -205,7 +205,7 @@
         ; The node verifies the hybrid signatures of a peer-authored transit
         ; article before its owner commits it (owner.lisp
         ; `fnn-owner-attempt-transit', reached from bp-app's BP transit), so
-        ; this image carries the same native crypto facility, OpenSSL pair and
+        ; this image carries the same native crypto facility, TLS library and
         ; restart revalidation as host/native/build.lisp, in the same order.
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
@@ -214,12 +214,14 @@
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
         (load "host/native/tls.lisp")
+        (fnn-tls-initialize)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
           (fnn-tls-reset)
+          (fnn-tls-initialize)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
           (fnn-main)

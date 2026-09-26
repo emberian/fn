@@ -20,8 +20,11 @@
 #      images (build/fn-host-dtn, build/fn-host-dtn-developer), built exactly
 #      as tools/runbooks/hbox-image-build.sh builds them;
 #   4. runs each MODULE under systemd-run --user --scope -p MemoryMax (24G by
-#      default, --mem), with FN_OPENSSL_PREFIX and LD_LIBRARY_PATH set, and
-#      every --env NAME=VALUE exported.  When dtn-developer is built and dtn is
+#      default, --mem), against hbox's system libssl (OpenSSL 3.3.1; no
+#      FN_OPENSSL_PREFIX: HST-016), with every --env NAME=VALUE exported.
+#      OpenSSL 3.5.8 stays a TEST TOOL only (ML-DSA-65 keys and signatures
+#      made independently of the node): $FN_TEST_OPENSSL_BIN, a wrapper
+#      that gives that binary its own libraries and nothing else.  When dtn-developer is built and dtn is
 #      not, FN_NATIVE_BP_HOST defaults to the dtn-developer image (the BP
 #      tests default to build/fn-host-dtn, which that run does not build).
 #      Each module's process also gets every variable tools/native_env.py
@@ -146,8 +149,11 @@ T=\$S/tree
 L=\$S/logs
 ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
 CACHE=/tank/fn/certcache
-export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
-export LD_LIBRARY_PATH=\$FN_OPENSSL_PREFIX/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
+unset FN_OPENSSL_PREFIX
+mkdir -p \$S/bin
+printf '%s\\n' '#!/bin/sh' 'LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib exec /tank/fn/toolchains/openssl-3.5.8/bin/openssl "\$@"' > \$S/bin/openssl-test
+chmod 0755 \$S/bin/openssl-test
+export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
 mkdir -p \$L
 rm -f \$S/status
