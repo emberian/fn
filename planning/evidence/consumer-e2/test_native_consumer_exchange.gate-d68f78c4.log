@@ -1,0 +1,35 @@
+# target tests.test_native_consumer_exchange  start 2026-09-26T00:08:06Z  cwd /tank/fn/gates/consumer-e2-img2 image /tank/fn/gates/consumer-e2-img2/build/images/d68f78c4b99f2c1d40a6eb13e28a2152d99771d8
+# cmd: python3 -m unittest -v tests.test_native_consumer_exchange
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_CONSUMER_EXCHANGE_EVIDENCE=/tank/fn/scratch/consumer-e2/logs/test_native_consumer_exchange.gate-d68f78c4.evidence.json
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/consumer-e2-img2/build/images/d68f78c4b99f2c1d40a6eb13e28a2152d99771d8/fn-host-developer
+# env FN_NATIVE_HOST=/tank/fn/gates/consumer-e2-img2/build/images/d68f78c4b99f2c1d40a6eb13e28a2152d99771d8/fn-host
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/gates/consumer-e2-img2
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/consumer-e2/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/consumer-e2/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/consumer-e2-img2/build/images/d68f78c4b99f2c1d40a6eb13e28a2152d99771d8/runtime/sbcl-home/
+test_identical_signed_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_signed_resend_answers_duplicate)
+D25 on the local control route: a byte-identical resend of an ... FAIL
+test_two_sleeping_agents_exchange_across_every_ownership_cut (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_two_sleeping_agents_exchange_across_every_ownership_cut) ... ok
+
+======================================================================
+FAIL: test_identical_signed_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_signed_resend_answers_duplicate)
+D25 on the local control route: a byte-identical resend of an
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/consumer-e2-img2/tests/test_native_consumer_exchange.py", line 315, in test_identical_signed_resend_answers_duplicate
+    self.assertEqual(again.returncode, 0,
+AssertionError: 1 != 0 : identical resend answered 1, not D25 duplicate
+
+----------------------------------------------------------------------
+Ran 2 tests in 10.434s
+
+FAILED (failures=1)
+# rc=1 wall=10.6 end 2026-09-26T00:08:17Z

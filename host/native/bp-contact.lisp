@@ -21,7 +21,7 @@
 
 ;; fnn-bpc-drive-contact is in bp-service.lisp: `bp-service run/resume',
 ;; `bp-obligation request', this verb and `bp-node serve' drive every base
-;; contact through it, and ACL2 (fn-bpnp-contact-next) decides each offer.
+;; contact through it, and ACL2 (fn-bpnj-contact-next) decides each offer.
 
 (defun fnn-command-bp-contact-tick (journal node-id peer-id start-delay end-delay
                                     lifetime crc-type hop-limit transfer-mru

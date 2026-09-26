@@ -576,8 +576,10 @@ class ScaleGate(deploy_gate.DeployGate):
                 raise GateError("--reuse but there is no tree at " + self.deploy)
             self.sh("make run dir", "mkdir -p {}".format(self.run))
             self.push_file(deploy_gate.DRIVER, "{}/drive.py".format(self.run), mode="755")
-            self.push_file(deploy_gate.CERTPICK, "{}/certpick.py".format(self.run),
-                           mode="755")
+            # No certpick.py: the certificates step is the deploy gate's
+            # proof_artifacts acquisition since 9e5fe672, and deploy_gate no
+            # longer carries CERTPICK, so this push raised AttributeError on
+            # every --reuse run (harness-repair).
             if self.overlay is not None:
                 # `ship` is what normally pushes the first overlay; under --reuse
                 # there is no ship, and an overlay the operator passed has to

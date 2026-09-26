@@ -203,16 +203,22 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     root = Path(args.root).absolute()
     if args.max_transactions is not None:
-        # The bound is ACL2's (`fn-sbud-verdict` under the persisted
-        # profile); the scenario stands in a verdict that refuses after
-        # MAX_TRANSACTIONS admissions, to reach the host's refusal path.
+        # The bound is ACL2's (the article verdict, `fn-sbud-article-verdict-at`
+        # under the persisted profile); the scenario stands in a verdict that
+        # refuses after MAX_TRANSACTIONS admissions, to reach the host's
+        # refusal path.  ACL2 still answers first; any other word passes.
         admitted = [0]
+        original = run_bp_ingress.Acl2BpIngress.article_verdict
 
-        def publication_admissible(store, bridge=None, kind="article"):
+        def article_verdict(self, profile, adu):
+            verdict = original(self, profile, adu)
+            if verdict != "admissible":
+                return verdict
             admitted[0] += 1
-            return admitted[0] <= args.max_transactions
+            return ("admissible" if admitted[0] <= args.max_transactions
+                    else "unaffordable")
 
-        run_store.publication_admissible = publication_admissible
+        run_bp_ingress.Acl2BpIngress.article_verdict = article_verdict
 
     # Observe the receipt the host regenerates without changing what it does.
     original_receipt = ReceiptJournal.receipt_adu

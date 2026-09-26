@@ -9,6 +9,7 @@
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/checkpoint-compaction-preservation")
 (include-book "../books/store-compact-verb")
+(include-book "../books/store-reclaim-pack")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -182,10 +183,27 @@
 ;; `fnn-command-compact'): the whole decision, over the verb's one
 ;; observation.  The subject of books/store-compact-verb's keystones.
 (defun fn-store-compact-decide (profile octet-records lower names generations
-                                        selected footprint)
+                                        selected disk-free)
   (declare (xargs :mode :program))
   (fn-cverb-decide profile octet-records lower names generations selected
-                   footprint))
+                   disk-free))
+
+;; `operator CONFIG store reclaim [--dry-run]' (host/native/checkpoint.lisp
+;; `fnn-reclaim-steps'): the whole decision over the Store this process
+;; replayed and the compact verb's observation.  The subject of
+;; books/store-reclaim-pack's keystones (`fn-rclp-decide').  The rule is the
+;; configuration's; the instant is the clock observation's stamp, derived as
+;; an article's stamp is (`fn-record-stamp-of-observation').
+(defun fn-store-reclaim-decide (profile clock octet-records frontier lower names
+                                        generations selected disk-free dry state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (cfg (f-get-global 'fn-store-cfg state))
+         (rule (fn-rcl-config-rule (fn-cfg-value cfg)))
+         (stamp (fn-record-stamp-of-observation clock)))
+    (value (fn-rclp-decide profile rule (if (natp stamp) stamp nil) s
+                           octet-records frontier lower names generations
+                           selected disk-free dry))))
 
 ;; The subjects of books/checkpoint-compaction-preservation: the reclaim
 ;; preservation theorems are stated over these two functions.

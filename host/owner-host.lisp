@@ -50,6 +50,8 @@
 ; The transaction budget: `fn-owner-prepare' installs `fn-sbud-prepare'.
 (include-book "../books/owner-store-budget")
 (include-book "../books/store-budget-article")
+; PKT-169: the maintenance reservation (the served gates below).
+(include-book "../books/store-maintenance-reserve")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -61,12 +63,21 @@
 ; The served article bound installed with the profile (PKT-103).
 (include-book "../books/owner-served-bound")
 (include-book "../books/topic-history-local-proposals")
+;; This file names what it calls, so every loader gets the same world: the
+;; native images (host/native/build.lisp) and the Python owner bridge
+;; (tools/bridge_image.py OWNER_FORMS), which boots from this file alone.
+;; fn-owner-io calls fn-rcon-ocfg-io; fn-owner-prepare-buffer reads the
+;; fn-octets buffer and calls fn-rclb-existing-action (D13, STO-014).
+(include-book "../books/records-concrete-owner")
+(include-book "../books/octets-stobj")
+(include-book "../books/store-reclaim-buffer")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
 (include-book "../books/peer-pull")
+(include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -420,13 +431,16 @@
     (mv bytes state)))
 
 ; The owner's verdict on one more record of KIND: the carried profile's count
-; and history gates against the Store it carries.
+; and history gates against the Store it carries, and the maintenance
+; reservation (books/store-maintenance-reserve.lisp `fn-smr-verdict-at': a
+; release consumes it, every other kind leaves it,
+; `fn-smr-admission-keeps-the-reserve').
 (defun fn-owner-publication-verdict (kind state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (bytes state) (fn-owner-record-octets state)
     (let ((s (fn-owner-store state)))
-      (value (fn-sbud-verdict-at (fn-owner-store-profile state) kind
-                                 (fn-sbud-used s) bytes)))))
+      (value (fn-smr-verdict-at (fn-owner-store-profile state) kind
+                                (fn-sbud-used s) bytes)))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -578,9 +592,13 @@
                  ; test reads the last record's txid instead of folding
                  ; every record's through fn-record-p.
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp): 0 when it does not fit H.
-                 (budget (fn-sbud-article-budget-for
-                          (fn-owner-store-profile state) bytes record))
+                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
+                 ; one release record still fits after the article
+                 ; (books/store-maintenance-reserve.lisp
+                 ; `fn-smr-prepare-keeps-the-reserve').
+                 (budget (fn-smr-article-budget-for
+                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -647,9 +665,13 @@
                           (fn-store-octets->string evidence-octets)
                           charge))
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp): 0 when it does not fit H.
-                 (budget (fn-sbud-article-budget-for
-                          (fn-owner-store-profile state) bytes record))
+                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
+                 ; one release record still fits after the article
+                 ; (books/store-maintenance-reserve.lisp
+                 ; `fn-smr-prepare-keeps-the-reserve').
+                 (budget (fn-smr-article-budget-for
+                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -965,6 +987,17 @@
          (cfg (fn-owner-config state))
          (result (fn-own-bp-transit-submit-result
                   owner cfg peer msgid-octets payload id subject))
+         ; A refused submission keeps the transfer decision's reason for
+         ; the delivery's refusal line (fn-owner-bp-request-refusal-line).
+         (state (if (equal result :refused)
+                    (f-put-global
+                     'fn-owner-app-refusal-reason
+                     (fn-peer-decision-reason
+                      (fn-peer-decide-transfer
+                       (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
+                       payload (fn-own-clock owner) id subject))
+                     state)
+                  state))
          (state (fn-owner-step
                  (list :bp-transit-submit cfg peer msgid-octets payload
                        id subject) state)))
@@ -2158,17 +2191,27 @@
 ; This does not resolve the in-flight entry -- only a restart does today,
 ; and the packet that fixes it is in the lane handoff.  It stops the host
 ; opening a socket it has nothing to send on.
+(defun fn-owner-feed-stopped (state)
+  "The owner process's feed stop table (peer . reason), nil before any stop."
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-feed-stopped state)
+      (f-get-global 'fn-owner-feed-stopped state)
+    nil))
+
 (defun fn-owner-feed-has-queued (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (value (if (fn-feed-head-queued
-                  (fn-feed-queue
-                   (fn-own-feed-find peer (fn-own-feeds
-                                           (fn-owner-core state)))))
-                 t
-               nil)))))
+      ;; A peer the owner stopped (it refused MODE STREAM, books/
+      ;; feed-connection.lisp) is not dialled, whatever it has queued.
+      (value (fn-fc-dial-allowedp
+              (fn-feed-head-queued
+               (fn-feed-queue
+                (fn-own-feed-find peer (fn-own-feeds
+                                        (fn-owner-core state)))))
+              peer
+              (fn-owner-feed-stopped state))))))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -2331,7 +2374,18 @@ existing port only after fn-fc has made this connection ready."
             (value :invalid)
           (let* ((state (f-put-global 'fn-owner-feed-log-line nil state))
                  (step (fn-fc-step input octets))
-                 (kind (fn-owner-feed-connection-result-kind step))
+                 (stop (fn-fc-streaming-refusal-p input step))
+                 (kind (if stop :streaming-refused
+                         (fn-owner-feed-connection-result-kind step)))
+                 (stopped (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
+                                             (fn-owner-feed-stopped state)))
+                 (state (if stop
+                            (f-put-global 'fn-owner-feed-stopped stopped state)
+                          state))
+                 (state (if stop
+                            (f-put-global 'fn-owner-feed-log-line
+                                          (fn-fc-stop-log-line peer) state)
+                          state))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-next-state step) inputs)
@@ -2372,6 +2426,7 @@ existing port only after fn-fc has made this connection ready."
                      (if erp (mv erp word state) (value word))))
                   (:need-input (value :need-input))
                   (:connection-refused (value :connection-refused))
+                  (:streaming-refused (value :streaming-refused))
                   (:closed (value :closed))
                   (:invalid (value :invalid))
                   (otherwise (value :fault)))))))))

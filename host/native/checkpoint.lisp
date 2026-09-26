@@ -68,16 +68,21 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
-(defun fnn-pack-publish-generation (store records)
-  "Capture RECORDS into the next pack generation and publish it, unselected."
+(defun fnn-pack-publish-generation (store records &optional summary)
+  "Capture RECORDS into the next pack generation and publish it, unselected.
+SUMMARY, when given, is the encoded summary ACL2 already captured (the
+reclaiming pack, `fn-store-reclaim-decide'); RECORDS is then ignored."
   (fnn-checkpoint-require-mutation-ready store)
   (let ((directory (fnn-pack-directory store)))
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-pack-generations store))
            (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
                                  generations))
-           (captured (fnn-core 'fn-store-checkpoint-compaction-capture
-                               (mapcar #'fnn-octet-list records) (fnn-store-frontier store))))
+           (captured (if summary
+                         (list :ok summary)
+                         (fnn-core 'fn-store-checkpoint-compaction-capture
+                                   (mapcar #'fnn-octet-list records)
+                                   (fnn-store-frontier store)))))
       (unless (and (integerp generation) (>= generation 0)
                    (listp captured) (eq (first captured) :ok)
                    (fnn-octet-list-p (second captured)))
@@ -581,18 +586,40 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 ;;; a refusal before any durable change exits 1, an uncertain publication,
 ;;; selection, reclaim or retirement exits 3, a fault 4.
 
-(defun fnn-compact-footprint (store names generations)
-  "lstat sizes of every transaction file and pack generation present."
-  (flet ((size (path)
-           (let ((st (fnn-lstat path)))
-             (unless (and st (fnn-regular-p st) (not (fnn-symlink-p st)))
-               (fnn-fault "compaction footprint: ~a is not a regular file" path))
-             (sb-posix:stat-size st))))
-    (append (mapcar (lambda (name) (size (fnn-join (fnn-transactions store) name)))
-                    names)
-            (mapcar (lambda (generation)
-                      (size (fnn-pack-generation-path store generation)))
-                    generations))))
+;; PKT-169: the compaction's temporary space is checked against the disk.
+;; The host observes the free octets of the store's filesystem (statvfs:
+;; f_bavail blocks of f_frsize octets, what an unprivileged writer may use)
+;; and ACL2 decides (books/store-compact-verb.lisp `fn-cverb-disk-admitsp').
+;; NIL when the call fails or the platform's layout is not known here; ACL2
+;; then refuses :temporary-space by name.  A developer image honours
+;; FN_NATIVE_DISK_FREE=N, which caps the observation at N octets (a small
+;; disk for the native case; the production image refuses to start with it).
+(sb-alien:define-alien-routine ("statvfs" fnn-%statvfs) sb-alien:int
+  (path sb-alien:c-string) (buffer (* (sb-alien:unsigned 8))))
+
+(defun fnn-statvfs-free-octets (path)
+  (let ((buffer (sb-alien:make-alien (sb-alien:unsigned 8) 256)))
+    (unwind-protect
+         (when (zerop (fnn-%statvfs path buffer))
+           (let ((sap (sb-alien:alien-sap buffer)))
+             (declare (ignorable sap))
+             #+(and linux x86-64)
+             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-64 sap 32))
+             #+darwin
+             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-32 sap 24))
+             #-(or (and linux x86-64) darwin)
+             nil))
+      (sb-alien:free-alien buffer))))
+
+(defun fnn-disk-free-octets (store)
+  (let ((free (fnn-statvfs-free-octets (fnn-store-root store)))
+        (cap (fnn-developer-selector "FN_NATIVE_DISK_FREE")))
+    (if (and free cap)
+        (let ((n (ignore-errors (parse-integer cap))))
+          (unless (and (integerp n) (>= n 0))
+            (fnn-fault "invalid FN_NATIVE_DISK_FREE (expected octets)"))
+          (min free n))
+        free)))
 
 (defun fnn-compact-steps (store records)
   "Observe, ask ACL2, and carry out its steps.  Returns the report line."
@@ -610,7 +637,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                                (fnn-store-config store)
                                (mapcar #'fnn-octet-list records)
                                lower names generations selected
-                               (fnn-compact-footprint store names generations))))
+                               (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
       (when (eq (first decision) :refused)
@@ -638,6 +665,160 @@ selection-* process-death cuts (fn-cpp-marker-step)."
       (fnn-store-close store))))
 
 (setq *fnn-compact-callback* #'fnn-command-compact)
+
+;;; `operator CONFIG store reclaim [--dry-run]' (D13, STO-017): content
+;;; reclamation's durable step.  ACL2 decides everything
+;;; (books/store-reclaim-pack.lisp `fn-rclp-decide', through
+;;; host/checkpoint-host.lisp `fn-store-reclaim-decide'): which article
+;;; records become tombstones, the reclaiming pack's bytes, and the steps.
+;;; This function observes, carries out the steps in ACL2's order, and
+;;; reports.  When the history is not one selected pack yet, ACL2 answers
+;;; :compact-first and the ordinary compact verb's steps run first, then the
+;;; decision is asked again over the new observation.
+;;;
+;;; The steps and their process-death cuts:
+;;;   :drop-state-checkpoint  unlink the derived state checkpoint (it holds
+;;;       payload octets and an open would use it in place of the history),
+;;;       fence the root; cuts reclaim-state-checkpoint-unlink and
+;;;       reclaim-state-checkpoint-directory.  Before the selection, so no
+;;;       reopen ever serves a reclaimed payload from it.
+;;;   :pack    publish the reclaiming generation unselected (fn-jpub, the
+;;;       candidate-* cuts); cut reclaim-pack-published.
+;;;   :select  replace the pack selection marker (the selection-* cuts): the
+;;;       one commit point; cut reclaim-pack-selected.
+;;;   :retire  unlink the older generations (pack-retire-*): the octets
+;;;       return to the file system here; cut reclaim-retired.
+;;; A reopen at any cut selects the old generation (the full history) or the
+;;; new one (the reclaimed history); a rerun converges
+;;; (`fn-rclp-a-reclaimed-event-stays-reclaimed').
+
+(defparameter +fnn-reclaim-model-cuts+
+  '("reclaim-state-checkpoint-unlink" "reclaim-state-checkpoint-directory"
+    "reclaim-pack-published" "reclaim-pack-selected" "reclaim-retired"))
+
+(defun fnn-reclaim-at (point)
+  "Developer-only FN_NATIVE_RECLAIM_FAULT=CUT:eio|kill at the named cut."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_RECLAIM_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless (and colon (member (subseq raw 0 colon) +fnn-reclaim-model-cuts+
+                                   :test #'string=))
+          (fnn-fault "invalid FN_NATIVE_RECLAIM_FAULT (expected CUT:eio|kill)"))
+        (when (string= (subseq raw 0 colon) point)
+          (let ((action (subseq raw (1+ colon))))
+            (cond ((string= action "eio") (fnn-os-fail sb-posix:eio))
+                  ((string= action "kill")
+                   (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+                   (fnn-fault "test SIGKILL did not terminate the process"))
+                  (t (fnn-fault "invalid FN_NATIVE_RECLAIM_FAULT action: ~a" action)))))))
+    (fnn-checkpoint-test-stop point)))
+
+(defun fnn-reclaim-drop-state-checkpoint (store)
+  (let ((path (fnn-state-checkpoint-path store)))
+    (setf (fnn-store-fenced store) t)
+    (handler-case
+        (progn
+          (when (fnn-lstat path) (fnn-unlink path))
+          (fnn-reclaim-at "reclaim-state-checkpoint-unlink")
+          (fnn-fsync-dir (fnn-store-root store))
+          (fnn-reclaim-at "reclaim-state-checkpoint-directory")
+          (setf (fnn-store-fenced store) nil))
+      (fnn-os-error (e)
+        (fnn-indeterminate "state checkpoint removal is uncertain: ~a" e)))))
+
+(defun fnn-reclaim-observe (store records dry)
+  (multiple-value-bind (raw coverage selected)
+      (fnn-pack-selected-raw-and-coverage store)
+    (declare (ignore raw))
+    (let* ((lower (if coverage (second coverage) 0))
+           (names (sort (fnn-list-directory-bounded
+                         (fnn-transactions store) (fnn-config-max-transactions store)
+                         "transaction namespace")
+                        #'string<))
+           (generations (fnn-pack-generations store))
+           (decision (fnn-core-state 'fn-store-reclaim-decide
+                                     (fnn-store-config store)
+                                     (fnn-store-prepare-observation)
+                                     (mapcar #'fnn-octet-list records)
+                                     (fnn-store-frontier store)
+                                     lower names generations selected
+                                     (fnn-disk-free-octets store)
+                                     (if dry t nil))))
+      (unless (and (listp decision)
+                   (member (first decision)
+                           '(:compact-first :none :resume-retire :dry-run :reclaim
+                             :refused)))
+        (fnn-fault "ACL2 returned no reclaim decision"))
+      decision)))
+
+(defun fnn-reclaim-counts-line (counts)
+  (unless (and (listp counts) (= (length counts) 5)
+               (every (lambda (n) (and (integerp n) (>= n 0))) counts))
+    (fnn-fault "ACL2 returned malformed reclaim counts"))
+  (destructuring-bind (reclaimable octets reclaimed freed held) counts
+    (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
+            reclaimable octets held reclaimed freed)))
+
+(defun fnn-reclaim-steps (store records dry)
+  "Observe, ask ACL2, and carry out its steps.  Returns the report line."
+  (unless dry (fnn-checkpoint-require-mutation-ready store))
+  (let ((decision (fnn-reclaim-observe store records dry)))
+    (when (eq (first decision) :compact-first)
+      (fnn-out "~a" (fnn-compact-steps store records))
+      (setq decision (fnn-reclaim-observe store records dry))
+      (when (eq (first decision) :compact-first)
+        (fnn-fault "ACL2 asked for compaction after compaction")))
+    (case (first decision)
+      (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
+      (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
+      (:resume-retire
+       (let ((retired (fnn-pack-retire-older-generations store)))
+         (handler-case (fnn-reclaim-at "reclaim-retired")
+           (fnn-os-error (e) (fnn-indeterminate "reclaim is uncertain: ~a" e)))
+         (format nil "reclaimed=0 retired=~d ~a" (length retired)
+                 (fnn-reclaim-counts-line (second decision)))))
+      (:dry-run
+       (destructuring-bind (msgids freed counts) (rest decision)
+         (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
+                 (length msgids) freed (fnn-reclaim-counts-line counts)
+                 (mapcar (lambda (m) (if (stringp m) m (fnn-fault "malformed msgid")))
+                         msgids))))
+      (:reclaim
+       (destructuring-bind (steps msgids freed summary counts) (rest decision)
+         (declare (ignore counts))
+         (unless (fnn-octet-list-p summary)
+           (fnn-fault "ACL2 returned a malformed reclaiming pack"))
+         (let ((generation nil) (retired nil))
+           (dolist (step steps)
+             (case step
+               (:drop-state-checkpoint (fnn-reclaim-drop-state-checkpoint store))
+               (:pack
+                (setq generation (fnn-pack-publish-generation store records summary))
+                (handler-case (fnn-reclaim-at "reclaim-pack-published")
+                  (fnn-os-error (e) (fnn-indeterminate "reclaim is uncertain: ~a" e))))
+               (:select
+                (unless generation (fnn-fault "ACL2 selected a pack it did not publish"))
+                (fnn-pack-select store generation)
+                (handler-case (fnn-reclaim-at "reclaim-pack-selected")
+                  (fnn-os-error (e) (fnn-indeterminate "reclaim is uncertain: ~a" e))))
+               (:retire
+                (setq retired (fnn-pack-retire-older-generations store))
+                (handler-case (fnn-reclaim-at "reclaim-retired")
+                  (fnn-os-error (e) (fnn-indeterminate "reclaim is uncertain: ~a" e))))
+               (otherwise (fnn-fault "ACL2 returned an unknown reclaim step ~s" step))))
+           (format nil "reclaimed=~d freed-octets=~d generation=~a retired=~d~{~%reclaimed ~a~}"
+                   (length msgids) freed generation (length retired) msgids))))
+      (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
+
+(defun fnn-command-reclaim (root dry)
+  (multiple-value-bind (store records) (fnn-open-live-store root (not dry))
+    (unwind-protect
+         (progn (fnn-out "~a" (fnn-reclaim-steps store records dry))
+                +fnn-exit-ok+)
+      (fnn-store-close store))))
+
+(setq *fnn-reclaim-callback* #'fnn-command-reclaim)
+
 
 ;;; Cold copy activation.  The copied directory is fenced before publication;
 ;;; every ordinary Store open checks that marker in fnn-acquire.  The marker is

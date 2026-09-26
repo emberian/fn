@@ -1665,6 +1665,105 @@ contact; an accepted one is `:forwarded`, which no record returns to
   without STORE) keep the queued address.
 - The contact host is loopback.
 
+### 4.9 The fair base job offer and the report effect join (2026-09-25, lane mission-four-node)
+
+REP-009: A base job is offered while it is ready even when an older job for the same peer is held, and a status report or receipt counts as sent only when its own attempt's transfer completed and the completion is durable
+
+The served step is `fn-bpnj-step` (`books/bp-node-job-offer.lisp`), which
+`host/native/bp-service.lisp` `fnn-bps-foundation-step` calls. It is
+`fn-bpnp-step` on every event (`fn-bpnj-step-delegates-every-other-event`)
+except three:
+
+- `(:contact-job PEER KEY)`: open PEER's base contact and propose the
+  `:attempting` record of exactly the queued job KEY names, under the gate
+  that opens any base contact (`fn-bpnp-receipt-contact-event`).
+- `(:job-result KEY TOKEN OUTCOME)`: the transport result of one attempt.
+  TOKEN is the job's attempt token (`fn-bpnj-attempt-token`: the token of
+  its durable `:attempting` record), which the host reads before the
+  transfer. A TOKEN that is not the job's current attempt settles nothing
+  (`fn-bpnj-stale-job-result-settles-nothing`); the current one is the lower
+  machine's `(:forward-result KEY OUTCOME)`, whose proposal is `:finished`
+  for `:accepted` and `:requeued` otherwise
+  (`fn-bpnj-named-result-is-the-transport-outcome`).
+- a base `:forward-result` that names no attempt: the host's event check
+  refuses it (`fn-bpnj-host-refuses-an-unnamed-transport-result`).
+
+The contact loop asks `fn-bpnj-contact-next` before every offer. It offers
+the first queued job for the peer, in job-list order, that the contact has
+not offered and whose routing decision sends it on its durable route; it
+answers `(:held KEY DECISION)` only when no job is ready, and `(:close)`
+otherwise. The previous question (`fn-bpnp-contact-next`, §4.8) ended the
+contact at the first queued job when it was held or already offered, so one
+job with a changed route, or one refused transfer, stopped every younger job
+for that peer (the witness is in `tests/acl2/bp-node-job-offer-tests.lisp`).
+`fn-bpnj-contact-offers-while-a-ready-job-remains` states that a ready job
+keeps the contact offering. Under A-BP-CONTACT (`books/assumptions.lisp`) a
+contact offers a ready job within the number of jobs at or ahead of it
+(`fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact`).
+
+The status report effect join (mandate §5.7). A kind-10 deletion record
+carries the report intent; `:report-due` is logged as "intent durable;
+outbound queue pending" and is not a sent report. `bp-node` queues the
+intent as a base job (`fn-bpn-report-queue-step`): a durable `:queued`
+record, still not sent. It leaves only through the contact offer above, and
+`:forwarded` is reported only when the durable `:finished` record of an
+`:attempting` job is answered durable
+(`fn-bpnj-step-forwarded-needs-a-durable-finished-record`), which only the
+named `:accepted` result of that attempt proposes. A TCPCL acknowledgement
+is a transport fact: it is never a retention receipt and releases nothing.
+An encoder refusal of a pending lifecycle record is answered `:refused`,
+which clears the pending record and answers its refusal effect
+(`fn-bpnj-encoder-refusal-settles-the-pending-record`); the host no longer
+faults there.
+
+Not covered: the monotonicity of the journal token across every served
+event (a stale result from an earlier process cannot arrive after a
+restart; within a process a fresh attempt's token is the next token at its
+proposal, strictly above every earlier record's); the non-base events'
+effects are not shown free of `:finished` proposals by a theorem.
+
+#### 4.9.1 Custody only over an admitted channel (2026-09-26, lane mission-signed, PRF-128)
+
+D23 binds carriage to the admitted channel's actual policy. A bundle that
+arrives over a TCPCL session whose channel admission
+(`fn-bpaj-session-principal`, through `fn-bpaj-tcpcl-ingress-result`) is
+refused is refused at reception, with the admission's reason, before any
+FNBS step: no kind-5 custody row, so no forwarding job, no `:attempting`
+record, no fragment family and no owed receipt. `host/native/bp-service.lisp`
+`fnn-bps-receive` calls `fn-bpaj-admitted-receive-event`
+(`books/bp-channel-ingress.lisp`) with the admission answer of
+`fnn-bps-tcpcl-admission`, and hands `fnn-bps-foundation-step` only its
+`:ready` answer. The refusal is `(:refused REASON)` with the admission's
+reason (`fn-bpaj-refused-channel-takes-no-custody`), logged as
+`BP channel admission refused reason=R` and `BP refused xfer=N reason=R`
+and kept as receive evidence; an admitted channel's bundle is decided by the
+unchanged receive boundary under its admitted ingress
+(`fn-bpaj-admitted-channel-receives-under-its-ingress`). Before this rule a
+refused admission still stamped an anonymous ingress and the relay took
+custody of the transit (PKT-170); the destination's D23 source decision then
+refused its application, but the relay had carried it.
+
+The loopback policy names the neighbour by the listener the session arrives
+on, and the announced EID never selects among boundaries
+(`fn-bpaj-announced-eid-never-selects-a-peer`). Two boundaries on one
+listener are therefore `ambiguous-peer`, refused. A relay needs one listener
+per boundary; `bp-node serve` listens on one port, so a relay listens on the
+boundary of the neighbour that sends toward it (PKT-247).
+
+A delivered request the node does not accept prints ACL2's reason on one
+line, `BP node delivery refused result=R reason=C`
+(`fn-owner-bp-request-refusal-line`, `host/bp-native-app-host.lisp`): the D23
+source decision's refusal, the planner's or dispatcher's reason, the
+transfer decision's reason, or the Store attempt's plan reason.
+
+A transit request's Message-ID and fields are the relaying agent's (RFC 5537
+section 3.6 step 1, `fn-bpaj-transit-article-fields`), the check the transit
+plan's Message-ID already came from: an injected article carries its
+injecting node's Injection-Info, which the injecting agent's check (section
+3.4.1) refuses. The transit lookups used that check until 2026-09-26, so
+every Store-rendered hybrid-signed carrier was refused as
+`intent-store-conflict` at its destination.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:
@@ -2948,6 +3047,51 @@ sorted-interval linear algorithm and machine/native call-site connection
 remain C2 work. Slice C measures (BP-R22) payload size and held-set size
 independently on the native image: allocations, time and latency for
 success, gap, overlap and conflict.
+
+Landed 2026-09-25 (PRF-121, lane bp-lifecycle): the sorted linear algorithm
+and its call-site connection, without the two data caps.
+`books/bp-fragment-sweep.lisp` defines `fn-bpfw-reassemble`: a merge sort
+of the fragments by offset, then one tail-recursive sweep over positions
+that keeps, at each position, only the suffixes of the extents covering it.
+Its work is O(n log n) for the sort plus O(total + the sum of the fragment
+lengths). `fn-bpfw-reassemble-is-spec` equates it, on every input, with
+`fn-bpfw-spec`, which is the reference's own definition with
+`*fn-bpf-max-length*` and `*fn-bpf-max-fragments*` removed from the input
+recognizer. `fn-bpf-reassemble-is-capped-spec` shows the old reference is
+that spec restricted to the caps. `fn-bpnf-fragment-query`, the query that
+`fn-bpnf-family-plan` calls, now calls the sweep. The family selector
+`fn-bpnf-family-next` (host: `fnn-bps-fragment-progress`) runs a memo that
+plans each family once per call, not once per member.
+`fn-bpnf-family-next-memo-is-aux` equates the memo with the per-member
+selector, anchor included. Measured once in a proof session on persvati
+(not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
+twice and in no particular order, reassembles in 0.62 s with 673 MB
+allocated as octet lists.
+Other ceilings still bound a family:
+- the held-image cap `*fn-bpnf-max-held-image*` on the whole bundle;
+- the bundle decoder's 1 MiB input (`*fn-bpb-max-input*`);
+- the ADU record's 65,538 octets (`*fn-bpa-max-octets*`);
+- the machine's job slots and octet budget.
+These are P5 of `planning/design-2026-09-25-bounds.md`. The job slots bind
+first on the image: `*fn-bpn-machine-max-jobs*` (64) held rows, so the
+receiver refuses the 65th held fragment of one family with XFER_REFUSE No
+Resources (observed 2026-09-26 on the 0069b282 image); a family of 64
+fragments across a SIGKILL reassembles once.
+
+Landed 2026-09-26 (PRF-121, lane bp-lifecycle-2): the family's rows and the
+job table agree. The job table is the held list: slots 10 to 13 of a row are
+its dispatch record, next hop, job state and kind-8 attempt. The progress
+selector never dispatches a fragment row, so its one job is reassembly.
+`fn-bpnf-family-jobs-agreep` states it: every active fragment row carries
+`(:dispatch-pending)` with no dispatch record, next hop or attempt. Under it,
+kind-18 replacement consumes only such rows and installs the whole row with
+`(:dispatch-pending)`, so discarding the carriers erases no unfinished job
+(`fn-bpnf-family-apply-conserves-jobs`). `fn-bpnp-step` keeps the relation on
+the two events of `fnn-bps-fragment-progress`: `(:family A OBS)` and the
+kind-18 `(:persist-result ...)` (`fn-bpnp-step-family-events-keep-jobs-agreeing`).
+The relation holds at a cold start (empty held list). Its establishment by
+recovery replay and its preservation by the dispatch, forward, delivery and
+deletion arms are not yet proved.
 
 ### 7.5 The routing table's configuration home (F-I, §12 D-3)
 

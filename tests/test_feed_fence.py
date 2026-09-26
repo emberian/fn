@@ -12,11 +12,11 @@ from run_owner import Owner, EXIT_UNCERTAIN, StoreIndeterminate
 
 class FeedFenceTests(unittest.TestCase):
     def owner(self):
-        owner = Owner.__new__(Owner)
-        owner.feed_uncertain = False
-        owner.stopping = False
-        owner.exit_code = 0
-        owner.bridge = mock.Mock()
+        # The real constructor, so every flag the owner carries starts as the
+        # service starts it; an `Owner.__new__` copy of the attribute list
+        # went stale when `config_uncertain` was added (harness-repair).
+        owner = Owner(mock.Mock(), mock.Mock(), [], mock.Mock())
+        self.addCleanup(owner.selector.close)
         owner.bridge.feed_frames.return_value = [b"frame"]
         owner.bridge.feed_record_peers.return_value = ["inn"]
         journal = mock.Mock()

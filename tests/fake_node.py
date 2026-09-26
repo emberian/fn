@@ -38,6 +38,7 @@ list follows`, `205 closing connection` and `423 no article with that
 number` where this fake says something shorter; the wording is left alone so
 nothing here can be mistaken for the node's own voice.
 """
+import fnmatch
 import socket
 import ssl
 import subprocess
@@ -72,8 +73,9 @@ class FakeNode(threading.Thread):
         # d25: a POST under a held Message-ID is answered from what is held,
         # as fn's Store does (books/nntp-post.lisp's two lines), and stores
         # nothing.  commit_then_drop: the article is stored and the reply is
-        # lost.  withdrawn: Message-IDs a cancel hid from readers (430
-        # withdrawn), still held.
+        # lost.  withdrawn: Message-IDs a cancel hid from readers (C3:
+        # `423 withdrawn` by number, `430 withdrawn` by Message-ID; OVER and
+        # XPAT omit them), still held.
         self.d25 = d25
         self.commit_then_drop = commit_then_drop
         self.withdrawn = set()
@@ -299,8 +301,9 @@ class FakeNode(threading.Thread):
                     if selected is None:
                         send("412 no newsgroup selected")
                         continue
-                    wanted = in_range(sorted(self.numbers[selected]),
-                                      words[1] if len(words) > 1 else "")
+                    wanted = [n for n in in_range(sorted(self.numbers[selected]),
+                                                  words[1] if len(words) > 1 else "")
+                              if self.numbers[selected][n] not in self.withdrawn]
                     if not wanted:
                         send("423 no articles in that range")
                         continue
@@ -318,6 +321,24 @@ class FakeNode(threading.Thread):
                     send("225 headers follow")
                     block([str(number) + " " +
                            self.verdicts.get(msgid, "absent no-field")])
+                elif verb == "XPAT" and len(words) >= 4 and "-" in words[2]:
+                    # A fake: fnmatchcase stands in for the node's wildmat
+                    # (books/wildmat.lisp); a test against it says what the
+                    # client does with lines, never what the node matches.
+                    if selected is None:
+                        send("412 no newsgroup selected")
+                        continue
+                    pattern = " ".join(words[3:])
+                    lines = []
+                    for number in in_range(sorted(self.numbers[selected]), words[2]):
+                        msgid = self.numbers[selected][number]
+                        value = header(self.articles[msgid], words[1].lower())
+                        if msgid in self.withdrawn or value is None:
+                            continue
+                        if any(fnmatch.fnmatchcase(value, one) for one in pattern.split(",")):
+                            lines.append("%d %s" % (number, value))
+                    send("221 header follows")
+                    block(lines)
                 elif verb == "POST":
                     if not self.accept_post:
                         send("440 posting not permitted for this principal")

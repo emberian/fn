@@ -185,9 +185,14 @@ fn-bpnp-step admits it or fences (spec bp-node-machine 11.1 N07)."
 (defun fnn-bps-foundation-step (service event)
   ;; The initial base-state invariant is checked once at open.  This checks
   ;; only the bounded event before the exact guarded machine call.
-  (unless (eq (fnn-core 'fn-bpnp-host-eventp event) t)
+  ;; fn-bpnj-step (books/bp-node-job-offer.lisp) is fn-bpnp-step on every
+  ;; event but three (fn-bpnj-step-delegates-every-other-event): a named
+  ;; base job offer (:contact-job PEER KEY), a transport result that names
+  ;; its attempt (:job-result KEY TOKEN OUTCOME), and an unnamed base
+  ;; result, which settles nothing.
+  (unless (eq (fnn-core 'fn-bpnj-host-eventp event) t)
     (fnn-indeterminate "bp-service: malformed foundation event"))
-  (let ((answer (fnn-core 'fn-bpnp-step
+  (let ((answer (fnn-core 'fn-bpnj-step
                           (fnn-bps-state service) event)))
     (setf (fnn-bps-state service)
           (fnn-core 'fn-bpnf-answer-state answer))
@@ -207,8 +212,13 @@ fn-bpnp-step admits it or fences (spec bp-node-machine 11.1 N07)."
          (frame (and frame-list (fnn-octets frame-list)))
          (stage (fnn-join dir (format nil ".record-~d-~a"
                                       (sb-posix:getpid) (fnn-random-hex 12)))))
+    ;; An encoder refusal settles the matching pending operation: ACL2's
+    ;; :refused persist result clears the pending proposal and answers its
+    ;; refusal effect (fn-bpnj-encoder-refusal-settles-the-pending-record).
+    ;; Nothing was written.
     (unless frame
-      (fnn-fault "bp-service: ACL2 refused its pending lifecycle record"))
+      (fnn-out "BP lifecycle record encoder refused token=~d" token)
+      (return-from fnn-bps-persist-record :refused))
     (let* ((final-absent (if (fnn-lstat final) nil t))
            (operation
              (fnn-core 'fn-bpn-host-lifecycle-publication-authorize
@@ -458,6 +468,11 @@ its outcome, which is the refusal to the offering ingress."
   (let* ((route (second effect))
          (key (fourth effect))
          (wire (fifth effect))
+         ;; The attempt this transfer belongs to: ACL2's token of the job's
+         ;; durable :attempting record.  The result names it, and a result
+         ;; naming another attempt settles nothing
+         ;; (fn-bpnj-stale-job-result-settles-nothing).
+         (attempt (fnn-core 'fn-bpnj-attempt-token (fnn-bps-state service) key))
          (socket nil)
          (fragments nil)
          (plan-refused nil)
@@ -553,7 +568,8 @@ its outcome, which is the refusal to the offering ingress."
         (unless (eq (fnn-bps-outcome service) :uncertain)
           (setf (fnn-bps-outcome service) :refused))))
     (fnn-bps-drive-effects service
-                           (fnn-bps-step service (list :forward-result key outcome)))))
+                           (fnn-bps-foundation-step
+                            service (list :job-result key attempt outcome)))))
 
 (defun fnn-bps-drive-effects (service effects)
   (dolist (effect effects)
@@ -702,6 +718,12 @@ its outcome, which is the refusal to the offering ingress."
           (fnn-indeterminate "bp-service: forwarding publication uncertain"))))
       (:forward-stale
        (fnn-out "BP forwarding callback stale"))
+      (:job-result-stale
+       ;; The result names an attempt that is not the job's current one:
+       ;; ACL2 settled nothing.
+       (fnn-out "BP job result stale attempt=~a (settles nothing)" (third effect)))
+      (:job-result-unnamed
+       (fnn-fault "bp-service: a base transport result did not name its attempt"))
       (:forward-stranded
        ;; ACL2 decided the row reached the retry bound (spec 4.3.1); the
        ;; host only reports it.  The row, its attempt and its debt stay held.
@@ -930,18 +952,25 @@ octet is ACL2's."
                 service (list :family (second candidate) observation)))))
   service)
 
-(defun fnn-bps-receive (service ingress wire)
-  "Return the ACL2-selected TCPCL disposition after kind-5 custody settles."
+(defun fnn-bps-receive (service admission wire)
+  "Return the ACL2-selected TCPCL disposition after kind-5 custody settles.
+ADMISSION is ACL2's channel admission answer for this transfer
+(fnn-bps-tcpcl-admission).  PRF-128: fn-bpaj-admitted-receive-event refuses
+a bundle from a refused channel with the admission's reason, and only its
+:ready answer reaches fnn-bps-foundation-step, so no custody is taken."
   (let* ((tally (fnn-bps-tally service))
          (observation
            (fnn-bp-observation (fnn-bp-tally-wall tally)
                                 (fnn-bp-tally-wall-error tally)))
          (prepared
-           (fnn-core 'fn-bpnf-receive-wire-event
-                     (fnn-bp-tally-config tally) wire observation ingress)))
+           (fnn-core 'fn-bpaj-admitted-receive-event
+                     admission (fnn-bp-tally-config tally) wire observation)))
     (unless (eq (fnn-core 'fn-bpnf-receive-wire-readyp prepared) t)
       (return-from fnn-bps-receive (values prepared nil)))
     (let* ((event (fnn-core 'fn-bpnf-receive-wire-event-value prepared))
+           ;; The admitted ingress the :ready event carries
+           ;; (fn-bpaj-admitted-channel-receives-under-its-ingress).
+           (ingress (fourth event))
            (adu (fnn-core 'fn-bpb-payload (second event)))
            (effects (fnn-bps-foundation-step service event))
            (path nil))
@@ -978,9 +1007,16 @@ octet is ACL2's."
 
 (defun fnn-bps-tcpcl-ingress
   (fnbs-state conn session-counter xfer-id owner channel)
-  "The CL ingress ACL2 admits for one transfer, or NIL.  FNBS-STATE names the
-epoch: bp-node's live FNBS state, or the initial state for bp-app receive,
-which runs no FNBS machine."
+  "The CL ingress ACL2 stamps for one transfer (anonymous when the channel
+was refused), or NIL: the third element of fnn-bps-tcpcl-admission."
+  (third (fnn-bps-tcpcl-admission fnbs-state conn session-counter xfer-id
+                                  owner channel)))
+
+(defun fnn-bps-tcpcl-admission
+  (fnbs-state conn session-counter xfer-id owner channel)
+  "ACL2's channel admission answer for one transfer, or NIL.  FNBS-STATE names
+the epoch: bp-node's live FNBS state, or the initial state for bp-app
+receive, which runs no FNBS machine."
   (let* ((negotiated
            (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
          (announced
@@ -995,7 +1031,7 @@ which runs no FNBS machine."
       ;; channel boundary without logging an identity or article octets.
       (fnn-out "BP channel admission refused reason=~(~a~)"
                (second answer)))
-    (third answer)))
+    answer))
 
 (defun fnn-bps-selection-plan (root)
   "ACL2's reading of the generation selection file: (:none), (:selected CK)
@@ -1159,7 +1195,7 @@ address the verb was given."
 
 (defun fnn-bpc-drive-contact (service event)
   "Drive one contact EVENT, (:contact PEER OPEN).  An opening contact asks
-ACL2 before every offer (fn-bpnp-contact-next): it names the event to drive
+ACL2 before every offer (fn-bpnj-contact-next, books/bp-node-job-offer.lisp: the first READY queued job, so a held or already-offered older job never starves a younger one): it names the event to drive
 through fn-bpnp-step and the hop's node ID, holds a job its routing refuses,
 or closes the contact.  ACL2 threads the keys this contact has offered, so a
 job whose transfer was not accepted (requeued) waits for the next contact
@@ -1169,7 +1205,7 @@ answers, first first."
   (let ((peer (second event)) (offered nil) (answers nil))
     (when (third event)
       (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
-            for answer = (fnn-core 'fn-bpnp-contact-next (fnn-bps-state service)
+            for answer = (fnn-core 'fn-bpnj-contact-next (fnn-bps-state service)
                                    peer (fnn-bps-routing service) offered)
             do (push answer answers)
                (case (first answer)

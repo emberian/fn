@@ -1,0 +1,2 @@
+rollback snapshot loses transactions=2 snapshot-transactions=2 store-transactions=4
+restoring this snapshot loses every transaction committed after it: 2, the articles accepted since it among them; the snapshot cannot give them back

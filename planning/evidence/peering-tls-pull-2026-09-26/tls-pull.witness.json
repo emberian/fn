@@ -1,0 +1,23 @@
+{
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "counts": {
+  "<tls-one@example.invalid>": 1,
+  "<tls-two@example.invalid>": 1
+ },
+ "first_plaintext_command": [
+  "STARTTLS"
+ ],
+ "fnpl": [
+  "A.fnfd"
+ ],
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "kind": "tls-pull",
+ "log_sha256_A": "37ffa41d52fbbd4cf8b2aa021d125f9eca6fb64522a136cf413c395f5b70d5ab",
+ "log_sha256_B": "667098607059a505d3d23678811c9d2dbd20a25cbd8134f46bed80420c65d3f8",
+ "octets_passed_through": 694,
+ "plaintext_private": [],
+ "pull_lines": [
+  "pull peer=A round=done cursor=advanced transport=tls",
+  "pull peer=A round=done cursor=held transport=tls"
+ ]
+}

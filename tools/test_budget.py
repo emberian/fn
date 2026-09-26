@@ -3,7 +3,8 @@
 
     python3 tools/test_budget.py tests.test_store tests.test_checkpoint
     python3 tools/test_budget.py --discover          # every tests/test_*.py
-    python3 tools/test_budget.py --budget 300 --json build/test-budget.json ...
+    python3 tools/test_budget.py --budget 120 --json build/test-budget.json ...
+    python3 tools/test_budget.py --order reverse tests.test_auth   # order dependence
 
 Iteration time is a property the suite must keep, not a side effect of it
 (PKT-163: three store modules had grown to 1,857 to 2,280 s each, and nothing
@@ -14,9 +15,13 @@ reported OVER BUDGET, so an over-budget module costs at most its budget.
 
 Outcomes stay distinct: a module passes, fails its tests, or exceeds its
 budget, and the exit code is 0 only when every module passed within budget
-(1 test failures, 2 budget exceeded, both 3).  Budgets: the default is 300 s;
-`tests/test_budgets.json` may name a smaller one per module, never a larger
-one, so the rule cannot be relaxed one module at a time.
+(1 test failures, 2 budget exceeded, both 3).  Budgets: a module 180 s, one
+test 20 s (the Fable mandate's three minutes per module and 20 s per test,
+harness-repair 2026-09-25; the module default was 300 s).  A test that
+finished over its budget makes its module over budget, named in the report;
+the module is not killed for it.  `tests/test_budgets.json` may name a
+smaller module budget, never a larger one, so the rule cannot be relaxed one
+module at a time.
 """
 
 from __future__ import annotations
@@ -32,7 +37,8 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_BUDGET_SECONDS = 300.0
+DEFAULT_BUDGET_SECONDS = 180.0
+TEST_BUDGET_SECONDS = 20.0
 BUDGETS_FILE = ROOT / "tests" / "test_budgets.json"
 GRACE_SECONDS = 10.0
 RESULT_PREFIX = "FN_TEST_BUDGET_RESULT "
@@ -55,11 +61,30 @@ class _TimedResult(unittest.TextTestResult):
         super().stopTest(test)
 
 
-def run_one(module: str) -> int:
-    """Child mode: run one module and print its timings as one JSON line."""
+def _flatten(suite) -> list:
+    out = []
+    for item in suite:
+        if isinstance(item, unittest.TestSuite):
+            out.extend(_flatten(item))
+        else:
+            out.append(item)
+    return out
+
+
+def run_one(module: str, order: str = "default") -> int:
+    """Child mode: run one module and print its timings as one JSON line.
+
+    `order="reverse"` runs the module's tests last to first (classes stay
+    contiguous, so class fixtures still run once per class).  A test that
+    passes in one order and fails in the other depends on what an earlier
+    test left in a shared world -- a class fixture, a process-wide session,
+    the environment -- which is the contamination this option exists to find.
+    """
     sys.path.insert(0, str(ROOT))
     os.chdir(ROOT)
     suite = unittest.defaultTestLoader.loadTestsFromName(module)
+    if order == "reverse":
+        suite = unittest.TestSuite(reversed(_flatten(suite)))
     runner = unittest.TextTestRunner(resultclass=_TimedResult, verbosity=2)
     result = runner.run(suite)
     print(RESULT_PREFIX + json.dumps({
@@ -88,8 +113,10 @@ def discover() -> list[str]:
     return sorted(f"tests.{path.stem}" for path in (ROOT / "tests").glob("test_*.py"))
 
 
-def run_module(module: str, budget: float, log_dir: Path | None) -> dict:
-    command = [sys.executable, str(Path(__file__).resolve()), "--one", module]
+def run_module(module: str, budget: float, log_dir: Path | None,
+               order: str = "default") -> dict:
+    command = [sys.executable, str(Path(__file__).resolve()), "--one", module,
+               "--order", order]
     started = time.monotonic()
     log_path = None
     if log_dir is not None:
@@ -131,18 +158,29 @@ def run_module(module: str, budget: float, log_dir: Path | None) -> dict:
             time.sleep(0.05)
     seconds = round(time.monotonic() - started, 3)
     record = {"module": module, "seconds": seconds, "budget": budget,
-              "over_budget": over, "returncode": process.returncode,
+              "over_budget": over, "terminated": over, "returncode": process.returncode,
               "log": str(log_path) if log_path else None}
     for line in output.decode("utf-8", "replace").splitlines():
         if line.startswith(RESULT_PREFIX):
             record.update(json.loads(line[len(RESULT_PREFIX):]))
+    record["slow_tests"] = [[name, seconds] for name, seconds in record.get("timings", [])
+                            if seconds > TEST_BUDGET_SECONDS]
+    if record["slow_tests"]:
+        over = True
+    record["over_budget"] = over
     record["passed"] = (not over and process.returncode == 0
                         and "tests" in record)
     return record
 
 
 def summarize(record: dict, slowest: int) -> str:
-    if record["over_budget"]:
+    if record["over_budget"] and record.get("slow_tests") and record["seconds"] < record["budget"]:
+        slow = ", ".join(f"{name.rsplit('.', 1)[-1]} {seconds:.1f} s"
+                         for name, seconds in record["slow_tests"])
+        verdict = (f"OVER BUDGET (a test over {TEST_BUDGET_SECONDS:g} s: {slow}"
+                   + ("" if record.get("returncode") == 0 else
+                      f"; also exit {record.get('returncode')}") + ")")
+    elif record["over_budget"]:
         verdict = f"OVER BUDGET (terminated at {record['budget']:g} s)"
     elif record["passed"]:
         verdict = "ok"
@@ -163,17 +201,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--discover", action="store_true",
                         help="every tests/test_*.py module")
     parser.add_argument("--budget", type=float, default=DEFAULT_BUDGET_SECONDS,
-                        help="per-module wall-time budget in seconds (default 300; "
+                        help="per-module wall-time budget in seconds (default 180; "
                              "tests/test_budgets.json may only lower it)")
     parser.add_argument("--slowest", type=int, default=3,
                         help="slowest tests listed per module")
     parser.add_argument("--logs", type=Path, default=None,
                         help="directory for one log per module")
     parser.add_argument("--json", type=Path, default=None, help="write the records here")
+    parser.add_argument("--order", choices=("default", "reverse"), default="default",
+                        help="run each module's tests in reverse to expose a test "
+                             "that depends on what an earlier one left behind")
     parser.add_argument("--one", default=None, help=argparse.SUPPRESS)
     arguments = parser.parse_args(argv)
     if arguments.one:
-        return run_one(arguments.one)
+        return run_one(arguments.one, arguments.order)
     if arguments.budget > DEFAULT_BUDGET_SECONDS:
         parser.error(f"--budget may not exceed {DEFAULT_BUDGET_SECONDS:g} s")
     modules = list(arguments.modules) + (discover() if arguments.discover else [])
@@ -183,13 +224,16 @@ def main(argv: list[str] | None = None) -> int:
     records = []
     for module in modules:
         record = run_module(module, budget_for(module, arguments.budget, table),
-                            arguments.logs)
+                            arguments.logs, arguments.order)
         records.append(record)
         print(summarize(record, arguments.slowest), flush=True)
     if arguments.json:
         arguments.json.parent.mkdir(parents=True, exist_ok=True)
         arguments.json.write_text(json.dumps(records, indent=2) + "\n")
-    failed = any(not r["passed"] and not r["over_budget"] for r in records)
+    # A module killed at its budget has no verdict of its own; one that ran
+    # to the end failed when its tests did, even if a test was also slow.
+    failed = any(not r["terminated"] and (r["returncode"] != 0 or "tests" not in r)
+                 for r in records)
     over = any(r["over_budget"] for r in records)
     total = sum(r["seconds"] for r in records)
     print(f"{len(records)} modules, {total:.1f} s; "

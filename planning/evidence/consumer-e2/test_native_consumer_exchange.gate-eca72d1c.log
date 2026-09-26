@@ -1,0 +1,28 @@
+# target tests.test_native_consumer_exchange  start 2026-09-26T00:41:31Z  cwd /tank/fn/gates/consumer-e2-img3 image /tank/fn/gates/consumer-e2-img3/build/images/eca72d1c9f2d547661a3bcfc2b32e7a179b80ff0
+# cmd: python3 -m unittest -v tests.test_native_consumer_exchange
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_CONSUMER_EXCHANGE_EVIDENCE=/tank/fn/scratch/consumer-e2/logs/test_native_consumer_exchange.gate-eca72d1c.evidence.json
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/consumer-e2-img3/build/images/eca72d1c9f2d547661a3bcfc2b32e7a179b80ff0/fn-host-developer
+# env FN_NATIVE_HOST=/tank/fn/gates/consumer-e2-img3/build/images/eca72d1c9f2d547661a3bcfc2b32e7a179b80ff0/fn-host
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/gates/consumer-e2-img3
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/consumer-e2/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/consumer-e2/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/consumer-e2-img3/build/images/eca72d1c9f2d547661a3bcfc2b32e7a179b80ff0/runtime/sbcl-home/
+test_identical_operator_post_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_operator_post_resend_answers_duplicate)
+D25 on the operator post route (unsigned, same control socket). ... ok
+test_identical_signed_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_signed_resend_answers_duplicate)
+D25 on the local control route: a byte-identical resend of an ... ok
+test_two_sleeping_agents_exchange_across_every_ownership_cut (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_two_sleeping_agents_exchange_across_every_ownership_cut) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 10.463s
+
+OK
+# rc=0 wall=10.5 end 2026-09-26T00:41:42Z

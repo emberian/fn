@@ -1,0 +1,32 @@
+[
+ {
+  "name": "01-conversation",
+  "url": "http://127.0.0.1:8968/t?group=fn.agents&number=3",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nfn.agentsThe articleReply\nConversation\nStarted by <walk-root@fn.example.invalid>. Earlier messages are the article's References, each asked of the node by Message-ID. Replies are the node's answer to XPAT References 1-6 *<walk-root@fn.example.invalid>* over local numbers 1–6 of fn.agents: the node decides which served articles match; replies outside this window or this group are not shown.\nDaily walk: where do we keep the notes?\nember <ember@fn.example.invalid> · Fri, 25 Sep 2026 23:00:00 +0000 · local #1\nwithdrawn an earlier message, <walk-mid@fn.example.invalid>; the node answered 430 withdrawn\n▸ Re: Daily walk: where do we keep the notes?\n<hbox@example.org> · Sat, 26 Sep 2026 00:03:54 +0000 · local #3\nRe: Daily walk: where do we keep the notes?\nember <ember@127.0.0.1> · Sat, 26 Sep 2026 00:08:22 +0000 · local #5\nRe: Daily walk: where do we keep the notes?\nember <ember@127.0.0.1> · Sat, 26 Sep 2026 00:08:22 +0000 · local #6"
+ },
+ {
+  "name": "02-reply-form",
+  "url": "http://127.0.0.1:8968/c?id=8NZU8uR7Blg42LTGWDjS7SuAwyMIFKch",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nfn.agents\nWrite a post\nOne form sends one exact article. If the reply is uncertain, keep its Message-ID and check it before trying again.\nSubject\nIn reply to: <00000000843696234620.00000000000000202421.fn@fn.example.invalid> (References carries 3 Message-ID(s))\nFrom (optional)\nMessage\nSave draft Post to fn.agents"
+ },
+ {
+  "name": "03-dblclick-post",
+  "url": "http://127.0.0.1:8968/result?id=8NZU8uR7Blg42LTGWDjS7SuAwyMIFKch",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nGroups\nOutcome: accepted\nThe node answered that it accepted this article.\nMessage-ID: <fn-client.20260926T001019Z.56530b44@ember.invalid>\nThe node's answer:\n240 article received OK\nBack to fn.agents\nCheck whether the node serves this Message-ID\nThe exact article sent\nNode response and diagnostic detail\nRefresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart."
+ },
+ {
+  "name": "04-back-and-post-again",
+  "url": "http://127.0.0.1:8968/c?id=8NZU8uR7Blg42LTGWDjS7SuAwyMIFKch",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nfn.agents\nThis form was already posted\nPosting it again would send nothing: one form sends one exact article.\nSee what the node answered · Write a new post"
+ },
+ {
+  "name": "05-refresh",
+  "url": "http://127.0.0.1:8968/c?id=8NZU8uR7Blg42LTGWDjS7SuAwyMIFKch",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nfn.agents\nThis form was already posted\nPosting it again would send nothing: one form sends one exact article.\nSee what the node answered · Write a new post"
+ },
+ {
+  "name": "06-draft",
+  "url": "http://127.0.0.1:8968/draft?id=GWWf-A8PGCxb1hc02pMSZo5AC7-x9-3_",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nOutbox\nSaved draft\nEditing does not contact the node. Posting freezes one exact article and sends it once.\nSubject\nFrom (optional)\nMessage\nSave draft Post to fn.agents"
+ }
+]

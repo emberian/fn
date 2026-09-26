@@ -247,50 +247,66 @@ class ReceiverProcessCrashTests(unittest.TestCase):
         )
         return result, deleted
 
-    def test_process_death_at_receiver_durable_boundaries_recovers_once(self) -> None:
-        outcomes = {"fnbi": "accepted", "store": "accepted", "context": "duplicate",
-                    "intent": "duplicate", "decision": "duplicate"}
-        for point, expected in outcomes.items():
-            with self.subTest(point=point), tempfile.TemporaryDirectory(
-                    prefix="fn-bp-receiver-process-") as temporary:
-                root = Path(temporary)
-                run_store.Store(root / "store", True).initialize()
-                bid = "bid-" + point
-                retry_bid = bid + "-again"
-                request = self._request(point)
-                bundles = lab_bundles((bid, retry_bid))
-                self._kill_at(root, request, bundles[bid], point, bid)
+    # One test per durable boundary: each is an independent process death
+    # over its own store, and the five in one loop took 23 s, over the
+    # 20 s a test may take (tools/test_budget.py; harness-repair).  The
+    # assertions are the loop body's, unchanged.
+    def test_process_death_after_fnbi_recovers_once(self) -> None:
+        self._death_at("fnbi", "accepted")
 
-                staged = list((root / "inbox" / "inbound").glob("*.bp"))
-                self.assertEqual(len(staged), 1)
-                staged_bid, _staged_identity, staged_request = workflow_journal.decode_inbound(
-                    staged[0].read_bytes())
-                self.assertEqual((staged_bid, staged_request), (bid, request))
-                self.assertEqual(self._counts(root / "store", point, point != "fnbi"),
-                                 (0, 0, 0) if point == "fnbi" else (1, 1, 1))
+    def test_process_death_after_store_recovers_once(self) -> None:
+        self._death_at("store", "accepted")
 
-                inventory = {bid: request}
-                if point == "intent":
-                    with self.assertRaises(run_bp_receive.BpReceiveError):
-                        self._retry(root, inventory, bundles, bid)
-                result, deleted = self._retry(
-                    root, inventory, bundles, bid,
-                    pending_outcome="committed" if point == "intent" else None)
-                self.assertEqual(result.outcome, expected)
-                self.assertEqual(deleted, [bid])
-                self.assertEqual(self._counts(root / "store", point), (1, 1, 1))
-                if point == "decision":
-                    self.assertEqual(result.receipt_adu, (root / "before-kill.receipt").read_bytes())
+    def test_process_death_after_context_recovers_once(self) -> None:
+        self._death_at("context", "duplicate")
 
-                # A fresh BPA BID carrying the exact ADU must not charge a
-                # second article/pin and must regenerate the committed receipt.
-                inventory[retry_bid] = request
-                repeated, repeated_delete = self._retry(root, inventory, bundles,
-                                                        retry_bid)
-                self.assertEqual(repeated.outcome, "duplicate")
-                self.assertEqual(repeated_delete, [retry_bid])
-                self.assertEqual(repeated.receipt_adu, result.receipt_adu)
-                self.assertEqual(self._counts(root / "store", point), (1, 1, 1))
+    def test_process_death_after_intent_recovers_once(self) -> None:
+        self._death_at("intent", "duplicate")
+
+    def test_process_death_after_decision_recovers_once(self) -> None:
+        self._death_at("decision", "duplicate")
+
+    def _death_at(self, point: str, expected: str) -> None:
+        with tempfile.TemporaryDirectory(
+                prefix="fn-bp-receiver-process-") as temporary:
+            root = Path(temporary)
+            run_store.Store(root / "store", True).initialize()
+            bid = "bid-" + point
+            retry_bid = bid + "-again"
+            request = self._request(point)
+            bundles = lab_bundles((bid, retry_bid))
+            self._kill_at(root, request, bundles[bid], point, bid)
+
+            staged = list((root / "inbox" / "inbound").glob("*.bp"))
+            self.assertEqual(len(staged), 1)
+            staged_bid, _staged_identity, staged_request = workflow_journal.decode_inbound(
+                staged[0].read_bytes())
+            self.assertEqual((staged_bid, staged_request), (bid, request))
+            self.assertEqual(self._counts(root / "store", point, point != "fnbi"),
+                             (0, 0, 0) if point == "fnbi" else (1, 1, 1))
+
+            inventory = {bid: request}
+            if point == "intent":
+                with self.assertRaises(run_bp_receive.BpReceiveError):
+                    self._retry(root, inventory, bundles, bid)
+            result, deleted = self._retry(
+                root, inventory, bundles, bid,
+                pending_outcome="committed" if point == "intent" else None)
+            self.assertEqual(result.outcome, expected)
+            self.assertEqual(deleted, [bid])
+            self.assertEqual(self._counts(root / "store", point), (1, 1, 1))
+            if point == "decision":
+                self.assertEqual(result.receipt_adu, (root / "before-kill.receipt").read_bytes())
+
+            # A fresh BPA BID carrying the exact ADU must not charge a
+            # second article/pin and must regenerate the committed receipt.
+            inventory[retry_bid] = request
+            repeated, repeated_delete = self._retry(root, inventory, bundles,
+                                                    retry_bid)
+            self.assertEqual(repeated.outcome, "duplicate")
+            self.assertEqual(repeated_delete, [retry_bid])
+            self.assertEqual(repeated.receipt_adu, result.receipt_adu)
+            self.assertEqual(self._counts(root / "store", point), (1, 1, 1))
 
 
 def _parse_child() -> argparse.Namespace:

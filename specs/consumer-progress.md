@@ -89,7 +89,10 @@ Message-ID, local membership and historical verdict reference separately.
 It does not assert application verification or processing. A page is a read;
 its return does not mutate the recorded ack.
 
-This interface creates no article retention pin. A committed article that was
+This interface creates no article retention pin (the selected
+no-implicit-pin profile; [storage](storage.md)'s lifetimes table says the
+same, and a retaining consumer mode would be a separately charged durable
+hold, not a reading of this position). A committed article that was
 visible but has been reclaimed before polling is an explicit `unavailable`
 gap at its record position: poll stops there and does not issue a continuation
 past it. A consumer cannot claim at-least-once delivery of content that its
@@ -342,6 +345,40 @@ The repaired `1d26e01f` image passed signed poll and advancing-ack recovery,
 as recorded in [the native campaign](../planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md).
 The Mini durable inbox/outbox-to-ACK join remains an open evidence obligation.
 
+The local profile's page contract is proved over the selector the host calls
+(`fn-col-poll-scan-page-contract`, books/consumer-owner-local-progress,
+PRF-116): the continuation lies between the recorded position and the
+smaller of the pinned frontier and position plus the scan bound; an empty
+page scanned only non-matching events and, when anything was scannable,
+progressed past at least one; a nonempty page is the first matching event of
+its window, just before the continuation. So a continuation never passes a
+matching event that the page did not return. `fn-col-poll` answers a page or a
+refusal, never a Store write proposal, and `fn-cp-ack`, which `fn-col-ack` calls, writes only the declared
+cursor, forward, within the frontier and the recorded scope; an equal
+position is a no-op and, after the committed ack, the same ack is a no-op.
+The local profile has no reachable unavailable case: no native caller
+reclaims article content (only the exact-prefix pack reclaims transaction
+files, and it keeps every event byte), so the unavailable-gap rule above is
+the general contract, unexercised here. The scan bound (16) and item bound
+(one event) are in that theorem; the reply byte ceiling and the 346-octet
+cursor are codec ceilings, not proved independent of the scan. A single
+article larger than the poll reply ceiling has no retrieval contract yet.
+
+CNS-002: two consumers with independent durable state exchange a signed
+report and a reply through one fn node, each running the consumer
+transaction above and acknowledging only after it commits. Each uncertain
+fact at an ownership boundary is settled by its owner: an uncertain consumer
+transaction by the consumer's database, an uncertain `ack` by `position`, an
+uncertain reply POST by the identical source's resend or by fn serving that
+exact source back through `poll`, never by an fn acknowledgement. The same
+operation with a changed source is conflict evidence with no second
+transition or reply. `tools/fn_consumer.py` is the external consumer and
+`tests/test_native_consumer_exchange.py` the native scenario (SCN-061).
+An identical resend over the local control route (`hybrid-author` or
+`operator post`) is answered D25's duplicate (PKT-166); if that answer is
+lost too, the consumer settles such a POST by the
+served exact source ([evidence](../planning/evidence/consumer-e2-2026-09-25.md)).
+
 The read-only `consumer-project CURSOR.fncu ACCEPTED.fn-e` command calls
 `fn-cpj-project` to check a supplied v1 cursor against a schema-1 accepted
 event, its bound article and historical verified verdict. The current ACL2
@@ -388,5 +425,5 @@ cursor decision kernel, durable local declarations and bounded one-group poll
 source are implemented. Prior native declaration and independent clone checks
 passed in their stated scopes, followed by native signed poll, advancing
 ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
-multi-group selection, the consumer application transaction/ACK join, and the
-two-store trace remain open.
+multi-group selection and the two-store trace remain open; the one-node
+two-consumer transaction/ACK join is CNS-002.

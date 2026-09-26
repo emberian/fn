@@ -16,6 +16,9 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+import acl2_slots  # noqa: E402
+
 BUILD_ROOT = ROOT / "build" / "simulator"
 TRACE_PREFIX = "FN_SIM_TRACE "
 RESULT_PREFIX = "FN_SIM_RESULT "
@@ -127,17 +130,15 @@ def main() -> int:
     }
     outcomes: list[dict[str, object]] = []
     all_passed = True
-    environment = os.environ.copy()
-    environment["ACL2_CUSTOMIZATION"] = "NONE"
-    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
     for scenario in args.scenario:
         driver = driver_for(scenario)
         (run_dir / f"{scenario}.driver.lsp").write_text(driver, encoding="utf-8")
         try:
-            result = subprocess.run(
-                [str(acl2)], cwd=ROOT, input=driver.encode(), stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, env=environment, timeout=args.timeout_seconds, check=False,
+            # The machine's ACL2 pool and heap cap (PKT-162).
+            result = acl2_slots.run(
+                [str(acl2)], f"simulator {scenario}", cwd=ROOT, input=driver.encode(),
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                timeout=args.timeout_seconds, check=False,
             )
             output = result.stdout.decode("utf-8", errors="replace")
             exit_code: int | str = result.returncode

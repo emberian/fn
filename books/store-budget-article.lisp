@@ -122,6 +122,69 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-history-octets)))))
 
+; PRF-126: the same three facts at the widths the producers now reach.  A
+; record whose charge fits u32 is within the figure
+; whatever the width of its sequence, txid, generation and stamp
+; (`fn-record-encode-producer-length-bound', records-seam), so an article
+; admitted after the allocator passes 2^32 - 1 or the clock passes 2106 is
+; charged its real worst case, with no narrowness premise.
+(defthm fn-sbud-article-figure-bounds-the-producer-record
+  (implies (and (fn-record-uint32p (fn-record-charge record))
+                (<= (len (fn-record-payload record)) (nfix payload-length))
+                (<= (len (fn-record-groups record)) (nfix group-count)))
+           (<= (len (fn-record-encode record))
+               (fn-sbud-article-figure payload-length group-count)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-record-encode-producer-length-bound))
+           :in-theory (e/d (fn-sbud-article-figure
+                            fn-record-encoded-octets-ceiling)
+                           (fn-record-uint32p)))))
+
+; KEYSTONE (PRF-126: an admitted article never pushes history past H, at any
+; producer width).
+(defthm fn-sbud-article-verdict-keeps-history-at-producer-width
+  (implies (and (equal (fn-sbud-article-verdict-at profile used bytes-used
+                                                   payload-length group-count)
+                       :admissible)
+                (fn-record-uint32p (fn-record-charge record))
+                (<= (len (fn-record-payload record)) (nfix payload-length))
+                (<= (len (fn-record-groups record)) (nfix group-count)))
+           (fn-profile-replay-within-boundp
+            profile (+ bytes-used (len (fn-record-encode record)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-sbud-article-figure-bounds-the-producer-record))
+           :in-theory (e/d (fn-sbud-article-verdict-at
+                            fn-bs-history-admissiblep
+                            fn-profile-replay-within-boundp)
+                           (fn-sbud-article-figure fn-record-uint32p
+                            fn-sbud-admitp fn-sbud-budget
+                            fn-bs-profile-admittedp
+                            fn-bs-profile-max-history-octets)))))
+
+; KEYSTONE for the served prepare (host/owner-host.lisp `fn-owner-prepare'),
+; at any producer width.
+(defthm fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width
+  (implies (and (not (equal (fn-sbud-prepare
+                             oc record
+                             (fn-sbud-article-budget-for profile bytes-used
+                                                         record))
+                            oc))
+                (fn-record-uint32p (fn-record-charge record)))
+           (fn-profile-replay-within-boundp
+            profile (+ bytes-used (len (fn-record-encode record)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-sbud-article-figure-bounds-the-producer-record
+                                   (payload-length (len (fn-record-payload record)))
+                                   (group-count (len (fn-record-groups record)))))
+           :in-theory (e/d (fn-sbud-prepare fn-sbud-article-budget-for
+                            fn-sbud-article-budget fn-sbud-admitp
+                            fn-bs-history-admissiblep
+                            fn-profile-replay-within-boundp)
+                           (fn-sbud-article-figure fn-record-uint32p
+                            fn-opc-prepare fn-sbud-budget fn-sbud-used
+                            fn-bs-profile-admittedp
+                            fn-bs-profile-max-history-octets)))))
+
 ; Future admissibility is kept by an upgrade: the figure does not read the
 ; profile, the budget and H only grow.
 (defthm fn-profile-upgrade-keeps-article-verdict

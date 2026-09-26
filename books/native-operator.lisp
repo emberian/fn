@@ -53,10 +53,19 @@
        (member-equal (fn-native-operator-result-status result)
                      '(:accepted :refused :uncertain :fault :usage))))
 
+;  HST-008 (the operator walk): "no store here" is a refusal with its own
+; exit code, distinct from every other refusal (1) and from a host fault (4),
+; so a script can tell a node that was never initialized from one that
+; declined a well-formed request.  Six is otherwise unused by the operator.
+(defconst *fn-nop-no-store-exit* 6)
+
 (defun fn-native-operator-exit-code (result)
-  "The tagged result, not a raw host condition, owns the five CLI codes."
+  "The tagged result, not a raw host condition, owns the CLI codes."
   (declare (xargs :guard t))
-  (cond ((equal (fn-native-operator-result-status result) :accepted) 0)
+  (cond ((and (equal (fn-native-operator-result-status result) :refused)
+              (equal (fn-native-operator-result-reason result) :no-store))
+         *fn-nop-no-store-exit*)
+        ((equal (fn-native-operator-result-status result) :accepted) 0)
         ((equal (fn-native-operator-result-status result) :refused) 1)
         ((equal (fn-native-operator-result-status result) :uncertain) 3)
         ((equal (fn-native-operator-result-status result) :fault) 4)
@@ -354,6 +363,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
 ; `store checkpoint': publish the exact-state checkpoint (P3,
 ; books/store-checkpoint-open.lisp).  It takes no argument.
+; `store reclaim [--dry-run]': content reclamation's durable step (D13,
+; STO-017, books/store-reclaim-pack.lisp).  What it removes is
+; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
   (cond ((and (consp words) (equal (car words) "upgrade-profile"))
@@ -379,10 +391,27 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (equal (char (cadr words) 0) #\/))
          (fn-nop-result :accepted :plan "store" config
                         (list :rollback-check (cadr words))))
+        ; The walk's rollback item: what restoring a pre-upgrade snapshot
+        ; (a copy of the stopped store at SNAPSHOT) loses against this store
+        ; (fn-native-operator-snapshot-loss).
+        ((and (consp words) (equal (car words) "rollback-check")
+              (consp (cdr words)) (equal (cadr words) "--snapshot")
+              (consp (cddr words)) (null (cdddr words))
+              (stringp (caddr words))
+              (< 1 (length (caddr words)))
+              (<= (length (caddr words)) *fn-ncfg-max-path*)
+              (equal (char (caddr words) 0) #\/))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rollback-snapshot (caddr words))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
+        ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config (list :reclaim)))
+        ((and (consp words) (equal (car words) "reclaim")
+              (equal (cdr words) '("--dry-run")))
+         (fn-nop-result :accepted :plan "store" config (list :reclaim-dry-run)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
 
 ;; `status --watch N': the seconds between two asks.  A work bound on the
@@ -396,13 +425,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "retention")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
+         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise it afterwards with store upgrade-profile)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
@@ -412,15 +441,19 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status")
          "usage: fn operator CONFIG status [--watch SECONDS] (asks the running owner over its control socket; offline, reads the store)")
+        ((equal subject "health")
+         "usage: fn operator CONFIG health (eight states, one line each: fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt; exit 20 to 27 names the first held, 19 some unobserved, 0 all clear)")
         ((equal subject "pins")
          "usage: fn operator CONFIG pins (retention pins and each open connection's configuration pin)")
         ((equal subject "obligations")
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | compact | checkpoint} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
+        ((equal subject "retention")
+         "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list} (NAMESPACE is a group name or one ending in .*; spec peering 8)")
         ((equal subject "peer")
@@ -542,6 +575,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                          (fn-nop-watch-seconds
                                           (fn-ncfg-second rest)))))
                    (t (fn-nop-usage :unexpected-arguments "status" config rest))))
+            ((equal command "health")
+             (if (null rest)
+                 (fn-nop-result :accepted :plan "health" config (list :health))
+               (fn-nop-usage :unexpected-arguments "health" config rest)))
             ((or (equal command "pins") (equal command "obligations"))
              (if (null rest)
                  (fn-nop-result :accepted :plan command config
@@ -571,7 +608,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
-                 (equal command "control"))
+                 (equal command "control") (equal command "retention"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -946,6 +983,7 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "bp-boundary")
            (equal (fn-native-operator-result-command result) "bp-route")
            (equal (fn-native-operator-result-command result) "policy")
+           (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control"))))
 
 (defun fn-native-operator-result-admin-plan (result)
@@ -1026,6 +1064,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "pins") :status)
+          ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((equal (fn-native-operator-result-command result) "store")
@@ -1036,11 +1075,20 @@ when that store already exists is `fn-native-operator-init-outcome'."
                          :checkpoint)
                   :checkpoint)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :reclaim)
+                  :reclaim)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :reclaim-dry-run)
+                  :reclaim-dry-run)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :needs-upgrade)
                   :needs-upgrade)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rollback-check)
                   :rollback-check)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :rollback-snapshot)
+                  :rollback-snapshot)
                  (t :upgrade-profile)))
           ((and (equal (fn-native-operator-result-command result) "peer")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1052,6 +1100,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "bp-boundary")
                (equal (fn-native-operator-result-command result) "bp-route")
                (equal (fn-native-operator-result-command result) "policy")
+               (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "show") :show)
@@ -1378,6 +1427,242 @@ when that store already exists is `fn-native-operator-init-outcome'."
                             (words (fn-nop-argument-texts argv))
                             (config nil) (argv argv))))))
 
+; KEYSTONE (STO-017, the operator entry to content reclamation).  The
+; same subject and projection as the compaction keystone above: an
+; accepted `store reclaim' is the :reclaim action, and the
+; :reclaim action arises from that argv and no other, so the raw host
+; reaches `fnn-command-reclaim' without --dry-run only for it.
+(defthm fn-native-operator-run-store-reclaim-is-the-reclaim-action
+  (implies (and (equal (fn-nop-argument-texts argv) '("store" "reclaim"))
+                (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted))
+           (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-store
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
+
+(local
+ (defthm fn-nop-parse-store-reclaim-words
+   (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
+                        :accepted)
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-store w c)))
+                        :reclaim))
+            (equal w '("reclaim")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+                                      fn-native-operator-result-status
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-words
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-command words config argv)))
+                        :reclaim))
+            (equal words '("store" "reclaim")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp))
+            :use ((:instance fn-nop-parse-store-reclaim-words
+                             (w (cdr words)) (c config)))))))
+
+(local
+ (defthm fn-nop-reclaim-action-shape
+   (implies (equal (fn-native-operator-result-native-action result) :reclaim)
+            (and (equal (fn-native-operator-result-status result) :accepted)
+                 (equal (fn-native-operator-result-command result) "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                        :reclaim)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-action-words
+   (implies (equal (fn-native-operator-result-native-action
+                    (fn-nop-parse-command words config argv))
+                   :reclaim)
+            (equal words '("store" "reclaim")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-nop-reclaim-action-shape
+                                       fn-native-operator-result-native-action
+                                       fn-nop-parse-command)
+            :use ((:instance fn-nop-reclaim-action-shape
+                             (result (fn-nop-parse-command words config argv)))
+                  fn-nop-parse-command-reclaim-words)))))
+
+(defthm fn-native-operator-run-reclaim-action-is-only-store-reclaim
+  (implies (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim)
+           (equal (fn-nop-argument-texts argv) '("store" "reclaim")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-usage)
+                                  (fn-nop-result
+                                   fn-native-operator-result-native-action
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-nop-parse-command fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep))
+           :use ((:instance fn-nop-parse-command-reclaim-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config (fn-ncfg-second (fn-native-config-load config)))
+                            (argv argv))
+                 (:instance fn-nop-parse-command-reclaim-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config nil) (argv argv))))))
+
+; KEYSTONE (STO-017, the operator entry to content reclamation).  The
+; same subject and projection as the compaction keystone above: an
+; accepted `store reclaim --dry-run' is the :reclaim-dry-run action, and the
+; :reclaim-dry-run action arises from that argv and no other, so the raw host
+; reaches `fnn-command-reclaim' with --dry-run only for it.
+(defthm fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action
+  (implies (and (equal (fn-nop-argument-texts argv) '("store" "reclaim" "--dry-run"))
+                (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted))
+           (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim-dry-run))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-store
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
+
+(local
+ (defthm fn-nop-parse-store-reclaim-dry-run-words
+   (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
+                        :accepted)
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-store w c)))
+                        :reclaim-dry-run))
+            (equal w '("reclaim" "--dry-run")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+                                      fn-native-operator-result-status
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-dry-run-words
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-command words config argv)))
+                        :reclaim-dry-run))
+            (equal words '("store" "reclaim" "--dry-run")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp))
+            :use ((:instance fn-nop-parse-store-reclaim-dry-run-words
+                             (w (cdr words)) (c config)))))))
+
+(local
+ (defthm fn-nop-reclaim-dry-run-action-shape
+   (implies (equal (fn-native-operator-result-native-action result) :reclaim-dry-run)
+            (and (equal (fn-native-operator-result-status result) :accepted)
+                 (equal (fn-native-operator-result-command result) "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                        :reclaim-dry-run)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-dry-run-action-words
+   (implies (equal (fn-native-operator-result-native-action
+                    (fn-nop-parse-command words config argv))
+                   :reclaim-dry-run)
+            (equal words '("store" "reclaim" "--dry-run")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-nop-reclaim-dry-run-action-shape
+                                       fn-native-operator-result-native-action
+                                       fn-nop-parse-command)
+            :use ((:instance fn-nop-reclaim-dry-run-action-shape
+                             (result (fn-nop-parse-command words config argv)))
+                  fn-nop-parse-command-reclaim-dry-run-words)))))
+
+(defthm fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run
+  (implies (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim-dry-run)
+           (equal (fn-nop-argument-texts argv) '("store" "reclaim" "--dry-run")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-usage)
+                                  (fn-nop-result
+                                   fn-native-operator-result-native-action
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-nop-parse-command fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep))
+           :use ((:instance fn-nop-parse-command-reclaim-dry-run-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config (fn-ncfg-second (fn-native-config-load config)))
+                            (argv argv))
+                 (:instance fn-nop-parse-command-reclaim-dry-run-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config nil) (argv argv))))))
+
 ; The status report the operator asked for (books/native-live-status.lisp
 ; renders it), the watch interval, and the control socket the running owner
 ; answers on.  `peer list' is the fourth kind, reached through its
@@ -1386,7 +1671,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
   (declare (xargs :guard t))
   (and (equal (fn-native-operator-result-status result) :accepted)
        (member-equal (fn-native-operator-result-command result)
-                     '("status" "pins" "obligations"))
+                     '("status" "health" "pins" "obligations"))
        t))
 
 (defun fn-native-operator-result-status-kind (result)
@@ -1411,6 +1696,16 @@ when that store already exists is `fn-native-operator-init-outcome'."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+; PRF-112: the operator's [alerts] headroom_min_percent, the threshold of the
+; health verdict's space-pressure state (books/native-health.lisp).
+(defun fn-native-operator-result-health-min-percent (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (member-equal (fn-native-operator-result-command result) '("health" "run")))
+      (nfix (fn-native-config-alerts-headroom-min-percent
+             (fn-native-operator-result-config result)))
+    0))
+
 ; PKT-096/PKT-097 projections the raw host reads.
 (defun fn-native-operator-result-mission-octets (result)
   (declare (xargs :guard t))
@@ -1433,3 +1728,180 @@ when that store already exists is `fn-native-operator-init-outcome'."
            (equal (fn-native-operator-result-command result) "show"))
       (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
+
+; -----------------------------------------------------------------------------
+; HST-008 / PRF-130 part 1: "no store here" is a refusal, never a fault.
+;
+; Every accepted plan whose native action reads or writes an existing store
+; is first checked against the same observation `init' uses: which of
+; `*fn-nop-store-markers*' exist beside the configured store root (lstat
+; only, no lock; host/native/operator.lisp `fnn-operator-init-observed').
+; With none of them there is no store to open, and the outcome is the
+; refusal :no-store (exit `*fn-nop-no-store-exit*'), not the host fault the
+; open would otherwise raise ("missing store directory").  A partial store
+; (some markers, e.g. an interrupted init) is not "no store": it proceeds to
+; the open, which recovers or refuses it.
+
+(defconst *fn-nop-store-actions*
+  '(:run :post :status :health :recover :compact :checkpoint :reclaim
+    :reclaim-dry-run :needs-upgrade :rollback-check :rollback-snapshot
+    :upgrade-profile :admin
+    :peering :principal))
+
+(defun fn-native-operator-result-needs-storep (result)
+  "An accepted plan whose native action opens the configured store."
+  (declare (xargs :guard t))
+  (and (member-equal (fn-native-operator-result-native-action result)
+                     *fn-nop-store-actions*)
+       t))
+
+(defun fn-native-operator-store-outcome (result observed)
+  "RESULT unchanged, or the :no-store refusal when RESULT needs a store and
+OBSERVED (the markers found beside the store root) is empty."
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-needs-storep result)
+           (not (consp observed)))
+      (fn-nop-refused :no-store
+                      (fn-native-operator-result-command result)
+                      (fn-native-operator-result-config result)
+                      (fn-native-operator-result-arguments result))
+    result))
+
+; KEYSTONE PRF-130 part 1.  The subject is `fn-native-operator-store-outcome',
+; which `fnn-operator-dispatch-plan' (host/native/operator.lisp) calls through
+; `fn-native-operator-host-store-outcome' on every accepted plan before it
+; executes the action.  For a plan that needs a store and an observation that
+; found none of the store's entries, the outcome is a refusal named
+; :no-store whose exit code is 6: never accepted (so no action runs and no
+; open is attempted), never the fault code 4, never the usage code 5.
+(local
+ (defthm fn-nop-native-action-of-refused
+   (equal (fn-native-operator-result-native-action (list :refused r c g a)) :none)
+   :hints (("Goal" :in-theory '(fn-native-operator-result-native-action
+                                fn-native-operator-result-status
+                                fn-ncfg-first car-cons)))))
+
+(defthm fn-native-operator-absent-store-is-refused
+  (implies (and (fn-native-operator-result-needs-storep result)
+                (not (consp observed)))
+           (let ((outcome (fn-native-operator-store-outcome result observed)))
+             (and (equal (fn-native-operator-result-status outcome) :refused)
+                  (equal (fn-native-operator-result-reason outcome) :no-store)
+                  (equal (fn-native-operator-exit-code outcome)
+                         *fn-nop-no-store-exit*)
+                  (equal (fn-native-operator-result-native-action outcome) :none))))
+  :hints (("Goal" :in-theory '(fn-native-operator-store-outcome
+                                fn-nop-refused fn-nop-result
+                                fn-native-operator-result-status
+                                fn-native-operator-result-reason
+                                fn-native-operator-exit-code
+                                fn-ncfg-first fn-ncfg-second fn-ncfg-rest
+                                (:e fn-native-operator-result-native-action)
+                                fn-nop-native-action-of-refused
+                                car-cons cdr-cons))))
+
+; The converse half: a store that is there (any marker observed) or a plan
+; that needs none is passed through untouched, so the check refuses nothing
+; the store actions would have served.
+(defthm fn-native-operator-store-outcome-passes-a-present-store
+  (implies (or (consp observed)
+               (not (fn-native-operator-result-needs-storep result)))
+           (equal (fn-native-operator-store-outcome result observed) result))
+  :hints (("Goal" :in-theory '(fn-native-operator-store-outcome))))
+
+;  The line printed before a usage or refused result's tagged line: what the
+; command accepts, or what to do.  ACL2's words; the host prints them.
+(defun fn-native-operator-result-hint (result)
+  (declare (xargs :guard t))
+  (let ((status (fn-native-operator-result-status result))
+        (reason (fn-native-operator-result-reason result))
+        (command (fn-native-operator-result-command result)))
+    (cond ((and (equal status :refused) (equal reason :no-store))
+           "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
+          ((and (equal status :usage) (equal reason :mission-fixes-profile))
+           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init")
+          ((and (equal status :usage) (fn-nop-help-subjectp command))
+           (fn-nop-help-text command))
+          (t nil))))
+
+(defun fn-native-operator-result-snapshot-path-octets (result)
+  "The snapshot store root an accepted `store rollback-check --snapshot' names."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :rollback-snapshot)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-record-string-octets
+       (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+; -----------------------------------------------------------------------------
+; What restoring a snapshot loses (mandate 5.6: "Restoring a pre-migration
+; snapshot can lose later accepted articles; operational instructions must say
+; so plainly").  The host observes each store's committed transaction files as
+; (SEQUENCE . OCTET-LENGTH) pairs in sequence order (host/native/io.lisp
+; `fnn-command-rollback-snapshot'); ACL2 decides.  The snapshot is a rollback
+; point for this store only when its history is a prefix of the store's; the
+; loss is then every committed transaction after that prefix.
+
+(defun fn-nop-history-prefixp (snap cur)
+  (declare (xargs :guard t))
+  (if (consp snap)
+      (and (consp cur)
+           (equal (car snap) (car cur))
+           (fn-nop-history-prefixp (cdr snap) (cdr cur)))
+    t))
+
+(defun fn-nop-history-suffix (snap cur)
+  (declare (xargs :guard t))
+  (if (and (consp snap) (consp cur))
+      (fn-nop-history-suffix (cdr snap) (cdr cur))
+    cur))
+
+(defun fn-native-operator-snapshot-loss (snap cur)
+  "(:loses N) when SNAP's history is a prefix of CUR's, N the transactions
+committed after it; else (:refused :snapshot-not-a-prefix)."
+  (declare (xargs :guard t))
+  (if (fn-nop-history-prefixp snap cur)
+      (list :loses (len (fn-nop-history-suffix snap cur)))
+    (list :refused :snapshot-not-a-prefix)))
+
+(defthm fn-nop-history-suffix-len
+  (implies (fn-nop-history-prefixp snap cur)
+           (equal (len (fn-nop-history-suffix snap cur))
+                  (- (len cur) (len snap)))))
+
+; KEYSTONE (the rollback sentence's count).  The subject is
+; `fn-native-operator-snapshot-loss', which `fnn-command-rollback-snapshot'
+; (host/native/io.lisp) calls through `fn-native-operator-host-snapshot-loss'.
+; The verb answers :loses exactly when the snapshot's committed history is a
+; prefix of the store's, and the count it prints is the number of committed
+; transactions the store holds beyond the snapshot: the ones restoring the
+; snapshot throws away.
+(defthm fn-native-operator-snapshot-loss-counts-the-suffix
+  (and (iff (equal (car (fn-native-operator-snapshot-loss snap cur)) :loses)
+            (fn-nop-history-prefixp snap cur))
+       (implies (fn-nop-history-prefixp snap cur)
+                (equal (cadr (fn-native-operator-snapshot-loss snap cur))
+                       (- (len cur) (len snap))))))
+
+(defun fn-nop-nat-text (n)
+  (declare (xargs :guard t))
+  (coerce (explode-atom (nfix n) 10) 'string))
+
+; The verb's two lines, ACL2's words: the count and the plain sentence the
+; mandate asks the operator instructions to carry (5.6).
+(defun fn-native-operator-snapshot-loss-report (verdict nsnap ncur)
+  (declare (xargs :guard t))
+  (if (equal (fn-ncfg-first verdict) :loses)
+      (let ((n (fn-nop-nat-text (fn-ncfg-second verdict))))
+        (concatenate 'string
+                     "rollback snapshot loses transactions=" n
+                     " snapshot-transactions=" (fn-nop-nat-text nsnap)
+                     " store-transactions=" (fn-nop-nat-text ncur)
+                     (coerce '(#\Newline) 'string)
+                     "restoring this snapshot loses every transaction committed after it: "
+                     n
+                     ", the articles accepted since it among them; the snapshot cannot give them back"))
+    "rollback snapshot refused snapshot-not-a-prefix (this snapshot is not an earlier state of this store)"))

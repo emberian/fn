@@ -5,6 +5,7 @@
 (include-book "bp-node-foundation")
 (include-book "bp-fragment-fast")
 (include-book "bp-fragment-invariants")
+(include-book "bp-fragment-sweep")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-member (x xs)
@@ -95,15 +96,17 @@
                (fn-bpnf-fragment-cells (cdr held))))
      nil)))
 
-; This is the actual foundation-state query: the fast scanner consumes the
+; This is the actual foundation-state query: the reassembler consumes the
 ; held bundles selected from the machine's own list, not a parallel family
-; representation.  An invalid anchor is a bounded invalid result.
+; representation.  An invalid anchor is a bounded invalid result.  The
+; reassembler is bp-fragment-sweep's: no family-size ceiling, work linear in
+; the octets the family holds (PRF-121).
 (defun fn-bpnf-fragment-query (st anchor)
   (declare (xargs :guard t))
   (if (not (and (fn-bpnf-active-fragmentp anchor)
                 (fn-bpnf-family-member anchor (fn-bpnf-held-list st))))
       (list :invalid :bounds)
-    (fn-bpf-reassemble-fast
+    (fn-bpfw-reassemble
      (fn-bpnf-fragment-cells (fn-bpnf-active-set st anchor))
      (fn-bpp-total-adu-length
       (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))))
@@ -152,19 +155,19 @@
          (if (not (and (fn-bpnf-active-fragmentp anchor)
                        (member-equal anchor (fn-bpnf-held-list st))))
              (list :invalid :bounds)
-           (fn-bpf-reassemble
+           (fn-bpfw-spec
             (fn-bpnf-fragment-cells (fn-bpnf-active-set st anchor))
             (fn-bpp-total-adu-length
              (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))))
-  :hints (("Goal" :use ((:instance fn-bpf-reassemble-fast-is-reassemble
+  :hints (("Goal" :use ((:instance fn-bpfw-reassemble-is-spec
                                   (fs (fn-bpnf-fragment-cells
                                        (fn-bpnf-active-set st anchor)))
                                   (total (fn-bpp-total-adu-length
                                           (fn-bpb-bundle-primary
                                            (fn-bpnf-held-bundle anchor))))))
            :in-theory (e/d (fn-bpnf-fragment-query fn-bpnf-family-member)
-                           (fn-bpf-reassemble-fast-is-reassemble
-                            fn-bpf-reassemble-fast fn-bpf-reassemble
+                           (fn-bpfw-reassemble-is-spec
+                            fn-bpfw-reassemble fn-bpfw-spec
                             fn-bpnf-active-fragmentp fn-bpnf-active-set
                             fn-bpnf-fragment-cells fn-bpnf-held-list
                             fn-bpp-total-adu-length fn-bpnf-held-bundle
@@ -184,7 +187,7 @@
 ; list argument over the exact cells projected from held rows; no arrival
 ; order or header choice enters the premise.
 (defthm fn-bpnf-covered-zero-has-source
-  (implies (and (fn-bpf-fragment-listp (fn-bpnf-fragment-cells rows))
+  (implies (and (fn-bpfw-fragment-listp (fn-bpnf-fragment-cells rows))
                 (fn-bpf-coveredp (fn-bpnf-fragment-cells rows) 0))
            (fn-bpnf-offset-zero-source rows))
   :hints (("Goal" :induct (fn-bpnf-fragment-cells rows)
@@ -192,19 +195,17 @@
                                fn-cbor-octet-listp))))
 
 (defthm fn-bpnf-reassemble-ok-covers-zero
-  (implies (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total)) :ok)
-           (and (fn-bpf-fragment-listp fs)
+  (implies (equal (fn-bpf-result-tag (fn-bpfw-spec fs total)) :ok)
+           (and (fn-bpfw-fragment-listp fs)
                 (fn-bpf-coveredp fs 0)))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpf-reassemble-ok-shape)
-                 (:instance fn-bpf-uncovered-index-blocks-success (i 0)))
-           :in-theory (disable fn-bpf-reassemble-ok-shape
-                               fn-bpf-uncovered-index-blocks-success
-                               fn-bpf-reassemble fn-bpf-canvas))))
+           :use ((:instance fn-bpfw-spec-ok-covers-zero))
+           :in-theory (disable fn-bpfw-spec-ok-covers-zero
+                               fn-bpfw-spec fn-bpf-canvas))))
 
 (defthm fn-bpnf-reference-success-has-offset-zero-source
   (implies (equal (fn-bpf-result-tag
-                   (fn-bpf-reassemble (fn-bpnf-fragment-cells rows) total))
+                   (fn-bpfw-spec (fn-bpnf-fragment-cells rows) total))
                   :ok)
            (fn-bpnf-offset-zero-source rows))
   :hints (("Goal" :do-not-induct t
@@ -215,7 +216,7 @@
                                fn-bpnf-covered-zero-has-source
                                fn-bpnf-fragment-cells
                                fn-bpnf-offset-zero-source
-                               fn-bpf-reassemble))))
+                               fn-bpfw-spec))))
 
 (defthm fn-bpnf-success-has-offset-zero-source
   (implies (equal (fn-bpf-result-tag (fn-bpnf-fragment-query st anchor)) :ok)
@@ -232,8 +233,8 @@
                        fn-bpnf-reference-success-has-offset-zero-source
                        fn-bpnf-active-fragmentp fn-bpnf-heldp
                        fn-bpnf-active-set fn-bpnf-fragment-cells
-                       fn-bpnf-offset-zero-source fn-bpf-reassemble-fast
-                       fn-bpf-reassemble fn-bpf-canvas))))
+                       fn-bpnf-offset-zero-source fn-bpfw-reassemble
+                       fn-bpfw-spec fn-bpf-canvas))))
 
 ; Receiving proposes publication; it does not change the selected family
 ; until the matching durable callback installs the held row.

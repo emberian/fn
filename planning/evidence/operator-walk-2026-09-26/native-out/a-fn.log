@@ -1,0 +1,7 @@
+accepted post path=control message-id=<walk-1@example.invalid> time=2026-09-26T01:53:00Z
+accepted feed peer=b message-id=<walk-1@example.invalid> code=239 time=2026-09-26T01:53:00Z
+accepted post path=control message-id=<walk-2@example.invalid> time=2026-09-26T01:53:11Z
+refused feed peer=nostream stopped reason=mode-stream-refused (RFC 4644 2.3: the peer does not stream; this owner does not dial it again; re-add the peer with streaming false to feed it with IHAVE)
+accepted feed peer=b message-id=<walk-2@example.invalid> code=239 time=2026-09-26T01:53:11Z
+accepted post path=control message-id=<walk-3@example.invalid> time=2026-09-26T01:53:52Z
+accepted post path=control message-id=<walk-4@example.invalid> time=2026-09-26T01:53:53Z

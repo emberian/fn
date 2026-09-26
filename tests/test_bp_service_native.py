@@ -8,6 +8,8 @@ import tempfile
 import time
 import unittest
 
+from tests.native_process import AcceptThenClosePeer, refused_port
+
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -31,6 +33,10 @@ class NativeBpServiceTests(unittest.TestCase):
         self.env = dict(os.environ)
         self.env["ACL2_CUSTOMIZATION"] = "NONE"
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
+        # The outage: the peer accepts the connection and closes it before
+        # any transfer completes, so every transfer here is :uncertain.
+        self.peer = AcceptThenClosePeer()
+        self.addCleanup(self.peer.close)
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -49,7 +55,7 @@ class NativeBpServiceTests(unittest.TestCase):
 
     def run_outage(self, adu=None, env=None):
         return self.invoke(
-            "run", "127.0.0.1", "1", adu or self.adu, self.journal,
+            "run", "127.0.0.1", self.peer.port, adu or self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "work-1", "attempt-1", "0",
             env=env,
         )
@@ -66,6 +72,7 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertIn("BP queue accepted", first.stdout)
         self.assertIn("BP forwarding retained reason=uncertain", first.stdout)
         self.assertEqual(len(self.records()), 3)  # queued, attempting, requeued
+        self.assertGreater(self.peer.accepted, 0, "the outage must follow a connection")
 
         frontier = (self.journal / "sequence" / "frontier.fnb").read_bytes()
         domain = (self.journal / "clock-domain.fnb").read_bytes()
@@ -89,9 +96,29 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(conflict.returncode, 3, conflict.stderr)
         self.assertIn("BP queue refused reason=enqueue-conflict", conflict.stdout)
 
+    def test_connect_without_socket_is_failed_and_requeued(self):
+        # specs/bp-node-machine.md: a connect that never produced a socket
+        # reads :failed (no octet left; ACL2 requeues the job).
+        reservation, port = refused_port()
+        self.addCleanup(reservation.close)
+        first = self.invoke(
+            "run", "127.0.0.1", port, self.adu, self.journal,
+            "dtn://fn-a/", "dtn://fn-b/", "work-1", "attempt-1", "0",
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("BP queue accepted", first.stdout)
+        self.assertNotIn("reason=uncertain", first.stdout)
+        self.assertEqual(len(self.records()), 3)  # queued, attempting, requeued
+
+        resumed = self.resume()
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("BP queue recovered jobs=1", resumed.stdout)
+        self.assertNotIn("reason=uncertain", resumed.stdout)
+        self.assertEqual(self.peer.accepted, 0)
+
     def test_wall_jump_after_interrupted_contact_retains_anchored_work(self):
         first = self.invoke(
-            "run", "127.0.0.1", "1", self.adu, self.journal,
+            "run", "127.0.0.1", self.peer.port, self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "work-expiry", "attempt-expiry",
             "0", "3600000", "2", "32", "1048576", "0", "0",
         )
@@ -112,7 +139,7 @@ class NativeBpServiceTests(unittest.TestCase):
 
     def test_monotonic_age_expires_interrupted_work(self):
         first = self.invoke(
-            "run", "127.0.0.1", "1", self.adu, self.journal,
+            "run", "127.0.0.1", self.peer.port, self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "work-aged", "attempt-aged",
             "0", "1500", "2", "32", "1048576", "0", "0",
         )

@@ -1,0 +1,65 @@
+{
+ "after-fsync:1": {
+  "counts": {
+   "<tls-cut-after-fsync-1-0@example.invalid>": 1,
+   "<tls-cut-after-fsync-1-1@example.invalid>": 1
+  },
+  "plaintext_private": [],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=tls"
+  ]
+ },
+ "after-fsync:2": {
+  "counts": {
+   "<tls-cut-after-fsync-2-0@example.invalid>": 1,
+   "<tls-cut-after-fsync-2-1@example.invalid>": 1
+  },
+  "plaintext_private": [],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=tls"
+  ]
+ },
+ "after-write:1": {
+  "counts": {
+   "<tls-cut-after-write-1-0@example.invalid>": 1,
+   "<tls-cut-after-write-1-1@example.invalid>": 1
+  },
+  "plaintext_private": [],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=tls"
+  ]
+ },
+ "after-write:2": {
+  "counts": {
+   "<tls-cut-after-write-2-0@example.invalid>": 1,
+   "<tls-cut-after-write-2-1@example.invalid>": 1
+  },
+  "plaintext_private": [],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=tls"
+  ]
+ },
+ "before-write:1": {
+  "counts": {
+   "<tls-cut-before-write-1-0@example.invalid>": 1,
+   "<tls-cut-before-write-1-1@example.invalid>": 1
+  },
+  "plaintext_private": [],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=tls"
+  ]
+ },
+ "before-write:2": {
+  "counts": {
+   "<tls-cut-before-write-2-0@example.invalid>": 1,
+   "<tls-cut-before-write-2-1@example.invalid>": 1
+  },
+  "plaintext_private": [],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=tls"
+  ]
+ },
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "kind": "tls-cursor-cuts"
+}

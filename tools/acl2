@@ -64,11 +64,7 @@ def acl2_environment() -> dict[str, str]:
     with different settings is iterating against a different ACL2 than the one
     that will certify the book.
     """
-    environment = os.environ.copy()
-    environment["ACL2_CUSTOMIZATION"] = "NONE"
-    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
-    return acl2_slots.apply_heap_cap(environment)
+    return acl2_slots.acl2_environment()
 
 
 def run(executable: Path, arguments: list[str], timeout: float | None) -> int:

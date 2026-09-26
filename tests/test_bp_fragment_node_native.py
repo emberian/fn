@@ -6,10 +6,12 @@ Python only writes those bytes and drives real native processes.
 
 import os
 from pathlib import Path
+import select
 import shutil
 import socket
 import subprocess
 import tempfile
+import time
 import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
@@ -64,7 +66,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             timeout=timeout, check=False,
         )
 
-    def author_fragments(self):
+    def author_fragments(self, count=2):
         msgid = b"<bp-fragment-node@example.invalid>"
         article = (
             b"From: sender@example.invalid\r\n"
@@ -94,9 +96,17 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 + " '" + bridge.literal(article) + "))"
             )
             adu = run_store.acl2_octets(bridge.call(adu_form))
-            split = len(adu) // 2
-            self.assertGreater(split, 0)
-            self.assertLess(split, len(adu))
+            # COUNT - 1 interior cut points, strictly increasing.  The cut
+            # is fn-bpf-cut (no fragment-count ceiling), not fn-bpf-fragment
+            # (at most 64 pieces).
+            self.assertLess(count, len(adu))
+            cuts = [len(adu) * k // count for k in range(1, count)]
+            self.assertEqual(len(set(cuts)), count - 1)
+            self.assertGreater(cuts[0], 0)
+            self.assertLess(cuts[-1], len(adu))
+            cut_form = ("(fn-bpf-cut '" + bridge.literal(adu) + " 0 '("
+                        + " ".join(map(str, cuts)) + ") "
+                        + str(len(adu)) + ")")
             primary = (
                 "(fn-bpp-make-block 0 1 "
                 "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47)) "
@@ -105,11 +115,10 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 "1000 2 3600000 nil nil)"
             )
             paths = []
-            for index in (0, 1):
+            for index in range(count):
                 form = (
                     "(let* ((parent " + primary + ") "
-                    "(parts (cadr (fn-bpf-fragment '" + bridge.literal(adu)
-                    + " (list " + str(split) + ")))) "
+                    "(parts " + cut_form + ") "
                     "(part (nth " + str(index) + " parts))) "
                     "(fn-bpb-encode (fn-bpb-make-bundle "
                     "(fn-bpf-fragment-block parent (fn-bpf-offset part) "
@@ -124,14 +133,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         finally:
             bridge.close()
 
-    def start_receiver(self):
+    def start_receiver(self, once=True):
         process = subprocess.Popen(
             [str(IMAGE), "--fn", "bp-node", "serve", str(self.port),
              str(self.journal), str(self.store), str(self.receipts),
              str(self.workflow), "dtn://receiver/", "dtn://sender/",
              "dtn://receiver/", "native-policy", "dtn://receiver/",
-             "127.0.0.1", "9", "1", "3600000", "2", "32", "1048576",
-             "1000", "0"],
+             "127.0.0.1", "9", "1" if once else "0", "3600000", "2", "32",
+             "1048576", "1000", "0"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0,
         )
@@ -198,6 +207,136 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertEqual(self.article_count(), 1)
 
+    def kill_across_family(self, count, before_kill):
+        # A family of COUNT fragments, sent highest offset first, with the
+        # receiver killed (SIGKILL) after BEFORE_KILL of them.  The restarted
+        # receiver recovers the held fragments from its journal, takes the
+        # rest and reassembles the family once: one handoff, one article.
+        # Nothing completes before the last fragment (offset zero).
+        fragments = self.author_fragments(count)
+        order = list(reversed(range(count)))
+        first, port = self.start_receiver(once=False)
+        for number in order[:before_kill]:
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        first.kill()
+        out, err = first.communicate(timeout=60)
+        self.assertNotIn(b"BP fragment family durable", out)
+        self.assertEqual(self.article_count(), 0)
+
+        second, port = self.start_receiver(once=False)
+        for number in order[before_kill:-1]:
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        second.terminate()
+        out, err = second.communicate(timeout=120)
+        self.assertNotIn(b"BP fragment family durable", out)
+        # The last fragment goes to a one-session receiver, which exits only
+        # after its post-session work (the family, then the Store handoff).
+        third, port = self.start_receiver()
+        number = order[-1]
+        sent = self.send_fragment(port, fragments[number], number)
+        self.assertEqual(sent.returncode, 0, (number, sent.stdout, sent.stderr))
+        out, err = third.communicate(timeout=300)
+        self.assertEqual(third.returncode, 0, (out, err))
+        self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
+        self.assertEqual(out.count(b"BP application handoff durable"), 1,
+                         (out, err))
+        self.assertEqual(self.article_count(), 1)
+
+    def test_sixty_four_fragments_across_a_kill_reassemble_once(self):
+        # PRF-121 on the served path: the uncapped sweep reassembler and the
+        # once-per-family selector, with the family filling the node's held
+        # capacity (*fn-bpn-machine-max-jobs*, 64 rows) across a kill.
+        self.kill_across_family(64, 32)
+
+    @unittest.skip("SCN-067 blocked by the held-row capacity: "
+                   "*fn-bpn-machine-max-jobs* (64) refuses the 65th held "
+                   "fragment with XFER_REFUSE No Resources (observed on "
+                   "0069b282); PKT-171 P5 moves it into the profile")
+    def test_seventy_fragments_across_a_kill_reassemble_once(self):
+        # SCN-067: 70 fragments, beyond the old 64-fragment reassembly
+        # ceiling, with the receiver killed after 35.
+        self.kill_across_family(70, 35)
+
+    def rotate(self, stop=None):
+        """`bp-node checkpoint` on the stopped receiver; with STOP, the
+        developer cut stops it there and the test kills it with SIGKILL."""
+        env = dict(self.env)
+        if stop:
+            env["FN_BP_ROTATION_TEST_STOP"] = stop
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "bp-node", "checkpoint",
+             str(self.journal), "dtn://receiver/"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        if not stop:
+            out, err = process.communicate(timeout=120)
+            self.assertEqual(process.returncode, 0, (out, err))
+            return out
+        marker = b"BP journal rotation stopped at=" + stop.encode()
+        seen = b""
+        deadline = time.monotonic() + 120
+        while marker not in seen and time.monotonic() < deadline:
+            ready, _, _ = select.select([process.stdout], [], [], 1)
+            if ready:
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                seen += chunk
+        self.assertIn(marker, seen, seen)
+        process.kill()
+        process.wait(timeout=15)
+        process.stdout.close()
+        process.stderr.close()
+        return seen
+
+    def recovered_held(self):
+        reopened = self.invoke(
+            "bp-node", "dispatch", self.journal, self.store,
+            self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
+            "dtn://receiver/", "native-policy", "dtn://receiver/",
+            "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
+        )
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        for line in reopened.stdout.splitlines():
+            if line.startswith(b"BP FNBS recovered held="):
+                return int(line.split(b"=", 1)[1])
+        self.fail(reopened.stdout)
+
+    def test_rotation_with_a_family_in_flight_loses_no_fragment(self):
+        # N16 under load (item 5): seven of eight fragments are held when
+        # the journal rotates, killed after the rename, killed inside the
+        # retirement program, then clean.  Every reopen recovers the seven;
+        # the offset-zero fragment then completes the family once.
+        fragments = self.author_fragments(8)
+        first, port = self.start_receiver(once=False)
+        for number in range(7, 0, -1):
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        first.terminate()
+        out, err = first.communicate(timeout=120)
+        self.assertNotIn(b"BP fragment family durable", out)
+        self.assertEqual(self.recovered_held(), 7)
+        for stop in ("replace", "retire-2"):
+            self.rotate(stop)
+            self.assertEqual(self.recovered_held(), 7, stop)
+        out = self.rotate()
+        self.assertIn(b"BP journal generation retired name=lifecycle", out)
+        self.assertEqual(self.recovered_held(), 7)
+        self.assertFalse((self.journal / "lifecycle").exists())
+        last, port = self.start_receiver()
+        sent = self.send_fragment(port, fragments[0], 0)
+        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        out, err = last.communicate(timeout=300)
+        self.assertEqual(last.returncode, 0, (out, err))
+        self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
+        self.assertEqual(out.count(b"BP application handoff durable"), 1,
+                         (out, err))
+        self.assertEqual(self.article_count(), 1)
 
 if __name__ == "__main__":
     unittest.main()

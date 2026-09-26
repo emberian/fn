@@ -192,6 +192,9 @@
 (defun fn-native-operator-host-result-status-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status-control-path-octets result))
+(defun fn-native-operator-host-result-health-min-percent (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-health-min-percent result))
 
 ;; PKT-096 and PKT-097.
 (defun fn-native-operator-host-preflight-needs-config-path-p (result)
@@ -217,3 +220,23 @@
 (defun fn-native-operator-host-result-show-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-show-octets result))
+
+(defun fn-native-operator-host-store-outcome (result observed)
+  (declare (xargs :mode :program))
+  (fn-native-operator-store-outcome result observed))
+
+(defun fn-native-operator-host-result-hint (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-hint result))
+
+(defun fn-native-operator-host-result-snapshot-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-snapshot-path-octets result))
+
+(defun fn-native-operator-host-snapshot-loss (snap cur)
+  (declare (xargs :mode :program))
+  (fn-native-operator-snapshot-loss snap cur))
+
+(defun fn-native-operator-host-snapshot-loss-report (verdict nsnap ncur)
+  (declare (xargs :mode :program))
+  (fn-native-operator-snapshot-loss-report verdict nsnap ncur))

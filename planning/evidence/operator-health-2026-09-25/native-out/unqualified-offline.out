@@ -1,0 +1,9 @@
+health exit=22 state=unqualified-profile
+fenced clear
+exhausted clear
+unqualified-profile held format=8 development
+space-pressure clear
+no-route clear
+stranded-transfer unobserved (no running owner: the feed table lives in the owner)
+unavailable-peer unobserved (no running owner: the feed table lives in the owner)
+receipt-debt clear

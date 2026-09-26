@@ -1,0 +1,92 @@
+{
+ "after-fsync:1": {
+  "article_after": [
+   "ARTICLE <cut-after-fsync-1-1@example.invalid>",
+   "ARTICLE <cut-after-fsync-1-0@example.invalid>"
+  ],
+  "counts": {
+   "<cut-after-fsync-1-0@example.invalid>": 1,
+   "<cut-after-fsync-1-1@example.invalid>": 1
+  },
+  "newnews_after": [
+   "NEWNEWS fn.* 20260925 004310 GMT"
+  ],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=clear"
+  ]
+ },
+ "after-fsync:2": {
+  "article_after": [],
+  "counts": {
+   "<cut-after-fsync-2-0@example.invalid>": 1,
+   "<cut-after-fsync-2-1@example.invalid>": 1
+  },
+  "newnews_after": [
+   "NEWNEWS fn.* 20260926 004329 GMT"
+  ],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=clear"
+  ]
+ },
+ "after-write:1": {
+  "article_after": [
+   "ARTICLE <cut-after-write-1-1@example.invalid>",
+   "ARTICLE <cut-after-write-1-0@example.invalid>"
+  ],
+  "counts": {
+   "<cut-after-write-1-0@example.invalid>": 1,
+   "<cut-after-write-1-1@example.invalid>": 1
+  },
+  "newnews_after": [
+   "NEWNEWS fn.* 20260925 004303 GMT"
+  ],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=clear"
+  ]
+ },
+ "after-write:2": {
+  "article_after": [],
+  "counts": {
+   "<cut-after-write-2-0@example.invalid>": 1,
+   "<cut-after-write-2-1@example.invalid>": 1
+  },
+  "newnews_after": [
+   "NEWNEWS fn.* 20260926 004322 GMT"
+  ],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=clear"
+  ]
+ },
+ "before-write:1": {
+  "article_after": [
+   "ARTICLE <cut-before-write-1-1@example.invalid>",
+   "ARTICLE <cut-before-write-1-0@example.invalid>"
+  ],
+  "counts": {
+   "<cut-before-write-1-0@example.invalid>": 1,
+   "<cut-before-write-1-1@example.invalid>": 1
+  },
+  "newnews_after": [
+   "NEWNEWS fn.* 20260925 004257 GMT"
+  ],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=clear"
+  ]
+ },
+ "before-write:2": {
+  "article_after": [],
+  "counts": {
+   "<cut-before-write-2-0@example.invalid>": 1,
+   "<cut-before-write-2-1@example.invalid>": 1
+  },
+  "newnews_after": [
+   "NEWNEWS fn.* 20260925 004316 GMT"
+  ],
+  "pull_lines": [
+   "pull peer=A round=done cursor=advanced transport=clear"
+  ]
+ },
+ "core_sha256": "f6110023bb69fdde749d512827936bbc9d1c4699cdfc16909593144265c19f92",
+ "image_sha256": "8f082d7bcd98779e8327e297a6f380ebe1694795b1f5ef6c7ccbfd20ae16f6ea",
+ "kind": "cursor-cuts"
+}

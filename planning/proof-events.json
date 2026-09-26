@@ -3187,7 +3187,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cverb-pack-fits-the-profile-budget"
+          "name": "fn-cverb-pack-fits-the-disk"
         },
         {
           "kind": "theorem",
@@ -4597,11 +4597,60 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpfs-canvas-of-extents"
+          "name": "fn-bpfs-views-of-cut"
+        }
+      ]
+    },
+    {
+      "id": "PRF-121",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-reassemble-is-spec"
         },
         {
           "kind": "theorem",
-          "name": "fn-bpfs-views-of-cut"
+          "name": "fn-bpf-reassemble-is-capped-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-exact-canvas-reassembles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-uncapped"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-fragment-query-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-memo-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-plan-at-of-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-sweep-is-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-cell-at-of-sort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfw-sortedp-of-sort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-apply-conserves-jobs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-family-events-keep-jobs-agreeing"
         }
       ]
     },
@@ -4738,6 +4787,402 @@
         {
           "kind": "theorem",
           "name": "fn-sr-a-signed-retry-is-already-stored"
+        }
+      ]
+    },
+    {
+      "id": "PRF-122",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-pinned-xpat-range-is-the-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nss-hits-are-the-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nss-withdrawn-number-is-never-a-hit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-116",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-scan-page-contract"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cp-ack-writes-only-a-forward-declaration-in-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cp-ack-after-its-commit-is-a-no-op"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-is-a-page-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-is-the-index-window-scan-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-scope-entry-position-is-natural"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-ack-is-the-kernel-ack-unfolds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-120",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-step-delegates-every-other-event",
+          "note": "The named equation: host/native/bp-service.lisp fnn-bps-foundation-step calls fn-bpnj-step, which is fn-bpnp-step on every event but :contact-job, :job-result and an unnamed base transport result, so every keystone over fn-bpnp-step is a fact about the called step on those events."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-offers-while-a-ready-job-remains",
+          "note": "KEYSTONE (no starvation). Over fn-bpnj-contact-next (asked by fnn-bpc-drive-contact and fnn-bpnode-send-receipts before every offer): with the gate open and the job KEY names ready (queued for the peer, not offered on this contact, routed on its durable route), the answer is an offer, whatever is held or already offered ahead of it. Teeth: tests/acl2/bp-node-job-offer-tests (older job route-changed: the previous driver answers :held, this one offers the younger job; older job already offered: the previous driver closes; without readiness :held; without the gate :close)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-offer-starts-the-ready-job",
+          "note": "KEYSTONE. The offer's event, through fn-bpnj-step, persists exactly the selected job's :attempting record and owes the :cl-send of its durable route, peer, key and wire; the job is ready. Teeth: the reachable offer (token 2, route port 4556); the same event at the pending state answers nothing."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-job-step-preserves-the-base-invariants",
+          "note": "The new arm keeps the base machine invariant and the lifecycle (pending authorization) invariant."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-step-preserves-guard-premises",
+          "note": "KEYSTONE (maintained relation). fn-bpnj-step keeps fn-bpnp-step-guard-premisesp over every host event fn-bpnj-host-eventp admits (with the state a true list, as every constructor makes it)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-new-arms-preserve-the-lifecycle-invariant",
+          "note": "The :contact-job and :job-result arms preserve fn-bpn-lifecycle-invariantp of the base."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-stale-job-result-settles-nothing",
+          "note": "KEYSTONE (stale callback). A :job-result whose token is not the job's current attempt token answers only (:job-result-stale KEY TOKEN) and leaves the state unchanged. Teeth: token 1 against the attempt token 2; the queued state before the offer."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-named-result-is-the-transport-outcome",
+          "note": "KEYSTONE. The current attempt's result proposes :finished (success effect :transport :forwarded) for :accepted and :requeued (success :transport :attempted and :forward-refused, never :forwarded) otherwise. Teeth: both arms at the reachable attempting state."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-step-forwarded-needs-a-durable-finished-record",
+          "note": "KEYSTONE (sent means completed and durable). Over fn-bpnj-step on a base event with the lifecycle invariant: an effect reporting :transport ... :forwarded is answered only to (:persist-result TOKEN :durable) of the pending :finished record of an :attempting job. A queued report intent and a queued job are not sent. Teeth: the durable :finished record reports :forwarded; the same record answered :refused does not."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-encoder-refusal-settles-the-pending-record",
+          "note": "KEYSTONE (encoder refusal). A :refused answer to the pending record clears it, leaves the base unfenced and the jobs unchanged, and answers exactly its refusal effect; the host answers :refused when ACL2's lifecycle frame encoder refuses (fnn-bps-persist-record). Teeth: the refused :finished record; the :uncertain answer fences instead."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-host-refuses-an-unnamed-transport-result",
+          "note": "The host's event check refuses a base :forward-result that names no attempt, so fn-bpnj-step's unnamed arm is unreachable in composition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact",
+          "note": "KEYSTONE (conditional progress, A-BP-CONTACT). With the contact sustaining fn-assume-bp-contact-asks asks, the job KEY ready with a stable prefix of keys at or ahead of it in every asked state, and that prefix no longer than the asks, the host's first ask (fn-bpnj-contact-next) is answered with an offer and the contact offers KEY. Proved through the lemma fn-bpnj-contact-offers-a-ready-job-within-its-prefix. Teeth: two asks offer KEY2 after KEY1; one ask does not; a pending second state breaks readiness."
+        }
+      ]
+    },
+    {
+      "id": "PRF-125",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-credentials-wait-for-tls-and-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-refuses-a-clear-credential-without-the-lab-exception"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-journal-is-the-cursor-at-every-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-begin-ready-is-the-round-after-the-greeting"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-begin-ready-cursor-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-session-obs-is-the-machine-over-its-trace"
+        }
+      ]
+    },
+    {
+      "id": "PRF-119",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-decodes-to-the-tombstoned-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-keep-the-summary-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-a-reclaimed-event-stays-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-idempotent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-never-touch-a-held-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-keep-every-other-kind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-freed-octets-account"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-freed-is-the-admission-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-decide-publishes-the-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-keep-forever-writes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-reclaim-is-the-reclaim-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-reclaim-action-is-only-store-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-rewritten-charge-is-the-history-unit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-freed-charge-account"
+        }
+      ]
+    },
+    {
+      "id": "PRF-129",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smr-admission-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-prepare-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-article-verdict-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-reserve-admits-the-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-admission-is-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-roomp-antitone-in-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-roomp-is-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-admitted-profile-starts-reserved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-profile-upgrade-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-pack-fits-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-pack-fits-the-disk"
+        }
+      ]
+    },
+    {
+      "id": "PRF-112",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-first-held-monotone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-pressedp-monotone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-live-report-is-the-store-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-fence-of-route"
+        }
+      ]
+    },
+    {
+      "id": "PRF-126",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-encode-producer-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-encode-producer-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-admits-every-producer-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-an-article-record-within-its-ceiling"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-staged-record-fits-the-producer-ceiling"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-article-record-charge-and-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-figure-bounds-the-producer-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history-at-producer-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-impl-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-decode-extends-format-2"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-encode-impl-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-v2-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-host-frontier-frame-is-concrete-codec"
+        }
+      ]
+    },
+    {
+      "id": "PRF-130",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-absent-store-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-store-outcome-passes-a-present-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-snapshot-loss-counts-the-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-mode-stream-refusal-stops-the-dial"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-dial-allowedp-of-put-other"
+        }
+      ]
+    },
+    {
+      "id": "PRF-128",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-refused-channel-takes-no-custody",
+          "note": "KEYSTONE (D23 custody). Over fn-bpaj-admitted-receive-event, the receive decision host/native/bp-service.lisp fnn-bps-receive calls with the admission answer: an answer of fn-bpaj-tcpcl-ingress-result that is not :admitted gives exactly (:refused REASON), REASON the admission's own, and never :ready, so fnn-bps-foundation-step is never asked and no kind-5 custody is taken. Teeth: tests/acl2/bp-channel-ingress-tests (two boundaries on one listener: (:refused :ambiguous-peer), not :ready; no trust profile: (:refused :no-trust-profile); hypothesis removal: the admitted neighbour's answer is :ready; labelled mutation witness: the anonymous ingress handed straight to the receive boundary, the pre-PRF-128 host, is :ready)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-admitted-channel-receives-under-its-ingress",
+          "note": "KEYSTONE (the admitted half). An admitted channel's bundle is decided by the unchanged fn-bpnf-receive-wire-event under the admitted ingress. Teeth: the allowlisted neighbour 'peer' on its own listener is :ready, its event's ingress names 'peer', and fn-bpnf-step on it proposes kind-5 :persist; hypothesis removal: over the refused (ambiguous) channel the answer differs from the receive boundary's answer on the anonymous ingress."
         }
       ]
     },

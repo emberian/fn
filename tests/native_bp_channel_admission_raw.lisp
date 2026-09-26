@@ -8,7 +8,8 @@
 (defvar *admission-answer* nil)
 (defvar *calls* nil)
 (defun fnn-tclc-session (conn) (declare (ignore conn)) :session)
-(defun fnn-bps-state (service) (declare (ignore service)) :fnbs)
+;; Since ec35b0d5 the caller passes the FNBS state itself (bp-node's live
+;; state, or the initial state for bp-app receive): :fnbs stands for it.
 (defun fnn-core (name &rest arguments)
   (case name
     (fn-tcl-session-negotiated
@@ -36,7 +37,7 @@
                  (112 101 101 114) 9)))
   (setq *admission-answer* (list :admitted nil ingress)
         *calls* nil)
-  (assert (equal (fnn-bps-tcpcl-ingress :service :conn 3 4 :owner channel)
+  (assert (equal (fnn-bps-tcpcl-ingress :fnbs :conn 3 4 :owner channel)
                  ingress))
   (assert (equal (reverse *calls*)
                  (list (cons :admission
@@ -46,7 +47,7 @@
                                        '(:dtn 47 47 111 116 104 101 114 47)
                                        nil 0))
         *calls* nil)
-  (assert (equal (fnn-bps-tcpcl-ingress :service :conn 3 4 :owner channel)
+  (assert (equal (fnn-bps-tcpcl-ingress :fnbs :conn 3 4 :owner channel)
                  (third *admission-answer*)))
   (assert (equal (reverse *calls*)
                  (list (cons :admission

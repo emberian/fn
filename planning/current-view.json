@@ -265,9 +265,10 @@
       "name": "bundles across an outage",
       "contract": "After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.",
       "host": {
-        "function": "fn-bpnp-step",
+        "function": "fn-bpnj-step",
         "file": "host/native/bp-service.lisp"
       },
+      "bridge": "fn-bpnj-step-delegates-every-other-event",
       "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
       "tested": {
         "image": "c3420013",
@@ -299,12 +300,12 @@
     {
       "id": "M5",
       "name": "maintenance: operator compaction",
-      "contract": "`operator CONFIG store compact` is decided in ACL2: the pack it writes fits the profile's temporary-space budget, and a reclaim keeps the reconstructed history.",
+      "contract": "`operator CONFIG store compact` is decided in ACL2: the pack it writes fits the free space the host observes on the store's filesystem (PKT-169), and a reclaim keeps the reconstructed history.",
       "host": {
         "function": "fn-cverb-decide",
         "file": "host/checkpoint-host.lisp"
       },
-      "keystone": "fn-cverb-pack-fits-the-profile-budget",
+      "keystone": "fn-cverb-pack-fits-the-disk",
       "tested": {
         "record": "planning/evidence/m5-compact-verb-2026-09-24.md",
         "source": "5181e0ea",
