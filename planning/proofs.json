@@ -5110,6 +5110,61 @@
         "fn-bpnpf-row-past-the-profile-is-named",
         "fn-bpnpf-replay-past-the-profile-is-refused"
       ]
+    },
+    {
+      "id": "PRF-134",
+      "title": "A BP node's ADU octets and bundle octets are the operator's profile, the held image's bound is its held octets, and the ADU, bundle and held-image codecs are widths that never cap below a profile",
+      "statement": "books/bp-node-profile.lisp: profile 2 is (ROWS OCTETS ADU BUNDLE), each a machine limit (1..2^24). fnn-bps-open reads bp-node-profile through fn-bpnpf-profile-read. fn-bpnpf-profile-read-of-octets: every valid profile 2 written by fn-bpnpf-profile-octets reads back as exactly itself. fn-bpnpf-profile-read-of-format-1: a format-1 frame of a valid (ROWS OCTETS) reads as (ROWS OCTETS 65538 1048576), and no file is the default. fn-bpnpf-profile-read-is-valid. fn-bpnpf-profile-write-never-lowers: a write bp-node profile publishes (fn-bpnpf-profile-write-octets) reads back as written and raises or keeps each of the four fields. books/bp-node-profile-admission.lisp: host/native/bp-service.lisp fnn-bps-receive calls fn-bpnpf-admitted-receive-event with the profile in force. fn-bpnpf-admission-within-profile-is-the-channel-answer: with a valid profile, a wire within the bundle octets and (if :ready) a bundle whose ADU (a fragment's total ADU length) is within the ADU octets, the answer is fn-bpaj-admitted-receive-event's (PRF-128). fn-bpnpf-admission-ready-is-within-profile: a :ready answer has a valid profile, a wire within its bundle octets, an ADU within its ADU octets, and is the channel answer. fn-bpnpf-admission-refuses-beyond-the-profile: on an admitted channel, a wire past the bundle octets is (:refused :bundle-beyond-profile) and a :ready bundle whose ADU is past the ADU octets is (:refused :adu-beyond-profile). fn-bpnpf-profile-within-codec-widths: every profile field is within its codec's width (*fn-bpa-max-octets*, *fn-bpb-max-data*, *fn-bpb-max-input*, *fn-bpnf-max-held-image* = 2^24; *fn-bpn-lifecycle-max-payload* = 2^24 + 3072). books/bp-node-profile-replay.lisp: fn-bpnpf-replay-past-the-octets-is-refused: after any prefix replaying :ready, a well-formed received row whose image does not fit the profile's held octets beside the held rows makes fn-bpnf-family-replay-rows-aux over the whole journal (:fault :held-beyond-profile). books/bp-adu.lisp: the ADU's fields are record items (fn-record-item-encode: the generic CBOR bytes at or below 65,535 octets), the article width is *fn-bpa-max-article* = 2^24 - 2106, and fn-bpa-round-trip and fn-bpa-encoding-bound hold at that width (their statements unchanged). books/bp-limits.lisp: fn-bpn-limits-compose-at-the-codec-widths replaces fn-bpn-limits-compose. fn-bpfw-reassemble-is-spec (PRF-121) is unchanged. Scope: the sender machine's job image stays the plain :blob (131,072); decoding a held family image at replay is one step linear in its octets, not a resumable quantum (PKT-294).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "depends_on": [
+        "PRF-121",
+        "PRF-128",
+        "PRF-131"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-profile.lisp",
+        "books/bp-node-profile-admission.lisp",
+        "books/bp-node-profile-replay.lisp",
+        "books/bp-adu.lisp",
+        "books/bp-bundle.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-machine-codec.lisp",
+        "books/bp-fnbs-codec.lisp",
+        "books/bp-fnbs-family-codec.lisp",
+        "books/bp-limits.lisp",
+        "tests/acl2/bp-node-profile-tests.lisp",
+        "tests/acl2/bp-node-profile-admission-tests.lisp",
+        "tests/acl2/bp-adu-tests.lisp",
+        "tests/acl2/bp-limits-tests.lisp",
+        "host/bp-node-host.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-lifecycle-4-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-lifecycle-4 (2026-09-26, wave 2), PKT-276's codec items, PKT-294. See the record.",
+      "events": [
+        "fn-bpnpf-profile-read-of-octets",
+        "fn-bpnpf-profile-read-of-format-1",
+        "fn-bpnpf-profile-read-is-valid",
+        "fn-bpnpf-profile-write-never-lowers",
+        "fn-bpnpf-profile-within-codec-widths",
+        "fn-bpnpf-admission-within-profile-is-the-channel-answer",
+        "fn-bpnpf-admission-ready-is-within-profile",
+        "fn-bpnpf-admission-refuses-beyond-the-profile",
+        "fn-bpnpf-row-past-the-octets-is-named",
+        "fn-bpnpf-replay-past-the-octets-is-refused",
+        "fn-bpn-limits-compose-at-the-codec-widths",
+        "fn-bpa-read-encoded-fields-wide",
+        "fn-bpa-round-trip",
+        "fn-bpa-encoding-bound"
+      ]
     }
   ]
 }
