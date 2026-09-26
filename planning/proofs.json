@@ -4427,7 +4427,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "in-progress",
+      "status": "certified",
       "events": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -4439,9 +4439,10 @@
       "evidence": [
         "books/payload-arena.lisp",
         "tests/acl2/payload-arena-tests.lisp",
-        "planning/evidence/rep-wave-d-2026-09-25.md"
+        "planning/evidence/rep-wave-d-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002630Z-3094901.json"
       ],
-      "progress_note": "Lane rep-wave-d (2026-09-25): the arena and its theorems admitted; farm certification pending harvest; the host join (the seal at the served POST's finish, the handle in the record) is the model change of the record's payload field, a coordinated freeze the record's section 3 lays out."
+      "progress_note": "Lane rep-wave-d (2026-09-25): the arena and its theorems certified on persvati (run-20260926T002605Z-febf, 1.17 s and 0.77 s at two jobs). The host join (the seal at the served POST's finish, the handle in the record) is the model change of the record's payload field, a coordinated freeze the record's section 3 lays out; until it lands the served path holds the list and no representation improvement is claimed."
     }
   ]
 }
