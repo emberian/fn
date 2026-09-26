@@ -46,6 +46,7 @@ FN_ACL2=$ACL2 FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build-dtn.
 echo "== freeze"
 IMG="$ROOT/build/images/$REV"
 sh packaging/freeze-native-image.sh "$ROOT/build" "$IMG" "$FN_OPENSSL_PREFIX"
+printf '%s\n' "$REV" > "$IMG/source-revision"   # `fn --version` (PKT-403)
 find books host Makefile tools/build_native_host.sh -type f \( -name '*.lisp' -o -name Makefile -o -name '*.sh' \) | sort | xargs sha256sum > "$IMG/build-source.sha256"
 run_logged build/freeze/image-validation.txt sh -c 'cd "$1" && sha256sum -c image.sha256' sh "$IMG"
 run_logged build/freeze/image-hashes.txt sha256sum "$IMG"/*.core "$IMG"/runtime/sbcl "$IMG"/openssl/lib/*.so.3 "$IMG"/lib/libsodium.so.23 "$ACL2"

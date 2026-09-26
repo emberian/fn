@@ -3466,8 +3466,37 @@ serialized profile when the saved image later starts."
   (cdr (assoc verb *fnn-verbs* :test #'string=)))
 
 
+;;; PKT-403: `fn --version' prints the source revision this image was built
+;;; from, as the installer recorded it beside the core
+;;; (packaging/install-native.sh writes libexec/fn/source-revision; the
+;;; frozen image directory carries the same file, tools/runbooks/
+;;; hbox-image-build.sh).  The word is printed only when it is a 40-digit
+;;; lowercase hex commit; anything else is an image without provenance.
+(defun fnn-source-revision ()
+  (let* ((core (and sb-ext:*core-pathname* (namestring sb-ext:*core-pathname*)))
+         (slash (and core (position #\/ core :from-end t)))
+         (path (and slash (concatenate 'string (subseq core 0 (1+ slash))
+                                       "source-revision"))))
+    (unless (and path (fnn-lstat path))
+      (fnn-refuse "this image records no source revision (no ~a)" (or path "core path")))
+    (let* ((text (string-right-trim '(#\Newline #\Return)
+                                    (fnn-octets-string
+                                     (fnn-read-regular-bounded path 128)))))
+      (unless (and (= (length text) 40)
+                   (every (lambda (c) (find c "0123456789abcdef")) text))
+        (fnn-refuse "~a is not a source revision" path))
+      text)))
+
 (defun fnn-dispatch (args)
   (flet ((need (n) (when (< (length args) n) (error 'fnn-usage-error :message "missing arguments"))))
+    ;; PKT-403: bare `fn' is `fn operator - help': ACL2's operator usage
+    ;; (books/native-operator.lisp fn-nop-help-text), never "missing arguments".
+    (when (null args)
+      (return-from fnn-dispatch (fnn-dispatch (list "operator" "-" "help"))))
+    (when (and (null (rest args))
+               (member (first args) '("--version" "version") :test #'string=))
+      (fnn-out "fn ~a" (fnn-source-revision))
+      (return-from fnn-dispatch +fnn-exit-ok+))
     (need 1)
     (let ((verb (first args)))
       (cond

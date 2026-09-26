@@ -109,6 +109,14 @@ fi
 chmod 0755 "$libdir/fn-host"
 install -m 0644 "$core" "$libdir/fn-host.core"
 install -m 0755 packaging/fn "$bindir/fn"
+# `fn --version' reads the revision beside the core (host/native/io.lisp
+# fnn-source-revision); a non-commit revision word leaves it absent.
+case $source_revision in
+  *[!0-9a-f]*) ;;
+  *) if [ "${#source_revision}" -eq 40 ]; then
+       printf '%s\n' "$source_revision" > "$libdir/source-revision"
+     fi ;;
+esac
 
 sed "s|@PREFIX@|$prefix|g" packaging/fn-native.service.in > "$sharedir/systemd/fn.service"
 sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd/net.fn.plist"

@@ -144,3 +144,11 @@
            o carry word evidence generation txid)
           (fn-own-submission-resolution-records
            o word evidence generation txid))))
+
+; PKT-400 (PRF-163): the host's carried intent (fn-icar-submission-targets,
+; what fn-owner-submission-intent calls) names the target a cancel's
+; Newsgroups selects: "out" (fn.*) for a cancel filed in control.cancel whose
+; Newsgroups is fn.letters (tests/acl2/owner-tests.lisp *own-cancel-a*).
+(assert-event (equal (fn-icar-submission-targets
+                      *own-cancel-a* (fn-icar-carry-of (fn-own-inflight *own-cancel-a*)))
+                     '("out")))
