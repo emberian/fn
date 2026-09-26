@@ -86,6 +86,7 @@
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
 (include-book "books/native-control")
+(include-book "books/native-control-reason")
 (include-book "books/native-hybrid-control")
 (include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")

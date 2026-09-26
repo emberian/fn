@@ -142,6 +142,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
 	tests/acl2/native-control-tests \
+	books/native-control-reason \
+	tests/acl2/native-control-reason-tests \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \

@@ -46,7 +46,10 @@
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (if deltas
         (fn-owner-reconfigure-deltas id deltas state)
-      (value :refused))))
+      ;; No delta for this plan over the live owner's tables: the reason
+      ;; slot says so, never a previous request's reason (PKT-453 (a)).
+      (let ((state (f-put-global 'fn-owner-config-reason :no-delta state)))
+        (value :refused)))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))

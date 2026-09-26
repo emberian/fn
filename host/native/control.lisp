@@ -138,6 +138,9 @@ unlinked; the lease is released before the verb runs."
             ;; (`fn-native-live-status-host-answer').
             ((and (consp status) (eq (first status) :live-status-reply))
              (second status))
+            ((and (consp status) (eq (first status) :reasoned-reply))
+             (fnn-core 'fn-native-control-host-reasoned-reply-encode
+                       (second status) (third status)))
             ((and (consp status) (eq (first status) :topic-reply))
              (fnn-core 'fn-native-control-host-topic-reply-encode
                        (second status)))
@@ -322,18 +325,33 @@ transition."
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))
          (maximum (fnn-control-state-read-maximum control))
+         ;; PKT-453 (a): a frame of the reasoned kinds (13, 17) is answered
+         ;; with the reasoned reply however its handling ends; ACL2 says
+         ;; which (fn-native-control-reasoned-framep).
+         (reasoned nil)
          (status
            (handler-case
                (let* ((frame (prog1 (fnn-control-read-frame socket maximum)
                                (fnn-control-answering control socket)))
+                      (frame-list (and (typep frame 'fnn-octets)
+                                       (fnn-octet-list frame)))
+                      (reasoned-frame
+                        (and frame-list
+                             (setq reasoned
+                                   (fnn-core 'fn-native-control-host-reasoned-framep
+                                             frame-list))))
                       (request
-                        (and (typep frame 'fnn-octets)
-                             (fnn-core 'fn-native-control-host-request-decode
-                                       (fnn-octet-list frame))))
+                        (and frame-list
+                             (fnn-core (if reasoned-frame
+                                           'fn-native-control-host-reasoned-request-decode
+                                         'fn-native-control-host-request-decode)
+                                       frame-list)))
                       (admin
-                        (and (typep frame 'fnn-octets)
-                             (fnn-core 'fn-native-control-host-admin-decode
-                                       (fnn-octet-list frame))))
+                        (and frame-list
+                             (fnn-core (if reasoned-frame
+                                           'fn-native-control-host-reasoned-admin-decode
+                                         'fn-native-control-host-admin-decode)
+                                       frame-list)))
                       (topic
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-topic-request-decode
@@ -413,15 +431,26 @@ transition."
     ;; A peer that disappears here creates no uncertainty for the owner: the
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
-    (fnn-control-test-after-submit
-     (if (and (consp status) (eq (first status) :live-status-reply))
-         nil
-     (if (and (consp status)
-              (member (first status)
-                      '(:topic-reply :consumer-reply :consumer-poll-reply
-                        :consumer-status-reply)))
-         (second status) status)))
-    (fnn-control-send-reply socket status)))
+    ;; An owner decision that named its reason answers (:reason STATUS
+    ;; REASON) (host/native/owner.lisp fnn-owner-control-submit-serialized,
+    ;; host/native/admin.lisp fnn-owner-live-admin-serialized); a reasoned
+    ;; frame gets the reasoned reply (reason nil is ACL2's NONE), any other
+    ;; frame the plain status an old client parses.
+    (let ((reason nil))
+      (when (and (consp status) (eq (first status) :reason))
+        (setq reason (third status) status (second status)))
+      (fnn-control-test-after-submit
+       (if (and (consp status) (eq (first status) :live-status-reply))
+           nil
+       (if (and (consp status)
+                (member (first status)
+                        '(:topic-reply :consumer-reply :consumer-poll-reply
+                          :consumer-status-reply)))
+           (second status) status)))
+      (fnn-control-send-reply socket
+                              (if (and reasoned (keywordp status))
+                                  (list :reasoned-reply status reason)
+                                status)))))
 
 (defun fnn-control-client-done (control socket)
   (fnn-with-control (control)
@@ -619,35 +648,67 @@ transition."
 (defun fnn-control-transport-outcome (stage)
   (fnn-core 'fn-native-control-host-transport-outcome stage))
 
-(defun fnn-control-admin (path-octets argv)
-  "Send one ACL2-bounded administrative vector to the live owner."
-  (let ((request-list
-          (fnn-core 'fn-native-control-host-admin-encode argv))
-        (socket nil) (stage :before-submission))
-    (unless (fnn-octet-list-p request-list)
-      (fnn-fault "ACL2 refused normalized live administration"))
+(defun fnn-control-exchange (path request-list)
+  "One connection: send REQUEST-LIST's octets, read the one reply frame.
+Answers (values FRAME STAGE): FRAME the reply octets or NIL, STAGE the
+transport stage reached (fn-native-control-transport-outcome's input)."
+  (let ((socket nil) (stage :before-submission))
     (unwind-protect
          (handler-case
              (progn
-               (setq socket (fnn-control-connect
-                             (fnn-octets-string path-octets)))
+               (setq socket (fnn-control-connect path))
                (let ((fd (fnn-socket-fd socket)))
+                 ;; Any failure from here may follow a partial write.
                  (setq stage :after-submission)
                  (fnn-send-all fd (fnn-octets request-list)
                                +fnn-control-io-seconds+)
                  (sb-bsd-sockets:socket-shutdown socket :direction :output)
-                 (let* ((frame (fnn-control-read-frame
-                                socket (fnn-core
-                                        'fn-native-control-host-max-frame)))
-                        (status (and (typep frame 'fnn-octets)
-                                     (fnn-core
-                                      'fn-native-control-host-reply-decode
-                                      (fnn-octet-list frame)))))
-                   (if (member status (fnn-core 'fn-native-control-host-statuses))
-                       status
-                     (fnn-control-transport-outcome stage)))))
-           (error () (fnn-control-transport-outcome stage)))
+                 (let ((frame (fnn-control-read-frame
+                               socket (fnn-core 'fn-native-control-host-max-frame))))
+                   (values (and (typep frame 'fnn-octets) frame) stage))))
+           (error () (values nil stage)))
       (when socket (fnn-socket-shut socket)))))
+
+(defun fnn-control-plain-status (frame stage)
+  (let ((status (and frame
+                     (fnn-core 'fn-native-control-host-reply-decode
+                               (fnn-octet-list frame)))))
+    (if (member status (fnn-core 'fn-native-control-host-statuses))
+        status
+      (fnn-control-transport-outcome stage))))
+
+(defun fnn-control-reasoned-exchange (path reasoned-list plain-thunk)
+  "PKT-453 (a): ask with the reasoned request; answer (values STATUS WORD).
+
+ACL2 reads the reply and names the step (fn-native-control-reasoned-client-
+step): the owner's status and reason word; a resend of the plain request once,
+when an old owner refused the reasoned frame it could not decode (it acted on
+nothing); or the transport outcome of the stage reached.  WORD is ACL2's
+octets, or NIL.  PLAIN-THUNK encodes the plain request, only for a resend."
+  (multiple-value-bind (frame stage) (fnn-control-exchange path reasoned-list)
+    (let ((step (if frame
+                    (fnn-core 'fn-native-control-host-reasoned-client-step
+                              (fnn-octet-list frame))
+                  '(:transport))))
+      (case (first step)
+        (:status (values (second step) (third step)))
+        (:resend (multiple-value-bind (plain plain-stage)
+                     (let ((plain (funcall plain-thunk)))
+                       (unless (fnn-octet-list-p plain)
+                         (fnn-fault "ACL2 refused the plain control request"))
+                       (fnn-control-exchange path plain))
+                   (values (fnn-control-plain-status plain plain-stage) nil)))
+        (t (values (fnn-control-transport-outcome stage) nil))))))
+
+(defun fnn-control-admin (path-octets argv)
+  "Send one ACL2-bounded administrative vector to the live owner.
+Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
+  (let ((reasoned (fnn-core 'fn-native-control-host-reasoned-admin-encode argv)))
+    (unless (fnn-octet-list-p reasoned)
+      (fnn-fault "ACL2 refused normalized live administration"))
+    (fnn-control-reasoned-exchange
+     (fnn-octets-string path-octets) reasoned
+     (lambda () (fnn-core 'fn-native-control-host-admin-encode argv)))))
 
 (defun fnn-control-topic-local (path-octets operation sequence quota)
   "Send an ACL2-framed local topic operation to the authenticated owner."
@@ -773,42 +834,22 @@ transition."
       (when socket (fnn-socket-shut socket)))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)
-  "Submit one exact bounded file; return ACL2's status keyword."
+  "Submit one exact bounded file; answer (values STATUS WORD), ACL2's status
+keyword and its reason word (PKT-453 (a))."
   (let* ((path (fnn-octets-string path-octets))
          (payload-path (fnn-octets-string payload-path-octets))
          (maximum-article (fnn-core 'fn-native-control-host-max-article))
          (article (fnn-read-regular-bounded payload-path maximum-article))
-         (request-list
-           (fnn-core 'fn-native-control-host-request-encode
-                     (fnn-octet-list msgid-octets)
-                     (mapcar #'fnn-octet-list group-octets)
-                     (fnn-octet-list article))))
-    (unless (fnn-octet-list-p request-list)
+         (fields (list (fnn-octet-list msgid-octets)
+                       (mapcar #'fnn-octet-list group-octets)
+                       (fnn-octet-list article)))
+         (reasoned (apply #'fnn-core
+                          'fn-native-control-host-reasoned-request-encode fields)))
+    (unless (fnn-octet-list-p reasoned)
       (fnn-fault "ACL2 refused normalized control submission"))
-    (let ((socket nil) (stage :before-submission))
-      (unwind-protect
-           (handler-case
-               (progn
-                 (setq socket (fnn-control-connect path))
-                 (let ((fd (fnn-socket-fd socket)))
-                   ;; Any failure from here may follow a partial write.
-                   (setq stage :after-submission)
-                   (fnn-send-all fd (fnn-octets request-list)
-                                 +fnn-control-io-seconds+)
-                   (sb-bsd-sockets:socket-shutdown socket :direction :output)
-                   (let* ((frame
-                            (fnn-control-read-frame
-                             socket (fnn-core 'fn-native-control-host-max-frame)))
-                          (status
-                            (and (typep frame 'fnn-octets)
-                                 (fnn-core 'fn-native-control-host-reply-decode
-                                           (fnn-octet-list frame)))))
-                     (if (member status
-                                 (fnn-core 'fn-native-control-host-statuses))
-                         status
-                       (fnn-control-transport-outcome stage)))))
-             (error () (fnn-control-transport-outcome stage)))
-        (when socket (fnn-socket-shut socket))))))
+    (fnn-control-reasoned-exchange
+     path reasoned
+     (lambda () (apply #'fnn-core 'fn-native-control-host-request-encode fields)))))
 
 (defun fnn-control-live-status-page (path-octets kind offset)
   "Ask the owner for one page of report KIND from OFFSET.
