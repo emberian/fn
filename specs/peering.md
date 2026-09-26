@@ -1575,9 +1575,29 @@ the statement changes what the open does with it
 (`fn-ks-reopen-is-blind-to-later-configuration`), and the cut still completes
 as the uninterrupted acceptance would
 (`fn-ks-recorded-recovery-completes-the-cut`). Re-evaluation under today's
-grants is an explicit act (a new statement), never a restart. The selection
-is `*fn-ks-reopen-policy*` (`:recorded`; `:current` restores the old
-behaviour), a one-line switch.
+grants is an explicit act (a new statement), never a restart. The reopen is
+recorded by definition (`fn-ks-statement-rows`, which the host's
+`fn-owner-key-statement-rows` calls): no supported switch restores the old
+behaviour, which survives only as a counterexample fixture in
+`tests/acl2/key-statements-tests.lisp`. A statement the node accepted whose
+key change was cut before its effect finishes at the restart under its
+original admission context, the configuration at its txid, even when a later
+record revoked the grant it was accepted under
+(`fn-ks-accepted-statement-finishes-under-its-admission-context`, PRF-140).
+
+The reconstruction reads exactly the configuration journal the open installs
+(`fn-sn-config-history`): every configuration record from the first, in
+sequence, or the open faults (`:config-sequence` in `fn-cpr-loop`). No
+transition removes a configuration record (checkpoint, compaction and
+reclaim write none), and the profile's `max-config-generations` refuses a new
+record rather than dropping an old one, so the journal prefix through any
+statement's txid is present whenever the Store opens. The replay rule is part
+of the Store format's meaning: a change to it is a format version with its
+own reader, never an edit that reinterprets records already written. An
+explicit re-evaluation under today's grants, `operator CONFIG keys redecide
+MSGID`, is specified (PKT-325) and not built: decided by ACL2 under the grants
+at the redecide's own txid, and filed as its own record, never an effect of
+open.
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
