@@ -2117,15 +2117,91 @@
 ; reconnected every 5 s and offered nothing, seven times over).
 ; `fn-own-feed-lost' below is the transition for a lost connection and is
 ; what the host calls now.
-(defun fn-own-feed-connect (o peer conn)
+;
+; FORM is the connection's transfer form (PRF-207, RFC 4644 section 2.3):
+; :ihave when this connection's MODE STREAM drew 500 or 501
+; (books/feed-connection.lisp `fn-fc-mode-unsupportedp'), anything else when
+; it streams or never asked.  The feed offers with CHECK and TAKETHIS on a
+; connection only when the peer record asks for streaming AND the form is
+; not :ihave; otherwise IHAVE (`fn-feed-offer', `fn-feed-send').  The bit is
+; set on every connect, so a later streaming connection streams again; it is
+; the only limit a connect touches, and a connect writes no FNFD record.
+(defun fn-own-feed-streaming-of (record form)
+  (declare (xargs :guard t))
+  (and (not (equal form :ihave)) (fn-cfg-peer-streamingp record) t))
+
+(defun fn-own-feed-with-streaming (f streamingp)
+  (declare (xargs :guard t))
+  (let ((l (fn-feed-limits-of f)))
+    (fn-feed-make (fn-feed-peer f)
+                  (fn-feed-limits (fn-feed-max-queue l) (fn-feed-backoff-base l)
+                                  (fn-feed-retry-bound l) streamingp)
+                  (fn-feed-queue f) (fn-feed-contact f) (fn-feed-backoff-until f)
+                  (fn-feed-conn f) (fn-feed-next-attempt f))))
+
+(defun fn-own-feed-connect (o peer conn form)
   (declare (xargs :guard t))
   (let ((e (fn-own-feed-entry-of peer (fn-own-feeds o))))
     (if (null e)
         o
       (fn-own-with-feeds
        o (fn-own-feed-put peer (fn-own-feed-entry-record e)
-                          (fn-feed-with-conn (fn-own-feed-entry-feed e) conn)
+                          (fn-feed-with-conn
+                           (fn-own-feed-with-streaming
+                            (fn-own-feed-entry-feed e)
+                            (fn-own-feed-streaming-of
+                             (fn-own-feed-entry-record e) form))
+                           conn)
                           (fn-own-feeds o))))))
+
+; KEYSTONES (PRF-207): the form reaches the wire.  After a connect in the
+; :ihave form, every offer the peer's feed emits is the IHAVE line
+; (`fn-feed-offer', which `fn-feed-tick-step' runs under the host's
+; `fn-owner-feed-tick' -> `fn-own-feed-port-tick-peer') and every transfer
+; is the bare article after 335 (`fn-feed-send', under the host's
+; `fn-owner-feed-octets'), never CHECK or TAKETHIS; after a connect in the
+; streaming form, to a peer whose record streams, the offer is CHECK.  The
+; subject is `fn-own-feed-connect', the :feed-conn arm of `fn-own-step',
+; which the host's `fn-owner-feed-connect' runs with the form ACL2 computed
+; (`fn-fc-connection-form', books/feed-connection.lisp).
+(defthm fn-own-feed-connect-in-ihave-form-offers-ihave
+  (let* ((f (fn-own-feed-entry-feed
+             (fn-own-feed-entry-of peer (fn-own-feeds (fn-own-feed-connect o peer conn :ihave)))))
+         (effects (mv-nth 1 (fn-feed-offer f msgid))))
+    (implies effects
+             (equal effects
+                    (list (list :command conn (fn-feed-ihave-line msgid))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-connect fn-feed-offer fn-feed-offer-line
+                                   fn-own-feed-with-streaming fn-feed-with-conn
+                                   fn-own-feed-streaming-of fn-own-with-feeds)
+                                  (fn-feedp fn-feed-ihave-line fn-feed-check-line)))))
+
+(defthm fn-own-feed-connect-in-ihave-form-sends-the-bare-article
+  (let* ((f (fn-own-feed-entry-feed
+             (fn-own-feed-entry-of peer (fn-own-feeds (fn-own-feed-connect o peer conn :ihave)))))
+         (effects (mv-nth 1 (fn-feed-send f msgid article))))
+    (implies effects
+             (equal effects (list (list :command conn article)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-connect fn-feed-send
+                                   fn-own-feed-with-streaming fn-feed-with-conn
+                                   fn-own-feed-streaming-of fn-own-with-feeds)
+                                  (fn-feedp fn-feed-takethis-line)))))
+
+(defthm fn-own-feed-connect-in-stream-form-offers-check
+  (let* ((e (fn-own-feed-entry-of peer (fn-own-feeds o)))
+         (f (fn-own-feed-entry-feed
+             (fn-own-feed-entry-of peer (fn-own-feeds (fn-own-feed-connect o peer conn nil)))))
+         (effects (mv-nth 1 (fn-feed-offer f msgid))))
+    (implies (and effects (fn-cfg-peer-streamingp (fn-own-feed-entry-record e)))
+             (equal effects
+                    (list (list :command conn (fn-feed-check-line msgid))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-connect fn-feed-offer fn-feed-offer-line
+                                   fn-own-feed-with-streaming fn-feed-with-conn
+                                   fn-own-feed-streaming-of fn-own-with-feeds)
+                                  (fn-feedp fn-feed-ihave-line fn-feed-check-line)))))
 
 ; The connection to one peer is gone.  The host reports the EVENT -- the
 ; socket closed, the read returned nothing, a write failed -- and the model
@@ -2544,7 +2620,7 @@
                                                    (cadddr event)
                                                    (car (cddddr event)))))
     (:feeds (fn-own-feeds-reconfigure o (cadr event)))
-    (:feed-conn (fn-own-feed-connect o (cadr event) (caddr event)))
+    (:feed-conn (fn-own-feed-connect o (cadr event) (caddr event) (cadddr event)))
     (:feed-lost (fn-own-feed-lost o (cadr event) (caddr event)))
     (:feed-replay (fn-own-feed-recover o (cadr event) (caddr event)))
     (:tick (cdr (fn-own-tick o (cadr event))))

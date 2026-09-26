@@ -7,32 +7,20 @@ makes no availability or flight-readiness claim; see
 [architecture](architecture.md) for the boundaries and
 [failures](../specs/failures.md) for what durability here assumes.
 
-Everything below is one command, `fn`, and one configuration file.
+**Installing from a release** (`fn-REV-linux-x86_64.tar.gz` or
+`fn-REV-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
+is the whole path from the download to a node others reach over TLS, and it
+names nothing outside the release. This page is the reference for the
+operator's verbs beyond it: status and health in depth, recovery, peering
+details, the measured envelope.
 
-**With only the release tarball** (`fn-REV-linux-x86_64.tar.gz`, made by
-`packaging/release-tarball.sh`), start at
-[From the release tarball](#from-the-release-tarball) and then
-[peering with a friend](peering-with-a-friend.md). The sections
-"Install", "Initialize" and "Require a login" further down describe the
-Python development service (`bin/fn --config ...`), not the tarball's
-`bin/fn`, whose verbs are `fn operator CONFIG VERB ...`.
-
-Status (2026-09-21): `bin/fn` and the workflow below describe the explicit
-**Python development service**. The production package uses the native saved
-image and the separate installation procedure below.
-The owner now certifies and runs; the earlier owner-load failure is historical.
-The [frozen two-node exercise](../planning/evidence/v0-integrated-runtime-w12-2026-09-21.md)
-records authentication and BP crash disagreements, not a passing release gate.
-
-D07 requires the eventual deployed node and CLI to run without Python. That
-native service migration is active, and the Python service described below does
-not meet its production gate. `packaging/fn-native` directly launches the
-production saved Lisp image. That image exposes the ACL2-planned operator and
-the existing public BP operations, but it is not yet a drop-in replacement for
-this operator CLI. See the
-[native migration plan](../planning/lanes/native-cli-migration.md) for the command
-parity work and [host contract](../specs/host.md#selected-production-runtime) for
-the runtime boundary.
+Everything the node runs is `bin/fn` (a shell script), the frozen launcher
+and the saved Lisp image it execs; no Python runs on a deployed node
+(D35, `tools/runpath_check.py`). Python remains for clients on other
+machines and for the tests. The sections "Install", "Initialize" and the
+per-user `~/fn-live` service further down describe the older Python
+development service (`bin/fn --config ...` in a checkout); a release has
+none of it, and its verbs are `fn operator CONFIG VERB ...`.
 
 ## Native component entry
 
@@ -130,7 +118,7 @@ A profile flag or `--profile` there is a usage error (5) whose first line
 says so:
 
 ```
-under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init
 usage operator init MISSION-FIXES-PROFILE
 ```
 
@@ -139,8 +127,9 @@ result line, so `init` with a stray word shows the full `init` grammar.
 
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
-(format `fn-store-8`, `books/byte-store-frame.lisp`) and only the offline
-upgrade raises. ACL2 fixes the relations between the fields
+(format `fn-store-8`, `books/byte-store-frame.lisp`, the one store format:
+D34) and nothing rewrites in place; a different profile is a reinstall and an
+import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
 values.
 
@@ -183,6 +172,36 @@ profile format=8 max-transactions=100000 max-history-octets=1099511627776 max-re
 headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-bound=1099511627776 charge-reserved=... charge-capacity=...
 ```
 
+**The process heap (PKT-016, HST-013).** The installed `bin/fn` gives the
+node the heap its store profile needs on this machine, and refuses a profile
+the machine cannot hold before anything runs (exit 1, on stderr
+`fn: refused machine-cannot-hold-profile heap=MB MB machine=M MB`). The
+figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp): the image, a
+64 MiB collection nursery, sixteen bytes per octet for twice the history
+bound H plus one record bound R, doubled for the collector, and two
+checkpoint buffers of three times H; the machine is the least of its physical
+memory, the cgroup's `memory.max` (Linux) and the data-size limit (`ulimit
+-d`; OpenBSD's login class). `status` and `health` end with
+`heap=MB MB profile=WORD machine=M MB`. The presets on today's image (a
+389 MB core):
+
+| preset | T | H | R | A | G | K | heap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,002 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
+| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 2,671 MB: refused on a 2 GB machine |
+| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 54,751 MB |
+| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 70 TiB: refused on every machine today (PKT-582) |
+
+`init` with no `--profile` and no field flag writes **small** on a machine
+under 4 GiB, and the D27 default elsewhere. The small preset has no
+`--profile` word yet (PKT-581); on a larger machine name its fields:
+`--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
+196608 --max-article-octets 32768 --max-groups-per-article 16
+--max-open-suffix 128`. A store outgrows its machine only through `store
+upgrade-profile`, which raises H: check the new figure with `status` before
+restarting. A checkout's `packaging/fn` takes the tests' `FN_TEST_HEAP_MB`
+instead; the installed one ignores it.
+
 Every committed transaction (an article, a retention, keyring, consumer or
 topic event) takes one of T, and its record octets count against H. The owner
 refuses the next POST once either is reached, and says so: `441 posting
@@ -196,34 +215,38 @@ the record octets it carries (each record encoded once per owner process,
 refused by name (`payload exceeds the modelled bound`). The profile cannot be
 raised by a configuration record: it bounds the work of opening the store
 (the transaction directory is enumerated up to T, the replay input up to H)
-before any configuration record is read. Raising it is an offline step on the
-existing store:
+before any configuration record is read. Raising it is a reinstall (D34, fresh
+deploys): export the store, remove it, and import the archive with the raised
+field:
 
 ```text
-fn operator /path/to/fn.toml store upgrade-profile --max-transactions 1000000
-fn operator /path/to/fn.toml store upgrade-profile scale
-fn operator /path/to/fn.toml store upgrade-profile          # format 7 -> 8, bounds unchanged
-upgraded profile=current transactions-used=7 transactions-budget=1000000 previous-budget=100000
+fn operator /path/to/fn.toml store export /srv/fn-archive
+exported records=7 configuration=1
+# stop the unit, remove the store directory, install the release
+fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
+imported records=7 configuration=1
 ```
 
-It opens the store as `recover` does, so it is refused (1, `store is already
-locked`) while an owner runs: stop the unit first. ACL2 decides
-(`fn-profile-upgrade-verdict`, `books/store-profile-upgrade.lisp`): the new
-profile must be valid and no field may shrink (`fn-profile-upgradep`); the
-same profile (`same-profile`), a shrink (`not-an-upgrade FIELD`) and a
-broken relation (by its name) are refused (1) and write nothing. With no word
-the base is the store's own profile, so the bare verb on a format-7 store (one
-written before D27) rewrites it as format 8 with every bound unchanged
-(`fn-profile-upgrade-format-7-to-8`); a format-7 store is otherwise served
-under that translation until it is upgraded. Format-6 stores are no longer
-opened. The new frame replaces `config.json` by stage, fsync, rename and
-root fsync; a death at any point leaves the old or the new profile, never a
-torn one (`fn-bs-profile-program-crash-is-old-or-new`), and an I/O error
-before the rename is a refusal (1), at or after it an uncertain outcome (3)
-that the next `status` resolves by reading whichever frame is there. The
-retention charge capacity is a different number and IS reconfigurable
-(`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
-value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940`); that command is its one repair, the only lowering the verb admits (`fn-spo-repair-verdict`, `books/store-profile-open.lisp`), and it writes nothing for any other target.
+`store export DIR` takes the store's writer lock, so it is refused (1, `store
+is already locked`) while an owner runs; DIR must not exist (`export refused
+reason=archive-exists`). The archive is a directory: `profile` (config.json's
+exact octets), `frontier`, `config/NAME` (each configuration record's
+octets), `records/NAME` (each committed record's octets, packs included, in
+sequence order) and `MANIFEST` (one `sha256  name` line per file, `sha256sum
+-c` reads it); ACL2 renders every name and the MANIFEST
+(`books/store-export.lisp`). `store import DIR [--FIELD N ...]` makes a NEW
+store: the configured store must not exist (`import refused
+reason=store-exists`); ACL2's plan (`fn-sxp-import-plan`) refuses a MANIFEST
+that does not match (`reason=manifest-mismatch NAME`), a record out of
+sequence (`reason=record-out-of-sequence N`) and a profile the codec cannot
+represent (`reason=profile REASON`), each exit 1 with nothing written; the
+store is then built beside its path, opened the ordinary way (full replay),
+and renamed into place only when that open admitted it. Fields only matter
+upward in practice (the records were committed under the old bounds, and the
+import's open refuses a history the new profile cannot hold). The retention
+charge capacity is a different number and IS reconfigurable
+(`capacity DECIMAL-UINT32`). A repeated field or a
+value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `open refused reason=max-record-octets-above-the-poll-reply: ... reinstall from the release and import`), and a store of any other format (a format-7 store, JSON metadata) likewise (`open refused reason=store-format: reinstall from the release and import`); nothing is translated or repaired in place.
 
 ### Settle a client's lost post: `store inspect`
 
@@ -456,9 +479,9 @@ accepted operator health
 | exit | state | held when | what to do |
 |---|---|---|---|
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
-| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
-| 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
-| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
+| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
+| 22 | `unqualified-profile` | the persisted profile is not format 8, or it is the development profile | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection | check the peer's host and port (`peer list`) and its reachability |
@@ -510,41 +533,109 @@ code (`fn-nh-report-exit-of-render-and-more`).
 
 ### From the release tarball
 
-`packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR` packages one
-frozen image as `fn-REV12-linux-x86_64.tar.gz` with its `.sha256`: the
-installed layout below under one directory `fn-REV12/`, carrying the SBCL
-runtime, OpenSSL 3.5 and libsodium beside the image, the operator documents
-under `share/doc/fn/`, and `SHA256SUMS` over every file. The launcher finds
-all of it relative to itself, so the directory runs wherever it is unpacked
-and needs no system OpenSSL. What a stranger runs, in order (each step's
-exact words and what it answers are in
-[peering with a friend](peering-with-a-friend.md), section 1):
+[Installing fn](install.md) is the procedure. A release is built by
+`packaging/release-tarball.sh PLATFORM REV OUT_DIR` on a machine of that
+platform, from a `git archive` of REV: it refuses unless every book in the
+default image profile's include closure is green at its digest
+(`tools/green_check.py --profile default --strict`), acquires and
+load-checks the certificates from the cache, builds and freezes the
+production image, stages it with `packaging/install-native.sh`, checks that
+no Python is on the deployed path (`tools/runpath_check.py --tree`) and that
+`bin/fn --version` prints REV, and packs `fn-REV12-PLATFORM.tar.gz` with a
+`SHA256SUMS` beside it. The tarball holds one directory `fn/`: `install.sh`,
+`bin/fn`, `libexec/fn/` (the frozen launcher, the production core,
+`source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS
+library is the system's), `share/fn/` (the service template,
+`fn.toml.example`, `docs/install.md`, `release-gate.txt` with the gate's
+lines, `runpath-check.txt`) and `SHA256SUMS` over every file.
 
-1. `sha256sum -c` the tarball's sum, unpack, `sha256sum -c SHA256SUMS`.
-2. `fn operator NODE/fn.toml mission small-community --host IP --port P`
-   writes `fn.toml` (login required, only after STARTTLS; TLS paths under
-   `NODE/tls/`). It does **not** make the TLS pair: make one with `openssl
-   req -x509 ...` whose subjectAltName is the address others dial, into the
-   two paths `fn.toml` names.
-3. `init` (a small community serves `local.general` and `local.test`),
-   `policy set path-identity NAME`, `principal set-password LOGIN
-   --posting` (the password twice, from the terminal or two lines of stdin;
-   it applies at the next start).
-4. For peering, the node's keys: `peer keygen KEYDIR` (an absolute path
-   that does not exist yet) makes the directory mode 0700 with an Ed25519
-   pair from the tarball's libsodium and an ML-DSA-65 pair from its OpenSSL
-   3.5, every file 0600, and runs `peer genesis KEYDIR`, printing the
-   principal. It refuses an existing directory. A directory made by hand
-   with an `openssl` 3.5 command, then `peer genesis KEYDIR`, is the same.
-5. `fn operator NODE/fn.toml run` under a service manager
-   (`systemd-run --user --unit NAME -p MemoryMax=8G ...` on a box without
-   root).
+**Requirements (Linux): glibc 2.36 or later**, the system's libssl (OpenSSL
+3.0 or later), x86-64, and nothing else. The glibc floor is `GLIBC_FLOOR` in
+`tools/runpath_check.py`, the one place it is set: the release build's
+runpath check refuses a bundled ELF object (the SBCL runtime, libsodium,
+libfn-mldsa65) that needs a `GLIBC_x.y` symbol version above it, and
+`tests/test_release_tarball.py` checks the tarball again. A runtime built on
+a newer glibc can need newer versions (SBCL 2.6.8's binary release needs
+`__isoc23_strtol@GLIBC_2.38`), so a Linux release is built with
+`--runtime-from DIR`, where `packaging/floor-runtime.sh SBCL SOURCE DIR`
+rebuilt the same SBCL, with its build-id, in a Debian 12 container; the
+freeze refuses that runtime unless it prints the same version and starts the
+image's core.
 
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
 --version` prints the 40-digit source revision recorded beside the image's
-core (`libexec/fn/source-revision`, written by the installer; exit 1 when
-the image records none).
+core (`libexec/fn/source-revision`; exit 1 when the image records none).
+
+### On OpenBSD (amd64, 7.9)
+
+The OpenBSD tarball, fn-REV12-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
+(`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
+run in the build VM). It carries the SBCL runtime with its one non-base
+library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
+built with the base `cc`, clang); TLS is the base system's LibreSSL. It
+needs no package: no Lisp, no Python, no OpenSSL. It is built against 7.9's
+libc and LibreSSL majors, so it runs on 7.9.
+
+Three OpenBSD rules decide where it lives and how it starts:
+
+- **W^X.** The SBCL runtime is linked `wxneeded`; OpenBSD runs it only from a
+  file system mounted `wxallowed`. The default install mounts `/usr/local`
+  that way (check with `mount | grep wxallowed`), so unpack under
+  `/usr/local`. Elsewhere it fails at start with `Cannot allocate memory`.
+- **Heap.** The launcher reserves `--dynamic-space-size 1024` (MB), not the
+  32,000 the Linux tarball inherits: OpenBSD counts the reservation against
+  the login class's `datasize` (1,536 MB for `default`, 4,096 MB for
+  `daemon`, the class rc.d uses). `SBCL_USER_ARGS="--dynamic-space-size N"`
+  overrides it per invocation.
+- **Working directory.** The image reads its working directory at start;
+  run it from a directory its user can read (`cd /var/fn`), or it halts with
+  `getcwd: Permission denied`. The rc.d script starts the node in `/var/fn`
+  itself (`daemon_execdir=/var/fn` in `packaging/fn.rc.in`); only a start by
+  hand needs the `cd`.
+
+As root, with the tarball and its sum in `/tmp`:
+
+```sh
+cd /tmp && sha256 -C fn-REV12-openbsd-amd64.tar.gz.sha256 fn-REV12-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-REV12-openbsd-amd64.tar.gz
+cd fn-REV12 && sha256 -q -c SHA256SUMS               # every file in it
+F=/usr/local/fn-REV12/bin/fn
+C=/var/fn/fn.toml
+useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
+install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
+cd /var/fn
+su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563"
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
+  -subj /CN=fnbsd.friends.fn.invalid -addext subjectAltName=IP:10.0.2.15 \
+  -keyout /var/fn/tls/key.pem -out /var/fn/tls/cert.pem
+chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
+su -s /bin/sh _fn -c "$F operator $C init"
+su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
+su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
+install -m 0555 /usr/local/fn-REV12/share/fn/rc.d/fn /etc/rc.d/fn
+rcctl enable fn && rcctl start fn
+```
+
+The base `openssl` is LibreSSL's and makes the EC pair as shown. The rc.d
+script (`packaging/fn.rc.in`, rendered with the release path) runs
+`bin/fn operator /var/fn/fn.toml run` as `_fn` from `/var/fn`, in the
+background, logging through syslog (`daemon.info`); `rcctl check fn` finds
+the SBCL process by its `--fn operator /var/fn/fn.toml run` arguments. A link
+to `bin/fn` (say `/usr/local/bin/fn`) works: the launcher follows it back
+into the release.
+
+Measured on a QEMU guest with 1 CPU and 2 GB of memory, 7.9 with no
+packages (planning/evidence/release-openbsd-2026-09-26.md): the node starts
+under rc.d, answers STARTTLS over LibreSSL (TLS 1.3), logs in, accepts a
+post and serves it on a fresh connection to a Linux client; `peer keygen`,
+`peer accept` of a Linux node's invitation and the Linux node's `peer
+confirm` of the acceptance succeed. Resident size 37 MB at start and 90 MB
+after 100 posts, with the 1,024 MB reservation. The smallest heap that
+served a post and a read on a fresh development-profile node was 288 MB;
+256 MB refuses at start (`dynamic space too small for core: 272320KiB
+required`) and 280 MB started but died in the first session, so the
+default keeps 1,024.
 
 ### Install the native production entry
 
@@ -568,7 +659,7 @@ the image and execs it with every argument, deciding nothing. An installed
 `build/fn-host`. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
 the other image verbs are as below. The spike's bash `fn` wrapper made its
 own decisions; each is now the image's (its header lists where each went:
-`mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
+`mission`, `health`, `show`, the
 SIGHUP log reopen) or is gone.
 
 The layout is `bin/fn`, `libexec/fn/fn-host`,
@@ -845,7 +936,7 @@ the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
-`init` seeds them once, and `fn operator CONFIG group create|retire`
+`init` seeds them once, and `fn operator CONFIG group create NAME` (or `group retire NAME`)
 changes them afterwards, live or offline. The
 configuration file holds only what the host needs in order to start.
 
@@ -963,34 +1054,15 @@ Two things the unit will bite you with, both learned by running it:
   looks exactly like a successful start. Run `systemctl reset-failed fn`
   before you start it again.
 
-### Without root: a user service under `~/fn-live`
+### Without root: a user service
 
-Neither farm box gives us `/usr/local/lib`, `/etc/fn` or an `fn` user, so the
-same unit is installed per-user with its four paths moved under `$HOME` and
-the `User=`, `Group=` and `Protect*`/`Private*` directives a user manager
-cannot apply removed. [`tools/live_service.py`](../tools/live_service.py)
-does that and records every command it ran:
-
-```sh
-python3 tools/live_service.py install <commit> \
-    --host persvati --node fnA --port 11190 \
-    --host hbox     --node fnB --port 11190
-python3 tools/live_service.py status --host persvati
-python3 tools/live_service.py stop   --host hbox
-```
-
-It ships the commit to `~/fn-live/fn`, installs certificates from that box's
-own cache (it never certifies — a book with no cached pair would be certified
-*inside* the service), runs `fn init` with the groups, writes a peer record
-naming the other box at `~/fn-live/peers/<name>.peer`, installs and enables
-the unit, starts it and greets it over a socket. Where a box has no user
-systemd it writes `~/fn-live/run.sh`, a `setsid` wrapper — that is **not** a
-supervised service: nothing restarts it, nothing bounds its stop, and a
-reboot loses it.
-
-`loginctl enable-linger <user>` is what keeps a user service alive after the
-last session closes; it needs an administrator, and without it the service
-stops when you log out.
+A machine where you have no root runs the release the same way under your
+own account: `sh fn/install.sh --prefix $HOME/fn --node $HOME/fn-node
+--no-service` installs it and writes the rendered unit into the node
+directory; `systemd-run --user --unit fn -p MemoryMax=8G $HOME/fn/bin/fn
+operator $HOME/fn-node/fn.toml run` runs it supervised by your user
+manager. `loginctl enable-linger <user>` (an administrator's command) keeps
+a user service alive after the last session closes.
 
 ### Reaching it from a laptop
 
@@ -1222,6 +1294,47 @@ credential file: both are read once at start-up. A login's `signing` binding
 is the exception (next section): `principal bind` and `unbind` apply to the
 running node at once.
 
+### Renew the certificate without a restart: `tls reload`
+
+The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (the
+Let's Encrypt hook, `tools/runbooks/public-node/acme/fn-cert-install.sh`)
+has replaced the two files, ask the running node to take them:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml tls reload
+```
+
+The owner builds a new context from the same two paths and serves it to
+every connection that starts after the command returns; a session already
+open keeps the certificate it handshook with until it ends. ACL2 decides
+whether to take the new pair (books/tls-reload.lisp `fn-tlsr-decide`,
+PRF-212) from what the TLS library observed: it is taken exactly when the
+chain and the key load, the key matches the chain's leaf, the host clock
+lies between the leaf's notBefore and notAfter, its subjectAltName is
+readable, and every DNS name the served certificate names is still named.
+The command prints the line of the certificate now served and exits 0; the
+service log says `tls reload accepted: tls names=... not-after=...`.
+Otherwise it is refused by name (exit 1, `refused operator tls REASON`) and
+the old certificate is still served: `chain-unreadable`, `key-unreadable`
+(an encrypted key is refused here, as at `run`), `key-mismatch`,
+`validity-malformed`, `not-yet-valid`, `expired`, `names-malformed`, or
+`names-dropped`. A certificate for a different set of names is a restart,
+not a reload: a peer that verifies this node by a name would fail its next
+handshake. Without a running owner the command reaches no one and exits
+non-zero.
+
+`status` against a running owner prints one more line after its report,
+the served certificate's names and notAfter (UTC):
+
+```
+tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
+```
+
+`tls names=none` is a leaf without DNS names (a CN-only self-signed
+certificate), `tls none` a node without `tls_cert`, and `tls unknown
+REASON` an owner that did not answer the question (an owner older than
+this command answers `owner-lacks-tls-reload`).
+
 ### Bind a login to its signing principal
 
 A signed POST is `verified` for whichever principal signed it, whatever
@@ -1234,8 +1347,8 @@ packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-log
 
 These are the native operator's verbs (`fn-host --fn operator CONFIG ...`);
 the Python `bin/fn principal` has only `new`, `list` and `set-password`. The
-native operator loads the hybrid-signature library, so it needs OpenSSL 3.5
-(`FN_OPENSSL_PREFIX`), as the node does. A later `policy set posting-policy
+native operator loads the hybrid-signature library (libsodium and
+`lib/libfn-mldsa65` beside the core), as the node does. A later `policy set posting-policy
 open` takes effect: a policy slot holds the value set last
 (`fn-cfg-set-policy-sets-the-policy`, books/config-invariants.lisp; until
 2026-09-25 the first value set stayed in force).
@@ -1338,16 +1451,27 @@ fn operator /etc/fn/fn.toml policy set exposure-idle-seconds 600
 fn operator /etc/fn/fn.toml policy set exposure-auth-failures 10
 fn operator /etc/fn/fn.toml policy set exposure-posts-per-minute 60
 fn operator /etc/fn/fn.toml policy set anonymous none
+fn operator /etc/fn/fn.toml policy set exposure-trusted 192.168.1.0/24
 ```
 
 What each does, what the client sees and the default off loopback is the
 table in `specs/nntp.md` ("Public exposure"). In short:
 
-- **Connections.** One fewer than the run's `max_connections` (32) is the
-  most sockets can hold: the last is kept for your own `policy set`, which
-  stages through the owner. Past the total a client reads `400 too many
-  connections; try again later` and is closed; past the per-address limit,
-  `400 too many connections from this address; try again later`. Under a
+- **Connections.** `exposure-connections` is the capacity: the owner holds
+  exactly that many connections at once, whatever the number (up to the
+  limit rows' width, 4,294,967,295), and it takes effect live. With no row
+  it is 31, the figure every node ran with before. Each connection is a
+  thread and its buffers, so size it to the machine (PKT-605). The
+  connection your own `policy set` stages through never counts against it.
+  Past the capacity a client reads `400 too many connections; try again
+  later` and is closed; past the per-address limit, `400 too many
+  connections from this address; try again later`.
+- **Trusted range.** `exposure-trusted` names one or more address ranges
+  (`192.168.1.0/24`, `fd00::/8`, comma-separated; `none` clears it) that
+  the per-address limit does not apply to. Behind a home router whose NAT
+  loopback hands every LAN reader the router's own address, name the LAN
+  here, or those readers share one address's allowance. The capacity, the
+  step budget and the failed-login limit still apply to them. Under a
   flood of 500 connections from one address the owner admitted 8 and sent
   the 400 to the other 492; from 50 addresses with the per-address limit at
   1, it admitted 30 and refused 470, and a fresh connection of yours got the
@@ -1375,12 +1499,15 @@ table in `specs/nntp.md` ("Public exposure"). In short:
   behaviour, and it lets an anonymous client POST if `[posting]` is
   enabled: there is no read-only anonymous level yet (PKT-405).
 
-`operator CONFIG health` prints three `exposure` lines after its eight
+`operator CONFIG health` prints four `exposure` lines after its eight
 states: `exposure pressure held|clear` (held at nine tenths of the total or
 after any refusal, wait or close in the current minute), the counts
 (`admitted`, `refused-busy`, `refused-address`, `refused-auth`, `deferred`,
-`idle-closed`, `auth-closed`) and the limits in force. They do not change
-the exit code.
+`idle-closed`, `auth-closed`), the limits in force, and `exposure capacity
+connections=N capacity=C per-address=P trusted=RANGES`, the connections
+held against the capacity, which `operator CONFIG status` also prints at the
+end of its report, before the `heap=` line. They do not change the exit
+code.
 
 Before you open the port: set `[auth] required = true` and `protected_only
 = true` and a TLS pair (see "Require a login"), choose the certificate
@@ -1446,22 +1573,27 @@ lost reply answers `281` again and binds nothing new. `account list` shows
 digest or verifier. Redeemed accounts and auth.toml's credentials together are
 bounded by the profile's `max-credentials`.
 
-## Upgrade, and what a rollback loses
+## Deploy a new release (D34: fresh deploys, no migrations)
 
-Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
-`fn.toml` whose paths point into the copy and whose listener is on loopback,
-and run the steps below against the copy with the new release's `bin/fn`.
-`packaging/upgrade-native.sh` switches a managed node's `current` release.
+A deploy is a reinstall. There is no in-place upgrade, no versioned release
+directory and no rollback of a store:
 
+```text
+fn operator NODE/fn.toml store export ARCHIVE     # only if the data must survive
+# stop the unit; remove NODE/store; install the release (one libexec/fn/, replaced whole)
+fn operator NODE/fn.toml store import ARCHIVE     # or: init
+# start the unit
 ```
-fn operator COPY/fn.toml store needs-upgrade            # needs-upgrade | current
-cp -p COPY/store/config.json KEPT/config.json.format-7  # the file a lossless rollback restores
-cp -a COPY/store SNAPSHOT/store                          # the pre-migration snapshot
-fn operator COPY/fn.toml store upgrade-profile           # format 7 -> 8, bounds unchanged
-fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise one bound
-fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
-fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
-```
+
+The store has one format (`fn-store-8`). A store of any other format is
+refused at open by name (`open refused reason=store-format: reinstall from
+the release and import`, exit 1). The archive carries the committed records,
+the configuration records, the profile and the allocation frontier; the
+store identity and consumer state are records, so they travel with them.
+Feed journals and BP spools do not: a reinstalled node re-peers. Keep the
+archive until the new node serves; it is the only copy.
+
+What an older release refuses of this store's records (facts about releases, not a rollback procedure: under D34 a deploy is a fresh install and an older release is never started over a newer store):
 
 Once an account code is redeemed on a release with accounts, releases before
 it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
@@ -1497,52 +1629,6 @@ snapshot. A store that never extended a peer after the upgrade is unaffected.
 The same holds for a checkpoint or pack directory that has published
 generation 4096 or more (the numbering is a uint32 since then): an older
 release refuses that directory.
-
-There are two rollbacks, and they are not the same:
-
-- **Restoring the kept `config.json`** (the old release reads the new
-  history under the old profile). `rollback-check KEPT` says `rollback sound
-  transactions=N` when every committed record fits the older profile and the
-  store does not require the committed-history marker; nothing is lost. It
-  refuses `history-marker-required-dropped` once the store requires the
-  marker: that requirement is never undone by a kept file.
-- **Restoring a pre-migration snapshot** (the whole store as it was).
-  **Restoring a pre-migration snapshot loses every article accepted after
-  it.** `rollback-check --snapshot SNAPSHOT` counts them. Stop the node
-  first: the verb takes both stores' shared writer locks and holds them while
-  it compares, so a running owner's store is refused (`store is already
-  locked`, 1) rather than read mid-write. It reads each store's committed
-  history the way the open does (the selected pack's records, then the
-  transaction files after it) and ACL2 compares the two record by record,
-  octet for octet (`fn-native-operator-history-loss-is-ancestry`). When the snapshot's
-  records are exactly this store's first records it answers
-
-  ```
-  rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
-  the snapshot's committed records are this store's first 11, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
-  ```
-
-  and otherwise `rollback snapshot refused snapshot-not-a-prefix` (1): the
-  snapshot is not an earlier state of this store's history, and restoring
-  it would replace that history, not shorten it. That includes a snapshot
-  from a different store whose transactions have the same numbers and the
-  same file sizes: equal counters and lengths are not the same history, and
-  the verb does not treat them as one.
-
-  What the verb does not establish: that the snapshot is the newest earlier
-  state you have, or anything about the configuration history, retention
-  releases or peer state a restore also brings back; and a store-local
-  comparison is not a freshness witness (see `fn anchor` under Back up).
-
-Two auxiliary files also decide what an older release can open, and neither
-is covered by `rollback-check`:
-
-- **The pull journals** (`<store>/pull/*.fnpl`). A release from before
-  2026-09-26 refuses a pull journal that holds the `:pull-unavailable`
-  record (the per-article count that bounds a peer's repeated 430s), so
-  rolling a node back to such a release means deleting its `pull/` journals
-  first; the cursor then restarts one day back, which is bounded duplicate
-  replay with no skipped accepted work (the NEWNEWS pull's own contract).
 
 ## Back up
 

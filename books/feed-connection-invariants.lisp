@@ -79,6 +79,18 @@
                                    (fn-fwi-statep fn-wire-octet-listp
                                     fn-wire-octetp fn-fap-tokenp))))))
 
+; The IHAVE fallback's state (PRF-207): the same fields, streaming off, ready.
+(local
+ (defthm fn-fc-with-input-ihave-is-state
+   (implies (and (fn-fc-statep st)
+                 (fn-fwi-statep input))
+            (fn-fc-statep (fn-fc-with-input-ihave st input)))
+   :hints (("Goal" :in-theory (e/d (fn-fc-statep
+                                    fn-fc-with-input-ihave
+                                    fn-fc-make-state)
+                                   (fn-fwi-statep fn-wire-octet-listp
+                                    fn-wire-octetp fn-fap-tokenp))))))
+
 (local
  (defthm fn-fc-from-line-preserves-state
    (implies (and (fn-fc-statep st) (fn-fwi-statep input))
@@ -87,6 +99,7 @@
    :hints (("Goal" :in-theory (e/d (fn-fc-from-line fn-fc-next-state
                                     fn-fc-result fn-fc-phasep)
                                    (fn-fc-statep fn-fc-with-input-phase
+                                    fn-fc-with-input-ihave
                                     fn-fwi-statep))))))
 
 ; What the step proof needs of a state and of a result, so that the state
@@ -120,7 +133,7 @@
                   :in-theory (e/d (fn-fc-step)
                                   (fn-fc-next-state fn-fc-result
                                    fn-fc-statep fn-fc-from-line
-                                   fn-fc-with-input-phase fn-fwi-statep
+                                   fn-fc-with-input-phase fn-fc-with-input-ihave fn-fwi-statep
                                    fn-fwi-step fn-fwi-chunkp fn-fc-input
                                    fn-fc-phase fn-fwi-next-state fn-fwi-kind
                                    fn-fwi-line)))))
@@ -437,6 +450,24 @@
                                      fn-fc-streamingp fn-fc-conn
                                      fn-fc-input))))
 
+; The IHAVE fallback state (PRF-207): phase :ready, streaming off, every
+; security and credential field kept.
+(defthm fn-fc-with-input-ihave-accessors
+  (implies (and (true-listp st) (member-equal (len st) '(5 8)))
+           (let ((nx (fn-fc-with-input-ihave st input)))
+             (and (equal (fn-fc-phase nx) :ready)
+                  (equal (fn-fc-streamingp nx) nil)
+                  (equal (fn-fc-conn nx) (fn-fc-conn st))
+                  (equal (fn-fc-security nx) (fn-fc-security st))
+                  (equal (fn-fc-user nx) (fn-fc-user st))
+                  (equal (fn-fc-pass nx) (fn-fc-pass st))
+                  (equal (fn-fc-allow-clear nx) (fn-fc-allow-clear st)))))
+  :hints (("Goal" :in-theory (enable fn-fc-with-input-ihave fn-fc-make-state
+                                     fn-fc-phase fn-fc-security fn-fc-user
+                                     fn-fc-pass fn-fc-allow-clear
+                                     fn-fc-streamingp fn-fc-conn
+                                     fn-fc-input))))
+
 (defthm fn-fc-fwi-line-needs-a-chunk
   (implies (equal (fn-fwi-kind (fn-fwi-step fwi octets)) :line)
            (fn-fwi-chunkp octets))
@@ -475,7 +506,7 @@
                                   (fn-fc-statep fn-fwi-step fn-fwi-chunkp
                                    fn-own-feed-response-code
                                    fn-fc-greetingp fn-fc-mode-okp
-                                   fn-fc-with-input-phase fn-fc-phase
+                                   fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
                                    fn-fc-security fn-fc-user fn-fc-pass
                                    fn-fc-allow-clear
                                    fn-fc-input fn-fc-streamingp fn-fc-conn
@@ -530,7 +561,7 @@
                                    fn-fc-next-state fn-fc-effect-kindp)
                                   (fn-fc-statep fn-fwi-step fn-fwi-chunkp
                                    fn-own-feed-response-code
-                                   fn-fc-with-input-phase fn-fc-phase
+                                   fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
                                    fn-fc-security fn-fc-user fn-fc-allow-clear
                                    fn-fc-input fn-fc-streamingp fn-fc-conn
                                    fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
@@ -571,7 +602,7 @@
                                    fn-fc-kind fn-fc-next-state)
                                   (fn-fc-statep fn-fwi-step fn-fwi-chunkp
                                    fn-own-feed-response-code fn-fc-drive
-                                   fn-fc-with-input-phase fn-fc-phase
+                                   fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
                                    fn-fc-security fn-fc-user fn-fc-allow-clear
                                    fn-fc-input fn-fc-streamingp fn-fc-conn
                                    fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
@@ -599,7 +630,7 @@
                                    fn-fc-kind fn-fc-next-state)
                                   (fn-fc-statep fn-fwi-step fn-fwi-chunkp
                                    fn-own-feed-response-code fn-fc-drive
-                                   fn-fc-with-input-phase fn-fc-phase
+                                   fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
                                    fn-fc-security fn-fc-user fn-fc-allow-clear
                                    fn-fc-input fn-fc-streamingp fn-fc-conn
                                    fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
@@ -709,7 +740,7 @@
                                   (fn-fc-statep fn-fwi-step fn-fwi-chunkp
                                    fn-own-feed-response-code
                                    fn-fc-greetingp fn-fc-mode-okp
-                                   fn-fc-with-input-phase fn-fc-phase
+                                   fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
                                    fn-fc-security fn-fc-user fn-fc-pass
                                    fn-fc-allow-clear
                                    fn-fc-input fn-fc-streamingp fn-fc-conn

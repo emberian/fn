@@ -141,6 +141,11 @@ unlinked; the lease is released before the verb runs."
             ((and (consp status) (eq (first status) :reasoned-reply))
              (fnn-core 'fn-native-control-host-reasoned-reply-encode
                        (second status) (third status)))
+            ;; `tls reload' / the served line (PRF-212): FNCT kind 20,
+            ;; sealed by ACL2 (host/native/tls-reload.lisp).
+            ((and (consp status) (eq (first status) :tls-reply))
+             (fnn-core 'fn-tlsr-host-reply-encode
+                       (second status) (third status) (fourth status)))
             ((and (consp status) (eq (first status) :topic-reply))
              (fnn-core 'fn-native-control-host-topic-reply-encode
                        (second status)))
@@ -162,12 +167,12 @@ unlinked; the lease is released before the verb runs."
 (defun fnn-control-peer-is-owner-p (socket)
   "Bind the local-control principal to the process's effective UID.
 
-Darwin getpeereid and Linux SO_PEERCRED observe credentials on the connected
-Unix socket. A failed observation refuses. The first value preserves the E2
+Darwin and OpenBSD getpeereid and Linux SO_PEERCRED observe credentials on
+the connected Unix socket. A failed observation refuses. The first value preserves the E2
 same-owner gate; the second carries the authenticated numeric UID for ACL2's
 separate local topic administrator binding. The OS supplies that observation,
 not a topic or consumer authority decision."
-  #+darwin
+  #+(or darwin openbsd)
   (sb-alien:with-alien ((peer-uid sb-alien:unsigned-int)
                         (peer-gid sb-alien:unsigned-int))
     (let ((result
@@ -210,7 +215,7 @@ not a topic or consumer authority decision."
                   (values nil nil)))
             (values nil nil)))))
     (error () (values nil nil)))
-  #-(or darwin linux)
+  #-(or darwin linux openbsd)
   (let ((ignored socket)) (declare (ignore ignored))
     (values nil nil)))
 

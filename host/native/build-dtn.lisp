@@ -101,6 +101,8 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
+(include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
@@ -117,9 +119,13 @@
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
 ;; D31: the history requirement and the recovery catch-up: io.lisp
-;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
-;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+;; fnn-check-history-marker and fnn-recover call
+;; fn-hmr-open-verdict and fn-hmr-catch-up.
 (include-book "books/store-history-required")
+;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
+;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
+;; fn-sxp-import-plan.
+(include-book "books/store-export")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
@@ -196,6 +202,10 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The process heap from the store profile (PKT-016): host/native/heap.lisp,
+; which the operator loaded below calls.  After every `ld': no host wrapper
+; above uses it, and it would otherwise serve their books transitively.
+(include-book "books/heap-figure")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -207,7 +217,7 @@
         ; The node verifies the hybrid signatures of a peer-authored transit
         ; article before its owner commits it (owner.lisp
         ; `fnn-owner-attempt-transit', reached from bp-app's BP transit), so
-        ; this image carries the same native crypto facility, OpenSSL pair and
+        ; this image carries the same native crypto facility, TLS library and
         ; restart revalidation as host/native/build.lisp, in the same order.
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
@@ -216,12 +226,14 @@
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
         (load "host/native/tls.lisp")
+        (fnn-tls-initialize)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
           (fnn-tls-reset)
+          (fnn-tls-initialize)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
           (fnn-main)
@@ -234,6 +246,9 @@
         ; enrolled BP boundaries) through the one public operator entry.
         (load "host/native/owner.lisp")
         (load "host/native/operator.lisp")
+        ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
+        ; line `status' and `health' print; after operator.lisp, whose plan it reads.
+        (load "host/native/heap.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

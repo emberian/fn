@@ -11,6 +11,9 @@
 
 (in-package "ACL2")
 (include-book "config")
+; PRF-211: the trusted range's address grammar is the listener's
+; (fn-native-config-ipv4-address, fn-native-config-ipv6-literal).
+(include-book "native-config")
 
 (defconst *fn-exp-slot-connections* "exposure-connections")
 (defconst *fn-exp-slot-per-address* "exposure-per-address")
@@ -20,6 +23,11 @@
 (defconst *fn-exp-slot-auth-failures* "exposure-auth-failures")
 (defconst *fn-exp-slot-posts* "exposure-posts-per-minute")
 (defconst *fn-exp-policy-slot* "anonymous")
+; PRF-211: the addresses exempt from exposure-per-address, a `:set-policy'
+; row whose value is the operator's word (`policy set exposure-trusted
+; CIDR[,CIDR...]', or `none').
+(defconst *fn-exp-trusted-slot* "exposure-trusted")
+(defconst *fn-exp-trusted-none* "none")
 
 (defconst *fn-exp-limit-slots*
   (list *fn-exp-slot-connections* *fn-exp-slot-per-address* *fn-exp-slot-steps*
@@ -37,3 +45,105 @@
   (declare (xargs :guard t))
   (and (member-equal word '("none" "open")) t))
 
+
+; -----------------------------------------------------------------------------
+; PRF-211 (NNT-043): the connection capacity and the trusted range.
+;
+; THE CAPACITY IS THE ROW.  `exposure-connections' is how many connections
+; the owner holds at once; a row is a `:set-limit' natural, so its width is
+; the limit rows' (`fn-cfg-limit-ceiling': the CBOR uint32 maximum).  The
+; owner a run installs is given one more than that width
+; (`*fn-exp-owner-connection-bound*', books/native-operator.lisp
+; fn-native-operator-result-run-max-connections), so fn-own-open's own
+; bound never refuses a connection the row admits, and the one private
+; connection the operator's live reconfiguration stages through always
+; finds room (books/public-exposure.lisp fn-exp-socket-cap).  With no row,
+; the capacity is 31, the figure every node ran with before (the run's
+; fixed 32 less the operator's one).  A default, not a ceiling: `policy set
+; exposure-connections N' takes any N the row holds, live.  The memory N
+; connections cost is the operator's profile's to size (PKT-605).
+
+(defconst *fn-exp-default-connections* 31)
+(defconst *fn-exp-owner-connection-bound* (+ 1 *fn-cbor-max-uint*))
+
+(defun fn-exp-at (i x)
+  (declare (xargs :guard t :measure (acl2-count x)))
+  (if (consp x)
+      (if (or (not (integerp i)) (<= i 0)) (car x) (fn-exp-at (1- i) (cdr x)))
+    nil))
+
+; THE TRUSTED RANGE.  A list of (FAMILY OCTETS BITS): FAMILY :inet or
+; :inet6, OCTETS the network address as the listener grammar reads it, BITS
+; the prefix length (at most 32 or 128; absent means the whole address).
+; The host hands fn-exp-open the kernel's (FAMILY . OCTETS) for the source;
+; an address is trusted when some range has its family and agrees with it
+; on the first BITS bits.  The point is a node behind a home router whose
+; NAT loopback makes every reader on the LAN one address (the router's):
+; the operator names the LAN, and its readers stop sharing one
+; per-address allowance.  The exemption is from exposure-per-address only:
+; the total, the step budget and the failed-login limit still apply.
+
+(defun fn-exp-cidr-of (text)
+  ; TEXT is the octets of one range; the range, or :bad.
+  (declare (xargs :guard t))
+  (let* ((fields (fn-ncfg-split-on text 47))
+         (addr (fn-ncfg-first fields))
+         (more (fn-ncfg-rest fields))
+         (v4 (fn-native-config-ipv4-address addr))
+         (v6 (if (equal v4 :bad) (fn-native-config-ipv6-literal addr) :bad))
+         (family (cond ((not (equal v4 :bad)) :inet)
+                       ((not (equal v6 :bad)) :inet6)
+                       (t nil)))
+         (width (if (equal family :inet) 32 128))
+         (bits (if (consp more) (fn-ncfg-decimal (fn-ncfg-first more)) width)))
+    (if (and family
+             (not (consp (fn-ncfg-rest more)))
+             (natp bits) (<= bits width))
+        (list family (if (equal family :inet) v4 v6) bits)
+      :bad)))
+
+(defun fn-exp-cidrs-of (fields)
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (let ((c (fn-exp-cidr-of (fn-ncfg-trim (car fields))))
+            (rest (fn-exp-cidrs-of (cdr fields))))
+        (if (or (equal c :bad) (equal rest :bad)) :bad (cons c rest)))
+    nil))
+
+; The operator's word, as the row holds it: `none' is no range; otherwise a
+; comma-separated list of one or more ranges, every one well formed.
+(defun fn-exp-trusted-of-word (word)
+  (declare (xargs :guard t))
+  (cond ((not (stringp word)) :bad)
+        ((equal word *fn-exp-trusted-none*) nil)
+        (t (fn-exp-cidrs-of (fn-ncfg-split-on (fn-record-string-octets word) 44)))))
+
+(defun fn-exp-trusted-wordp (word)
+  (declare (xargs :guard t))
+  (and (fn-cfg-labelp word)
+       (not (equal (fn-exp-trusted-of-word word) :bad))))
+
+; Whether A and B agree on their first BITS bits (octet lists).
+(defun fn-exp-octets-prefixp (a b bits)
+  (declare (xargs :guard t :measure (acl2-count a)))
+  (cond ((not (posp bits)) t)
+        ((or (not (consp a)) (not (consp b))) nil)
+        ((<= 8 bits)
+         (and (equal (car a) (car b))
+              (fn-exp-octets-prefixp (cdr a) (cdr b) (- bits 8))))
+        (t (equal (floor (nfix (car a)) (expt 2 (- 8 bits)))
+                  (floor (nfix (car b)) (expt 2 (- 8 bits)))))))
+
+(defun fn-exp-cidr-matchp (cidr address)
+  (declare (xargs :guard t))
+  (and (consp address)
+       (equal (car address) (fn-exp-at 0 cidr))
+       (fn-exp-octets-prefixp (cdr address) (fn-exp-at 1 cidr)
+                              (nfix (fn-exp-at 2 cidr)))))
+
+(defun fn-exp-trusted-addressp (address trusted)
+  (declare (xargs :guard t))
+  (if (consp trusted)
+      (or (fn-exp-cidr-matchp (car trusted) address)
+          (fn-exp-trusted-addressp address (cdr trusted)))
+    nil))

@@ -40,6 +40,10 @@
        "/usr/local/opt/libsodium/lib/libsodium.dylib"
        "libsodium.dylib"))
     ((member :linux *features*) '("libsodium.so.23" "libsodium.so"))
+    ;; The libsodium package; ld.so resolves the unversioned name to the
+    ;; installed major (HST-016), searching LD_LIBRARY_PATH (a release's
+    ;; libexec/fn/lib) before /usr/local/lib.
+    ((member :openbsd *features*) '("libsodium.so"))
     (t nil)))
 
 (sb-alien:define-alien-routine ("sodium_init" fnn-%sodium-init)

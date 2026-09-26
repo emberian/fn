@@ -238,7 +238,7 @@
                                fn-fc-kind fn-fc-next-state)
                               (fn-fc-statep fn-fwi-step fn-fwi-chunkp
                                fn-own-feed-response-code fn-fc-drive
-                               fn-fc-with-input-phase fn-fc-phase
+                               fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
                                fn-fc-security fn-fc-user fn-fc-allow-clear
                                fn-fc-input fn-fc-streamingp fn-fc-conn
                                fn-fwi-kind fn-fwi-line fn-fwi-next-state))))))

@@ -267,7 +267,7 @@ def measure_probe(image, work, env, n, out):
 
 ALLOC_LISP = r"""
 (in-package "ACL2")
-(dolist (f '(fnn-crypto-startup fnn-tls-reset fnn-hsig-reset fnn-hsig-initialize))
+(dolist (f '(fnn-crypto-startup fnn-tls-reset fnn-tls-initialize fnn-hsig-reset fnn-hsig-initialize))
   (when (fboundp f) (funcall f)))
 (let* ((root (sb-ext:posix-getenv "TG_ROOT"))
        (n (parse-integer (sb-ext:posix-getenv "TG_N")))
