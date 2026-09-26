@@ -2762,6 +2762,39 @@
       ],
       "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
       "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
+    },
+    {
+      "id": "NNT-031",
+      "title": "A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command",
+      "specification": "specs/nntp.md#public-exposure-nnt-031",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-161"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native-admin-host.lisp",
+        "tests/test_native_public_exposure.py",
+        "planning/evidence/public-exposure-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T074028Z-855253.json",
+        "planning/evidence/manifests/certify-20260926T075324Z-901451.json",
+        "planning/evidence/public-exposure-2026-09-26-report.json",
+        "tests/native_owner_chunk_loop_raw.lisp",
+        "tests/test_native_owner.py",
+        "docs/operator.md"
+      ],
+      "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign."
     }
   ]
 }
