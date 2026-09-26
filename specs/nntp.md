@@ -3,7 +3,7 @@
 Status: the selected reader profile is implemented and advertised, and POST is
 advertised exactly on the connections that may use it. `books/nntp.lisp` always
 advertises `VERSION 2`, `READER`, `OVER MSGID`, `HDR`, `NEWNEWS` and
-`LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977
+`LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977
 appendix B assigns to those labels is marked proved or tested in
 [the clause matrix](nntp-audit.md#the-reader-clause-matrix); none is open.
 `POST` (RFC 3977 §5.2.2) is advertised when, and only when, this connection's
@@ -127,18 +127,62 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
 reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record
 records who may reconfigure the node, not a mailbox to attribute a group to,
-and fn does not fabricate one. `LIST NEWSGROUPS` renders the fixed marker
-`(no description)` for the same reason: the group table
-(`books/config-records.lisp`) carries names, policy ids and created/retired
-stamps and no description, so nothing group-specific is invented and the
-marker is a statement about the server, not about the group. §7.6.6 permits
-the description to be omitted or passed on as held, and it is **not** the
-empty string: Python `nntplib` strips the line and then requires a name,
-white space and text, so a bare `name TAB` drops the group from
-`descriptions()` entirely (measured against `tests/interop_nntplib.py`,
-2026-09-20). OPEN: a per-group description field in the durable
-configuration record, which R5 would add; until then this row is a stated
-local limitation and not a claim that fn has descriptions.
+and fn does not fabricate one. `LIST NEWSGROUPS` shows each group's description when the operator has set
+one, and otherwise the fixed marker `(no description)`: the marker is a
+statement about the server, not about the group, and it is **not** the empty
+string: Python `nntplib` strips the line and then requires a name, white
+space and text, so a bare `name TAB` drops the group from `descriptions()`
+entirely (measured against `tests/interop_nntplib.py`, 2026-09-20). How a
+description is set and shown is the next section.
+
+## Group descriptions and the message of the day (NNT-039)
+
+NNT-039: The operator sets a group's description and the node's message of the day on a running node, and LIST NEWSGROUPS and LIST MOTD show exactly what the configuration holds
+
+- **RFC requirements.** RFC 3977 §7.6.6: `LIST NEWSGROUPS [wildmat]` answers
+  215 and one line per group, the name, white space and "a short
+  description"; §7.6.1's argument grammar (a wildmat, else 501). RFC 6048
+  §2.5: `LIST MOTD` takes no argument ("Otherwise, a 501 response code MUST
+  be returned"), answers 215 and a dot-stuffed block, "MAY be empty", and a
+  server that does not maintain it answers 503.
+- **Stronger fn guarantees.** The text is the configuration's, published
+  live and replayed: `fn operator CONFIG group describe NAME [TEXT ...]` and
+  `fn operator CONFIG motd set LINE [LINE ...] | motd clear` each publish one
+  configuration record carrying one `:set-group-description` delta (config
+  delta kind code 20, `books/config.lisp`), which a running owner applies
+  over its control socket like every other configuration change and a
+  restart replays. The reader is shown what the connection's pinned
+  configuration holds, and nothing a host computed:
+  `fn-served-step-list-newsgroups-is-the-described-listing` and
+  `fn-served-step-list-motd-is-the-configured-message`
+  (`books/owner-descriptions-read.lisp`), with
+  `fn-oag-description-of-the-listing` and `fn-oag-motd-of-the-listing`
+  stating what the posting configuration `fn-oag-post-config`
+  (host/owner-host.lisp `fn-owner-post-config`) carries, and
+  `fn-cfg-description-after-set-is-its-pieces`,
+  `fn-cfg-description-after-set-of-another-name`,
+  `fn-cfg-motd-after-set-is-its-lines` and
+  `fn-cfg-descriptions-of-other-kinds` (`books/config-descriptions.lisp`)
+  what a delta does. The injection decision does not read the listing
+  (`fn-inj-decide-ignores-the-listing`).
+- **Local policy.** A description is printable ASCII (octets 32 to 126) with
+  at least one graphic octet; admission refuses anything else by name
+  (`:description-row`, `:description-blank`), and a name that is neither a
+  live group nor the node (`:no-such-group`,
+  `fn-cfg-set-group-description-refuses-an-unknown-group-by-definition`). RFC 6048 §2.5
+  asks for UTF-8; printable ASCII is a subset, and the operator's argv is
+  ASCII today (`fn-native-admin-argvp`). A description is cut into row
+  pieces of at most 256 octets (the configuration row's label,
+  `*fn-cfg-max-label*`) and concatenated when shown, so its length is bound
+  by what one configuration record represents, never by a row; a message
+  line is one row, so a line is at most 256 octets. fn maintains the message
+  (CAPABILITIES names `MOTD`), so a node without one answers an empty 215
+  block, never 503. A description or line the reader's test refuses is not
+  sent (the marker is, or the line is dropped); admission makes that case
+  unreachable.
+- **Scope.** The listing is pinned with the connection's configuration: a
+  connection opened before `group describe` keeps the text it opened with,
+  as it keeps the group table. XGTITLE (RFC 2980 §2.12) is not served.
 
 ## Polling: NEWNEWS
 

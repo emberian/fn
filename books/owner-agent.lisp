@@ -72,6 +72,25 @@
             (fn-oag-group-octets (cdr names)))
     nil))
 
+;; The reader listing (PRF-195): each served group's description, and the
+;; node's message, projected from the configuration's descriptions slot
+;; (books/config.lisp `fn-cfg-description-octets', `fn-cfg-motd-lines').  A
+;; group whose description is empty has no entry, so LIST NEWSGROUPS shows
+;; it the marker.
+(defun fn-oag-descs (names v)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((d (fn-cfg-description-octets v (car names))))
+        (if (consp d)
+            (cons (cons (car names) d) (fn-oag-descs (cdr names) v))
+          (fn-oag-descs (cdr names) v)))
+    nil))
+
+(defun fn-oag-listing (cfg)
+  (declare (xargs :guard t))
+  (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
+        (fn-cfg-motd-lines (fn-cfg-value cfg))))
+
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.
 
@@ -80,9 +99,9 @@ The host calls this at host/owner-host.lisp `fn-owner-post-config', which
 fn-own-configure.  MAX-OCTETS is the store's payload bound, which the host
 supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (declare (xargs :guard t))
-  (fn-inj-make-config t (fn-oag-agent cfg)
-                      (fn-oag-group-octets (fn-cnode-served-of cfg))
-                      max-octets))
+  (fn-inj-make-config-listed t (fn-oag-agent cfg)
+                             (fn-oag-group-octets (fn-cnode-served-of cfg))
+                             max-octets (fn-oag-listing cfg)))
 
 (defthm fn-oag-post-config-agent-is-the-path-identity
   (implies (fn-oag-identity-setp cfg)

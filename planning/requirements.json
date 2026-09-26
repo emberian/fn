@@ -3326,6 +3326,29 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "NNT-039",
+      "title": "The operator sets a group's description and the node's message of the day on a running node, and LIST NEWSGROUPS and LIST MOTD show exactly what the configuration holds",
+      "specification": "specs/nntp.md#group-descriptions-and-the-message-of-the-day-nnt-039",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-195"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "tests/acl2/group-descriptions-tests.lisp",
+        "books/owner-descriptions-read.lisp",
+        "books/config-descriptions.lisp",
+        "planning/evidence/usenet-headers-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.6.6 and RFC 6048 section 2.5 are the RFC requirements; the text being the replayed configuration's, published live, is a stronger fn guarantee; printable ASCII, 256-octet row pieces and an empty MOTD rather than 503 are local policy (specs/nntp.md). Gap inventory items R2, R5 and O1."
     }
   ]
 }

@@ -466,6 +466,23 @@
                                   (fn-nntp-list-counts-command
                                    fn-nntp-list-counts)))))
 
+(defthm fn-nntp-list-newsgroups-described-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-list-newsgroups-described session archive descs args))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-list-newsgroups-described)))))
+
+(defthm fn-nntp-list-motd-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-list-motd session env args))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-list-motd)))))
+
 (defthm fn-nntp-list-command-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-list-command session archive env args))
          session)
