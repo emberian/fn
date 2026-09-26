@@ -4565,6 +4565,32 @@
         "fn-sr-an-injection-is-a-cons",
         "fn-sr-a-signed-retry-is-already-stored"
       ]
+    },
+    {
+      "id": "PRF-122",
+      "title": "The reader's search scope: the served XPAT reply over a range is XHDR's lines for exactly the served, matching numbers in it, and a withdrawn number is never a hit",
+      "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which the served path reaches for every non-POST reader command (host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk, fn-served-step, fn-served-dispatch, fn-auth-step-pinned, fn-nntp-post-step-pinned): fn-nntp-step-pinned-xpat-range-is-the-scope, for an open, well-formed, projected session with a selected group and a command line within the preflight whose keyword is XPAT, whose field is a header name or metadata item, whose second argument is a range and whose joined pattern parses, the step's result is fn-nntp-multi of the 221 initial line and fn-nntp-hdr-lines-for-numbers of the field over fn-nss-hits of the range's numbers in the served archive. fn-nss-hits-are-the-scope: a number is in that set iff it is positive, within the range's bounds, the group's served archive holds an available article at it, the field renders, and fn-nntp-xpat-matchesp accepts the rendered field. fn-nss-withdrawn-number-is-never-a-hit: a token the pinned step answers 423 withdrawn for (fn-nntp-number-withdrawn-p) never names a hit, for any field, pattern or number list. tools/fn_web.py Backend.search and Backend.thread send exactly these commands and keep no index.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-021"
+      ],
+      "depends_on": [
+        "PRF-110",
+        "PRF-084"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/nntp-search-scope.lisp",
+        "tests/acl2/nntp-search-scope-tests.lisp",
+        "planning/evidence/reader-daily-2026-09-25.md"
+      ],
+      "progress_note": "Certified on hbox (planning/evidence/reader-daily-2026-09-25.md names the manifest); the native walk and tin session are in the same record.",
+      "events": [
+        "fn-nntp-step-pinned-xpat-range-is-the-scope",
+        "fn-nss-hits-are-the-scope",
+        "fn-nss-withdrawn-number-is-never-a-hit"
+      ]
     }
   ]
 }

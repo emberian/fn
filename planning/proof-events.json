@@ -4740,6 +4740,23 @@
           "name": "fn-sr-a-signed-retry-is-already-stored"
         }
       ]
+    },
+    {
+      "id": "PRF-122",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-pinned-xpat-range-is-the-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nss-hits-are-the-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nss-withdrawn-number-is-never-a-hit"
+        }
+      ]
     }
   ]
 }
