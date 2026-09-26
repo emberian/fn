@@ -113,6 +113,16 @@ class HboxNativeDryRunTests(unittest.TestCase):
         need = lines.index("need tests.test_native_hybrid_author FN_NATIVE_HOST $T/build/fn-host")
         self.assertLess(need, lines.index(hybrid))
 
+    def test_a_variable_read_through_an_imported_test_module_is_planned(self):
+        # PKT-499 (d): test_native_operator_verdicts reads FN_NATIVE_HOST only
+        # through tests.test_native_control_filing, which it imports.
+        answer = dry("--images", "developer,production", "HEAD",
+                     "tests.test_native_operator_verdicts")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        line = next(line for line in answer.stdout.splitlines()
+                    if line.startswith("tstep test-tests.test_native_operator_verdicts "))
+        self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", line)
+
     def test_every_image_or_opt_in_variable_a_native_module_reads_is_classified(self):
         import sys
         sys.path.insert(0, str(ROOT))
