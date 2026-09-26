@@ -191,6 +191,24 @@ input the core's string entries read in place, with no list in between."
     (setf (svref st 1) n)
     st))
 
+(defun fnn-octets-clear ()
+  "Empty the buffer (the fill count to 0; the array is kept)."
+  (setf (svref (fnn-live-octets) 1) 0))
+
+(defun fnn-octets-reserve (n)
+  "Grow the buffer's array so that N octets fit; contents and count unchanged."
+  (fn-octets$c-reserve n (fnn-live-octets)))
+
+(defun fnn-octets-append-vector (vector)
+  "Append VECTOR's bytes at the buffer's fill point (the same boundary as
+`fnn-octets-fill': the host asserts the cells it wrote hold these bytes);
+return the index the bytes begin at."
+  (let* ((st (fnn-live-octets)) (fill (svref st 1)) (n (length vector)))
+    (fn-octets$c-reserve (+ fill n) st)
+    (replace (the fnn-octets (svref st 0)) vector :start1 fill)
+    (setf (svref st 1) (+ fill n))
+    fill))
+
 (defun fnn-core-buffer-state (name &rest args)
   "A `state`-returning wrapper over the buffer, (mv erp value state) with the
 live buffer passed before state: its value."
@@ -1618,55 +1636,90 @@ acknowledged without its marker."
         (incf at got)))
     data))
 
-(defun fnn-state-checkpoint-segments (store)
-  "(values :absent NIL), (values :ok SEGMENTS) or (values :refused REASON).
+(defun fnn-state-checkpoint-plan (store)
+  "(values :absent NIL), (values :ok PLAN) or (values :refused REASON), REASON
+one of :not-regular, :truncated, :header, :exceeds-bound.
 
-One descriptor, consecutive ranges: a segment header, then the rest of that
-segment as `fn-scc-segment-extent' sizes it, until end of file.  Each read is
-at most one segment, which the profile's R bounds (fn-store-sco-segment-read-bound)."
+One descriptor, consecutive reads: a segment header (37 octets), then ACL2's
+admission of that segment against the profile's segment bound and file bound
+given the octets read so far (fn-store-sco-segment-admit, books
+fn-sccr-admit-segment), then the chunk and the trailer.  Each chunk's bytes
+are appended into the live octet buffer in file order and the plan holds, per
+segment, (HEADER A B TRAILER): the header and the trailer as octet lists, the
+chunk as the buffer's cells A..B, the frames contiguous.  No octet list of
+the file is built (rep-wave-d-3): the decoder reads the buffer by index
+(books/store-checkpoint-reader.lisp fn-sccr-decode-plan)."
   (let ((path (fnn-state-checkpoint-path store)))
     (unless (fnn-check-regular path)
-      (return-from fnn-state-checkpoint-segments (values :absent nil)))
+      (return-from fnn-state-checkpoint-plan (values :absent nil)))
     (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
-          (bound (fnn-core 'fn-store-sco-segment-read-bound (fnn-store-config store)))
+          (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
+          (profile (fnn-store-config store))
           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-          (segments nil))
+          (frames nil) (total 0) (at 0))
       (unless (and (integerp header-octets) (> header-octets 0)
-                   (integerp bound) (>= bound header-octets))
+                   (integerp trailer-octets) (> trailer-octets 0))
         (fnn-close fd)
-        (fnn-fault "ACL2 returned an invalid checkpoint segment bound"))
+        (fnn-fault "ACL2 returned an invalid checkpoint frame size"))
       (unwind-protect
-           (progn
-             (unless (fnn-regular-p (fnn-fstat fd))
-               (return-from fnn-state-checkpoint-segments (values :refused :not-regular)))
+           (let ((st (fnn-fstat fd)))
+             (unless (fnn-regular-p st)
+               (return-from fnn-state-checkpoint-plan (values :refused :not-regular)))
+             (fnn-octets-clear)
+             ;; One allocation for the chunks of the whole file, never past
+             ;; what ACL2 would admit.
+             (let ((bound (fnn-core 'fn-store-sco-file-read-bound profile)))
+               (when (and (integerp bound) (> bound 0))
+                 (fnn-octets-reserve (min (max 0 (sb-posix:stat-size st)) bound))))
              (loop
                (let ((first (make-array 1 :element-type '(unsigned-byte 8))))
                  (when (zerop (fnn-read-fd fd first)) (return))
                  (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
                    (unless rest
-                     (return-from fnn-state-checkpoint-segments (values :refused :truncated)))
-                   (let* ((header (concatenate '(vector (unsigned-byte 8)) first rest))
-                          (extent (fnn-core 'fn-scc-segment-extent (fnn-octet-list header))))
-                     (unless (and (integerp extent) (>= extent header-octets) (<= extent bound))
-                       (return-from fnn-state-checkpoint-segments (values :refused :segment-header)))
-                     (let ((body (fnn-read-exact-fd fd (- extent header-octets))))
-                       (unless body
-                         (return-from fnn-state-checkpoint-segments (values :refused :truncated)))
-                       (push (fnn-octet-list (concatenate '(vector (unsigned-byte 8)) header body))
-                             segments))))))
-             (values :ok (nreverse segments)))
+                     (return-from fnn-state-checkpoint-plan (values :refused :truncated)))
+                   (let* ((header (fnn-octet-list
+                                   (concatenate '(vector (unsigned-byte 8)) first rest)))
+                          (admission (fnn-core 'fn-store-sco-segment-admit
+                                               header total profile)))
+                     (unless (and (consp admission)
+                                  (member (first admission) '(:ok :refused)))
+                       (fnn-fault "ACL2 returned a malformed checkpoint segment admission"))
+                     (when (eq (first admission) :refused)
+                       (return-from fnn-state-checkpoint-plan
+                         (values :refused (second admission))))
+                     (let ((extent (second admission)) (chunk-octets (third admission)))
+                       (unless (and (integerp extent) (integerp chunk-octets)
+                                    (>= chunk-octets 0)
+                                    (= extent (+ header-octets chunk-octets trailer-octets)))
+                         (fnn-fault "ACL2 returned a malformed checkpoint segment extent"))
+                       (let ((chunk (fnn-read-exact-fd fd chunk-octets)))
+                         (unless chunk
+                           (return-from fnn-state-checkpoint-plan (values :refused :truncated)))
+                         (let ((trailer (fnn-read-exact-fd fd trailer-octets)))
+                           (unless trailer
+                             (return-from fnn-state-checkpoint-plan
+                               (values :refused :truncated)))
+                           (let ((a (fnn-octets-append-vector chunk)))
+                             (unless (= a at)
+                               (fnn-fault "the octet buffer moved under the checkpoint reader"))
+                             (push (list header a (+ a chunk-octets) (fnn-octet-list trailer))
+                                   frames)
+                             (incf at chunk-octets)
+                             (incf total extent)))))))))
+             (values :ok (nreverse frames)))
         (fnn-close fd)))))
 
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
-:absent, :refused or :ok, the vocabulary of fn-sco-select."
+:absent, :refused, :exceeds-bound or :ok, the vocabulary of fn-sco-select."
   (multiple-value-bind (status value)
-      (handler-case (fnn-state-checkpoint-segments store)
+      (handler-case (fnn-state-checkpoint-plan store)
         (fnn-os-error () (values :refused :io)))
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
-      (:refused (fnn-core-state 'fn-store-sco-clear) (values :refused 0))
-      (t (let ((answer (fnn-core-state 'fn-store-sco-decode value)))
+      (:refused (fnn-core-state 'fn-store-sco-clear)
+       (values (if (eq value :exceeds-bound) :exceeds-bound :refused) 0))
+      (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
            (if (and (consp answer) (eq (first answer) :ok)
                     (integerp (second answer)) (>= (second answer) 0))
                (values :ok (second answer))

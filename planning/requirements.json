@@ -2682,7 +2682,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-118",
-        "PRF-133"
+        "PRF-133",
+        "PRF-135"
       ],
       "verification": [
         "proof",
@@ -2694,9 +2695,11 @@
         "tools/rep_measure.py",
         "planning/evidence/rep-wave-d-2026-09-25.md",
         "books/store-checkpoint-buffer.lisp",
-        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+        "planning/evidence/rep-wave-d-2-2026-09-26.md",
+        "books/store-checkpoint-reader.lisp",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md"
       ],
-      "implementation_note": "D27: the logical model stays octet lists, the executable path holds bytes. fn-arena is the concrete home of every retained payload (one byte per octet, sixteen per handle) with the abstraction relation proved once as the stobj's obligations, and the lifetime facts the mandate section 7 names as theorems: a pinned reader's handle cannot observe a mutated or reused payload (fn-arena-seals-keep-sealed), nothing removes a payload (no delete export; reclamation is a new seal and space is reclaimed at open), and the checkpoint reopen and ordinary admission establish the same relation with the history (fn-arn-store-corr-of-open, -of-commit). Not yet on a served path: the record's payload field is still the list; the program that moves it (the model change at records-shape, the record codec and the recovery decode over the arena, the served article as a reference effect, the checkpoint codec, the ingress span machine) is the record's section 3, with the matched baseline of section 1 it is measured against.",
+      "implementation_note": "D27: the logical model stays octet lists, the executable path holds bytes. fn-arena is the concrete home of every retained payload (one byte per octet, sixteen per handle) with the abstraction relation proved once as the stobj's obligations, and the lifetime facts the mandate section 7 names as theorems: a pinned reader's handle cannot observe a mutated or reused payload (fn-arena-seals-keep-sealed), nothing removes a payload (no delete export; reclamation is a new seal and space is reclaimed at open), and the checkpoint reopen and ordinary admission establish the same relation with the history (fn-arn-store-corr-of-open, -of-commit). Not yet on a served path: the record's payload field is still the list; the program that moves it (the model change at records-shape, the record codec and the recovery decode over the arena, the served article as a reference effect, the checkpoint codec, the ingress span machine) is the record's section 3, with the matched baseline of section 1 it is measured against. rep-wave-d-3 (PRF-135): the checkpoint reopen reads the file from the buffer by index, the plan shape the writer produced; no octet list of the file or of the joined program; a file past the profile's bounds is refused by name (checkpoint-exceeds-bound) and the journal replays.",
       "keystones": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",

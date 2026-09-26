@@ -104,6 +104,12 @@
 (assert-event (equal (fn-sco-select :ok 1 2 1) '(:checkpoint 1)))
 (assert-event (equal (fn-sco-select :absent 1 2 1) '(:full-replay :absent)))
 (assert-event (equal (fn-sco-select :refused 1 2 1) '(:full-replay :corrupt)))
+; rep-wave-d-3: a file the reader refused within the profile's bounds is
+; named, and never serves.
+(assert-event (equal (fn-sco-select :exceeds-bound 1 2 1)
+                     '(:full-replay :checkpoint-exceeds-bound)))
+(assert-event (equal (fn-sco-select :exceeds-bound 1 1 5)
+                     '(:full-replay :checkpoint-exceeds-bound)))
 (assert-event (equal (fn-sco-select :ok 3 2 5) '(:full-replay :ahead-of-history)))
 (assert-event (equal (fn-sco-select :ok 1 5 3) '(:full-replay :suffix-exceeds-k)))
 
