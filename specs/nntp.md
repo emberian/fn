@@ -743,8 +743,9 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
 SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
 
-Status: **implemented** (PRF-210; lanes newsreader-cancel and
-newsreader-cancel-2, planning/evidence/newsreader-cancel-2026-09-26.md).
+Status: **built, not yet conforming** (PRF-210; lanes newsreader-cancel and
+newsreader-cancel-2; gpt-6's review of 2026-09-26 section 3 is binding and
+not yet met: the evidence record's C8, planning/evidence/newsreader-cancel-2026-09-26.md).
 An unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a
 Cancel-Lock of its target withdraws it, here and on every peer; the node
 writes the lock and key for the authenticated login, so a client that

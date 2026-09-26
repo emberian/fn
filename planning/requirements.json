@@ -3375,7 +3375,7 @@
       "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "implemented",
+      "status": "specified",
       "proof_targets": [
         "PRF-210"
       ],
@@ -3387,7 +3387,7 @@
         "planning/evidence/group-policy-2026-09-26.md",
         "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Implemented by lanes newsreader-cancel and newsreader-cancel-2 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it, on every node holding both, in either order, and after restart. The node-written lines: the octets the owner stores for a served POST under an authenticated login are fn-own-sub-stored-octets under the owner's node secret (books/owner-served-invariants.lisp), which carry exactly one Cancel-Lock keyed by that login (and on a cancel the login's Cancel-Key for its target), so a client that writes none (Thunderbird) cancels its own post and another login's cancel is filed and withdraws nothing; the completion gate compares with the same function, so the 240 names the locked octets. The node secret: STORE/keys/node-secret.key written by init, carried by the owner (fn-own-node-secret), one HMAC-SHA256 with domain labels (books/node-secret.lisp). RFC 5537 section 5.3 leaves cancel authentication to local policy; the login basis is the coordinator's decision P1; Cancel-Lock is RFC 8315. Open: PKT-618 (the secret across a reinstall), PKT-619 (the login gate reads the recorded login)."
+      "implementation_note": "Built by lanes newsreader-cancel and newsreader-cancel-2 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it, on every node holding both, in either order, and after restart. The node-written lines: the octets the owner stores for a served POST under an authenticated login are fn-own-sub-stored-octets under the owner's node secret (books/owner-served-invariants.lisp), which carry exactly one Cancel-Lock keyed by that login (and on a cancel the login's Cancel-Key for its target), so a client that writes none (Thunderbird) cancels its own post and another login's cancel is filed and withdraws nothing; the completion gate compares with the same function, so the 240 names the locked octets. The node secret: STORE/keys/node-secret.key written by init, carried by the owner (fn-own-node-secret), one HMAC-SHA256 with domain labels (books/node-secret.lisp). RFC 5537 section 5.3 leaves cancel authentication to local policy; the login basis is the coordinator's decision P1; Cancel-Lock is RFC 8315. Open: PKT-618 (the secret across a reinstall), PKT-619 (the login gate reads the recorded login). NOT YET IMPLEMENTED against gpt-6's binding review (planning/review-2026-09-26-gpt6-wave5.md section 3): the generated lines are part of the D25 source (a same-source retry from another login is a conflict, must be a duplicate), keys are not HKDF-derived with epoch and node binding, ownership is the login spelling not an account id, and `store ROOT node-secret` regenerates a missing root; planning/evidence/newsreader-cancel-2026-09-26.md C8."
     },
     {
       "id": "REP-012",
