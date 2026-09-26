@@ -3431,6 +3431,7 @@
       "title": "A node listens on [::1] and on an IPv4 address at once from one [listener] host list, a TLS client reaches each, and a wildcard, mapped or duplicate address is refused by name",
       "milestone": "M5",
       "status": "implemented",
+      "implementation": {"test": "tests.test_native_listener_v6", "cases": ["test_every_address_serves_plain_and_implicit_tls", "test_refusals_are_named_before_any_listener"], "native": true, "log": "planning/evidence/listener-v6-2026-09-26/native-listener-v6-r2.log", "record": "planning/evidence/listener-v6-2026-09-26.md"},
       "requirements": [
         "NNT-041"
       ],
