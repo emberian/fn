@@ -6628,6 +6628,47 @@
           "name": "fn-cev-request-payload-fits"
         }
       ]
+    },
+    {
+      "id": "PRF-188",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-exp-open-is-exp-open-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-auth-open-reader-is-auth-open-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-peer-open-reader-is-peer-open-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-own-open-is-own-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-own-reader-context-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocar-ocfg-open-keeps-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-ocar-exp-open-keeps-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-thaw-checked-accepts-own-publication"
+        }
+      ]
     }
   ]
 }

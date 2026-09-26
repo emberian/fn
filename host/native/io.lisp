@@ -1969,10 +1969,14 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
       (:refused (fnn-core-state 'fn-store-sco-clear)
        (values (if (eq value :exceeds-bound) :exceeds-bound :refused) 0))
       (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
-           (if (and (consp answer) (eq (first answer) :ok)
-                    (integerp (second answer)) (>= (second answer) 0))
-               (values :ok (second answer))
-               (values :refused 0)))))))
+           (cond ((and (consp answer) (eq (first answer) :ok)
+                       (integerp (second answer)) (>= (second answer) 0))
+                  (values :ok (second answer)))
+                 ;; ACL2's named refusal (books/store-checkpoint-shape.lisp):
+                 ;; an event index of an older image's shape.
+                 ((and (consp answer) (eq (second answer) :index-shape))
+                  (values :index-shape 0))
+                 (t (values :refused 0))))))))
 
 (defun fnn-recover-full-replay (store config-records &optional (reason nil))
   "Today's open: every durable record, then one full replay."

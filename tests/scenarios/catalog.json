@@ -3395,6 +3395,36 @@
         "log": "planning/evidence/operator-daily-4/native-log_sink.log",
         "record": "planning/evidence/operator-daily-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-117",
+      "title": "A connection's greeting evaluates no whole-state recognizer: at N = 10,000 and on the 20,000-article fixture the greeting costs milliseconds on the lane's image against hundreds of milliseconds on its base; and a checkpoint written by an image whose event index has an older shape is refused by name and replayed, while the image's own checkpoint is used",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001",
+        "STO-016"
+      ],
+      "steps": [
+        "On hbox build the developer images of the lane's base (dev a931ed8d) and of the lane (tools/hbox_native.sh; the profiling twin by planning/evidence/served-path-scale-2026-09-26/continuation/prof-build.sh).",
+        "Load a 10,000-article store of 2 KiB articles (tools/rep_measure.py on the lane's profiling image, /dev/shm), then on copies of it run greet.py with each image: K = 32 greetings, each on a fresh socket, after 32 warm-up greetings.",
+        "Run fixture_open.py (served-path-scale's) over copies of hbox:/tank/fn/scratch/fixtures/chain-20000-8cc3cd4c with each image: the first open (a full replay), then the reopen from the checkpoint that open published, K = 32 greetings on each.",
+        "Recover a copy of the base image's reopened fixture store (its checkpoint has the pair-shaped index) with the lane's image before and after the shape check (`store STORE recover`), and a copy of the lane image's own store."
+      ],
+      "expected": [
+        "Every greeting answers 200 or 201; the lane's greeting p95 is milliseconds where the base's is hundreds of milliseconds at the same N on the same box, the box load stated beside each figure.",
+        "The pair-shaped checkpoint opens `open=full-replay reason=checkpoint-index-shape` on the image with the shape check, and the lane's own checkpoint opens `open=checkpoint:S`."
+      ],
+      "evidence": [
+        "planning/evidence/served-path-scale-2026-09-26.md",
+        "planning/evidence/served-path-scale-2026-09-26/continuation/greet.py"
+      ],
+      "implementation": {
+        "test": "planning/evidence/served-path-scale-2026-09-26/continuation/greet.py",
+        "native": true,
+        "record": "planning/evidence/served-path-scale-2026-09-26.md",
+        "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
+      }
     }
   ]
 }

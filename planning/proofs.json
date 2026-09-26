@@ -6974,6 +6974,47 @@
         "fn-cev-msgid-octets",
         "fn-cev-request-payload-fits"
       ]
+    },
+    {
+      "id": "PRF-188",
+      "title": "The connection open the host calls takes the view archive's, the store node's and the configuration's recognizers from the configured owner's relation instead of evaluating them per connection; and a checkpoint whose derived event index is an older image's shape is refused by name",
+      "statement": "(1) The greeting. fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation (books/owner-open-carried.lisp; hypothesis (fn-ocl-relation oc)): (fn-ocar-ocfg-open oc acfg) = (fn-ocfg-open oc acfg), the greeting effects and the owner alike, for every AUTHINFO policy; fn-ocar-exp-open-is-exp-open-under-ocl-relation (same hypothesis): (fn-ocar-exp-open oc xs lim acfg peer address now) = (fn-exp-open oc xs lim acfg peer address now). host/owner-host.lisp fn-owner-exposure-open (the native accept, host/native/owner.lisp fnn-owner-serve-client) calls fn-ocar-exp-open; fn-owner-open (host/native/admin.lisp) calls fn-ocar-ocfg-open. The reference reader open evaluates fn-statep of the view archive twice (fn-nntp-projectionp through fn-served-open-indexed's session and fn-own-reader-context's fn-peer-open-session), fn-node-statep of the store node and fn-cfgp of the configuration; the carried open takes them from the relation: fn-acar-ocl-relation-carries-view-statep (books/owner-advance-carried.lisp), fn-scar-ocl-relation-carries-node-statep (books/owner-served-carried.lisp) and fn-ocl-relation's fn-cfgp conjunct, cited, not restated. The relation is established at every host-called open and preserved by every configured-owner transition (fn-ock-recover-installs-ocl-relation, fn-orec-recover-installs-ocl-relation, fn-ocl-open-, -close-, -observe-, -read-, -advance-preserves-historical-relation); fn-ocl-open-preserves-historical-relation applies to the carried open's result by the keystone. What a greeting still evaluates: the connection bound, the group list and next-number table (O(groups)), the article count (len of the view's articles, pointer steps) and the AUTHINFO policy recognizer. books/owner-store-indexed.lisp's host-step model names the carried functions in its :open and :exposure-open arms (fn-ocar-ocfg-open-keeps-store, fn-osi-ocar-exp-open-keeps-store, no hypothesis), so PRF-144's fn-osi-live-owner-store-is-indexed keeps describing the host. (2) The checkpoint index shape (PKT-395). fn-sco-thaw-checked (books/store-checkpoint-shape.lisp) refuses a thawed checkpoint whose event index's count is not its record count (:index-shape; O(1)); fn-sco-select-named reports it as (:full-replay :checkpoint-index-shape) and is fn-sco-select on every other status (by definition). Keystone fn-sco-thaw-checked-accepts-own-publication (hypothesis (true-listp suffix), which the host's decoded suffix satisfies): the freeze of fn-sco-extend of a capture thaws to (:ok C), so this image never refuses its own checkpoint. host/store-node-host.lisp fn-store-sco-decode calls fn-sco-thaw-checked and fn-store-sco-select calls fn-sco-select-named; host/native/io.lisp fnn-state-checkpoint-load passes the named status. Not claimed: that the shape test establishes the index's correspondence to the history (a file this image wrote is trusted as its capture, as before); a translation of an older index (none is made).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001",
+        "STO-016"
+      ],
+      "depends_on": [
+        "PRF-104",
+        "PRF-144",
+        "PRF-161",
+        "PRF-173",
+        "PRF-180"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-open-carried.lisp",
+        "tests/acl2/owner-open-carried-tests.lisp",
+        "books/owner-store-indexed.lisp",
+        "books/store-checkpoint-shape.lisp",
+        "tests/acl2/store-checkpoint-shape-tests.lisp",
+        "planning/evidence/served-path-scale-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T145454Z-3119631.json",
+        "planning/evidence/manifests/certify-20260926T150419Z-3212490.json"
+      ],
+      "progress_note": "Lane served-path-scale-2 (2026-09-26). Teeth: tests/acl2/owner-open-carried-tests.lisp (a reachable configured owner with a committed article, *acar-t-committed*: the carried and reference opens agree and open connection 2 with the projection recorded and the store node and configuration pinned; the relation-free counterexample *acar-t-bad-view-oc* on which the carried open records a projection the reference denies, with must-fail for both keystones; each step lemma's hypotheses one at a time); tests/acl2/store-checkpoint-shape-tests.lisp (this image's frozen capture thaws :ok; the pair-shaped index of a249a699..d0df09ed thaws the right records with count 0 and is refused :index-shape, as is the single-trie shape of the 20,000 fixture; must-fail of the keystone without true-listp and of the selection lemma without its hypothesis).",
+      "events": [
+        "fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation",
+        "fn-ocar-exp-open-is-exp-open-under-ocl-relation",
+        "fn-ocar-auth-open-reader-is-auth-open-session",
+        "fn-ocar-peer-open-reader-is-peer-open-session",
+        "fn-ocar-own-open-is-own-open",
+        "fn-ocar-own-reader-context-is-reference",
+        "fn-ocar-ocfg-open-keeps-store",
+        "fn-osi-ocar-exp-open-keeps-store",
+        "fn-sco-thaw-checked-accepts-own-publication"
+      ]
     }
   ]
 }
