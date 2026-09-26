@@ -1112,7 +1112,7 @@ formed and the operator asked for something the node declined to do."
            (and (equal (fn-native-operator-result-command result) "account")
                 (not (equal (fn-ncfg-first
                              (fn-native-operator-result-arguments result))
-                            :account-invite)))))))
+                            :account-invite))))))
 
 ;; PRF-164: the seconds of an accepted `account invite' plan, or nil.
 (defun fn-native-operator-result-account-invite-seconds (result)
