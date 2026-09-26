@@ -2331,6 +2331,12 @@
     (value :released)))
 
 ;; The lines `health' appends (host/native-live-status-host.lisp).
+;; PRF-211: the capacity and the count, the last line of `status'.
+(defun fn-owner-exposure-capacity (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-capacity-line (fn-owner-exposure-limits state)
+                        (len (fn-own-conns (fn-owner-core state)))))
+
 (defun fn-owner-exposure-health (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-exp-health-lines (fn-owner-exposure-state state)

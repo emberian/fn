@@ -101,6 +101,7 @@
     ("docs/operator.md#expose-a-node-to-strangers" 6 "policy" "set" "exposure-auth-failures" "10")
     ("docs/operator.md#expose-a-node-to-strangers" 7 "policy" "set" "exposure-posts-per-minute" "60")
     ("docs/operator.md#expose-a-node-to-strangers" 8 "policy" "set" "anonymous" "none")
+    ("docs/operator.md#expose-a-node-to-strangers" 9 "policy" "set" "exposure-trusted" "192.168.1.0/24")
     ("docs/operator.md#add-a-group" 2 "group" "retire" "peer1")
     ("docs/operator.md#accounts-for-friends-invitation-codes" 2 "account" "list")))
 

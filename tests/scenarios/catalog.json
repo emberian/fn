@@ -2569,7 +2569,7 @@
         "NNT-031"
       ],
       "steps": [
-        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 32, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
+        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 31, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
         "500 concurrent connections from 127.0.0.2; then, per-address lowered live to 1, 10 each from 127.0.1.1-50; then 4 silent and 4 one-octet-a-second connections from 127.0.0.4; lines of 600, 4096 and 65536 octets; an anonymous session under none, then under open (live) a 120-command STAT loop; AUTHINFO guessing at about 100 a second from 127.0.0.7; `operator CONFIG health`."
       ],
       "expected": [
@@ -3922,6 +3922,34 @@
         ],
         "native": true,
         "record": "planning/evidence/group-policy-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-142",
+      "title": "A reader port admits exactly its connection capacity (raised above the old 31, then raised live), refuses the next by name, and exempts the trusted range from the per-address limit, on the developer and production images",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-043"
+      ],
+      "steps": [
+        "Per image: `init fn.test`; `policy set exposure-connections 40`; start the owner on 127.0.0.1; `status`; 40 connections from 127.0.0.1, then a 41st; `health`.",
+        "Live `policy set exposure-connections 45`; 5 more connections, then one more; `status`.",
+        "Close every connection; live `policy set exposure-per-address 2` and `policy set exposure-trusted 127.0.2.0/24`; 6 connections from 127.0.2.9; 3 from 127.0.3.9; `health`; `policy set exposure-trusted 127.0.2.0/33`; `status`."
+      ],
+      "expected": [
+        "status shows capacity=40; the 40 read a 200/201 greeting; the 41st reads `400 too many connections; try again later` and is closed; health prints `exposure capacity connections=40 capacity=40 per-address=40 trusted=none`.",
+        "The 5 are admitted and the next reads the same 400; status shows connections=45 capacity=45.",
+        "All 6 from 127.0.2.9 are admitted; 2 from 127.0.3.9 are admitted and the third reads `400 too many connections from this address; try again later`; health prints `connections=8 capacity=45 per-address=2 trusted=127.0.2.0/24`; the malformed range is refused (non-zero exit) and status still shows trusted=127.0.2.0/24; the owner stays up."
+      ],
+      "implementation": {
+        "test": "tests.test_native_public_limits",
+        "cases": [
+          "DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+          "ProductionImagePublicLimits.test_capacity_and_trusted_range"
+        ],
+        "native": true,
+        "record": "planning/evidence/public-limits-2026-09-26.md"
       }
     }
   ]

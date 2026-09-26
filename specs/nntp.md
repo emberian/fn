@@ -1153,8 +1153,8 @@ and sends, waits or closes as the answer says.
 
 | Slot | Decides | The client sees | Loopback default | Public default |
 | --- | --- | --- | --- | --- |
-| `exposure-connections` | connections held (never above the run's max) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | the run's max | the run's max |
-| `exposure-per-address` | connections held from one source address | `400 too many connections from this address; try again later` | the total | 8 |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | 31 | 31 |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | 8 |
 | `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
 | `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
 | `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
@@ -1185,6 +1185,44 @@ the 400/502 greeting and the immediate close after it, and the 480 for an
 unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
 close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
 accounting and waiting instead of refusing are local policy.
+
+## Connection capacity and the trusted range (NNT-043)
+
+NNT-043: The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule
+
+The capacity is the `exposure-connections` row, a natural up to the limit
+rows' width (the CBOR uint32 maximum); with no row it is 31, the figure a
+run held before. No fixed ceiling sits under it: the owner a run installs is
+bounded one past that width (`*fn-exp-owner-connection-bound*`,
+books/public-exposure-rows.lisp), so the owner's own bound never refuses what
+the row admits, and the private connection a live `policy set` stages
+through always finds room. Below the capacity a connection is refused only
+by the per-address or failed-login rule; at it, every connection reads `400
+too many connections; try again later` and is closed
+(`fn-exp-open-refuses-exactly-at-the-capacity`, PRF-211). A raised row takes
+effect at the next accept.
+
+`exposure-trusted` (a policy row: `none`, or one or more comma-separated
+ranges `ADDRESS/BITS`, each address in `[listener] host`'s grammar, BITS at
+most 32 or 128, a bare address meaning the whole address) names the sources
+exempt from `exposure-per-address`. A node behind a home router whose NAT
+loopback presents every LAN reader as the router's address is the case: its
+readers would otherwise share one address's allowance. The exemption is from
+that rule alone: the capacity, the step budget and the failed-login limit
+apply to a trusted source as to any other
+(`fn-exp-trusted-address-is-never-refused-by-address`,
+`fn-exp-untrusted-address-is-refused-exactly-at-its-limit`). A range is
+matched by the kernel's family and the first BITS bits of the source
+address; an IPv4 range does not match an IPv4-mapped IPv6 source, which no
+admitted listener receives (NNT-041 refuses `::` and the mapped range).
+
+`operator CONFIG health` and `operator CONFIG status` print `exposure
+capacity connections=N capacity=C per-address=P trusted=RANGES`: the
+connections the owner holds, the capacity in force, the per-address limit
+and the trusted word (`none` when there is none).
+
+That the port refuses with 400 past a limit is RFC 3977 §5.1.1; the capacity,
+its default and the trusted range are local policy.
 
 ## Listener addresses (NNT-041)
 
