@@ -375,12 +375,56 @@
   (equal (fn-ks-recover-recorded (kst-declined) (list *kst-grant-before*)
                                  *kst-ml* :verified :verified 8 9 10)
          (kst-declined))))
-; The pre-packet behaviour, for the record: deciding under the open's live
-; grants (the :current policy) acts on the old decline.
+; -----------------------------------------------------------------------------
+; COUNTEREXAMPLE FIXTURE: the removed `:current' reopen (gpt-6's review of
+; wave 2, section 5; no supported switch recreates it).  The trace of
+; planning/evidence/peering-compose-2026-09-25.md Packet 7: a statement
+; declined for want of a `keys' grant, the grant published live after it,
+; a restart.  The pre-packet open decided the pending statement under the
+; open's LIVE grants and answered `enrol-successor committed at-open'; the
+; recorded reopen (fn-ks-statement-rows with AT-OPEN, what the host calls)
+; answers `declined no-grant at-open'.
+(defconst *kst-live-after-grant*
+  (fn-cfg-authorities (fn-cfg-value (fn-ctl-config-at (+ 1 *kst-tx*)
+                                                      (list *kst-grant*)))))
+(assert-event (equal *kst-live-after-grant* *kst-rows*))
+(defmacro kst-old-reopen-plan ()
+  '(fn-ks-plan *kst-event* *kst-snapshots* *kst-live-after-grant*
+              *kst-ml* :verified :verified))
+(defmacro kst-recorded-reopen-plan ()
+  '(fn-ks-plan *kst-event* *kst-snapshots*
+              (fn-ks-statement-rows *kst-event* t *kst-live-after-grant*
+                                    (list *kst-grant*))
+              *kst-ml* :verified :verified))
+; The old reopen's answer: it acted on the old decline.
+(assert-event (equal (car (kst-old-reopen-plan)) :enroll))
 (assert-event
- (not (equal (fn-ks-recover (kst-declined) *kst-rows* *kst-ml* :verified
-                            :verified 8 9 10)
+ (equal (fn-ks-log-line (kst-old-reopen-plan) :committed t)
+        (fn-record-string-octets
+         "key-statement enrol-successor committed at-open")))
+(assert-event
+ (not (equal (fn-ks-recover (kst-declined) *kst-live-after-grant* *kst-ml*
+                            :verified :verified 8 9 10)
              (kst-declined))))
+; The recorded reopen's answer on the same trace: declined, state unchanged.
+(assert-event
+ (equal (fn-ks-log-line (kst-recorded-reopen-plan) nil t)
+        (fn-record-string-octets "key-statement declined no-grant at-open")))
+(assert-event
+ (equal (fn-ks-recover-recorded (kst-declined) (list *kst-grant*)
+                                *kst-ml* :verified :verified 8 9 10)
+        (kst-declined)))
+; The old policy would not answer `declined', and the two reopens differ.
+(must-fail (assert-event (equal (car (kst-old-reopen-plan)) :decline)))
+(must-fail
+ (assert-event
+  (equal (fn-ks-recover-recorded (kst-declined) (list *kst-grant*)
+                                 *kst-ml* :verified :verified 8 9 10)
+         (fn-ks-recover (kst-declined) *kst-live-after-grant* *kst-ml*
+                        :verified :verified 8 9 10))))
+; At acceptance (AT-OPEN nil) the host's rows are the live ones, unchanged.
+(assert-event (equal (fn-ks-statement-rows *kst-event* nil *kst-rows* nil)
+                     *kst-rows*))
 ; Hypothesis removal (the plan declined): a plan that acts but whose kind-3
 ; event the acceptance could not build at its coordinates (a non-natural
 ; sequence) leaves the statement pending, and the recovery builds it.
@@ -426,3 +470,118 @@
                                 *kst-ml* :verified :verified 5 6 7)
         (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event* *kst-rows*
                       *kst-ml* :verified :verified 5 6 7)))
+
+; =============================================================================
+; PRF-140: fn-ks-accepted-statement-finishes-under-its-admission-context.
+; The statement accepted under the grant (journal *kst-grant-before*, at the
+; statement's txid), the process killed at the cut, then the grant revoked
+; (a later record) before the restart.
+(defconst *kst-stamp* (fn-clock-observation 7 1000 5 t))
+(defun kst-record (sequence txid generation delta)
+  (declare (xargs :mode :program))
+  (fn-cfg-record-make sequence txid generation (list delta) *kst-stamp*))
+(make-event `(defconst *kst-grant-delta*
+               ',(fn-cfg-grant-control "fn.keys" (kst-hex *tha-principal*)
+                                       "keys")))
+(make-event `(defconst *kst-revoke-delta*
+               ',(fn-cfg-revoke-control "fn.keys" (kst-hex *tha-principal*))))
+; The grant in force at the statement's txid; its revocation one txid later;
+; the same revocation at the txid; the grant only after the txid; a grant
+; whose generation does not follow (config-at folds it, replay refuses it).
+(make-event `(defconst *kst-admit*
+               ',(kst-record 0 *kst-tx* 1 *kst-grant-delta*)))
+(make-event `(defconst *kst-revoke*
+               ',(kst-record 1 (+ 1 *kst-tx*) 2 *kst-revoke-delta*)))
+(make-event `(defconst *kst-revoke-at-tx*
+               ',(kst-record 1 *kst-tx* 2 *kst-revoke-delta*)))
+(make-event `(defconst *kst-grant-after*
+               ',(kst-record 0 (+ 1 *kst-tx*) 1 *kst-grant-delta*)))
+(make-event `(defconst *kst-grant-bad-generation*
+               ',(kst-record 0 *kst-tx* 5 *kst-grant-delta*)))
+(defconst *kst-admission* (list *kst-admit*))
+(assert-event (fn-cfg-recordp *kst-admit*))
+(assert-event (fn-cfg-recordp *kst-revoke*))
+(assert-event (not (equal (fn-config-replay 0 510 (list *kst-admit* *kst-revoke*))
+                          :fault)))
+(defmacro kst-cut-state ()
+  '(fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*))
+(defmacro kst-replay-rows (configs)
+  `(fn-cfg-authorities (fn-cfg-value (fn-config-replay 0 510 ,configs))))
+
+; The antecedent, every literal.
+(assert-event (fn-ctl-configs-all-through-p *kst-tx* *kst-admission*))
+(assert-event (not (equal (fn-config-replay 0 510 *kst-admission*) :fault)))
+(assert-event (fn-ks-configs-after-p *kst-tx* (list *kst-revoke*)))
+(assert-event (equal (kst-replay-rows *kst-admission*) *kst-rows*))
+; Today's configuration has no grant: deciding under it would decline.
+(assert-event
+ (equal (fn-ks-log-line
+         (fn-ks-plan *kst-event* *kst-snapshots*
+                     (kst-replay-rows (append *kst-admission* (list *kst-revoke*)))
+                     *kst-ml* :verified :verified)
+         nil t)
+        (fn-record-string-octets "key-statement declined no-grant at-open")))
+; The conclusion, reached: the recorded recovery of the cut over the whole
+; journal is the acting acceptance under the admission grants.
+(assert-event
+ (equal (fn-ks-recover-recorded (kst-cut-state)
+                                (append *kst-admission* (list *kst-revoke*))
+                                *kst-ml* :verified :verified 5 6 7)
+        (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                      (kst-replay-rows *kst-admission*)
+                      *kst-ml* :verified :verified 5 6 7)))
+(assert-event
+ (not (equal (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                           (kst-replay-rows *kst-admission*)
+                           *kst-ml* :verified :verified 5 6 7)
+             (kst-cut-state))))
+(assert-event
+ (equal (fn-ks-log-line
+         (fn-ks-plan *kst-event* *kst-snapshots*
+                     (fn-ks-statement-rows *kst-event* t nil
+                                           (append *kst-admission*
+                                                   (list *kst-revoke*)))
+                     *kst-ml* :verified :verified)
+         :committed t)
+        (fn-record-string-octets
+         "key-statement enrol-successor committed at-open")))
+
+; Hypothesis removal (every admission record at or before the txid): the
+; grant published AFTER the statement is in the replay but not in force at
+; the txid; the others hold and the conclusion fails.
+(assert-event (not (fn-ctl-configs-all-through-p *kst-tx* (list *kst-grant-after*))))
+(assert-event (not (equal (fn-config-replay 0 510 (list *kst-grant-after*)) :fault)))
+(assert-event (fn-ks-configs-after-p *kst-tx* nil))
+(must-fail
+ (assert-event
+  (equal (fn-ks-recover-recorded (kst-cut-state)
+                                 (append (list *kst-grant-after*) nil)
+                                 *kst-ml* :verified :verified 5 6 7)
+         (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                       (kst-replay-rows (list *kst-grant-after*))
+                       *kst-ml* :verified :verified 5 6 7))))
+; Hypothesis removal (the admission journal replays): a grant whose
+; generation does not follow is folded by config-at but refused by replay.
+(assert-event (fn-ctl-configs-all-through-p *kst-tx*
+                                            (list *kst-grant-bad-generation*)))
+(assert-event (equal (fn-config-replay 0 510 (list *kst-grant-bad-generation*))
+                     :fault))
+(must-fail
+ (assert-event
+  (equal (fn-ks-recover-recorded (kst-cut-state)
+                                 (append (list *kst-grant-bad-generation*) nil)
+                                 *kst-ml* :verified :verified 5 6 7)
+         (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                       (kst-replay-rows (list *kst-grant-bad-generation*))
+                       *kst-ml* :verified :verified 5 6 7))))
+; Hypothesis removal (every later record is later than the txid): a
+; revocation at the statement's own txid is in force there.
+(assert-event (not (fn-ks-configs-after-p *kst-tx* (list *kst-revoke-at-tx*))))
+(must-fail
+ (assert-event
+  (equal (fn-ks-recover-recorded (kst-cut-state)
+                                 (append *kst-admission* (list *kst-revoke-at-tx*))
+                                 *kst-ml* :verified :verified 5 6 7)
+         (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                       (kst-replay-rows *kst-admission*)
+                       *kst-ml* :verified :verified 5 6 7))))

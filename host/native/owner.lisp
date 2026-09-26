@@ -1087,11 +1087,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 
 ;;; The open's recovery (books/key-statements.lisp fn-ks-recover-recorded):
 ;;; the newest record the open read, when it is a statement, is decided
-;;; under the grants in force at its own txid (packet 7,
-;;; *fn-ks-reopen-policy*), so a change the cut lost is made exactly as the
-;;; acceptance would have made it, a change already made is the newest
-;;; record (no statement), and a declined statement declines again whatever
-;;; grants were added since.
+;;; under the grants in force at its own txid (packet 7; no policy switch),
+;;; so a change the cut lost is made exactly as the acceptance would have
+;;; made it whatever configuration was published since (PRF-140), a change
+;;; already made is the newest record (no statement), and a declined
+;;; statement declines again whatever grants were added since.
 (defun fnn-owner-key-statement-recover (service records)
   (when records
     (let ((pending (fnn-owner-core 'fn-owner-key-statement-pending

@@ -1795,19 +1795,17 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-pop-request event)))
 
-;; The grants a statement is decided under.  At acceptance: the live
-;; configuration's.  At open (AT-OPEN, the newest-record recovery): packet
-;; 7's `fn-ks-reopen-rows' under `*fn-ks-reopen-policy*' -- by default the
-;; configuration in force at the statement's own txid, the fold of the
-;; Store's configuration journal (books/key-statements.lisp
-;; fn-ks-recover-recorded).
+;; The grants a statement is decided under (books/key-statements.lisp
+;; fn-ks-statement-rows): at acceptance the live configuration's; at open
+;; (AT-OPEN, the newest-record recovery) the configuration in force at the
+;; statement's own txid, the fold of the Store's configuration journal
+;; (fn-ks-recover-recorded; PRF-124, PRF-140).  The reopen is recorded by
+;; definition: there is no policy switch.
 (defun fn-owner-key-statement-rows (event at-open state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((live (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))))
-    (if at-open
-        (fn-ks-reopen-rows *fn-ks-reopen-policy* event live
-                           (fn-sn-config-history (fn-owner-store state)))
-      live)))
+  (fn-ks-statement-rows event at-open
+                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        (fn-sn-config-history (fn-owner-store state))))
 
 (defun fn-owner-key-statement-plan
     (event observed-ml-key ed-observation ml-observation at-open state)
