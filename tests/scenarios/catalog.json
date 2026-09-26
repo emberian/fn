@@ -2865,8 +2865,14 @@
           "test_a_friend_redeems_a_code_once_across_a_crash"
         ],
         "native": true,
-        "record": "planning/evidence/friends-accounts-2026-09-26.md"
-      }
+        "record": "planning/evidence/friends-accounts-2026-09-26.md",
+        "log": "planning/evidence/friends-accounts-2-native/test_native_friends_accounts.log"
+      },
+      "evidence": [
+        "planning/evidence/friends-accounts-2026-09-26.md",
+        "planning/evidence/friends-accounts-2-native/test_native_friends_accounts.log"
+      ],
+      "execution_scope": "Implemented as tests/test_native_friends_accounts.py, one case, one node on the developer image (hbox, tools/hbox_native.sh n4 at d03139df). Not yet run from the release tarball (tests/friends_tarball.sh drives only the feed module); the post is unsigned."
     }
   ]
 }
