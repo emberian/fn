@@ -2847,27 +2847,37 @@
       "id": "SCN-094",
       "title": "A friend redeems an invitation code over TLS, logs in as the account, and the code is refused a second time, across a crash of the inviter",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-034"
       ],
       "steps": [
-        "Node A (the operator) runs with a protected listener; `operator CONFIG account invite` prints one code.",
-        "F's client opens TLS (STARTTLS) and sends XREDEEM CODE robin, then a password.",
-        "A is killed between the publication of the redeem and the reply, and restarted; F retries the same XREDEEM.",
-        "F logs in with AUTHINFO USER robin / PASS and posts a signed article; another client redeems the same code as mallory."
+        "Node A runs with an implicit-TLS listener, `[auth] protected_only = true` and no auth.toml; `operator CONFIG account invite --expires 3600` prints one code.",
+        "In cleartext, XREDEEM CODE robin is sent; over TLS, XREDEEM CODE robin then XREDEEM PASS correct-horse.",
+        "On a new TLS connection AUTHINFO USER robin / PASS correct-horse, then POST one article; XREDEEM of the same code as mallory; the same exchange as robin again; an unknown code; `account list`.",
+        "A second code: A on the developer image with FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH dies after the publication and before the reply; A restarts; the same exchange again, then AUTHINFO and POST as robin2.",
+        "With FN_OLD_IMAGE (the bbf52159 image), `operator CONFIG status` on the store."
       ],
       "expected": [
-        "XREDEEM before STARTTLS is 483; 381 then 281 after it.",
-        "The retry after the crash is 281 (already redeemed by this login) and the configuration holds one redeemed row.",
-        "AUTHINFO answers 281 and the post is accepted as the account's principal; the second redeem is 482."
+        "Cleartext XREDEEM is 483; over TLS 381 then 281.",
+        "AUTHINFO is 281 and the POST 240; mallory is 482; robin again is 281 (resume); the unknown code is 482; `account list` names robin and never the code; the service log never holds either code.",
+        "The owner exits 137 with no reply sent; after the restart the retry is 281 and robin2 logs in and posts (240).",
+        "The pre-accounts image refuses to open the store (PKT-440)."
       ],
       "implementation": {
         "test": "tests.test_native_friends_accounts",
-        "cases": [],
+        "cases": [
+          "test_a_friend_redeems_a_code_once_across_a_crash"
+        ],
         "native": true,
-        "record": "planning/evidence/friends-accounts-2026-09-26.md"
-      }
+        "record": "planning/evidence/friends-accounts-2026-09-26.md",
+        "log": "planning/evidence/friends-accounts-2-native/test_native_friends_accounts.log"
+      },
+      "evidence": [
+        "planning/evidence/friends-accounts-2026-09-26.md",
+        "planning/evidence/friends-accounts-2-native/test_native_friends_accounts.log"
+      ],
+      "execution_scope": "Implemented as tests/test_native_friends_accounts.py, one case, one node on the developer image (hbox, tools/hbox_native.sh n4 at d03139df). Not yet run from the release tarball (tests/friends_tarball.sh drives only the feed module); the post is unsigned."
     },
     {
       "id": "SCN-099",

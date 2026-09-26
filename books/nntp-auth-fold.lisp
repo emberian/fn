@@ -463,6 +463,15 @@
   (fn-post-session-awaiting
    (fn-peer-session-base (fn-auth-session-base as))))
 
+; PRF-164: XREDEEM keeps the base session (fn-auth-xredeem-keeps-the-config-
+; base-and-subject), hence the POST state under it.
+(local
+ (defthm fn-auth-fold-xredeem-keeps-post-awaiting
+   (equal (fn-auth-fold-post-awaiting
+           (fn-post-result-session (fn-auth-xredeem as args)))
+          (fn-auth-fold-post-awaiting as))
+   :hints (("Goal" :in-theory (enable fn-auth-fold-post-awaiting)))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-post-awaiting
    (equal (fn-auth-fold-post-awaiting

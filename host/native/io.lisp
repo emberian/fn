@@ -583,6 +583,26 @@ label; it does not select a policy."
 (defvar *fnn-sighup-count* 0)
 (defvar *fnn-owner-log-mutex* (sb-thread:make-mutex :name "fn service log"))
 
+(defun fnn-csprng-octets (width what)
+  "Exactly WIDTH octets from the OS CSPRNG as an octet list; short or failed
+entropy is a host fault.  WIDTH is ACL2's."
+  (unless (and (integerp width) (< 0 width))
+    (fnn-fault "ACL2 returned an invalid ~a width" what))
+  (let ((fd (fnn-open "/dev/urandom" sb-posix:o-rdonly))
+        (answer (fnn-make-octets width))
+        (offset 0))
+    (unwind-protect
+         (progn
+           (loop while (< offset width) do
+             (let* ((chunk (fnn-make-octets (- width offset)))
+                    (count (fnn-read-fd fd chunk)))
+               (when (zerop count)
+                 (fnn-fault "OS CSPRNG ended before one ~a" what))
+               (replace answer chunk :start1 offset :end2 count)
+               (incf offset count)))
+           (fnn-octet-list answer))
+      (fnn-close fd))))
+
 (defun fnn-log-line (line)
   "Write the ACL2-rendered octet list LINE and one LF to the service log."
   (unless (fnn-octet-list-p line)
@@ -3478,7 +3498,8 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
     "FN_PULL_TEST_KILL"
-    "FN_NATIVE_RECLAIM_FAULT"))
+    "FN_NATIVE_RECLAIM_FAULT"
+    "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."

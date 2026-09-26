@@ -35,6 +35,7 @@
 (include-book "config")
 (include-book "auth-secret")
 (include-book "identity")
+(include-book "native-admin-shape")
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
@@ -437,3 +438,220 @@
   :hints (("Goal" :in-theory (e/d (fn-cfg-delta-reason fn-cfg-account-redeem)
                                   (fn-acct-code-digest-text fn-acct-text
                                    fn-acct-verifier-text fn-authsec-enrol)))))
+
+; -----------------------------------------------------------------------------
+; The owner's plan and the word the wire answers (PKT-439)
+;
+; host/native-admin-host.lisp `fn-acct-host-owner-redeem-stage' runs this plan
+; over the LIVE configuration value, under the owner mutex, with the code,
+; login and password a holding session keeps (books/nntp-auth.lisp
+; `fn-auth-redeem-request'), the host's CSPRNG salt, TAKENP from the
+; connection-independent credential table (auth.toml's rows and the
+; redeemed rows), USED the number of credentials in that table and BOUND the
+; store profile's max-credentials (field 12, the bound auth.toml's table is
+; loaded under, D27): a redeem that would take the table past the operator's
+; bound is refused; a resume is never refused by it, since it adds no row.
+
+(defun fn-acct-redeem-bounded-plan (v stamp code login password salt takenp
+                                      used bound)
+  (declare (xargs :guard t))
+  (let ((plan (fn-acct-redeem-plan v stamp code login password salt takenp)))
+    (if (and (equal (car plan) :redeem)
+             (not (< (nfix used) (nfix bound))))
+        (list :refused :account-credential-bound)
+      plan)))
+
+; The word the owner feeds the holding connection (books/nntp-auth.lisp
+; `fn-auth-redeem-outcome'): :bound only for a resume, or for a redeem the
+; owner's publication answered :accepted (host/native/admin.lisp
+; `fnn-owner-live-reconfigure-locked' answers :accepted only after
+; `fn-owner-reconfigure-complete' installed the durable record).
+(defun fn-acct-redeem-word (plan published)
+  (declare (xargs :guard t))
+  (let ((head (if (consp plan) (car plan) nil)))
+    (if (or (equal head :already-redeemed)
+            (and (equal head :redeem) (equal published :accepted)))
+        :bound
+      :refused)))
+
+; KEYSTONE (the admission limit, community-bounds' shape).  Where the plan
+; would redeem, the bounded plan redeems exactly when the table is under the
+; operator's bound, and otherwise refuses with the bound's own reason.
+(defthm fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound
+  (implies (and (natp used) (natp bound)
+                (equal (car (fn-acct-redeem-plan v stamp code login password
+                                                 salt takenp))
+                       :redeem))
+           (equal (fn-acct-redeem-bounded-plan v stamp code login password salt
+                                               takenp used bound)
+                  (if (< used bound)
+                      (fn-acct-redeem-plan v stamp code login password salt
+                                           takenp)
+                    (list :refused :account-credential-bound))))
+  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan))))
+
+; The bound never refuses a resume or changes any plan but a redeem.
+(defthm fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems
+  (implies (not (equal (car (fn-acct-redeem-plan v stamp code login password
+                                                 salt takenp))
+                       :redeem))
+           (equal (fn-acct-redeem-bounded-plan v stamp code login password salt
+                                               takenp used bound)
+                  (fn-acct-redeem-plan v stamp code login password salt
+                                       takenp)))
+  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan))))
+
+; KEYSTONE (281 only after durability).  The owner's word is :bound only
+; for a resume of a redeem already durable for this login and password, or
+; for a :redeem plan whose publication answered :accepted.
+(defthm fn-acct-redeem-word-is-bound-only-after-a-durable-redeem
+  (implies (equal (fn-acct-redeem-word plan published) :bound)
+           (or (equal (car plan) :already-redeemed)
+               (and (equal (car plan) :redeem)
+                    (equal published :accepted)))))
+
+; KEYSTONE (an unknown code, on the wire).  A code whose digest keys no row
+; stages nothing and answers :refused, i.e. 482 (books/nntp-auth.lisp
+; fn-auth-step-pinned-redeem-outcome-answers-the-word), whatever the
+; publication step reported.
+(defthm fn-acct-redeem-word-of-an-unknown-code-is-refused
+  (implies (not (consp (fn-cfg-account-row (fn-cfg-accounts v)
+                                           (fn-acct-code-digest-text code))))
+           (and (not (equal (car (fn-acct-redeem-bounded-plan
+                                  v stamp code login password salt takenp
+                                  used bound))
+                            :redeem))
+                (equal (fn-acct-redeem-word
+                        (fn-acct-redeem-bounded-plan v stamp code login password
+                                                     salt takenp used bound)
+                        published)
+                       :refused)))
+  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan)
+           :use ((:instance fn-acct-redeem-plan-of-an-unknown-code-stages-nothing)))))
+
+; KEYSTONE (the crash cut, through the bound).  After the owner published a
+; bounded plan's redeem, the same request under any later stamp, salt,
+; snapshot, count and bound answers :bound and stages nothing: a client
+; whose 281 was lost to a crash after the root barrier is told 281 on retry.
+(defthm fn-acct-redeem-bounded-plan-after-its-redeem-is-bound
+  (let ((plan (fn-acct-redeem-bounded-plan v stamp code login password salt
+                                           takenp used bound)))
+    (implies (equal (car plan) :redeem)
+             (let ((again (fn-acct-redeem-bounded-plan
+                           (fn-cfg-apply-delta v gen stamp
+                                               (fn-acct-plan-delta plan))
+                           stamp2 code login password salt2 takenp2 used2
+                           bound2)))
+               (and (equal again (list :already-redeemed))
+                    (equal (fn-acct-redeem-word again published2) :bound)))))
+  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan fn-cfg-apply-delta
+                                      fn-acct-plan-delta)
+           :use ((:instance fn-acct-redeem-plan-after-its-redeem-is-already-redeemed)))))
+
+; -----------------------------------------------------------------------------
+; The operator's verbs (PKT-439): `account invite' and `account list'
+;
+; The code is the hexadecimal text of 16 CSPRNG octets the host read; ACL2
+; renders it and its digest, and the configuration keeps only the digest.
+; The expiry is in the unit of the record's clock (books/clock.lisp: wall
+; milliseconds since 2000-01-01, DTN time), which is what
+; `fn-cfg-account-livep' compares it with: the upper end of the issuing
+; observation's error interval plus SECONDS.
+
+(defconst *fn-acct-code-entropy-octets* 16)
+(defconst *fn-acct-default-expiry-seconds* 604800)
+(defconst *fn-acct-issuer* "operator")
+
+(defun fn-acct-code-text (entropy)
+  (declare (xargs :guard t))
+  (if (and (fn-cbor-octet-listp entropy)
+           (equal (len entropy) *fn-acct-code-entropy-octets*))
+      (fn-acct-hex-text entropy)
+    nil))
+
+; `explode-nonnegative-integer' is the tree's decimal renderer
+; (books/provenance.lisp `fn-prov-nat-string' proves the same two facts).
+(local (include-book "arithmetic/top" :dir :system))
+
+(local
+ (defthm fn-acct-explode-characters-aux
+   (implies (and (natp number) (character-listp accumulator))
+            (character-listp
+             (explode-nonnegative-integer number 10 accumulator)))))
+
+(defun fn-acct-decimal-text (n)
+  (declare (xargs :guard t))
+  (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
+
+(defun fn-acct-invite-expiry (seconds stamp)
+  (declare (xargs :guard t))
+  (if (and (posp seconds)
+           (fn-clock-has-wall stamp)
+           (natp (fn-clock-wall stamp))
+           (natp (fn-clock-wall-error stamp)))
+      (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp) (* 1000 seconds))
+    nil))
+
+; The pending row's delta for a code's digest text, or nil when the stamp
+; carries no usable wall clock (an invite cannot expire without one).
+(defun fn-acct-invite-delta (digest seconds stamp)
+  (declare (xargs :guard t))
+  (let ((expiry (fn-acct-invite-expiry seconds stamp)))
+    (if expiry
+        (fn-cfg-account-invite digest *fn-acct-issuer*
+                               (fn-acct-decimal-text expiry))
+      nil)))
+
+; A pending row's code is live at the issuing stamp and at every later stamp
+; whose error interval ends before SECONDS have passed.
+(defthm fn-acct-invite-delta-is-live-at-its-stamp
+  (implies (fn-acct-invite-expiry seconds stamp)
+           (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
+              (fn-acct-invite-expiry seconds stamp))))
+
+; `account list': one line per row, never a digest or a verifier.
+;   pending LOGIN-FREE expires EXPIRY
+;   redeemed LOGIN PRINCIPAL-HEX
+(defun fn-acct-list-lines (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((row (car rows)))
+        (cons (if (equal (fn-cfg-row-n row) 1)
+                  (concatenate 'string "redeemed "
+                               (if (stringp (fn-cfg-row-b row))
+                                   (fn-cfg-row-b row) "")
+                               " "
+                               (fn-acct-hex-text
+                                (fn-acct-local-principal
+                                 (fn-record-string-octets (fn-cfg-row-b row))))
+                               (string #\Newline))
+                (concatenate 'string "pending expires "
+                             (if (stringp (fn-cfg-row-c row))
+                                 (fn-cfg-row-c row) "")
+                             (string #\Newline)))
+              (fn-acct-list-lines (cdr rows))))
+    nil))
+
+(defun fn-acct-string-join (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (concatenate 'string (if (stringp (car xs)) (car xs) "")
+                   (fn-acct-string-join (cdr xs)))
+    ""))
+
+(defun fn-acct-list-report (v)
+  (declare (xargs :guard t))
+  (fn-record-string-octets (fn-acct-string-join
+                            (fn-acct-list-lines (fn-cfg-accounts v)))))
+
+; The pending row an accepted `account invite DIGEST SECONDS' plan stages at
+; STAMP (the live owner's clock, or the offline record's), or nil.
+(defun fn-acct-admin-deltas (plan stamp)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (equal (fn-native-admin-result-kind plan) :account-invite))
+      (let ((d (fn-acct-invite-delta
+                (fn-record-octets-string (fn-native-admin-result-name plan))
+                (fn-native-admin-result-capacity plan) stamp)))
+        (if d (list d) nil))
+    nil))

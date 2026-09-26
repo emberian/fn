@@ -279,6 +279,30 @@
                (member-equal (cadr words) '("budget" "carries" "pull")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
+       ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
+       ; query (no digest or verifier is rendered, books/accounts.lisp
+       ; `fn-acct-list-report').  `account invite DIGEST SECONDS' is the
+       ; form the operator's `account invite [--expires SECONDS]' sends
+       ; after ACL2 rendered the code and its digest on the operator's side
+       ; (host/native/operator.lisp): the code itself never reaches this
+       ; argv, the owner or any record.
+       ((and (equal (len words) 2)
+             (equal (car words) "account")
+             (equal (cadr words) "list"))
+        (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+       ((and (equal (len words) 4)
+             (equal (car words) "account")
+             (equal (cadr words) "invite")
+             (fn-cfg-account-digestp (caddr words))
+             (fn-native-admin-decimalp (cadddr words))
+             (posp (fn-native-admin-decimal-value
+                    (coerce (cadddr words) 'list))))
+        (fn-native-admin-result :accepted nil :account-invite (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
+       ((and (consp words) (equal (car words) "account"))
+        (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
@@ -478,7 +502,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:list-peers :list-control))
+                     '(:list-peers :list-control :list-accounts))
        t))
 
 ;; `control list': one line per grant row of the replayed configuration,
@@ -509,16 +533,17 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
 ;; fn-nls-report) take it, so the host names no kind of its own.
 (defun fn-native-admin-result-report-kind (plan)
   (declare (xargs :guard t))
-  (if (equal (fn-native-admin-result-kind plan) :list-control)
-      :control
-    :peers))
+  (cond ((equal (fn-native-admin-result-kind plan) :list-control) :control)
+        ((equal (fn-native-admin-result-kind plan) :list-accounts) :accounts)
+        (t :peers)))
 
 ;; The report a query plan asks for, over a replayed configuration value.
 (defun fn-native-admin-query-report (plan value)
   (declare (xargs :guard t))
-  (if (equal (fn-native-admin-result-kind plan) :list-control)
-      (fn-native-admin-control-report (fn-cfg-authorities value))
-    (fn-native-admin-peer-report (fn-cfg-peers value))))
+  (cond ((equal (fn-native-admin-result-kind plan) :list-control)
+         (fn-native-admin-control-report (fn-cfg-authorities value)))
+        (t (fn-native-admin-peer-report (fn-cfg-peers value)))))
+
 
 (encapsulate ()
 (local (in-theory (disable fn-bp-eid-shapep)))

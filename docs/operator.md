@@ -1346,6 +1346,28 @@ group's name, and the name grants no creation, moderation, deletion or
 forwarding authority. The plan for creating one is exactly the plan for any
 other valid name (`fn-native-admin-plan-create-ignores-special-purpose`).
 
+## Accounts for friends (invitation codes)
+
+An account for a friend is made by the friend, from a code you hand them
+(specs/nntp.md, "Invitation-code accounts"). With the node running or not:
+
+```
+fn operator CONFIG account invite --expires 86400
+fn operator CONFIG account list
+```
+
+`account invite` prints one code, once, on stdout, after the pending row is
+durable; the node keeps only its digest, so a lost code is issued again, never
+recovered. Without `--expires` a code lives 604800 seconds. The friend, on a TLS
+connection, sends `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, and is
+answered `281` once the account is durable; from the next connection they log
+in with AUTHINFO USER/PASS as LOGIN, bound to the login's local principal, with
+no auth.toml edit and no restart. A code redeems once; the same exchange after a
+lost reply answers `281` again and binds nothing new. `account list` shows
+`redeemed LOGIN PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a code,
+digest or verifier. Redeemed accounts and auth.toml's credentials together are
+bounded by the profile's `max-credentials`.
+
 ## Upgrade, and what a rollback loses
 
 Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
@@ -1362,6 +1384,11 @@ fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise on
 fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
 fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
 ```
+
+Once an account code is redeemed on a release with accounts, releases before
+it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
+an older image refuses configuration delta kinds 15 and 16 at decode; a store
+that never issued a code is unaffected).
 
 There are two rollbacks, and they are not the same:
 
