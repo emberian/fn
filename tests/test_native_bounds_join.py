@@ -12,10 +12,15 @@ v2) meet here.  Two things neither lane could run alone:
   config.json and reopen under the old image, upgrade again, POST 3 MiB,
   re-read, restart, still open (planning/evidence/bounds-join-2026-09-25.md).
 
+* one served step whose reply is several MiB (PKT-481): the ARTICLE of 1, 2
+  and 3 MiB articles and an OVER of about 4 MB, the owner still serving.
+
 Run on hbox with FN_NATIVE_HOST naming the image under test.
 """
 import shutil
+import signal
 import socket
+import threading
 import unittest
 
 from tests import test_native_operator_verbs as verbs
@@ -137,6 +142,105 @@ class LargeArticleTests(JoinFixture):
             self.assertTrue(rows[n][1], "{} did not reread identical".format(n))
         self.assertEqual(rows[MIB4 + 1][0], OVERSIZE)
         self.assertEqual(self.headroom()["transactions-used"], 3)
+
+
+class LargeReplyTests(JoinFixture):
+    """Standing cases for PKT-481: one served step whose REPLY is several MiB.
+
+    Until exposure-reply-size the exposure's observation after every step
+    (host/owner-host.lisp fn-owner-exposure-observe) counted 481 replies with
+    one control-stack frame per reply octet, so the ARTICLE of a 2 MiB article
+    and an OVER of about 4 MB each stopped the owner (exit 4, "Control stack
+    exhausted" in fn-owner-chunk) while every POST before them was accepted.
+    They live here, beside the 3 MiB POST, because this module is the one that
+    runs an operator profile large enough to hold them and asserts identity and
+    a clean owner exit; tools/throughput_gate.py measures time on small
+    articles and would neither hold a 3 MiB article nor say why a step died.
+    """
+
+    OVER_ARTICLES = 2000
+    OVER_REFERENCES = 2000  # octets of folded References per article
+
+    def start_drained_owner(self):
+        """start_owner, with its stderr read as it is written.
+
+        The fixture's owner writes one log line per accepted POST to a pipe
+        nobody reads until it stops; about 500 POSTs fill the pipe's 64 KiB,
+        the writing thread blocks in pipe_write holding the owner's log
+        mutex, and every later request waits (harness trap found here: 512
+        transactions, the control socket fenced as owner-unanswering)."""
+        owner = self.start_owner(self.image)
+        lines = []
+        reader = threading.Thread(
+            target=lambda: lines.extend(iter(owner.stderr.readline, b"")), daemon=True)
+        reader.start()
+        return owner, reader, lines
+
+    def stop_drained(self, owner, reader, lines):
+        owner.send_signal(signal.SIGTERM)
+        code = owner.wait(timeout=60)
+        reader.join(timeout=60)
+        self.assertEqual(code, EXIT_OK,
+                         b"".join(lines[-20:]).decode("utf-8", "replace"))
+
+    def references(self, i):
+        ids, total, j = [], 0, 0
+        while total < self.OVER_REFERENCES:
+            mid = "<r{}-{}@example.invalid>".format(i, j)
+            ids.append(mid)
+            total += len(mid) + 3
+            j += 1
+        return b"References: " + "\r\n ".join(ids).encode("ascii") + b"\r\n"
+
+    def test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving(self):
+        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner, reader, log = self.start_drained_owner()
+        rows = self.post_and_reread([1048576, 2097152, 3145728])
+        for n in (1048576, 2097152, 3145728):
+            self.assertTrue(rows[n][0].startswith("240"), rows)
+            self.assertTrue(rows[n][1], "the ARTICLE of {} octets was not served identical".format(n))
+        self.assertIsNone(owner.poll(), "the owner stopped serving the large ARTICLEs")
+        with socket.create_connection(("127.0.0.1", self.port), timeout=300) as conn:
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"200"))
+            for i in range(self.OVER_ARTICLES):
+                stream.write(b"POST\r\n")
+                stream.flush()
+                self.assertTrue(stream.readline().startswith(b"340"))
+                stream.write(b"From: over@example.invalid\r\nNewsgroups: fn.test\r\n"
+                             b"Subject: large over\r\nMessage-ID: <over-" +
+                             str(i).encode("ascii") + b"@example.invalid>\r\n" +
+                             self.references(i) + b"\r\nbody\r\n.\r\n")
+                stream.flush()
+                reply = stream.readline()
+                self.assertTrue(reply.startswith(b"240"), (i, reply))
+            stream.write(b"GROUP fn.test\r\n")
+            stream.flush()
+            words = stream.readline().split()
+            self.assertEqual(words[0], b"211", words)
+            stream.write(b"OVER " + words[2] + b"-" + words[3] + b"\r\n")
+            stream.flush()
+            self.assertTrue(stream.readline().startswith(b"224"))
+            lines, octets = 0, 0
+            while True:
+                line = stream.readline()
+                self.assertTrue(line, "the OVER reply ended without its terminator")
+                if line == b".\r\n":
+                    break
+                lines += 1
+                octets += len(line)
+        self.assertEqual(lines, 3 + self.OVER_ARTICLES)
+        self.assertGreater(octets, 3 * 1024 * 1024)
+        self.assertIsNone(owner.poll(), "the owner stopped serving the large OVER")
+        client = NntpClient(self.port)
+        try:
+            client.stream.write(b"STAT <over-0@example.invalid>\r\n")
+            client.stream.flush()
+            self.assertTrue(client.stream.readline().startswith(b"223"))
+        finally:
+            client.close()
+        self.stop_drained(owner, reader, log)
 
 
 @unittest.skipUnless(FORMAT7_IMAGE, "FN_FORMAT7_IMAGE names a pre-D27 image")
