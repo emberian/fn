@@ -3457,6 +3457,29 @@
         "planning/evidence/reader-clients-2026-09-26.md"
       ],
       "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
+    },
+    {
+      "id": "NNT-039",
+      "title": "The operator sets a group's description and the node's message of the day on a running node, and LIST NEWSGROUPS and LIST MOTD show exactly what the configuration holds",
+      "specification": "specs/nntp.md#group-descriptions-and-the-message-of-the-day-nnt-039",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-195"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "tests/acl2/group-descriptions-tests.lisp",
+        "books/owner-descriptions-read.lisp",
+        "books/config-descriptions.lisp",
+        "planning/evidence/usenet-headers-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.6.6 and RFC 6048 section 2.5 are the RFC requirements; the text being the replayed configuration's, published live, is a stronger fn guarantee; printable ASCII, 256-octet row pieces and an empty MOTD rather than 503 are local policy (specs/nntp.md). Gap inventory items R2, R5 and O1."
     }
   ]
 }
