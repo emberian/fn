@@ -563,11 +563,17 @@ the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
 5. **Preservation**: the chain's records are one valid prefix
    (`fn-ccc-links-okp-composes-a-prefix`); a capture over the uncovered
    suffix extends the chain and keeps it a prefix of the history
-   (`fn-ccc-capture-extends-the-chain`); the open over the chain and a
-   complete observation answers exactly the history
-   (`fn-ccc-chain-reconstructs-the-history`); a reclaim keeps that answer
-   at every cut (`fn-ccc-reclaim-preserves-reconstructed-history`, PRF-073
-   over a chain). Each link is published and selected by the existing pack
+   (`fn-ccc-capture-extends-the-chain`); the open over the chain and the
+   transaction files from any sequence N at or below the chain's boundary
+   to the end of the history answers exactly the history
+   (`fn-ccc-chain-reconstructs-the-history`: N is 0 before a reclaim, the
+   boundary after it, anything between at a reclaim cut, so no reclaimed
+   file is needed); a reclaim keeps that answer at every cut
+   (`fn-ccc-reclaim-preserves-reconstructed-history`, PRF-073 over a
+   chain). The served view replays the records this open returns
+   (`fnn-pack-recover-records`, called by both reopen paths of the store
+   open), so an article in a link is framed from the same record bytes as
+   before it was packed. Each link is published and selected by the existing pack
    program (immutable generation, then the selection marker); at every cut
    the walk from the image's marker reads the old chain or the new link
    followed by the old chain (`fn-ccc-publication-crash-walks-old-or-new-chain`,
