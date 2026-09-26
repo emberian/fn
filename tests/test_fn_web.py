@@ -85,6 +85,9 @@ class WebClientTests(unittest.TestCase):
         data = reply.read().decode("utf-8")
         result = reply.status, dict(reply.getheaders()), data
         connection.close()
+        if method == "GET" and path.startswith("/compose") and reply.status == 303:
+            # The compose page mints its identifier once and names it in the URL.
+            return self.request("GET", result[1]["Location"], extra=extra)
         return result
 
     def form_id(self):
@@ -595,7 +598,8 @@ class WebClientTests(unittest.TestCase):
         self.assertIsNone(json.loads(record.read_text())["lines"])
         self.restart_outbox()
         listing = self.request("GET", "/outbox")[2]
-        self.assertIn("Draft: (untitled)", listing)
+        self.assertIn("<span class='badge'>draft</span>", listing)
+        self.assertIn("(untitled)</a> <span class='meta'>fn.agents · saved here, not posted", listing)
         restored = self.request("GET", "/draft?id=" + token)[2]
         self.assertIn("rough &lt;draft&gt;", restored)
         self.assertNotIn("POST", self.node.seen)
@@ -745,8 +749,15 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(status, 200, page)
         self.assertIn("XPAT References 1-4 *<root@fake.invalid>*", self.node.seen)
         self.assertIn("STAT <mid@fake.invalid>", self.node.seen)
-        self.assertIn("earlier message <code>&lt;mid@fake.invalid&gt;</code> · the node "
-                      "answered <code>430 withdrawn</code>", page)
+        # The withdrawn middle keeps its place: root, then it, then the leaf under it.
+        placeholder = ("an earlier message, <code>&lt;mid@fake.invalid&gt;</code>; the node "
+                       "answered <code>430 withdrawn</code>")
+        self.assertIn("<article class='thread hole' style='margin-left:18px'><span "
+                      "class='badge withdrawn'>withdrawn</span> " + placeholder, page)
+        self.assertIn("style='margin-left:36px'><h2 class='unread'><strong>▸ </strong>"
+                      "<a href='/a?group=fn.agents&amp;number=4'>", page)
+        self.assertLess(page.index("number=1'>root"), page.index(placeholder))
+        self.assertLess(page.index(placeholder), page.index("number=4'>Re: Re: root"))
         self.assertIn("/a?group=fn.agents&amp;number=1'>root</a>", page)
         self.assertIn("/a?group=fn.agents&amp;number=4'>Re: Re: root</a>", page)
         self.assertNotIn("unrelated", page)
@@ -769,7 +780,8 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(status, 303)
         page = self.request("GET", headers["Location"])[2]
         self.assertIn("Outcome: <span class='badge uncertain'>uncertain</span>", page)
-        self.assertIn("<span class='badge accepted'>accepted</span> <span class='reason'>", page)
+        self.assertIn("Settled: the node accepted these exact bytes", page)
+        self.assertIn("<li><span class='reason'>", page)
         self.request("POST", "/resend", {"submission_id": token})
         page = self.request("GET", "/result?id=" + token)[2]
         self.assertIn("441 posting failed; this article is already stored here", page)
@@ -795,8 +807,25 @@ class WebClientTests(unittest.TestCase):
         self.restart_outbox()
         page = self.request("GET", "/result?id=" + token)[2]
         self.assertIn("Sent again at your request", page)
-        self.assertIn("<span class='badge accepted'>accepted</span>", page)
+        self.assertIn("Settled: the node accepted these exact bytes", page)
         self.assertEqual(self.node.seen.count("POST"), 2)
+
+    def test_back_to_the_form_after_posting_returns_the_same_identifier(self):
+        # The walk's second finding: Back re-fetched /compose, minted a new
+        # identifier, and a second Post sent a second article.
+        connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=10)
+        connection.request("GET", "/compose?group=fn.agents")
+        reply = connection.getresponse(); reply.read(); connection.close()
+        self.assertEqual(reply.status, 303)
+        form_url = reply.getheader("Location")
+        token = form_url.split("id=", 1)[1]
+        self.assertEqual(self.request("POST", "/post", {"submission_id": token})[0], 303)
+        status, _, back = self.request("GET", form_url)
+        self.assertEqual(status, 200)
+        self.assertIn("This form was already posted", back)
+        self.assertNotIn("name='submission_id'", back)
+        self.assertEqual(self.request("POST", "/post", {"submission_id": token})[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
 
     def test_another_site_cannot_read_mark_or_post(self):
         self.node.seed("fn.agents", "private", "p", msgid="<p@fake.invalid>")
