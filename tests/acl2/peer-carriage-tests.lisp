@@ -366,3 +366,190 @@
                                                    nil nil)))
 (assert-event (null (fn-pcb-transit-refusal-detail *tha-root-source* *pat-snapshots*
                                                    nil nil nil)))
+
+; -----------------------------------------------------------------------------
+; PRF-171: the incremental peer deltas.  A peer's group grows past
+; `*fn-cfg-max-rows*' by requests; the 1,024 is the work bound of one delta.
+
+; N distinct carried-principal rows under NAME (the hex is a decimal counter,
+; padded; `fn-cfg-rowp' reads only the labels and the uint32).
+(defun pcb-many-rows (name n)
+  (if (zp n) nil
+    (cons (list name "carries-principal" (coerce (explode-nonnegative-integer n 10 nil) (quote string)) 0)
+          (pcb-many-rows name (1- n)))))
+
+(defconst *pcb-1024* (pcb-many-rows "relay" 1024))
+(defconst *pcb-1025* (pcb-many-rows "relay" 1025))
+(defconst *pcb-big-value*
+  (fn-cfg-value-make nil 0 nil nil nil
+                     (cons (list "relay" "path-identity" "relay.example" 0)
+                           *pcb-1024*)
+                     nil nil nil nil))
+(defconst *pcb-one-more*
+  (list (list "relay" "carries-principal" "next" 0)))
+
+; fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound: at the bound
+; admitted, one past refused, below admitted (the old figure an instance).
+(assert-event (fn-cfg-labelp "relay"))
+(assert-event (fn-cfg-row-listp *pcb-1024*))
+(assert-event (fn-cfg-rows-keyed-p *pcb-1024* "relay"))
+(assert-event (consp (fn-cfg-rows-with-key (fn-cfg-peers *pcb-big-value*) "relay")))
+(assert-event (null (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                         (fn-cfg-add-peer-rows "relay" *pcb-1024*))))
+(assert-event (equal (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                          (fn-cfg-add-peer-rows "relay" *pcb-1025*))
+                     :malformed-delta))
+(assert-event (null (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                         (fn-cfg-add-peer-rows "relay" *pcb-one-more*))))
+; Teeth, one per hypothesis: each retained hypothesis holds, the omitted one
+; fails, and the conclusion (admitted at 1 row) fails.
+; (fn-cfg-labelp name): a 257-octet name.
+(defconst *pcb-long-name* (coerce (make-list 257 :initial-element #\r) 'string))
+(assert-event (not (fn-cfg-labelp *pcb-long-name*)))
+(assert-event (equal (fn-cfg-delta-reason
+                      (fn-cfg-value-make nil 0 nil nil nil
+                                         (list (list *pcb-long-name* "x" "" 0))
+                                         nil nil nil nil)
+                      1 nil 0 510
+                      (fn-cfg-add-peer-rows *pcb-long-name*
+                                            (list (list *pcb-long-name* "y" "" 0))))
+                     :malformed-delta))
+; (fn-cfg-row-listp rows): a row whose natural is not a uint32.
+(assert-event (not (fn-cfg-row-listp (list (list "relay" "x" "" -1)))))
+(assert-event (equal (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                          (fn-cfg-add-peer-rows
+                                           "relay" (list (list "relay" "x" "" -1))))
+                     :malformed-delta))
+; (consp rows)
+(assert-event (equal (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                          (fn-cfg-add-peer-rows "relay" nil))
+                     :peer-rows-empty))
+; (fn-cfg-rows-keyed-p rows name)
+(assert-event (equal (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                          (fn-cfg-add-peer-rows
+                                           "relay" (list (list "other" "x" "" 0))))
+                     :peer-rows-unkeyed))
+; the peer exists
+(assert-event (equal (fn-cfg-delta-reason *pcb-big-value* 1 nil 0 510
+                                          (fn-cfg-add-peer-rows
+                                           "nobody" (list (list "nobody" "x" "" 0))))
+                     :no-such-peer))
+
+; fn-cfg-add-peer-rows-extends-the-group: a peer holding 1,025 rows (its
+; path identity and 1,024 principals) takes one more: 1,026, past the old
+; cap, with every earlier row kept.
+(defconst *pcb-grown-value*
+  (fn-cfg-apply-delta *pcb-big-value* 1 nil
+                      (fn-cfg-add-peer-rows "relay" *pcb-one-more*)))
+(assert-event (equal (len (fn-cfg-rows-with-key (fn-cfg-peers *pcb-grown-value*)
+                                                "relay"))
+                     1026))
+(assert-event (equal (fn-cfg-rows-with-key (fn-cfg-peers *pcb-grown-value*) "relay")
+                     (append (fn-cfg-peers *pcb-big-value*) *pcb-one-more*)))
+; Tooth (keyed): rows under another name do not land in the group.
+(must-fail
+ (assert-event
+  (equal (fn-cfg-rows-with-key
+          (fn-cfg-peers (fn-cfg-apply-delta *pcb-big-value* 1 nil
+                                            (fn-cfg-add-peer-rows
+                                             "relay" (list (list "other" "x" "" 0)))))
+          "relay")
+         (append (fn-cfg-peers *pcb-big-value*) (list (list "other" "x" "" 0))))))
+; Tooth (true-listp rows): an improper tail is not a row.
+(must-fail
+ (assert-event
+  (equal (fn-cfg-rows-with-key
+          (fn-cfg-peers (fn-cfg-apply-delta *pcb-big-value* 1 nil
+                                            (fn-cfg-add-peer-rows
+                                             "relay"
+                                             (cons (list "relay" "x" "" 0) 5))))
+          "relay")
+         (append (fn-cfg-peers *pcb-big-value*)
+                 (cons (list "relay" "x" "" 0) 5)))))
+
+; fn-cfg-apply-delta-adds-at-most-the-work-bound: a delta of exactly 1,024
+; rows reaches the bound; a malformed delta of 1,025 would pass it.
+(assert-event
+ (equal (len (fn-cfg-peers (fn-cfg-apply-delta
+                            (fn-cfg-value-make nil 0 nil nil nil
+                                               (list (list "relay" "p" "" 0))
+                                               nil nil nil nil)
+                            1 nil (fn-cfg-add-peer-rows "relay" *pcb-1024*))))
+        (+ 1 1024)))
+(assert-event (not (fn-cfg-deltap (fn-cfg-add-peer-rows "relay" *pcb-1025*))))
+(must-fail
+ (assert-event
+  (<= (len (fn-cfg-peers (fn-cfg-apply-delta
+                          (fn-cfg-value-make nil 0 nil nil nil
+                                             (list (list "relay" "p" "" 0))
+                                             nil nil nil nil)
+                          1 nil (fn-cfg-add-peer-rows "relay" *pcb-1025*))))
+      (+ 1 1024))))
+
+; fn-pcb-extend-deltas-apply-as-the-extend-delta: the budget request over a
+; group with a budget publishes the new rows and removes the two old ones;
+; applied, it is the whole-group extension.
+(defconst *pcb-budget-deltas*
+  (fn-pcb-extend-deltas "relay" (fn-pcb-budget-rows "relay" 5 3)
+                        (fn-cfg-peers *pcb-value*)))
+(assert-event (equal (len *pcb-budget-deltas*) 2))
+(assert-event (equal (fn-cfg-delta-kind (car *pcb-budget-deltas*)) :add-peer-rows))
+(assert-event (equal (fn-cfg-delta-rows (cadr *pcb-budget-deltas*))
+                     (list (list "relay" "carried-budget-charge" "" 1)
+                           (list "relay" "carried-budget-count" "" 1))))
+(assert-event (fn-cfg-admissiblep *pcb-value* 1 nil 0 510 *pcb-budget-deltas*))
+(assert-event
+ (equal (fn-cfg-apply *pcb-value* 1 nil *pcb-budget-deltas*)
+        (fn-cfg-apply-delta *pcb-value* 1 nil
+                            (fn-pcb-extend-delta "relay" (fn-pcb-budget-rows "relay" 5 3)
+                                                 (fn-cfg-peers *pcb-value*)))))
+(assert-event (equal (fn-pcb-peer-budget
+                      "relay" (fn-cfg-peers (fn-cfg-apply *pcb-value* 1 nil
+                                                          *pcb-budget-deltas*)))
+                     '(5 3)))
+; A second peer after relay: the order of the table is kept.
+(defconst *pcb-two-value*
+  (fn-cfg-value-make nil 0 nil nil nil
+                     (append *pcb-old-rows* (list (list "zeta" "path-identity" "z" 0)))
+                     nil nil nil nil))
+; Tooth (keyed new): rows keyed on another peer apply in another order.
+(assert-event (not (fn-cfg-rows-keyed-p (list (list "zeta" "carried-budget-charge" "" 9)) "relay")))
+(must-fail
+ (assert-event
+  (equal (fn-cfg-apply *pcb-two-value* 1 nil
+                       (fn-pcb-extend-deltas "relay"
+                                             (list (list "zeta" "carried-budget-charge" "" 9))
+                                             (fn-cfg-peers *pcb-two-value*)))
+         (fn-cfg-apply-delta *pcb-two-value* 1 nil
+                             (fn-pcb-extend-delta "relay"
+                                                  (list (list "zeta" "carried-budget-charge" "" 9))
+                                                  (fn-cfg-peers *pcb-two-value*))))))
+; Tooth (true-listp new): an improper list of rows.
+(must-fail
+ (assert-event
+  (equal (fn-cfg-apply *pcb-value* 1 nil
+                       (fn-pcb-extend-deltas "relay"
+                                             (cons (list "relay" "carried-budget-charge" "" 9) 7)
+                                             (fn-cfg-peers *pcb-value*)))
+         (fn-cfg-apply-delta *pcb-value* 1 nil
+                             (fn-pcb-extend-delta "relay"
+                                                  (cons (list "relay" "carried-budget-charge" "" 9) 7)
+                                                  (fn-cfg-peers *pcb-value*))))))
+; :remove-peer-rows refuses what the group does not hold, and emptying it.
+(assert-event (equal (fn-cfg-delta-reason *pcb-value* 1 nil 0 510
+                                          (fn-cfg-remove-peer-rows
+                                           "relay" (list (list "relay" "x" "" 0))))
+                     :peer-row-absent))
+(assert-event (equal (fn-cfg-delta-reason *pcb-value* 1 nil 0 510
+                                          (fn-cfg-remove-peer-rows "relay" *pcb-old-rows*))
+                     :peer-rows-emptied))
+; Codes 17 and 18 round-trip through the record codec.
+(assert-event (equal (fn-cfg-code-kind (fn-cfg-kind-code :add-peer-rows)) :add-peer-rows))
+(assert-event (equal (fn-cfg-code-kind (fn-cfg-kind-code :remove-peer-rows)) :remove-peer-rows))
+; A record holding both kinds encodes and decodes to itself.
+(defconst *pcb-add-record*
+  (fn-cfg-record-make 1 7 2 *pcb-budget-deltas*
+                      (fn-cfg-record-stamp *fn-cfg-default-record*)))
+(assert-event (fn-cfg-recordp *pcb-add-record*))
+(assert-event (equal (fn-cfg-decode-exact (fn-cfg-encode *pcb-add-record*))
+                     (fn-record-parse-ok *pcb-add-record* nil)))

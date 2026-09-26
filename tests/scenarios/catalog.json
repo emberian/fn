@@ -3163,6 +3163,41 @@
         "record": "planning/evidence/service-envelope-2026-09-26.md",
         "log": "planning/evidence/service-envelope-2026-09-26/driver.log"
       }
+    },
+    {
+      "id": "SCN-101",
+      "title": "a peer's carried principals grow past the old 1,024 rows by 1,100 separate requests, and a store publishes checkpoint generation 4097 under a profile whose max-transactions admits it",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-023"
+      ],
+      "steps": [
+        "`operator CONFIG init --max-transactions 1164 --max-config-generations 1164 fn.test`; `peer add far ...`; 1,100 separate `peer carries far HEX`; `peer list`.",
+        "`peer budget far 1048576 3`; `peer budget far 2097152 5`; `peer list`; `peer carries far HEX0` again; `peer list`.",
+        "Developer `store ROOT init --max-transactions 8191`; post; `checkpoint publish`; hard-link generation 0 as generations 1..4096; `checkpoint publish`; `checkpoint status`.",
+        "The same with `--max-transactions 4095` and generations 0..4095."
+      ],
+      "expected": [
+        "Every request exits 0; the listing (a fresh open replaying every configuration record) names the 1,100 principals in request order.",
+        "Both budget requests exit 0 and the 1,100 principals stay; the repeated principal adds no row.",
+        "The second publication prints generation=4097 and status lists 4096 and 4097.",
+        "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged."
+      ],
+      "evidence": [
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/caps-to-profile/native-checkpoint-generations.log",
+        "planning/evidence/caps-to-profile/native-peer-rows-growth.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "log": "planning/evidence/caps-to-profile/native-peer-rows-growth.log",
+        "record": "planning/evidence/caps-to-profile-2026-09-26.md"
+      }
     }
   ]
 }
