@@ -16,16 +16,16 @@ import signal
 import subprocess
 import unittest
 
-from tests import test_native_profile_upgrade as upgrade
+from tests import native_profile_fixture as upgrade
 from tests import test_native_operator_verbs as verbs
 
 ROOT = verbs.ROOT
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 
 
-class NativeConsumerProfileTests(upgrade.ProfileUpgradeFixture):
+class NativeConsumerProfileTests(upgrade.ProfileFixture):
     image = verbs.DEVELOPER
-    profile_line = upgrade.OperatorFieldsTests.profile_line
+    profile_line = upgrade.ProfileLineMixin.profile_line
 
     def start_owner(self, image):
         # The owner's stderr goes to a file: three hundred requests must not
@@ -77,44 +77,6 @@ class NativeConsumerProfileTests(upgrade.ProfileUpgradeFixture):
                          "c{}: {}".format(k, result.stdout.decode()))
         self.assertIn(b"refused", result.stdout + result.stderr)
         self.assertFalse(target.exists())
-
-    def test_the_operator_raises_the_consumer_count(self):
-        created = self.op("init", "--max-consumers", "256", "fn.test")
-        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        self.assertEqual(self.profile_line()["max-consumers"], 256)
-
-        owner = self.start_owner(self.image)
-        boot = self.consumer("bootstrap")
-        self.assertEqual(boot.returncode, EXIT_OK, boot.stderr.decode())
-        self.register_range(1, 256)
-        self.refused(257)
-        self.stop(owner)
-
-        raised = self.op("store", "upgrade-profile", "--max-consumers", "300")
-        self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
-        self.assertEqual(self.profile_line()["max-consumers"], 300)
-
-        # The next open replays the 256 registrations under the raised
-        # profile; nothing was rewritten.
-        owner = self.start_owner(self.image)
-        self.register_range(257, 300)
-        self.refused(301)
-        position = self.consumer("position", "c1", self.root / "c1-again.fncu")
-        self.assertEqual(position.returncode, EXIT_OK, position.stderr.decode())
-        self.stop(owner)
-
-        # 300 committed registrations replay at open (the pre-D27 replay
-        # refused past 256).
-        owner = self.start_owner(self.image)
-        self.refused(301)
-        again = self.consumer("position", "c300", self.root / "c300-again.fncu")
-        self.assertEqual(again.returncode, EXIT_OK, again.stderr.decode())
-        self.stop(owner)
-
-        shrunk = self.op("store", "upgrade-profile", "--max-consumers", "299")
-        self.assertEqual(shrunk.returncode, EXIT_REFUSED, shrunk.stderr.decode())
-        self.assertIn("max-consumers", (shrunk.stdout + shrunk.stderr).decode())
-
 
 if __name__ == "__main__":
     unittest.main()

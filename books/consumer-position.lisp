@@ -234,9 +234,9 @@
 ; MAX entries is refused `:max-consumers'; every other answer is
 ; `fn-cp-register''s.  Replay re-runs `fn-cp-register' only (the committed
 ; event's validity, books/consumer-store-projection), not this admission
-; bound: the profile only rises (`fn-profile-upgrade-keeps-namespace-counts'),
-; so a register the node committed under an older bound is within the
-; current one, and a replay that refused it would be whole-state
+; bound: the profile is written once, at init or import (D34: no verb
+; rewrites it), so a register the node committed is within the bound it is
+; replayed under, and a replay that refused it would be whole-state
 ; revalidation of what the served decision already decided.
 (defun fn-cp-register-within (s max caller consumer query qver view)
   (let ((d (fn-cp-register s caller consumer query qver view)))
@@ -468,9 +468,8 @@
 
 ; KEYSTONE (the table stays within the operator's bound).  From a table of
 ; at most MAX entries, applying the write the served decision proposed --
-; or any event that is not a register -- leaves at most MAX.  With the
-; upgrade keystone (a profile never lowers field 9) this carries the bound
-; across reopen: a table within the old profile's count is within the new.
+; or any event that is not a register -- leaves at most MAX.  The profile
+; is the store's birth profile (D34), so the bound holds across reopen.
 (defthm fn-cp-apply-preserves-consumer-capacity
   (implies (and (<= (len (fn-cp-nth 5 s)) (nfix max))
                 (or (not (eq (fn-cp-nth 0 event) :register))

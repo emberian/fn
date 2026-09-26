@@ -386,15 +386,13 @@ octets the host reported, is a natural at least OCTETS."
 
 ; The pack's event limit is never the refusal under a preset: the open's
 ; namespace gate admits at most the profile's max_transactions, and each
-; preset's (format 8 or its format-7 tuple) is at most the pack's 4096
+; preset's is at most the pack's 4096
 ; events.  Under an operator's profile with max_transactions above 4096 (the
 ; D27 default is 2^32-1) the history takes more than one link of the chain
 ; (P5); the test book carries a 4097-event witness.
 (defthm fn-cverb-preset-count-within-pack-events
   (implies (member-equal profile (list *fn-bs-profile-development*
-                                       *fn-bs-profile-scale*
-                                       *fn-bs-meta-format-7-development-values*
-                                       *fn-bs-meta-format-7-scale-values*))
+                                       *fn-bs-profile-scale*))
            (<= (fn-bs-profile-max-transactions profile) *fn-cc-max-events*))
   :rule-classes nil)
 

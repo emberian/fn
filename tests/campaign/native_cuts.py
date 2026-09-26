@@ -78,23 +78,6 @@ RECOVERY_CUTS = (
 )
 ALL_CUTS = POST_CUTS + RECOVERY_CUTS
 
-# The offline profile upgrade (`operator CONFIG store upgrade-profile P' and
-# the developer `store ROOT upgrade-profile P'), fn-bs-profile-program in
-# books/byte-store-profile-program.lisp, selected by FN_NATIVE_PROFILE_FAULT.
-# The candidate column is the profile the next open must read: the old one
-# before the rename, the new one after the root barrier, either at the
-# rename.  At every cut the store opens with one of the two profiles and
-# never a torn one (fn-bs-profile-program-crash-is-old-or-new), and its
-# budget is the old or the new one (-crash-budget-is-old-or-new).
-PROFILE_BOOK = "byte-store-profile-program.lisp"
-PROFILE_CUTS = (
-    NativeCut("profile-created", "fn-bs-profile-program", "old", book=PROFILE_BOOK),
-    NativeCut("profile-written", "fn-bs-profile-program", "old", book=PROFILE_BOOK),
-    NativeCut("profile-staged-durable", "fn-bs-profile-program", "old", book=PROFILE_BOOK),
-    NativeCut("profile-replaced", "fn-bs-profile-program", "either", book=PROFILE_BOOK),
-    NativeCut("profile-durable", "fn-bs-profile-program", "new", book=PROFILE_BOOK),
-)
-
 # The exact-state checkpoint (P3): `operator CONFIG store checkpoint' and the
 # developer `store ROOT checkpoint' write fn-bs-scp-program, selected by
 # FN_NATIVE_STATE_CHECKPOINT_FAULT.  The candidate column is the checkpoint
@@ -263,47 +246,13 @@ def verify_native_cut_map() -> None:
                 cut.name, cut.occurrence, cut.program))
     verify_recovery_order()
     verify_swallowed_cuts()
-    verify_profile_cut_map()
     verify_state_checkpoint_cut_map()
     verify_marker_cut_map()
 
 
-def verify_profile_cut_map() -> None:
-    """The host's profile cuts are the model program's, in its order.
-
-    The host reaches them in `fnn-upgrade-profile-write' in the program's
-    order: the two staging cuts inside fnn-write-staged-at, then the three
-    `fnn-at' sites around the rename and the root barrier.
-    """
-    declared = tuple(c.name for c in PROFILE_CUTS)
-    if declared != native_declared_cut_names("fnn-profile-model-cuts"):
-        raise AssertionError("native/model profile cuts differ")
-    if declared != model_cut_names("fn-bs-profile-program", PROFILE_BOOK):
-        raise AssertionError("profile cuts are not fn-bs-profile-program's")
-    source = (ROOT / "host/native/io.lisp").read_text()
-    write = host_function(source, "fnn-upgrade-profile-write")
-    order = [write.index(":profile-created :profile-written"),
-             write.index("(fnn-at store :profile-staged-durable)"),
-             write.index("(fnn-replace stage (fnn-config-path store))"),
-             write.index("(fnn-at store :profile-replaced)"),
-             write.index("(fnn-fsync-dir (fnn-store-root store))"),
-             write.index("(fnn-at store :profile-durable)")]
-    if order != sorted(order):
-        raise AssertionError("fnn-upgrade-profile-write is out of the program's order")
-    for cut in PROFILE_CUTS:
-        steps = model_steps(cut.program, cut.book)
-        index = cut_step_index(cut)
-        renamed = any(s.kind == "rename" for s in steps[:index])
-        fenced = any(s.kind == "fsync-dir" for s in steps[:index])
-        expected = "new" if fenced else ("either" if renamed else "old")
-        if cut.candidate != expected:
-            raise AssertionError("{}: candidate {} but the program says {}".format(
-                cut.name, cut.candidate, expected))
-
-
 def verify_state_checkpoint_cut_map() -> None:
     """The host's state-checkpoint cuts are fn-bs-scp-program's, in its order,
-    reached by `fnn-state-checkpoint-write' as the profile writer reaches its own."""
+    reached by `fnn-state-checkpoint-write' in the program's order."""
     declared = tuple(c.name for c in STATE_CHECKPOINT_CUTS)
     if declared != native_declared_cut_names("fnn-state-checkpoint-model-cuts"):
         raise AssertionError("native/model state-checkpoint cuts differ")
@@ -332,7 +281,7 @@ def verify_state_checkpoint_cut_map() -> None:
 
 def program_book(program: str) -> str:
     """The book whose defun holds PROGRAM, from the cut table."""
-    return next((c.book for c in ALL_CUTS + PROFILE_CUTS + STATE_CHECKPOINT_CUTS
+    return next((c.book for c in ALL_CUTS + STATE_CHECKPOINT_CUTS
                  if c.program == program),
                 "byte-store-programs.lisp")
 
