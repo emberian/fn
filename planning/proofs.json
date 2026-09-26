@@ -4433,9 +4433,10 @@
         "planning/evidence/bounds-p6-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T235221Z-2754177.json",
         "books/store-budget-article.lisp",
-        "tests/acl2/store-budget-article-tests.lisp"
+        "tests/acl2/store-budget-article-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T001521Z-4100524.json"
       ],
-      "progress_note": "Certified with teeth (manifest certify-20260925T235221Z-2754177, run-20260925T235154Z-c725); native gate on the ffd85ad0 developer image (bounds-p6 record, width-boundary section).",
+      "progress_note": "Certified with teeth: manifests certify-20260925T235221Z-2754177 (persvati) and certify-20260926T001521Z-4100524 (hbox, with packet 1's gate); native gates on the a9ed4dc2 developer image (bounds-p6 record).",
       "events": [
         "fn-sn-prepare-stages-a-narrow-article-record",
         "fn-post-admitted-article-record-is-within-r",
