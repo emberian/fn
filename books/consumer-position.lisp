@@ -5,6 +5,10 @@
 (include-book "cbor-invariants")
 
 (defconst *fn-cp-max-id* 64)
+; WORK bound of a fixed record shape (D27; community-bounds 2026-09-26): one
+; cursor is a fixed tuple of ids of at most *fn-cp-max-id* octets and u32s,
+; whatever the consumer count (that is field 9's); the encoder's sharper
+; 346-octet figure is `fn-cp-cursor-encode-length-bound'.
 (defconst *fn-cp-max-token* 512)
 ; The consumer count is the operator's (D27; store profile field 9,
 ; `fn-bs-profile-max-consumers', books/store-profile-namespace): the served

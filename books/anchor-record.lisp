@@ -49,6 +49,8 @@
 ; The family
 
 (defconst *fn-anchor-magic* '(70 78 65 78))   ; FNAN
+; WORK bound of a fixed record shape (D27; community-bounds 2026-09-26): one
+; FNAN anchor record of fixed-length keys, signature, nonce and root.
 (defconst *fn-anchor-max-payload* 1024)
 
 (defconst *fn-anchor-kinds* '(:observed :incarnation))
