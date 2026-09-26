@@ -8,13 +8,13 @@ Aim (ember, 2026-09-26): friends bring up their own instances and peer, some pee
 
 | Pile | Packets |
 | --- | ---: |
-| (a) WAVE 4 | 127 |
+| (a) WAVE 4 | 126 |
 | &nbsp;&nbsp;already owned by a lane running or queued now | 20 |
-| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 90 |
-| &nbsp;&nbsp;coordinator chores (not lanes) | 17 |
+| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 91 |
+| &nbsp;&nbsp;coordinator chores (not lanes) | 15 |
 | (b) AFTER v1 | 125 |
 | (c) WON'T DO / SUPERSEDED | 21 |
-| **Total** | **273** |
+| **Total** | **272** |
 
 Sweep 10 (deputy 3, dev `88ec3ef0..804896a1`): 235 at the triage, 6 retired by merges in the window (PKT-002, 242, 249, 271, 319, 348; struck below with the hash), 38 added: sweep 10's 16 new packets (PKT-353 to 368), 13 reserved ids given their first backlog line (PKT-321, 323, 326, 330, 331, 401, 403 to 406, 409 to 411) and 9 open packets this pass had missed (PKT-168, 324, 332, 408, 412 to 416). Moved between piles: PKT-197 to (c); PKT-164 and PKT-263 to (b); PKT-252 to friend-session; PKT-300 to operator-daily; PKT-301 to served-path-scale. Running now (WAVE-STATE): outcome-algebra, pack-chain-open, signed-history-index-2, and the candidates peer-feeds, keys-and-accounts, community-bounds, reader-2 (their packets stay under their candidate headings).
 
@@ -27,6 +27,8 @@ Sweep 13 (deputy 3, dev `fac2c417..51b4ff48`): 260 after sweep 12, less 6 retire
 Sweep 14 (deputy 3, dev `51b4ff48..1770d687`): 269 after sweep 13, less 5 retired in the window (keys-and-accounts-2 02021d18: PKT-221; multi-peer-relay 8041d5b0: PKT-261, 291; served-path-scale c150c506: PKT-189; the cites and gate 2bde18f7, 43b0ad46, dfa810fc: PKT-387; struck with the hash), plus 8 added: the lanes' PKT-455 and PKT-464 (first placed here) and sweep 14's PKT-394 to 399 (PKT-463, already here, got its backlog line). The keys-and-accounts block is now keys-and-accounts-3's (running since 15:50; PKT-399 added there); served-path-scale's (a0) block is merged: PKT-190 and PKT-455 to candidate 4, PKT-324 and PKT-330 to a new (a0) block hot-path-scans-2 (running since 15:50). The other lanes launched at 15:50 and 16:05 (operator-daily-2, service-envelope, ten-second-5, ingress-span) own packets still filed under their candidates here, as before. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
 
 Sweep 15 (deputy 3, dev `1770d687..92fe0753`): 272 after sweep 14, none retired in the window (no message names a packet; PKT-396's items landed at 01e1b3cb, 544c8b1e and 40a73bf0, left for the deputy to tick), plus 1 added: PKT-482 (the next cut carries batches R and S and what lands after 17:00), filed under the coordinator chores (owner: the deputy). marker-sharing stopped unmerged at 17:10: its (a0) block is now marker-sharing-2's; PKT-461 and PKT-462 are on its branch only and are not counted here.
+
+Sweep 16 (deputy 3, dev `92fe0753..05fbc962`): 273 in the table after sweep 15, less PKT-396 and PKT-398 (retired at c7072ddc and struck then, the table not updated: 271 by the script), less 2 retired in the window (ten-second-5 aeb29ca4: PKT-371, PKT-326; struck with the hash), plus 3 added: the lane's PKT-478 (first placed here, under tooling-velocity beside PKT-366, which it half closes) and sweep 16's PKT-483 and PKT-484 (coordinator chores, the deputy's). Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
 
 Every open packet appears exactly once below (struck lines are retired and not counted) (checked by script against the backlog's open lines).
 
@@ -379,7 +381,8 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-359 stale expectations at the candidate (C15 to C18, W1); C18: the served crash model gives no evidence as shipped (sweep 10)~~ retired at 4ee732da (sweep 12)
 - PKT-412 reach_check reads subjects from hints and hypotheses and seeds from an unloaded host file (sweep 10)
 - PKT-364 the teeth-form lint misreads a constant inside a macro as a bare claim (sweep 10)
-- PKT-366 the farm installs `defrecord` without its compiled file (sweep 10)
+- PKT-366 the farm installs `defrecord` without its compiled file (sweep 10) (sweep 16: half done at aeb29ca4, defrecord installs compiled; the fasl-less pre-cache entries are PKT-478 (2))
+- PKT-478 what ten-second-5 left: (1) owner-invariants 11.19 s quiet, the one baseline book: a per-theorem hint pass over its flat tail; (2) cache entries published before the fasl cache carry no book.fasl (membership-epochs-invariants): a recertify-once rule in certs.py install-partial, measured on hbox's cache first (sweep 16)
 - PKT-368 teeth_check: `fn-record-group-namep` never anchored true (sweep 10)
 - PKT-445 what tooling-velocity left: (a) merge_lane.sh's two lines, (b) the over-budget native modules, (c) the prover-refusal teeth audit, (d) PKT-288's fake owner, (e) `farm.py certify-in-place` (sweep 11)
 - PKT-446 349 stale spec/doc citations of 254 names (sweep 11)
@@ -446,8 +449,8 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-355~~ friends-peer-2's merge certification `--affected-by books/owner.lisp` at the merged bytes (sweep 10) — retired at 17ff24aa
 - ~~PKT-365~~ lower the throughput baseline after 735614d6 with a named improvement (sweep 10) — retired at 114af152
 - PKT-408 the gate once per host/books batch; a quiet run to arm the wall-clock figures (sweep 10)
-- PKT-326 owner-invariants and owner-control-read: a quiet re-measure, never a lane (sweep 10)
-- PKT-371 one quiet re-measure of the five books over 10 s under load today, native-operator's growth watched (sweep 11); two more at fac2c417: peer-authored-accept 11.5 s, topic-history-store-invariants 11.4 s (sweep 12) ; the candidate dfa810fc's closure run, at 4 jobs: ten over 10 s, store-checkpoint-reader 13.2 s the top (sweep 15)
+- ~~PKT-326~~ owner-invariants and owner-control-read: a quiet re-measure, never a lane (sweep 10) — retired at aeb29ca4 ((a) the quiet figure; (b) to PKT-478 (1)) (sweep 16)
+- ~~PKT-371~~ one quiet re-measure of the five books over 10 s under load today, native-operator's growth watched (sweep 11); two more at fac2c417: peer-authored-accept 11.5 s, topic-history-store-invariants 11.4 s (sweep 12) ; the candidate dfa810fc's closure run, at 4 jobs: ten over 10 s, store-checkpoint-reader 13.2 s the top (sweep 15) — retired at aeb29ca4 (fifteen of seventeen under 10 s quiet; baseline 9 -> 1) (sweep 16)
 - PKT-373 reap the merged lanes' persvati REPL sessions; identify opv-mirror2 (sweep 11)
 - ~~PKT-380~~ the merge certifications of operator-daily's and peer-feeds' bytes and batches K to N's gate owed at the head (sweep 12) — retired at 4e2625ba
 - PKT-381 the cite step's traps: a grep exit status skipped two `farm.py submit`s; harvest.sh --root (sweep 12)
@@ -457,6 +460,8 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-396~~ multi-peer-relay's (hbox, bp-node-progress's closure and the two new books) and served-path-scale's (acceptance, node, owner) merge certifications and batch R+S's gate owed at 1770d687, before the cut takes them (sweep 14) (sweep 15: its items landed at 01e1b3cb, 544c8b1e, 40a73bf0; not ticked) — retired at 40a73bf0
 - ~~PKT-398~~ PRF-028 uncertified at the current digest though PRF-175 and the accounts publication cite it: one certification rooted at config-owner-publish, riding PKT-396's run (sweep 14) (sweep 15: certified_claims --explain names certify-20260926T123813Z-1816946 as certifying the current bytes, not cited: a cite closes it) — retired at the cite
 - PKT-482 the next cut carries batches R and S (multi-peer-relay, served-path-scale; certified 01e1b3cb, 544c8b1e; gate 40a73bf0) and every lane merged after 17:00: one closure and a qualification reusing qual-dfa810fc's unchanged evidence (sweep 15)
+- PKT-483 ten-second-5's merge certification over native-admin's and native-operator's closures at the merged bytes (aeb29ca4), cited, and its gate before the next cut (sweep 16)
+- PKT-484 PRF-164, PRF-166 and PRF-175 still say PRF-028 is uncertified in their "Not covered" sentences; it is cited since c7072ddc: rewrite the three, regenerate (sweep 16)
 
 ## (b) AFTER v1: matters, but not for friends peering
 
