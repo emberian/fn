@@ -609,6 +609,12 @@ class Walk:
         if not isinstance(f, list) or not f:
             return
         head = f[0]
+        if isinstance(head, list):
+            # A form whose operator position is itself a form (a lambda
+            # application, a form the reader left as a list): no dispatch
+            # by name; walk every element as a subform.
+            self.walk_body(f, env, mode, stack)
+            return
         if head in ("quote", "function", "declare"):
             return
         text = show(f)
