@@ -6,15 +6,20 @@
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
 (include-book "../books/native-health")
+; PKT-209: `control log' and `control evidence MSGID' (books/control-evidence.lisp).
+(include-book "../books/control-evidence")
 
 (defun fn-native-live-status-host-offline (kind profile obs state)
   ; `status', `pins', `obligations' and `peer list' with no owner running:
   ; the Store and configuration this process replayed, no connection.
   (declare (xargs :stobjs state :mode :program))
-  (fn-nls-offline-report kind profile
-                         (f-get-global 'fn-store-sn state)
-                         (f-get-global 'fn-store-cfg state)
-                         obs))
+  (if (fn-cevg-kindp kind)
+      ;; PKT-209: the records decided as recovery decides them.
+      (fn-cev-offline-report kind (f-get-global 'fn-store-sn state))
+    (fn-nls-offline-report kind profile
+                           (f-get-global 'fn-store-sn state)
+                           (f-get-global 'fn-store-cfg state)
+                           obs)))
 
 (defun fn-native-live-status-host-answer (request cached obs min state)
   ; The running owner's page for one FNLS request, under its mutex
@@ -26,7 +31,9 @@
   ; chosen here.  The carried octet sum is read, not extended in place:
   ; `fn-owner-headroom' stores its extension, this does not.
   (declare (xargs :stobjs state :mode :program))
-  (let ((decoded (fn-nls-request-decode request)))
+  ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
+  ;; argument (fn-cev-any-request-decode reads either frame).
+  (let ((decoded (fn-cev-any-request-decode request)))
     (if (not (equal (car decoded) :live-status))
         (list (fn-nls-reply-encode :refused 0 nil nil) cached)
       (let* ((kind (cadr decoded))
@@ -45,6 +52,10 @@
                    ;; (books/public-exposure.lisp fn-exp-health-lines),
                    ;; after the eight states, so the first line and its exit
                    ;; code are fn-nh-render's unchanged.
+                   (if (fn-cevg-kindp kind)
+                       ;; PKT-209 (PRF-185): the records and archive the
+                       ;; owner's committed view carries.
+                       (fn-cev-live-report kind (fn-owner-ocfg state))
                    (append
                     (fn-nh-answer-report kind
                                          (fn-owner-store-profile state)
@@ -55,17 +66,17 @@
                                          obs min)
                     (if (equal kind :health)
                         (fn-owner-exposure-health state)
-                      nil))))))
+                      nil)))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 
 (defun fn-native-live-status-host-requestp (octets)
   (declare (xargs :mode :program))
-  (equal (car (fn-nls-request-decode octets)) :live-status))
+  (equal (car (fn-cev-any-request-decode octets)) :live-status))
 
 (defun fn-native-live-status-host-request-encode (kind offset)
   (declare (xargs :mode :program))
-  (fn-nls-request-encode kind offset))
+  (fn-cev-any-request-encode kind offset))
 
 (defun fn-native-live-status-host-client-step (acc total digest reply)
   (declare (xargs :mode :program))
