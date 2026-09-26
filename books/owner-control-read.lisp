@@ -217,6 +217,24 @@
                                    (fn-nntp-result-effects))))))
 
 (local
+ (defthm fn-octl-single-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-single session text)))
+   :hints (("Goal" :in-theory (enable fn-nntp-single fn-nntp-make-result
+                                      fn-nntp-result-effects)))))
+
+(local
+ (defthm fn-octl-multi-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-multi session initial lines)))
+   :hints (("Goal" :in-theory (enable fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-result-effects)))))
+
+(local
+ (defthm fn-octl-multi-octets-effects-true-listp
+   (true-listp (fn-nntp-result-effects (fn-nntp-multi-octets session initial lines)))
+   :hints (("Goal" :in-theory (enable fn-nntp-multi-octets fn-nntp-make-result
+                                      fn-nntp-result-effects)))))
+
+(local
  (defthm fn-octl-list-active-times-effects-true-listp
    (true-listp (fn-nntp-result-effects (fn-nntp-list-active-times session env args)))
    :hints (("Goal" :do-not-induct t
@@ -244,12 +262,12 @@
  (defthm fn-octl-list-command-effects-true-listp
    (true-listp (fn-nntp-result-effects (fn-nntp-list-command session archive env args)))
    :hints (("Goal" :do-not-induct t
-                   :in-theory (e/d (fn-nntp-list-command fn-nntp-single fn-nntp-multi
+                   :in-theory (e/d (fn-nntp-list-command
                                     fn-nntp-list-newsgroups-described fn-nntp-list-motd
-                                    fn-nntp-multi-octets fn-nntp-make-result
                                     fn-nntp-list-status-response
                                     fn-nntp-list-active-status)
-                                   (fn-nntp-result-effects))))))
+                                   (fn-nntp-result-effects fn-nntp-single
+                                    fn-nntp-multi fn-nntp-multi-octets))))))
 
 (local
  (defthm fn-octl-listgroup-result-effects-true-listp
