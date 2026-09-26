@@ -85,10 +85,12 @@
     ("docs/operator.md" 1229 "policy" "set" "exposure-auth-failures" "10")
     ("docs/operator.md" 1230 "policy" "set" "exposure-posts-per-minute" "60")
     ("docs/operator.md" 1231 "policy" "set" "anonymous" "none")
-    ("docs/operator.md" 1326 "store" "needs-upgrade")
-    ("docs/operator.md" 1330 "store" "upgrade-profile" "--max-transactions" "1000")
-    ("docs/operator.md" 1331 "store" "rollback-check" "/srv/kept/config.json.format-7")
-    ("docs/operator.md" 1332 "store" "rollback-check" "--snapshot" "/srv/snapshot/store")))
+    ("docs/operator.md" 1324 "account" "invite" "--expires" "86400")
+    ("docs/operator.md" 1325 "account" "list")
+    ("docs/operator.md" 1348 "store" "needs-upgrade")
+    ("docs/operator.md" 1352 "store" "upgrade-profile" "--max-transactions" "1000")
+    ("docs/operator.md" 1353 "store" "rollback-check" "/srv/kept/config.json.format-7")
+    ("docs/operator.md" 1354 "store" "rollback-check" "--snapshot" "/srv/snapshot/store")))
 
 (assert-event (null (fn-docs-operator-rejected *fn-docs-operator-argv*))
               :msg (msg "The grammar refuses these documented invocations: ~x0"
