@@ -3759,6 +3759,29 @@
         "planning/evidence/transit-streaming-2026-09-26.md"
       ],
       "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599)."
+    },
+    {
+      "id": "HST-021",
+      "title": "The Linux release runs on glibc 2.36 (Debian 12) and later: no bundled ELF object needs a GLIBC symbol version above tools/runpath_check.py's GLIBC_FLOOR",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "tests/test_release_tarball.py",
+        "packaging/floor-runtime.sh",
+        "packaging/freeze-native-image.sh",
+        "packaging/release-tarball.sh",
+        "docs/operator.md",
+        "planning/evidence/release-glibc-floor-2026-09-26.md"
+      ],
+      "implementation_note": "The floor runtime is SBCL 2.6.8 rebuilt from its signed source with the binary release's build-id in debian:12 (runtime GLIBC_2.34; libsodium and libfn-mldsa65 GLIBC_2.33 unchanged). Rehearsed on the AJ core (088f6de7) repackaged with --frozen, so that tarball is ungated; the next gated Linux release must pass --runtime-from, or its runpath check refuses it."
     }
   ]
 }

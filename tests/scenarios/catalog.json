@@ -3986,6 +3986,34 @@
         "203; sixteen 238 then four 431 and 438 for the held one, each echoing its Message-ID; sixteen 239; 439 for the out-of-scope TAKETHIS where IHAVE gave 437; the four deferred now 238 and 239; 439 and 438 for the held article where IHAVE gave 435; every stored article served byte-identical.",
         "The 501 peer receives MODE STREAM then IHAVE on the same connection and never CHECK or TAKETHIS, and a second article reaches it (no stop); the 203 peer receives CHECK then TAKETHIS and never IHAVE."
       ]
+    },
+    {
+      "id": "SCN-145",
+      "title": "The Linux release runs on Debian 12 (glibc 2.36) with only libc and the system libssl: install, init, run, POST and ARTICLE over STARTTLS, stop, SIGKILL, recover",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-021"
+      ],
+      "steps": [
+        "Measure every bundled ELF object's GLIBC version needs (objdump -T, readelf -V, tools/runpath_check.py --tarball).",
+        "Rebuild the SBCL runtime with packaging/floor-runtime.sh in debian:12; freeze with FN_FREEZE_RUNTIME; package (release-tarball.sh --runtime-from, or --frozen for a rehearsal).",
+        "In a debian:12 container with libssl3 added and nothing else: verify SHA256SUMS, unpack, install.sh --no-service, init, run; from the host, tools/fn_client.py POST and show over STARTTLS; SIGTERM; start; POST; SIGKILL; recover; start; show both.",
+        "The same on hbox's own Ubuntu; the unrebuilt tarball's packaging is refused by the runpath check."
+      ],
+      "expected": [
+        "No bundled object needs more than GLIBC_2.36; the old runtime is refused naming __isoc23_strtol@GLIBC_2.38 and does not load in debian:12.",
+        "Both posts answered 240, both articles served after the SIGKILL and recover, on Debian 12 and on Ubuntu."
+      ],
+      "evidence": [
+        "planning/evidence/release-glibc-floor-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/test_release_tarball.py",
+        "native": true,
+        "record": "planning/evidence/release-glibc-floor-2026-09-26.md",
+        "log": "planning/evidence/release-glibc-floor-2026-09-26/hbox/test_release_tarball.log"
+      }
     }
   ]
 }

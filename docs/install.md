@@ -13,6 +13,9 @@ revision it was built from), with a `SHA256SUMS` file beside it. The tarball
 carries its own Lisp runtime, libsodium and the ML-DSA-65 library; it uses
 your system's TLS library (OpenSSL 3.0 or later on Linux, LibreSSL on
 OpenBSD). It needs no Python, no compiler and nothing else from the build.
+On Linux it needs glibc 2.36 or later (Debian 12, Ubuntu 24.04 and newer);
+[the operator's reference](operator.md#from-the-release-tarball) says where
+that floor is set and checked.
 
 ## 1. Download, verify, unpack, install
 

@@ -72,6 +72,19 @@ library's loader, no RPATH outside, every DT_NEEDED carried or the C
 library; every shared-object name in the saved core carried, the C library,
 or the system TLS library HST-016 names).
 
+HST-021: The Linux release runs on glibc 2.36 (Debian 12) and later. No
+ELF object it bundles (the SBCL runtime, libsodium, libfn-mldsa65) needs a
+`GLIBC_x.y` symbol version above `GLIBC_FLOOR` in `tools/runpath_check.py`,
+the one place the floor is set; the release build's `--tree` check refuses
+one that does, naming the symbol. Because a saved core starts only on the
+runtime with its build-id, the floor runtime is the same SBCL version rebuilt
+from its signed source with that build-id in a Debian 12 container
+(`packaging/floor-runtime.sh`, `release-tarball.sh --runtime-from`), and the
+freeze refuses it unless it prints the same version and starts the image's
+core. The floor is a property of the bundled objects' version needs; it says
+nothing of a glibc below it, and a symbol a core resolves by name at start
+(the linkage table) is checked only by running there.
+
 ## Core interface
 
 Conceptual events include connection-opened, input-octets, connection-closed,

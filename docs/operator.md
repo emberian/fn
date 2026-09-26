@@ -549,6 +549,19 @@ library is the system's), `share/fn/` (the service template,
 `fn.toml.example`, `docs/install.md`, `release-gate.txt` with the gate's
 lines, `runpath-check.txt`) and `SHA256SUMS` over every file.
 
+**Requirements (Linux): glibc 2.36 or later**, the system's libssl (OpenSSL
+3.0 or later), x86-64, and nothing else. The glibc floor is `GLIBC_FLOOR` in
+`tools/runpath_check.py`, the one place it is set: the release build's
+runpath check refuses a bundled ELF object (the SBCL runtime, libsodium,
+libfn-mldsa65) that needs a `GLIBC_x.y` symbol version above it, and
+`tests/test_release_tarball.py` checks the tarball again. A runtime built on
+a newer glibc can need newer versions (SBCL 2.6.8's binary release needs
+`__isoc23_strtol@GLIBC_2.38`), so a Linux release is built with
+`--runtime-from DIR`, where `packaging/floor-runtime.sh SBCL SOURCE DIR`
+rebuilt the same SBCL, with its build-id, in a Debian 12 container; the
+freeze refuses that runtime unless it prints the same version and starts the
+image's core.
+
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
 --version` prints the 40-digit source revision recorded beside the image's
