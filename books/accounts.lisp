@@ -630,27 +630,63 @@
               (fn-acct-invite-expiry seconds stamp))))
 
 ; `account list': one line per row, never a digest or a verifier.
-;   pending LOGIN-FREE expires EXPIRY
+;   pending expires EXPIRY
 ;   redeemed LOGIN PRINCIPAL-HEX
+;   binding LOGIN PRINCIPAL-HEX      (PKT-221's rows, mark 2; PKT-391)
+; The slot holds three row kinds, told apart by the row's mark alone
+; (books/config.lisp: pending 0, redeemed 1, binding 2); a row of another
+; mark (no writer makes one) is listed as `unknown'.
+(defun fn-acct-row-kind (row)
+  (declare (xargs :guard t))
+  (let ((mark (fn-cfg-row-n row)))
+    (cond ((equal mark 0) :pending)
+          ((equal mark 1) :redeemed)
+          ((equal mark 2) :binding)
+          (t :unknown))))
+
+(defun fn-acct-list-text (x)
+  (declare (xargs :guard t))
+  (if (stringp x) x ""))
+
+(defun fn-acct-kind-word (kind)
+  (declare (xargs :guard t))
+  (cond ((equal kind :pending) "pending ")
+        ((equal kind :redeemed) "redeemed ")
+        ((equal kind :binding) "binding ")
+        (t "unknown")))
+
+(defun fn-acct-list-fields (row kind)
+  (declare (xargs :guard t))
+  (cond ((equal kind :redeemed)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-b row)) " "
+                      (fn-acct-hex-text
+                       (fn-acct-local-principal
+                        (fn-record-string-octets (fn-cfg-row-b row))))))
+        ((equal kind :binding)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))))
+        ((equal kind :pending)
+         (concatenate 'string "expires " (fn-acct-list-text (fn-cfg-row-c row))))
+        (t "")))
+
+(defun fn-acct-list-line (row)
+  (declare (xargs :guard t))
+  (let ((kind (fn-acct-row-kind row)))
+    (concatenate 'string (fn-acct-kind-word kind) (fn-acct-list-fields row kind)
+                 (string #\Newline))))
+
 (defun fn-acct-list-lines (rows)
   (declare (xargs :guard t))
   (if (consp rows)
-      (let ((row (car rows)))
-        (cons (if (equal (fn-cfg-row-n row) 1)
-                  (concatenate 'string "redeemed "
-                               (if (stringp (fn-cfg-row-b row))
-                                   (fn-cfg-row-b row) "")
-                               " "
-                               (fn-acct-hex-text
-                                (fn-acct-local-principal
-                                 (fn-record-string-octets (fn-cfg-row-b row))))
-                               (string #\Newline))
-                (concatenate 'string "pending expires "
-                             (if (stringp (fn-cfg-row-c row))
-                                 (fn-cfg-row-c row) "")
-                             (string #\Newline)))
-              (fn-acct-list-lines (cdr rows))))
+      (cons (fn-acct-list-line (car rows)) (fn-acct-list-lines (cdr rows)))
     nil))
+
+; PKT-391: the word each line starts with is its row's kind, decided by the
+; mark alone: a binding row is listed as a binding (its login and
+; principal), never as a pending account; only a mark-0 row is pending.
+(defthm fn-acct-list-word-is-pending-only-for-a-pending-row
+  (equal (equal (fn-acct-kind-word (fn-acct-row-kind row)) "pending ")
+         (equal (fn-cfg-row-n row) 0)))
 
 (defun fn-acct-string-join (xs)
   (declare (xargs :guard t))

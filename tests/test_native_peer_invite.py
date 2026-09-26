@@ -301,6 +301,83 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertEqual([line for line in history if pa in line],
                          ["generation=1 state=active principal={}".format(pa)])
 
+    def hybrid(self, *words):
+        result = subprocess.run([str(IMAGE), "--fn", *words], cwd=ROOT,
+                                env=live.environment(), stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=240, check=False)
+        self.assertEqual(result.returncode, EXIT_OK, out(result))
+        return result
+
+    def stop_with_log(self, node):
+        node.process.send_signal(signal.SIGTERM)
+        self.assertEqual(node.process.wait(timeout=60), EXIT_OK)
+        log = node.process.stderr.read().decode("utf-8", "replace")
+        node.reap()
+        return log
+
+    def test_a_succeeded_friend_is_confirmed_under_its_current_keys(self):
+        """PKT-211 (PRF-179): B enrolled at A under its genesis keys and then
+        succeeded (generation 2, the same principal and token, new keys).  A
+        invites B; B accepts signing with its CURRENT keys; A confirms: the
+        consumption and peer record, and nothing to enrol (B is already
+        current at those keys).  B's superseded genesis keys are refused
+        `not-current-keys` at A, and a node that never enrolled B refuses the
+        current keys `genesis`."""
+        a, b, c = (Node(self, self.root, n) for n in ("A4", "B4", "C4"))
+        keys_a, _ = self.keys("a4", a)
+        keys_b, pb = self.keys("b4", b)
+        keys_c, _ = self.keys("c4", c)
+        keys_b2 = keygen(self.root / "keys-b4-next")
+        for name in ("principal.bin", "token.bin"):
+            shutil.copy(keys_b / name, keys_b2 / name)
+        for node in (a, b, c):
+            node.start()
+        for keys in (keys_b, keys_b2):
+            self.hybrid("hybrid-enroll-next", str(a.control), str(keys_b / "principal.bin"),
+                        str(keys / "ed-public.bin"), str(keys / "ml-public.pem"))
+        before = [line for line in a.key_history() if pb in line]
+        print("NATIVE-PEER-INVITE A4 key history before:", before)
+        self.assertIn("generation=2 state=active principal={}".format(pb), before)
+        inv = self.root / "inv-succeeded"
+        self.run_ok(a, "peer", "invite", "nodeB4", "fn.*", "127.0.0.1", str(b.port),
+                    "a4.example", str(keys_a), str(inv), "-", "-")
+        acc = self.root / "acc-succeeded"
+        self.run_ok(b, "peer", "accept", str(inv), str(keys_b2), "b4.example", "-", str(acc))
+        self.run_ok(a, "peer", "confirm", str(acc), str(inv))
+        listed = out(a.operator("peer", "list"))
+        print("NATIVE-PEER-INVITE A4 peer list after confirm:", listed)
+        self.assertIn("nodeB4", listed)
+        self.assertIn(pb, listed)
+        self.refused(a, ("peer", "confirm", str(acc), str(inv)), "already-confirmed")
+        # The superseded keys: a fresh node D accepts another invitation of A
+        # under B's genesis key set; A refuses it.
+        d = Node(self, self.root, "D4")
+        d.start()
+        inv_old = self.root / "inv-old-keys"
+        self.run_ok(a, "peer", "invite", "nodeD4", "fn.*", "127.0.0.1", str(d.port),
+                    "a4.example", str(keys_a), str(inv_old), "-", "-")
+        acc_old = self.root / "acc-old-keys"
+        self.run_ok(d, "peer", "accept", str(inv_old), str(keys_b), "d4.example", "-",
+                    str(acc_old))
+        self.refused(a, ("peer", "confirm", str(acc_old), str(inv_old)), "not-current-keys")
+        # C never enrolled B: B's current keys do not bind B's principal there.
+        inv_c = self.root / "inv-c4"
+        self.run_ok(c, "peer", "invite", "nodeB4", "fn.*", "127.0.0.1", str(b.port),
+                    "c4.example", str(keys_c), str(inv_c), "-", "-")
+        acc_c = self.root / "acc-c4"
+        self.run_ok(b, "peer", "accept", str(inv_c), str(keys_b2), "b4.example", "-",
+                    str(acc_c))
+        self.refused(c, ("peer", "confirm", str(acc_c), str(inv_c)), "genesis")
+        log_a, log_c = self.stop_with_log(a), self.stop_with_log(c)
+        for node in (b, d):
+            node.stop()
+        self.assertIn("peer confirm: the acceptor's current keys; nothing to enrol", log_a)
+        self.assertIn("peer confirm refused: not-current-keys", log_a)
+        self.assertIn("peer confirm refused: genesis", log_c)
+        after = [line for line in a.key_history() if pb in line]
+        print("NATIVE-PEER-INVITE A4 key history after:", after)
+        self.assertEqual(after, before)
+
 
 if __name__ == "__main__":
     unittest.main()

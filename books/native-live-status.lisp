@@ -378,7 +378,7 @@ configuration pins (nil with no owner), OBS the host's open observation."
   (declare (xargs :guard t :verify-guards nil))
   (cond
    ((equal kind :peers)
-    (fn-native-admin-peer-report (fn-cfg-peers (fn-cfg-value cfg))))
+    (fn-native-admin-peer-budget-report (fn-cfg-peers (fn-cfg-value cfg))))
    ((equal kind :control)
     (fn-native-admin-control-report (fn-cfg-authorities (fn-cfg-value cfg))))
    ; PRF-164: `account list' (books/accounts.lisp, no digest or verifier).
