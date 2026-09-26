@@ -352,8 +352,8 @@ smaller of the pinned frontier and position plus the scan bound; an empty
 page scanned only non-matching events and, when anything was scannable,
 progressed past at least one; a nonempty page is the first matching event of
 its window, just before the continuation. So a continuation never passes a
-matching event that the page did not return. `fn-col-poll` proposes no Store
-write, and `fn-cp-ack`, which `fn-col-ack` calls, writes only the declared
+matching event that the page did not return. `fn-col-poll` answers a page or a
+refusal, never a Store write proposal, and `fn-cp-ack`, which `fn-col-ack` calls, writes only the declared
 cursor, forward, within the frontier and the recorded scope; an equal
 position is a no-op and, after the committed ack, the same ack is a no-op.
 The local profile has no reachable unavailable case: no native caller

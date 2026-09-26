@@ -73,10 +73,12 @@
                      '(:scan 18 nil)))
 (assert-event (colp-contract (colp-neutral-window 2 16) *colp-group* 2 18 16))
 ; Without (natp position): the scan still answers :scan, and its position
-; is not a natural.
-(assert-event (eq (car (fn-col-poll-scan nil *colp-group* -1 5 0)) :scan))
+; is not a natural.  (The host's guard excludes this call; the logic does not.)
+(assert-event (with-guard-checking :none
+                (eq (car (fn-col-poll-scan nil *colp-group* -1 5 0)) :scan)))
 (assert-event (not (natp -1)))
-(must-fail (assert-event (colp-contract nil *colp-group* -1 5 0)))
+(must-fail (assert-event (with-guard-checking :none
+                           (colp-contract nil *colp-group* -1 5 0))))
 ; Without (eq (car scan) :scan): a refused history has no continuation.
 (assert-event (natp 0))
 (assert-event (equal (fn-col-poll-scan nil *colp-group* 0 1 1)
@@ -119,7 +121,8 @@
     (and (equal (cadr result) (list :ack cursor))
          (fn-cp-scope-matchp s *fn-col-principal* *fn-col-query-version*
                              *fn-col-view-version* cursor entry)
-         (< (nfix (fn-cp-nth 7 entry)) (fn-cp-nth 9 cursor))
+         (<= (nfix (fn-cp-nth 7 entry)) (fn-cp-nth 9 cursor))
+         (not (equal (fn-cp-nth 9 cursor) (fn-cp-nth 7 entry)))
          (<= (fn-cp-nth 9 cursor) (nfix (fn-cp-nth 3 s))))))
 
 ; The host-called ack of this cursor is the kernel's write.

@@ -4412,6 +4412,26 @@
         "fn-bpfs-canvas-of-extents",
         "fn-bpfs-views-of-cut"
       ]
+    },
+    {
+      "id": "PRF-116",
+      "title": "Local-owner consumer poll and ack: a page is a read whose continuation never passes an unreturned matching event; ack writes only a forward in-scope declaration within the frontier, idempotently",
+      "statement": "Subjects are the functions the host calls: host/owner-host.lisp fn-owner-consumer-local-poll calls fn-col-poll and fn-owner-consumer-local-ack calls fn-col-ack (books/consumer-owner-local), from host/native/owner.lisp fnn-owner-consumer-local-serialized. fn-col-poll-scan-page-contract: for any event window, a :scan answer's continuation p is a natural with position <= p <= max(position, frontier) and p <= position + budget; an empty page's scanned prefix contains no group-matching article event and, when budget > 0 and position < frontier, p > position; a nonempty page's event is the window's event at p - 1 - position, it matches, and no earlier event in the window matches. fn-col-poll-is-the-index-window-scan-unfolds equates fn-col-poll's :poll answer with that selector over the carried index window (fn-col-poll-index-window), the continuation written into the owner-pinned scope cursor; fn-col-poll-is-a-page-or-a-refusal: it answers :poll or :refused, never a Store write proposal; fn-col-scope-entry-position-is-natural discharges the contract's natp premise. fn-col-ack-is-the-kernel-ack-unfolds equates fn-col-ack with fn-cp-ack under the pinned local principal, query version 1 and view 0. fn-cp-ack-writes-only-a-forward-declaration-in-scope: a :write is exactly (:ack cursor), in the recorded scope, not below the recorded position (nfix) and not equal to it, within the committed frontier; an in-scope equal position within the frontier is the :no-op. fn-cp-ack-after-its-commit-is-a-no-op: after fn-cp-apply of that ack, the same ack is a :no-op. Not claimed: that an acked position was served by a poll (an ack is a declaration), an unavailable gap (no native content reclamation reaches this profile), or independence of the byte and cursor ceilings.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/consumer-owner-local-progress.lisp",
+        "tests/acl2/consumer-owner-local-progress-tests.lisp",
+        "books/consumer-owner-local.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/consumer-e2-2026-09-25.md"
+      ],
+      "progress_note": "Lane consumer-e2 (2026-09-25), PKT-165 for the retaining-mode decision."
     }
   ]
 }
