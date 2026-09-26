@@ -335,6 +335,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/profile-monotonicity-tests \
 	books/store-budget-article \
 	tests/acl2/store-budget-article-tests \
+	books/store-maintenance-reserve \
+	tests/acl2/store-maintenance-reserve-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \

@@ -3117,7 +3117,8 @@
         "planning/evidence/m5-compact-verb-2026-09-24.md",
         "planning/evidence/m5-compact-verb/campaign-checkpoint.json",
         "planning/evidence/m5-compact-verb/native-modules-2.log",
-        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
+        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json"
       ],
       "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5).",
       "events": [
@@ -3127,7 +3128,7 @@
         "fn-ccp-reclaim-preserves-reconstructed-history",
         "fn-ccp-profile-upgrade-keeps-reclaim-plan",
         "fn-bs-selected-reclaim-crash-preserves-suffix-payload",
-        "fn-cverb-pack-fits-the-profile-budget",
+        "fn-cverb-pack-fits-the-disk",
         "fn-cverb-capture-within-pack-octets",
         "fn-cverb-pack-decision-capture-succeeds",
         "fn-native-operator-run-store-compact-is-the-compact-action",
@@ -4751,7 +4752,7 @@
     {
       "id": "PRF-119",
       "title": "The reclaiming pack `store reclaim` publishes rewrites only unheld legacy article records to their tombstones, stays a pack, converges, and frees exactly the octets admission counts",
-      "statement": "Subject: fn-rclp-decide (host/checkpoint-host.lisp fn-store-reclaim-decide, called by host/native/checkpoint.lisp fnn-reclaim-observe). fn-rclp-decide-publishes-the-rewrite: when the answer is :reclaim, its steps are *fn-rclp-steps*, dry is nil, the history is one selected pack (lower = len records), some record is rewritten, and the published summary octets are fn-cc-encode of the fn-cc-capture of fn-rclp-events of the committed records. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal and the payload fn-rcl-tombstone-of the old payload. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever, the I-th event is byte-identical. fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. fn-rclp-keep-forever-writes-nothing: under keep-forever the answer is never :reclaim. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
+      "statement": "Subject: fn-rclp-decide (host/checkpoint-host.lisp fn-store-reclaim-decide, called by host/native/checkpoint.lisp fnn-reclaim-observe). fn-rclp-decide-publishes-the-rewrite: when the answer is :reclaim, its steps are *fn-rclp-steps*, dry is nil, the history is one selected pack (lower = len records), some record is rewritten, and the published summary octets are fn-cc-encode of the fn-cc-capture of fn-rclp-events of the committed records. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever, the I-th event is byte-identical. fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. fn-rclp-keep-forever-writes-nothing: under keep-forever the answer is never :reclaim. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -4768,9 +4769,11 @@
         "tests/acl2/store-reclaim-pack-tests.lisp",
         "books/native-operator.lisp",
         "tests/acl2/native-operator-tests.lisp",
-        "planning/evidence/reclaim-lifecycle-2026-09-25.md"
+        "planning/evidence/reclaim-lifecycle-2026-09-25.md",
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json"
       ],
-      "progress_note": "Open: the replay correspondence of the reclaimed record (the open of the reclaiming pack equals fn-rcl-reclaim-state of the open of the history: PRF-088's own open step); guard verification of books/store-reclaim-pack (all :verify-guards nil, called through a :program host wrapper); the maintenance reservation as an admission invariant (PKT-169); the retention charge (the archive pin is kept); holders from feed state, FNBS rows and BP obligations are not read (the BP journal is a separate namespace; the offline verb reads the Store's consumer projection only); chained packs for N above one pack (4,096 events, 4 MiB).",
+      "progress_note": "Open: the replay correspondence of the reclaimed record (the open of the reclaiming pack equals fn-rcl-reclaim-state of the open of the history: PRF-088's own open step); guard verification of books/store-reclaim-pack (all :verify-guards nil, called through a :program host wrapper); holders from feed state, FNBS rows and BP obligations are not read (the BP journal is a separate namespace; the offline verb reads the Store's consumer projection only); chained packs for N above one pack (4,096 events, 4 MiB). Lane reclaim-lifecycle-2 (2026-09-26): PKT-169 retired by PRF-129 (fn-smr-admission-keeps-the-reserve, fn-cverb-pack-fits-the-disk); the retention charge falls to the history unit on reclaim (fn-rclp-rewritten-charge-is-the-history-unit).",
       "events": [
         "fn-rclp-event-decodes-to-the-tombstoned-record",
         "fn-rclp-events-keep-the-summary-shape",
@@ -4785,7 +4788,49 @@
         "fn-native-operator-run-store-reclaim-is-the-reclaim-action",
         "fn-native-operator-run-reclaim-action-is-only-store-reclaim",
         "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action",
-        "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
+        "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run",
+        "fn-rclp-rewritten-charge-is-the-history-unit",
+        "fn-rclp-freed-charge-account"
+      ]
+    },
+    {
+      "id": "PRF-129",
+      "title": "Admission keeps the maintenance reservation (one release record) and maintenance's temporary space is checked against the disk",
+      "statement": "Subjects: fn-smr-verdict-at (host/owner-host.lisp fn-owner-publication-verdict, called by host/native/owner.lisp fnn-owner-preflight-publication for every non-article Store record: retention, identity, consumer and topic events, BP admission's included; and host/store-node-host.lisp fn-store-sn-publication-verdict), fn-smr-article-budget-for (host/owner-host.lisp fn-owner-prepare and fn-owner-prepare-buffer, the served POST and BP transit prepares, handed to fn-pcar-sbud-prepare), fn-smr-article-verdict-at (host/store-node-host.lisp fn-store-sn-article-verdict, the developer store post), fn-cverb-decide (host/checkpoint-host.lisp fn-store-compact-decide) and fn-rclp-decide (fn-store-reclaim-decide). The reservation fn-smr-roomp profile used bytes is (fn-sbud-verdict-at profile :release used bytes) = :admissible. fn-smr-admission-keeps-the-reserve: if fn-smr-verdict-at admits a record of kind K /= :release at (used, bytes) and octets is a natural at most K's publication ceiling, fn-smr-roomp holds at (used+1, bytes+octets). fn-smr-prepare-keeps-the-reserve: if fn-sbud-prepare with budget fn-smr-article-budget-for (profile, the prepare's committed count, bytes, record) changed the configured owner and the record is narrow, fn-smr-roomp holds at (count+1, bytes + len (fn-record-encode record)) and the history is within H. fn-smr-article-verdict-keeps-the-reserve: the same for fn-smr-article-verdict-at and a narrow record within the asked counts. fn-smr-reserve-admits-the-release: where the reservation holds, fn-smr-verdict-at admits :release. fn-smr-admission-is-within-the-profile: every admission passes fn-sbud-verdict-at. fn-smr-roomp-antitone-in-octets and fn-smr-roomp-is-within-the-bound. fn-smr-admitted-profile-starts-reserved: an admitted profile holds the reservation at (0, 0). fn-smr-profile-upgrade-keeps-the-reserve. fn-cverb-pack-fits-the-disk: a :compact pack decision implies the sealed pack (encoded summary plus frame trailer) is at most the host-observed free octets; fn-rclp-pack-fits-the-disk: the same for a :reclaim answer's summary octets.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-019"
+      ],
+      "depends_on": [
+        "PRF-119",
+        "PRF-073"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-maintenance-reserve.lisp",
+        "tests/acl2/store-maintenance-reserve-tests.lisp",
+        "books/store-compact-verb.lisp",
+        "tests/acl2/store-compact-verb-tests.lisp",
+        "books/store-reclaim-pack.lisp",
+        "tests/acl2/store-reclaim-pack-tests.lisp",
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T015147Z-3864087.json",
+        "planning/evidence/manifests/certify-20260926T015552Z-3901153.json"
+      ],
+      "progress_note": "Lane reclaim-lifecycle-2 (2026-09-26). Open: the free-octet observation is the host's statvfs, an environmental fact not modelled (a concurrent writer can take the space between the observation and the write; the write then fails before the selection, which the pack publication cuts cover). The BP namespace's own reservation is the FNBS debt cover (books/bp-node-debt.lisp), not restated here. Every book under 10 s.",
+      "events": [
+        "fn-smr-admission-keeps-the-reserve",
+        "fn-smr-prepare-keeps-the-reserve",
+        "fn-smr-article-verdict-keeps-the-reserve",
+        "fn-smr-reserve-admits-the-release",
+        "fn-smr-admission-is-within-the-profile",
+        "fn-smr-roomp-antitone-in-octets",
+        "fn-smr-roomp-is-within-the-bound",
+        "fn-smr-admitted-profile-starts-reserved",
+        "fn-smr-profile-upgrade-keeps-the-reserve",
+        "fn-cverb-pack-fits-the-disk",
+        "fn-rclp-pack-fits-the-disk"
       ]
     }
   ]

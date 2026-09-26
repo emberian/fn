@@ -3187,7 +3187,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cverb-pack-fits-the-profile-budget"
+          "name": "fn-cverb-pack-fits-the-disk"
         },
         {
           "kind": "theorem",
@@ -4992,6 +4992,63 @@
         {
           "kind": "theorem",
           "name": "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-rewritten-charge-is-the-history-unit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-freed-charge-account"
+        }
+      ]
+    },
+    {
+      "id": "PRF-129",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smr-admission-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-prepare-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-article-verdict-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-reserve-admits-the-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-admission-is-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-roomp-antitone-in-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-roomp-is-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-admitted-profile-starts-reserved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smr-profile-upgrade-keeps-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-pack-fits-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-pack-fits-the-disk"
         }
       ]
     }
