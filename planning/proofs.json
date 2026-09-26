@@ -5022,6 +5022,37 @@
         "fn-bpaj-refused-channel-takes-no-custody",
         "fn-bpaj-admitted-channel-receives-under-its-ingress"
       ]
+    },
+    {
+      "id": "PRF-118",
+      "title": "The payload arena abstracts to the list of sealed payloads; a sealed handle is immutable and never reused; commit and open establish the same relation with the history",
+      "statement": "fn-arena (books/payload-arena.lisp) is an abstract stobj whose logical value is the list of sealed payloads, oldest first (fn-arn-payload-listp), and whose executable is one resizable (unsigned-byte 8) array holding every payload back to back with an offset and a size per handle. The abstraction relation fn-arena$corr (the concrete object well formed, the fill and the count within their arrays, every handle's range below the fill, and the slices in handle order the logical list) is established by the creator and preserved by every export (the {correspondence}, {preserved} and {guard-thm} obligations, stated as defabsstobj-missing-events prints them and proved before the defabsstobj). fn-arena-seal-buffer{correspondence}: copying the octet buffer's cells in place at the fill and recording the range as the next handle corresponds to append of the buffer's value, an export taking a second stobj. KEYSTONES: fn-arena-seal-keeps-sealed and fn-arena-seals-keep-sealed say a handle that is a natural below the count reads the same octets after one seal and after any sequence of seals; fn-arena-seal-new-handle and fn-arena-seal-count say a seal's new handle is the old count, denotes the sealed octets, and the count grows by one (no hypothesis). fn-arn-store-corr (the arena is the history's payloads oldest first, fn-arn-payloads-of over fn-sf-records' commit order) is kept by a commit's seal (fn-arn-store-corr-of-commit) and established by an open's seals from the empty arena (fn-arn-store-corr-of-open, no hypothesis). Every executable function is guard-verified. No host entry calls the arena yet: the record's payload field must become a handle first (planning/evidence/rep-wave-d-2026-09-25.md section 3), so the subject is the base of that program, not a served path.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-087"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-arena-seal-keeps-sealed",
+        "fn-arena-seals-keep-sealed",
+        "fn-arena-seal-new-handle",
+        "fn-arena-seal-buffer{correspondence}",
+        "fn-arn-store-corr-of-commit",
+        "fn-arn-store-corr-of-open"
+      ],
+      "evidence": [
+        "books/payload-arena.lisp",
+        "tests/acl2/payload-arena-tests.lisp",
+        "planning/evidence/rep-wave-d-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002630Z-3094901.json"
+      ],
+      "progress_note": "Lane rep-wave-d (2026-09-25): the arena and its theorems certified on persvati (run-20260926T002605Z-febf, 1.17 s and 0.77 s at two jobs). The host join (the seal at the served POST's finish, the handle in the record) is the model change of the record's payload field, a coordinated freeze the record's section 3 lays out; until it lands the served path holds the list and no representation improvement is claimed."
     }
   ]
 }

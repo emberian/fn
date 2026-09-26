@@ -2068,6 +2068,29 @@
         "planning/evidence/mission-signed-2026-09-26.md"
       ],
       "note": "Not passing (PKT-247). On image f1734955 steps 0-2 and 5 hold with the signed report (fragmentation at X, X SIGKILL and restart, B's stored copy verifies with hybrid-verify-source); B stores A's signed report and then refuses the delivery with reason=history (the BP receiver's Store binding does not see the kind-4 acceptance), and A refuses B's signed reply the same way. Layer 1 (reason=intent-store-conflict, the injecting agent's check on transit) is fixed. The ambiguous-peer case: see planning/evidence/mission-signed-2026-09-26.md."
+    },
+    {
+      "id": "SCN-063",
+      "title": "A pinned reader's payload handle reads the same octets after later commits, and an opened store's arena is its history's payloads in order",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010"
+      ],
+      "steps": [
+        "Seal three payloads into a live local arena (a list, the octet buffer's contents, the empty payload) and read every handle back; seal 3,000 octets three times through the byte array's doubling and the handle arrays' growth.",
+        "Read handle 1 before and after a later seal, and after a sequence of seals; read the handle at the count after a seal.",
+        "Build a two-record history, seal a third record's payload as a commit would, and seal every record's payload from the empty arena as an open would."
+      ],
+      "expected": [
+        "Every handle reads back the payload sealed under it; the count is the number of seals; a clear empties the arena.",
+        "Handle 1 is unchanged by every later seal; the handle at the old count is the new payload; a negative handle or a handle at the count is not covered and reads otherwise (the must-fail witnesses).",
+        "The arena after the commit's seal is the appended history's payloads; the arena after the open's seals equals the history's payloads; an arena with the payloads in the wrong order or one payload missing does not satisfy the relation."
+      ],
+      "evidence": [
+        "tests/acl2/payload-arena-tests.lisp",
+        "planning/evidence/rep-wave-d-2026-09-25.md"
+      ]
     }
   ]
 }
