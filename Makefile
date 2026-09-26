@@ -196,6 +196,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/linear-recognizers-tests \
+	tests/acl2/open-one-pass-tests \
 	books/byte-store-state-checkpoint-program \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \

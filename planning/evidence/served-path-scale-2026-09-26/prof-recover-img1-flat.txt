@@ -1,0 +1,43 @@
+
+Number of samples:   12105
+Sample interval:     0.01 seconds
+Total sampling time: 121.05 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=1556922 "main thread" RUNNING {1200068003}> (2077568/2097152 bytes, 5591 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2   1435  11.9   3250  26.8   1435  11.9        -  FN-RETAIN-OBLIGATION-IDS
+   4   1287  10.6   2068  17.1   2722  22.5        -  FN-CBOR-OCTET-LISTP
+   6   1169   9.7   1169   9.7   3891  32.1        -  foreign function pthread_sigmask
+   8   1141   9.4   2531  20.9   5032  41.6        -  FN-RECORD-STRING-OCTETS-AUX
+  10   1011   8.4   1011   8.4   6043  49.9        -  FN-CBOR-OCTETP
+  12    816   6.7    816   6.7   6859  56.7        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  14    798   6.6   2107  17.4   7657  63.3        -  FN-RECORD-PAYLOADP
+  16    392   3.2    404   3.3   8049  66.5        -  TAKE
+  18    304   2.5    322   2.7   8353  69.0        -  FN-RECORD-STRING-OCTETS
+  20    284   2.3    284   2.3   8637  71.4        -  SB-KERNEL:STRING=*
+  22    282   2.3    282   2.3   8919  73.7        -  FN-AG-CAR
+  24    274   2.3    274   2.3   9193  75.9        -  FN-CBOR-AT-MOSTP
+  26    181   1.5    181   1.5   9374  77.4        -  NTHCDR
+  28    137   1.1    137   1.1   9511  78.6        -  FN-SHS-ROUNDS
+  30    130   1.1    466   3.8   9641  79.6        -  FN-CCC-FRAMED-LINK
+  32    120   1.0    120   1.0   9761  80.6        -  FN-CBOR-AT-LEASTP
+  34    107   0.9    111   0.9   9868  81.5        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  36     86   0.7     86   0.7   9954  82.2        -  GENERIC--
+  38     77   0.6     77   0.6  10031  82.9        -  FN-SHS-EXTEND
+  40     66   0.5   3002  24.8  10097  83.4        -  FN-CCC-DECODE-LINK
+  42     64   0.5    285   2.4  10161  83.9        -  FN-CC-DECODE-EXACT
+  44     64   0.5     84   0.7  10225  84.5        -  FN-SCCB-SLICE-ACC
+  46     61   0.5     93   0.8  10286  85.0        -  FN-SHS-LOAD-LIST-WORD
+  48     57   0.5    122   1.0  10343  85.4        -  FN-RECORD-OCTETS-CHARS
+  50     55   0.5    123   1.0  10398  85.9        -  SB-KERNEL:VECTOR-TO-LIST
+  52     47   0.4    383   3.2  10445  86.3        -  FN-SHS-DIGEST-LIST
+  54     45   0.4     45   0.4  10490  86.7        -  %DATA-VECTOR-AND-INDEX
+  56     38   0.3   1420  11.7  10528  87.0        -  SB-KERNEL:%MEMBER-TEST
+  58     36   0.3     58   0.5  10564  87.3        -  FN-OCTET-LISTP
+  60     34   0.3     34   0.3  10598  87.6        -  (SB-VM::OPTIMIZED-DATA-VECTOR-REF (UNSIGNED-BYTE 8))
+------------------------------------------------------------------------
+        811   6.7                                     elsewhere
