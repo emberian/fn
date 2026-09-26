@@ -103,18 +103,21 @@ everything; the words are ACL2's either way.
   moved): 1 certified, none over 10 s; manifest
   planning/evidence/manifests/certify-20260926T110357Z-754509.json.
 
-## Native (hbox, tools/hbox_native.sh, source 9f760025, images developer and production)
+## Native (hbox, tools/hbox_native.sh, images developer and production)
 
-hbox:/tank/fn/scratch/operator-daily/native-n2; fn-host
-ca94a502e09bdf34a499add1829f23c3fdac4e1114717ce697c7c5144d98b22d,
-fn-host-developer 11ee7757220ebd0ebb87cb2d3c27eeb68cf60ce91158bfff68467e04e7b71316
-(SHA256SUMS in planning/evidence/operator-daily/SHA256SUMS-n2).
+n3 at 8a8c4bff (the final host code), hbox:/tank/fn/scratch/operator-daily/native-n3;
+fn-host 2e83f3bd61f05a70419c3ebd4c337cd40c08b1735c6d20a9f360eacae160e392,
+fn-host-developer d3d21e7339de0a290b7ab867e6a8fb474515be4e545dfbe6d86a815581e91f7b
+(planning/evidence/operator-daily/SHA256SUMS-n3). n2 at 9f760025 (SHA256SUMS-n2)
+ran test_native_operator_cli; 8a8c4bff changed only the DTN arm of
+fnn-operator-execute-admin after it, which that module's cases do not reach
+in these images.
 
-| module | result | log (SHA-256) |
-|---|---|---|
-| tests.test_native_control (16 cases, both SCN-102 cases among them) | OK | operator-daily/native-control.log 9dbb6021e0ce70cc71b3da6c6ef025b12a3b989cb566def5957cb6f5c9705199 |
-| tests.test_native_operator_verdicts (FN_NATIVE_HOST set; the one skip is the hybrid E2E's OpenSSL gate) | OK (skipped=1) | operator-daily/native-operator-verdicts.log 44c9c484e2d17f988b54df8b61ed7b3b29c8219d51bb957f7b9d022565031f4a |
-| tests.test_native_operator_cli | OK | 1e6a697f219e9d12fe77b5df1aa25e2de3e30e60392a40fe139f0d5e0db0340e (on hbox) |
+| module | run | result | log (SHA-256) |
+|---|---|---|---|
+| tests.test_native_control (16 cases; both SCN-102 cases) | n3 | OK | operator-daily/native-control.log c047cb426ec360370dcf25f79654399f06fcd21b0f8eaf11263f089a95b7108f |
+| tests.test_native_operator_verdicts (FN_NATIVE_HOST set; the one skip is the hybrid E2E's OpenSSL gate) | n3 | OK (skipped=1) | operator-daily/native-operator-verdicts.log 1d8921c262692a7956d0c77a45f2e50578e33d59c9189bb22d8c81f5632ef80d |
+| tests.test_native_operator_cli | n2 | OK | 1e6a697f219e9d12fe77b5df1aa25e2de3e30e60392a40fe139f0d5e0db0340e (on hbox) |
 
 The first run (n1, the dirty tree at 2da298d9) found one failure outside
 this lane's change: test_native_operator_cli read books/native-operator.lisp

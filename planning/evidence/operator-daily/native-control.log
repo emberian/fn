@@ -17,6 +17,6 @@ test_the_production_image_refuses_every_selector_at_startup (tests.test_native_c
 test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart) ... ok
 
 ----------------------------------------------------------------------
-Ran 16 tests in 32.822s
+Ran 16 tests in 36.389s
 
 OK
