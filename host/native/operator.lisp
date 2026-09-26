@@ -613,7 +613,13 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
   (let ((*fnn-native-auth-admin-store-root*
           (fnn-octets-string
            (fnn-core 'fn-native-operator-host-result-principal-store-octets
-                     result))))
+                     result)))
+        (*fnn-native-auth-admin-control-path*
+          (let ((control (fnn-core
+                          'fn-native-operator-host-result-principal-control-path-octets
+                          result)))
+            (and (fnn-octet-list-p control) (consp control)
+                 (fnn-octets-string (fnn-octets control))))))
     (fnn-native-auth-admin-execute
      (fnn-core 'fn-native-operator-host-result-principal-plan result)
      (fnn-octets-string

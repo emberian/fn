@@ -171,3 +171,139 @@ trip; peer-carriage 67 forms and its test book).
   served half (the POST reply and served-post log naming a refused key change beside a durable
   composite; the transit log already prints `detail=key-change-refused` with the accepted class),
   PKT-240 (the seven-class verdict in the transit log): not started.
+
+## Continuation: keys-and-accounts-2 (PKT-221, the live login binding)
+
+Lane keys-and-accounts-2 (Opus 5.5), from dev fac2c417. Ids taken: PRF-175 (new target), SEC-005,
+SCN-096, PKT-433 (narrowed), PKT-463.
+
+### What a friend can now do
+
+The operator re-binds a login's signing principal on a running node and it applies at once:
+`fn operator CONFIG principal bind LOGIN HEX` (or `unbind LOGIN`) rewrites the credential file and
+then asks the owner (control request 14) to publish the file's bindings; the verb answers
+`accepted operator principal bind applied`. A session already authenticated keeps the binding in
+force when its connection opened; the next connection is decided under the new one. No restart.
+
+### Design
+
+A redeemed account row is (DIGEST LOGIN VERIFIER 1) and carries no principal (the brief assumed one),
+so the binding is its own row kind in the same slot: mark-2 rows (LOGIN PRINCIPAL-HEX "" 2) of the
+`accounts` slot, written only by the new delta kind `:login-binding` (books/config.lisp, code 17),
+which replaces that login's binding rows (by login octets) and leaves the account rows (marks 0/1)
+in place and in order. One credential table, three row kinds; no binding global (the host's
+`fn-owner-login-bindings` is deleted). The credential file stays the operator's statement: the owner
+publishes its `signing` fields at start (host/native/auth.lisp fnn-native-auth-install, under the
+owner mutex, through fnn-owner-live-reconfigure-locked) and on request 14
+(host/native/login-bindings.lisp), with ACL2's plan fn-lb-sync-plan: one delta per login whose
+binding differs, in records of at most 64 deltas (no ceiling on the table: records compose,
+fn-lb-pairs-deltas-ignore-the-record-coordinates). PRF-164's statements are unchanged; only
+fn-acct-accounts-of-apply-delta-unfolds (a third writer) and one hint in books/accounts.lisp moved.
+
+Format consequence (joins PKT-440, for ember): an image older than this one refuses a store whose
+configuration log holds code 17; a store whose file binds no login and was never re-bound writes no
+code-17 record (the start plan is empty when the configuration already agrees).
+
+### PRF-175 (books/login-binding-live.lisp)
+
+Host lines: host/owner-host.lisp fn-owner-login-gate calls fn-lb-ocfg-gate (called by
+host/native/owner.lisp fnn-owner-attempt-served); host/native-auth-host.lisp
+fn-native-auth-host-bindings-plan calls fn-lb-sync-plan (from fnn-native-auth-publish-bindings);
+records staged by fn-owner-reconfigure-deltas and published by fn-owner-reconfigure-complete
+(fn-ocl-publish).
+
+- fn-lb-binding-delta-binds-the-login / -keeps-other-logins / -is-admitted (the delta).
+- fn-lb-sync-binds-every-login-as-the-file-does (the start and reload plan), with the fold
+  fn-lb-pairs-deltas-set-exactly-their-logins.
+- fn-lb-a-publication-keeps-every-open-connections-table (no hypotheses, over reconfigure then
+  fn-ocl-publish); fn-lb-an-open-session-is-decided-under-its-pinned-table (any owner trace that does
+  not re-pin the connection: the gate decides under the pinned table).
+- fn-lb-a-connection-opened-after-a-publication-is-bound-anew (nothing staged; durable; the history
+  relation before, fn-ocl-config-historyp; fn-ocfg-statep after; the open admitted).
+- fn-native-auth-admin-effect-word-applied-only-when-published; PRF-095's
+  fn-native-auth-admin-effect-word-restart-unless-no-owner restated with the owner's answer (PRF-095's
+  statement text updated to match).
+
+The posting policy is still read from the LIVE configuration (behaviour unchanged); only the table is
+pinned. PRF-028 (fn-ocl-no-reader-observes-a-half-change) is listed uncertified at the current digest
+in planning/current.md: cited, not claimed; the keystones above use fn-ocl-publish-leaves-connections-
+and-pins and fn-ocl-publish-installs-the-whole-staged-record instead.
+
+Teeth: tests/acl2/login-binding-live-tests.lisp (witness per keystone with every antecedent asserted;
+one must-fail per hypothesis; the gate witness is login-binding-tests' CONSTRUCTED owner (a
+submission in flight on connection 5), evaluated with guard checking off; the publication witness is
+config-owner-live-tests' replayed ground owner through reconfigure and fn-ocl-publish);
+tests/acl2/native-auth-admin-tests.lisp (effect word); tests/acl2/peer-invite-tests.lisp (request 14).
+
+### Assurance chain
+
+native entry (`operator CONFIG principal bind`, host/native/auth-admin.lisp after the durable file
+write -> request 14 -> host/native/login-bindings.lisp under the owner mutex; and the start hook) ->
+ACL2 fn-lb-sync-plan over the file's bindings and the live configuration value -> deltas staged
+(fn-ocfg-reconfigure) and published (fn-ocl-publish) -> relation: live configuration = replay of the
+history (maintained; PRF-028's, uncertified) and each open connection's pin = the configuration it
+opened at (fn-ocfg-statep) -> PRF-175 -> observed: tests.test_native_auth (below).
+
+### Certification
+
+REPL first (persvati /home/ember/fn-gates/keys-and-accounts-2-repl, sessions over books/config and then
+books/login-binding-live): config.lisp, config-invariants.lisp and accounts.lisp over the new config;
+every form of login-binding-live.lisp (75) and its test book's forms (98, the must-fails checked to
+fail) before r3.
+
+- r1: persvati run-20260926T115148Z-e9c3 (`--affected-by` config.lisp, login-binding.lisp,
+  peer-invite.lisp, native-auth-admin.lisp, login-binding-live.lisp, native-operator.lisp: config.lisp's
+  closure, most of the tree), at ddc05fe2: passed 398, failed 4 (login-binding-live's last keystone hit
+  the preprocessor's call depth; host/native-auth-host could not see the owner; the two books that
+  include them). Manifest planning/evidence/manifests/certify-20260926T115220Z-1347243.json. Every
+  other book of the closure passed, config.lisp, accounts.lisp, config-invariants.lisp,
+  native-auth-admin(-tests), peer-invite(-tests), native-operator(-tests) included; over 10 s only
+  books/owner-invariants 10.3 s (unchanged bytes; on the PKT-371 list).
+- r2: run-20260926T120439Z-88c8 certified nothing (explicit root combined with --affected-by
+  selected no book): a harness misuse, not evidence.
+- r3: persvati run-20260926T120522Z-4a12 at fabf99ea, roots books/login-binding-live,
+  tests/acl2/login-binding-live-tests, tests/acl2/native-auth-host-tests,
+  tests/acl2/docs-operator-grammar-tests: passed 5, failed 0, 177 from the cache. Manifest
+  planning/evidence/manifests/certify-20260926T120553Z-1490002.json. OVER 10 s:
+  tests/acl2/login-binding-live-tests 11.8 s at 2 jobs: one must-fail search took 8.8 s.
+- r4: persvati run-20260926T121304Z-1f17 at b83ac6da (that search bounded; its counter-witness
+  *lblt-wrong* unchanged): tests/acl2/login-binding-live-tests passed, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T121324Z-1564124.json.
+
+### Native (hbox /tank/fn/scratch/keys-and-accounts-2/native-n1, fabf99ea)
+
+Developer image built under swarm-build (certify, image-developer exit 0); modules under systemd-run
+MemoryMax=24G with FN_NATIVE_HOST=$T/build/fn-host-developer and FN_TEST_OPENSSL=openssl 3.5.8 (the
+first pass without FN_NATIVE_HOST skipped the whole module: a harness miss, rerun `--no-build`).
+
+- tests.test_native_auth: 5 OK, including
+  `test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding`: witness
+  `NATIVE-AUTH-REBIND-WITNESS 240 article received OK | 441 posting failed; the login is not bound to
+  this signing principal`; the live bind printed `accepted operator principal bind applied`; the owner
+  process was the same throughout; the log has `post login=native-reader bound=<P>` and
+  `post login=native-reader refused login-not-bound`.
+- regression: tests.test_native_key_statements 5 OK, tests.test_native_peer_invite 4 OK (request 12
+  and the peering requests with request 14's handler in the chain; the start publication with no
+  bindings is empty).
+
+```
+c9199034b5d6779f0ee6b92f68021834788d78ffd4ec324a747a1b660bf0c643  tree/build/fn-host-developer
+a84b78fe9db7945c3ccf8e03e13bedb3207188668a33479e490b0b335a79ec13  tree/build/fn-host-developer.core
+15cf5e9e8a9ccea547c6e6ad4c75844accb2324c0394e426c60cecaa50949243  logs/test-tests.test_native_auth.log
+0c6b5eb04c9a21d39269a9b827b4e88750c36d10cc03930bde5598d85ae0b90a  logs/test-tests.test_native_key_statements.log
+af12ec406f30f2d791c3e2d5c560f840356caba9c1c9b85f2ccc9772b3d9b323  logs/test-tests.test_native_peer_invite.log
+```
+
+Not run: tests.test_native_hybrid_author (untouched by this slice; its signature-failed row is
+PKT-463), tests.test_native_visibility_join's restart-based rebinding case (still valid: the start
+publication re-reads the file).
+
+### Not done (PKT-463)
+
+PKT-211 (succession-era invitations: fn-pinv-genesis-okp still refuses a principal whose current keys
+are not its genesis keys; `peer list` does not render the carriage budget; no native signature-failed
+row), PKT-433 (c) the POST reply naming a refused key change beside a durable composite, (d) the seven
+verdict names in the transit log, fn_verify's `revoked` natively. Teeth gap: fn-lb-a-connection-opened-after-a-publication-is-bound-anew has a
+must-fail for its durable hypothesis and witnesses for every antecedent, not a must-fail for each of
+its seven hypotheses. Decision for ember (joins PKT-440): code 17 makes an older image refuse a store
+that ever published a binding.

@@ -2730,10 +2730,12 @@
         "SEC-005"
       ],
       "steps": [
-        "Node E: enrol P; POST a succession signed by the old keys with no `keys` grant; `control grant P keys fn.keys` live; `keys redecide MSGID`; `keys redecide MSGID` again; `keys redecide <absent@keys.invalid>`; stop; `keys redecide MSGID` offline; restart E."
+        "Node E: enrol P; POST a succession signed by the old keys with no `keys` grant; `control grant P keys fn.keys` live; `keys redecide MSGID`; `keys redecide MSGID` again; `keys redecide <absent@keys.invalid>`; stop; `keys redecide MSGID` offline; restart E.",
+        "The login binding (PKT-221; its native case is tests.test_native_auth NativeAuthTests.test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding): a login bound to P under `posting-policy bound-logins`; P enrolled; session A authenticates; `principal bind LOGIN Q` against the running owner; A POSTs an article signed by P; a new session B POSTs another article signed by P."
       ],
       "expected": [
-        "The log reads `key-statement declined no-grant`, then `key-statement redecide enrol-successor committed` (exit 0), `key-statement redecide refused already-acted` (exit 1), `key-statement redecide refused not-a-key-statement` (exit 1); the history shows generation 2 active and 1 retired; the offline redecide exits non-zero; the restart logs no key-statement line and leaves the history unchanged."
+        "The log reads `key-statement declined no-grant`, then `key-statement redecide enrol-successor committed` (exit 0), `key-statement redecide refused already-acted` (exit 1), `key-statement redecide refused not-a-key-statement` (exit 1); the history shows generation 2 active and 1 retired; the offline redecide exits non-zero; the restart logs no key-statement line and leaves the history unchanged.",
+        "The live bind answers `accepted operator principal bind applied` with the owner still running; A's article is 240 (the log reads `post login=LOGIN bound=P`); B's is 441 `... not bound ...` (the log reads `post login=LOGIN refused login-not-bound`)."
       ],
       "implementation": {
         "test": "tests.test_native_key_statements",

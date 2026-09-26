@@ -496,7 +496,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; restart to apply)")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
         ((equal subject "account")
          "usage: fn operator CONFIG account {invite [--expires SECONDS] | list} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers; spec nntp Invitation-code accounts)")
         ((equal subject "keys")
@@ -1167,6 +1167,15 @@ formed and the operator asked for something the node declined to do."
   (if (fn-native-operator-result-principal-planp result)
       (fn-record-string-octets
        (fn-native-config-store (fn-native-operator-result-config result)))
+    nil))
+
+; The control socket the principal verb asks a running owner to republish
+; the credential file's login bindings through (PKT-221, request 14).
+(defun fn-native-operator-result-principal-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-principal-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
 (defun fn-native-operator-result-peering-words (result)

@@ -80,9 +80,10 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 
 **keys-and-accounts-2 (running since 13:35; keys-and-accounts merged 67bae805)**
 
-- PKT-433 what keys-and-accounts left: (a) the live login binding, (b) succession-era invitations and `peer list`'s budget, (c) the served POST reply naming a refused key change, (d) the seven verdict names in the transit log (sweep 11)
+- PKT-433 what keys-and-accounts left, NARROWED by keys-and-accounts-2 ((a), the live login binding, is PKT-221's, done there): (b) succession-era invitations and `peer list`'s budget, (c) the served POST reply naming a refused key change, (d) the seven verdict names in the transit log; these are PKT-463 (sweep 11)
+- PKT-463 keys-and-accounts-2's remainder: PKT-433 (b) to (d) and PKT-211 unchanged, fn_verify `revoked` exercised natively, and a must-fail per hypothesis for fn-lb-a-connection-opened-after-a-publication-is-bound-anew (keys-and-accounts-2)
 - PKT-211 succession-era invitations refused `genesis`; `peer list` without the budget; no native unsupported-profile/signature-failed row (moved from keys-and-accounts: PKT-433 (b), sweep 11)
-- PKT-221 a login-to-principal binding change needs a restart (moved from keys-and-accounts: PKT-433 (a), sweep 11)
+- PKT-221 a login-to-principal binding change needs a restart (moved from keys-and-accounts: PKT-433 (a), sweep 11); DONE on lane/keys-and-accounts-2 (PRF-175), to strike at its merge
 
 **friends-accounts (merged 52925ed5); friends-accounts-2 (running since 12:50)**
 

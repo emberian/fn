@@ -2934,12 +2934,13 @@
     },
     {
       "id": "SEC-005",
-      "title": "A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, without a restart, and never re-decided by an open",
+      "title": "A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened",
       "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-166"
+        "PRF-166",
+        "PRF-175"
       ],
       "verification": [
         "proof",
@@ -2952,9 +2953,13 @@
         "host/native/keys.lisp",
         "host/owner-host.lisp",
         "tests/test_native_key_statements.py",
-        "planning/evidence/keys-and-accounts-2026-09-26.md"
+        "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "books/login-binding-live.lisp",
+        "tests/acl2/login-binding-live-tests.lisp",
+        "host/native/login-bindings.lisp",
+        "tests/test_native_auth.py"
       ],
-      "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner)."
+      "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner). The login binding (PKT-221): rows of the configuration's accounts slot (mark 2, delta kind :login-binding code 17), published by the owner at start and on `principal bind|unbind' through the live reconfiguration (control request 14); the served gate reads the table the submission's connection pinned at open."
     },
     {
       "id": "STO-021",
