@@ -6170,8 +6170,8 @@
     },
     {
       "id": "PRF-170",
-      "title": "A signed article naming a group this node does not serve is refused by name at the signed-author ingress, a served one proceeds unchanged, and every refusal of that ingress carries its word",
-      "statement": "fn-hsig-injected-carrier-unserved-group-is-refused-by-name (books/hybrid-store-injected.lisp, KEYSTONE): for a signed source whose carrier the injecting agent admits under some served group list G1 (fn-hsig-injected-carrier-octets non-nil under (fn-inj-make-config allow agent G1 max)) and a list of group names G2 (fn-inj-group-namesp), under G2 with the same agent, bound and clock: when every group the admitted decision names is in G2, fn-hsig-injected-carrier-octets is the same octets and fn-hsig-injected-carrier-reason is nil; otherwise the octets are nil and the reason is :unknown-group. Its lemma fn-inj-decide-served-groups-choose-only-unknown-group states the same over fn-inj-decide. The host (host/native/hybrid-control.lisp fnn-hybrid-control-author) calls fn-hsig-injected-carrier-octets with the owner's live post configuration (fn-owner-live-post-config, the served groups of the configuration) and, when it is nil, answers (fn-nhc-author-refusal :carrier (fn-hsig-injected-carrier-reason ...)); fn-nhc-author-refusal-names-an-unserved-group: that word is :unknown-group exactly for the reason :unknown-group; fn-nhc-author-refusal-is-a-named-refusal: every word of every arm (enrolment, source fields, carrier, filing, event) is a control status whose class is :refused and whose exit code is 1. The owner of the unserved-group decision is the injection decision (fn-inj-decide's :unknown-group arm, reached through fn-hsig-injected-carrier-plan), not fn-own-control-decision: the carrier arm refuses before the bound submission, so the fnn-fault at the group-code lookup is not reached for an unserved group. Not covered: the decision of which groups a node serves (the configuration's); the operator post's refusal words (unchanged).",
+      "title": "A signed article naming a group this node does not serve is refused by name at the signed-author ingress, a served one proceeds unchanged, and every refusal of that ingress carries its word; and the Store open refuses a control record a pre-C1 image filed under its Newsgroups by name, never a fault",
+      "statement": "fn-hsig-injected-carrier-unserved-group-is-refused-by-name (books/hybrid-store-injected.lisp, KEYSTONE): for a signed source whose carrier the injecting agent admits under some served group list G1 (fn-hsig-injected-carrier-octets non-nil under (fn-inj-make-config allow agent G1 max)) and a list of group names G2 (fn-inj-group-namesp), under G2 with the same agent, bound and clock: when every group the admitted decision names is in G2, fn-hsig-injected-carrier-octets is the same octets and fn-hsig-injected-carrier-reason is nil; otherwise the octets are nil and the reason is :unknown-group. Its lemma fn-inj-decide-served-groups-choose-only-unknown-group states the same over fn-inj-decide. The host (host/native/hybrid-control.lisp fnn-hybrid-control-author) calls fn-hsig-injected-carrier-octets with the owner's live post configuration (fn-owner-live-post-config, the served groups of the configuration) and, when it is nil, answers (fn-nhc-author-refusal :carrier (fn-hsig-injected-carrier-reason ...)); fn-nhc-author-refusal-names-an-unserved-group: that word is :unknown-group exactly for the reason :unknown-group; fn-nhc-author-refusal-is-a-named-refusal: every word of every arm (enrolment, source fields, carrier, filing, event) is a control status whose class is :refused and whose exit code is 1. The owner of the unserved-group decision is the injection decision (fn-inj-decide's :unknown-group arm, reached through fn-hsig-injected-carrier-plan), not fn-own-control-decision: the carrier arm refuses before the bound submission, so the fnn-fault at the group-code lookup is not reached for an unserved group. Not covered: the decision of which groups a node serves (the configuration's); the operator post's refusal words (unchanged). PKT-444 (1), books/store-open-pre-c1.lisp: fn-sopc-pre-c1-control-record-p recognizes a schema-1 kind-4 composite whose signed source C1's classifier calls a control article, whose record lists exactly the source's Newsgroups and not fn-hsig-source-filed-groups (what a pre-C1 image filed). KEYSTONE fn-replay-identity-step-never-admits-a-pre-c1-control-record: from any context the identity step (books/replay.lisp, unchanged) answers a context that is not :ok at the same cursor. KEYSTONE fn-replay-never-faults-on-a-pre-c1-control-record, over fn-sopc-classified-open (the function host/store-node-host.lisp fn-store-sn-open-extended calls on every open, full replay and checkpoint): when the identity fold of the prefix is :ok and the next record, at its own sequence, is such a record, the open of the history is (:refused :pre-c1-control-record TXID MSGID); fn-sopc-checkpoint-open-names-what-the-full-open-names carries it to the checkpoint open. KEYSTONE fn-sopc-classified-open-is-the-open-without-a-pre-c1-record: on a history with no such record the classified open is fn-sco-store-open, the open before. The host renders fn-sopc-refusal-text and exits 1 (fnn-store-open-refusal). Not covered: what repairing such a store means (ember's, PKT-444); a pre-C1 malformed control record (still the generic fault, PKT-457); schema-0 composites (no stored source to classify).",
       "milestone": "M3",
       "requirements": [
         "NNT-037"
@@ -6187,13 +6187,21 @@
         "tests/acl2/native-hybrid-control-tests.lisp",
         "tests/test_native_hybrid_author.py",
         "planning/evidence/control-across-peers-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/store-open-pre-c1.lisp",
+        "tests/acl2/store-open-pre-c1-tests.lisp",
+        "tests/test_native_pre_c1_open.py",
+        "planning/evidence/manifests/certify-20260926T115014Z-1323843.json"
       ],
       "events": [
         "fn-hsig-injected-carrier-unserved-group-is-refused-by-name",
         "fn-inj-decide-served-groups-choose-only-unknown-group",
         "fn-nhc-author-refusal-is-a-named-refusal",
-        "fn-nhc-author-refusal-names-an-unserved-group"
+        "fn-nhc-author-refusal-names-an-unserved-group",
+        "fn-replay-identity-step-never-admits-a-pre-c1-control-record",
+        "fn-replay-never-faults-on-a-pre-c1-control-record",
+        "fn-sopc-checkpoint-open-names-what-the-full-open-names",
+        "fn-sopc-classified-open-is-the-open-without-a-pre-c1-record"
       ]
     },
     {
