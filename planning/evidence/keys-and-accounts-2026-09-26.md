@@ -267,3 +267,42 @@ fail) before r3.
   planning/evidence/manifests/certify-20260926T120553Z-1490002.json. OVER 10 s:
   tests/acl2/login-binding-live-tests 11.8 s at 2 jobs (a defect for PKT-463: split the two test
   fixtures it includes, or measure quietly first).
+
+### Native (hbox /tank/fn/scratch/keys-and-accounts-2/native-n1, fabf99ea)
+
+Developer image built under swarm-build (certify, image-developer exit 0); modules under systemd-run
+MemoryMax=24G with FN_NATIVE_HOST=$T/build/fn-host-developer and FN_TEST_OPENSSL=openssl 3.5.8 (the
+first pass without FN_NATIVE_HOST skipped the whole module: a harness miss, rerun `--no-build`).
+
+- tests.test_native_auth: 5 OK, including
+  `test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding`: witness
+  `NATIVE-AUTH-REBIND-WITNESS 240 article received OK | 441 posting failed; the login is not bound to
+  this signing principal`; the live bind printed `accepted operator principal bind applied`; the owner
+  process was the same throughout; the log has `post login=native-reader bound=<P>` and
+  `post login=native-reader refused login-not-bound`.
+- regression: tests.test_native_key_statements 5 OK, tests.test_native_peer_invite 4 OK (request 12
+  and the peering requests with request 14's handler in the chain; the start publication with no
+  bindings is empty).
+
+```
+c9199034b5d6779f0ee6b92f68021834788d78ffd4ec324a747a1b660bf0c643  tree/build/fn-host-developer
+a84b78fe9db7945c3ccf8e03e13bedb3207188668a33479e490b0b335a79ec13  tree/build/fn-host-developer.core
+15cf5e9e8a9ccea547c6e6ad4c75844accb2324c0394e426c60cecaa50949243  logs/test-tests.test_native_auth.log
+0c6b5eb04c9a21d39269a9b827b4e88750c36d10cc03930bde5598d85ae0b90a  logs/test-tests.test_native_key_statements.log
+af12ec406f30f2d791c3e2d5c560f840356caba9c1c9b85f2ccc9772b3d9b323  logs/test-tests.test_native_peer_invite.log
+```
+
+Not run: tests.test_native_hybrid_author (untouched by this slice; its signature-failed row is
+PKT-463), tests.test_native_visibility_join's restart-based rebinding case (still valid: the start
+publication re-reads the file).
+
+### Not done (PKT-463)
+
+PKT-211 (succession-era invitations: fn-pinv-genesis-okp still refuses a principal whose current keys
+are not its genesis keys; `peer list` does not render the carriage budget; no native signature-failed
+row), PKT-433 (c) the POST reply naming a refused key change beside a durable composite, (d) the seven
+verdict names in the transit log, fn_verify's `revoked` natively; tests/acl2/login-binding-live-tests
+at 11.8 s (D26). Teeth gap: fn-lb-a-connection-opened-after-a-publication-is-bound-anew has a
+must-fail for its durable hypothesis and witnesses for every antecedent, not a must-fail for each of
+its seven hypotheses. Decision for ember (joins PKT-440): code 17 makes an older image refuse a store
+that ever published a binding.
