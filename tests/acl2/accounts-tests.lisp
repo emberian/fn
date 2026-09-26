@@ -347,3 +347,34 @@
    (and (stringp text)
         (equal (subseq text 0 15) "redeemed robin ")
         (not (search (at-digest) text)))))
+
+; PKT-391: a login-binding row (PKT-221, mark 2) in the same slot is listed
+; as a binding, never as `pending expires ' with an empty expiry.  The
+; redeemed login robin, then its binding published (code 17).
+(defconst *at-bind-hex* (coerce (make-list 64 :initial-element #\a) 'string))
+(defmacro at-vb ()
+  '(fn-cfg-apply-delta (at-v2) 3 *at-stamp*
+                       (fn-cfg-login-binding "robin" *at-bind-hex*)))
+(assert-event (null (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
+                                         (fn-cfg-login-binding "robin" *at-bind-hex*))))
+(assert-event
+ (let ((text (fn-record-octets-string (fn-acct-list-report (at-vb)))))
+   (and (stringp text)
+        (search (concatenate 'string "binding robin " *at-bind-hex*
+                             (string #\Newline))
+                text)
+        (not (search "pending" text))
+        (equal (subseq text 0 15) "redeemed robin "))))
+; fn-acct-list-word-is-pending-only-for-a-pending-row, both sides: the
+; binding row's word is not `pending ', the invited (mark 0) row's is.
+(assert-event
+ (let ((rows (fn-cfg-accounts (at-vb))))
+   (and (equal (len rows) 2)
+        (equal (fn-cfg-row-n (cadr rows)) 2)
+        (equal (fn-acct-kind-word (fn-acct-row-kind (cadr rows))) "binding "))))
+(assert-event
+ (let ((row (car (fn-cfg-accounts (at-v1)))))
+   (and (equal (fn-cfg-row-n row) 0)
+        (equal (fn-acct-kind-word (fn-acct-row-kind row)) "pending ")
+        (equal (subseq (fn-record-octets-string (fn-acct-list-report (at-v1))) 0 16)
+               "pending expires "))))
