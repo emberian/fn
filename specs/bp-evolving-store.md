@@ -27,17 +27,31 @@ that global between receiver calls as it runs the composed store machine
 `fn-sn-prepare`, `fn-sn-io`, `fn-sn-finish`, `fn-sn-crash`, `fn-sn-recover`.
 
 `fn-bprv-relationalp` grounds every retained context through
-`fn-bprv-context-backedp`, which searches `(fn-sf-records (fn-sn-files store))`
-for a record satisfying `fn-bprv-record-binds`, which is
+`fn-bprv-context-backedp`, which searches the history's article records
+`(fn-bpr-article-records (fn-sf-records (fn-sn-files store)))` for a record
+satisfying `fn-bprv-record-binds`, which is
 `fn-bpr-request-acceptablep`, which contains
 `fn-bpr-store-record-acceptedp` (`books/bp-receipt.lisp:107-117`):
 
 ```lisp
 (and (fn-sn-statep store) (fn-record-p record)
      (equal (fn-sf-phase (fn-sn-files store)) :ready)
-     (member-equal record (fn-sf-records (fn-sn-files store)))
+     (member-equal record
+                   (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
      (fn-bpi-node-record-committedp (fn-sn-node store) record))
 ```
+
+The article records of a history (`fn-bpr-article-records`, one per event):
+a plain article record is its own; a signed kind-4 acceptance composite
+(`fn-stxa-p`) contributes the article record it carries, decoded as replay
+decodes and installs it (`fn-replay-composite-record`); any other event maps
+to itself and is never `fn-record-p`. Before 2026-09-26 the search read
+plain records only, so a signed article the Store had committed never bound
+and the receiver submitted it a second time (PKT-247, PRF-132; lane
+mission-signed-2). Grounding (`fn-bprv-context-groundedp`) and L18/L19 below
+read the same projection; the history itself stays the Store's event list,
+so every prefix fact about it is unchanged (`fn-bprv-article-records-prefix`
+carries a prefix to the projection).
 
 Two conjuncts make the relation false of a Store in motion:
 
@@ -399,11 +413,12 @@ than only for a fresh replay.
                   (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                               (fn-bpr-state-receipts st)))
                   (record (fn-bprv-find-grounding-record
-                           (fn-bpr-state-config st) context (fn-bprv-history store))))
+                           (fn-bpr-state-config st) context
+                           (fn-bpr-article-records (fn-bprv-history store)))))
              (and (consp context)
                   (equal request (fn-bpr-context-request context))
                   (fn-record-p record)
-                  (member-equal record (fn-bprv-history store))
+                  (member-equal record (fn-bpr-article-records (fn-bprv-history store)))
                   (equal context (fn-bpr-context-from-request record request))
                   (equal (fn-bpa-request-article request) (fn-record-payload record))
                   (equal (fn-bpa-request-subject request)
@@ -428,9 +443,12 @@ persistence is currently one-step only.
   (implies (and (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
                 (fn-record-p record)
-                (member-equal record (fn-bprv-history store)))
+                (member-equal record (fn-bpr-article-records (fn-bprv-history store))))
            (fn-bpi-node-record-committedp (fn-sn-node store) record)))
 ```
+
+(Over the article records since 2026-09-26: the replay loop installs a
+composite's article record too, `fn-bprv-apply-composite-installs-record`.)
 
 (`fn-record-p record` restated 2026-09-23: since `6ab2c783` and `346a8f99`
 the history carries retention and statement events too, and those install no

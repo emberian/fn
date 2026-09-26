@@ -5185,6 +5185,21 @@
           "note": "KEYSTONE (the admitted half). An admitted channel's bundle is decided by the unchanged fn-bpnf-receive-wire-event under the admitted ingress. Teeth: the allowlisted neighbour 'peer' on its own listener is :ready, its event's ingress names 'peer', and fn-bpnf-step on it proposes kind-5 :persist; hypothesis removal: over the refused (ambiguous) channel the answer differs from the receive boundary's answer on the anonymous ingress."
         }
       ]
+    },
+    {
+      "id": "PRF-132",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-dispatch-never-resubmits-a-stored-article",
+          "note": "KEYSTONE (exactly one submission, PKT-247). Over fn-bpaj-dispatch-fast, which host/bp-receipt-journal-host.lisp fn-bprj-request-action calls for host/native/bp-app.lisp fnn-bpapp-action: once the Store's article records (fn-bpr-article-records: a plain record, or the one a signed kind-4 composite carries) hold an article record with the Message-ID the dispatcher reads, the answer is not (:submit). Teeth: tests/acl2/bp-signed-binding-tests (a signed composite committed by the Store's own transitions after a hybrid enrollment: before the commit (:submit), after it (:bind RECORD); hypothesis removal: the enrolled Store before the commit submits; a constructed non-record carrying the Message-ID submits; another Message-ID over the signed Store submits; labelled mutation witness: the pre-PRF-132 plain-record search finds nothing over the signed Store)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-dispatch-binds-the-stores-own-record",
+          "note": "KEYSTONE (the verdict is the receiving Store's). A (:bind RECORD) answer of fn-bpaj-dispatch-fast names an article record for the dispatcher's Message-ID, accepted by the receiver's Store check (fn-bpaj-store-record-accepted-fast), that is the article record of an event of the Store's own history (fn-bpaj-article-event); when that event is a signed composite, fn-stxa-bindsp binds its kind-2 verdict to exactly RECORD. Teeth: the signed witness names the composite itself and its verdict (:verified, the report's Message-ID); the bound record's transit context replays and the request moves to :prepare-receipt; hypothesis removal: without a :bind answer (the Store before the commit) the conclusion fails."
+        }
+      ]
     }
   ]
 }
