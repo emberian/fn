@@ -5397,6 +5397,28 @@
           "name": "fn-bpnf-family-next-memo-is-aux"
         }
       ]
+    },
+    {
+      "id": "PRF-139",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-next-is-the-two-scan-selection",
+          "note": "KEYSTONE (one traversal, the same answer). fn-bpnj-contact-next, asked by host/native/bp-service.lisp fnn-bpc-drive-contact and host/native/bp-node.lisp fnn-bpnode-send-receipts before every offer, equals the former two-scan answer on every state; the PRF-120 theorems' hints cite it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-scan-finds-the-selected-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-scan-finds-the-held-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-unique-keys-make-every-job-its-own-entry"
+        }
+      ]
     }
   ]
 }
