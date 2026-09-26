@@ -497,6 +497,17 @@ class FrameSession:
             raise BridgeError("ACL2 returned an unexpected publication verdict")
         return str(value)
 
+    def article_verdict(self, profile, payload_length: int, group_count: int) -> str:
+        """`fn-smr-article-verdict-at` over the recovered Store: the count gate
+        and the history gate at the article's own figure (packet 1) with the
+        release's room kept (PKT-169), as the
+        native `store post` asks it (`fn-store-sn-article-verdict`)."""
+        value = self.call("(fn-store-sn-article-verdict {} {} {} state)".format(
+            "'" + _lisp_literal(profile), int(payload_length), int(group_count)))
+        if not isinstance(value, Keyword):
+            raise BridgeError("ACL2 returned an unexpected article verdict")
+        return str(value)
+
     def config_record_name(self, generation: int) -> str:
         """`fn-native-admin-config-name`: the fixed-width record filename."""
         value = self.call("(fn-store-cfg-record-name {})".format(int(generation)))

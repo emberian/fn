@@ -48,6 +48,29 @@
                   (list :refused :article-fields)
                 (list :ok msgid groups)))))))))
 
+;; A transit request's fields are the RELAYING agent's (RFC 5537 section 3.6
+;; step 1, fn-af-relayed-article-check), exactly the check
+;; fn-bpaj-transit-plan's Message-ID comes from (fn-bpaj-transit-msgid): a
+;; relayed article carries the injecting node's Injection-Info (and may carry
+;; its Xref), which the injecting agent's check fn-bpaj-article-fields
+;; refuses.  Until mission-signed, the transit lookups below used that check,
+;; so every transit request whose article had been injected (every
+;; Store-rendered, hybrid-signed carrier) answered (:conflict) and was refused
+;; as :intent before any Store attempt.
+(defun fn-bpaj-transit-article-fields (request)
+  (declare (xargs :guard t))
+  (if (not (fn-bpa-requestp request)) (list :refused :request)
+    (let ((parsed (fn-article-parse (fn-bpa-request-article request))))
+      (if (not (fn-article-result-okp parsed)) (list :refused :article-syntax)
+        (let ((checked (fn-af-relayed-article-check
+                        (fn-article-result-article parsed))))
+          (if (not (equal (car checked) :ok))
+              (list :refused (cadr checked))
+            (let ((msgid (cadr checked)) (groups (caddr checked)))
+              (if (or (not msgid) (not (consp groups)))
+                  (list :refused :article-fields)
+                (list :ok msgid groups)))))))))
+
 (defun fn-bpaj-request-subjectp (request)
   (declare (xargs :guard t))
   (and (fn-bpa-requestp request)
@@ -63,7 +86,7 @@
        (fn-bpa-requestp request)
        (fn-bpr-store-record-acceptedp store record)
        (equal (fn-record-payload record) stored-octets)
-       (let ((fields (fn-bpaj-article-fields request)))
+       (let ((fields (fn-bpaj-transit-article-fields request)))
          (and (equal (car fields) :ok)
               (equal (fn-record-msgid record)
                      (fn-record-octets-string (cadr fields)))))))
@@ -450,13 +473,20 @@
                                                  (caddr eid))))))
         (t "")))
 
+; The article records of Store events RECORDS whose Message-ID is MSGID: a
+; plain article record, or the article record a signed kind-4 composite
+; carries (`fn-bpr-event-article'), so a signed article the Store committed
+; binds as a plain one does (PKT-247).  Cost: every composite before the end
+; of RECORDS is decoded once per lookup (its article record's octets); an
+; index from Message-ID to event beside the Message-ID trie is owed (PKT-291).
 (defun fn-bpaj-record-for-msgid (msgid records)
   (declare (xargs :guard t :measure (acl2-count records)))
   (if (consp records)
-      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records))))
-        (if (and (fn-record-p (car records))
-                 (equal msgid (fn-record-msgid (car records))))
-            (cons (car records) rest)
+      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
+            (record (fn-bpr-event-article (car records))))
+        (if (and (fn-record-p record)
+                 (equal msgid (fn-record-msgid record)))
+            (cons record rest)
           rest))
     nil))
 
@@ -485,7 +515,7 @@
 
 (defun fn-bpaj-transit-record-lookup (store request intent)
   (declare (xargs :guard t))
-  (let ((fields (fn-bpaj-article-fields request)))
+  (let ((fields (fn-bpaj-transit-article-fields request)))
     (if (not (and (equal (car fields) :ok)
                   (fn-bpaj-transit-intentp intent)))
         (list :conflict)

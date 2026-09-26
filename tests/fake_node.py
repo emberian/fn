@@ -38,6 +38,7 @@ list follows`, `205 closing connection` and `423 no article with that
 number` where this fake says something shorter; the wording is left alone so
 nothing here can be mistaken for the node's own voice.
 """
+import fnmatch
 import socket
 import ssl
 import subprocess
@@ -52,7 +53,7 @@ class FakeNode(threading.Thread):
                  uncertain_post=False, drop_after_article=False, fail_article=None,
                  echo_password=False, groups=("fn.agents",), drop_before_greeting=False,
                  host="127.0.0.1", refusal="441 posting failed; the article was refused",
-                 close_after_382=False):
+                 close_after_382=False, d25=False, commit_then_drop=False):
         super().__init__(daemon=True)
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(cert, key)
@@ -69,6 +70,15 @@ class FakeNode(threading.Thread):
         self.close_after_382 = close_after_382
         self.fail_article = fail_article
         self.echo_password = echo_password
+        # d25: a POST under a held Message-ID is answered from what is held,
+        # as fn's Store does (books/nntp-post.lisp's two lines), and stores
+        # nothing.  commit_then_drop: the article is stored and the reply is
+        # lost.  withdrawn: Message-IDs a cancel hid from readers (C3:
+        # `423 withdrawn` by number, `430 withdrawn` by Message-ID; OVER and
+        # XPAT omit them), still held.
+        self.d25 = d25
+        self.commit_then_drop = commit_then_drop
+        self.withdrawn = set()
         self.articles = {}
         # Optional literal HDR :fn-verified values used by reader-client tests.
         self.verdicts = {}
@@ -267,6 +277,9 @@ class FakeNode(threading.Thread):
                     if number is not None and number == self.fail_article:
                         send("403 internal fault")
                         continue
+                    if msgid in self.withdrawn:
+                        send("430 withdrawn" if token.startswith("<") else "423 withdrawn")
+                        continue
                     if msgid is None or msgid not in self.articles:
                         send("430 no article with that message-id" if token.startswith("<")
                              else "423 no article with that number")
@@ -288,8 +301,9 @@ class FakeNode(threading.Thread):
                     if selected is None:
                         send("412 no newsgroup selected")
                         continue
-                    wanted = in_range(sorted(self.numbers[selected]),
-                                      words[1] if len(words) > 1 else "")
+                    wanted = [n for n in in_range(sorted(self.numbers[selected]),
+                                                  words[1] if len(words) > 1 else "")
+                              if self.numbers[selected][n] not in self.withdrawn]
                     if not wanted:
                         send("423 no articles in that range")
                         continue
@@ -307,6 +321,24 @@ class FakeNode(threading.Thread):
                     send("225 headers follow")
                     block([str(number) + " " +
                            self.verdicts.get(msgid, "absent no-field")])
+                elif verb == "XPAT" and len(words) >= 4 and "-" in words[2]:
+                    # A fake: fnmatchcase stands in for the node's wildmat
+                    # (books/wildmat.lisp); a test against it says what the
+                    # client does with lines, never what the node matches.
+                    if selected is None:
+                        send("412 no newsgroup selected")
+                        continue
+                    pattern = " ".join(words[3:])
+                    lines = []
+                    for number in in_range(sorted(self.numbers[selected]), words[2]):
+                        msgid = self.numbers[selected][number]
+                        value = header(self.articles[msgid], words[1].lower())
+                        if msgid in self.withdrawn or value is None:
+                            continue
+                        if any(fnmatch.fnmatchcase(value, one) for one in pattern.split(",")):
+                            lines.append("%d %s" % (number, value))
+                    send("221 header follows")
+                    block(lines)
                 elif verb == "POST":
                     if not self.accept_post:
                         send("440 posting not permitted for this principal")
@@ -323,9 +355,19 @@ class FakeNode(threading.Thread):
                     if self.uncertain_post:
                         send("441 posting failed; the outcome is uncertain, do not repost")
                         continue
+                    held = header(lines, "message-id")
+                    if self.d25 and held in self.articles:
+                        send("441 posting failed; this article is already stored here"
+                             if self.articles[held] == lines else
+                             "441 posting failed; a different article with this "
+                             "Message-ID is stored here")
+                        continue
                     groups = (header(lines, "newsgroups") or "").split(",")
                     for name in [g.strip() for g in groups if g.strip()] or ["fn.agents"]:
                         self.inject(name, lines)
+                    if self.commit_then_drop:
+                        self.commit_then_drop = False
+                        return
                     send("240 article received OK")
                 elif verb == "QUIT":
                     send("205 bye")

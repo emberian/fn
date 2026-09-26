@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 
+import acl2_slots
 from run_store import Acl2Store, EXIT_FAULT, EXIT_OK, Store, UsageParser, decimal_list
 
 # DTN time (RFC 9171 section 4.2.6) is milliseconds since 2000-01-01T00:00:00Z.
@@ -117,15 +118,15 @@ class Acl2Reader:
         self.owns_process = store_bridge is None
         self.proc = None
         self.own_poisoned = False
-        env = os.environ.copy()
-        env["ACL2_CUSTOMIZATION"] = "NONE"
-        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
         try:
             if self.owns_process:
-                self.proc = subprocess.Popen(
-                    [env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                # The machine's ACL2 pool and heap cap (PKT-162); the slot is
+                # returned in close().
+                self.proc = acl2_slots.popen(
+                    [os.environ.get("FN_ACL2", "acl2")], "reader bridge", cwd=ROOT,
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT, env=env)
+                    stderr=subprocess.STDOUT)
+                self._slot_held = True
                 read_prompt(self.proc, timeout=15)
             else:
                 self.proc = store_bridge.proc
@@ -225,6 +226,9 @@ class Acl2Reader:
             for stream in (self.proc.stdin, self.proc.stdout):
                 if stream and not stream.closed:
                     stream.close()
+            if getattr(self, "_slot_held", False):
+                self._slot_held = False
+                acl2_slots.release_tree_slot()
 
 
 def graceful_close(client):

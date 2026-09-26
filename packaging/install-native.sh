@@ -12,7 +12,7 @@ case $prefix in *[!A-Za-z0-9_./-]*) echo "install-native: PREFIX contains unsupp
 case $source_revision in ''|*[!A-Za-z0-9._-]*) echo "install-native: invalid FN_NATIVE_SOURCE_REVISION" >&2; exit 2;; esac
 [ -x "$image" ] || { echo "install-native: missing executable image: $image" >&2; exit 4; }
 [ -s "$core" ] || { echo "install-native: missing image core: $core" >&2; exit 4; }
-for support in packaging/fn-native packaging/fn-native.service.in packaging/net.fn.native.plist.in; do
+for support in packaging/fn packaging/fn-native.service.in packaging/net.fn.native.plist.in; do
   [ -r "$support" ] || { echo "install-native: missing package input: $support" >&2; exit 4; }
 done
 grep -q '^#!.*sh' "$image" || { echo "install-native: image launcher is not the generated shell form" >&2; exit 4; }
@@ -108,7 +108,7 @@ else
 fi
 chmod 0755 "$libdir/fn-host"
 install -m 0644 "$core" "$libdir/fn-host.core"
-install -m 0755 packaging/fn-native "$bindir/fn"
+install -m 0755 packaging/fn "$bindir/fn"
 
 sed "s|@PREFIX@|$prefix|g" packaging/fn-native.service.in > "$sharedir/systemd/fn.service"
 sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd/net.fn.plist"

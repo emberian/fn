@@ -19,6 +19,7 @@ See the [store refinement contract](store-refinement.md) and the
 | A-IDENTITY | Origin/incarnation allocation and restore procedures avoid unrecognized reuse, subject to their explicit freshness assumptions. |
 | A-POLICY | The evaluated policy context is authorized and identified; accepting one signed statement does not establish arbitrary authority. |
 | A-FAIRNESS | For liveness only: useful contacts, capacity, scheduling, retries, and permitted routes eventually occur as stated. |
+| A-BP-CONTACT | For liveness only: a base contact to a peer sustains `(fn-assume-bp-contact-asks peer)` of the driver's asks with its gate open, every publication it proposes answered within its ask (`books/assumptions.lisp`; the base-job-offer reading of A-FAIRNESS and A-BP-PERSIST, spec bp-node-machine 4.9). |
 
 ## Crash-only storage model
 

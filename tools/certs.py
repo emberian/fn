@@ -400,13 +400,32 @@ def closure(root: Path, name: str) -> dict[str, str]:
             raise UnreadableBook(f"{book}.lisp: missing")
         digest, references = book_facts(source)
         found[book] = digest
+        pending.extend(_include_targets(base, book, source, digest, references))
+    return found
+
+
+# The resolved include targets of one book's bytes under one root.  Resolving
+# every edge again on every closure was the cost of `make check`'s
+# proof_cost (1,772 closures, 246,535 `realpath` calls and 2.2 million
+# `lstat`s; harness-repair).  The key carries the content hash, so edited
+# bytes are new edges.
+_EDGES: dict[tuple[str, str, str], list[str]] = {}
+
+
+def _include_targets(base: Path, book: str, source: Path, digest: str,
+                     references: list[str]) -> list[str]:
+    key = (str(base), book, digest)
+    remembered = _EDGES.get(key)
+    if remembered is None:
+        remembered = []
         for reference in references:
             target = (source.parent / reference).with_suffix(".lisp").resolve()
             if not target.is_relative_to(base):
                 raise UnreadableBook(
                     f"{book}.lisp: include-book escapes the worktree: {reference}")
-            pending.append(target.relative_to(base).with_suffix("").as_posix())
-    return found
+            remembered.append(target.relative_to(base).with_suffix("").as_posix())
+        _EDGES[key] = remembered
+    return remembered
 
 
 def closure_listing(books: dict[str, str]) -> list[str]:

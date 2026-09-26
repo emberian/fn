@@ -19,6 +19,12 @@ from tests.native_process import stop_and_diagnostics, wait_for_announcement
 from tests.test_bp_contact_relay_native import ByteRelay
 from tools import run_bp_ingress, run_store
 
+# specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
+# connection lost after it existed is exit 6 (connection-local: the job stays
+# and is re-offered; no recovery); exit 3 stays the fence.
+LOST = 6
+
+
 
 ROOT = Path(os.environ.get(
     "FN_NATIVE_SOURCE_ROOT", Path(__file__).resolve().parent.parent))
@@ -1244,13 +1250,21 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(after.returncode, 0, after.stderr)
         self.assertIn(b"pinned=no", after.stdout)
 
-    def test_absent_bp_trust_keeps_custody_but_refuses_request_application(self):
+    def test_absent_bp_trust_refuses_custody_with_the_policy_reason(self):
+        # PRF-128 (D23): a bundle over a channel whose admission is refused is
+        # refused at reception with the admission's reason, before any FNBS
+        # step (fn-bpaj-refused-channel-takes-no-custody).  Until
+        # mission-signed the node took anonymous custody and refused only the
+        # application (PKT-170).
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(receiver.returncode, 0, err)
-        self.assertIn(b"BP node delivery request-refused", out)
+        self.assertEqual(sent.returncode, 1, sent.stderr)
+        self.assertEqual(receiver.returncode, 1, err)
+        self.assertIn(b"BP channel admission refused reason=no-trust-profile", out)
+        self.assertIn(b"BP refused xfer=0 reason=no-trust-profile", out)
+        self.assertNotIn(b"BP accepted", out)
+        self.assertNotIn(b"BP node delivery", out)
         self.assertEqual(self.receiver_counts()[1], 0)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
@@ -1264,7 +1278,11 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(self.receiver_counts()[1], 0)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
-    def test_absent_bp_trust_refuses_receipt_release(self):
+    def test_absent_bp_trust_refuses_the_receipt_at_reception(self):
+        # PRF-128: the sender's node does not admit the channel the receipt
+        # arrives on, so the receipt is refused at reception with the
+        # admission's reason; it never reaches the release question and the
+        # pin stays.
         receiver, port = self.start_node(True)
         sent = self.send_request(port, "untrusted-return")
         out, err = receiver.communicate(timeout=120)
@@ -1274,8 +1292,9 @@ class NativeBpNodeTests(unittest.TestCase):
         sender, port = self.start_node(False, once=False, trust=False)
         self.relay.route(port)
         delivered = self.tick_receiver()
-        self.assertEqual(delivered.returncode, 0, delivered.stderr)
-        self.wait_for_output(sender, b"BP node delivery receipt-refused", timeout=120)
+        self.assertEqual(delivered.returncode, 1, delivered.stderr)
+        self.wait_for_output(
+            sender, b"BP refused xfer=0 reason=no-trust-profile", timeout=120)
         self.stop_process(sender)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
@@ -1430,7 +1449,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(receiver.returncode, 3, (out, err))
         self.assertNotIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_counts()[1], 0)
-        self.assertIn(sent.returncode, (1, 3), sent.stderr)
+        self.assertIn(sent.returncode, (1, LOST), sent.stderr)
 
     def test_ambiguous_fnrj_decision_fences_until_cold_replay(self):
         receiver, port = self.start_node(
@@ -1548,7 +1567,7 @@ class NativeBpNodeTests(unittest.TestCase):
         sender, port = self.start_node(False, once=False)
         self.relay.route(port, cut_next=True)
         interrupted = self.tick_receiver()
-        self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
+        self.assertEqual(interrupted.returncode, LOST, interrupted.stderr)
         self.assertIn(b"reason=uncertain", interrupted.stdout)
         self.stop_process(sender)
         pinned = self.sender_status()

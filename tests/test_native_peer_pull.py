@@ -15,6 +15,23 @@ so the cases read B's NEWNEWS lines rather than trusting B's own account.
 - test_pull_from_inn: INN (FN_INN_SRC, an installed INN 2.7 tree) holds an
   article in fn.test; B pulls it from nnrpd and stores it.
 
+Protected pulls (NNT-023, SCN-071, PRF-125; books/peer-pull-session.lisp).
+Node A serves STARTTLS with `[auth] required = true, protected_only = true`
+and a principal for B; B's peer record for A names STARTTLS, A's
+certificate as the only trust anchor and B's credential profile.
+
+- test_tls_pull_as_its_own_principal: B pulls both articles over TLS as its
+  principal and its cursor advances; the recording proxy sees STARTTLS and
+  no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.
+- test_wrong_principal_is_refused_by_the_serving_node: B's profile names a
+  login A does not hold; A refuses it after TLS, B stores nothing and its
+  FNPL journal does not grow past the first instant.
+- test_clear_credential_is_refused_before_any_connection: a clear transport
+  with a credential and no loopback-lab permission; B's own ACL2 refuses
+  every round and the proxy in front of A is never dialled.
+- test_cursor_publication_cuts_over_tls: packet 5's six kill cuts, over the
+  protected transport.
+
 Run: FN_NATIVE_HOST=<launcher> [FN_INN_SRC=/tank/fn/inn/2.7.4] \
      python3 -m unittest -v tests.test_native_peer_pull
 """
@@ -91,6 +108,7 @@ class RecordingProxy:
         self.commands = []
         self.connections = 0
         self.hold = False
+        self.passed = 0
         self.held = threading.Event()
         self.closed = False
         threading.Thread(target=self.accept_loop, daemon=True).start()
@@ -148,6 +166,14 @@ class RecordingProxy:
                             if not client.recv(65536):
                                 return
                     server.sendall(line)
+                # Octets with no line end yet (a TLS record) pass through now
+                # unless an ARTICLE may have to be held; they are recorded
+                # once their line completes, never as a command of their own.
+                if buffered and not self.hold:
+                    server.sendall(buffered)
+                    with self.lock:
+                        self.passed += len(buffered)
+                    buffered = b""
         except OSError:
             pass
         finally:
@@ -333,6 +359,8 @@ class NativePeerPullTests(unittest.TestCase):
             data["log_sha256_" + node["name"]] = sha256_of(node["log"])
         data["image_sha256"] = sha256_of(IMAGE)
         data["core_sha256"] = sha256_of(str(IMAGE) + ".core")
+        (self.evidence / (kind + ".witness.json")).write_text(
+            json.dumps(data, sort_keys=True, indent=1), encoding="utf-8")
         print("NATIVE-PULL-WITNESS " + json.dumps(data, sort_keys=True), flush=True)
 
     def two_nodes(self):
@@ -402,6 +430,290 @@ class NativePeerPullTests(unittest.TestCase):
                                         "fnpl": self.fnpl_files(b)}, [a, b])
         self.assertTrue(after, "B asked nothing after restart")
         self.assertEqual(after[0], dead_newnews)
+
+    def test_cursor_publication_cuts(self):
+        """Packet 5 (PRF-124): SIGKILL at every write of the cursor's
+        publication.  A fresh cursor journals its first instant before the
+        round dials (append 1) and the round's close journals the advanced
+        cursor (append 2); each is cut before the write, after the write and
+        after the fsync.  After a restart without the fault, every article A
+        held is stored at B exactly once (no skipped accepted work), and what
+        B re-offered to itself is bounded by the dead round's listing (the
+        duplicates draw 435 and change nothing)."""
+        results = {}
+        for append in (1, 2):
+            for cut in ("before-write", "after-write", "after-fsync"):
+                label = "{}:{}".format(cut, append)
+                a, b, proxy = self.two_nodes_named("A" + label.replace(":", "-"),
+                                                   "B" + label.replace(":", "-"))
+                ids = ["<cut-{}-{}@example.invalid>".format(label.replace(":", "-"), k)
+                       for k in range(2)]
+                for n, message_id in enumerate(ids):
+                    self.post(a, article(message_id, "cut-{}".format(n)))
+                self.env["FN_PULL_TEST_KILL"] = label
+                try:
+                    self.start(b)
+                except Exception:  # died before announcing LISTENING
+                    pass
+                finally:
+                    del self.env["FN_PULL_TEST_KILL"]
+                process = b["process"]
+                code = process.wait(timeout=120)
+                b.pop("process")
+                process.communicate(timeout=60)
+                self.processes.remove(process)
+                self.assertEqual(code, -signal.SIGKILL, label)
+                mark = proxy.mark()
+                self.start(b)
+                for message_id in ids:
+                    self.await_article(b, message_id)
+                self.await_log(b, "cursor=advanced", 1)
+                after = proxy.since(mark)
+                articles = [c for c in after if c.upper().startswith("ARTICLE")]
+                newnews = [c for c in after if c.upper().startswith("NEWNEWS")]
+                counts = {i: self.count_article(b, i) for i in ids}
+                self.stop(b)
+                self.stop(a)
+                results[label] = {"newnews_after": newnews[:2],
+                                  "article_after": articles, "counts": counts,
+                                  "pull_lines": self.pull_lines(b)}
+                for message_id in ids:
+                    self.assertEqual(counts[message_id], 1, (label, counts))
+                # Only ids the peer listed are fetched, each at most once per
+                # round: the duplicate replay is bounded by the listing.
+                self.assertLessEqual(len(articles), len(ids), (label, articles))
+        self.witness("cursor-cuts", results, [])
+
+    def two_nodes_named(self, name_a, name_b):
+        a = self.initialize(name_a, ["fn.test"], "a.pull.example.invalid")
+        b = self.initialize(name_b, ["fn.test"], "b.pull.example.invalid")
+        self.start(a)
+        proxy = RecordingProxy(a["port"])
+        self.addCleanup(proxy.close)
+        self.pull_from(b, "A", "a.pull.example.invalid", proxy.port)
+        return a, b, proxy
+
+    def stored(self, node, message_id):
+        return self.article_code(node, message_id) == b"223"
+
+    def count_article(self, node, message_id):
+        """How many local articles of fn.test carry MESSAGE_ID (XOVER 1-)."""
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            stream.readline()
+            stream.write(b"GROUP fn.test\r\n")
+            stream.readline()
+            stream.write(b"XOVER 1-\r\n")
+            head = stream.readline()
+            lines = []
+            if head.startswith(b"224"):
+                while True:
+                    line = stream.readline()
+                    if not line or line == b".\r\n":
+                        break
+                    lines.append(line)
+        return sum(1 for line in lines if message_id.encode("ascii") in line)
+
+    # ------------------------------------------------------------ protected
+
+    def certificate(self, root, name):
+        certificate, key = root / (name + "-certificate.pem"), root / (name + "-key.pem")
+        result = subprocess.run(
+            [os.environ.get("FN_TEST_OPENSSL", "openssl"), "req", "-x509", "-newkey",
+             "rsa:2048", "-nodes", "-sha256", "-days", "1", "-subj", "/CN=localhost",
+             "-keyout", str(key), "-out", str(certificate)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        return certificate, key
+
+    def initialize_protected(self, name, login, password):
+        """A serving node: STARTTLS, authentication required and AUTHINFO only
+        on a protected channel; LOGIN/PASSWORD is the principal it holds for
+        the pulling node."""
+        root = self.base / name
+        root.mkdir()
+        store, control = root / "store", root / "control.sock"
+        port = free_port()
+        certificate, key = self.certificate(root, name)
+        self.command([IMAGE, "--fn", "store", store, "init", "fn.test"])
+        config = root / "fn.toml"
+        config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n[log]\npath = "{}"\n'
+            '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'.format(
+                store, port, certificate, key, control, root / "fn.log",
+                root / "auth.toml"), encoding="ascii")
+        enrolled = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(config), "principal", "set-password",
+             login], cwd=ROOT, env=self.env,
+            input=(password + "\n" + password + "\n").encode(),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
+        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        node = {"name": name, "root": root, "config": config, "port": port,
+                "store": store, "log": root / "fn.log", "certificate": certificate}
+        self.nodes.append(node)
+        self.command([IMAGE, "--fn", "operator", config, "policy", "set",
+                      "path-identity", "a.pull.example.invalid"])
+        return node
+
+    def operator_post(self, node, message_id, subject):
+        payload = node["root"] / (subject + ".article")
+        payload.write_bytes(article(message_id, subject))
+        self.command([IMAGE, "--fn", "operator", node["config"], "post",
+                      "--message-id", message_id, "--payload", payload,
+                      "--group", "fn.test"])
+
+    def profile(self, node, login, password):
+        path = node["root"] / "A.fnauth"
+        path.write_bytes("FNAUTH1\n{}\n{}\n".format(login, password).encode("ascii"))
+        path.chmod(0o600)
+        return path
+
+    def pull_protected(self, b, a, port, profile, tls=True, allow_clear=False):
+        """B's record for A: inbound and outbound fn.*, source-address auth on
+        an address no socket here uses, B's credential PROFILE, and STARTTLS
+        against A's certificate as the only anchor (or a clear transport)."""
+        security = ["starttls", "localhost", str(a["certificate"])] if tls else []
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "A",
+                      "a.pull.example.invalid", "127.0.0.1", str(port), "fn.*", "fn.*",
+                      "source-address", "127.0.0.9", str(profile),
+                      "true" if allow_clear else "false", "false", *security])
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull", "A",
+                      INTERVAL])
+
+    def protected_pair(self, name_a="A", name_b="B", login="nodeB", password="b-secret",
+                       presented=None, tls=True):
+        a = self.initialize_protected(name_a, login, password)
+        b = self.initialize(name_b, ["fn.test"], "b.pull.example.invalid")
+        self.start(a)
+        proxy = RecordingProxy(a["port"])
+        self.addCleanup(proxy.close)
+        self.pull_protected(b, a, proxy.port,
+                            self.profile(b, *(presented or (login, password))), tls=tls)
+        return a, b, proxy
+
+    def plaintext_private(self, proxy):
+        """Commands the proxy saw in the clear that carry a credential or
+        read the archive."""
+        with proxy.lock:
+            return [c for c in proxy.commands
+                    if c.upper().startswith(("AUTHINFO", "DATE", "NEWNEWS", "ARTICLE"))]
+
+    def fnpl_size(self, node):
+        top = node["store"] / "pull"
+        return sum(p.stat().st_size for p in top.rglob("*") if p.is_file()) \
+            if top.exists() else 0
+
+    def test_tls_pull_as_its_own_principal(self):
+        a, b, proxy = self.protected_pair()
+        ids = ["<tls-one@example.invalid>", "<tls-two@example.invalid>"]
+        for n, message_id in enumerate(ids):
+            self.operator_post(a, message_id, "tls-{}".format(n))
+        self.start(b)
+        for message_id in ids:
+            self.await_article(b, message_id)
+        self.await_log(b, "cursor=advanced transport=tls", 1)
+        self.await_log(b, "round=done", 2)
+        with proxy.lock:
+            first = proxy.commands[:1]
+        private = self.plaintext_private(proxy)
+        counts = {i: self.count_article(b, i) for i in ids}
+        self.stop(b)
+        self.stop(a)
+        self.witness("tls-pull", {"first_plaintext_command": first,
+                                  "plaintext_private": private,
+                                  "octets_passed_through": proxy.passed,
+                                  "counts": counts, "pull_lines": self.pull_lines(b),
+                                  "fnpl": self.fnpl_files(b)}, [a, b])
+        self.assertEqual(first, ["STARTTLS"])
+        self.assertEqual(private, [])
+        self.assertGreater(proxy.passed, 0)
+        for message_id in ids:
+            self.assertEqual(counts[message_id], 1)
+
+    def test_wrong_principal_is_refused_by_the_serving_node(self):
+        a, b, proxy = self.protected_pair(presented=("mallory", "not-b-secret"))
+        message_id = "<tls-refused@example.invalid>"
+        self.operator_post(a, message_id, "tls-refused")
+        self.start(b)
+        self.await_log(b, "round=failed cursor=held at=preamble", 1)
+        journal = self.fnpl_size(b)
+        self.await_log(b, "round=failed cursor=held at=preamble", 3)
+        journal_later = self.fnpl_size(b)
+        stored = self.stored(b, message_id)
+        lines = self.pull_lines(b)
+        private = self.plaintext_private(proxy)
+        with proxy.lock:
+            first = proxy.commands[:1]
+        self.stop(b)
+        self.stop(a)
+        self.witness("tls-wrong-principal", {"pull_lines": lines, "stored": stored,
+                                             "fnpl_octets": [journal, journal_later],
+                                             "first_plaintext_command": first,
+                                             "plaintext_private": private,
+                                             "proxy_connections": proxy.connections},
+                     [a, b])
+        self.assertFalse(stored)
+        self.assertFalse(any("cursor=advanced" in l for l in lines), lines)
+        self.assertEqual(journal, journal_later)
+        self.assertEqual(first, ["STARTTLS"])
+        self.assertEqual(private, [])
+        self.assertGreaterEqual(proxy.connections, 3)
+
+    def test_clear_credential_is_refused_before_any_connection(self):
+        a, b, proxy = self.protected_pair(tls=False)
+        self.operator_post(a, "<clear-refused@example.invalid>", "clear-refused")
+        self.start(b)
+        self.await_log(b, "refused=clear-credential", 3)
+        lines = self.pull_lines(b)
+        self.stop(b)
+        self.stop(a)
+        self.witness("clear-credential", {"pull_lines": lines,
+                                          "proxy_connections": proxy.connections,
+                                          "proxy_commands": proxy.commands}, [a, b])
+        self.assertEqual(proxy.connections, 0)
+        self.assertTrue(all("round=failed cursor=held refused=clear-credential" in l
+                            for l in lines), lines)
+
+    def test_cursor_publication_cuts_over_tls(self):
+        """Packet 5's campaign (test_cursor_publication_cuts) over the
+        protected transport: every article stored exactly once at every cut."""
+        results = {}
+        for append in (1, 2):
+            for cut in ("before-write", "after-write", "after-fsync"):
+                label = "{}:{}".format(cut, append)
+                tag = label.replace(":", "-")
+                a, b, proxy = self.protected_pair("TA" + tag, "TB" + tag)
+                ids = ["<tls-cut-{}-{}@example.invalid>".format(tag, k) for k in range(2)]
+                for n, message_id in enumerate(ids):
+                    self.operator_post(a, message_id, "tls-cut-{}".format(n))
+                self.env["FN_PULL_TEST_KILL"] = label
+                try:
+                    self.start(b)
+                except Exception:  # died before announcing LISTENING
+                    pass
+                finally:
+                    del self.env["FN_PULL_TEST_KILL"]
+                process = b["process"]
+                code = process.wait(timeout=120)
+                b.pop("process")
+                process.communicate(timeout=60)
+                self.processes.remove(process)
+                self.assertEqual(code, -signal.SIGKILL, label)
+                self.start(b)
+                for message_id in ids:
+                    self.await_article(b, message_id)
+                self.await_log(b, "cursor=advanced transport=tls", 1)
+                counts = {i: self.count_article(b, i) for i in ids}
+                private = self.plaintext_private(proxy)
+                self.stop(b)
+                self.stop(a)
+                results[label] = {"counts": counts, "pull_lines": self.pull_lines(b),
+                                  "plaintext_private": private}
+                for message_id in ids:
+                    self.assertEqual(counts[message_id], 1, (label, counts))
+                self.assertEqual(private, [], label)
+        self.witness("tls-cursor-cuts", results, [])
 
     @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
     def test_pull_from_inn(self):

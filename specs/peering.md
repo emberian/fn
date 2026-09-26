@@ -237,9 +237,9 @@ A peer this node cannot be dialled by (behind NAT) or a server that only
 answers readers (INN's nnrpd) is fed by pulling (RFC 3977 section 7.4). The
 row `(name "pull-interval" "" SECONDS)` of the peer's group, set by
 `fn operator CONFIG peer pull NAME SECONDS` (0 stops), makes the owner run a
-round every SECONDS against the peer's NNTP transport in the clear, asking
-for the peer's own inbound accept-groups (`fn-pull-plans`,
-books/peer-pull.lisp; a TLS transport is not pulled yet). A round is DATE,
+round every SECONDS against the peer's NNTP transport, asking for the
+peer's own inbound accept-groups (`fn-pull-plans`, books/peer-pull.lisp;
+the transport's security and the credential policy are below). A round is DATE,
 `NEWNEWS wildmat since GMT`, then for each listed Message-ID an IHAVE to
 this node on a logical transit connection of that peer (the served IHAVE,
 so the answer is the node's own), and ARTICLE from the peer only after a
@@ -257,6 +257,38 @@ crash anywhere in a round asks the dead round's NEWNEWS again
 `fn-sched-pull-*` in books/scheduler-peers.lisp.
 
 NNT-018: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
+
+**Protected pulls (PRF-125, books/peer-pull-session.lisp).** A pull is a
+client connection, and before its DATE it runs the feed's session machine
+(`fn-fc-step`, `fn-fc-after-tls`, streaming off; §3.0.1 and "Outbound
+authenticated TLS transport" below): greeting, STARTTLS (RFC 4642) and its
+382, a TLS handshake verified against the peer record's server name and
+trust anchor, AUTHINFO USER/PASS (RFC 4643) from the record's outbound
+credential profile, 281, and only then the round, which begins at DATE
+(`fn-pull-begin-ready`, the round `fn-pull-begin` reaches on a greeting).
+Every refusal is ACL2's (`fn-pull-plan-verdict`, decided before the dial):
+
+- a STARTTLS or implicit-TLS transport is pulled, with or without a
+  credential, and the credential leaves only after the 382 and the verified
+  handshake (`fn-pull-session-credentials-wait-for-tls-and-login`, PRF-051's
+  gate);
+- a clear transport without a credential is PRF-100's anonymous pull:
+  nothing private is sent and the serving node decides what an anonymous
+  reader may list;
+- a clear transport with a credential is refused before any connection and
+  its profile file is not read, with ONE exception, the loopback lab: the
+  profile's explicit clear-text permission (`allow-clear` true) AND a host
+  of `127.0.0.1` or `::1`. The exception exists for a lab on one machine; it
+  is local policy and supports no claim about secure peering in general
+  (`fn-pull-session-refuses-a-clear-credential-without-the-lab-exception`).
+
+The serving node's binding is its reader port: with `[auth] required =
+true` NEWNEWS and ARTICLE need a principal, and with `protected_only = true`
+AUTHINFO is refused before TLS, so a wrong principal (a 481) fails the
+preamble and the cursor does not move. A kill anywhere in a TLS pull
+recovers as in a clear one (`fn-pull-session-journal-is-the-cursor-at-every-cut`).
+
+NNT-023: A pull presents its credential only over a verified TLS channel, is refused before any connection when a credential would cross a clear transport outside the loopback-lab exception, and a wrong principal leaves the cursor where it was
 
 #### 1.2.1 Peer changes are not transport-only
 
@@ -1531,9 +1563,21 @@ after an acceptance that acted it changes nothing
 (`fn-ks-recover-after-an-acting-acceptance-changes-nothing`); and a
 statement whose change is already the newest snapshot never acts again
 (`fn-ks-execute-is-idempotent`). A statement that declined is still the
-newest record until the next commit, so an open decides it again under the
-open's configuration: a grant added before the restart lets it act then
-(local policy; a decline is not recorded).
+newest record until the next commit. Before packet 7 an open decided it
+again under the open's configuration, so a grant added across a restart made
+an old decline act (the trace is in
+`planning/evidence/peering-compose-2026-09-25.md`). Now (PRF-124) the open
+decides it under the configuration in force at the statement's own Store
+txid, the fold of the configuration journal through that txid (C3's
+`fn-ctl-config-at`; `fn-ks-recover-recorded`): a decline replays as a decline
+(`fn-ks-a-decline-replays-as-a-decline`), no configuration record later than
+the statement changes what the open does with it
+(`fn-ks-reopen-is-blind-to-later-configuration`), and the cut still completes
+as the uninterrupted acceptance would
+(`fn-ks-recorded-recovery-completes-the-cut`). Re-evaluation under today's
+grants is an explicit act (a new statement), never a restart. The selection
+is `*fn-ks-reopen-policy*` (`:recorded`; `:current` restores the old
+behaviour), a one-line switch.
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
@@ -1599,10 +1643,31 @@ control requests 9, 10 and 11, each carrying one carrier):
 | `genesis KEYDIR` | read the two public keys; draw a 16-octet token if `token.bin` is absent | `fn-pinv-genesis-principal` | writes `principal.bin` |
 | `invite NAME GROUPS HOST PORT PATH KEYDIR OUT` | nonce from the CSPRNG, wall clock, sign | `fn-pinv-invitation-source`; at the owner `fn-pinv-issue-plan` | one `:issue-invitation` record, then `OUT` |
 | `accept FILE KEYDIR PATH REACHABLE OUT` | observe, sign | at the owner `fn-pinv-accept-step`; then `fn-pinv-acceptance-source` | a kind-3 enrolment of the inviter at ACL2's next generation, then `OUT` |
-| `confirm FILE` | observe | at the owner `fn-pinv-confirm-plan`, then `fn-pinv-confirm-step` | one `:consume-invitation` record, then a kind-3 enrolment of the acceptor |
+| `confirm ACCEPTANCE INVITATION` | observe | at the owner `fn-pinv-confirm-record-plan`, then `fn-pinv-confirm-step` | one record `:consume-invitation` + `:set-peer`, then a kind-3 enrolment of the acceptor |
 
-The peer record itself is still `peer add` (the documents carry its words);
-folding it into the consuming record is open.
+**The confirm configures the peer (PRF-124).** `confirm ACCEPTANCE
+INVITATION` carries both documents (control request 11, two blobs). The
+invitation is the one this node issued exactly when its ACL2 authored-source
+identity is the acceptance's `Invitation-Source-Id`, which the consumption
+already requires to be the pending row's. The owner publishes ONE
+configuration record `(:consume-invitation ...) (:set-peer INVITEE ...)`
+(`fn-pinv-confirm-record-plan`): the peer is named `Invitee`, its path
+identity is the acceptance's `Acceptor-Path`, its transport `(:nntp 1 Host
+Port (:clear))`, inbound `Groups` (the record's payload bound, 16 in flight),
+no outbound half, and the role binding `(:principal ACCEPTOR)`, so an
+inbound connection is a reader until AUTHINFO names the acceptor. A peer of
+that name already configured refuses the confirm (`peer-name-taken`); an
+invitation other than the one the acceptance names refuses it
+(`another-invitation`, `invitation-kind`). Over the fold `fn-cfg-apply` the
+record leaves the row consumed by exactly this acceptance and the peers
+table holding exactly the confirmed peer
+(`fn-pinv-confirm-record-fold-consumes-and-configures`); a crash leaves
+neither or both. The invitation carries no TLS words: a protected transport
+is the operator's `peer add` of the same name, which replaces the record.
+The accepting side gets no peer record from `accept` (the invitation does
+not carry the inviter's address).
+
+NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided
 
 **Crash between consumption and enrolment.** The consuming record is
 published before the enrolment. A process death between the two leaves a row

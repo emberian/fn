@@ -144,6 +144,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
+	books/native-health \
+	tests/acl2/native-health-tests \
 	books/feed-filename \
 	tests/acl2/feed-filename-tests \
 	books/feed-wire-input \
@@ -290,8 +292,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-tests \
 	books/store-reclaim-buffer \
 	tests/acl2/store-reclaim-buffer-tests \
+	books/visibility-join \
+	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
+	books/store-reclaim-pack \
+	tests/acl2/store-reclaim-pack-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \
@@ -328,6 +334,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
+	books/record-width-producers \
+	tests/acl2/record-width-producers-tests \
+	tests/acl2/profile-monotonicity-tests \
+	books/store-budget-article \
+	tests/acl2/store-budget-article-tests \
+	books/store-maintenance-reserve \
+	tests/acl2/store-maintenance-reserve-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -344,6 +357,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-tests \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
+	books/bp-run-class \
+	books/bp-node-profile \
 	tests/acl2/bp-node-host-tests \
 	books/bp-authored-wire \
 	tests/acl2/bp-authored-wire-tests \
@@ -364,6 +379,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-session-admission-tests \
 	books/bp-channel-ingress \
 	tests/acl2/bp-channel-ingress-tests \
+	books/bp-signed-binding \
+	tests/acl2/bp-signed-binding-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -391,6 +408,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-fragment-replacement-tests \
 	books/bp-fnbs-family-replay \
 	tests/acl2/bp-fnbs-family-replay-tests \
+	books/bp-node-profile-replay \
+	tests/acl2/bp-node-profile-tests \
+	books/bp-node-profile-admission \
+	tests/acl2/bp-node-profile-admission-tests \
 	books/bp-node-fragment-step \
 	tests/acl2/bp-node-fragment-step-tests \
 	books/bp-node-fragment-guards \
@@ -415,6 +436,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
+	books/bp-node-fragment-jobs \
+	tests/acl2/bp-node-fragment-jobs-tests \
 	books/bp-fnbs-conflict-codec \
 	books/bp-fnbs-conflict-invariants \
 	books/bp-fnbs-conflict-publication \
@@ -440,6 +463,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-route-jobs-tests \
 	books/bp-node-contact-driver \
 	tests/acl2/bp-node-contact-driver-tests \
+	books/bp-node-job-offer \
+	books/bp-node-job-offer-progress \
+	tests/acl2/bp-node-job-offer-tests \
+	books/bp-node-run-class \
+	tests/acl2/bp-run-class-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
@@ -487,9 +515,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	books/bp-fragment-fast \
+	books/bp-fragment-sweep \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
+	tests/acl2/bp-fragment-sweep-tests \
 	tests/acl2/bp-limits-tests \
 	books/bp-fragment-send \
 	tests/acl2/bp-fragment-send-tests \
@@ -600,6 +630,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-overview \
 	books/nntp-legacy \
 	books/nntp-xpat \
+	books/nntp-search-scope \
 	books/nntp-newnews \
 	books/nntp-invariants \
 	books/nntp-effects \
@@ -645,8 +676,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
+	books/payload-arena \
 	books/poster-bytes-buffer \
+	books/store-checkpoint-buffer \
+	books/store-checkpoint-reader \
 	tests/acl2/octets-stobj-tests \
+	tests/acl2/payload-arena-tests \
+	tests/acl2/store-checkpoint-buffer-tests \
+	tests/acl2/store-checkpoint-reader-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -708,6 +745,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
 	tests/acl2/nntp-xpat-tests \
+	tests/acl2/nntp-search-scope-tests \
 	tests/acl2/nntp-newnews-tests \
 	books/bp-release \
 	books/bp-release-invariants \
@@ -752,11 +790,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-index-store-invariants-tests \
 	books/consumer-owner-local \
 	tests/acl2/consumer-owner-local-tests \
+	books/consumer-owner-local-progress \
+	tests/acl2/consumer-owner-local-progress-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
+	tests/acl2/source-routes-tests \
+	books/consumer-artifact-retry \
+	tests/acl2/consumer-artifact-retry-tests \
+	books/relay-source \
+	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
 	tests/acl2/owner-fault-tests \
@@ -795,6 +840,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
+	books/peer-pull-session \
+	tests/acl2/peer-pull-session-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
@@ -885,7 +932,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -898,6 +945,14 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
+
+# `make check` for a lane worktree: planning/ledger.json, ledger.md and
+# current.md are regenerated into one temporary directory and compared there
+# (printed, never failing) instead of against the committed files, which a
+# lane must not commit.  Their generation still has to succeed, and every
+# other check is the same.
+check-lane:
+	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
 check:
 	$(PYTHON) tools/check_scaffold.py
@@ -995,6 +1050,9 @@ check:
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check
+# Every ACL2 a tool or test starts takes the machine's pool and heap cap
+# (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
+	$(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
 # specs/identity.md "The signed bytes" is what an independent verifier is
 # written from.  On 2026-09-24 tools/fn_verify.py had to read the books for
 # the preimage layout, the dropped fields and the ML-DSA context, because the
@@ -1094,12 +1152,14 @@ tooling-test:
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image -v
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers -v
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module
-# still running at 300 s is terminated and fails the target (exit 2; test
-# failures exit 1).  tests/test_budgets.json may lower a module's budget,
+# still running at 180 s is terminated, or one whose test ran over 20 s is
+# named, and either fails the target (exit 2; test failures exit 1).
+# `--order reverse` runs each module's tests last to first, which is how a
+# test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
 # never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
 # chosen set the same way.
 test: check certify

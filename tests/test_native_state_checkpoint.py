@@ -55,9 +55,32 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("'fn-store-sn-recover-from-checkpoint", opened)
         self.assertIn("'fn-store-sco-covered-count", opened)
+        # rep-wave-d-3: the file is read into the octet buffer as the
+        # writer's plan shape, each segment admitted by ACL2 against the
+        # profile's bounds before it is read, and decoded by index
+        # (fn-store-sco-decode over the buffer, books/store-checkpoint-reader.lisp
+        # fn-sccr-decode-plan); no octet list of the file is built.
+        plan = native_cuts.host_function(io, "fnn-state-checkpoint-plan")
+        self.assertIn("'fn-store-sco-segment-admit", plan)
+        self.assertIn("(fnn-octets-append-vector chunk)", plan)
+        self.assertNotIn("fnn-octet-list (concatenate", plan)
+        load = native_cuts.host_function(io, "fnn-state-checkpoint-load")
+        self.assertIn("(fnn-core-buffer-state 'fn-store-sco-decode value)", load)
+        node_decode = native_cuts.host_function(node_host, "fn-store-sco-decode")
+        self.assertIn("(fn-sccr-decode-plan plan fn-octets)", node_decode)
+        node_admit = native_cuts.host_function(node_host, "fn-store-sco-segment-admit")
+        self.assertIn("(fn-sccr-admit-segment header total", node_admit)
         command = native_cuts.host_function(io, "fnn-command-state-checkpoint")
-        self.assertIn("'fn-store-sco-publish-octets", command)
+        # rep-wave-d-2: the publication is a plan over the octet buffer
+        # (fn-store-sco-publish-plan, books/store-checkpoint-buffer.lisp
+        # fn-sccb-plan); the host assembles the plan's octets from the
+        # buffer's array (fnn-plan-octets, fn-sccb-plan-octets transcribed)
+        # and writes them through the same byte program as before.
+        self.assertIn("'fn-store-sco-publish-plan", command)
+        self.assertIn("(fnn-plan-octets (first answer))", command)
         self.assertIn("(fnn-state-checkpoint-write store octets)", command)
+        node_plan = native_cuts.host_function(node_host, "fn-store-sco-publish-plan")
+        self.assertIn("(fn-sccb-plan (fn-sco-freeze next) segment-octets fn-octets)", node_plan)
         native_cuts.verify_state_checkpoint_cut_map()
 
 
@@ -187,6 +210,29 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.path().unlink()
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
+        self.assertEqual(self.observation(), expected)
+
+    def test_a_checkpoint_past_the_profile_bound_is_refused_by_name(self):
+        # rep-wave-d-3: the first segment's LENGTH field (u64 LE at octet 21)
+        # claims a chunk past the profile's segment bound.  ACL2 refuses the
+        # segment before the host reads it (fn-sccr-admit-segment), the
+        # open replays the journal, and `status' names the refusal.
+        self.init_with_checkpoint_at_three()
+        expected = self.observation()
+        good = self.path().read_bytes()
+        data = bytearray(good)
+        data[21:29] = b"\xff" * 8
+        self.path().write_bytes(bytes(data))
+        self.assertEqual(self.open_line(),
+                         "open=full-replay reason=checkpoint-exceeds-bound")
+        self.assertEqual(self.observation(), expected)
+        # A LENGTH within the segment bound but not the chunk's: corrupt.
+        data = bytearray(good)
+        data[21] ^= 0x01
+        self.path().write_bytes(bytes(data))
+        self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
+        self.path().write_bytes(good)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         self.assertEqual(self.observation(), expected)
 
     def test_a_running_owner_refuses_the_verb(self):

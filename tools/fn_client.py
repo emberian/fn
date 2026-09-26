@@ -26,8 +26,18 @@ The three outcomes stay distinct out to the exit code (AGENTS.md, D13):
         was sent after STARTTLS, so what happened is known.
     3   uncertain -- the connection or the TLS handshake failed, or an article's
         text was sent and no final reply came back.  An uncertain post prints
-        the Message-ID it used so the caller can settle it with `show`.
+        the Message-ID it used; `post --draft PATH` keeps the exact article so
+        `reconcile PATH` can settle it.
+    4   unresolved -- `reconcile` re-sent the same article and the node's answer
+        does not say whether it was accepted (NNT-019).
     2   usage
+
+Acceptance is settled only by re-submitting the SAME article under the SAME
+Message-ID (D25, NNT-019): the node answers `441 ... already stored here`
+for a source it holds, even after the article was withdrawn by a cancel or
+its content reclaimed.  A `430` to `show` is a visibility observation -- the
+article is not served to this reader now -- and never evidence that a post
+was not accepted.
 
 Credentials come from FN_CLIENT_USER and FN_CLIENT_PASSWORD, or from
 `--credentials PATH`, a mode-0600 file holding `user password` on one line.
@@ -53,12 +63,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from nntp_session import Disconnected, Session      # noqa: E402  one socket half
 
 DONE, ACCEPTED, REFUSED, UNCERTAIN = "done", "accepted", "refused", "uncertain"
-EXIT = {DONE: 0, ACCEPTED: 0, REFUSED: 1, UNCERTAIN: 3}
+UNRESOLVED = "unresolved"
+EXIT = {DONE: 0, ACCEPTED: 0, REFUSED: 1, UNCERTAIN: 3, UNRESOLVED: 4}
 DEFAULT_NODE = "192.168.50.39:1119"
 DEFAULT_PORT = 1119
 # books/nntp-post.lisp fn-nntp-post-outcome: :refused and :uncertain are two
 # distinct 441 lines, and a client must not repost on the second one.
 UNCERTAIN_POST = "uncertain"
+# books/nntp-post.lisp fn-post-store-refusal-text: the Store's two answers
+# for a Message-ID it already holds (D25).  The node words them; this client
+# only recognizes them.
+ALREADY_STORED = "441 posting failed; this article is already stored here"
+DIFFERENT_STORED = "441 posting failed; a different article with this Message-ID is stored here"
+DRAFT_FORMAT = "fn-client-draft-v1"
 
 
 class Stop(Exception):
@@ -340,7 +357,15 @@ class Client:
                 return Result(REFUSED, status, {"group": group}, "")
         status, body = self.cmd("ARTICLE " + token, multiline=True)
         if not status.startswith("220"):
-            return Result(REFUSED, status, {"article": token}, "")
+            data = {"article": token}
+            if status[:3] in ("423", "430"):
+                # Not served to this reader now: withdrawn, reclaimed, not
+                # held, or not visible under this login.  Never evidence
+                # that a post was not accepted (NNT-019).
+                data["visibility"] = "not-visible"
+                status += (" -- not visible to this reader now; this is not evidence "
+                           "about acceptance")
+            return Result(REFUSED, status, data, "")
         fields = status.split()
         # RFC 3977 section 6.2.1.2: retrieval by Message-ID answers the
         # article's number in the selected group, or `220 0` with no group
@@ -387,8 +412,71 @@ class Client:
 
 
 def unsettled(msgid: str, why: str) -> str:
-    return ("the article may or may not be durable; do not repost it. Message-ID %s -- "
-            "settle it with `fn_client.py show %s`. %s" % (msgid, msgid, why))
+    return ("the article may or may not be durable; do not post a new copy. Message-ID %s -- "
+            "settle it by re-sending the same article under the same Message-ID "
+            "(`fn_client.py reconcile DRAFT` for a `post --draft DRAFT`). %s" % (msgid, why))
+
+
+def reconciliation(result: Result) -> Result:
+    """What a re-POST of the same article under the same Message-ID settles.
+
+    240 is an acceptance now (and so the only one); the duplicate line is an
+    acceptance earlier; the conflict line says a different article holds the
+    Message-ID, so this source is not stored under it.  Every other answer --
+    a refusal for another reason (a login no longer allowed to post, a
+    changed policy), the node's own uncertain line, a lost connection --
+    leaves the question open: unresolved, never absent.
+    """
+    lines = result.status_lines or [result.detail]
+    status = next((line for line in reversed(lines)
+                   if line[:3] in ("240", "441")), "")
+    if result.word == ACCEPTED:
+        return Result(ACCEPTED, "accepted by this re-submission: " + result.detail,
+                      dict(result.data, settled="accepted-now"), result.text)
+    if result.word == REFUSED and status.startswith(ALREADY_STORED):
+        return Result(ACCEPTED, "already accepted: the node holds this article (%s)" % status,
+                      dict(result.data, settled="already-stored"), result.data.get("message_id", ""))
+    if result.word == REFUSED and status.startswith(DIFFERENT_STORED):
+        return Result(REFUSED, "a different article holds this Message-ID; this one is not "
+                      "stored under it (%s)" % status, dict(result.data, settled="conflict"), "")
+    return Result(UNRESOLVED, "the re-submission did not settle it; the original outcome "
+                  "stands. The node said: %s" % (status or result.detail),
+                  dict(result.data, settled="unresolved"), "")
+
+
+def write_draft(path: Path, draft: dict) -> None:
+    """Atomically replace PATH with DRAFT, durable before return."""
+    path = Path(path).expanduser()
+    data = (json.dumps(draft, indent=1, sort_keys=True) + "\n").encode()
+    temporary = path.with_name("." + path.name + ".tmp")
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        os.write(fd, data)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.replace(temporary, path)
+    directory = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def read_draft(path: Path) -> dict:
+    draft = json.loads(Path(path).expanduser().read_text())
+    if (not isinstance(draft, dict) or draft.get("format") != DRAFT_FORMAT or
+            not isinstance(draft.get("lines"), list) or not draft["lines"] or
+            not all(isinstance(line, str) and "\r" not in line and "\n" not in line
+                    for line in draft["lines"]) or
+            not isinstance(draft.get("message_id"), str) or
+            not isinstance(draft.get("group"), str) or
+            not isinstance(draft.get("node"), str) or
+            not isinstance(draft.get("reconciliations"), list)):
+        raise ValueError("not an fn-client draft")
+    if ("Message-ID: " + draft["message_id"]) not in draft["lines"]:
+        raise ValueError("the draft's article does not carry its Message-ID")
+    return draft
 
 
 def number(text: str):
@@ -570,6 +658,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="the body; standard input when absent")
     poster.add_argument("--message-id", dest="message_id", default="")
     poster.add_argument("--references", default="")
+    poster.add_argument("--draft", default="",
+                        help="durably keep the exact article here before sending, and the "
+                             "node's answer after; `reconcile` re-sends it")
+
+    reconciler = subcommands.add_parser(
+        "reconcile", parents=[common],
+        help="settle an uncertain post: re-send the draft's exact article, same Message-ID")
+    reconciler.add_argument("draft")
     return parser
 
 
@@ -589,6 +685,10 @@ def resolve(args, parser) -> None:
         parser.error("--cafile is required unless --plain; it is the node's own certificate")
     if args.plain and args.credentials:
         parser.error("--plain sends no login, so --credentials cannot apply")
+    if getattr(args, "draft", "") and args.command == "post" and \
+            Path(args.draft).expanduser().exists():
+        parser.error("--draft %s exists; settle that post with `reconcile %s`, or name "
+                     "a new draft file" % (args.draft, args.draft))
 
 
 def compose(args, user: str, parser, body_override: str | None = None) -> tuple:
@@ -627,9 +727,70 @@ def compose(args, user: str, parser, body_override: str | None = None) -> tuple:
 
 
 def run(args, user: str, password: str, parser) -> Result:
+    if args.command == "reconcile":
+        return reconcile(args, user, password, parser)
     lines, msgid = compose(args, user, parser) if args.command == "post" else ([], "")
     if args.command == "show" and not args.id.startswith("<") and not args.group:
         parser.error("show by number needs --group")
+    draft_path = getattr(args, "draft", "") if args.command == "post" else ""
+    if draft_path:
+        # The exact article and its Message-ID are durable before any byte
+        # of the POST is sent: an uncertain outcome is then settled by
+        # re-sending exactly these lines.
+        draft = {"format": DRAFT_FORMAT, "node": node_name(args.host, args.port),
+                 "group": args.group, "message_id": msgid, "lines": lines,
+                 "original": None, "reconciliations": []}
+        try:
+            write_draft(Path(draft_path), draft)
+        except OSError as exc:
+            return Result(REFUSED, "the draft could not be kept (%s); nothing was sent" % exc,
+                          {"message_id": msgid}, "")
+    result = exchange(args, user, password, lines, msgid)
+    if draft_path:
+        draft["original"] = {"outcome": result.word, "detail": result.detail,
+                             "status_lines": result.status_lines}
+        try:
+            write_draft(Path(draft_path), draft)
+        except OSError as exc:
+            sys.stderr.write("the node's answer was not recorded in the draft (%s); the "
+                             "draft still holds the exact article\n" % exc)
+    return result
+
+
+def reconcile(args, user: str, password: str, parser) -> Result:
+    """Re-send a draft's exact article under its Message-ID; record, never rewrite."""
+    path = Path(args.draft).expanduser()
+    try:
+        draft = read_draft(path)
+    except (OSError, ValueError) as exc:
+        parser.error("%s: %s" % (args.draft, exc))
+    node = node_name(args.host, args.port)
+    if draft["node"] != node:
+        parser.error("the draft was posted to %s, not %s" % (draft["node"], node))
+    msgid = draft["message_id"]
+    original = (draft.get("original") or {}).get("outcome")
+    data = {"message_id": msgid, "original": original or UNCERTAIN}
+    if original in (ACCEPTED, REFUSED):
+        # Known already: nothing to settle, and a refused article is not
+        # re-sent behind the poster's back.
+        return Result(original, "the original post was %s; nothing to reconcile" % original,
+                      data, msgid if original == ACCEPTED else "")
+    answer = exchange(args, user, password, list(draft["lines"]), msgid)
+    settled = reconciliation(answer)
+    settled.data.update(data)
+    settled.status_lines = answer.status_lines
+    draft["reconciliations"].append(
+        {"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+         "outcome": settled.word, "settled": settled.data.get("settled"),
+         "status_lines": answer.status_lines})
+    try:
+        write_draft(path, draft)
+    except OSError as exc:
+        sys.stderr.write("the reconciliation was not recorded in the draft (%s)\n" % exc)
+    return settled
+
+
+def exchange(args, user: str, password: str, lines: list, msgid: str) -> Result:
     client = Client(args, user, password)
     try:
         client.open()
@@ -643,7 +804,7 @@ def run(args, user: str, password: str, parser) -> Result:
         elif args.command == "show":
             result = client.show(args.id, args.group)
         else:
-            result = client.post(args.group, lines, msgid)
+            result = client.post(getattr(args, "group", "") or "", lines, msgid)
     except Stop as stop:
         result = Result(stop.word, stop.detail, {"message_id": msgid} if msgid else {}, "")
     finally:

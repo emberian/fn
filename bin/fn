@@ -437,7 +437,10 @@ def command_init(settings, args):
     if location.exists() and not args.force:
         return EXIT_REFUSED, "init {} already exists (pass --force to rewrite)".format(location)
     store = settings.require_store()
-    namespace = SimpleNamespace(store=store, group=list(settings.groups) or None)
+    # `profile` joined run_store's init arguments in python-store-f8
+    # (29115649); None is ACL2's initial profile, what `fn init` always made.
+    namespace = SimpleNamespace(store=store, group=list(settings.groups) or None,
+                                profile=None)
     code, detail = delegate(run_store.command_init, namespace, "init")
     if code != EXIT_OK:
         return code, detail

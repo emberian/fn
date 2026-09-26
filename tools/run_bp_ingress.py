@@ -95,6 +95,22 @@ class Acl2BpIngress(run_store.Acl2Store):
         return run_store.acl2_octets(self.call(
             "(fn-bpi-host-message-id '" + self.literal(adu) + " state)"))
 
+    def article_verdict(self, profile, adu: bytes) -> str:
+        """`fn-bpi-host-article-verdict`: the article gate the native `store
+        post` asks (`fn-store-sn-article-verdict`), at this ADU's own figure
+        (its length and its mapped group count, both read by ACL2)."""
+        value = run_store.acl2_result(self.call(
+            "(fn-bpi-host-article-verdict '{} '{} state)".format(
+                run_store.frame_bridge._lisp_literal(profile),
+                self.literal(adu)))).upper()
+        if value == b":ADMISSIBLE":
+            return "admissible"
+        if value == b":UNAFFORDABLE":
+            return "unaffordable"
+        if value == b":REJECTED":
+            return "rejected"
+        raise BpIngressError("unexpected ACL2 BP article verdict")
+
     def ingress_prepare(self, destination: bytes, source_eid: bytes, bid: bytes,
                         lifetime: int, archive_id: bytes, subject: bytes,
                         evidence: bytes, charge: int, adu: bytes,
@@ -285,8 +301,12 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
                 raise BpDeletePending("exact durable ADU awaits BPA delete",
                                       "duplicate", bid, staged_path) from error
             return IngressResult("duplicate", bid, staged_path)
-        if not run_store.publication_admissible(store, bridge):
-            raise BpIngressError("Store transaction capacity reached")
+        verdict = bridge.article_verdict(store.config["profile"], adu)
+        if verdict == "rejected":
+            return IngressResult("rejected", bid, staged_path)
+        if verdict != "admissible":
+            raise BpIngressError("Store budget refuses the article "
+                                 "(transaction count or history bound)")
         store.advance_frontier(bridge, bridge.next_txid())
         action = bridge.ingress_prepare(destination_bytes, source_bytes, bid_bytes, lifetime,
                                         archive_id, subject, evidence, charge, adu,

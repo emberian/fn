@@ -7,11 +7,13 @@ needs it skips with its reason when it is absent.  Nothing here treats a
 missing library as a verified signature.
 """
 
+import ast
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -67,15 +69,68 @@ class CryptoSeam(unittest.TestCase):
             with self.assertRaises(crypto_host.CryptoUnavailable):
                 crypto_host.verify(b"\x00" * 32, b"m", b"\x00" * 64)
 
+    # What the rule protects: the host has ONE Ed25519 entry point, so no
+    # host path can produce a signature verdict except the one ACL2's
+    # constrained `fn-anchor-sig-verify` is attached to.  tools/fn_verify.py
+    # is not a host path: it is the independent external verifier, which
+    # must import nothing from fn and check signatures with libraries fn
+    # does not use (its docstring), so routing it through crypto_host would
+    # defeat its purpose.  It is exempt by name, and the exemption holds
+    # only while nothing in tools/ imports it and it imports nothing of
+    # fn's (test_the_independent_verifier_stays_outside_the_host).
+    # tools/v0_matrix.py only says the word in prose; the rule reads
+    # imports, not text (harness-repair, 2026-09-25).
+    INDEPENDENT_VERIFIERS = {"fn_verify.py"}
+
+    @staticmethod
+    def imported_modules(path):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                names.add(node.module)
+            elif isinstance(node, ast.ImportFrom) and node.level:
+                names.add("." * node.level + (node.module or ""))
+        return names
+
     def test_no_other_module_imports_cryptography(self):
-        """`tools/crypto_host.py` is the only importer of `cryptography`."""
+        """`tools/crypto_host.py` is the host's only importer of `cryptography`."""
         offenders = []
         for path in sorted((ROOT / "tools").glob("*.py")):
-            if path.name == "crypto_host.py":
+            if path.name == "crypto_host.py" or path.name in self.INDEPENDENT_VERIFIERS:
                 continue
-            if "cryptography" in path.read_text():
+            if any(name == "cryptography" or name.startswith("cryptography.")
+                   for name in self.imported_modules(path)):
                 offenders.append(path.name)
         self.assertEqual(offenders, [])
+
+    def test_the_independent_verifier_stays_outside_the_host(self):
+        local = {path.stem for path in (ROOT / "tools").glob("*.py")} | {"tools", "tests"}
+        for name in self.INDEPENDENT_VERIFIERS:
+            imported = self.imported_modules(ROOT / "tools" / name)
+            self.assertEqual(sorted(m for m in imported
+                                    if m.split(".")[0] in local or m.startswith(".")), [],
+                             f"{name} imports fn's own modules")
+        for path in sorted((ROOT / "tools").glob("*.py")):
+            stems = {Path(v).stem for v in self.INDEPENDENT_VERIFIERS}
+            imported = {m.split(".")[-1] for m in self.imported_modules(path)}
+            self.assertFalse(imported & stems, f"{path.name} imports an independent verifier")
+
+    def test_the_import_rule_reads_imports(self):
+        # Teeth: an import is found in every spelling, prose is not.
+        with tempfile.TemporaryDirectory() as tmp:
+            sample = Path(tmp) / "sample.py"
+            for source, found in (
+                    ("from cryptography.hazmat import x\n", True),
+                    ("import cryptography\n", True),
+                    ("def f():\n    import cryptography.exceptions\n", True),
+                    ("NOTE = 'not about cryptography'\n# cryptography\n", False)):
+                sample.write_text(source)
+                names = self.imported_modules(sample)
+                self.assertEqual(any(n.split(".")[0] == "cryptography" for n in names),
+                                 found, source)
 
     @NEEDS_CRYPTO
     def test_round_trip_and_rejection(self):

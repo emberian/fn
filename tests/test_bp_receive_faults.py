@@ -190,10 +190,11 @@ class ReceiveFaultTests(unittest.TestCase):
         The refusal precedes any frontier advance or charge.
         """
         bounded = Path(self.temp.name) / "bounded"
-        # ACL2's verdict (`fn-sbud-verdict`) is replaced by one that refuses
-        # the second publication; the bound itself is certified in ACL2.
-        with mock.patch.object(run_store, "publication_admissible",
-                               side_effect=[True, False]):
+        # ACL2's article verdict (`fn-bpi-host-article-verdict`) is replaced
+        # by one that refuses the second publication; the bound itself is
+        # certified in ACL2.
+        with mock.patch.object(run_bp_ingress.Acl2BpIngress, "article_verdict",
+                               side_effect=["admissible", "unaffordable"]):
             run_store.Store(bounded, True).initialize()
             self.store = bounded
             self.inventory["bid-at-bound"] = self.request("at-bound")

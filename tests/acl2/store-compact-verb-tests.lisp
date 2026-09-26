@@ -31,22 +31,22 @@
                ',(list (fn-bs-txn-name 0) (fn-bs-txn-name 1) (fn-bs-txn-name 2)
                        (fn-bs-txn-name 3) (fn-bs-txn-name 4))))
 (defconst *cvt-dev* *fn-bs-profile-development*)
-(defconst *cvt-footprint* '(212 150 150 180 170))
+; PKT-169: the free octets the host observed on the store's filesystem.
+(defconst *cvt-disk* 1000000)
 
 (assert-event (fn-cc-octet-event-listp *cvt-records* 0 0 6))
 
 ; Reachable, non-degenerate: a fresh development store with five
 ; transaction files and no pack packs, selects, reclaims and retires.  The
-; pack the capture produces fits the budget with the files beside it.
+; pack the capture produces fits the disk's free octets.
 (assert-event
- (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil *cvt-footprint*)
+ (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil *cvt-disk*)
         (list :compact *fn-cverb-pack-steps*)))
 (assert-event (equal (car (fn-cc-capture *cvt-records* 6)) :ok))
 (assert-event
- (<= (+ (fn-cverb-octet-sum *cvt-footprint*)
-        (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture *cvt-records* 6))))
+ (<= (+ (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture *cvt-records* 6))))
         *fn-frame-trailer-octets*)
-     (fn-bs-profile-max-history-octets *cvt-dev*)))
+     *cvt-disk*))
 ; The accounted pack octets are an upper bound of the real payload, and
 ; close to it: the real encoding is at most 32 + 5 per event smaller.
 (assert-event
@@ -72,7 +72,7 @@
 ; A partly compacted store with new records past the pack packs again.
 (assert-event
  (equal (fn-cverb-decide *cvt-dev* *cvt-records* 3
-                         (list (fn-bs-txn-name 3) (fn-bs-txn-name 4)) '(0) 0 '(300 300 400))
+                         (list (fn-bs-txn-name 3) (fn-bs-txn-name 4)) '(0) 0 *cvt-disk*)
         (list :compact *fn-cverb-pack-steps*)))
 ; The other refusals, each by name.
 (assert-event (equal (fn-cverb-decide *cvt-dev* nil 0 nil nil nil nil)
@@ -82,22 +82,67 @@
 (assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-records* 6 *cvt-names* nil nil nil)
                      '(:refused :observation)))
 
-; Temporary space: the same store beside 24 MiB of other history is refused
-; before a byte is written.
-(defconst *cvt-full* (list (- (fn-bs-profile-max-history-octets *cvt-dev*) 100)))
+; Temporary space (PKT-169, over the link): the same store on a disk one
+; octet short of the link file the host seals is refused before a byte is
+; written; so is a store whose free space the host could not observe; at
+; exactly the link's accounted octets it packs.  The history bound H is not
+; read: F2's tight store (files beside the pack past H) packs when the disk
+; has room.  (Macros: the capture calls the record codec's attachment, which
+; a defconst may not evaluate.)
+(defmacro cvt-link-file (records lower lf gen digest)
+  `(+ (len (fn-ccc-encode-link
+            (cadr (fn-ccc-capture-link ,records ,lower ,lf ,gen ,digest))))
+      *fn-frame-trailer-octets*))
+(defmacro cvt-pack-file () '(cvt-link-file *cvt-records* 0 0 0 nil))
+(defmacro cvt-small () '(1- (cvt-pack-file)))
+(assert-event (< 0 (len (fn-ccc-encode-link
+                         (cadr (fn-ccc-capture-link *cvt-records* 0 0 0 nil))))))
 (assert-event
- (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil *cvt-full*)
+ (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil (cvt-small))
         '(:refused :temporary-space)))
-; Tooth for fn-cverb-pack-fits-the-profile-budget (its one hypothesis):
-; without the pack decision the conclusion fails at this footprint.
+(assert-event
+ (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil nil)
+        '(:refused :temporary-space)))
+(assert-event
+ (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil
+                         (fn-cverb-link-octets *cvt-records* 0))
+        (list :compact *fn-cverb-pack-steps*)))
+(assert-event
+ (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil
+                         (1- (fn-cverb-link-octets *cvt-records* 0)))
+        '(:refused :temporary-space)))
+; The accounted link octets are an upper bound of the link file, and close
+; to it: the header bound and the per-event heads.
+(assert-event
+ (let ((real (cvt-pack-file)) (accounted (fn-cverb-link-octets *cvt-records* 0)))
+   (and (<= real accounted) (<= accounted (+ real 128 32 25)))))
+; Reachable witness of fn-cverb-pack-fits-the-disk at its boundary: the
+; decision packs at exactly the accounted octets, and the link the host
+; seals above a chain boundary (lower 1, a 32-octet predecessor digest)
+; fits them.
+(defconst *cvt-digest-32* (make-list 32 :initial-element 7))
+(assert-event
+ (equal (fn-cverb-decide *cvt-dev* *cvt-records* 1 (cdr *cvt-names*) '(0) 0
+                         (fn-cverb-link-octets *cvt-records* 1))
+        (list :compact *fn-cverb-pack-steps*)))
+(assert-event (equal (car (fn-ccc-capture-link *cvt-records* 1 1 0 *cvt-digest-32*)) :ok))
+(assert-event (<= (cvt-link-file *cvt-records* 1 1 0 *cvt-digest-32*)
+                  (fn-cverb-link-octets *cvt-records* 1)))
+; The keystone has no hypothesis on the digest: a predecessor digest longer
+; than a frame trailer is not encoded (the bounded encoder writes nothing for
+; it), so the file stays within the accounting.  Finding for PKT-332: the
+; capture accepts such a digest although the link then does not name its
+; predecessor; the host always hands it the 32-octet frame trailer.
+(defconst *cvt-digest-200* (make-list 200 :initial-element 7))
+(assert-event (equal (car (fn-ccc-capture-link *cvt-records* 1 1 0 *cvt-digest-200*)) :ok))
+(assert-event (<= (cvt-link-file *cvt-records* 1 1 0 *cvt-digest-200*)
+                  (fn-cverb-link-octets *cvt-records* 1)))
+; Tooth (the decision, the keystone's one hypothesis): without the pack
+; decision the conclusion fails on the short disk.
 (local
  (must-fail
-  (defthm cvt-budget-without-decision
-    (<= (+ (fn-cverb-octet-sum *cvt-full*)
-           (len (fn-cc-encode (fn-cc-nth 1 (fn-cc-capture *cvt-records* 6))))
-           *fn-frame-trailer-octets*)
-        (fn-bs-profile-max-history-octets *cvt-dev*)))))
-
+  (defthm cvt-disk-without-decision
+    (<= (cvt-pack-file) (cvt-small)))))
 ;; No compaction unit (P5, chained packs): a 4097-event history, one over a
 ;; link's event quantum, is packed; the first link takes the quantum and the
 ;; second the one record left.
@@ -109,8 +154,19 @@
                            '("fn.letters") "a" "s" "e" 1 841000000))
           (cvt-many (1+ i) (1- n)))))
 (make-event `(defconst *cvt-4097* ',(cvt-many 0 4097)))
-(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-4097* 0 nil nil nil nil)
+(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-4097* 0 nil nil nil *cvt-disk*)
                      (list :compact *fn-cverb-pack-steps*)))
+;; The disk is asked for one link (one quantum), not the history: at the
+;; first link's accounted octets (the 4096 events it takes) the 4097-event
+;; history packs; the second decision, above the first link, asks for the
+;; one record left.
+(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-4097* 0 nil nil nil
+                                      (fn-cverb-link-octets *cvt-4097* 0))
+                     (list :compact *fn-cverb-pack-steps*)))
+(assert-event (equal (fn-cverb-link-octets *cvt-4097* 0)
+                     (+ 128 (fn-cc-event-octets-size (take 4096 *cvt-4097*)) 32)))
+(assert-event (equal (fn-cverb-link-octets *cvt-4097* 4096)
+                     (+ 128 (fn-cc-event-octets-size (nthcdr 4096 *cvt-4097*)) 32)))
 (make-event `(defconst *cvt-link-1* ',(fn-ccc-capture-link *cvt-4097* 0 0 0 nil)))
 (assert-event (equal (car *cvt-link-1*) :ok))
 (assert-event (equal (fn-ccc-boundary (cadr *cvt-link-1*)) *fn-cc-max-events*))
@@ -122,7 +178,7 @@
 ;; Teeth for fn-cverb-pack-decision-capture-succeeds.  Reachable: the five
 ;; events, decided and captured whole (every other hypothesis holds).
 (assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil
-                                      '(212 150 150 180 170))
+                                      *cvt-disk*)
                      (list :compact *fn-cverb-pack-steps*)))
 (assert-event (equal (car (fn-ccc-capture-link *cvt-records* 0 0 0 nil)) :ok))
 ;; Without the pack decision: a chain already covering all five (lower 5)
@@ -140,14 +196,14 @@
                                         '(65) '("fn.letters") "a" "s" "e" 1 841000000)))))
 (assert-event (fn-cc-octet-event-listp *cvt-top* 0 0 4294967296))
 (assert-event (not (fn-record-uint32p 4294967296)))
-(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-top* 0 nil nil nil nil)
+(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-top* 0 nil nil nil *cvt-disk*)
                      (list :compact *fn-cverb-pack-steps*)))
 (local (must-fail (defthm cvt-capture-without-uint32-frontier
                     (equal (car (fn-ccc-capture-link *cvt-top* 0 0 0 nil)) :ok))))
 ;; Without the valid suffix: bytes that are no Store event are packed by the
 ;; decision (it reads sizes only) and refused by the capture.
 (assert-event
- (equal (fn-cverb-decide *cvt-dev* '((1 2 3)) 0 (list (fn-bs-txn-name 0)) nil nil nil)
+ (equal (fn-cverb-decide *cvt-dev* '((1 2 3)) 0 (list (fn-bs-txn-name 0)) nil nil *cvt-disk*)
         (list :compact *fn-cverb-pack-steps*)))
 (local (must-fail (defthm cvt-capture-without-event-list
                     (equal (car (fn-ccc-capture-link '((1 2 3)) 0 0 0 nil)) :ok))))

@@ -7,9 +7,13 @@
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnf-family-kind* 18)
-(defconst *fn-bpnf-family-fields* '(:nat :nat :nat :nat :blob))
+; The whole wire is `(:blob . *fn-bpnf-max-held-image*)' (PRF-134), the same
+; octets as `:blob' for every image within 131,072.
+(defconst *fn-bpnf-family-fields*
+  `(:nat :nat :nat :nat (:blob . ,*fn-bpnf-max-held-image*)))
 (defconst *fn-bpnf-family-fields-v1*
-  '(:nat :nat :nat :nat :blob :nat :nat :nat :nat :nat))
+  `(:nat :nat :nat :nat (:blob . ,*fn-bpnf-max-held-image*)
+    :nat :nat :nat :nat :nat))
 
 (defun fn-bpnf-family-record (epoch op anchor-arrival whole-arrival wire)
   (declare (xargs :guard t))

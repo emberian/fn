@@ -91,6 +91,39 @@ entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
 locked to find that out. An existing store is adopted by `run` and repaired by
 `recover`; `init` does not reinitialise one.
 
+The converse is refused too, with its own code. Every verb that opens the
+store (`run`, `post`, `status`, `pins`, `obligations`, `health`, `recover`,
+`store ...`, `group`, `capacity`, `peer`, `policy`, `bp-boundary`,
+`bp-route`, `retention`, `control`, `principal`) first looks for the same
+five entries, by `lstat` alone. With none of them there is no store here: the
+node was never initialized (or `[store] path` names the wrong directory), and
+the answer is **`refused` with exit 6** and the line
+
+```
+no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)
+refused operator status NO-STORE
+```
+
+never a fault (4). ACL2 decides it (`fn-native-operator-store-outcome`,
+`fn-native-operator-absent-store-is-refused`, books/native-operator.lisp);
+a store with some of its entries (an interrupted `init`) is not "no store"
+and goes to the open, which recovers or refuses it.
+
+**Init under a mission.** A `fn.toml` written by `mission NAME` carries
+`[ops] mission`, and the mission fixes the store profile: `init` then takes
+GROUP words only, and with none a small community serves `local.general`
+and `local.test` (relay and archive have no default groups and need them).
+A profile flag or `--profile` there is a usage error (5) whose first line
+says so:
+
+```
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init
+usage operator init MISSION-FIXES-PROFILE
+```
+
+Every usage error prints ACL2's line for what the command accepts before its
+result line, so `init` with a stray word shows the full `init` grammar.
+
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
 (format `fn-store-8`, `books/byte-store-frame.lisp`) and only the offline
@@ -181,7 +214,7 @@ files of the committed history with one lossless pack:
 
 ```text
 fn operator /path/to/fn.toml store compact
-compacted steps=pack,select,reclaim,retire records=7 generation=0 reclaimed=7 retired=0
+compacted steps=pack,select,reclaim,retire records=7 generation=0 links=1 reclaimed=7 retired=0
 ```
 
 It opens the store as `recover` does, so it is refused (1, `store is already
@@ -189,22 +222,24 @@ locked`) while an owner runs. ACL2 decides what it does
 (`fn-cverb-decide`, `books/store-compact-verb.lisp`) and the host carries out
 exactly that:
 
-- `pack,select,reclaim,retire`: capture every committed record's exact bytes
-  into the next pack generation, publish it, select it, unlink the
-  transaction files it covers and retire the older pack generations. The open
-  afterwards hands replay the identical record list
-  (`fn-ccp-reclaim-preserves-reconstructed-history`), so every article, number,
-  watermark, retention pin and the next article number are unchanged.
-- `reclaim,retire`: the selected pack already covers every committed record
-  (a rerun after an interrupted compaction); no new pack is written.
-- refused (1), nothing written, with the reason: `already-compact` (nothing
-  to pack, reclaim or retire), `empty-history`, `temporary-space` (the files
-  already present plus the new pack would exceed the profile's aggregate
-  record bound, 24 MiB for `development`, 768 MiB for `scale`: the pack is
-  written beside the files it replaces), `exceeds-compaction-unit` (the
-  history's pack would exceed 4 MiB, the unit one pack holds; the open reads
-  a pack as one bounded read, and compacting a larger history needs chained
-  packs, which do not exist yet).
+- `pack,select,reclaim,retire`: extend the selected chain of packs over the
+  committed records it does not cover yet, one link (at most 4,096 records
+  or 4 MiB, and at least one record) at a time, publishing and selecting
+  each link; then unlink the transaction files the chain covers and retire
+  the pack generations outside it. The open afterwards hands replay the
+  identical record list (`fn-ccc-chain-reconstructs-the-history`), so every
+  article, number, watermark, retention pin and the next article number are
+  unchanged. `status` prints `pack-chain links=L boundary=B generations=...`.
+- `reclaim,retire`: the selected chain already covers every committed record
+  (a rerun after an interrupted compaction); no new link is written.
+- refused (1), with the reason: `already-compact` (nothing to pack, reclaim
+  or retire), `empty-history`, `temporary-space` (the next link would not
+  fit the free space of the store's filesystem, as the image observes it
+  before every link; each link is written beside the files it covers, so
+  leave at least one link, about 4 MiB, free). Nothing of the refused link
+  is written; links already selected by the same run stay (the message says
+  `links=K`), and a rerun continues from them. No size of the history is
+  refused.
 
 A death or an I/O error at any step leaves a store the next `recover` opens
 with the same history; an I/O error after a durable change is uncertain (3),
@@ -350,6 +385,52 @@ configuration plan and authentication startup. Native SIGTERM enters the owner
 stop boundary, wakes and joins connection, control, and feed workers, closes
 TLS and journals, and preserves the owner's exit outcome.
 
+### Health: which of eight things is wrong
+
+`operator CONFIG health` (HST-007) answers with one line per state, always
+in this order, then exits with a code that names the first one held:
+
+```
+$ fn-native operator fn.toml health
+health exit=22 state=unqualified-profile
+fenced clear
+exhausted clear
+unqualified-profile held format=8 development
+space-pressure clear
+no-route clear
+stranded-transfer clear
+unavailable-peer held peers: hub
+receipt-debt clear
+accepted operator health
+```
+
+| exit | state | held when | what to do |
+|---|---|---|---|
+| 20 | `fenced` | a clone fence awaits its incarnation rollover; a process holds the store's writer lock and the configured control socket does not reach it; or the socket accepted and did not answer | find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
+| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
+| 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
+| 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
+| 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
+| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection | check the peer's host and port (`peer list`) and its reachability |
+| 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
+| 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
+| 0 | (healthy) | every state is `clear` | |
+
+Each state is its own line, and several can hold at once; the exit code is
+the first held one in the table's order, so a script can branch on it and
+a person reads every line. `unobserved` is never `clear`: with no owner
+running the feed table does not exist, and a fenced store is not opened, so
+those lines say why they were not observed.
+
+With the control socket live, the running owner renders the verdict from the
+Store, configuration and feed table it carries, under its mutex, with the
+`headroom_min_percent` of the `fn.toml` it was started with; offline the
+store is opened read-only with the current `fn.toml`'s threshold. The
+first line (`health exit=NN`) is what the command exits with: ACL2 renders
+it and reads it back from the same octets
+(`fn-nh-report-exit-of-render`, books/native-health.lisp).
+
 ### Install the native production entry
 
 Build or select a source-pinned frozen image with `packaging/freeze-native-image.sh`
@@ -362,6 +443,15 @@ FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
   FN_NATIVE_SOURCE_REVISION=<image-source-commit> \
   DESTDIR=/tmp/fn-package PREFIX=/usr/local packaging/install-native.sh
 ```
+
+`bin/fn` is `packaging/fn` (`packaging/fn-native` is a link to it): it finds
+the image (`FN_NATIVE_HOST`, else `../libexec/fn/fn-host` beside itself, else
+the checkout's `build/fn-host`) and execs it with every argument, deciding
+nothing. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
+the other image verbs are as below. The spike's bash `fn` wrapper made its
+own decisions; each is now the image's (its header lists where each went:
+`mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
+SIGHUP log reopen) or is gone.
 
 The layout is `bin/fn`, `libexec/fn/fn-host`,
 `libexec/fn/fn-host.core`, and `libexec/fn/runtime/`. The installer copies the
@@ -466,7 +556,7 @@ administration and the control socket. Its verbs:
 | `operator CONFIG init\|status\|recover\|help` and the administrative plans (`policy set path-identity`, `bp-boundary add`, groups) | node configuration through the one ACL2 operator plan; `run`, `post` and `principal` exit 5 (their surfaces are not in this image) |
 | `store ROOT init\|recover\|status\|retention\|config\|inspect\|probe` | Store diagnostics, as in the default image |
 | `app-journal`, `bp-service`, `bp-contact`, `tcpcl` | journals, the queue service, contact windows, the convergence layer |
-| `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a severed contact as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
+| `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a contact severed after it connected as interrupted (exit 6) and one that never connected as not-connected (exit 7), and a fence as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
 
 `reader` is refused and `model` faults, as the build header says, and the
 developer-only `owner` verb is not registered in either DTN image.
@@ -591,178 +681,6 @@ as it was applied. A refusal writes nothing (exit 1) and names its reason:
 `committed` nor `absent`). The obligation's pin is never touched by
 recovery; only a receipt releases it.
 
-## Install the native production entry
-
-Build or select a source-pinned frozen image with `packaging/freeze-native-image.sh`
-(as in `tools/runbooks/hbox-image-build.sh`). Its production `fn-host` and
-adjacent `fn-host.core` travel with their SBCL runtime and crypto libraries.
-Stage an installation without starting a service:
-
-```sh
-FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
-  FN_NATIVE_SOURCE_REVISION=<image-source-commit> \
-  DESTDIR=/tmp/fn-package PREFIX=/usr/local packaging/install-native.sh
-```
-
-The layout is `bin/fn`, `libexec/fn/fn-host`,
-`libexec/fn/fn-host.core`, and `libexec/fn/runtime/`. The installer copies the
-SBCL executable and its `SBCL_HOME` support tree out of the generated launcher,
-then rewrites the launcher to use those installed paths. A system service can
-therefore use a prefix outside protected home directories. The command only clears ACL2 customization variables
-and execs `fn-host --fn operator CONFIG ...`; it has no Python fallback.
-Before copying, the installer executes the image's disabled reader entrypoint
-and accepts only its production-profile refusal. This checks the selected image
-profile; it does not establish feature parity. `share/fn/native-artifacts.txt`
-records launcher, core, and runtime hashes, the copied SBCL home, linked runtime
-libraries, and the `libsodium` plus OpenSSL 3 libraries loaded by native crypto
-code. For a frozen image, the copied libraries travel with the release; the older
-generated-launcher installation form still uses system package dependencies.
-Rendered service files live under `share/fn/systemd` and
-`share/fn/launchd`. Installation does not enable, start, or restart them.
-The package does not widen the selected image's command set. In particular,
-the frozen `8c` qualification image refuses public `peer add` with usage 5
-because it predates the live owner callback; native peering requires a newly
-qualified image built from the later integration source.
-
-Native owner and reader component tests use a distinct saved image. Building it
-is an explicit evidence action and does not replace `build/fn-host`:
-
-```sh
-FN_NATIVE_PROFILE=developer tools/build_native_host.sh
-# writes build/fn-host-developer
-```
-
-`FN_NATIVE_DEVELOPER_HOST` may point those tests at another developer-profile
-image. Changing `FN_NATIVE_PROFILE` when an existing saved image starts has no
-effect; the profile is selected during image construction and serialized.
-
-### Developer selectors
-
-The developer image honours the registered environment selectors and one positional
-argument that arm a cut or a fault. The table is `+fnn-developer-selectors+`
-in `host/native/io.lisp`; each is read only through `fnn-developer-selector`,
-which answers nothing on a production image.
-
-| selector | value | what it arms |
-| --- | --- | --- |
-| `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
-| `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
-| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts |
-| `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
-| `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
-| `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
-| `FN_NATIVE_KEY_STATEMENT_FAULT` | `statement-committed:kill` | the cut between a key statement's commit and its key change's (books/key-statements.lisp `fn-ks-cut`) |
-| `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
-| `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
-| `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
-
-The served owner and `store ROOT post` read the post and recovery selectors
-through one function, `fnn-post-entry-fault`, into the one store fault slot
-that every `fnn-at` cut tests; at most one of the positional FAULT,
-`FN_NATIVE_POST_FAULT` and `FN_NATIVE_RECOVERY_FAULT` may be set (usage 5
-otherwise). The cut sites are the `fnn-at` calls in `fnn-recover`,
-`fnn-advance-frontier`, `fnn-publish` and `fnn-finish`, which both entries
-call.
-
-A production image refuses raw `store ROOT post` with usage exit 5 before
-opening the Store or reading the payload, even if `FN_NATIVE_PROFILE=developer`
-is set at invocation. Use `operator CONFIG post` or NNTP submission for
-production posting. Raw insertion remains available on developer images;
-Store inspection and recovery remain production operations.
-
-The low-level native `--fn store ROOT retention` diagnostic opens the recovered
-Store under a shared lock and prints `pins=N reserved=B` from the ACL2
-retention ledger. It reports aggregate active pins and reserved charge; it does
-not decide release or identify an obligation. Like `store ROOT status`, it
-refuses with exit 1 if a live writer holds the Store lock.
-
-A production image refuses to start when any selector in the registry is set in
-its environment, even to the empty string, or when `store ROOT post` is given
-a FAULT other than `-`. `fnn-main` runs `fnn-developer-selector-gate` before
-dispatch, so the refusal is usage exit 5 naming the variable, and no store,
-socket or request is reached. A running production node therefore never
-meets a selector in the middle of a request: accepted, refused and uncertain
-keep their meanings for every real request. The same startup gate covers the
-registered BP, TCPCL, checkpoint, application-journal, and immutable-publication
-test selectors. The DTN build selects and serializes the same profile, with a
-separate `build/fn-host-dtn-developer` output when
-`FN_NATIVE_PROFILE=developer` is supplied during construction.
-
-### The DTN image: a BP node without the NNTP service
-
-`host/native/build-dtn.lisp` builds `build/fn-host-dtn` (and
-`build/fn-host-dtn-developer`). It is a BP node, not only a convergence
-layer: it carries the node service, the Store owner and the operator's
-configuration path, and leaves out the NNTP reader, the NNTP service
-(TLS listener, authentication, the outbound feed service), credential
-administration and the control socket. Its verbs:
-
-| verb | what it is in this image |
-| --- | --- |
-| `bp-node serve PORT JOURNAL STORE RECEIPTS WORKFLOW NODE PEER DEST POLICY ISSUER CONTACT-HOST CONTACT-PORT ...` | **the node**: one FNBS machine (`fn-bpnp-step`), the kind-8 retry policy, the owner Store with FNRJ/FNWF, admission of each TCPCL session from its observed channel against the enrolled boundaries |
-| `bp-node dispatch ...` | the same node without a listener |
-| `bp-node resume JOURNAL NODE-ID ARRIVAL` | re-arms a stranded forwarding row (see [Stranded forwarding rows](#stranded-forwarding-rows)); run it with the node stopped |
-| `bp-obligation status\|undertake\|request\|recover\|receipt` | the owner-mode forwarding obligation journal; `request` publishes ACL2's attempt for one work and hands its request ADU to the FNBS carrier; `recover` resolves an attempt fenced by a process death (see [Fenced workflow attempts](#fenced-workflow-attempts)) |
-| `bp-app receive` | the application receiver over the owner |
-| `operator CONFIG init\|status\|recover\|help` and the administrative plans (`policy set path-identity`, `bp-boundary add`, groups) | node configuration through the one ACL2 operator plan; `run`, `post` and `principal` exit 5 (their surfaces are not in this image) |
-| `store ROOT init\|recover\|status\|retention\|config\|inspect\|probe` | Store diagnostics, as in the default image |
-| `app-journal`, `bp-service`, `bp-contact`, `tcpcl` | journals, the queue service, contact windows, the convergence layer |
-| `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a severed contact as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
-
-`reader` is refused and `model` faults, as the build header says, and the
-developer-only `owner` verb is not registered in either DTN image.
-
-**Relays (D23).** A BP boundary names one TCPCL neighbour. When that
-neighbour is a relaying BPA (dtn7-rs, ION), list the far fn nodes whose
-bundles it may carry, and enrol each far node under its own EID:
-
-```sh
-fn operator CONFIG bp-boundary add relay-r1 r1.example dtn://neighbour/ PORT carries dtn://far-node/
-fn operator CONFIG bp-boundary add far-node far.example dtn://far-node/ OTHER-PORT fn.* 32768 16
-```
-
-A request or receipt from `dtn://far-node/` carried by `relay-r1` is then
-judged under `far-node`'s enrolment (its path identity and inbound scope),
-never the relay's. A carried source with no enrolment of its own here is
-refused (`BP node source refused reason=carried-source-unenrolled`), and a
-source the neighbour does not carry is refused `source-not-carried`. The far
-node's PORT names a listener the far node would use if it connected
-directly; it must differ from the relay's so the two boundaries stay
-distinguishable on the channel.
-
-#### Stranded forwarding rows
-
-A forwarding attempt whose process died after its kind-8 record was durable
-and before its kind-9 result was is **uncertain**: the peer may or may not
-hold the bundle. The node re-offers it, with its original identity, on each
-later session to the same next hop, and counts every re-offer in the durable
-kind-8 history, so restarting the node does not reset the count. After
-three such re-offers (`*fn-bpnp-max-forward-retries*`) the row is
-**stranded**, and a session to that peer that has nothing else to offer
-logs
-
-```
-BP forwarding stranded arrival=A retries=3 (held; no session or restart re-offers it)
-```
-
-What that means, and what resumes it:
-
-- The row is kept, never dropped: its bundle, its attempt and its reserved
-  result debt stay held, and `bp-node` keeps counting it in its storage and
-  credit. Nothing was lost and nothing was delivered by this node's account.
-- No new session, contact or restart resumes it. The count is derived from
-  the durable kind-8 rows, so a restart replays it at the bound.
-- There is no operator verb yet that releases the row or re-arms its
-  budget. That is an open item, not a policy: until it lands, resolving a
-  stranded row means confirming out of band whether the peer holds the
-  bundle (its own logs or store) and treating the row as occupying its
-  storage until then.
-
-A peer that answers a re-offer with TCPCL XFER_REFUSE reason code 1
-(Completed) settles the row exactly as an acknowledged transfer does; any
-other refusal reason is logged and recorded as that reason and the row
-stays pending for a later session, without counting toward the bound.
-
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
@@ -829,6 +747,25 @@ ACL2 parses the port and streaming word, supplies the inbound body/inflight
 limits and outbound queue/backoff limits, builds the typed peer record and
 selects the configuration delta. Run these while the owner is stopped; the
 exclusive store lock refuses offline administration against a live owner.
+
+The last word is the streaming flag. `true` opens each connection with
+`MODE STREAM` and offers with `CHECK`/`TAKETHIS` (RFC 4644); `false` offers
+with `IHAVE` (RFC 3977 section 6.3.2). A peer that does not stream answers
+`MODE STREAM` with something other than 203 (501 in practice, RFC 4644
+section 2.3). The owner then stops feeding that peer for the rest of its
+run and says why, once, in its log:
+
+```
+refused feed peer=hub stopped reason=mode-stream-refused (RFC 4644 2.3: the peer does not stream; this owner does not dial it again; re-add the peer with streaming false to feed it with IHAVE)
+```
+
+It does not re-dial it with `MODE STREAM` (before 2026-09-26 it did, at
+every backoff, indefinitely). `health` shows the peer under
+`unavailable-peer` while articles wait for it. Re-add the peer with the flag
+`false` (stop the node, `peer remove NAME`, `peer add ... false`) and start
+it again. The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
+books/feed-connection.lisp) and lasts one owner process: a restart spends
+one `MODE STREAM` exchange again.
 
 `[listener] host` accepts loopback aliases or an explicit numeric IPv4
 address. ACL2 parses the literal and supplies the exact bind address; the host
@@ -1045,6 +982,7 @@ outcome, and exits with the code for that outcome:
 | `uncertain` | 3 | Whether it is durable is not known. See below. |
 | `fault` | 4 | The host could not carry out the operation. |
 | `usage` | 5 | The command line or the configuration file is wrong. |
+| `refused` | 6 | (native `fn operator`) No store at the configured `[store] path`: run `init`. |
 
 These three outcomes stay distinct everywhere: the exit code, the stderr
 line, the log line, and the reply on the control socket. Never map
@@ -1189,6 +1127,46 @@ group's name, and the name grants no creation, moderation, deletion or
 forwarding authority. The plan for creating one is exactly the plan for any
 other valid name (`fn-native-admin-plan-create-ignores-special-purpose`).
 
+## Upgrade, and what a rollback loses
+
+Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
+`fn.toml` whose paths point into the copy and whose listener is on loopback,
+and run the steps below against the copy with the new release's `bin/fn`.
+`packaging/upgrade-native.sh` switches a managed node's `current` release.
+
+```
+fn operator COPY/fn.toml store needs-upgrade            # needs-upgrade | current
+cp -p COPY/store/config.json KEPT/config.json.format-7  # the file a lossless rollback restores
+cp -a COPY/store SNAPSHOT/store                          # the pre-migration snapshot
+fn operator COPY/fn.toml store upgrade-profile           # format 7 -> 8, bounds unchanged
+fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise one bound
+fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
+fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
+```
+
+There are two rollbacks, and they are not the same:
+
+- **Restoring the kept `config.json`** (the old release reads the new
+  history under the old profile). `rollback-check KEPT` says `rollback sound
+  transactions=N` when every committed record fits the older profile and the
+  store does not require the committed-history marker; nothing is lost. It
+  refuses `history-marker-required-dropped` once the store requires the
+  marker: that requirement is never undone by a kept file.
+- **Restoring a pre-migration snapshot** (the whole store as it was).
+  **Restoring a pre-migration snapshot loses every article accepted after
+  it.** `rollback-check --snapshot SNAPSHOT` counts them: ACL2 compares the
+  two committed histories (`fn-native-operator-snapshot-loss`) and answers
+
+  ```
+  rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
+  restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
+  ```
+
+  or `rollback snapshot refused snapshot-not-a-prefix` (1) when the snapshot
+  is not an earlier state of this store. The count is of committed
+  transaction files; a compacted history (its records in a pack) is not
+  counted by this verb.
+
 ## Back up
 
 Stop the service, then copy the store directory.
@@ -1260,6 +1238,20 @@ report releases an obligation. This experimental command awaits certified
 FNWF closure and a source-matched native image before operational use.
 
 ## What "uncertain" means, and what to do
+
+For the BP verbs (specs/host.md "BP run classes"), exit 3 keeps this
+meaning; a connection lost after it existed is exit 6 and a connection
+that never existed exit 7. Neither asks for recovery: the job is durable
+and the next contact re-offers it under the same identity. A BP node's
+held rows, held octets, largest ADU and largest bundle are raised offline
+with `bp-node profile JOURNAL NODE MAX-HELD-ROWS MAX-HELD-OCTETS
+[MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]` (default 64, 16 MiB, 65,538 and 1 MiB;
+each at most 2^24; never lowered). A bundle past the ADU or bundle bound is
+refused (`BP refused reason=adu-beyond-profile` or
+`bundle-beyond-profile`, exit 1); a journal opened under a profile smaller
+than its rows or held octets fences with `held-beyond-profile`, and since
+`bp-node profile` opens the journal too, the remedy is to restore the
+profile file that was in force.
 
 `uncertain` (exit 3) is not a soft failure. It means fn asked the operating
 system to make something durable and did not get an answer it can act on:

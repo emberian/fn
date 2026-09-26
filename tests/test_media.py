@@ -266,9 +266,10 @@ class MediaImportTests(unittest.TestCase):
     def test_quota_exhaustion_refuses_without_charging_or_promising(self):
         # A store whose configured transaction bound is already reached: the
         # receiver refuses before any frontier advance, charge or receipt.
-        # ACL2's verdict (`fn-sbud-verdict`) refuses the second publication.
-        with mock.patch.object(run_store, "publication_admissible",
-                               side_effect=[True, False]):
+        # ACL2's article verdict (`fn-bpi-host-article-verdict`) refuses the
+        # second publication.
+        with mock.patch.object(run_bp_ingress.Acl2BpIngress, "article_verdict",
+                               side_effect=["admissible", "unaffordable"]):
             quota_node = self.root / "quota"
             quota_node.mkdir(mode=0o700, parents=True, exist_ok=True)
             run_store.Store(quota_node / "store", True).initialize()
