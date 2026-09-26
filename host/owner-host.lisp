@@ -427,6 +427,24 @@
       (value (fn-sbud-verdict-at (fn-owner-store-profile state) kind
                                  (fn-sbud-used s) bytes)))))
 
+; The article budget the prepare is handed: the profile's transaction
+; budget when one more article record is admissible by BOTH gates of
+; `fn-sbud-verdict-at' (count and committed-history octets), else 0, which
+; makes `fn-sbud-prepare' the identity (`fn-sbud-prepare-refuses-at-budget')
+; and the word :unaffordable.  Before 2026-09-26 the article path passed the
+; count budget alone: a served POST was admitted past max_history_octets and
+; the next open faulted with "transaction recovery input exceeds configured
+; bound" (planning/evidence/reclaim-lifecycle-2026-09-25.md, finding F1).
+; BYTES is the carried committed-record octet sum (`fn-owner-record-octets').
+(defun fn-owner-article-budget (bytes state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((profile (fn-owner-store-profile state)))
+    (if (equal (fn-sbud-verdict-at profile :article
+                                   (fn-sbud-used (fn-owner-store state)) bytes)
+               :admissible)
+        (fn-sbud-budget profile :article)
+      0)))
+
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
 (defun fn-owner-headroom (state)
@@ -551,7 +569,8 @@
       ; group) is refused by the predicate fn-cnode-prepare applies.
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
-      (let* ((msgid (fn-store-octets->string msgid-octets))
+      (mv-let (owner-bytes state) (fn-owner-record-octets state)
+        (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
@@ -575,7 +594,7 @@
                  ; (fn-pcar-sbud-prepare-is-sbud-prepare): its candidate
                  ; test reads the last record's txid instead of folding
                  ; every record's through fn-record-p.
-                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 (budget (fn-owner-article-budget owner-bytes state))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -586,7 +605,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))
+              (value :prepared)))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -629,7 +648,8 @@
         (value :invalid)
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
-      (let* ((msgid (fn-store-octets->string msgid-octets))
+      (mv-let (owner-bytes state) (fn-owner-record-octets state)
+        (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-rclb-existing-action msgid fn-octets groups s)))
         (if existing
             (value existing)
@@ -640,7 +660,7 @@
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge))
-                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 (budget (fn-owner-article-budget owner-bytes state))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -651,7 +671,7 @@
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
                 (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))
+              (value :prepared)))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
