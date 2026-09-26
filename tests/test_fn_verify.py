@@ -334,6 +334,29 @@ class FakeNodeVerifyTests(unittest.TestCase):
             if check:
                 self.assertEqual(report["independent"]["outcome"], check)
 
+    def test_check_article_is_the_offline_independent_check(self):
+        # The offline form a client uses on bytes it already holds (the
+        # consumer's poll): no node is asked, so there is nothing to agree
+        # with; 0 verified, 1 unverified, 3 cannot decide.
+        base = Path(self.temp.name)
+        for msgid, code, outcome in (("<good@x.invalid>", 0, "verified"),
+                                     ("<tampered@x.invalid>", 1, "unverified"),
+                                     ("<unsigned@x.invalid>", 1, "unverified"),
+                                     ("<unpinned@x.invalid>", 3, "undecided"),
+                                     ("<swapped@x.invalid>", 1, "unverified")):
+            path = base / ("offline-" + msgid.strip("<>").split("@")[0] + ".eml")
+            path.write_bytes(self.node.articles[msgid])
+            got, report = run_verifier("check-article", path, msgid,
+                                       "--keyring", self.keyring)
+            self.assertEqual((got, report["outcome"]), (code, outcome), (msgid, report))
+            if code == 0:
+                self.assertEqual(report["principal"], self.principal)
+                self.assertEqual(len(bytes.fromhex(report["signatures"]["ed25519"])), 64)
+                self.assertEqual(len(bytes.fromhex(report["signatures"]["ml-dsa-65"])), 3309)
+                self.assertEqual(len(report["source-sha256"]), 64)
+            if code == 3:
+                self.assertIn("not in the keyring", report["reason"])
+
     def test_carrier_v1_now_carries_up_to_65535_octets(self):
         # Bounds P4 step one: 60 KiB was over the old 32768 bound; the u16
         # already carried it, so it is a v1 carrier and verifies.

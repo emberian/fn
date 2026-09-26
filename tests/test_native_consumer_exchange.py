@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -29,6 +30,7 @@ IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
 ENABLED = os.environ.get("FN_RUN_CONSUMER_EXCHANGE") == "1"
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 CONSUMER = ROOT / "tools" / "fn_consumer.py"
+VERIFIER = ROOT / "tools" / "fn_verify.py"
 APP = "fn-e1"
 
 
@@ -114,15 +116,38 @@ class NativeConsumerExchangeTests(unittest.TestCase):
 
     def agent(self, label, principal_byte, generation):
         keys, principal_hex = self.signer(label, principal_byte, generation)
+        self.principals = getattr(self, "principals", {})
+        self.principals[label] = (keys, principal_hex, generation)
         config = self.root / label / "consumer.json"
         config.write_text(json.dumps({
             "image": str(IMAGE), "control": str(self.control),
             "consumer": label, "group": "fn.test", "application_id": APP,
             "from": "%s@example.invalid" % label, "db": str(self.root / label / "state.db"),
             "work": str(self.root / label / "work"), "keys": keys,
-            "principal_hex": principal_hex, "generation": str(generation)}),
+            "principal_hex": principal_hex, "generation": str(generation),
+            "keyring": str(self.root / label / "trusted.json"), "claims": []}),
             encoding="utf-8")
         return config
+
+    def trust(self, config, labels, claims):
+        """The consumer's own trust context: a keyring of the authors it was
+        given (made from their public key files, never read from the node) and
+        the application's rule for who may claim which operation identity."""
+        entries = []
+        for label in labels:
+            keys, _, generation = self.principals[label]
+            made = subprocess.run(
+                [sys.executable, str(VERIFIER), "keyring-entry", keys["principal"],
+                 keys["ed_public"], keys["ml_public"], "--generation", str(generation)],
+                capture_output=True, timeout=60, check=False)
+            self.assertEqual(made.returncode, 0, made.stderr)
+            entries.append(json.loads(made.stdout))
+        data = json.loads(config.read_text(encoding="utf-8"))
+        Path(data["keyring"]).write_text(json.dumps(
+            {"format": "fn-verify-keyring-v1", "principals": entries}), encoding="utf-8")
+        data["claims"] = [[APP, prefix, self.principals[label][1]]
+                          for prefix, label in claims]
+        config.write_text(json.dumps(data), encoding="utf-8")
 
     def register(self, label):
         self.native("consumer", "register", self.control, label, "fn.test",
@@ -193,6 +218,12 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         m = self.agent("agent-m", 0xC3, 3)  # a third author reusing A's operation id
         for label in ("agent-a", "agent-b"):
             self.register(label)
+        # Both consumers trust A, B and M as authors; the application gives
+        # report ids to A and reply ids to B, so M is trusted but entitled
+        # to neither.
+        for config in (a, b):
+            self.trust(config, ("agent-a", "agent-b", "agent-m"),
+                       (("r", "agent-a"), ("reply-", "agent-b")))
 
         # A authors report R and goes to sleep.
         self.consumer(a, "report", "r1", "dregg-receipt-0001")
@@ -267,6 +298,8 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             s = self.summary(config)
             self.assertEqual(s["transitions"], transitions)
             self.assertEqual(s["inbox"][-1]["disposition"], "conflict")
+            self.assertEqual(s["inbox"][-1]["reason"], "unentitled")
+            self.assertEqual(s["inbox"][-1]["own_verdict"], "verified")
             self.assertEqual(s["inbox"][-1]["operation_id"], "r1")
         self.assertEqual(len(self.summary(b)["outbox"]), 1)
 
@@ -309,36 +342,184 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.owner = self.start_owner()
         return inspected
 
+    def lone_author(self):
+        """A node and one registered author A who trusts itself and owns the
+        report ids."""
+        self.node()
+        a = self.agent("agent-a", 0xA1, 1)
+        self.register("agent-a")
+        self.trust(a, ("agent-a",), (("r", "agent-a"),))
+        return a
+
+    def revoke(self, label):
+        self.native("hybrid-revoke-next", self.control,
+                    self.principals[label][0]["principal"])
+
+    def assert_reconciled_by_observation(self, a, after_death):
+        """The trace the review names, after the revocation and a restart."""
+        woke = self.consumer(a, "wake", expected=None)
+        final = self.summary(a)["outbox"]
+        self.log.append(("trace", after_death, woke.returncode, final))
+        self.assertNotIn("refused", [o["state"] for o in final],
+                         "an accepted operation recorded refused: after death %r; "
+                         "after revocation and restart %r" % (after_death, final))
+        self.assertEqual(woke.returncode, 0, woke.stderr)
+        self.assertEqual([(o["state"], o["settled_by"]) for o in final],
+                         [("stored", "store-observation")], final)
+        # The first attempt never got a durable answer; the reconciliation
+        # resend of the saved artifact was refused (A is revoked) and settles
+        # only itself; there is no third, blind attempt.
+        self.assertEqual([(j["purpose"], j["state"], j["exit"]) for j in final[0]["journal"]],
+                         [("submit", "unanswered", None), ("reconcile", "answered", 1)],
+                         final)
+        self.assertEqual(final[0]["sha256"], after_death[0]["sha256"])
+        return final
+
     def test_death_after_acceptance_then_revocation_is_never_refused(self):
         """gpt-6's review, section 2: the node accepts R, the consumer dies
         after the answer arrives and before its result transaction, A's
         enrolment is revoked, and the restarted consumer's resend is refused.
         The refusal settles that resend only: R stays uncertain until fn's
         Store serves the exact artifact back, and is then stored."""
-        self.node()
-        a = self.agent("agent-a", 0xA1, 1)
-        self.register("agent-a")
+        a = self.lone_author()
         self.consumer(a, "report", "r1", "dregg-receipt-0001", cut="after-post",
                       expected=97)
         after_death = self.summary(a)["outbox"]
-        message_id = after_death[0]["message_id"]
-        inspected = self.stored_message(message_id)
+        self.assertEqual([(o["state"], o["attempts"]) for o in after_death],
+                         [("uncertain", 1)], after_death)
+        inspected = self.stored_message(after_death[0]["message_id"])
         self.assertEqual(inspected.returncode, 0,
                          (inspected.stdout + inspected.stderr).decode())
         self.assertIn(b"kind: report-receipt", inspected.stdout)
-        principal = Path(json.loads(a.read_text())["keys"]["principal"])
-        self.native("hybrid-revoke-next", self.control, principal)
-        woke = self.consumer(a, "wake", expected=None)
-        final = self.summary(a)["outbox"]
-        self.log.append(("trace", after_death, woke.returncode, final))
-        states = [o["state"] for o in final]
-        self.assertNotIn("refused", states,
-                         "an accepted operation recorded refused: after death %r; "
-                         "after revocation and restart %r" % (after_death, final))
-        self.assertEqual([(o["state"], o["settled_by"]) for o in final],
-                         [("stored", "store-observation")], final)
+        self.revoke("agent-a")
+        self.assert_reconciled_by_observation(a, after_death)
         self.stop_owner(self.owner)
         self.write_evidence("death-after-acceptance", {"a": self.summary(a)})
+
+    def test_consumer_killed_after_the_owner_commits_then_revocation(self):
+        """The review's cut exactly: the owner commits R and stops before it
+        replies; the CONSUMER is killed then (not the owner), A is revoked,
+        and the consumer restarts."""
+        a = self.lone_author()
+        self.stop_owner(self.owner)
+        cut_owner = self.start_owner(stop_after_submit=True)
+        env = dict(self.env)
+        proc = subprocess.Popen([sys.executable, str(CONSUMER), str(a), "report", "r1",
+                                 "dregg-receipt-0001"], cwd=ROOT, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                start_new_session=True)
+        self.addCleanup(self.reap, proc)
+        wait_for_announcement(cut_owner, b"CONTROL-SUBMITTED", timeout=120)
+        os.killpg(proc.pid, signal.SIGKILL)  # the group this test started
+        proc.wait(timeout=30)
+        self.assertEqual(proc.returncode, -signal.SIGKILL)
+        cut_owner.kill()
+        cut_owner.wait(timeout=10)
+        self.owner = self.start_owner()
+        after_death = self.summary(a)["outbox"]
+        self.assertEqual([(o["state"], o["attempts"]) for o in after_death],
+                         [("uncertain", 1)], after_death)
+        self.revoke("agent-a")
+        self.assert_reconciled_by_observation(a, after_death)
+        self.stop_owner(self.owner)
+        self.write_evidence("consumer-killed-after-commit", {"a": self.summary(a)})
+
+    def test_death_while_recording_and_before_sending_are_reconciled(self):
+        """Uncertainty during the answer's recording (death inside its BEGIN
+        IMMEDIATE, rolled back) and death after the in-flight record but
+        before anything was sent.  Both are potentially successful; each is
+        reconciled by one resend of the saved artifact: the first is D25's
+        duplicate, the second a first acceptance."""
+        a = self.lone_author()
+        journals = []
+        for op, cut, status in (("r1", "in-result-transaction", "DUPLICATE"),
+                                ("r2", "attempt-recorded", "ACCEPTED")):
+            self.consumer(a, "report", op, "payload " + op, cut=cut, expected=97)
+            after_death = self.summary(a)["outbox"][-1]
+            self.assertEqual((after_death["state"], after_death["attempts"],
+                              after_death["last_exit"]), ("uncertain", 1, None), after_death)
+            self.consumer(a, "wake")
+            final = self.summary(a)["outbox"][-1]
+            self.log.append(("trace", cut, after_death, final))
+            self.assertEqual((final["state"], final["settled_by"], final["sha256"]),
+                             ("stored", "post-answer", after_death["sha256"]), final)
+            self.assertEqual([(j["purpose"], j["state"], j["exit"], j["status"])
+                              for j in final["journal"]],
+                             [("submit", "unanswered", None, None),
+                              ("reconcile", "answered", 0, status)], (cut, final))
+            journals.append(final)
+        self.stop_owner(self.owner)
+        self.write_evidence("death-while-recording", {"a": self.summary(a)})
+
+    def test_a_report_from_an_author_the_consumer_does_not_trust_is_not_consumed(self):
+        """fn enrolled U and accepted U's signed report; B was never given U's
+        keys, so B's own check cannot decide it.  B keeps the evidence beside
+        fn's verdict and performs no operation, transition or reply."""
+        self.node()
+        a = self.agent("agent-a", 0xA1, 1)
+        b = self.agent("agent-b", 0xB2, 2)
+        u = self.agent("agent-u", 0xD4, 3)
+        self.register("agent-b")
+        claims = (("r", "agent-a"), ("u", "agent-u"), ("reply-", "agent-b"))
+        self.trust(b, ("agent-a", "agent-b"), claims)
+        self.trust(u, ("agent-u",), claims)
+        self.trust(a, ("agent-a",), claims)
+        self.consumer(u, "report", "u1", "from an untrusted author")
+        self.consumer(a, "report", "r1", "from a trusted author")
+        self.consumer(b, "wake")
+        s = self.summary(b)
+        by_op = {i["operation_id"]: i for i in s["inbox"]}
+        u_row, a_row = by_op["u1"], by_op["r1"]
+        self.assertEqual((u_row["disposition"], u_row["reason"], u_row["own_verdict"],
+                          u_row["own_principal"]),
+                         ("not-consumed", "undecided", "undecided", None), u_row)
+        # fn's verdict, recorded beside B's own: fn verified U (it enrolled U).
+        self.assertEqual(u_row["node_principal"], self.principals["agent-u"][1], u_row)
+        self.assertTrue(u_row["node_verdict"], u_row)
+        self.assertEqual((a_row["disposition"], a_row["own_verdict"], a_row["own_principal"]),
+                         ("applied", "verified", self.principals["agent-a"][1]), a_row)
+        self.assertEqual(s["transitions"], [[APP, "r1"]])
+        self.assertNotIn("u1", [o["operation_id"] for o in s["operations"]])
+        self.assertEqual([o["message_id"] for o in s["outbox"]],
+                         ["<fn-e1.reply-r1@agent-b.invalid>"])
+        self.assertGreater(self.status("agent-b")[0], 0)  # progressed past both
+        self.stop_owner(self.owner)
+        self.write_evidence("untrusted-author", {"b": s})
+
+    def test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one(self):
+        """The application, not the signature, says who may claim an
+        operation identity.  M (trusted, correctly signed) claims r1 BEFORE A
+        does and r2 AFTER A does; in both orders A's operation is the one
+        applied and M's is kept as conflict evidence with no transition."""
+        self.node()
+        a = self.agent("agent-a", 0xA1, 1)
+        b = self.agent("agent-b", 0xB2, 2)
+        m = self.agent("agent-m", 0xC3, 3)
+        self.register("agent-b")
+        claims = (("r", "agent-a"), ("reply-", "agent-b"))
+        for config in (a, b, m):
+            self.trust(config, ("agent-a", "agent-b", "agent-m"), claims)
+        self.consumer(m, "report", "r1", "M first")
+        self.consumer(a, "report", "r1", "A second")
+        self.consumer(a, "report", "r2", "A first")
+        self.consumer(m, "report", "r2", "M second")
+        self.consumer(b, "wake")
+        s = self.summary(b)
+        rows = [(i["operation_id"], i["message_id"].split("@")[1], i["disposition"],
+                 i["reason"], i["own_verdict"]) for i in s["inbox"]]
+        self.assertEqual(rows, [
+            ("r1", "agent-m.invalid>", "conflict", "unentitled", "verified"),
+            ("r1", "agent-a.invalid>", "applied", None, "verified"),
+            ("r2", "agent-a.invalid>", "applied", None, "verified"),
+            ("r2", "agent-m.invalid>", "conflict", "unentitled", "verified")], s["inbox"])
+        self.assertEqual(s["transitions"], [[APP, "r1"], [APP, "r2"]])
+        self.assertEqual([(o["operation_id"], o["claimant"]) for o in s["operations"]
+                          if o["kind"] == "report-receipt"],
+                         [("r1", self.principals["agent-a"][1]),
+                          ("r2", self.principals["agent-a"][1])])
+        self.assertEqual(len(s["outbox"]), 2)
+        self.stop_owner(self.owner)
+        self.write_evidence("conflict-both-orders", {"b": s})
 
     def write_evidence(self, label, payload):
         out = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
@@ -367,7 +548,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         cfg = json.loads(a.read_text(encoding="utf-8"))
         db = __import__("sqlite3").connect(cfg["db"])
         source, ed_sig, ml_sig = db.execute(
-            "SELECT source, ed_sig, ml_sig FROM outbox").fetchone()
+            "SELECT source, ed_sig, ml_sig FROM submissions").fetchone()
         db.close()
         paths = [self.root / name for name in ("again.eml", "again.ed", "again.ml")]
         for path, octets in zip(paths, (source, ed_sig, ml_sig)):
