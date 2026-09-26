@@ -1,0 +1,24 @@
+test_a_view_with_every_article_withdrawn (tests.test_native_control_across_peers.NativeControlAcrossPeersTests.test_a_view_with_every_article_withdrawn)
+PKT-208's nil-group-index view (control-c3e, "Not done"): a view ... FAIL
+
+======================================================================
+FAIL: test_a_view_with_every_article_withdrawn (tests.test_native_control_across_peers.NativeControlAcrossPeersTests.test_a_view_with_every_article_withdrawn)
+PKT-208's nil-group-index view (control-c3e, "Not done"): a view
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/control-across-peers/native-m2/tree/tests/test_native_control_across_peers.py", line 454, in test_a_view_with_every_article_withdrawn
+    self.assertEqual(fresh, ["430 withdrawn", "430 withdrawn"])
+AssertionError: Lists differ: ['430 no article with that message-id', '430 no article with that message-id'] != ['430 withdrawn', '430 withdrawn']
+
+First differing element 0:
+'430 no article with that message-id'
+'430 withdrawn'
+
+- ['430 no article with that message-id', '430 no article with that message-id']
++ ['430 withdrawn', '430 withdrawn']
+
+----------------------------------------------------------------------
+Ran 1 test in 1.827s
+
+FAILED (failures=1)
+NATIVE-EMPTY-VIEW-WITNESS {"fresh": ["430 no article with that message-id", "430 no article with that message-id"], "group": "211 0 3 2 control.cancel", "replayed": ["430 no article with that message-id", "430 no article with that message-id"]}

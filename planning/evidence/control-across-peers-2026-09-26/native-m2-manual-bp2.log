@@ -1,0 +1,10 @@
+test_control_article_over_bp_is_filed_in_its_control_group (tests.test_bp_app_native.NativeBpApplicationTests.test_control_article_over_bp_is_filed_in_its_control_group)
+PKT-154 (control-across-peers): the BP application ingress files a ... ok
+test_bp_filing_refusal_names_its_reason (tests.test_bp_app_native.NativeBpApplicationTests.test_bp_filing_refusal_names_its_reason)
+PKT-443 (control-across-peers): the BP receiver refuses a control ... expected failure
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.942s
+
+OK (expected failures=1)
+NATIVE-BP-CONTROL-WITNESS {'refused': [1, 1, 'OWNER-OPEN open=full-replay reason=absent\nrefused bp-application xfer=0 result=refused reason=none\n'], 'filed': [0, 0, '0000000000001.adu\nTCPCL bp-app aux (:SEND :XFER-SEGMENT 393)\nTCPCL bp-app event (:OUTBOUND-SENT 0 "receipt")\nTCPCL bp-app accepted outbound xfer=0\nTCPCL bp-app event (:SEND :SESS-TERM 3)\nTCPCL bp-app event (:PEER-TERMINATING 0)\nTCPCL bp-app event (:CLOSE)\nBP summary accepted=1 refused=0 uncertain=0\n'], 'answers': {'control.cancel': '211 1 1 1 control.cancel', 'fn.test': '211 0 1 0 fn.test', '<native-bp-cancel@example.invalid>': '430 no article with that message-id', '<native-bp-cancel-2@example.invalid>': '223 0 <native-bp-cancel-2@example.invalid> retrieved'}}

@@ -1,0 +1,27 @@
+test_unserved_group_and_every_refusal_are_named (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named)
+PKT-147: a signed article naming a group this node does not serve ... ok
+test_control_article_over_bp_is_filed_in_its_control_group (tests.test_bp_app_native.NativeBpApplicationTests.test_control_article_over_bp_is_filed_in_its_control_group)
+PKT-154 (control-across-peers): the BP application ingress files a ... ERROR
+
+======================================================================
+ERROR: test_control_article_over_bp_is_filed_in_its_control_group (tests.test_bp_app_native.NativeBpApplicationTests.test_control_article_over_bp_is_filed_in_its_control_group)
+PKT-154 (control-across-peers): the BP application ingress files a
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/control-across-peers/native-m2/tree/tests/test_bp_app_native.py", line 63, in setUp
+    bridge = run_bp_ingress.Acl2BpIngress()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/control-across-peers/native-m2/tree/tools/run_bp_ingress.py", line 87, in __init__
+    super().__init__()
+  File "/tank/fn/scratch/control-across-peers/native-m2/tree/tools/run_store.py", line 409, in __init__
+    command = [str(bridge_image.resolve_acl2(env))]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/control-across-peers/native-m2/tree/tools/bridge_image.py", line 208, in resolve_acl2
+    raise FileNotFoundError(f"no ACL2 executable {configured!r} on PATH")
+FileNotFoundError: no ACL2 executable 'acl2' on PATH
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.735s
+
+FAILED (errors=1)
+NATIVE-PKT147-WITNESS [('damaged-signature', (1, ['refused hybrid-author SIGNED-EVENT-NOT-FORMED'])), ('served', (0, ['accepted hybrid-author ACCEPTED'])), ('served-and-unserved', (1, ['refused hybrid-author UNKNOWN-GROUP'])), ('unenrolled-generation', (1, ['refused hybrid-author AUTHOR-NOT-ENROLLED'])), ('unserved-cancel', (1, ['refused hybrid-author UNKNOWN-GROUP'])), ('unserved-only', (1, ['refused hybrid-author UNKNOWN-GROUP']))]

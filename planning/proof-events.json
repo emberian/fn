@@ -5746,6 +5746,27 @@
           "name": "fn-own-sub-feed-groups-of-an-ordinary-article"
         }
       ]
+    },
+    {
+      "id": "PRF-170",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-injected-carrier-unserved-group-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-inj-decide-served-groups-choose-only-unknown-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nhc-author-refusal-is-a-named-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nhc-author-refusal-names-an-unserved-group"
+        }
+      ]
     }
   ]
 }
