@@ -498,6 +498,22 @@ class OwnershipTests(unittest.TestCase):
             self.assertIsNone(row["deadline"])
             self.assertIsNone(proof_repl.reap_reason(row, None, None))  # dead, nothing held
 
+    def test_list_reads_other_trees_with_root(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = pathlib.Path(temporary) / "lane-tree"
+            directory = tree / "build" / "proof-repl" / "far"
+            directory.mkdir(parents=True)
+            (directory / "state.json").write_text(json.dumps(
+                {"name": "far", "book": "books/y", "pid": 999999, "loaded": [],
+                 "sends": 0, "lane": "far-lane", "idle_seconds": 60}))
+            rows = proof_repl.session_rows([str(tree)])
+            self.assertEqual([row["name"] for row in rows], ["far"])
+            listing = subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "proof_repl.py"), "list", "--root", str(tree)],
+                capture_output=True, text=True, cwd=ROOT, timeout=30)
+            self.assertIn("far-lane", listing.stdout)
+            self.assertIn(str(tree), listing.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
