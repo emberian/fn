@@ -134,20 +134,18 @@
   (with-local-stobj fn-octets
     (mv-let (result fn-octets)
       (mv-let (plan fn-octets) (fn-sccb-plan c seg fn-octets)
-        (if (and (true-list-listp plan) (consp plan))
-            (let ((plan (cond ((eq how :drop-last) (take (- (len plan) 1) plan))
-                              ((eq how :drop-first) (cdr plan))
-                              ((eq how :bad-header)
-                               (cons (list (cons 0 (cdr (nth 0 (car plan))))
-                                           (nth 1 (car plan)) (nth 2 (car plan))
-                                           (nth 3 (car plan)))
-                                     (cdr plan)))
-                              ((eq how :short-header)
-                               (cons (list (cdr (nth 0 (car plan)))
-                                           (nth 1 (car plan)) (nth 2 (car plan))
-                                           (nth 3 (car plan)))
-                                     (cdr plan)))
-                              (t plan))))
+        (if (and (true-listp plan) (consp plan))
+            (let* ((first (car plan))
+                   (h (fn-sccr-at 0 first)) (a (fn-sccr-at 1 first))
+                   (b (fn-sccr-at 2 first)) (tr (fn-sccr-at 3 first))
+                   (rest (if (consp h) (cdr h) nil))
+                   (plan (cond ((eq how :drop-last) (take (len (cdr plan)) plan))
+                               ((eq how :drop-first) (cdr plan))
+                               ((eq how :bad-header)
+                                (cons (list (cons 0 rest) a b tr) (cdr plan)))
+                               ((eq how :short-header)
+                                (cons (list rest a b tr) (cdr plan)))
+                               (t plan))))
               (mv (list (fn-sccr-decode-plan plan fn-octets)
                         (sccrt-listed plan fn-octets))
                   fn-octets))
@@ -210,22 +208,30 @@
            (equal (fn-sccr-run i end nil fn-octets) (fn-scc-run xs nil))
            (sccrt-runs (+ 1 i) end fn-octets)))))
 
-(assert-event
- (with-local-stobj fn-octets
-   (mv-let (result fn-octets)
-     (let ((fn-octets (fn-octets-from-list (fn-scc-encode *sccrt-c*) fn-octets)))
-       (mv (and (equal (fn-sccr-run 0 (fn-octets-len fn-octets) nil fn-octets)
-                       (list *sccrt-c*))
-                (sccrt-runs 0 (fn-octets-len fn-octets) fn-octets))
-           fn-octets))
-     result)))
+(defun sccrt-machine-check (c)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-octets
+    (mv-let (result fn-octets)
+      (let ((program (if (fn-scc-treep c) (fn-scc-encode c) :bad)))
+        (if (fn-cbor-octet-listp program)
+            (let ((fn-octets (fn-octets-from-list program fn-octets)))
+              (mv (and (equal (fn-sccr-run 0 (fn-octets-len fn-octets) nil fn-octets)
+                              (list c))
+                       (sccrt-runs 0 (fn-octets-len fn-octets) fn-octets))
+                  fn-octets))
+          (mv :bad fn-octets)))
+      result)))
+
+(assert-event (equal (sccrt-machine-check *sccrt-c*) t))
 
 ; -----------------------------------------------------------------------------
 ; The admission: the header of the ground value's first frame at segment
-; size 7 (chunk 7, extent 76).
-(defconst *sccrt-h* (nth 0 (car (nth 0 (sccrt-round *sccrt-c* 7)))))
+; size 7 (index 0 of 8, chunk 7, sequence 3; extent 76).  A constant, since
+; a frame's trailer is the attached digest, which a defconst cannot run.
+(defconst *sccrt-h* (fn-scc-header 0 8 7 3))
 (assert-event
- (and (equal (fn-sccr-admit-segment *sccrt-h* 0 76 1000) (list :ok 76 7))
+ (and (equal *sccrt-h* (fn-sccr-at 0 (car (nth 0 (sccrt-round *sccrt-c* 7)))))
+      (equal (fn-sccr-admit-segment *sccrt-h* 0 76 1000) (list :ok 76 7))
       (equal (fn-sccr-admit-segment *sccrt-h* 924 76 1000) (list :ok 76 7))
       ; The segment bound: one octet short.
       (equal (fn-sccr-admit-segment *sccrt-h* 0 75 1000) (list :refused :exceeds-bound))
@@ -242,15 +248,25 @@
 
 ; Without (fn-sccb-treep c): the plan is :unencodable, which the reader
 ; refuses as :layout, and the conclusion (:ok c) fails; the retained width
-; hypotheses hold of the value.
+; hypotheses hold of the value.  The encoder's guard is the tree
+; recognizer, so the witness is a ground theorem (evaluated in the logic),
+; not an `assert-event'.
+(defthm sccrt-w-decode-of-plan-without-treep
+  (and (not (fn-sccb-treep (list 1/2)))
+       (< (+ 1 (len (fn-scc-encode (list 1/2)))) *fn-scc-u64-bound*)
+       (< (fn-scc-value-sequence (list 1/2)) *fn-scc-u64-bound*)
+       (equal (mv-nth 0 (fn-sccb-plan (list 1/2) 7 nil)) :unencodable)
+       (equal (fn-sccr-decode-plan (mv-nth 0 (fn-sccb-plan (list 1/2) 7 nil))
+                                   (mv-nth 1 (fn-sccb-plan (list 1/2) 7 nil)))
+              (list :refused :layout))
+       (not (equal (fn-sccr-decode-plan (mv-nth 0 (fn-sccb-plan (list 1/2) 7 nil))
+                                        (mv-nth 1 (fn-sccb-plan (list 1/2) 7 nil)))
+                   (list :ok (list 1/2)))))
+  :rule-classes nil)
 (assert-event
  (let ((r (sccrt-round (list 1/2) 7)))
-   (and (not (fn-sccb-treep (list 1/2)))
-        (< (+ 1 (len (fn-scc-encode (list 1/2)))) *fn-scc-u64-bound*)
-        (< (fn-scc-value-sequence (list 1/2)) *fn-scc-u64-bound*)
-        (equal (nth 0 r) :unencodable)
-        (equal (nth 1 r) (list :refused :layout))
-        (not (equal (nth 1 r) (list :ok (list 1/2)))))))
+   (and (equal (nth 0 r) :unencodable)
+        (equal (nth 1 r) (list :refused :layout)))))
 (must-fail
  (defthm sccrt-r-decode-of-plan-without-treep
    (implies (and (< (+ 1 (len (fn-scc-encode c))) *fn-scc-u64-bound*)
@@ -312,17 +328,17 @@
   (with-local-stobj fn-octets
     (mv-let (result fn-octets)
       (mv-let (plan fn-octets) (fn-sccb-plan c seg fn-octets)
-        (let* ((last (if (and (true-list-listp plan) (consp plan)) (car (last plan)) nil))
-               (a (fn-sccr-at 1 last)) (b (fn-sccr-at 2 last)))
-          (if (and (true-list-listp plan) (consp plan) (true-listp last)
+        (let* ((last (if (and (true-listp plan) (consp plan)) (car (last plan)) nil))
+               (a (fn-sccr-at 1 last)) (b (fn-sccr-at 2 last))
+               (h (fn-sccr-at 0 last)) (tr (fn-sccr-at 3 last)))
+          (if (and (true-listp plan) (consp plan)
                    (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
               (let* ((chunk (fn-sccb-slice-acc a b nil fn-octets))
                      (l (fn-octets-len fn-octets)))
                 (if (fn-scc-octet-listp chunk)
                     (let* ((fn-octets (fn-sccb-append-list chunk fn-octets))
-                           (moved (append (take (- (len plan) 1) plan)
-                                          (list (list (nth 0 last) l (+ l (- b a))
-                                                      (nth 3 last))))))
+                           (moved (append (take (len (cdr plan)) plan)
+                                          (list (list h l (+ l (- b a)) tr)))))
                       (mv (list (fn-sccr-planp moved (fn-sccr-at 1 (fn-sccr-at 0 moved))
                                                fn-octets)
                                 (fn-sccr-decode-plan moved fn-octets)
