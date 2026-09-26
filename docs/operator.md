@@ -7,32 +7,20 @@ makes no availability or flight-readiness claim; see
 [architecture](architecture.md) for the boundaries and
 [failures](../specs/failures.md) for what durability here assumes.
 
-Everything below is one command, `fn`, and one configuration file.
+**Installing from a release** (`fn-REV-linux-x86_64.tar.gz` or
+`fn-REV-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
+is the whole path from the download to a node others reach over TLS, and it
+names nothing outside the release. This page is the reference for the
+operator's verbs beyond it: status and health in depth, recovery, peering
+details, the measured envelope.
 
-**With only the release tarball** (`fn-REV-linux-x86_64.tar.gz`, made by
-`packaging/release-tarball.sh`), start at
-[From the release tarball](#from-the-release-tarball) and then
-[peering with a friend](peering-with-a-friend.md). The sections
-"Install", "Initialize" and "Require a login" further down describe the
-Python development service (`bin/fn --config ...`), not the tarball's
-`bin/fn`, whose verbs are `fn operator CONFIG VERB ...`.
-
-Status (2026-09-21): `bin/fn` and the workflow below describe the explicit
-**Python development service**. The production package uses the native saved
-image and the separate installation procedure below.
-The owner now certifies and runs; the earlier owner-load failure is historical.
-The [frozen two-node exercise](../planning/evidence/v0-integrated-runtime-w12-2026-09-21.md)
-records authentication and BP crash disagreements, not a passing release gate.
-
-D07 requires the eventual deployed node and CLI to run without Python. That
-native service migration is active, and the Python service described below does
-not meet its production gate. `packaging/fn-native` directly launches the
-production saved Lisp image. That image exposes the ACL2-planned operator and
-the existing public BP operations, but it is not yet a drop-in replacement for
-this operator CLI. See the
-[native migration plan](../planning/lanes/native-cli-migration.md) for the command
-parity work and [host contract](../specs/host.md#selected-production-runtime) for
-the runtime boundary.
+Everything the node runs is `bin/fn` (a shell script), the frozen launcher
+and the saved Lisp image it execs; no Python runs on a deployed node
+(D35, `tools/runpath_check.py`). Python remains for clients on other
+machines and for the tests. The sections "Install", "Initialize" and the
+per-user `~/fn-live` service further down describe the older Python
+development service (`bin/fn --config ...` in a checkout); a release has
+none of it, and its verbs are `fn operator CONFIG VERB ...`.
 
 ## Native component entry
 
@@ -510,46 +498,26 @@ code (`fn-nh-report-exit-of-render-and-more`).
 
 ### From the release tarball
 
-`packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR` packages one
-frozen image as `fn-REV12-linux-x86_64.tar.gz` with its `.sha256`: the
-installed layout below under one directory `fn-REV12/`, carrying the SBCL
-runtime, libsodium and the ML-DSA-65 library (vendored PQClean) beside the
-image, the operator documents under `share/doc/fn/`, and `SHA256SUMS` over
-every file. The launcher finds all of it relative to itself, so the directory
-runs wherever it is unpacked. The system provides the TLS library: OpenSSL
-3.0 or later on Linux, LibreSSL 3 or later on OpenBSD (HST-016); the image
-checks its version and every function it calls when it starts, and refuses
-to start, naming what is missing, otherwise. `FN_OPENSSL_PREFIX` optionally
-names another matched libcrypto/libssl pair. What a stranger runs, in order (each step's
-exact words and what it answers are in
-[peering with a friend](peering-with-a-friend.md), section 1):
-
-1. `sha256sum -c` the tarball's sum, unpack, `sha256sum -c SHA256SUMS`.
-2. `fn operator NODE/fn.toml mission small-community --host IP --port P`
-   writes `fn.toml` (login required, only after STARTTLS; TLS paths under
-   `NODE/tls/`). It does **not** make the TLS pair: make one with `openssl
-   req -x509 ...` whose subjectAltName is the address others dial, into the
-   two paths `fn.toml` names.
-3. `init` (a small community serves `local.general` and `local.test`),
-   `policy set path-identity NAME`, `principal set-password LOGIN
-   --posting` (the password twice, from the terminal or two lines of stdin;
-   it applies at the next start).
-4. For peering, the node's keys: `peer keygen KEYDIR` (an absolute path
-   that does not exist yet) makes the directory mode 0700 with an Ed25519
-   pair from the tarball's libsodium and an ML-DSA-65 pair from its ML-DSA-65
-   library, every file 0600, and runs `peer genesis KEYDIR`, printing the
-   principal. It refuses an existing directory. A directory made by hand
-   with an `openssl` 3.5 command, then `peer genesis KEYDIR`, is the same:
-   the key files are the PEMs OpenSSL writes.
-5. `fn operator NODE/fn.toml run` under a service manager
-   (`systemd-run --user --unit NAME -p MemoryMax=8G ...` on a box without
-   root).
+[Installing fn](install.md) is the procedure. A release is built by
+`packaging/release-tarball.sh PLATFORM REV OUT_DIR` on a machine of that
+platform, from a `git archive` of REV: it refuses unless every book in the
+default image profile's include closure is green at its digest
+(`tools/green_check.py --profile default --strict`), acquires and
+load-checks the certificates from the cache, builds and freezes the
+production image, stages it with `packaging/install-native.sh`, checks that
+no Python is on the deployed path (`tools/runpath_check.py --tree`) and that
+`bin/fn --version` prints REV, and packs `fn-REV12-PLATFORM.tar.gz` with a
+`SHA256SUMS` beside it. The tarball holds one directory `fn/`: `install.sh`,
+`bin/fn`, `libexec/fn/` (the frozen launcher, the production core,
+`source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS
+library is the system's), `share/fn/` (the service template,
+`fn.toml.example`, `docs/install.md`, `release-gate.txt` with the gate's
+lines, `runpath-check.txt`) and `SHA256SUMS` over every file.
 
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
 --version` prints the 40-digit source revision recorded beside the image's
-core (`libexec/fn/source-revision`, written by the installer; exit 1 when
-the image records none).
+core (`libexec/fn/source-revision`; exit 1 when the image records none).
 
 ### Install the native production entry
 
@@ -961,34 +929,15 @@ Two things the unit will bite you with, both learned by running it:
   looks exactly like a successful start. Run `systemctl reset-failed fn`
   before you start it again.
 
-### Without root: a user service under `~/fn-live`
+### Without root: a user service
 
-Neither farm box gives us `/usr/local/lib`, `/etc/fn` or an `fn` user, so the
-same unit is installed per-user with its four paths moved under `$HOME` and
-the `User=`, `Group=` and `Protect*`/`Private*` directives a user manager
-cannot apply removed. [`tools/live_service.py`](../tools/live_service.py)
-does that and records every command it ran:
-
-```sh
-python3 tools/live_service.py install <commit> \
-    --host persvati --node fnA --port 11190 \
-    --host hbox     --node fnB --port 11190
-python3 tools/live_service.py status --host persvati
-python3 tools/live_service.py stop   --host hbox
-```
-
-It ships the commit to `~/fn-live/fn`, installs certificates from that box's
-own cache (it never certifies — a book with no cached pair would be certified
-*inside* the service), runs `fn init` with the groups, writes a peer record
-naming the other box at `~/fn-live/peers/<name>.peer`, installs and enables
-the unit, starts it and greets it over a socket. Where a box has no user
-systemd it writes `~/fn-live/run.sh`, a `setsid` wrapper — that is **not** a
-supervised service: nothing restarts it, nothing bounds its stop, and a
-reboot loses it.
-
-`loginctl enable-linger <user>` is what keeps a user service alive after the
-last session closes; it needs an administrator, and without it the service
-stops when you log out.
+A machine where you have no root runs the release the same way under your
+own account: `sh fn/install.sh --prefix $HOME/fn --node $HOME/fn-node
+--no-service` installs it and writes the rendered unit into the node
+directory; `systemd-run --user --unit fn -p MemoryMax=8G $HOME/fn/bin/fn
+operator $HOME/fn-node/fn.toml run` runs it supervised by your user
+manager. `loginctl enable-linger <user>` (an administrator's command) keeps
+a user service alive after the last session closes.
 
 ### Reaching it from a laptop
 

@@ -41,6 +41,9 @@ EOF
 chmod 755 "$tmp/fn-host"
 printf core > "$tmp/fn-host.core"
 printf different-core > "$tmp/mismatched.core"
+# The ML-DSA-65 library the image loads from lib/ beside its core (HST-016).
+mkdir "$tmp/lib"
+printf mldsa > "$tmp/lib/libfn-mldsa65.so"
 set +e
 PREFIX="$tmp/rejected/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
   FN_NATIVE_SOURCE_REVISION=0123456789abcdef \
@@ -60,11 +63,22 @@ test -x "$tmp/root/opt/fn/libexec/fn/runtime/sbcl"
 test -s "$tmp/root/opt/fn/libexec/fn/runtime/sbcl-home/sbcl.core"
 grep -q '^source_revision=0123456789abcdef$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
 grep -q '^profile=production (verified by disabled reader entrypoint)$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
-grep -q '^dlopen-requirements: libsodium.so.23|libsodium.so libcrypto.so.3 libssl.so.3$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
+grep -q '^dlopen-requirements: system libcrypto+libssl' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
 grep -q -- "--core \"$tmp/root/opt/fn/libexec/fn/fn-host.core\"" "$tmp/root/opt/fn/libexec/fn/fn-host"
 grep -q "SBCL_HOME='$tmp/root/opt/fn/libexec/fn/runtime/sbcl-home/'" "$tmp/root/opt/fn/libexec/fn/fn-host"
-grep -q "ExecStart=$tmp/root/opt/fn/bin/fn operator /etc/fn/fn.toml run" "$tmp/root/opt/fn/share/fn/systemd/fn.service"
-grep -q "<string>$tmp/root/opt/fn/bin/fn</string>" "$tmp/root/opt/fn/share/fn/launchd/net.fn.plist"
+grep -q 'ExecStart=@PREFIX@/bin/fn operator @NODE@/fn.toml run' "$tmp/root/opt/fn/share/fn/systemd/fn.service.in"
+test -x "$tmp/root/opt/fn/install.sh"
+# One directory (HST-017): a second install into the same PREFIX is refused
+# before anything is written.
+set +e
+PREFIX="$tmp/root/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
+  FN_NATIVE_SOURCE_REVISION=0123456789abcdef \
+  FN_NATIVE_CORE="$tmp/fn-host.core" sh "$root/packaging/install-native.sh" \
+  > "$tmp/again.out" 2> "$tmp/again.err"
+again_rc=$?
+set -e
+test "$again_rc" -eq 4
+grep -q 'an installation is one directory' "$tmp/again.err"
 set +e
 "$tmp/root/opt/fn/bin/fn" operator /etc/fn/fn.toml status > "$tmp/out" &
 native_pid=$!

@@ -23,8 +23,10 @@ is historical, not the current service status.
 9. [Proof strategy](proofs.md), [validation](../tests/README.md), and
    [milestones](../planning/milestones.md): how to establish the claims.
 
-To install and run a node -- one command, one configuration file and a
-service unit -- see the [operator guide](operator.md); its packaging templates are in
+To install a node from a release tarball, start at
+[Installing fn](install.md). For the operator's verbs in depth -- one
+command, one configuration file and a service unit -- see the
+[operator guide](operator.md); its packaging templates are in
 [`packaging/`](../packaging/fn.toml.example). To read and post on a node that is
 already running, from a laptop or from an agent, see
 [agents on an fn node](agents.md).
