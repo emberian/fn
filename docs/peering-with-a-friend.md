@@ -221,3 +221,14 @@ names a group this node does not carry is refused `UNKNOWN-GROUP` (exit
   naming each other) answers the plain `430 no article with that
   message-id` rather than `430 withdrawn`; and the BP receiver's refusal
   line of an unfiled control article reads `reason=none` (PKT-443).
+- A friend whose server keeps listing an article it cannot produce (it
+  answers `ARTICLE` with 430) no longer stalls your pull: the other articles
+  arrive in the same round, the pull asks from the same instant for a few
+  rounds (`peer pull NAME SECONDS ROUNDS`; 5 when ROUNDS is left out)
+  and then moves on, logging `dropped=<id>` once. What is not here yet: a
+  friend's server that refuses `MODE STREAM` is still stopped per process
+  (a restart spends one `MODE STREAM` again) and is not fed with IHAVE on
+  the same connection; set its peer record's streaming word to `false`
+  (PKT-431).
+- One credential slot per peer serves both directions, so a credentialed
+  pull needs outbound groups too (PKT-431).
