@@ -176,6 +176,21 @@ them): owner-invariants 15.3 s (10.9 s at the last merge certification,
 under load both times), public-exposure 10.9 s. The REPL on persvati
 (control-across-peers-repl) loaded each changed book and its test book first.
 
+`make check-lane`: every step green except tools/proof_cost.py, on books
+this lane did not change (recertified only because nntp-post and
+native-control are below them). r1 measured owner-invariants 15.3 s
+(baseline 10.3 s + 25% = 12.9 s; load average about 15 on persvati).
+The re-measure r3 (`run-20260926T103546Z-cce3`, `--recertify
+books/owner-invariants`, 110 passed, load average about 7; manifest left
+uncommitted at build/acl2/certify-20260926T103616Z-456454) put
+owner-invariants at 12.0 s (within tolerance) and three books not in the
+baseline over ten seconds: public-exposure 12.4 s, byte-store-k0-step-bridge
+11.4 s, config-owner-live 11.1 s (config-owner-live was 12.1 s at
+control-c3b, public-exposure 10.9 s in r1). Classified: environment
+(contention on a shared box), not a regression of these bytes; a quiet-box
+measurement is the deputy's merge certification. The lane is at its run
+budget (r1, r2 a no-op, r3).
+
 ## Native runs and SHA-256
 
 - m1 (dev `17ff24aa`, developer image `aee18e71`, core `3c49c5b2`):
