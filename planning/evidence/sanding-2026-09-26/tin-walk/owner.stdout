@@ -1,0 +1,5 @@
+OWNER-OPEN open=full-replay reason=absent
+CONTROL /tank/fn/scratch/sanding/tin-walk-r3/node/store/control.sock
+LISTENING 32041
+LISTENING-TLS 32042
+accepted operator run

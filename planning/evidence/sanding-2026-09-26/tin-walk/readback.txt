@@ -1,0 +1,27 @@
+S: 201 fn-nntp experimental reader ready
+C: AUTHINFO USER guest
+S: 381 password required
+C: AUTHINFO PASS [password]
+S: 281 authentication accepted
+C: GROUP fn.test
+S: 211 3 1 3 fn.test
+C: OVER 1-20
+S: 224 overview information follows
+S: 1	tin over TLS, the root	ember <ember@fn.example.invalid>	Sat, 26 Sep 2026 07:57:19 +0000	<tin-tls-root@fn.example.invalid>		336	1
+S: 2	Re: tin over TLS, the root	<hbox@fn.example.invalid>	Sat, 26 Sep 2026 07:57:28 +0000	<00000000843724648488.00000000000000009736.fn@fn.example.invalid>	<tin-tls-root@fn.example.invalid>	636	5
+S: 3	tin over TLS, a new post	<hbox@fn.example.invalid>	Sat, 26 Sep 2026 07:57:37 +0000	<00000000843724657425.00000000000000018673.fn@fn.example.invalid>		451	2
+S: .
+C: HDR References 1-20
+S: 225 headers follow
+S: 1 
+S: 2 <tin-tls-root@fn.example.invalid>
+S: 3 
+S: .
+C: GROUP control.cancel
+S: 211 1 1 1 control.cancel
+C: OVER 1-20
+S: 224 overview information follows
+S: 1	cmsg cancel <00000000843724657425.00000000000000018673.fn@fn.example.invalid>	<hbox@fn.example.invalid>	Sat, 26 Sep 2026 07:57:52 +0000	<00000000843724672874.00000000000000034122.fn@fn.example.invalid>		581	1
+S: .
+C: QUIT
+S: 205 closing connection

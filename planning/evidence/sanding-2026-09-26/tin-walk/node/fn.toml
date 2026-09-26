@@ -1,0 +1,16 @@
+[store]
+path = "/tank/fn/scratch/sanding/tin-walk-r3/node/store"
+
+[listener]
+host = "127.0.0.1"
+port = 32041
+tls_cert = "/tank/fn/scratch/sanding/tin-walk-r3/node/cert.pem"
+tls_key = "/tank/fn/scratch/sanding/tin-walk-r3/node/key.pem"
+tls_port = 32042
+
+[auth]
+required = true
+protected_only = true
+
+[log]
+path = "/tank/fn/scratch/sanding/tin-walk-r3/owner.log"
