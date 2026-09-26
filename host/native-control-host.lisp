@@ -65,6 +65,16 @@
   (declare (xargs :mode :program))
   (fn-native-control-max-active-clients))
 
+;; PKT-344: the offline control verb's path, decided from the socket node and
+;; the writer lock (fn-native-control-liveness-decides), and its note line.
+(defun fn-native-control-host-liveness (socket-node lock)
+  (declare (xargs :mode :program))
+  (fn-native-control-liveness socket-node lock))
+
+(defun fn-native-control-host-liveness-note (decision)
+  (declare (xargs :mode :program))
+  (fn-native-control-liveness-note decision))
+
 (defun fn-native-control-host-lease-path (control-path)
   (declare (xargs :mode :program))
   (fn-native-control-lease-path control-path))
