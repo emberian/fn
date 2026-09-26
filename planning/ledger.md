@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1004 |
 | Certification roots in the Makefile | 979 |
 | Books inside the root closure | 997 |
-| `defthm` and `defthmd` events | 14053 |
+| `defthm` and `defthmd` events | 14055 |
 | `defun` events | 9786 |
 | Functions with verified guards | 2249 |
 | Functions declared `:verify-guards nil` and never verified | 770 |
 | Functions left at the default with an explicit guard | 5320 |
 | Functions left at the default with no guard | 1447 |
-| `assert-event` checks | 15046 |
-| `must-fail` checks | 1788 |
+| `assert-event` checks | 15058 |
+| `must-fail` checks | 1789 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 73 |
 | Theorems flagged SUSPECT by shape | 135 |
@@ -461,7 +461,7 @@ that `make certify` requests.
 | `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-checkpoint-open.lisp` | root | 19 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/owner-checkpoint-stream.lisp` | root | 25 | 8 | 2/0/6/0 | 0 | 0 | 0 |
-| `books/owner-commit-carried.lisp` | root | 30 | 16 | 8/0/8/0 | 0 | 0 | 0 |
+| `books/owner-commit-carried.lisp` | root | 32 | 16 | 8/0/8/0 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-config-observe.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-config.lisp` | root | 43 | 44 | 0/6/38/0 | 0 | 0 | 1 |
@@ -1020,7 +1020,7 @@ that `make certify` requests.
 | `tests/acl2/store-checkpoint-shape-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 2 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 49 | 8 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
-| `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 44 | 10 | 0 |
+| `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 56 | 11 | 0 |
 | `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
 | `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 72 | 2 | 0 |

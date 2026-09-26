@@ -986,10 +986,10 @@
     "books": 1004,
     "books_in_root_closure": 997,
     "roots": 979,
-    "theorems": 14053,
+    "theorems": 14055,
     "functions": 9786,
-    "assert_events": 15046,
-    "must_fails": 1788,
+    "assert_events": 15058,
+    "must_fails": 1789,
     "prover_refusals": 2,
     "encapsulates": 73,
     "guards": {
@@ -11369,7 +11369,7 @@
       "book": "books/owner-commit-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
+      "theorems": 32,
       "functions": 16,
       "guards": {
         "verified": 8,
@@ -11387,6 +11387,7 @@
       "includes": [
         "config-owner-live",
         "owner-invariants",
+        "owner-prepare-carried",
         "owner-served-invariants",
         "records-concrete",
         "store-events-carried"
@@ -27191,10 +27192,10 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 44,
-      "must_fails": 10,
+      "assert_events": 56,
+      "must_fails": 11,
       "prover_refusals": 0,
-      "defconsts": 15,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -30727,31 +30728,31 @@
       {
         "theorem": "fn-ccar-completion-record-is-completion-record",
         "book": "books/owner-commit-carried.lisp",
-        "line": 111,
+        "line": 112,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-completion-core-enabledp-is-reference",
         "book": "books/owner-commit-carried.lisp",
-        "line": 318,
+        "line": 319,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-completion-enabledp-is-reference",
         "book": "books/owner-commit-carried.lisp",
-        "line": 366,
+        "line": 367,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-sn-finish-is-sn-finish",
         "book": "books/owner-commit-carried.lisp",
-        "line": 448,
+        "line": 449,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-own-complete-is-own-complete",
         "book": "books/owner-commit-carried.lisp",
-        "line": 506,
+        "line": 507,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -47614,7 +47615,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2432,
+        "line": 2435,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
