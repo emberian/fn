@@ -1,0 +1,249 @@
+; fn: the pinned archive at a version, as a function of the catalog and the
+; arena (wave 5, lane catalog-slice step 7 groundwork, 2026-09-26; D33; the
+; consolidation design 1.4 and 1.5; NNT-042).
+;
+; A reader connection pins a VERSION v (books/owner.lisp fn-own-conn-version =
+; fn-own-view-version = the committed count).  What it pins besides today --
+; the archive (fn-state-articles, newest first), the Message-ID trie
+; (fn-midx-build of it, books/msgid-index.lisp) and the group buckets
+; (fn-gidx-build of it, books/group-bucket-index.lisp) -- is a function of
+; (v, fn-cat, fn-arena): the rows visible at v, newest first, each
+; materialized as the acceptance article (fn-make-article, books/acceptance.lisp)
+; from the row's wire positions, its handle and its numbers.  This book
+; defines that function, fn-cat-view-articles, and proves that the two served
+; lookups the machine runs over the trie and the buckets BUILT FROM IT are
+; walks of the visible rows the catalog's columns answer:
+;   fn-cat-view-find-article-is-walk: fn-find-article over the view (what
+;     fn-midx-lookup of fn-midx-build is: fn-midx-lookup-of-build-is-find-article)
+;     is the newest visible row bound to the Message-ID;
+;   fn-cat-view-number-entry-is-walk: fn-gidx-find-number-entry over
+;     fn-index-build of the view (what the bucket's number index answers:
+;     fn-gidx-nidx-number-article-is-walk, fn-gidx-find-number-entry-of-built-bucket)
+;     is the entry of the newest visible row binding (GROUP . N), when every
+;     visible row's Message-ID is a served index key (fn-cat-view-msgids-okp);
+;   fn-cat-view-number-article-is-row: the composed number lookup (entry, then
+;     the trie) is that row's article when its Message-ID names no newer
+;     visible row.
+; The served machine still reads the lists (step 7 proper threads fn-cat and
+; fn-arena through its read path and pins v; PKT-585); this book is the
+; abstraction it will be proved against.  The equation of fn-cat-view-articles
+; with the replayed archive (fn-own-prefix-archive at v, fn-ctl-visible-state)
+; is the R-side obligation of step 8 and is NOT claimed here.
+
+(in-package "ACL2")
+(include-book "catalog-relation")
+(include-book "group-bucket-article")
+
+; -----------------------------------------------------------------------------
+; A row as the acceptance article; the view at a version.
+
+; The pin is the archive pin of an installed article (fn-article-pin = t).
+(defun fn-cat-row-article (seq fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp seq) (< seq (fn-cat-count fn-cat))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((h (fn-cat-at seq fn-cat)))
+    (fn-make-article (fn-record-msgid h)
+                     (fn-arena-payload (fn-record-payload h) fn-arena)
+                     (fn-record-groups h)
+                     (fn-held-numbers h)
+                     t
+                     (fn-record-stamp h))))
+
+(verify-guards fn-cat-row-article
+  :hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)
+           :use ((:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq seq))))))
+
+; The rows below I visible at V, newest first (the archive's order).
+(defun fn-cat-view-below (i v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (if (zp i)
+      nil
+    (let ((seq (- i 1)))
+      (if (fn-cat-visible-at seq v fn-cat)
+          (cons (fn-cat-row-article seq fn-arena fn-cat)
+                (fn-cat-view-below seq v fn-arena fn-cat))
+        (fn-cat-view-below seq v fn-arena fn-cat)))))
+
+(verify-guards fn-cat-view-below
+  :hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth))))
+
+(defun fn-cat-view-articles (v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v) (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
+  (fn-cat-view-below (fn-cat-count fn-cat) v fn-arena fn-cat))
+
+; -----------------------------------------------------------------------------
+; The two walks over the visible rows (what the columns answer).
+
+; The newest visible row below I bound to MSGID, or nil.
+(defun fn-cat-view-find (msgid i v fn-cat)
+  (declare (xargs :stobjs fn-cat
+                  :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+  (if (zp i)
+      nil
+    (let ((seq (- i 1)))
+      (if (and (fn-cat-visible-at seq v fn-cat)
+               (equal msgid (fn-record-msgid (fn-cat-at seq fn-cat))))
+          seq
+        (fn-cat-view-find msgid seq v fn-cat)))))
+
+; The newest visible row below I binding (GROUP . N), or nil.
+(defun fn-cat-view-number-find (group n i v fn-cat)
+  (declare (xargs :stobjs fn-cat
+                  :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+  (if (zp i)
+      nil
+    (let ((seq (- i 1)))
+      (if (and (fn-cat-visible-at seq v fn-cat)
+               (equal n (fn-held-number-in group (fn-cat-at seq fn-cat))))
+          seq
+        (fn-cat-view-number-find group n seq v fn-cat)))))
+
+; Every row below I visible at V has a Message-ID that is a served index key
+; (fn-nntp-index-msgid-okp, books/nntp-index-runtime.lisp): the test
+; fn-nntp-index-entry-available runs per entry today; it is decided once at
+; intern after the slice.
+(defun fn-cat-view-msgids-okp (i v fn-cat)
+  (declare (xargs :stobjs fn-cat
+                  :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+  (if (zp i)
+      t
+    (let ((seq (- i 1)))
+      (and (or (not (fn-cat-visible-at seq v fn-cat))
+               (fn-nntp-index-msgid-okp (fn-record-msgid (fn-cat-at seq fn-cat))))
+           (fn-cat-view-msgids-okp seq v fn-cat)))))
+
+; The row article's projections (the fn-defrecord accessors over fn-make-article).
+(defthm fn-cat-row-article-msgid
+  (equal (fn-article-msgid (fn-cat-row-article seq fn-arena fn-cat))
+         (fn-record-msgid (fn-cat-at seq fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-cat-row-article))))
+
+(defthm fn-cat-row-article-memberships
+  (equal (fn-article-memberships (fn-cat-row-article seq fn-arena fn-cat))
+         (fn-held-numbers (fn-cat-at seq fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-cat-row-article))))
+
+(defthm fn-cat-row-article-payload
+  (equal (fn-article-payload (fn-cat-row-article seq fn-arena fn-cat))
+         (fn-arena-payload (fn-record-payload (fn-cat-at seq fn-cat)) fn-arena))
+  :hints (("Goal" :in-theory (enable fn-cat-row-article))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 1: the Message-ID lookup over the view is the walk.
+
+(defthm fn-cat-view-find-article-is-walk
+  (equal (fn-find-article msgid (fn-cat-view-below i v fn-arena fn-cat))
+         (let ((seq (fn-cat-view-find msgid i v fn-cat)))
+           (if seq (fn-cat-row-article seq fn-arena fn-cat) nil)))
+  :hints (("Goal" :induct (fn-cat-view-below i v fn-arena fn-cat)
+           :in-theory (e/d (fn-find-article) (fn-cat-row-article fn-cat-visible-at)))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 2: the number lookup's entry over the view is the walk.
+
+; (GROUP . N) among a row's numbers, tested as the entry walk tests it.
+(defun fn-cat-numbers-bind (group n pairs)
+  (declare (xargs :guard t))
+  (if (consp pairs)
+      (or (and (equal group (fn-ag-car (fn-ag-car pairs)))
+               (equal n (fn-ag-cdr (fn-ag-car pairs))))
+          (fn-cat-numbers-bind group n (cdr pairs)))
+    nil))
+
+; The newest visible row below I whose numbers bind (GROUP . N), or nil.
+(defun fn-cat-view-bound-find (group n i v fn-cat)
+  (declare (xargs :stobjs fn-cat
+                  :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+  (if (zp i)
+      nil
+    (let ((seq (- i 1)))
+      (if (and (fn-cat-visible-at seq v fn-cat)
+               (fn-cat-numbers-bind group n (fn-held-numbers (fn-cat-at seq fn-cat))))
+          seq
+        (fn-cat-view-bound-find group n seq v fn-cat)))))
+
+; One article's entries: the walk finds (GROUP . N) among its memberships
+; when N is a served number and the Message-ID is a served index key.
+(defthm fn-cat-find-number-entry-of-membership-entries
+  (implies (and (posp n) (<= n *fn-nntp-max-article-number*)
+                (fn-nntp-index-msgid-okp msgid))
+           (equal (fn-gidx-find-number-entry group n (fn-index-membership-entries msgid pairs))
+                  (if (fn-cat-numbers-bind group n pairs)
+                      (fn-index-entry group n msgid)
+                    nil)))
+  :hints (("Goal" :induct (fn-index-membership-entries msgid pairs)
+           :in-theory (e/d (fn-index-membership-entries fn-gidx-find-number-entry
+                            fn-nntp-index-entry-available fn-index-entry
+                            fn-index-entry-group fn-index-entry-number fn-index-entry-msgid)
+                           (fn-nntp-index-msgid-okp)))))
+
+(defthm fn-cat-find-number-entry-of-nil
+  (equal (fn-gidx-find-number-entry group n nil) nil))
+
+(defthm fn-cat-view-number-entry-is-walk
+  (implies (and (posp n) (<= n *fn-nntp-max-article-number*)
+                (fn-cat-view-msgids-okp i v fn-cat))
+           (equal (fn-gidx-find-number-entry
+                   group n (fn-index-build (fn-cat-view-below i v fn-arena fn-cat)))
+                  (let ((seq (fn-cat-view-bound-find group n i v fn-cat)))
+                    (if seq
+                        (fn-index-entry group n (fn-record-msgid (fn-cat-at seq fn-cat)))
+                      nil))))
+  :hints (("Goal" :induct (fn-cat-view-below i v fn-arena fn-cat)
+           :in-theory (e/d (fn-index-build fn-index-article-entries)
+                           (fn-cat-row-article fn-cat-visible-at fn-nntp-index-msgid-okp
+                            fn-index-entry fn-gidx-find-number-entry
+                            fn-index-membership-entries fn-cat-numbers-bind)))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 3: the composed number lookup (the entry, then the trie) is the
+; bound row's article when its Message-ID names no newer visible row.
+
+; The bound row is visible below I, so its Message-ID is a served index key,
+; hence a string (the trie keystone's hypothesis).
+(defthm fn-cat-view-bound-find-msgid-okp
+  (implies (and (fn-cat-view-msgids-okp i v fn-cat)
+                (fn-cat-view-bound-find group n i v fn-cat))
+           (fn-nntp-index-msgid-okp
+            (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat))))
+  :hints (("Goal" :induct (fn-cat-view-bound-find group n i v fn-cat)
+           :in-theory (disable fn-nntp-index-msgid-okp fn-cat-visible-at fn-cat-numbers-bind))))
+
+(defthm fn-nntp-index-msgid-okp-stringp
+  (implies (fn-nntp-index-msgid-okp x) (stringp x))
+  :hints (("Goal" :in-theory (enable fn-nntp-index-msgid-okp)))
+  :rule-classes ((:forward-chaining) (:rewrite)))
+
+(defthm fn-cat-view-number-article-is-row
+  (implies (and (posp n) (<= n *fn-nntp-max-article-number*)
+                (fn-cat-view-msgids-okp i v fn-cat)
+                (fn-midx-string-article-listp (fn-cat-view-below i v fn-arena fn-cat))
+                (fn-cat-view-bound-find group n i v fn-cat)
+                (equal (fn-cat-view-find
+                        (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat))
+                        i v fn-cat)
+                       (fn-cat-view-bound-find group n i v fn-cat)))
+           (equal (fn-gidx-entry-number-article
+                   group n
+                   (fn-index-build (fn-cat-view-below i v fn-arena fn-cat))
+                   (fn-midx-build (fn-cat-view-below i v fn-arena fn-cat)))
+                  (fn-cat-row-article (fn-cat-view-bound-find group n i v fn-cat) fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-gidx-entry-number-article fn-index-entry fn-index-entry-msgid)
+                                  (fn-cat-row-article fn-cat-visible-at fn-nntp-index-msgid-okp
+                                   fn-cat-view-below fn-cat-view-find fn-cat-view-bound-find
+                                   fn-index-build fn-midx-build fn-find-article
+                                   fn-cat-view-msgids-okp fn-midx-string-article-listp))
+           :use ((:instance fn-cat-view-bound-find-msgid-okp)
+                 (:instance fn-midx-lookup-of-build-is-find-article
+                            (msgid (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat)))
+                            (articles (fn-cat-view-below i v fn-arena fn-cat)))))))

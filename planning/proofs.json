@@ -7277,7 +7277,7 @@
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26). catalog-slice-2: NOT proved. What exists (under PRF-203): the delta grammar, its one-shot and resumable application to the catalog (fn-cat-apply-in-quanta-is-apply) and the version semantics of the pinned view (fn-view-cancel-after-target). The equation with fn-own-refresh's view needs the owner's served view rebuilt over the catalog (its archive copy, index and group index replaced by the version and the columns: deletion map 4.4), which is step 7 and 8 of PKT-585; the statement stays as registered."
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26). catalog-slice-2: NOT proved. What exists (under PRF-203): the delta grammar, its one-shot and resumable application to the catalog (fn-cat-apply-in-quanta-is-apply) and the version semantics of the pinned view (fn-view-cancel-after-target). The equation with fn-own-refresh's view needs the owner's served view rebuilt over the catalog (its archive copy, index and group index replaced by the version and the columns: deletion map 4.4), which is step 7 and 8 of PKT-585; the statement stays as registered. catalog-slice-4: the view a version pins is now a function of the catalog (books/catalog-view.lisp fn-cat-view-articles; the version semantics on it are exercised in tests/acl2/catalog-view-tests.lisp cvt-run: after a cancel of row 0 committed at count 2, the view at version 2 still holds it and the view at 3 does not); the equation with fn-own-refresh remains step 7/8."
     },
     {
       "id": "PRF-203",
@@ -7321,9 +7321,13 @@
       "assumptions": [],
       "status": "planned",
       "evidence": [
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/catalog-view.lisp",
+        "tests/acl2/catalog-view-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T222802Z-3457759.json"
       ],
-      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); the continuation lane takes it (PKT-585)."
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); the continuation lane takes it (PKT-585).",
+      "progress_note": "catalog-slice-4 (2026-09-26): the abstraction the served reads will be proved against is written and certified (books/catalog-view.lisp): fn-cat-view-articles, the rows visible at a version newest first as acceptance articles (payload by handle, numbers as memberships); KEYSTONES fn-cat-view-find-article-is-walk (the Message-ID trie's lookup over the view, fn-find-article by fn-midx-lookup-of-build-is-find-article, is the walk of the visible rows the Message-ID column answers), fn-cat-view-number-entry-is-walk (the bucket's number entry over fn-index-build of the view is the walk of the visible rows binding (group . n), under served numbers and index-key Message-IDs), fn-cat-view-number-article-is-row (the composed number lookup is the bound row's article when its Message-ID names no newer visible row; the hypothesis-removal witness is a duplicate Message-ID). NOT proved: the served bytes' equation itself (the machine still reads the lists: threading fn-cat and fn-arena through the read path and pinning v is step 7 proper), the column forms (fn-cat-view-find = the newest visible seq of fn-cat-msgid-seqs; fn-cat-view-bound-find = fn-cat-group-number's row when visible), and the equation of the view with the replayed archive (fn-own-prefix-archive at v: the R-side obligation of step 8). PKT-585."
     },
     {
       "id": "PRF-194",
