@@ -315,6 +315,8 @@ transition."
                             (fnn-store-observation
                              (fnn-owner-service-store service))
                             *fnn-health-min-percent*
+                            ;; PKT-508: the log sink's counts for `health'.
+                            (fnn-log-sink-snapshot)
                             *the-live-state*)))
       (unless (and (consp answer) (consp (cdr answer))
                    (fnn-octet-list-p (first answer)))

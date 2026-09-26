@@ -350,3 +350,37 @@
  (equal (take 25 (fn-nls-live-report :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs*))
         (fn-record-string-octets "obligations=1 reserved=2
 ")))
+
+; ---------------------------------------------------------------------------
+; PKT-508 (PRF-187): the log-sink line after the eight states.
+(defconst *nht-sink* (list 40 1 2 3 6))
+(assert-event (fn-log-sink-okp *nht-sink* (fn-log-sink-pending-bound)))
+(assert-event
+ (equal (fn-nh-log-sink-line *nht-sink*)
+        (fn-record-string-octets "log-sink pending=1 dropped=2 written=3
+")))
+; fn-nh-report-exit-of-render-and-more, the reachable witness: a held
+; unavailable-peer (exit 26) followed by the log-sink line.
+(defconst *nht-v26* '((:clear) (:clear) (:clear) (:clear) (:clear) (:clear) (:held) (:clear)))
+(assert-event (equal (fn-nh-exit-code *nht-v26*) 26))
+(assert-event (true-listp (fn-nh-log-sink-line *nht-sink*)))
+(assert-event
+ (equal (fn-nh-report-exit (append (fn-nh-render *nht-v26*) (fn-nh-log-sink-line *nht-sink*)))
+        26))
+; Without (<= (len v) 8): *nht-long* reads 0 however it is followed.
+(assert-event
+ (equal (fn-nh-report-exit (append (fn-nh-render *nht-long*) (fn-nh-log-sink-line *nht-sink*)))
+        0))
+(must-fail
+ (defthm nht-render-and-more-without-length
+   (implies (and (equal v *nht-long*) (equal more (fn-nh-log-sink-line *nht-sink*))
+                 (true-listp more))
+            (equal (fn-nh-report-exit (append (fn-nh-render v) more)) (fn-nh-exit-code v)))
+   :rule-classes nil))
+; Without (true-listp more): an improper tail makes the page malformed.
+(assert-event (equal (fn-nh-report-exit (append (fn-nh-render *nht-v26*) 7)) :malformed))
+(must-fail
+ (defthm nht-render-and-more-without-true-list
+   (implies (and (equal v *nht-v26*) (equal more 7) (<= (len v) 8))
+            (equal (fn-nh-report-exit (append (fn-nh-render v) more)) (fn-nh-exit-code v)))
+   :rule-classes nil))

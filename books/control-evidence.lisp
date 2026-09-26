@@ -404,3 +404,148 @@
 (in-theory (disable fn-cev-plan-is-the-article-withdrawal-by-definition
                     fn-cev-plan fn-cev-find-article fn-cev-report
                     fn-cev-evidence-report fn-cev-log-report))
+
+; -----------------------------------------------------------------------------
+; PKT-518 (PRF-187): the FNLS request frame kind 3 round trip.  The frame had
+; executed witnesses only (tests/acl2/control-evidence-tests.lisp); these are
+; the theorems.
+(encapsulate ()
+(local (defthm fn-cev-printable-octets
+  (implies (fn-cevg-printable-charsp cs)
+           (and (fn-cbor-octet-listp (fn-record-string-octets-aux cs))
+                (equal (len (fn-record-string-octets-aux cs)) (len cs))
+                (equal (fn-record-octets-chars (fn-record-string-octets-aux cs)) cs)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octetp)))))
+(defthm fn-cev-msgid-octets
+  (implies (fn-cevg-msgidp x)
+           (and (fn-cbor-octet-listp (fn-record-string-octets x))
+                (<= (len (fn-record-string-octets x)) *fn-cevg-max-msgid-octets*)
+                (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
+  :hints (("Goal" :in-theory (enable fn-cevg-msgidp fn-record-string-octets fn-record-octets-string)))))
+
+(encapsulate ()
+(local (defthm fn-cev-octets-of-append
+  (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+           (fn-cbor-octet-listp (append a b)))))
+(local (defthm fn-cev-len-append
+  (equal (len (append a b)) (+ (len a) (len b)))))
+(local (defthm fn-cev-argument-facts
+  (implies (fn-cevg-kindp kind)
+           (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
+                (<= (len (fn-cev-kind-argument kind)) *fn-cevg-max-msgid-octets*)))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
+                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                            fn-record-octets-string))))))
+(defthm fn-cev-request-payload-fits
+  (implies (fn-cevg-kindp kind)
+           (<= (len (fn-record-item-encode (cons :bytes (fn-cev-kind-argument kind))))
+               (+ 5 *fn-cevg-max-msgid-octets*)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-nls-bytes-item-length (xs (fn-cev-kind-argument kind)))
+                        fn-cev-argument-facts)
+           :in-theory (disable fn-nls-bytes-item-length fn-record-item-encode fn-cev-kind-argument
+                               fn-cev-argument-facts fn-cevg-kindp))))
+(defthm fn-cev-open-of-request-encode
+  (implies (and (fn-cevg-kindp kind) (fn-record-uint32p offset))
+           (equal (fn-nls-open (fn-cev-request-encode kind offset) 3)
+                  (fn-frame-ok *fn-nls-magic* *fn-nls-version* 3
+                               (append (fn-cbor-encode (cons :uint (fn-cev-kind-code kind)))
+                                       (fn-cbor-encode (cons :uint offset))
+                                       (fn-record-item-encode
+                                        (cons :bytes (fn-cev-kind-argument kind)))))))
+  :hints (("Goal" :use ((:instance fn-nls-open-of-seal
+                                   (kind 3)
+                                   (payload (append (fn-cbor-encode (cons :uint (fn-cev-kind-code kind)))
+                                                    (fn-cbor-encode (cons :uint offset))
+                                                    (fn-record-item-encode
+                                                     (cons :bytes (fn-cev-kind-argument kind)))))))
+           :in-theory (e/d (fn-cev-request-encode fn-record-cbor-encode-octets
+                            fn-record-item-encode-octets fn-record-cbor-uint-encoding-bound)
+                           (fn-nls-open-of-seal fn-nls-open fn-nls-seal fn-cev-kind-code
+                            fn-cev-kind-argument fn-record-item-encode
+                            fn-cbor-encode (:e fn-cbor-encode)))))))
+
+(encapsulate ()
+(local (defthm fn-cev-octets-of-append
+  (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+           (fn-cbor-octet-listp (append a b)))))
+(local (defthm fn-cev-octets-true-listp
+  (implies (fn-cbor-octet-listp r) (true-listp r))))
+(local (defthm fn-cev-read-bytes-alone
+  (implies (and (fn-cbor-octet-listp xs) (<= (len xs) *fn-record-max-octets*))
+           (equal (fn-record-read-bytes (fn-record-item-encode (cons :bytes xs)))
+                  (fn-record-parse-ok xs nil)))
+  :hints (("Goal" :use ((:instance fn-record-read-bytes-of-item-encoding (rest nil))
+                        (:instance fn-record-item-encode-true-list (value (cons :bytes xs))))
+           :in-theory (disable fn-record-read-bytes-of-item-encoding fn-record-item-encode-true-list
+                               fn-record-read-bytes fn-record-item-encode)))))
+(local (defthm fn-cev-code-kind-of-argument
+  (implies (fn-cevg-kindp kind)
+           (equal (fn-cev-code-kind (fn-cev-kind-code kind) (fn-cev-kind-argument kind))
+                  kind))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument fn-cev-kind-code fn-cev-code-kind)
+                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                            fn-record-octets-string))))))
+(local (defthm fn-cev-argument-octets
+  (implies (fn-cevg-kindp kind)
+           (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
+                (<= (len (fn-cev-kind-argument kind)) *fn-record-max-octets*)))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
+                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                            fn-record-octets-string))))))
+(local (defthm fn-cev-kind-code-uint
+  (fn-record-uint32p (fn-cev-kind-code kind))
+  :hints (("Goal" :in-theory (enable fn-cev-kind-code)))))
+; PKT-518: the owner reads back the report kind and offset the client framed
+; in FNLS request frame kind 3 (`control log', `control evidence MSGID').
+(defthm fn-cev-request-decode-of-encode
+  (implies (and (fn-cevg-kindp kind) (fn-record-uint32p offset))
+           (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
+                  (list :live-status kind offset)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cev-request-decode
+                            fn-record-read-uint-of-encoding fn-record-read-bytes-of-item-encoding
+                            fn-record-cbor-encode-octets fn-record-item-encode-octets
+                            fn-frame-result-okp fn-frame-ok fn-frame-result-payload)
+                           (fn-cev-request-encode fn-nls-open fn-nls-seal fn-record-read-uint
+                            fn-record-read-bytes fn-cev-code-kind fn-cev-kind-code
+                            fn-cev-kind-argument fn-record-item-encode fn-cevg-kindp
+                            fn-cbor-encode (:e fn-cbor-encode)))))))
+
+(encapsulate ()
+(local (defthm fn-cev-open-one-kind
+  (implies (and (fn-frame-result-okp (fn-nls-open x j))
+                (not (equal j k)))
+           (not (fn-frame-result-okp (fn-nls-open x k))))
+  :hints (("Goal" :in-theory (enable fn-nls-open)))))
+(local (defthm fn-cev-plain-decode-refuses-kind-3
+  (implies (and (fn-cevg-kindp kind) (fn-record-uint32p offset))
+           (equal (fn-nls-request-decode (fn-cev-request-encode kind offset))
+                  (list :refused :frame)))
+  :hints (("Goal" :use ((:instance fn-cev-open-one-kind
+                                   (x (fn-cev-request-encode kind offset)) (j 3) (k 1)))
+           :in-theory (e/d (fn-nls-request-decode fn-frame-result-okp fn-frame-ok)
+                           (fn-cev-open-one-kind fn-cev-request-encode fn-nls-open fn-cevg-kindp))))))
+; KEYSTONE (PKT-518).  The subject pair the host calls: the client frames
+; with `fn-cev-any-request-encode' (host/native-live-status-host.lisp
+; `fn-native-live-status-host-request-encode', host/native/control.lisp
+; `fnn-control-live-status-page') and the owner reads with
+; `fn-cev-any-request-decode' (`fn-native-live-status-host-answer', under
+; the owner mutex in `fnn-control-live-status-answer').  For every status
+; kind and every control report kind, and every uint32 offset, the owner
+; reads back exactly the kind and offset the client framed: frame kind 1 for
+; the status kinds, frame kind 3 for `control log' and `control evidence
+; MSGID', whose Message-ID survives the octet round trip.
+(defthm fn-cev-any-request-decode-of-encode
+  (implies (and (or (member-equal kind *fn-nls-kinds*) (fn-cevg-kindp kind))
+                (fn-record-uint32p offset))
+           (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
+                  (list :live-status kind offset)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cev-any-request-decode fn-cev-any-request-encode
+                            fn-cev-request-decode-of-encode fn-nls-request-decode-of-encode)
+                           (fn-cev-request-encode fn-cev-request-decode fn-nls-request-encode
+                            fn-nls-request-decode fn-cevg-kindp))))))

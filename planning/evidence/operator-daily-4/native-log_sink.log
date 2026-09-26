@@ -1,0 +1,11 @@
+test_an_unread_stderr_does_not_stop_the_node (tests.test_native_log_sink.LogSinkNativeTests.test_an_unread_stderr_does_not_stop_the_node) ... ok
+test_the_line_writer_offers_and_never_writes_under_the_queue_mutex (tests.test_native_log_sink.LogSinkSourceTests.test_the_line_writer_offers_and_never_writes_under_the_queue_mutex) ... ok
+test_the_owner_runs_the_writer_for_its_whole_service (tests.test_native_log_sink.LogSinkSourceTests.test_the_owner_runs_the_writer_for_its_whole_service) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 5.019s
+
+OK
+under the unread pipe: log-sink pending=1505 dropped=0 written=497
+after draining: log-sink pending=0 dropped=0 written=2002
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_log_sink", "tests": 3, "failures": 0, "errors": 0, "skipped": 0, "executed": 3, "skips": [], "timings": [["tests.test_native_log_sink.LogSinkNativeTests.test_an_unread_stderr_does_not_stop_the_node", 5.018], ["tests.test_native_log_sink.LogSinkSourceTests.test_the_line_writer_offers_and_never_writes_under_the_queue_mutex", 0.001], ["tests.test_native_log_sink.LogSinkSourceTests.test_the_owner_runs_the_writer_for_its_whole_service", 0.0]]}

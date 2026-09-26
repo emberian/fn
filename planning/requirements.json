@@ -3301,6 +3301,29 @@
         "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
       ],
       "implementation_note": "The publication thread (host/native/owner.lisp fnn-owner-publish-captured) calls fn-ock-publication-stream with its own buffer fn-octets-pub; ACL2 computes the file's exact length first (fn-ockb-file-len) against the profile's checkpoint budget (fn-ock-capture-budget, the reader's file bound: 3 x max-history-octets plus one segment's framing) and defers by name (CHECKPOINT deferred reason=exceeds-budget estimate=E budget=B; `status' carries ` deferred=... estimate=E budget=B' on its checkpoint-file line; the retry waits until the budget covers E, fn-ock-publication-blockedp on the due path); else it encodes once into the buffer and the host writes the plan straight from the array through the unchanged fn-bs-scp-program cuts. The frozen checkpoint value itself (the records twice) still lives on the heap at sixteen bytes per octet: the arena (PKT-293/PKT-167) and PKT-314 remain."
+    },
+    {
+      "id": "HST-012",
+      "title": "The owner never waits on its service log: a sink that stops draining costs log lines, counted in `health`, never service",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-187"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/log-sink.lisp",
+        "host/native/io.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_log_sink.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
     }
   ]
 }
