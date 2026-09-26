@@ -53,10 +53,19 @@
        (member-equal (fn-native-operator-result-status result)
                      '(:accepted :refused :uncertain :fault :usage))))
 
+;  HST-008 (the operator walk): "no store here" is a refusal with its own
+; exit code, distinct from every other refusal (1) and from a host fault (4),
+; so a script can tell a node that was never initialized from one that
+; declined a well-formed request.  Six is otherwise unused by the operator.
+(defconst *fn-nop-no-store-exit* 6)
+
 (defun fn-native-operator-exit-code (result)
-  "The tagged result, not a raw host condition, owns the five CLI codes."
+  "The tagged result, not a raw host condition, owns the CLI codes."
   (declare (xargs :guard t))
-  (cond ((equal (fn-native-operator-result-status result) :accepted) 0)
+  (cond ((and (equal (fn-native-operator-result-status result) :refused)
+              (equal (fn-native-operator-result-reason result) :no-store))
+         *fn-nop-no-store-exit*)
+        ((equal (fn-native-operator-result-status result) :accepted) 0)
         ((equal (fn-native-operator-result-status result) :refused) 1)
         ((equal (fn-native-operator-result-status result) :uncertain) 3)
         ((equal (fn-native-operator-result-status result) :fault) 4)
@@ -382,6 +391,18 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (equal (char (cadr words) 0) #\/))
          (fn-nop-result :accepted :plan "store" config
                         (list :rollback-check (cadr words))))
+        ; The walk's rollback item: what restoring a pre-upgrade snapshot
+        ; (a copy of the stopped store at SNAPSHOT) loses against this store
+        ; (fn-native-operator-snapshot-loss).
+        ((and (consp words) (equal (car words) "rollback-check")
+              (consp (cdr words)) (equal (cadr words) "--snapshot")
+              (consp (cddr words)) (null (cdddr words))
+              (stringp (caddr words))
+              (< 1 (length (caddr words)))
+              (<= (length (caddr words)) *fn-ncfg-max-path*)
+              (equal (char (caddr words) 0) #\/))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rollback-snapshot (caddr words))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
@@ -410,7 +431,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
+         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise it afterwards with store upgrade-profile)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
@@ -428,7 +449,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
@@ -1065,6 +1086,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rollback-check)
                   :rollback-check)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :rollback-snapshot)
+                  :rollback-snapshot)
                  (t :upgrade-profile)))
           ((and (equal (fn-native-operator-result-command result) "peer")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1704,3 +1728,168 @@ when that store already exists is `fn-native-operator-init-outcome'."
            (equal (fn-native-operator-result-command result) "show"))
       (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
+
+; -----------------------------------------------------------------------------
+; HST-008 / PRF-130 part 1: "no store here" is a refusal, never a fault.
+;
+; Every accepted plan whose native action reads or writes an existing store
+; is first checked against the same observation `init' uses: which of
+; `*fn-nop-store-markers*' exist beside the configured store root (lstat
+; only, no lock; host/native/operator.lisp `fnn-operator-init-observed').
+; With none of them there is no store to open, and the outcome is the
+; refusal :no-store (exit `*fn-nop-no-store-exit*'), not the host fault the
+; open would otherwise raise ("missing store directory").  A partial store
+; (some markers, e.g. an interrupted init) is not "no store": it proceeds to
+; the open, which recovers or refuses it.
+
+(defconst *fn-nop-store-actions*
+  '(:run :post :status :health :recover :compact :checkpoint :reclaim
+    :reclaim-dry-run :needs-upgrade :rollback-check :rollback-snapshot
+    :upgrade-profile :admin
+    :peering :principal))
+
+(defun fn-native-operator-result-needs-storep (result)
+  "An accepted plan whose native action opens the configured store."
+  (declare (xargs :guard t))
+  (and (member-equal (fn-native-operator-result-native-action result)
+                     *fn-nop-store-actions*)
+       t))
+
+(defun fn-native-operator-store-outcome (result observed)
+  "RESULT unchanged, or the :no-store refusal when RESULT needs a store and
+OBSERVED (the markers found beside the store root) is empty."
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-needs-storep result)
+           (not (consp observed)))
+      (fn-nop-refused :no-store
+                      (fn-native-operator-result-command result)
+                      (fn-native-operator-result-config result)
+                      (fn-native-operator-result-arguments result))
+    result))
+
+; KEYSTONE PRF-130 part 1.  The subject is `fn-native-operator-store-outcome',
+; which `fnn-operator-dispatch-plan' (host/native/operator.lisp) calls through
+; `fn-native-operator-host-store-outcome' on every accepted plan before it
+; executes the action.  For a plan that needs a store and an observation that
+; found none of the store's entries, the outcome is a refusal named
+; :no-store whose exit code is 6: never accepted (so no action runs and no
+; open is attempted), never the fault code 4, never the usage code 5.
+(defthm fn-native-operator-absent-store-is-refused
+  (implies (and (fn-native-operator-result-needs-storep result)
+                (not (consp observed)))
+           (let ((outcome (fn-native-operator-store-outcome result observed)))
+             (and (equal (fn-native-operator-result-status outcome) :refused)
+                  (equal (fn-native-operator-result-reason outcome) :no-store)
+                  (equal (fn-native-operator-exit-code outcome)
+                         *fn-nop-no-store-exit*)
+                  (equal (fn-native-operator-result-native-action outcome) :none))))
+  :hints (("Goal" :in-theory (enable fn-nop-refused fn-nop-result
+                                     fn-native-operator-result-status
+                                     fn-native-operator-result-reason
+                                     fn-native-operator-result-native-action
+                                     fn-native-operator-exit-code))))
+
+; The converse half: a store that is there (any marker observed) or a plan
+; that needs none is passed through untouched, so the check refuses nothing
+; the store actions would have served.
+(defthm fn-native-operator-store-outcome-passes-a-present-store
+  (implies (or (consp observed)
+               (not (fn-native-operator-result-needs-storep result)))
+           (equal (fn-native-operator-store-outcome result observed) result)))
+
+;  The line printed before a usage or refused result's tagged line: what the
+; command accepts, or what to do.  ACL2's words; the host prints them.
+(defun fn-native-operator-result-hint (result)
+  (declare (xargs :guard t))
+  (let ((status (fn-native-operator-result-status result))
+        (reason (fn-native-operator-result-reason result))
+        (command (fn-native-operator-result-command result)))
+    (cond ((and (equal status :refused) (equal reason :no-store))
+           "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
+          ((and (equal status :usage) (equal reason :mission-fixes-profile))
+           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise it afterwards offline with: fn operator CONFIG store upgrade-profile [scale|default] [--FIELD N ...]; or delete the mission line from fn.toml to choose a profile at init")
+          ((and (equal status :usage) (fn-nop-help-subjectp command))
+           (fn-nop-help-text command))
+          (t nil))))
+
+(defun fn-native-operator-result-snapshot-path-octets (result)
+  "The snapshot store root an accepted `store rollback-check --snapshot' names."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :rollback-snapshot)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-record-string-octets
+       (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+; -----------------------------------------------------------------------------
+; What restoring a snapshot loses (mandate 5.6: "Restoring a pre-migration
+; snapshot can lose later accepted articles; operational instructions must say
+; so plainly").  The host observes each store's committed transaction files as
+; (SEQUENCE . OCTET-LENGTH) pairs in sequence order (host/native/io.lisp
+; `fnn-command-rollback-snapshot'); ACL2 decides.  The snapshot is a rollback
+; point for this store only when its history is a prefix of the store's; the
+; loss is then every committed transaction after that prefix.
+
+(defun fn-nop-history-prefixp (snap cur)
+  (declare (xargs :guard t))
+  (if (consp snap)
+      (and (consp cur)
+           (equal (car snap) (car cur))
+           (fn-nop-history-prefixp (cdr snap) (cdr cur)))
+    t))
+
+(defun fn-nop-history-suffix (snap cur)
+  (declare (xargs :guard t))
+  (if (and (consp snap) (consp cur))
+      (fn-nop-history-suffix (cdr snap) (cdr cur))
+    cur))
+
+(defun fn-native-operator-snapshot-loss (snap cur)
+  "(:loses N) when SNAP's history is a prefix of CUR's, N the transactions
+committed after it; else (:refused :snapshot-not-a-prefix)."
+  (declare (xargs :guard t))
+  (if (fn-nop-history-prefixp snap cur)
+      (list :loses (len (fn-nop-history-suffix snap cur)))
+    (list :refused :snapshot-not-a-prefix)))
+
+(defthm fn-nop-history-suffix-len
+  (implies (fn-nop-history-prefixp snap cur)
+           (equal (len (fn-nop-history-suffix snap cur))
+                  (- (len cur) (len snap)))))
+
+; KEYSTONE (the rollback sentence's count).  The subject is
+; `fn-native-operator-snapshot-loss', which `fnn-command-rollback-snapshot'
+; (host/native/io.lisp) calls through `fn-native-operator-host-snapshot-loss'.
+; The verb answers :loses exactly when the snapshot's committed history is a
+; prefix of the store's, and the count it prints is the number of committed
+; transactions the store holds beyond the snapshot: the ones restoring the
+; snapshot throws away.
+(defthm fn-native-operator-snapshot-loss-counts-the-suffix
+  (and (iff (equal (car (fn-native-operator-snapshot-loss snap cur)) :loses)
+            (fn-nop-history-prefixp snap cur))
+       (implies (fn-nop-history-prefixp snap cur)
+                (equal (cadr (fn-native-operator-snapshot-loss snap cur))
+                       (- (len cur) (len snap))))))
+
+(defun fn-nop-nat-text (n)
+  (declare (xargs :guard t))
+  (coerce (explode-atom (nfix n) 10) 'string))
+
+; The verb's two lines, ACL2's words: the count and the plain sentence the
+; mandate asks the operator instructions to carry (5.6).
+(defun fn-native-operator-snapshot-loss-report (verdict nsnap ncur)
+  (declare (xargs :guard t))
+  (if (equal (fn-ncfg-first verdict) :loses)
+      (let ((n (fn-nop-nat-text (fn-ncfg-second verdict))))
+        (concatenate 'string
+                     "rollback snapshot loses transactions=" n
+                     " snapshot-transactions=" (fn-nop-nat-text nsnap)
+                     " store-transactions=" (fn-nop-nat-text ncur)
+                     (coerce '(#\Newline) 'string)
+                     "restoring this snapshot loses every transaction committed after it: "
+                     n
+                     ", the articles accepted since it among them; the snapshot cannot give them back"))
+    "rollback snapshot refused snapshot-not-a-prefix (this snapshot is not an earlier state of this store)"))

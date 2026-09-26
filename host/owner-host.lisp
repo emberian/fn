@@ -2167,17 +2167,27 @@
 ; This does not resolve the in-flight entry -- only a restart does today,
 ; and the packet that fixes it is in the lane handoff.  It stops the host
 ; opening a socket it has nothing to send on.
+(defun fn-owner-feed-stopped (state)
+  "The owner process's feed stop table (peer . reason), nil before any stop."
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-feed-stopped state)
+      (f-get-global 'fn-owner-feed-stopped state)
+    nil))
+
 (defun fn-owner-feed-has-queued (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (value (if (fn-feed-head-queued
-                  (fn-feed-queue
-                   (fn-own-feed-find peer (fn-own-feeds
-                                           (fn-owner-core state)))))
-                 t
-               nil)))))
+      ;; A peer the owner stopped (it refused MODE STREAM, books/
+      ;; feed-connection.lisp) is not dialled, whatever it has queued.
+      (value (fn-fc-dial-allowedp
+              (fn-feed-head-queued
+               (fn-feed-queue
+                (fn-own-feed-find peer (fn-own-feeds
+                                        (fn-owner-core state)))))
+              peer
+              (fn-owner-feed-stopped state))))))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -2340,7 +2350,18 @@ existing port only after fn-fc has made this connection ready."
             (value :invalid)
           (let* ((state (f-put-global 'fn-owner-feed-log-line nil state))
                  (step (fn-fc-step input octets))
-                 (kind (fn-owner-feed-connection-result-kind step))
+                 (stop (fn-fc-streaming-refusal-p input step))
+                 (kind (if stop :streaming-refused
+                         (fn-owner-feed-connection-result-kind step)))
+                 (state (if stop
+                            (f-put-global
+                             'fn-owner-feed-log-line (fn-fc-stop-log-line peer)
+                             (f-put-global
+                              'fn-owner-feed-stopped
+                              (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
+                                                 (fn-owner-feed-stopped state))
+                              state))
+                          state))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-next-state step) inputs)
@@ -2381,6 +2402,7 @@ existing port only after fn-fc has made this connection ready."
                      (if erp (mv erp word state) (value word))))
                   (:need-input (value :need-input))
                   (:connection-refused (value :connection-refused))
+                  (:streaming-refused (value :streaming-refused))
                   (:closed (value :closed))
                   (:invalid (value :invalid))
                   (otherwise (value :fault)))))))))
