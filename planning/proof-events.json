@@ -5147,6 +5147,19 @@
       ]
     },
     {
+      "id": "PRF-141",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-history-loss-is-ancestry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-history-loss-is-snapshot-loss"
+        }
+      ]
+    },
+    {
       "id": "PRF-130",
       "events": [
         {
