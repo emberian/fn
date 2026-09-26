@@ -5418,6 +5418,19 @@
           "name": "fn-sccr-admitted-within-bounds"
         }
       ]
+    },
+    {
+      "id": "PRF-137",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sr-a-re-signed-carrier-is-a-conflict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cra-a-re-signed-carrier-is-other-octets"
+        }
+      ]
     }
   ]
 }
