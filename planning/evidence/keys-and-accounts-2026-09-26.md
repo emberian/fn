@@ -122,6 +122,19 @@ operator keys`; restart: no new line, history unchanged.
 ede9b4c10f44026914747e5d7872778fc9501e007eeebcd8d63bab6b5b88cdd5  tree/build/fn-host-developer.core
 ```
 
+The whole module at the same image (`--no-build`): `tests.test_native_key_statements` 5 OK (the
+four existing cases unchanged), log edf5a1e3fa7369b34c9e9d3be004839b495c792ae1b93dbd61f021aa7a614900.
+
+native-n2 (6f426a66, with PKT-240's host change): `tests.test_native_key_statements` 5 OK
+(7ab7333629308b7e0301aadf7764a73e3ddd36db0f41740153d4210cd283dc81); image fn-host-developer
+7aee2be4d33bb6a14c808dd269fbac595f619d2ab5d461b1d89467938b30f926. The refusal-class case
+`test_native_hybrid_author ... test_carried_budget_and_refusal_classes` is gated on
+FN_RUN_HYBRID_E2E=1 (hbox_native.sh skipped it), so it ran by hand in the n2 tree under
+`systemd-run --user --scope -p MemoryMax=24G` with FN_RUN_HYBRID_E2E=1 and
+FN_TEST_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl: OK, the class words (through the
+verdict now) unchanged; logs/hybrid-author-e2e.log
+87e87f7cec21f7ea75d28a5f07bd0a5f1bb551bd489790110defc9e3b38aca2b.
+
 fn_verify (hbox /tank/fn/scratch/keys-and-accounts/verify-t1, the cryptography and dilithium_py
 modules are on hbox, not the laptop): `tests.test_fn_verify.FakeNodeVerifyTests` 18 OK, including
 `test_a_revoked_verdict_is_rendered_and_never_verified` (revoked + the revoked principal's
