@@ -85,7 +85,9 @@
         "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
         "planning/evidence/commit-path-2-2026-09-24.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. The host-called store prepare projection now preserves that relation after observed open across the actual post-open mutators without replaying the appended history per prepare. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open. CHANGED 2026-09-22 (w31/freeze-3): `fn-snt-relation` (books/store-node-traces) now covers the two publications whose node effect is deferred to `fn-sn-finish` -- `fn-sn-prepare-retention` (`6ab2c783`) and `fn-sn-prepare-identity` (`4bb7bb3d`) -- and the fault arm `fn-sn-recover` grew in `40bb3f74`. Before this it was false of every state those three transitions produce, so `fn-snrt-step-preserves-relation`, `fn-own-step-preserves-relation` and `fn-opc-configured-step-preserves-owner-relation` above it were false with it and no run had said so. What the deferred arm says is weaker than the article arm by design: it carries the replayed node at the reservation's transaction id and the equation between the applied event and the replay of the extended history, and no proposal standing on the live node, because there is none until the directory barrier."
     },
@@ -122,7 +124,8 @@
         "books/owner-numbering.lisp",
         "planning/evidence/manifests/certify-20260924T152452Z-1758763.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Atomic logical publication and stable number/binding lemmas; persistent/reclamation integration remains open. OVER THE SERVED PATH (books/owner-numbering.lisp, 2026-09-24): fn-own-served-watermarks-never-decrease -- under fn-own-relation of the configured owner, for any group, any sequence of writer events ((:take), (:begin id), (:store e), (:complete)) through fn-ocfg-step (fn-owner-step, host/owner-host.lisp:209) followed by any connection's outcome installed with fn-ocfg-with-owner (fn-owner-replace-core) leaves the committed view's next local number for that group at least what it was; fn-own-served-local-number-is-never-reassigned -- over the same calls, a (group . number) that names an article of the committed view names an article with the same Message-ID afterwards. The committed view is the archive every reader pins when it opens or advances and reads through fn-ocfg-read-tls-prefix (owner-host.lisp:1240). Proof: the view is the replay of a prefix of the durable records and the records only grow (fn-own-step-records-prefix); replaying a longer prefix only conses articles on the front and only raises watermarks; the Message-ID half cites fn-state-has-fresh-local-numbers on the new view. Teeth (tests/acl2/owner-numbering-tests.lisp): witness of two POSTs in fn.letters across a completion (numbers 3 and 4, watermark 3 to 5, 1 and 2 keep their Message-IDs, the advanced reader's GROUP 211 4 1 4 and STAT 3/4 name the new articles); must-fail for the relation on both keystones (the store node's archive wound back to empty: the 240 is still answered, fn.letters 1 is given again and the watermark falls from 3 to 2) and for the holder hypothesis (fn.letters 3 unheld before, held after). The writer-events hypothesis has no tooth: no violating value was found (every other fn-ocfg-step arm keeps the view or refreshes it from an extension of the records), and redundancy is not proved; it is the statement's scope. SCOPE of fn-own-pinned-view-survives-other-post (T6): reader connections only, by design -- a peer connection answers IHAVE/CHECK from the live node (fn-own-conn-live-session), so a POST by another connection correctly changes its 335 to 435; tests/acl2/owner-served-invariants-tests shows it. No peer-connection variant is owed. EVIDENCE: persvati run-20260924T152353Z-e987, manifest planning/evidence/manifests/certify-20260924T152452Z-1758763.json: books/owner-numbering 4.1 s, tests/acl2/owner-numbering-tests 4.3 s, both passed. RESTATED BY control-c3b (2026-09-25), when the committed view began serving the visible state (a cancel withdraws its target from what readers see, books/control-visible.lisp): fn-own-raw-local-number-is-never-reassigned is the former statement over the view's raw list (fn-own-view-raw, the acceptance articles, withdrawn ones included): a (group . number) held there names the same Message-ID after the same calls. fn-own-served-local-number-is-never-reassigned now says a number held in the served (visible) list is held afterwards by the same Message-ID or by nothing (withdrawn); it is never given to another article. The former equality over the served list is false once a cancel executes. fn-own-served-watermarks-never-decrease is unchanged (the visible state keeps the acceptance watermarks). Teeth: tests/acl2/owner-numbering-tests.lisp, both holder keystones with the relation and the held-before must-fails; the fixture has no cancel, so the served keystone's nothing arm has no witness there. Record: planning/evidence/control-c3b-2026-09-25.md."
     },
@@ -224,7 +227,9 @@
         "tests/acl2/store-budget-naming-tests.lisp",
         "planning/evidence/manifests/certify-20260924T182844Z-3383029.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open. M5 transaction budget over the called prepare (books/owner-store-budget.lisp, 2026-09-24): fn-sbud-prepare, which host/owner-host.lisp fn-owner-prepare installs, is the identity when the budget is at most the owner Store's committed record count and is fn-opc-prepare below it; its refusal word is :unaffordable; the budget is the persisted profile's admissibility (fn-sbud-budget-is-the-profile-admissibility) and is fixed at init. Teeth in tests/acl2/owner-store-budget-tests.lisp and tests/acl2/store-budget-tests.lisp; farm manifest certify-20260924T161235Z-2188032. Second count and payload constant removed (books/store-budget-naming.lisp, 2026-09-24): the host names each transaction file from the staged candidate's sequence, fn-sbud-pending-sequence (host/owner-host.lisp fn-owner-pending-sequence, host/store-node-host.lisp fn-store-sn-pending-sequence), through fn-sbud-txn-name, the scan's fn-bs-txn-name; in a record phase of a well-formed kernel that sequence is the committed count (fn-sbud-pending-sequence-is-used) and the name extends the committed namespace to one fn-bs-txn-observation-pairs accepts at sequence used (fn-sbud-pending-name-is-the-scans-next-name). The POST boundary both entries call is fn-sbud-post-boundary over the persisted profile, admitting exactly the payloads at or under the profile's payload field (fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound); the served owner relays :payload-bound as the Store word :refused, whose 441 line is W3's. Teeth in tests/acl2/store-budget-naming-tests.lisp over an owner reached by its own transitions; farm manifest certify-20260924T182844Z-3383029."
     },
@@ -332,7 +337,8 @@
         "planning/lanes/HANDOFF-w14-wire-roundtrip.md",
         "planning/evidence/manifests/certify-20260921T090841Z-1914841.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open. The served path is now the subject: books/served states partition independence of fn-served-step and of the whole reply stream, which is the function tools/run_reader.py calls once per socket read, so the wire pending_subject note is closed for framing. The owner book now certifies in the merged feed/transit batch recorded by planning/evidence/manifests/certify-20260921T051833Z-3941584.json. This does not extend these framing theorems to an unproved owner composition or to Python outbound article rendering; W12 wire-block owns that running-path extension. The W14 cumulative byte-feeder induction now proves successful outbound block source preservation through fn-wire-drive and the actual fn-wire-render-feed-command article arm under the exact served article-start profile. Its hypotheses require positive command profile, the nonempty article arm excluding CHECK/IHAVE/TAKETHIS command prefixes, renderer success, and the article limit no greater than receiver body limit; tests separate each premise. This is not a new proof of later authentication/injection dispatch or durable acceptance. The native counted fast transition is now integrated: fn-served-step-counted-fast-is-reference is certified under the maintained full wire invariant, with a malformed-retained-byte separating witness. Per-read entry checks only the fixed wire spine and scalars. The changed outer fn-ocfg-read-tls-prefix-is-full-read correspondence is pending current-source certification; the focused served closure excludes that owner book. See planning/evidence/native-served-fast-path-w26-2026-09-21.md. CLOSED AS STATED 2026-09-22 (w31/freeze-3): `fn-ocfg-read-tls-prefix-is-full-read` now certifies with the premise `fn-served-step-counted-fast-is-reference` asks for -- `fn-wire-statep` of the found connection's wire. The configured owner does not carry it: `fn-own-conn-okp` (books/owner-invariants) requires a shape, a bounded session and a pinned archive and says nothing about the wire recognizer, while `fn-served-connp` is the predicate that does. The two transitions agree on every wire the full recognizer accepts and may differ on one the fast spine accepts and it does not. OPEN: carrying `fn-wire-statep` in `fn-own-conn-okp`, which would discharge the premise from `fn-ocfg-statep` alone."
     },
@@ -444,7 +450,8 @@
         "planning/evidence/k0-steps-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption passed the integrated suite; physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs. Receiver logical replay now preserves exact contexts and committed receipt ADUs against a fixed Store. Five actual receiver process-death cuts passed in the 133-test suite; process death is separate from power loss and general FNWF/FNRJ byte/live/replay refinement. Fencing, barrier and retention keystones are unchanged in statement and now run with the whole-state recognizers off the executable path (24 calls to 0 in the store cluster, 10 to 0 in core), carried under mbe instead. Real process evidence: the deploy gate SIGKILLed the server inside an open POST and the acknowledged article reread byte-for-byte after recovery. Byte-level torn writes remain the DESIGN-crash-model-v2 design, which is review finding D4. OPEN AND CHANGED 2026-09-22 (w31/freeze-3): `fn-snrt-new-success-is-actual-matching-durable-completion` keeps its safety conjuncts at full strength for all three arms of `fn-sn-finish` -- a new acknowledgement comes only from `:finish` and only under an enabled completion -- and makes its article-specific conclusions (the bound record, the `fn-node-complete` equation, the committed record) conditional on the acceptance arm, as the keystone it uses already does since `6ab2c783` and `4bb7bb3d` gave the completion record a retention and an identity kind whose node transition is not a completion and whose article accessors name nothing. `fn-sn-known-abort` CHANGED BEHAVIOUR in the same lane: `6ab2c783` gave it a retention arm that left the live node alone, so an aborted retention publication returned a `:ready` state whose node sat one transaction id behind its own durable frontier, which `fn-snt-relation` forbids and `fn-own-idle-node-is-replay` relies on; the arm now advances the node over the id the abort consumes, exactly as `fn-sn-refuse-reservation` does over a refused reservation, and `tests/acl2/store-identity-traces-tests` carries the witness. RESTATED 2026-09-23 (red/bpre): `fn-bprv-history-record-is-node-committed-when-idle` now carries `(fn-record-p record)`: since `6ab2c783` and `346a8f99` a Store history holds retention and statement events beside article records, those install no article under their own name, and `tests/acl2/bp-receiver-evolving-tests` commits a retention undertake on a related `:ready` Store where the old statement is false; the loop keystone `fn-bprv-apply-store-event-keeps-committed` now covers every arm of `fn-replay-apply-record`. `fn-bprv-evolving-invariant-survives-observed-reopen` and `fn-bpr-live-receipt-regenerated-after-restart` now carry `fn-sn-observed-identity-okp` of the image's records, the kernel's own reopen hypothesis since `4857c648`; OPEN: no ground witness separates it under `fn-snt-relation` plus `fn-sf-crash-imagep` (the live prepare checks the identity step, so it may be derivable there), so that hypothesis has no must-fail tooth, and deriving it from the relation would lift it from every kernel reopen guarantee at once. INTERIM 2026-09-24 (BP observed reopen): fn-bprv-observed-reopen-facts, fn-bprv-evolving-invariant-survives-observed-reopen, and fn-bpr-live-receipt-regenerated-after-restart now require fn-sn-observed-topic-okp(records), matching the actual Store observed opener after topic events were added. The existing consumer relation and identity premises do not establish the independent topic replay check; Store tests exhibit structurally valid topic-invalid records, while a counterexample under the full crash-image hypothesis and a reachable-state derivation remain separate obligations. The conditional BP book and dependent test certify at manifests 050516 and 050842. A maintained Store topic/crash relation deriving this premise on reachable images is still open in this packet; these conditional theorems do not establish full BP reopen. Host tie (books/store-open-bridge.lisp, k4-bridges lane): the cited keystones stay the registry events; fn-cpo-open-observed-is-sn-open-observed-on-the-kernel and fn-cpo-open-observed-succeeds-exactly are the named theorems relating them to fn-cpo-open-observed, which host/store-node-host.lisp:159 and host/owner-host.lisp:193 call. Corollaries (the host's subject, not registry events): fn-sn-open-observed-success-exact-history -> fn-sn-open-observed-success-exact-history-of-host-open (kernel conjuncts only; the node conjunct does not transfer); fn-sn-open-observed-not-ready-before-five-barriers and fn-sn-open-observed-five-barriers-open-ready -> their -of-host-open corollaries (over fn-cpo-open-observed success alone, from the bridge kernel fact and the same generic barrier lemmas); fn-sn-acknowledged-record-survives-observed-reopen -> -of-host-open (added hypothesis fn-sob-configured-openp); fn-bprv-evolving-invariant-survives-observed-reopen -> -of-host-open (the fn-bprv-evolving-invariantp conjunct; fn-snt-relation does not transfer); fn-sn-open-observed-success-has-live-history-relation and fn-bpr-live-receipt-regenerated-after-restart: NOT transferred (both state fn-snt-relation or a run from the opened node, and the host's node is the configured replay's); the host-side relation is fn-cpo-open-observed-success-has-history-relation. K4 NODE CORRESPONDENCE (k0-steps, books/store-open-node-bridge.lisp): when every configuration record names txid 0 (fn-sonb-configured-before-eventsp: configured before the first Store event, never reconfigured after one), fn-sonb-configured-replay-is-fixed-table-replay shows the configured replay is the fixed-table replay under the final domain and capacity, and so fn-snt-relation holds of the host's opened state (fn-sn-open-observed-success-has-live-history-relation-of-host-open), the node conjunct holds at the host's open (fn-sn-open-observed-success-exact-history-node-of-host-open), and the receipt theorem holds with the restart through fn-cpo-open-observed (fn-bpr-live-receipt-regenerated-after-restart-of-host-open). Without that hypothesis the opened node is fn-cst-replay-node (fn-sn-open-observed-success-configured-node-of-host-open) and fn-snt-relation can fail: a release followed by a capacity reduction at txid 7 opens on the host and is refused by the final-table replay (store-open-node-bridge-tests, config-observed-tests). A reconfigured store's live relation is fn-cst-relation; the BP receipt theorem is not stated over it."
     },
@@ -823,7 +830,9 @@
         "tests/acl2/octets-stobj-tests.lisp",
         "planning/evidence/rep-octets-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged. Constant stack (large-article, 2026-09-25): fn-frame-split (books/frame-octets.lisp) executes as fn-frame-split-acc and fn-ag-append (books/acceptance-alloc.lisp) as fn-ag-append-exec, each a tail-recursive twin equal to the list definition on every argument (fn-frame-split-acc-is-split, fn-ag-append-exec-is-append, no hypothesis), both guard-verified; the host reaches them through fn-store-frame-store-decode (host/native/io.lisp:910 fnn-unframe, on store inspect and owner recovery) and fn-owner-chunk (the ARTICLE reply), which ran one control-stack frame per octet and exhausted the image's 64 MB stack on a 3 MiB article. The octet list stays the representation at these boundaries (boundaries 6 and 8 of the representation plan). Owner open from the checkpoint (2026-09-25, lane owner-checkpoint-open): fn-owner-recover now installs through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended), and fn-ock-recover-installs-ocl-relation transfers the OCL premise through fn-owner-recover-from-checkpoint-equals-full-recover to both open paths. The replay fold fn-cpr-loop and its step fn-cpr-apply-event carry fn-cnode-statep in their guards; the executable path tests a one-event refusal by NIL (fn-cpr-apply-event-statep-iff-consp) instead of running the whole-node recognizer three times per event."
     },
@@ -899,7 +908,9 @@
         "planning/evidence/rep-intent-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T023933Z-3540691.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
@@ -1208,7 +1219,8 @@
         "books/store-budget-naming.lisp",
         "tests/acl2/store-budget-naming-tests.lisp",
         "planning/evidence/signed-path-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
       "events": [
@@ -1313,7 +1325,9 @@
         "books/owner-feed-subject.lisp",
         "tests/acl2/owner-tests.lisp",
         "tests/acl2/owner-feed-tests.lisp",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption. Native feed component now carries a connection-table invariant from recovery through put/remove, validates only selected bounded input, and distinguishes handshake rejection from delivery refusal. Owned certification and raw boundary tests are separate from activation/real two-native-node evidence. The shell host-wrapper witness is withheld pending repair of its unconditional success marker.",
       "events": [
@@ -1485,7 +1499,8 @@
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ]
     },
     {
@@ -1706,7 +1721,8 @@
         "fn-ocfg-open-at-the-bound-refuses"
       ],
       "evidence": [
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ]
     },
     {
@@ -1799,7 +1815,8 @@
         "tests/acl2/byte-store-k0-pre-init-tests.lisp",
         "planning/evidence/k0-recovery-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "events": [
         "fn-bs-store-crash-image-scans",
@@ -1925,7 +1942,8 @@
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
         "planning/evidence/manifests/certify-20260924T105650Z-3582222.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Certified on persvati (farm run-20260921T033252Z-6ba2, 0 failures over 87 books: books/peer-inbound, books/peer-inbound-invariants, books/owner, books/owner-invariants, books/served, tests/acl2/peer-inbound-tests, tests/acl2/served-tests). Until w11/transit-correct the offer half was unreachable on a live connection: fn-peer-open-session pinned the node at :open and nothing replaced it, so the wire answered 335 and 238 for an article the connection had itself delivered (V0-TRANSIT-DUPLICATE, V0-TRANSIT-CHECK-DUP at 6fb30ca). The loop half was never inert in the model and was inert in the v0 matrix's deployment, which set no path-identity on either node. CHANGED 2026-09-22 (w31/freeze-3): `fn-own-read-offers-against-the-live-node` now hypothesises `fn-peer-sessionp` of the connection's peer session beside the bound role. `fn-own-conn-live-session` (books/owner.lisp) refreshes the node only under `(fn-peer-session-cfg ps)`, so on a bound peer beside a NULL configuration the session is handed back untouched and the node equation is false of it; `64a80197` made that pairing the recognizer's business, and the object the equation fails on is not a `fn-peer-sessionp` and the served path does not reach it. The theorem's other four conjuncts -- the peer, the configuration, the transfer and the inflight count are carried over -- hold on both branches and are unrestricted.",
       "events": [
@@ -2274,7 +2292,8 @@
         "tests/acl2/nntp-auth-tests.lisp",
         "planning/evidence/prf049-principal-role-2026-09-22.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane t9b-role, 2026-09-22 (plan T9, row PRF-049): the four events above are the keystones; tests/acl2/nntp-auth-teeth-tests.lisp keystones 8 to 10 and tests/acl2/owner-config-tests.lisp carry a reachable witness each (a real enrolled credential, a replayed peer table with one principal peer beside a source-address peer, a duplicate table, a table with no principal row, and a reconnect through fn-ocfg-read and fn-ocfg-open) and one must-fail per hypothesis, generated by a macro that first admits the full statement from the keystone, with a refuting value evaluated beside each; tools/teeth_check.py does not expand those macros. The same lane repaired fn-auth-bind-principal-peer: it bound on the auth-principal row count alone, so a row group carrying an auth-principal row that denotes a source-address record (admissible through a :set-peer delta; the teeth's shadow table) was bound, was not principal-derived, and survived STARTTLS; it now binds only fn-auth-principal-match, which reads the record back. Status stays in-progress until the image gate: a native reconnect on a deployed image, which is root's.",
       "events": [
@@ -2490,7 +2509,8 @@
         "tests/acl2/injection-tests.lisp",
         "planning/evidence/inn-lab-dabebb84-2026-09-22.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane T13-conform, 2026-09-22, from the INN lab's finding 1 (operator post fed INN an article with no Path; 437). Teeth: tests/acl2/owner-operator-tests.lisp builds the lab's own operator article through a real owner (configure, observe, submit, take, the store events, the completion) and asserts the queued octets byte for byte against the Path, Injection-Date and Injection-Info lines the lab's served POST carried; one must-fail per hypothesis with a refuting value beside it (the retry keystone through a macro that first admits the full statement). The native tests that run it on an image (tests/test_native_control.py) have not run: no image carries this yet.",
       "events": [
@@ -2586,7 +2606,8 @@
         "tests/acl2/owner-agent-tests.lisp",
         "tests/test_native_profile.py",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane t6b-profile, 2026-09-22: the served-POST keystone is proved over the host-called fn-ocfg-read-tls-prefix under the fn-served-connp premise; tests/acl2/owner-agent-tests.lisp carries a reachable witness built as the host builds it (a replayed history with the policy set path-identity delta, fn-oag-post-config, fn-ocfg-open, one POST read through fn-ocfg-read-tls-prefix whose queued article says Injection-Info: hbox.ember.software) and a must-fail per hypothesis, with a refuting value for the identity and freshness hypotheses and none known for the served premise. The image measurement is tests/test_native_profile.py and V0-NODE-PROFILE.",
       "events": [
@@ -2611,7 +2632,8 @@
         "books/owner-log.lisp",
         "tests/acl2/owner-log-tests.lisp",
         "tests/test_native_profile.py",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each.",
       "events": [
@@ -2887,7 +2909,9 @@
         "planning/evidence/manifests/certify-20260925T034017Z-4130348.json",
         "planning/evidence/manifests/certify-20260925T034524Z-4177436.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "events": [
         "fn-gidx-bucket-of-build",
@@ -3082,7 +3106,9 @@
         "tests/acl2/injection-tests.lisp",
         "planning/evidence/d25-injection-inverse-2026-09-24.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "note": "Lane p2-wire, from the campaign's W1/W2/W3 (planning/evidence/campaign-1a9dd747-2026-09-24.md). The refusal kind is relayed by the host from the ACL2 step that refused (fn-pb-existing-action since D25, fn-owner-prepare, fn-store-publication-admissibility, fn-owner-known-abort); the capacity comparison against max-transactions is still a host computation. The durable word of a POST commit is fn-ccar-own-finish's (host/owner-host.lisp fn-owner-finish-submission), equal to fn-own-finish by fn-ccar-own-finish-is-own-finish. The refusal words are a local policy choice pending ember's decision. D25 (lanes d25-dup-conflict, then d25-injection-inverse): the duplicate-versus-conflict decision is fn-pb-existing-action; since lane d25-injection-inverse its subject is the poster's source through the injection inverse, not a projection that drops named fields, so no scope limit on an opening Date remains for records of injection recipe v2. The provenance of generated fields is carried by the injected block itself (recipe v2: Path, then Injection-Date, generated Message-ID, generated Date, then Injection-Info closing the block); no Store record field was added. Recipe v1 records are read under v1 only where unambiguous (fn-inj-source-of-a-v1-record) and otherwise compared octet for octet (fn-inj-source-of-an-ambiguous-v1-record). A relayed article, or one another agent injected, is compared octet for octet, so a transit copy whose Path differs is again a conflict (as before D25). The supplied-Injection-Date refusal is a local acceptance policy, not an RFC requirement. It refines fn-sn-existing-action (fn-pb-existing-action-refines-the-byte-identity-decision).",
       "events": [
@@ -3119,7 +3145,8 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T065706Z-2375300.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "progress_note": "Lanes group-name-validity (grammar, 2026-09-24) and group-names-2 (reserved names, 2026-09-24). Teeth: records-shape-tests has the grammar witnesses and seven must-fails; native-admin-tests and native-operator-tests have the reserved witnesses (example, example.test, Example.a, EXAMPLE.test, poster, POSTER, Poster refused; fn.example, examples.test, poster.x, fn.poster accepted; retire of example.test accepted) and one must-fail per hypothesis. fn-record-group-namep-bounds-length-by-definition is the local bound by definition and is not cited. Lane defaults-precise (2026-09-24): specific-purpose recognizer and the local-agreement theorem; teeth in native-admin-tests (15 special witnesses, 12 near misses, the plan witness over five special names and one ordinary, one must-fail per hypothesis). persvati run-20260924T230642Z-0e1b.",
       "events": [
@@ -3231,7 +3258,8 @@
         "planning/evidence/manifests/certify-20260926T065706Z-2375300.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
-        "planning/evidence/manifests/certify-20260926T092212Z-1110255.json"
+        "planning/evidence/manifests/certify-20260926T092212Z-1110255.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5).",
       "events": [
@@ -3272,7 +3300,8 @@
         "planning/evidence/m6-list-counts-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T214755Z-939221.json",
         "planning/evidence/manifests/certify-20260924T220328Z-1075905.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "events": [
         "fn-gidx-list-counts-command-is-the-archive-fold",
@@ -3671,7 +3700,8 @@
         "planning/evidence/manifests/certify-20260926T004042Z-3226778.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane control-c2c3 (2026-09-25), packets C2 and C3 of planning/design-2026-09-25-control-messages.md under D29. Teeth in tests/acl2/control-authority-tests.lisp: per keystone a reachable witness asserting antecedent and conclusion, and per hypothesis a removal witness (the carried verdict; the cross-post outside the grant; the wrong principal; the revoke before the cancel; the view pinned before the cancel; the early cancel). The two reconfiguration headlines (fn-ocl-no-reader-observes-a-half-change, fn-ocl-crash-at-any-instant-recovers-the-live-generation) are universally quantified over delta lists and were recertified with the new slot and kinds. Open: the served view (K1 restated over fn-ctl-visible-articles at fn-own-refresh), signed control filing, the host's commit-time call, Supersedes. Lane control-c3 (2026-09-25): the signed record binding names the filing group (the :control-signed refusal is gone, signed cancels can be verified), and the visible list has an incremental form with its correspondence keystones. Still open: the owner wiring (fn-own-refresh carrying the visible list, K1 restated), the host's commit-time and recovery calls, 430/423, HDR :fn-control, Supersedes, fn_verify. Lane control-c3d (2026-09-25): records decided at each withdrawing article's own Store txid, live and at recovery (the journal keystones); Supersedes; the config-owner-live rules scoped (15.1 s to 7.6 s); the reader kernel for 423/430 withdrawn and HDR :fn-control with no caller yet; fn_verify's withdrawal report. Open: the served wiring of the reader kernel, the owner relation carrying the journal equality, the two-node native cases.",
       "events": [
@@ -3784,7 +3814,9 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
@@ -3822,7 +3854,9 @@
         "tests/acl2/owner-intent-carried-tests.lisp",
         "planning/evidence/carry-kind-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "Open: the identity prepare (host fn-owner-prepare-identity) still goes through the unverified fn-ocfg-step and fn-sn-prepare-identity, whose fn-sf-prepare-record replays the whole appended history (fn-sf-history-recoverablep); the article path's correspondence (fn-spc-related-candidate-is-recoverable) has no identity analog yet. fn-replay-apply-record and fn-replay-identity-step still recognize the composite and decode its record on the gate and again on the finish.",
       "events": [
@@ -4372,7 +4406,8 @@
         "planning/evidence/manifests/certify-20260925T183348Z-4032007.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
-        "planning/evidence/manifests/certify-20260926T051745Z-1490116.json"
+        "planning/evidence/manifests/certify-20260926T051745Z-1490116.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Open: the Store state still holds the record list (fn-sf-records; a commit appends to it, store-files.lisp), so the kernel does not yet carry a count; fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic in the whole-node recognizer; the covered prefix's octets are still re-encoded for fnn-open-live-store's callers; two hypotheses have no must-fail (the :ok hypothesis of the Store open's replay conjunct and the admitted-history hypothesis of the publication keystone) and the 2^32 bound of fn-sco-freeze-of-capture-carries-the-count has no reachable counterexample.",
       "events": [
@@ -4705,7 +4740,8 @@
         "planning/evidence/visibility-join-2026-09-25.md",
         "tests/test_native_visibility_join.py",
         "planning/evidence/manifests/certify-20260926T010233Z-3422722.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Certified persvati run-20260926T000228Z-6d61 (2 jobs, w25): books/visibility-join 1.4 s, its tests 1.6 s. Teeth: a reachable Store built by fn-sn-io/fn-spc-prepare/fn-sn-finish with target, cancel (withdrawn under a namespace grant) and the reclaimed tombstone; one must-fail per hypothesis (the stringp removals are corrupted-state witnesses). Native SCN-060 passed on the developer image (hbox).",
       "events": [
@@ -4739,7 +4775,8 @@
         "planning/evidence/manifests/certify-20260926T002933Z-3123985.json",
         "planning/evidence/manifests/certify-20260926T010233Z-3422722.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Certified with teeth: manifests certify-20260925T235221Z-2754177 (persvati) and certify-20260926T001521Z-4100524 (hbox, with packet 1's gate); native gates on the a9ed4dc2 developer image (bounds-p6 record).",
       "events": [
@@ -4779,7 +4816,8 @@
         "planning/evidence/manifests/certify-20260926T001006Z-2934089.json",
         "planning/evidence/manifests/certify-20260926T001123Z-2946946.json",
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane source-corpus (2026-09-25). Certified on persvati run-20260925T235003Z-3cb2 (source-routes 1.9 s, source-routes-tests 7.1 s at 2 jobs). Teeth: reachable witnesses over the real fn-inj-decide and Store for a supplied Date, a generated Date and a supplied Path (recipe v3); hypothesis-removal witnesses for the held payload, the groups, the first Message-ID and distinct sources; the held hypothesis was removed after proving the weakened statements.",
       "events": [
@@ -4842,7 +4880,8 @@
         "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
         "planning/evidence/manifests/certify-20260926T005533Z-4181560.json",
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane consumer-e2 (2026-09-25), PKT-165 for the retaining-mode decision.",
       "events": [
@@ -5025,7 +5064,9 @@
         "planning/evidence/manifests/certify-20260926T065706Z-2375300.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
-        "planning/evidence/manifests/certify-20260926T092212Z-1110255.json"
+        "planning/evidence/manifests/certify-20260926T092212Z-1110255.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "progress_note": "Open: the replay correspondence of the reclaimed record (the open of the reclaiming pack equals fn-rcl-reclaim-state of the open of the history: PRF-088's own open step); guard verification of books/store-reclaim-pack (all :verify-guards nil, called through a :program host wrapper); holders from feed state, FNBS rows and BP obligations are not read (the BP journal is a separate namespace; the offline verb reads the Store's consumer projection only); chained packs for N above one pack (4,096 events, 4 MiB). Lane reclaim-lifecycle-2 (2026-09-26): PKT-169 retired by PRF-129 (fn-smr-admission-keeps-the-reserve, fn-cverb-pack-fits-the-disk); the retention charge falls to the history unit on reclaim (fn-rclp-rewritten-charge-is-the-history-unit).",
       "events": [
@@ -5071,7 +5112,8 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "See planning/evidence/operator-health-2026-09-25.md for the farm manifest and the native cases.",
       "events": [
@@ -5112,7 +5154,8 @@
         "planning/evidence/manifests/certify-20260926T010233Z-3422722.json",
         "planning/evidence/manifests/certify-20260926T011837Z-3569115.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Certified with teeth (persvati, w25, 2 jobs, 300 s): run-20260926T010201Z-edf7 (certify-20260926T010233Z-3422722: 562 of 565 passed; the three reds were this lane's test books, fixed in 9104f415) and run-20260926T011811Z-b295 (certify-20260926T011837Z-3569115: those three passed). Native served-POST gate on the a9ed4dc2 developer image (SCN-072). The allocator past 2^32 - 1 and the stamp past 2106 wait on PKT-244.",
       "events": [
@@ -5158,7 +5201,8 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T065706Z-2375300.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "progress_note": "Part 2 (the bp-node health verdict over the BP node's report, PKT-174's default) is not done; see planning/evidence/operator-walk-2026-09-26.md, PKT-264.",
       "events": [
@@ -5196,7 +5240,9 @@
         "planning/evidence/manifests/certify-20260926T021052Z-4035158.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
-        "planning/evidence/manifests/certify-20260926T092212Z-1110255.json"
+        "planning/evidence/manifests/certify-20260926T092212Z-1110255.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json"
       ],
       "progress_note": "Lane reclaim-lifecycle-2 (2026-09-26). Open: the free-octet observation is the host's statvfs, an environmental fact not modelled (a concurrent writer can take the space between the observation and the write; the write then fails before the selection, which the pack publication cuts cover). The BP namespace's own reservation is the FNBS debt cover (books/bp-node-debt.lisp), not restated here. Every book under 10 s.",
       "events": [
@@ -5547,7 +5593,8 @@
         "tests/acl2/consumer-artifact-retry-tests.lisp",
         "books/source-routes.lisp",
         "planning/evidence/consumer-e2-2-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T062056Z-559151.json"
+        "planning/evidence/manifests/certify-20260926T062056Z-559151.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane consumer-e2-2 (2026-09-26), gpt-6's review of wave 2 section 2.",
       "events": [
@@ -5654,7 +5701,8 @@
         "planning/evidence/rollback-history-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T065706Z-2375300.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "events": [
         "fn-native-operator-history-loss-is-ancestry",
@@ -5712,7 +5760,8 @@
         "tests/test_native_capacity_vector.py",
         "planning/evidence/capacity-vector-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T073035Z-2680334.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here.",
       "events": [
@@ -5797,7 +5846,8 @@
         "tests/native_owner_chunk_loop_raw.lisp",
         "tests/test_native_owner.py",
         "docs/operator.md",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json"
       ],
       "events": [
         "fn-exp-open-admits-within-the-limits-in-force",
@@ -5844,7 +5894,8 @@
         "planning/evidence/manifests/certify-20260926T075416Z-2929730.json",
         "planning/evidence/manifests/certify-20260926T080341Z-3026258.json",
         "planning/evidence/manifests/certify-20260926T081018Z-965509.json",
-        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json"
+        "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
       "events": [
         "fn-served-implicit-tls-is-the-starttls-session",
@@ -5891,6 +5942,36 @@
         "fn-ccc-links-count-within-boundary",
         "fn-cverb-pack-decision-capture-succeeds",
         "fn-rclp-reclaiming-pack-is-a-first-link"
+      ]
+    },
+    {
+      "id": "PRF-163",
+      "title": "A control article is offered to every peer whose outbound wildmat matches its Newsgroups names or its filing group, and an ordinary article's feed scope is unchanged",
+      "statement": "fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group: for an owner O with a submission in flight whose octets classify :control (fn-own-feed-control-of, equal to fn-ctl-classify-octets whenever the article parses: fn-own-feed-control-of-is-the-filing-classification), a peer NAME of the feed table (fn-own-feed-tablep, fn-own-feed-entry-of) with an outbound half whose wildmat matches a group of the article's Newsgroups (fn-own-feed-groups-of) or its filing group (fn-ctl-filing-group of the verb), whose path-identity the Path does not name, which is not the origin and whose queue does not hold the Message-ID, is a member of fn-own-submission-targets O (books/owner-feed-subject.lisp; the host's intent calls it through fn-icar-submission-targets, equal to it, at host/owner-host.lisp fn-owner-submission-intent, and the durable enqueue fn-own-feed-durable through fn-own-outcome, fn-own-control-outcome and fn-own-transit-outcome). fn-own-submission-target-of-a-control-article-is-in-its-scope: every target of a control article matches its base groups, its Newsgroups names or its filing group. fn-own-sub-feed-groups-of-an-ordinary-article: a submission whose octets do not classify :control has exactly its base groups. Not covered: the pull side (NEWNEWS serves by the filed group), the receiving node's acceptance of the cancel (PRF-097/C3's), RFC 5537 section 5.3's advice that a cancel's Newsgroups equal its target's (the author's, not checked).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-033"
+      ],
+      "depends_on": [
+        "PRF-160"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/owner.lisp",
+        "books/owner-feed-subject.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "tests/test_native_friends_feed.py",
+        "planning/evidence/friends-peer-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
+        "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
+        "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
+      ],
+      "events": [
+        "fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group",
+        "fn-own-submission-target-of-a-control-article-is-in-its-scope",
+        "fn-own-sub-feed-groups-of-an-ordinary-article"
       ]
     }
   ]
