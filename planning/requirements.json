@@ -2970,6 +2970,29 @@
         "planning/evidence/community-bounds-2026-09-26.md"
       ],
       "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168)."
+    },
+    {
+      "id": "NNT-034",
+      "title": "An operator's one-use invitation code lets a friend make their own AUTHINFO account over TLS, bound once and only once across a crash, without the operator editing auth.toml or restarting",
+      "specification": "specs/nntp.md#invitation-code-accounts-nnt-034",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-164"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/nntp-auth.lisp",
+        "tests/acl2/accounts-tests.lisp",
+        "planning/evidence/friends-accounts-2026-09-26.md"
+      ],
+      "implementation_note": "XREDEEM is an fn extension, not RFC 4643 section 2.3's AUTHINFO; its replies reuse 381/281/482/483 in RFC 3977 section 3.2's classes. Built: the tenth configuration slot, admission, the redeem plan, the once-only theorems and the credential snapshot (PRF-164). Owed (PKT-439): the wire verb, its publication through fnn-owner-live-reconfigure-locked, `operator CONFIG account invite|list`, the native two-node session. PKT-401 narrowed to PKT-439."
     }
   ]
 }
