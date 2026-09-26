@@ -1863,7 +1863,7 @@
         "tests/bp-dtn7/run_mission_four_node.py",
         "planning/evidence/mission-four-node-2026-09-25.md"
       ],
-      "note": "Unsigned report and reply pass on image abbd8aef (all seven steps); the signed report is refused at B (request-refused, reason not logged): the scenario stays specified until the signed run passes. planning/evidence/mission-four-node-2026-09-25.md."
+      "note": "Unsigned report and reply pass on image abbd8aef (all seven steps); the signed report is refused at B (request-refused, reason not logged): the scenario stays specified until the signed run passes. planning/evidence/mission-four-node-2026-09-25.md. mission-signed: the signed run on f1734955 reaches B's Store and is refused with reason=history (PKT-247); still specified."
     },
     {
       "id": "SCN-071",
@@ -1915,7 +1915,7 @@
         "tests/bp-dtn7/run_mission_four_node.py",
         "planning/evidence/mission-signed-2026-09-26.md"
       ],
-      "note": "Pending the signed run on the lane image."
+      "note": "Not passing (PKT-247). On image f1734955 steps 0-2 and 5 hold with the signed report (fragmentation at X, X SIGKILL and restart, B's stored copy verifies with hybrid-verify-source); B stores A's signed report and then refuses the delivery with reason=history (the BP receiver's Store binding does not see the kind-4 acceptance), and A refuses B's signed reply the same way. Layer 1 (reason=intent-store-conflict, the injecting agent's check on transit) is fixed. The ambiguous-peer case: see planning/evidence/mission-signed-2026-09-26.md."
     }
   ]
 }
