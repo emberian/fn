@@ -927,6 +927,22 @@ class FrictionTests(unittest.TestCase):
                 self.assertIn("no farm run started", str(refused.exception))
                 self.assertEqual(fake.commands, [])
 
+    def test_an_unbalanced_source_refuses_before_any_remote_command(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "host").mkdir(exist_ok=True)
+            (root / "host" / "io.lisp").write_text("(defun a (x)\n  x\n(defun b (y) y)\n")
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("persvati", root, ["books/alpha"], jobs=2,
+                                timeout_seconds=60, affected_by=[])
+        text = str(refused.exception)
+        self.assertIn("no farm run started", text)
+        self.assertIn("form starting at host/io.lisp:1 never closes", text)
+        self.assertEqual(fake.commands, [])
+
     def test_valid_words_with_lisp_suffix_pass_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

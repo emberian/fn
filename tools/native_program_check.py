@@ -44,7 +44,9 @@ syscalls; that the running image executes the source read here; and
 anything in the callers of these functions.  Parsing is a small
 s-expression scanner over the defun text: no Lisp reader, no evaluation.
 
-Exit status: 1 on any mismatch, 0 otherwise.
+Exit status: 1 on any mismatch, 2 when a form does not balance (reported
+as "unbalanced: FILE:LINE, form starting at FILE:LINE"), 0 otherwise.
+`--balance FILE...` checks only that each file's parentheses balance.
 """
 from __future__ import annotations
 
@@ -119,9 +121,16 @@ class Str(str):
 
 
 def tokenize(text: str):
+    for _, token in positioned_tokens(text):
+        yield token
+
+
+def positioned_tokens(text: str):
+    """(offset, token) for each token of TEXT; `tokenize` drops the offset."""
     i, n = 0, len(text)
     while i < n:
         c = text[i]
+        start = i
         if c.isspace():
             i += 1
         elif c == ";":
@@ -131,29 +140,29 @@ def tokenize(text: str):
             j = text.find("|#", i)
             i = n if j < 0 else j + 2
         elif c in "()":
-            yield c
+            yield start, c
             i += 1
         elif c == "'":
-            yield "'"
+            yield start, "'"
             i += 1
         elif c == "`":
-            yield "`"
+            yield start, "`"
             i += 1
         elif c == ",":
             if text.startswith(",@", i):
-                yield ",@"
+                yield start, ",@"
                 i += 2
             else:
-                yield ","
+                yield start, ","
                 i += 1
         elif text.startswith("#'", i):
-            yield "#'"
+            yield start, "#'"
             i += 2
         elif text.startswith("#\\", i):
             j = i + 3
             while j < n and (text[j].isalnum() or text[j] in "-_"):
                 j += 1
-            yield text[i:j]
+            yield start, text[i:j]
             i = j
         elif c == '"':
             j, buf = i + 1, []
@@ -162,17 +171,19 @@ def tokenize(text: str):
                     j += 1
                 buf.append(text[j])
                 j += 1
-            yield Str("".join(buf))
+            yield start, Str("".join(buf))
             i = j + 1
         elif c == "|":
             j = text.find("|", i + 1)
-            yield text[i:j + 1]
+            if j < 0:  # an unterminated |symbol| runs to the end, not back to 0
+                j = n - 1
+            yield start, text[i:j + 1]
             i = j + 1
         else:
             j = i
             while j < n and not text[j].isspace() and text[j] not in "()'\";`,":
                 j += 1
-            yield text[i:j].lower()
+            yield start, text[i:j].lower()
             i = j
 
 
@@ -182,6 +193,8 @@ _PREFIX = {"'": "quote", "`": "quasiquote", ",": "unquote", ",@": "unquote",
 
 def read_one(tokens):
     tok = next(tokens)
+    if isinstance(tok, Str):  # a string "(" or ")" is data, not structure
+        return tok
     if tok == "(":
         out = []
         while True:
@@ -200,8 +213,80 @@ class _Close(Exception):
     pass
 
 
+class Unbalanced(ValueError):
+    """A form whose parentheses do not balance, located by file and line."""
+
+
+class Text(str):
+    """Source text that remembers which file each span came from.
+
+    `segments` is [(offset, path)], ascending: model_books_text() joins several
+    books into one string, and an unbalanced form must still be reported
+    against the file a person edits (PKT-345: rep-wave-d-3 read a bare
+    StopIteration from host/native/io.lisp as a tokenizer fault).
+    """
+
+    def __new__(cls, value: str, segments):
+        text = super().__new__(cls, value)
+        text.segments = list(segments)
+        return text
+
+
+def locate(text: str, offset: int) -> str:
+    """FILE:LINE of OFFSET in TEXT (`<text>` for a string with no file)."""
+    segments = getattr(text, "segments", None) or [(0, "<text>")]
+    base, path = segments[0]
+    for start, name in segments:
+        if start <= offset:
+            base, path = start, name
+    return "{}:{}".format(path, text.count("\n", base, offset) + 1)
+
+
 def parse_at(text: str, offset: int):
-    return read_one(tokenize(text[offset:]))
+    try:
+        return read_one(tokenize(text[offset:]))
+    except StopIteration:
+        raise Unbalanced("unbalanced: {}, form starting at {} never closes".format(
+            locate(text, len(text)), locate(text, offset))) from None
+    except _Close:
+        raise Unbalanced("unbalanced: {}: a close parenthesis with no open form".format(
+            locate(text, offset))) from None
+
+
+def balance(text: str) -> list:
+    """Every unbalanced top-level form of TEXT, as located messages.
+
+    The lane-side reader check (PKT-345, PKT-305): the same tokenizer the
+    program check uses, run over a whole file before a submit, so an
+    unbalanced parenthesis is reported where it is rather than as an
+    image build's end of file.
+    """
+    problems, stack, column_zero = [], [], None
+    for offset, token in positioned_tokens(text):
+        if isinstance(token, Str):  # a string "(" is not a parenthesis
+            continue
+        if token == "(":
+            # A form opening at column 0 inside another is where a missing
+            # close parenthesis usually shows itself (the next defun).
+            if stack and column_zero is None and (offset == 0 or text[offset - 1] == "\n"):
+                column_zero = offset
+            stack.append(offset)
+        elif token == ")":
+            if stack:
+                stack.pop()
+                if not stack:
+                    column_zero = None
+            else:
+                problems.append("unbalanced: {}: a close parenthesis with no open form".format(
+                    locate(text, offset)))
+    if stack:
+        problems.append("unbalanced: {}, form starting at {} never closes "
+                        "(innermost unclosed open parenthesis at {})".format(
+                            locate(text, len(text)), locate(text, stack[0]),
+                            locate(text, stack[-1]))
+                        + ("; a form opens at column 0 inside it at {}".format(
+                            locate(text, column_zero)) if column_zero is not None else ""))
+    return problems
 
 
 def show(form, limit: int = 90) -> str:
@@ -820,7 +905,7 @@ def check_program(program, host, model, declared) -> ProgramResult:
 
 
 def read(rel):
-    return (ROOT / rel).read_text()
+    return Text((ROOT / rel).read_text(), [(0, rel)])
 
 
 def model_books_text() -> str:
@@ -828,7 +913,13 @@ def model_books_text() -> str:
     books/byte-store-marker-program.lisp for the committed-history marker),
     read as one text: definitions and constants are found by name."""
     books = [BOOK] + sorted({"books/" + c.book for c in ALL_CUTS} - {BOOK})
-    return "\n".join(read(b) for b in books)
+    parts, segments, offset = [], [], 0
+    for book in books:
+        segments.append((offset, book))
+        part = read(book)
+        parts.append(part)
+        offset += len(part) + 1
+    return Text("\n".join(parts), segments)
 
 
 def check(host_text: str | None = None, book_text: str | None = None,
@@ -875,8 +966,25 @@ def render(report: Report) -> str:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--balance", nargs="+", metavar="FILE",
+                    help="only check that each FILE's parentheses balance "
+                         "(the reader check a lane runs before a submit)")
     args = ap.parse_args(argv)
-    report = check()
+    if args.balance:
+        problems = []
+        for name in args.balance:
+            path = Path(name)
+            problems += balance(Text(path.read_text(encoding="utf-8"), [(0, name)]))
+        for problem in problems:
+            print(problem)
+        print("balance: {} file(s), {}".format(
+            len(args.balance), "{} unbalanced".format(len(problems)) if problems else "balanced"))
+        return 1 if problems else 0
+    try:
+        report = check()
+    except Unbalanced as error:
+        print("native program check: {}".format(error))
+        return 2
     if args.json:
         print(json.dumps(asdict(report), indent=2))
     else:
