@@ -91,7 +91,8 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
                "so the operator refuses `post` (exit 5) and never takes the live arm"
          for name in ("fn-native-control-host-status-class",
                       "fn-native-control-host-status-exit-code",
-                      "fn-native-control-host-refusal-status")},
+                      "fn-native-control-host-refusal-status",
+                      "fn-native-control-host-reply-detail")},
          **{name: "operator.lisp's offline control/peer liveness decision (PKT-344); "
                  "the DTN image names :control in *fnn-image-omitted-surfaces*, so "
                  "fnn-operator-execute-admin takes :offline without calling it"

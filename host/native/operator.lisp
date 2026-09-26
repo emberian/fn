@@ -235,10 +235,18 @@ order, and the names it found handed straight back."
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)
         code))))
 
+(defun fnn-operator-status-detail (status word)
+  "STATUS, then the reason word ACL2 says the operator's line carries
+(fn-native-control-reply-detail, PKT-453 (a)): its octets, not a host word."
+  (let ((detail (and word (fnn-core 'fn-native-control-host-reply-detail status word))))
+    (if (fnn-octet-list-p detail)
+        (format nil "~a ~a" status (fnn-octets-string (fnn-octets detail)))
+      status)))
+
 (defun fnn-operator-execute-post (result)
   "Use only ACL2-normalized request fields and ACL2-framed local control."
   (handler-case
-      (let* ((status
+      (multiple-value-bind (status word)
                (fnn-control-submit
                 (fnn-octets
                  (fnn-core
@@ -251,13 +259,12 @@ order, and the names it found handed straight back."
                          'fn-native-operator-host-result-post-group-octets result))
                 (fnn-octets
                  (fnn-core
-                  'fn-native-operator-host-result-post-payload-path-octets result))))
-             (class
-               (fnn-core 'fn-native-control-host-status-class status))
-             (code
-               (fnn-core 'fn-native-control-host-status-exit-code status)))
-        (fnn-operator-emit-status class "post" status)
-        code)
+                  'fn-native-operator-host-result-post-payload-path-octets result)))
+        (let ((class (fnn-core 'fn-native-control-host-status-class status))
+              (code (fnn-core 'fn-native-control-host-status-exit-code status)))
+          (fnn-operator-emit-status class "post"
+                                    (fnn-operator-status-detail status word))
+          code))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status
@@ -308,7 +315,8 @@ observation into the outcome and this function only carries it out."
 
 (defun fnn-operator-execute-admin (result)
   "Execute only the exact accepted ACL2 administrative plan."
-  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+  (let ((live-detail nil)
+        (root (fnn-core 'fn-native-operator-host-result-store-root result))
         (command (fnn-core 'fn-native-operator-host-result-command result))
         (plan (fnn-core 'fn-native-operator-host-result-admin-plan result))
         (argv (fnn-core 'fn-native-operator-host-result-admin-argv result))
@@ -372,12 +380,16 @@ observation into the outcome and this function only carries it out."
                      (fnn-core 'fn-native-admin-host-report-kind plan)))
                    (queryp (fnn-admin-query root plan))
                    (livep
-                    (fnn-core 'fn-native-control-host-status-exit-code
-                              (fnn-control-admin control-path argv)))
+                    (multiple-value-bind (status word)
+                        (fnn-control-admin control-path argv)
+                      (let ((detail (fnn-operator-status-detail status word)))
+                        (unless (eq detail status) (setq live-detail detail)))
+                      (fnn-core 'fn-native-control-host-status-exit-code status)))
                    ((eq liveness :held)
                     (fnn-core 'fn-native-control-host-status-exit-code :refused))
                    (t (fnn-admin-execute root plan))))))
-          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command
+                                    live-detail)
           code)
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))

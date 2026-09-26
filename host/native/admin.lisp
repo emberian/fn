@@ -165,7 +165,13 @@ Answers :accepted once the record is durable and the owner installed it, or
          (staged (and (integerp cid) (funcall stage cid))))
     (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
     (unless (eq staged :staged)
-      (return-from fnn-owner-live-reconfigure-locked :refused)))
+      ;; The second value is the staging step's reason, which ACL2 left in
+      ;; its reason slot (fn-owner-reconfigure-reason: fn-cfg-delta-reason's
+      ;; word, :no-such-grant and the rest), or NIL when nothing was staged.
+      (return-from fnn-owner-live-reconfigure-locked
+        (values :refused
+                (and (integerp cid) (eq staged :refused)
+                     (fnn-owner-core 'fn-owner-reconfigure-reason))))))
   (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
          (record (progn
                    (unless (fnn-octet-list-p record-list)
@@ -233,13 +239,18 @@ Returns the ACL2-rendered reply octets for CID."
   (fnn-owner-serialized
    service nil
    (lambda ()
+     ;; PKT-453 (a): a refusal answers (:reason :refused REASON), the
+     ;; plan's reason or the staging step's, both ACL2's.
      (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
        (unless (fnn-admin-plan-acceptedp plan)
-         (return-from fnn-owner-live-admin-serialized :refused))
-       (fnn-owner-live-reconfigure-locked
-        service
-        (lambda (cid)
-          (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))))))
+         (return-from fnn-owner-live-admin-serialized
+           (list :reason :refused (fnn-admin-plan-reason plan))))
+       (multiple-value-bind (word reason)
+           (fnn-owner-live-reconfigure-locked
+            service
+            (lambda (cid)
+              (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))
+         (if (eq word :refused) (list :reason :refused reason) word))))))
 
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.
