@@ -602,6 +602,7 @@
     "books/nntp-overview",
     "books/nntp-legacy",
     "books/nntp-xpat",
+    "books/nntp-search-scope",
     "books/nntp-newnews",
     "books/nntp-invariants",
     "books/nntp-effects",
@@ -710,6 +711,7 @@
     "tests/acl2/nntp-reader-profile-tests",
     "tests/acl2/nntp-legacy-tests",
     "tests/acl2/nntp-xpat-tests",
+    "tests/acl2/nntp-search-scope-tests",
     "tests/acl2/nntp-newnews-tests",
     "books/bp-release",
     "books/bp-release-invariants",
@@ -889,25 +891,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 902,
-    "books_in_root_closure": 898,
-    "roots": 885,
-    "theorems": 12495,
-    "functions": 8739,
-    "assert_events": 13078,
+    "books": 904,
+    "books_in_root_closure": 900,
+    "roots": 887,
+    "theorems": 12507,
+    "functions": 8752,
+    "assert_events": 13103,
     "must_fails": 1437,
     "encapsulates": 63,
     "guards": {
       "verified": 2181,
-      "declared-off": 659,
+      "declared-off": 663,
       "default-guarded": 4607,
-      "default-unguarded": 1292
+      "default-unguarded": 1301
     },
-    "suspect_theorems": 108,
+    "suspect_theorems": 109,
     "export_hygiene_warnings": 149,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 107,
-    "include_hygiene_warnings": 909,
+    "include_hygiene_warnings": 912,
     "host_names_warnings": 1016,
     "hand_written_record_warnings": 18
   },
@@ -9662,6 +9664,33 @@
       "system_includes": [],
       "suspects": [
         "fn-nntp-reclaimed-article-answers-reclaimed"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-search-scope.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-xpat"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-nss-hdr-lines-of-no-numbers"
       ],
       "read_error": null
     },
@@ -21382,6 +21411,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-search-scope-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 8
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "defconsts": 9,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-search-scope",
+        "control-served-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-teeth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -25716,6 +25773,14 @@
       ]
     },
     {
+      "theorem": "fn-nss-hdr-lines-of-no-numbers",
+      "book": "books/nntp-search-scope.lisp",
+      "line": 77,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
       "line": 847,
@@ -27430,10 +27495,11 @@
         "book": "books/wildmat.lisp",
         "line": 52,
         "stated_in": [
+          "books/nntp-search-scope.lisp",
           "books/wildmat-parser-invariants.lisp",
           "books/wildmat-utf8-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-wildmat-utf8-rest",
@@ -30097,6 +30163,13 @@
         "line": 2311,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nntp-search-scope.lisp",
+        "line": 38,
+        "include": "nntp-xpat",
+        "included": "books/nntp-xpat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -33268,6 +33341,20 @@
         "line": 3,
         "include": "../../books/nntp-range-indexed-invariants",
         "included": "books/nntp-range-indexed-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-search-scope-tests.lisp",
+        "line": 12,
+        "include": "control-served-tests",
+        "included": "tests/acl2/control-served-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-search-scope-tests.lisp",
+        "line": 13,
+        "include": "../../books/nntp-search-scope",
+        "included": "books/nntp-search-scope.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
