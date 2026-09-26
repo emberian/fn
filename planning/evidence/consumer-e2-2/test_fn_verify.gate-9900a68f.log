@@ -1,0 +1,74 @@
+# target tests.test_fn_verify  start 2026-09-26T06:22:10Z  tree /tank/fn/scratch/consumer-e2-2/tree-gate image /tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# image sha256 1f66a27beda5dcb033c810768b36f37192b1f454002108478e46461877e0ad96 (core)
+# env FN_CONSUMER_EXCHANGE_EVIDENCE=/tank/fn/scratch/consumer-e2-2/logs/test_fn_verify.gate-9900a68f.evidence.json
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/consumer-e2-2/tree-gate
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/consumer-e2-2/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/consumer-e2-2/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_a_carried_article_is_undecided_3_never_0_or_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_carried_article_is_undecided_3_never_0_or_1) ... ok
+test_a_lying_node_is_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2) ... ok
+test_agreement_on_a_valid_signature_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0) ... ok
+test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1) ... ok
+test_carrier_v1_now_carries_up_to_65535_octets (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v1_now_carries_up_to_65535_octets) ... ok
+test_carrier_v2_tampered_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_tampered_is_1) ... ok
+test_carrier_v2_valid_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_valid_is_0) ... ok
+test_carrier_wrong_version_byte_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_wrong_version_byte_is_refused) ... ok
+test_check_article_is_the_offline_independent_check (tests.test_fn_verify.FakeNodeVerifyTests.test_check_article_is_the_offline_independent_check) ... ok
+test_noncanonical_carrier_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused) ... ok
+test_the_versions_sign_disjoint_preimages (tests.test_fn_verify.FakeNodeVerifyTests.test_the_versions_sign_disjoint_preimages) ... ok
+test_usage_error_never_reads_as_disagreement (tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement) ... ok
+test_what_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3) ... ok
+test_withdrawal_by_the_author (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_by_the_author) ... ok
+test_withdrawal_claims_the_checks_contradict_are_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_claims_the_checks_contradict_are_2) ... ok
+test_withdrawal_not_executed_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_not_executed_is_1) ... ok
+test_withdrawal_that_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_that_cannot_be_decided_is_3) ... ok
+test_a_v1_record_from_before_v2_is_still_verified_0 (tests.test_fn_verify.NativeVerifyTests.test_a_v1_record_from_before_v2_is_still_verified_0) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on (tests.test_fn_verify.NativeVerifyTests.test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_fabricated_hdr_answers_are_2 (tests.test_fn_verify.NativeVerifyTests.test_fabricated_hdr_answers_are_2) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_large_signed_posts_verify_under_their_version_0 (tests.test_fn_verify.NativeVerifyTests.test_large_signed_posts_verify_under_their_version_0) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_signed_post_verifies_independently_0 (tests.test_fn_verify.NativeVerifyTests.test_signed_post_verifies_independently_0) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_tampered_bytes_under_the_nodes_verified_line_are_2 (tests.test_fn_verify.NativeVerifyTests.test_tampered_bytes_under_the_nodes_verified_line_are_2) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_tampered_post_is_not_stored_so_nothing_is_decided_3 (tests.test_fn_verify.NativeVerifyTests.test_tampered_post_is_not_stored_so_nothing_is_decided_3) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_tampered_v2_post_is_refused_and_not_stored_3 (tests.test_fn_verify.NativeVerifyTests.test_tampered_v2_post_is_refused_and_not_stored_3) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered (tests.test_fn_verify.NativeVerifyTests.test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_unsigned_post_both_say_unverified_1 (tests.test_fn_verify.NativeVerifyTests.test_unsigned_post_both_say_unverified_1) ... skipped 'set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL'
+test_a_changed_v2_tag_or_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught) ... ok
+test_a_changed_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_width_is_caught) ... ok
+test_a_field_the_spec_forgets_to_drop_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_field_the_spec_forgets_to_drop_is_caught) ... ok
+test_a_renamed_function_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_renamed_function_is_caught) ... ok
+test_the_spec_the_books_and_the_verifier_agree (tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.379s     test_a_lying_node_is_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2)
+0.303s     test_check_article_is_the_offline_independent_check (tests.test_fn_verify.FakeNodeVerifyTests.test_check_article_is_the_offline_independent_check)
+0.267s     test_withdrawal_claims_the_checks_contradict_are_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_claims_the_checks_contradict_are_2)
+0.245s     test_what_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3)
+0.184s     test_withdrawal_that_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_that_cannot_be_decided_is_3)
+0.172s     test_a_carried_article_is_undecided_3_never_0_or_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_carried_article_is_undecided_3_never_0_or_1)
+0.170s     test_withdrawal_by_the_author (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_by_the_author)
+0.130s     test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1)
+0.098s     test_carrier_v2_tampered_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_tampered_is_1)
+0.096s     test_carrier_v2_valid_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_valid_is_0)
+0.092s     test_carrier_v1_now_carries_up_to_65535_octets (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v1_now_carries_up_to_65535_octets)
+0.091s     test_agreement_on_a_valid_signature_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0)
+0.085s     test_carrier_wrong_version_byte_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_wrong_version_byte_is_refused)
+0.082s     test_withdrawal_not_executed_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_not_executed_is_1)
+0.052s     test_a_changed_v2_tag_or_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught)
+0.049s     test_the_spec_the_books_and_the_verifier_agree (tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree)
+0.049s     test_a_changed_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_width_is_caught)
+0.048s     test_a_renamed_function_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_renamed_function_is_caught)
+0.048s     test_a_field_the_spec_forgets_to_drop_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_field_the_spec_forgets_to_drop_is_caught)
+0.033s     test_usage_error_never_reads_as_disagreement (tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement)
+0.000s     test_noncanonical_carrier_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused)
+0.000s     test_the_versions_sign_disjoint_preimages (tests.test_fn_verify.FakeNodeVerifyTests.test_the_versions_sign_disjoint_preimages)
+
+----------------------------------------------------------------------
+Ran 32 tests in 3.578s
+
+OK (skipped=10)
+# rc=0 wall=3.7 end 2026-09-26T06:22:14Z

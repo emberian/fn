@@ -1074,7 +1074,9 @@ or (:damaged).  The read bound and decode budget are the profile's."
               (fnn-core 'fn-bpnr-depth-budget jobs))))
 
 (defun fnn-bps-open (journal config wall wall-error)
-  (let* ((root (fnn-bp-journal-dir journal))
+  (let* ((profile-started (progn (fnn-bp-profile-points)
+                                 (get-internal-real-time)))
+         (root (fnn-bp-journal-dir journal))
          ; Shared journal ownership precedes cleanup and the lifecycle lock.
          ; No live bp/tcpcl writer can lose its staging file to recovery.
          (spool-lock (fnn-tcl-spool-acquire root))
@@ -1176,6 +1178,7 @@ or (:damaged).  The read bound and decode budget are the profile's."
                   (fnn-indeterminate
                    "bp-service: recovered base machine invariant failed"))
                 (fnn-bps-fragment-progress service)
+                (fnn-bp-profile-open service profile-started)
                 service))))
       (error (e)
         (if service

@@ -1,0 +1,83 @@
+(json output stream unbound: TYPE-ERROR)
+PROF n=1000 bytes-consed=103463207312 elapsed=74.593
+
+Number of samples:   14880
+Sample interval:     0.005 seconds
+Total sampling time: 74.4 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=611185 "main thread" RUNNING {1200068003}> (1542432/2097152 bytes, 4335 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      1   0.0  14844  99.8      1   0.0        -  FNN-COMMAND-PROBE
+   4      0   0.0  14844  99.8      1   0.0        -  top level form
+   6      0   0.0  14844  99.8      1   0.0        -  (FLET "G" :IN SB-C::%COMPILE-IN-LEXENV)
+   8      0   0.0  14844  99.8      1   0.0        -  SB-C::%COMPILE-IN-LEXENV
+  10      0   0.0  14844  99.8      1   0.0        -  SB-C:EVAL-WITH-COMPILE-IN-LEXENV
+  12      0   0.0  14844  99.8      1   0.0        -  SB-IMPL::%SIMPLE-EVAL
+  14      0   0.0  14844  99.8      1   0.0        -  SB-INT:SIMPLE-EVAL-IN-LEXENV
+  16      0   0.0  14844  99.8      1   0.0        -  SB-EXT:EVAL-TLF
+  18      0   0.0  14844  99.8      1   0.0        -  (LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE)
+  20      0   0.0  14844  99.8      1   0.0        -  (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE)
+  22      0   0.0  14844  99.8      1   0.0        -  SB-C::%DO-FORMS-FROM-INFO
+  24      0   0.0  14843  99.8      1   0.0        -  SB-INT:LOAD-AS-SOURCE
+  26      0   0.0  14843  99.8      1   0.0        -  (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD)
+  28      0   0.0  14843  99.8      1   0.0        -  SB-FASL::CALL-WITH-LOAD-BINDINGS
+  30      0   0.0  14842  99.7      1   0.0        -  LOAD
+  32      0   0.0  14842  99.7      1   0.0        -  SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS
+  34      0   0.0  14842  99.7      1   0.0        -  SB-IMPL::TOPLEVEL-INIT
+  36      0   0.0  14842  99.7      1   0.0        -  (FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP)
+  38      0   0.0  14842  99.7      1   0.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP)
+  40      0   0.0  14842  99.7      1   0.0        -  SB-IMPL::%START-LISP
+  42      0   0.0  14842  99.7      1   0.0        -  foreign function call_into_lisp_
+  44      0   0.0  14785  99.4      1   0.0        -  FNN-CALL
+  46      0   0.0  14745  99.1      1   0.0        -  FNN-CORE-STATE
+  48      0   0.0  13192  88.7      1   0.0        -  FNN-BRIDGE-FINISH
+  50      0   0.0  13192  88.7      1   0.0        -  FNN-FINISH
+  52      1   0.0  13191  88.6      2   0.0        -  FN-STORE-SN-FINISH
+  54      0   0.0  13190  88.6      2   0.0        -  FN-SN-FINISH
+  56      9   0.1  13144  88.3     11   0.1        -  FN-SN-FIND-RECORD
+  58      9   0.1  12248  82.3     20   0.1        -  FN-SF-RECORD-PAIR
+  60     34   0.2  12190  81.9     54   0.4        -  FN-RECORD-P
+  62      0   0.0  10530  70.8     54   0.4        -  FN-SN-COMPLETION-ENABLEDP
+  64   4406  29.6   8741  58.7   4460  30.0        -  FN-RECORD-STRING-OCTETS-AUX
+  66   2626  17.6   7239  48.6   7086  47.6        -  FN-RECORD-PAYLOADP
+  68      6   0.0   7062  47.5   7092  47.7        -  FN-STORE-EVENT-TXID
+  70      7   0.0   5730  38.5   7099  47.7        -  FN-STORE-EVENT-SEQUENCE
+  72      0   0.0   5285  35.5   7099  47.7        -  FN-SN-COMPLETION-CORE-ENABLEDP
+  74   2865  19.3   4622  31.1   9964  67.0        -  FN-CBOR-OCTET-LISTP
+  76     60   0.4   3287  22.1  10024  67.4        -  FN-RECORD-METADATA-BYTES-P
+  78      0   0.0   2485  16.7  10024  67.4        -  SB-SPROF::UNAVAILABLE-FRAMES
+  80   2317  15.6   2317  15.6  12341  82.9        -  FN-CBOR-OCTETP
+------------------------------------------------------------------------
+         22   0.1                                     elsewhere
+
+Number of samples:   14880
+Sample interval:     0.005 seconds
+Total sampling time: 74.4 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=611185 "main thread" RUNNING {1200068003}> (1542432/2097152 bytes, 4335 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2   4406  29.6   8741  58.7   4406  29.6        -  FN-RECORD-STRING-OCTETS-AUX
+   4   2865  19.3   4622  31.1   7271  48.9        -  FN-CBOR-OCTET-LISTP
+   6   2626  17.6   7239  48.6   9897  66.5        -  FN-RECORD-PAYLOADP
+   8   2317  15.6   2317  15.6  12214  82.1        -  FN-CBOR-OCTETP
+  10   1094   7.4   1130   7.6  13308  89.4        -  FN-RECORD-STRING-OCTETS
+  12    337   2.3    359   2.4  13645  91.7        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  14    160   1.1    160   1.1  13805  92.8        -  %DATA-VECTOR-AND-INDEX
+  16    119   0.8    213   1.4  13924  93.6        -  FN-RECORD-ASCII-OCTETP
+  18    111   0.7    111   0.7  14035  94.3        -  SB-KERNEL:TWO-ARG-<=
+  20     79   0.5    286   1.9  14114  94.9        -  FN-RECORD-ASCII-OCTET-LISTP
+  22     61   0.4     61   0.4  14175  95.3        -  foreign function pthread_sigmask
+  24     60   0.4   3287  22.1  14235  95.7        -  FN-RECORD-METADATA-BYTES-P
+  26     60   0.4     60   0.4  14295  96.1        -  FN-CBOR-AG-CDR
+  28     34   0.2  12190  81.9  14329  96.3        -  FN-RECORD-P
+  30     31   0.2     43   0.3  14360  96.5        -  FN-RECORD-GROUP-NAME-OCTETS-AUX
+------------------------------------------------------------------------
+         22   0.1                                     elsewhere

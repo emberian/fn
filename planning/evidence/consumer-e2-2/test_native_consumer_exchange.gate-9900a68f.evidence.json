@@ -1,0 +1,417 @@
+{
+ "a": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002060606581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f763100010184111347cef066a128e01d4f6aa668dd37788c38d521e842515b83fe13e74677"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "node_principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "node_verdict": "44666e2d65000208080858203c666e2d65312e7265706c792d7231406167656e742d622e696e76616c69643e015820b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2024c666e2d6879627269642d7631",
+    "operation_id": "reply-r1",
+    "own_principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f76310001017336c4c892a196cd1659b35c160b1d46d9800f94d286c85b27278cf2ae87700b"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "conflict",
+    "message_id": "<fn-e1.r1@agent-m.invalid>",
+    "node_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "node_verdict": "44666e2d6500020e0e0e581a3c666e2d65312e7231406167656e742d6d2e696e76616c69643e015820c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3034c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "own_verdict": "verified",
+    "reason": "unentitled",
+    "source_id": "666e2f7375626a6563742f763100010151ffc453b7058352481ffba9132a72c70ebe34361935d3c83fbe2eaea0038732"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "originated",
+    "operation_id": "r1",
+    "result": "replied"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "kind": "reply",
+    "operation_id": "reply-r1",
+    "result": "correlated"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 1,
+    "journal": [
+     {
+      "exit": 0,
+      "purpose": "submit",
+      "state": "answered",
+      "status": "ACCEPTED"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": "post-answer",
+    "sha256": "b973693101a37e1ea2dac88af587586070ad15021a53ee2740196115a9263f25",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {
+   "replies": "1"
+  },
+  "transitions": [
+   [
+    "fn-e1",
+    "reply-r1"
+   ]
+  ],
+  "unattributed": 0
+ },
+ "b": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002060606581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f763100010184111347cef066a128e01d4f6aa668dd37788c38d521e842515b83fe13e74677"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "node_principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "node_verdict": "44666e2d65000208080858203c666e2d65312e7265706c792d7231406167656e742d622e696e76616c69643e015820b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2024c666e2d6879627269642d7631",
+    "operation_id": "reply-r1",
+    "own_principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f76310001017336c4c892a196cd1659b35c160b1d46d9800f94d286c85b27278cf2ae87700b"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "conflict",
+    "message_id": "<fn-e1.r1@agent-m.invalid>",
+    "node_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "node_verdict": "44666e2d6500020e0e0e581a3c666e2d65312e7231406167656e742d6d2e696e76616c69643e015820c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3034c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "own_verdict": "verified",
+    "reason": "unentitled",
+    "source_id": "666e2f7375626a6563742f763100010151ffc453b7058352481ffba9132a72c70ebe34361935d3c83fbe2eaea0038732"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "claimant": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "kind": "originated",
+    "operation_id": "reply-r1",
+    "result": "reply"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "report-receipt",
+    "operation_id": "r1",
+    "result": "replied"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 2,
+    "journal": [
+     {
+      "exit": 3,
+      "purpose": "submit",
+      "state": "answered",
+      "status": "UNCERTAIN"
+     },
+     {
+      "exit": 0,
+      "purpose": "reconcile",
+      "state": "answered",
+      "status": "DUPLICATE"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "settled_by": "post-answer",
+    "sha256": "3f781da911c6562dbb9138548c05d0f91b32889a9264e6b36a64afcedc542e96",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {
+   "ledger": "a0a6c912284875d32846c1cea751dae1b1a2b79def00eae5fbdc64e2c2bffe03",
+   "reports": "1"
+  },
+  "transitions": [
+   [
+    "fn-e1",
+    "r1"
+   ]
+  ],
+  "unattributed": 0
+ },
+ "log": [
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "dregg-receipt-0001"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "in-transaction",
+   97,
+   "CONSUMER-CUT in-transaction\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "after-commit",
+   97,
+   "CONSUMER-CUT after-commit\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "owner-after-submit",
+   3,
+   "consumer stopped: ack uncertain; position settles it on the next wake\n"
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "before-post",
+   97,
+   "CONSUMER-CUT before-post\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "owner-after-submit",
+   3,
+   "consumer stopped: reply POST uncertain; a resend of the saved artifact reconciles it\n"
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   "after-ack",
+   97,
+   "CONSUMER-CUT after-ack\n"
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-m",
+   [
+    "report",
+    "r1",
+    "a different receipt"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ],
+ "positions": {
+  "agent-a": 18,
+  "agent-b": 16
+ },
+ "q_settlement": "post-answer"
+}

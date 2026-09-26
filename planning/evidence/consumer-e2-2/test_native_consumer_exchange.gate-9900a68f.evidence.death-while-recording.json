@@ -1,0 +1,273 @@
+{
+ "a": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002030303581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f763100010142061ef92d7ba9e8a62b498826ec3da898744db42b62eb1fdcdf9d9c5023a6c5"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.r2@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002060606581a3c666e2d65312e7232406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r2",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f7631000101d32aa305245bb38af4c0e549b4ed2a456eb5681bd2648c80a1165f30cc135c1e"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "originated",
+    "operation_id": "r1",
+    "result": "awaiting-reply"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "originated",
+    "operation_id": "r2",
+    "result": "awaiting-reply"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 2,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     },
+     {
+      "exit": 0,
+      "purpose": "reconcile",
+      "state": "answered",
+      "status": "DUPLICATE"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": "post-answer",
+    "sha256": "d8b9180c06fe02d5dad4b25cb617722e0144571f5896897214adebaedf567e34",
+    "state": "stored"
+   },
+   {
+    "attempts": 2,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     },
+     {
+      "exit": 0,
+      "purpose": "reconcile",
+      "state": "answered",
+      "status": "ACCEPTED"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.r2@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": "post-answer",
+    "sha256": "19979acb534f4a0e5dfb0f921348a3abe971c10bd3f7411ac6107e5d9cc0f7b4",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {},
+  "transitions": [],
+  "unattributed": 0
+ },
+ "log": [
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "payload r1"
+   ],
+   "in-result-transaction",
+   97,
+   "CONSUMER-CUT in-result-transaction\n"
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "trace",
+   "in-result-transaction",
+   {
+    "attempts": 1,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     }
+    ],
+    "last_exit": null,
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": null,
+    "sha256": "d8b9180c06fe02d5dad4b25cb617722e0144571f5896897214adebaedf567e34",
+    "state": "uncertain"
+   },
+   {
+    "attempts": 2,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     },
+     {
+      "exit": 0,
+      "purpose": "reconcile",
+      "state": "answered",
+      "status": "DUPLICATE"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": "post-answer",
+    "sha256": "d8b9180c06fe02d5dad4b25cb617722e0144571f5896897214adebaedf567e34",
+    "state": "stored"
+   }
+  ],
+  [
+   "agent-a",
+   [
+    "report",
+    "r2",
+    "payload r2"
+   ],
+   "attempt-recorded",
+   97,
+   "CONSUMER-CUT attempt-recorded\n"
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "trace",
+   "attempt-recorded",
+   {
+    "attempts": 1,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     }
+    ],
+    "last_exit": null,
+    "message_id": "<fn-e1.r2@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": null,
+    "sha256": "19979acb534f4a0e5dfb0f921348a3abe971c10bd3f7411ac6107e5d9cc0f7b4",
+    "state": "uncertain"
+   },
+   {
+    "attempts": 2,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     },
+     {
+      "exit": 0,
+      "purpose": "reconcile",
+      "state": "answered",
+      "status": "ACCEPTED"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.r2@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": "post-answer",
+    "sha256": "19979acb534f4a0e5dfb0f921348a3abe971c10bd3f7411ac6107e5d9cc0f7b4",
+    "state": "stored"
+   }
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ]
+}

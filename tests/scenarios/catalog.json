@@ -2011,15 +2011,19 @@
         "Enrol a login; peer two nodes; start both; status and health live; post; post over the article bound.",
         "Add a peer that answers 501 to MODE STREAM; post; watch the dial.",
         "Stop, back up, post two more; on a copy with rewritten paths upgrade the profile, rollback-check the kept config and the snapshot, restore the snapshot and recover.",
-        "SIGKILL the owner; status, recover, run, health."
+        "SIGKILL the owner; status, recover, run, health.",
+        "rollback-check --snapshot between two stores whose first transaction holds different articles of equal encoded length, the store one transaction longer; between a store and its own earlier copy after it was compacted; with the store's writer lock held exclusively."
       ],
       "expected": [
-        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store."
+        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store.",
+        "The equal-counter, different-content snapshot is refused snapshot-not-a-prefix (exit 1: not an earlier state of this history), never counted as one lost transaction; the compacted store's earlier copy is counted through its pack (loses 1 of 4); a held store is refused (already locked), never read unlocked."
       ],
       "evidence": [
         "planning/evidence/operator-walk-2026-09-26/walk.sh",
         "planning/evidence/operator-walk-2026-09-26.md",
-        "tests/acl2/native-operator-tests.lisp"
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/test_native_rollback_history.py",
+        "planning/evidence/rollback-history-2026-09-26.md"
       ]
     },
     {
@@ -2113,13 +2117,14 @@
       ],
       "expected": [
         "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
-        "Blocked today by per-arrival cost, not by a cap (PRF-134 made the ADU, bundle-decoder and held-image bounds the profile's; the adu-beyond-profile and held-beyond-profile cases pass natively): each arrival costs about 45 ms per held row (0.7 s at 20 held, 6.3 s at 140; the 2,622-fragment family projects to about 43 hours), consistent with the family selector re-validating every held row (fn-bpnf-heldp re-encodes the bundle) on each call. PKT-294."
+        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
         "books/bp-node-profile.lisp",
         "planning/evidence/bp-lifecycle-4-2026-09-26.md",
-        "books/bp-node-profile-admission.lisp"
+        "books/bp-node-profile-admission.lisp",
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md"
       ]
     },
     {
@@ -2200,6 +2205,73 @@
       "evidence": [
         "tests/test_native_capacity_vector.py",
         "planning/evidence/capacity-vector-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-079",
+      "title": "The state checkpoint is read from the octet buffer: the node reopens from the N = 10,000 x 32 KiB checkpoint it published, and a file past the profile's bounds is refused by name",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010"
+      ],
+      "steps": [
+        "On a live local buffer, plan the ground checkpoint-shaped value at segment sizes 7, 0, 1000, 56 and 55 and decode each plan back with fn-sccr-decode-plan; compare with fn-scc-decode-segments over the frames' octets; corrupt the buffer (a flipped octet) and the plan (a dropped frame, a broken first header, frames sealed under the wrong sequence, a non-contiguous plan, a short header) and compare the verdicts; run the index machine against the list machine on the program and its every suffix; admit a header at, one short of, and past the segment bound and the file bound.",
+        "On hbox, copies of rep-wave-d-2's measured stores with the checkpoint files that lane published (N = 1,000 x 32 KiB: 70,877,827 octets; N = 10,000 x 2 KiB: 52,080,773; N = 10,000 x 32 KiB: 670,413,555), under the same 40G scope: the owner opened from the checkpoint to its LISTENING line, timed, VmRSS and VmHWM read from /proc, `status' read for the open it served; before = the same on rep-wave-d-2's image in the same hour.",
+        "tests.test_native_state_checkpoint on the image built from the lane's tree: a corrupt checkpoint falls back to full replay (reason=corrupt), a checkpoint whose first segment claims a length past the profile's segment bound is refused by name (reason=checkpoint-exceeds-bound) and the journal replays, the checkpoint open equals the full replay, and the host's source calls the reader's subjects."
+      ],
+      "expected": [
+        "Every plan decodes to its value; every corrupted plan draws the same verdict from the reader and the list decoder, except the mis-shaped plans, which the reader alone refuses as :layout; the admission refuses exactly past either bound.",
+        "The N = 10,000 x 32 KiB reopen completes inside the 40G scope where the untouched reader died by heap exhaustion after 56 s, within the full replay's residency (22.5 GB VmHWM at that point); the numbers are in the record's table.",
+        "The native module passes on both images; `status' names checkpoint-exceeds-bound."
+      ],
+      "evidence": [
+        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-080",
+      "title": "A consumer that dies between fn's acceptance and its own record never records the operation refused, resends only its saved artifact, and consumes only reports it verified itself",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-003"
+      ],
+      "steps": [
+        "A reports R; fn accepts R; A's consumer dies after fn answered and before its result transaction (and, separately, is killed while the owner that committed R withholds the answer); A's enrolment is revoked; A's consumer restarts.",
+        "A reports R1 and dies inside the answer's transaction, and R2 and dies after the in-flight record before sending; each consumer restarts.",
+        "U (enrolled at fn, not in B's keyring) and A (in B's keyring) report; M (trusted, not entitled to report ids) claims r1 before A and r2 after A; B wakes."
+      ],
+      "expected": [
+        "After each death the submission is uncertain with one unanswered attempt; the restarted consumer resends the saved artifact once, fn refuses it (revoked), and that refusal settles only the resend: R is stored by fn's Store serving the exact artifact back, never refused.",
+        "R1's resend is D25's duplicate and R2's a first acceptance; both are stored with the same artifact bytes.",
+        "B keeps U's report with its own verdict undecided beside fn's verified, with no operation, transition or reply; A's reports are applied; M's claims are conflict evidence (unentitled) in both arrival orders."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange.py",
+        "tests/test_fn_consumer_journal.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
+      ]
+    },
+    {
+      "id": "SCN-082",
+      "title": "A key statement accepted under a grant, cut before its key change, finishes at the restart under that grant after the grant was revoked; a declined one never acts",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "Node E: enrol P, `control grant P keys fn.keys`; start with FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill; POST a succession signed by the old keys (the owner dies at the cut); offline `control revoke P keys fn.keys`; restart E twice.",
+        "Node D: enrol P, POST a succession with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The cut leaves the history at generation 1; the first restart logs `key-statement enrol-successor committed at-open` and the history shows generation 2 active, 1 retired; the second restart logs nothing new and the history is unchanged.",
+        "Each restart logs `key-statement declined no-grant at-open` and the history is unchanged."
       ]
     }
   ]

@@ -1,0 +1,119 @@
+{
+ "b": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "not-consumed",
+    "message_id": "<fn-e1.u1@agent-u.invalid>",
+    "node_principal": "d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
+    "node_verdict": "44666e2d650002050505581a3c666e2d65312e7531406167656e742d752e696e76616c69643e015820d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4034c666e2d6879627269642d7631",
+    "operation_id": "u1",
+    "own_principal": null,
+    "own_verdict": "undecided",
+    "reason": "undecided",
+    "source_id": "666e2f7375626a6563742f76310001013bfe3e719b46bb90af137c23f66a839786df791467dfe9625e5512e8499fbb78"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002060606581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f7631000101cf873e54f1bced3e23b9f3ceeb57813956c3bb50c0cd45e6888fe853e025d1b4"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "claimant": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "kind": "originated",
+    "operation_id": "reply-r1",
+    "result": "reply"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "report-receipt",
+    "operation_id": "r1",
+    "result": "replied"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 1,
+    "journal": [
+     {
+      "exit": 0,
+      "purpose": "submit",
+      "state": "answered",
+      "status": "ACCEPTED"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "settled_by": "post-answer",
+    "sha256": "964e4b1f2697e36f9123e7144362143dc5e02c1862e80f743ca85a7ee99f0422",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {
+   "ledger": "1bfe49f20d6fd3cbe43dca585dc1e07c49a239695eeae78ea6f0362fba09d988",
+   "reports": "1"
+  },
+  "transitions": [
+   [
+    "fn-e1",
+    "r1"
+   ]
+  ],
+  "unattributed": 0
+ },
+ "log": [
+  [
+   "agent-u",
+   [
+    "report",
+    "u1",
+    "from an untrusted author"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "from a trusted author"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ]
+}

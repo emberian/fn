@@ -1,0 +1,83 @@
+(json output stream unbound: TYPE-ERROR)
+PROF n=1000 bytes-consed=1656575184 elapsed=1.913
+
+Number of samples:   377
+Sample interval:     0.005 seconds
+Total sampling time: 1.885 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=616320 "main thread" RUNNING {1200068003}> (110368/1048576 bytes, 331 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      0   0.0    336  89.1      0   0.0        -  FNN-COMMAND-PROBE
+   4      0   0.0    334  88.6      0   0.0        -  top level form
+   6      0   0.0    334  88.6      0   0.0        -  (FLET "G" :IN SB-C::%COMPILE-IN-LEXENV)
+   8      0   0.0    334  88.6      0   0.0        -  SB-C::%COMPILE-IN-LEXENV
+  10      0   0.0    334  88.6      0   0.0        -  SB-C:EVAL-WITH-COMPILE-IN-LEXENV
+  12      0   0.0    334  88.6      0   0.0        -  SB-IMPL::%SIMPLE-EVAL
+  14      0   0.0    334  88.6      0   0.0        -  SB-INT:SIMPLE-EVAL-IN-LEXENV
+  16      0   0.0    334  88.6      0   0.0        -  SB-EXT:EVAL-TLF
+  18      0   0.0    334  88.6      0   0.0        -  (LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE)
+  20      0   0.0    334  88.6      0   0.0        -  (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE)
+  22      0   0.0    334  88.6      0   0.0        -  SB-C::%DO-FORMS-FROM-INFO
+  24      0   0.0    334  88.6      0   0.0        -  SB-INT:LOAD-AS-SOURCE
+  26      0   0.0    334  88.6      0   0.0        -  (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD)
+  28      0   0.0    334  88.6      0   0.0        -  SB-FASL::CALL-WITH-LOAD-BINDINGS
+  30      0   0.0    334  88.6      0   0.0        -  LOAD
+  32      0   0.0    333  88.3      0   0.0        -  SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS
+  34      0   0.0    333  88.3      0   0.0        -  SB-IMPL::TOPLEVEL-INIT
+  36      0   0.0    333  88.3      0   0.0        -  (FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP)
+  38      0   0.0    333  88.3      0   0.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP)
+  40      0   0.0    333  88.3      0   0.0        -  SB-IMPL::%START-LISP
+  42      0   0.0    333  88.3      0   0.0        -  foreign function call_into_lisp_
+  44      0   0.0    298  79.0      0   0.0        -  FNN-CALL
+  46      0   0.0    232  61.5      0   0.0        -  FNN-CORE-STATE
+  48      0   0.0    225  59.7      0   0.0        -  FNN-RECOVER-FULL-REPLAY
+  50      0   0.0    225  59.7      0   0.0        -  FNN-RECOVER
+  52      0   0.0    225  59.7      0   0.0        -  FNN-OPEN-LIVE-STORE
+  54      0   0.0    178  47.2      0   0.0        -  FNN-BRIDGE-RECOVER
+  56      0   0.0    116  30.8      0   0.0        -  FN-SCO-STORE-OPEN
+  58      0   0.0    116  30.8      0   0.0        -  FN-STORE-SN-OPEN-EXTENDED
+  60      0   0.0    101  26.8      0   0.0        -  FN-SCO-FINALIZE-FROM
+  62      0   0.0     90  23.9      0   0.0        -  FN-RECORD-P
+  64      0   0.0     88  23.3      0   0.0        -  SB-SPROF::UNAVAILABLE-FRAMES
+  66     38  10.1     76  20.2     38  10.1        -  FN-RECORD-STRING-OCTETS-AUX
+  68     24   6.4     75  19.9     62  16.4        -  FN-RECORD-PAYLOADP
+  70      0   0.0     65  17.2     62  16.4        -  FNN-CORE
+  72     30   8.0     64  17.0     92  24.4        -  FN-CBOR-OCTET-LISTP
+  74      0   0.0     59  15.6     92  24.4        -  FN-STORE-SN-RECOVER
+  76      0   0.0     56  14.9     92  24.4        -  FN-SCO-EXTEND
+  78      5   1.3     47  12.5     97  25.7        -  FN-ALL-ARTICLE-MEMBERSHIPS
+  80      0   0.0     47  12.5     97  25.7        -  FNN-DURABLE-RECORDS
+------------------------------------------------------------------------
+          8   2.1                                     elsewhere
+
+Number of samples:   377
+Sample interval:     0.005 seconds
+Total sampling time: 1.885 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=616320 "main thread" RUNNING {1200068003}> (110368/1048576 bytes, 331 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     38  10.1     76  20.2     38  10.1        -  FN-RECORD-STRING-OCTETS-AUX
+   4     38  10.1     38  10.1     76  20.2        -  FN-CBOR-OCTETP
+   6     30   8.0     64  17.0    106  28.1        -  FN-CBOR-OCTET-LISTP
+   8     25   6.6     25   6.6    131  34.7        -  FN-RECORD-STRING-OCTETS
+  10     24   6.4     75  19.9    155  41.1        -  FN-RECORD-PAYLOADP
+  12     16   4.2     16   4.2    171  45.4        -  SB-KERNEL:STRING=*
+  14     14   3.7     14   3.7    185  49.1        -  REVAPPEND
+  16     12   3.2     17   4.5    197  52.3        -  SB-KERNEL:VECTOR-TO-LIST
+  18     12   3.2     12   3.2    209  55.4        -  FN-AG-REV-ONTO
+  20     12   3.2     12   3.2    221  58.6        -  FN-AG-CAR
+  22      9   2.4     21   5.6    230  61.0        -  FN-RETAIN-OBLIGATION-IDS
+  24      9   2.4     17   4.5    239  63.4        -  FN-PAIR-EQUALP
+  26      9   2.4      9   2.4    248  65.8        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  28      6   1.6      6   1.6    254  67.4        -  FN-SHS-ROUNDS
+  30      5   1.3     47  12.5    259  68.7        -  FN-ALL-ARTICLE-MEMBERSHIPS
+------------------------------------------------------------------------
+          8   2.1                                     elsewhere

@@ -158,6 +158,10 @@
 ;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
 ;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
 (include-book "books/store-checkpoint-buffer")
+;; The state checkpoint read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
+;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+(include-book "books/store-checkpoint-reader")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the

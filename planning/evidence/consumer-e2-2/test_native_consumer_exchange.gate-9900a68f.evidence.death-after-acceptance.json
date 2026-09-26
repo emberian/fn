@@ -1,0 +1,153 @@
+{
+ "a": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "repeat",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002030303581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f7631000101a3af4ba7bed036bdc38f549717e5fa3debd6ab501b97368e5e0de12ba7b85c9e"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "originated",
+    "operation_id": "r1",
+    "result": "awaiting-reply"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 2,
+    "journal": [
+     {
+      "exit": null,
+      "purpose": "submit",
+      "state": "unanswered",
+      "status": null
+     },
+     {
+      "exit": 1,
+      "purpose": "reconcile",
+      "state": "answered",
+      "status": "REFUSED"
+     }
+    ],
+    "last_exit": 1,
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "settled_by": "store-observation",
+    "sha256": "6870a218e3e5ee28c779a7c8b60186189139d60705e9adf8e7e13bc35cb24ab7",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {},
+  "transitions": [],
+  "unattributed": 0
+ },
+ "log": [
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "dregg-receipt-0001"
+   ],
+   "after-post",
+   97,
+   "CONSUMER-CUT after-post\n"
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "trace",
+   [
+    {
+     "attempts": 1,
+     "journal": [
+      {
+       "exit": null,
+       "purpose": "submit",
+       "state": "unanswered",
+       "status": null
+      }
+     ],
+     "last_exit": null,
+     "message_id": "<fn-e1.r1@agent-a.invalid>",
+     "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+     "settled_by": null,
+     "sha256": "6870a218e3e5ee28c779a7c8b60186189139d60705e9adf8e7e13bc35cb24ab7",
+     "state": "uncertain"
+    }
+   ],
+   0,
+   [
+    {
+     "attempts": 2,
+     "journal": [
+      {
+       "exit": null,
+       "purpose": "submit",
+       "state": "unanswered",
+       "status": null
+      },
+      {
+       "exit": 1,
+       "purpose": "reconcile",
+       "state": "answered",
+       "status": "REFUSED"
+      }
+     ],
+     "last_exit": 1,
+     "message_id": "<fn-e1.r1@agent-a.invalid>",
+     "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+     "settled_by": "store-observation",
+     "sha256": "6870a218e3e5ee28c779a7c8b60186189139d60705e9adf8e7e13bc35cb24ab7",
+     "state": "stored"
+    }
+   ]
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ]
+}

@@ -1,0 +1,28 @@
+# target tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused  start 2026-09-26T05:46:10Z  tree /tank/fn/scratch/consumer-e2-2/tree-red image /tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# image sha256 1f66a27beda5dcb033c810768b36f37192b1f454002108478e46461877e0ad96 (core)
+# env FN_CONSUMER_EXCHANGE_EVIDENCE=/tank/fn/scratch/consumer-e2-2/logs/test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused.red-base.evidence.json
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/consumer-e2-2/tree-red
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/consumer-e2-2/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/consumer-e2-2/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_death_after_acceptance_then_revocation_is_never_refused (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused)
+gpt-6's review, section 2: the node accepts R, the consumer dies ... FAIL
+
+======================================================================
+FAIL: test_death_after_acceptance_then_revocation_is_never_refused (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused)
+gpt-6's review, section 2: the node accepts R, the consumer dies
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/consumer-e2-2/tree-red/tests/test_native_consumer_exchange.py", line 335, in test_death_after_acceptance_then_revocation_is_never_refused
+    self.assertNotIn("refused", states,
+AssertionError: 'refused' unexpectedly found in ['refused'] : an accepted operation recorded refused: after death [{'attempts': 0, 'last_exit': None, 'message_id': '<fn-e1.r1@agent-a.invalid>', 'settled_by': None, 'sha256': '80832ea1e9f81d4c53e49b9f793ad924851339e6897e3fcb52b07e0e2e447db4', 'state': 'pending'}]; after revocation and restart [{'attempts': 1, 'last_exit': 1, 'message_id': '<fn-e1.r1@agent-a.invalid>', 'settled_by': None, 'sha256': '80832ea1e9f81d4c53e49b9f793ad924851339e6897e3fcb52b07e0e2e447db4', 'state': 'refused'}]
+
+----------------------------------------------------------------------
+Ran 1 test in 2.509s
+
+FAILED (failures=1)
+# rc=1 wall=2.6 end 2026-09-26T05:46:12Z

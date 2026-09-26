@@ -267,21 +267,28 @@ reopen predicate, writer-lock observation and observed final namespace."
          (state (f-put-global 'fn-store-sco-open nil state)))
     (value :cleared)))
 
-; SEGMENTS: each segment's octets, in file order, as the host's range reads
-; returned them (fnn-state-checkpoint-segments, host/native/checkpoint.lisp).
-(defun fn-store-sco-decode (segments state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((decoded (fn-scc-decode-segments segments)))
+; PLAN: one frame (HEADER A B TRAILER) per segment in file order, as the
+; host's range reads placed them (fnn-state-checkpoint-plan,
+; host/native/io.lisp): the header and the trailer as octet lists, the
+; chunk as the buffer's cells A..B, the chunks contiguous.  The reader
+; (books/store-checkpoint-reader.lisp fn-sccr-decode-plan) decodes by
+; index over the buffer; no list of the file or of the joined program is
+; built (rep-wave-d-3).  The answer is (:ok S) or (:refused REASON).
+(defun fn-store-sco-decode (plan fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((decoded (fn-sccr-decode-plan plan fn-octets)))
     (if (and (consp decoded) (eq (car decoded) :ok) (consp (cdr decoded)))
         ; The file carries the count; the record list is read back out of
         ; the event index (fn-sco-thaw, fn-sco-thaw-of-freeze).
         (let* ((checkpoint (fn-sco-thaw (cadr decoded)))
                (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
-          (value (list :ok (fn-sco-sequence checkpoint))))
+          (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
       (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
-        (value (list :refused (if (and (consp decoded) (consp (cdr decoded)))
-                                  (cadr decoded)
-                                :malformed)))))))
+        (mv nil
+            (list :refused (if (and (consp decoded) (consp (cdr decoded)))
+                               (cadr decoded)
+                             :malformed))
+            state fn-octets)))))
 
 ; The checkpoint's file name: the rename target of the byte program
 ; fn-bs-scp-program (step 6, (:rename :staging STAGE :root NAME)).
@@ -298,6 +305,28 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sco-segment-read-bound (profile)
   (declare (xargs :mode :program))
   (fn-scc-segment-max-octets (fn-bs-profile-max-record-octets profile)))
+
+(defun fn-store-sco-trailer-octets ()
+  (declare (xargs :mode :program))
+  *fn-frame-trailer-octets*)
+
+; The most octets of checkpoint file the reader holds in the buffer, from
+; the profile (books/store-checkpoint-reader.lisp fn-sccr-file-read-bound:
+; three times the history bound plus one segment's framing).
+(defun fn-store-sco-file-read-bound (profile)
+  (declare (xargs :mode :program))
+  (fn-sccr-file-read-bound (fn-bs-profile-max-history-octets profile)
+                           (fn-bs-profile-max-record-octets profile)))
+
+; Whether the segment whose HEADER the host holds is read, given the
+; octets read so far: (:ok EXTENT CHUNK-OCTETS), (:refused :header) or
+; (:refused :exceeds-bound).  The host reads exactly EXTENT - 37 more
+; octets on :ok and nothing on a refusal (fnn-state-checkpoint-plan).
+(defun fn-store-sco-segment-admit (header total profile)
+  (declare (xargs :mode :program))
+  (fn-sccr-admit-segment header total
+                         (fn-store-sco-segment-read-bound profile)
+                         (fn-store-sco-file-read-bound profile)))
 
 ; The committed record count the open observed: the selected pack's
 ; coverage LOWER, or one past the last ACL2-bound transaction sequence.

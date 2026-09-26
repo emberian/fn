@@ -166,6 +166,80 @@ incarnation as the same application operation is its own policy; the five-part
 inbox key preserves provenance while the separate operation index makes the
 deduplication/conflict choice atomic.
 
+## Submission attempts and the saved artifact
+
+A consumer's reply (or report) crosses fn's native boundary as a
+submission, and a crash can separate fn's acceptance from the consumer's
+record of it. The consumer therefore keeps three kinds of record, never one
+mutable outbox row (gpt-6's review of wave 2, section 2):
+
+- the **submission artifact**, immutable once committed: the authored
+  source, both signatures, the author's principal, Ed25519 key, ML-DSA-65
+  key and keyring generation, and the original context. A retry sends
+  exactly these bytes under this key context; a later key-file or
+  configuration change cannot alter it. Current permission is fn's to
+  decide at each attempt and is recorded on that attempt; it never edits
+  the artifact.
+- **attempts**, each committed as in flight *before* the native boundary is
+  crossed and answered afterwards in its own transaction. An attempt still
+  in flight when a consumer process opens its database is unanswered:
+  potentially successful, whether or not the dead process reached the
+  socket.
+- **observations** that the operation is stored: fn's answer to an attempt
+  (accepted, or D25's duplicate) or fn's Store serving the exact artifact
+  back through `poll` (the same authored source and the same two
+  signatures, checked by the consumer itself).
+
+The operation's state is derived: stored once any observation exists;
+pending with no attempt; refused only when every attempt has a durable
+refusal; otherwise uncertain. A later refusal settles the attempt it
+answers and never an earlier attempt without a durable answer. An
+uncertain submission is reconciled, not retried blindly: the saved
+artifact is resent once per open attempt (D25 answers the same carrier
+"already stored here", fn-sr-a-signed-retry-is-already-stored; NNT-019's
+contract), and if that resend is refused the submission stays uncertain
+until fn's Store serves the artifact back. Nothing is re-signed:
+randomized ML-DSA-65 signing gives new signatures, and so a new carrier,
+for an unchanged authored source, which D25 answers as a conflict
+(fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137). "Changed authored
+source" is reserved for a changed message; a re-signed one has a changed
+signature and carrier.
+
+The consumer verifies every received report itself: the article fn's poll
+served is checked by `tools/fn_verify.py check-article`, a separate process
+importing nothing of fn's, against a keyring the consumer was given (never
+fn's keyring), and the consumer's verdict is recorded beside fn's. A report
+it cannot verify (unverified, an author it does not trust, or a principal
+or authored source other than fn's projection) is kept as evidence and not
+consumed: no operation, transition or reply; the cursor still progresses
+over it. Who may claim an operation identity is the application's rule
+(operation-id prefix to principal), not the signature's: a correctly signed
+claim by another principal is conflict evidence in either arrival order and
+does not occupy the identity.
+
+| Cut | Consumer record after the cut | Settled by |
+| --- | --- | --- |
+| Death before the attempt is recorded | pending, no attempt | the next wake's first attempt |
+| Death after the in-flight record, before sending | uncertain, one unanswered attempt | one resend of the saved artifact (a first acceptance) |
+| fn committed, consumer killed before the answer arrived | uncertain, one unanswered attempt | one resend; if refused (e.g. revoked), fn's Store serving the artifact back |
+| fn answered, consumer died before recording it | uncertain, one unanswered attempt | as above |
+| Death inside the answer's transaction | rolled back: uncertain, one unanswered attempt | one resend (D25 duplicate) |
+| fn's reply lost (exit 3) | uncertain, one answered-uncertain attempt | one resend (D25 duplicate) |
+| A resend refused after an open attempt | uncertain; the refusal settles only that resend | fn's Store serving the artifact back |
+
+CNS-003: a consumer never records an operation refused while one of its
+submission attempts lacks a durable answer; it persists each attempt before
+crossing the native boundary, resends only the immutable saved artifact
+(source, both signatures and the author's key context), settles an
+uncertain submission by D25's answer to that artifact or by fn's Store
+serving it back, and consumes a received report only after verifying its
+signatures itself with its own trusted keys and the application's rule for
+who may claim that operation identity.
+`tools/fn_consumer.py` is the client, `tests/test_native_consumer_exchange.py`
+the native scenario (SCN-080) and `tests/test_fn_consumer_journal.py` the
+stand-in journal test; the fn side it relies on is PRF-137
+([evidence](../planning/evidence/consumer-e2-2-2026-09-26.md)).
+
 ## Executable seam and obligations
 
 The selected remote, multi-item E2 poll/fetch interface is not served. The

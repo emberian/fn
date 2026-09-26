@@ -1,0 +1,34 @@
+# target tests.test_fn_consumer_journal  start 2026-09-26T06:22:09Z  tree /tank/fn/scratch/consumer-e2-2/tree-gate image /tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# image sha256 1f66a27beda5dcb033c810768b36f37192b1f454002108478e46461877e0ad96 (core)
+# env FN_CONSUMER_EXCHANGE_EVIDENCE=/tank/fn/scratch/consumer-e2-2/logs/test_fn_consumer_journal.gate-9900a68f.evidence.json
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/consumer-e2-2/tree-gate
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/consumer-e2-2/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/consumer-e2-2/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_a_refused_retry_never_settles_an_unanswered_attempt (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_a_refused_retry_never_settles_an_unanswered_attempt) ... ok
+test_death_inside_the_answer_transaction_rolls_back_to_unanswered (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_death_inside_the_answer_transaction_rolls_back_to_unanswered) ... ok
+test_retries_send_the_saved_artifact_and_key_context (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_retries_send_the_saved_artifact_and_key_context) ... ok
+test_the_artifact_is_immutable (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_the_artifact_is_immutable) ... ok
+test_the_attempt_is_durable_before_the_native_call (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_the_attempt_is_durable_before_the_native_call) ... ok
+test_one_reconciliation_per_open_attempt (tests.test_fn_consumer_journal.JournalRules.test_one_reconciliation_per_open_attempt) ... ok
+test_state_is_refused_only_when_every_attempt_was_refused (tests.test_fn_consumer_journal.JournalRules.test_state_is_refused_only_when_every_attempt_was_refused) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.390s     test_a_refused_retry_never_settles_an_unanswered_attempt (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_a_refused_retry_never_settles_an_unanswered_attempt)
+0.231s     test_death_inside_the_answer_transaction_rolls_back_to_unanswered (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_death_inside_the_answer_transaction_rolls_back_to_unanswered)
+0.204s     test_retries_send_the_saved_artifact_and_key_context (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_retries_send_the_saved_artifact_and_key_context)
+0.101s     test_the_attempt_is_durable_before_the_native_call (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_the_attempt_is_durable_before_the_native_call)
+0.090s     test_the_artifact_is_immutable (tests.test_fn_consumer_journal.JournalAgainstAStandIn.test_the_artifact_is_immutable)
+0.000s     test_one_reconciliation_per_open_attempt (tests.test_fn_consumer_journal.JournalRules.test_one_reconciliation_per_open_attempt)
+0.000s     test_state_is_refused_only_when_every_attempt_was_refused (tests.test_fn_consumer_journal.JournalRules.test_state_is_refused_only_when_every_attempt_was_refused)
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.017s
+
+OK
+# rc=0 wall=1.1 end 2026-09-26T06:22:10Z

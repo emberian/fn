@@ -794,10 +794,23 @@
 ;; Re-evaluating an old statement under today's grants is then an explicit
 ;; act: a new statement (or the operator's own key change), never a restart.
 ;;
-;; ember's switch is the constant below: :recorded (the recommendation), or
-;; :current (the behaviour before packet 7: the open's live grants).
-
-(defconst *fn-ks-reopen-policy* :recorded)
+;; The reopen is recorded by definition; there is no policy switch (gpt-6's
+;; review of wave 2, section 5: a switch that recreates retroactive authority
+;; is not an engineering benefit).  The pre-packet behaviour survives only as
+;; the counterexample fixture in tests/acl2/key-statements-tests.lisp.  The
+;; replay rule is part of the Store format's meaning: the statement record
+;; plus the configuration journal determine the disposition only under this
+;; rule, so changing it is a format version with its own reader, never an
+;; edit here that reinterprets bytes already written.
+;;
+;; The reconstruction reads exactly the configuration journal the open
+;; installs (fn-sn-config-history: every configuration record from
+;; generation 1, contiguous, or the open faults `:config-sequence' in
+;; books/config-physical-replay.lisp fn-cpr-loop); no transition removes a
+;; configuration record (reclaim and compaction write none,
+;; books/checkpoint-compaction-preservation.lisp), and the profile's
+;; `max-config-generations' refuses a new record rather than dropping an old
+;; one, so the prefix through any statement's txid is always present.
 
 ; A statement's Store txid: its kind-4 composite's (what
 ; books/store-events.lisp fn-store-event-txid answers for a composite).
@@ -805,23 +818,29 @@
   (declare (xargs :guard t))
   (if (fn-stxa-p event) (fn-stxa-txid event) nil))
 
-(defun fn-ks-reopen-rows (policy event live-rows configs)
+; The grants a statement is decided under: at acceptance, the live
+; configuration's LIVE-ROWS; at open (AT-OPEN), the configuration in force at
+; the statement's own txid, the fold of the journal CONFIGS through it.
+; Host: host/owner-host.lisp fn-owner-key-statement-rows (the plan and the
+; kind-3 event of fnn-owner-key-statement, acceptance and open alike).
+(defun fn-ks-statement-rows (event at-open live-rows configs)
   (declare (xargs :guard t))
-  (if (eq policy :current)
-      live-rows
-    (fn-cfg-authorities
-     (fn-cfg-value (fn-ctl-config-at (fn-ks-txid event) configs)))))
+  (if at-open
+      (fn-cfg-authorities
+       (fn-cfg-value (fn-ctl-config-at (fn-ks-txid event) configs)))
+    live-rows))
 
 ; The open's recovery under the recorded disposition: the pending statement
 ; is decided under the grants of the configuration in force at its txid.
-; Host: host/native/owner.lisp fnn-owner-key-statement-recover, through
-; host/owner-host.lisp fn-owner-key-statement-reopen-plan / -reopen-event.
+; Host: host/native/owner.lisp fnn-owner-key-statement-recover calls
+; fnn-owner-key-statement with AT-OPEN, whose rows are
+; host/owner-host.lisp fn-owner-key-statement-rows = fn-ks-statement-rows.
 (defun fn-ks-recover-recorded (st configs observed ed ml sequence txid
                                   store-generation)
   (declare (xargs :guard t))
   (let* ((records (and (consp st) (car st)))
          (pending (and (consp records) (fn-ks-pending (car records)))))
-    (fn-ks-recover st (fn-ks-reopen-rows :recorded pending nil configs)
+    (fn-ks-recover st (fn-ks-statement-rows pending t nil configs)
                    observed ed ml sequence txid store-generation)))
 
 (defun fn-ks-configs-after-p (txid more)
@@ -891,7 +910,7 @@
                                             store-generation2)
                     st)))
   :hints (("Goal" :in-theory (e/d (fn-ks-accept fn-ks-recover
-                                   fn-ks-recover-recorded fn-ks-reopen-rows
+                                   fn-ks-recover-recorded fn-ks-statement-rows
                                    fn-ks-pending fn-ctl-config-at)
                                   (fn-ks-execute fn-ks-plan fn-ks-statement
                                    fn-ks-source fn-ctl-apply-records
@@ -944,7 +963,7 @@
                                 store-generation)))
   :hints (("Goal" :do-not-induct t
            :cases ((fn-ks-statement (fn-ks-source event)))
-           :in-theory (e/d (fn-ks-recover-recorded fn-ks-reopen-rows
+           :in-theory (e/d (fn-ks-recover-recorded fn-ks-statement-rows
                                    fn-ks-cut fn-ks-pending)
                                   (fn-ks-recover fn-ks-accept fn-ks-execute
                                    fn-ks-statement fn-ks-source
@@ -962,6 +981,87 @@
                                                       configs)))))
                  (:instance fn-ctl-config-at-after-every-record-is-the-replay
                             (txid (fn-ks-txid event)))))))
+
+;; =============================================================================
+;; PRF-140: an accepted statement finishes under its own admission context.
+;;
+;; The statement was accepted (its kind-4 composite committed) while the
+;; configuration journal was CONFIGS, every record at or before its txid, so
+;; the acceptance read the live configuration, CONFIGS' replay.  The process
+;; died at the cut (fn-ks-cut: the key change never committed).  Before the
+;; restart the operator published MORE, every record later than the txid (a
+;; `keys' grant revoked, say).  The open's recorded recovery over the whole
+;; journal then makes exactly the change the uninterrupted acceptance would
+;; have made under the ORIGINAL configuration -- never one decided under
+;; today's.  Built on fn-ks-recorded-recovery-completes-the-cut (the cut
+;; completes under the journal it was accepted under) and
+;; fn-ks-reopen-is-blind-to-later-configuration.  Subject:
+;; `fn-ks-recover-recorded' (host: fnn-owner-key-statement-recover, rows
+;; host/owner-host.lisp fn-owner-key-statement-rows).
+
+(defthm fn-ks-recover-recorded-without-a-pending-record
+  (implies (not (fn-ks-pending (car (car st))))
+           (equal (fn-ks-recover-recorded st configs observed ed ml sequence
+                                          txid store-generation)
+                  st))
+  :hints (("Goal" :in-theory (e/d (fn-ks-recover-recorded)
+                                  (fn-ks-pending fn-ks-recover
+                                   fn-ks-statement-rows)))))
+
+; A journal that replays is a true list (the replay faults on an improper
+; tail), so PRF-140 needs no separate true-listp hypothesis.
+(defthm fn-ks-config-replay-loop-needs-a-true-list
+  (implies (not (equal (fn-config-replay-loop cfg reserved ceiling records)
+                       :fault))
+           (true-listp records))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-config-replay-loop cfg reserved ceiling records)
+           :in-theory (e/d (fn-config-replay-loop)
+                           (fn-cfg-record-acceptablep fn-cfg-apply-record)))))
+
+(defthm fn-ks-config-replay-needs-a-true-list
+  (implies (not (equal (fn-config-replay reserved ceiling records) :fault))
+           (true-listp records))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-config-replay)
+           :use ((:instance fn-ks-config-replay-loop-needs-a-true-list
+                            (cfg (fn-cfg-initial)))))))
+
+; KEYSTONE (PRF-140).
+(defthm fn-ks-accepted-statement-finishes-under-its-admission-context
+  (implies (and (fn-ctl-configs-all-through-p (fn-ks-txid event) configs)
+                (not (equal (fn-config-replay reserved ceiling configs) :fault))
+                (fn-ks-configs-after-p (fn-ks-txid event) more))
+           (equal (fn-ks-recover-recorded (fn-ks-cut records snapshots event)
+                                          (append configs more)
+                                          observed ed ml sequence txid
+                                          store-generation)
+                  (fn-ks-accept records snapshots event
+                                (fn-cfg-authorities
+                                 (fn-cfg-value
+                                  (fn-config-replay reserved ceiling configs)))
+                                observed ed ml sequence txid
+                                store-generation)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-ks-statement (fn-ks-source event)))
+           :in-theory (e/d (fn-ks-cut fn-ks-pending fn-ks-accept)
+                           (fn-ks-recover-recorded fn-ks-recover
+                            fn-ks-execute fn-ks-statement fn-ks-source
+                            fn-ctl-config-at fn-config-replay
+                            fn-ctl-configs-all-through-p fn-ks-configs-after-p))
+           :use ((:instance fn-ks-reopen-is-blind-to-later-configuration
+                            (st (fn-ks-cut records snapshots event)))
+                 fn-ks-recorded-recovery-completes-the-cut
+                 (:instance fn-ks-config-replay-needs-a-true-list
+                            (records configs))
+                 (:instance fn-ks-recover-recorded-without-a-pending-record
+                            (st (fn-ks-cut records snapshots event))
+                            (configs (append configs more)))
+                 (:instance fn-ks-execute-needs-a-statement
+                            (rows (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-config-replay reserved ceiling
+                                                      configs)))))))))
 
 ; The owner log line for a statement's outcome (host/native/owner.lisp
 ; fnn-owner-key-statement writes it and decides nothing).  OUTCOME is the

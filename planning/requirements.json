@@ -2381,7 +2381,8 @@
         "PRF-114",
         "PRF-121",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-136"
       ],
       "verification": [
         "proof",
@@ -2408,16 +2409,17 @@
         "fn-bpfw-reassemble-is-spec",
         "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings)."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment)."
     },
     {
       "id": "NNT-022",
-      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided",
+      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context",
       "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-124"
+        "PRF-124",
+        "PRF-140"
       ],
       "verification": [
         "proof",
@@ -2439,9 +2441,11 @@
         "tests/test_native_peer_invite.py",
         "tests/test_native_key_statements.py",
         "tests/test_native_peer_pull.py",
-        "planning/evidence/peering-compose-2026-09-25.md"
+        "planning/evidence/peering-compose-2026-09-25.md",
+        "planning/evidence/key-replay-fixture-2026-09-26.md"
       ],
-      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule), with *fn-ks-reopen-policy* as the switch. Pull over TLS (packet 8) is not part of this requirement yet."
+      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule) by definition, with no supported switch back to the open's live grants (the old behaviour is a counterexample fixture only); an accepted statement cut before its key change finishes under the configuration at its txid (PRF-140). An explicit re-evaluation verb (`keys redecide`, PKT-325) is specified, not built. Pull over TLS (packet 8) is not part of this requirement yet.",
+      "note": "Lane key-replay-fixture (2026-09-26): PRF-140, SCN-082, PKT-325."
     },
     {
       "id": "NNT-019",
@@ -2514,7 +2518,8 @@
       "proof_targets": [
         "PRF-120",
         "PRF-128",
-        "PRF-132"
+        "PRF-132",
+        "PRF-139"
       ],
       "verification": [
         "proof",
@@ -2632,7 +2637,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-130"
+        "PRF-130",
+        "PRF-141"
       ],
       "verification": [
         "proof",
@@ -2644,9 +2650,11 @@
         "packaging/fn",
         "host/native/operator.lisp",
         "docs/operator.md",
-        "planning/evidence/operator-walk-2026-09-26.md"
+        "planning/evidence/operator-walk-2026-09-26.md",
+        "planning/evidence/rollback-history-2026-09-26.md",
+        "tests/test_native_rollback_history.py"
       ],
-      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot counts what restoring a snapshot loses.",
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
     },
     {
@@ -2681,7 +2689,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-118",
-        "PRF-133"
+        "PRF-133",
+        "PRF-135"
       ],
       "verification": [
         "proof",
@@ -2693,9 +2702,11 @@
         "tools/rep_measure.py",
         "planning/evidence/rep-wave-d-2026-09-25.md",
         "books/store-checkpoint-buffer.lisp",
-        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+        "planning/evidence/rep-wave-d-2-2026-09-26.md",
+        "books/store-checkpoint-reader.lisp",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md"
       ],
-      "implementation_note": "D27: the logical model stays octet lists, the executable path holds bytes. fn-arena is the concrete home of every retained payload (one byte per octet, sixteen per handle) with the abstraction relation proved once as the stobj's obligations, and the lifetime facts the mandate section 7 names as theorems: a pinned reader's handle cannot observe a mutated or reused payload (fn-arena-seals-keep-sealed), nothing removes a payload (no delete export; reclamation is a new seal and space is reclaimed at open), and the checkpoint reopen and ordinary admission establish the same relation with the history (fn-arn-store-corr-of-open, -of-commit). Not yet on a served path: the record's payload field is still the list; the program that moves it (the model change at records-shape, the record codec and the recovery decode over the arena, the served article as a reference effect, the checkpoint codec, the ingress span machine) is the record's section 3, with the matched baseline of section 1 it is measured against.",
+      "implementation_note": "D27: the logical model stays octet lists, the executable path holds bytes. fn-arena is the concrete home of every retained payload (one byte per octet, sixteen per handle) with the abstraction relation proved once as the stobj's obligations, and the lifetime facts the mandate section 7 names as theorems: a pinned reader's handle cannot observe a mutated or reused payload (fn-arena-seals-keep-sealed), nothing removes a payload (no delete export; reclamation is a new seal and space is reclaimed at open), and the checkpoint reopen and ordinary admission establish the same relation with the history (fn-arn-store-corr-of-open, -of-commit). Not yet on a served path: the record's payload field is still the list; the program that moves it (the model change at records-shape, the record codec and the recovery decode over the arena, the served article as a reference effect, the checkpoint codec, the ingress span machine) is the record's section 3, with the matched baseline of section 1 it is measured against. rep-wave-d-3 (PRF-135): the checkpoint reopen reads the file from the buffer by index, the plan shape the writer produced; no octet list of the file or of the joined program; a file past the profile's bounds is refused by name (checkpoint-exceeds-bound) and the journal replays.",
       "keystones": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -2746,6 +2757,35 @@
         "planning/evidence/capacity-vector-2026-09-26.md"
       ],
       "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`."
+    },
+    {
+      "id": "CNS-003",
+      "title": "The consumer persists each submission attempt before the native boundary, resends only its immutable saved artifact, never records refused while an attempt lacks a durable answer, and consumes a report only after verifying it itself",
+      "specification": "specs/consumer-progress.md#submission-attempts-and-the-saved-artifact",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-137"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "books/consumer-artifact-retry.lisp",
+        "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "books/source-routes.lisp",
+        "tools/fn_consumer.py",
+        "tools/fn_verify.py",
+        "tests/test_fn_consumer_journal.py",
+        "tests/test_native_consumer_exchange.py",
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T062056Z-559151.json",
+        "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
+      "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
     }
   ]
 }

@@ -171,3 +171,124 @@
                               *bpnff-state* *bpnff-p3*
                               *bpnfs-live-observation*))
              :ready)))
+
+;; PRF-136 (bp-lifecycle-5): the served selector reads the rows' primary
+;; blocks and plans a row only when its family holds an offset-zero fragment.
+(defconst *bpnfs-held* (fn-bpnf-held-list *bpnff-state*))
+(defconst *bpnfs-zero* (fn-bpnf-zero-family-keys *bpnfs-held*))
+(defconst *bpnfs-p3-key* (fn-bpnf-fragment-family-key *bpnff-p3*))
+
+;; fn-bpnf-family-select-is-aux, reachable witness: the host's own call
+;; (held = the held list, nothing tried, zero = its offset-zero keys); every
+;; hypothesis holds and both selectors answer p3's arrival.
+(assert-event
+ (and (subsetp-equal *bpnfs-held* (fn-bpnf-held-list *bpnff-state*))
+      (fn-bpnf-family-keys-not-readyp *bpnff-state* *bpnfs-held* nil
+                                      *bpnfs-live-observation*)
+      (equal *bpnfs-zero* (list *bpnfs-p3-key*))
+      (equal (fn-bpnf-family-select *bpnff-state* *bpnfs-held*
+                                    *bpnfs-live-observation* nil *bpnfs-zero*)
+             '(:ready 0))
+      (equal (fn-bpnf-family-next-aux *bpnff-state* *bpnfs-held*
+                                      *bpnfs-live-observation*)
+             '(:ready 0))
+      (equal (fn-bpnf-family-next *bpnff-state* *bpnfs-live-observation*)
+             '(:ready 0))))
+
+;; Without the zero-key hypothesis (ZERO nil): the other two hold, and the
+;; select skips the ready family the reference selector answers.
+(assert-event
+ (and (subsetp-equal *bpnfs-held* (fn-bpnf-held-list *bpnff-state*))
+      (fn-bpnf-family-keys-not-readyp *bpnff-state* *bpnfs-held* nil
+                                      *bpnfs-live-observation*)
+      (not (equal nil (fn-bpnf-zero-family-keys *bpnfs-held*)))
+      (not (equal (fn-bpnf-family-select *bpnff-state* *bpnfs-held*
+                                         *bpnfs-live-observation* nil nil)
+                  (fn-bpnf-family-next-aux *bpnff-state* *bpnfs-held*
+                                           *bpnfs-live-observation*)))))
+
+;; Without the tried invariant (p3's ready family marked tried): the other
+;; two hold, and the answers differ.
+(assert-event
+ (and (subsetp-equal *bpnfs-held* (fn-bpnf-held-list *bpnff-state*))
+      (not (fn-bpnf-family-keys-not-readyp *bpnff-state* *bpnfs-held*
+                                           (list *bpnfs-p3-key*)
+                                           *bpnfs-live-observation*))
+      (equal *bpnfs-zero* (fn-bpnf-zero-family-keys *bpnfs-held*))
+      (not (equal (fn-bpnf-family-select *bpnff-state* *bpnfs-held*
+                                         *bpnfs-live-observation*
+                                         (list *bpnfs-p3-key*) *bpnfs-zero*)
+                  (fn-bpnf-family-next-aux *bpnff-state* *bpnfs-held*
+                                           *bpnfs-live-observation*)))))
+
+;; Without the subset hypothesis: a row that is not held (p3 with another
+;; token, the same family and arrival) is planned against the held list, is
+;; not ready, and marks its family tried before the held p3 is reached.
+(defconst *bpnfs-p3-copy* (update-nth 15 99 *bpnff-p3*))
+(assert-event
+ (and (fn-bpnf-heldp *bpnfs-p3-copy*)
+      (not (subsetp-equal (cons *bpnfs-p3-copy* *bpnfs-held*)
+                          (fn-bpnf-held-list *bpnff-state*)))
+      (fn-bpnf-family-keys-not-readyp *bpnff-state* *bpnfs-held* nil
+                                      *bpnfs-live-observation*)
+      (equal *bpnfs-zero* (fn-bpnf-zero-family-keys *bpnfs-held*))
+      (not (equal (fn-bpnf-family-select *bpnff-state*
+                                         (cons *bpnfs-p3-copy* *bpnfs-held*)
+                                         *bpnfs-live-observation* nil
+                                         *bpnfs-zero*)
+                  (fn-bpnf-family-next-aux *bpnff-state*
+                                           (cons *bpnfs-p3-copy* *bpnfs-held*)
+                                           *bpnfs-live-observation*)))))
+
+;; fn-bpnf-family-select-plans-bound (no hypotheses): the host's call on the
+;; state above plans one row, of the two whose family holds offset zero; the
+;; SCN-077 shape (the family's offset zero not yet held) plans none.
+(assert-event
+ (and (equal (fn-bpnf-family-select-plans *bpnff-state* *bpnfs-held*
+                                          *bpnfs-live-observation* nil
+                                          *bpnfs-zero*)
+             1)
+      (equal (fn-bpnf-rows-in-zero-families *bpnfs-held* *bpnfs-zero*) 2)
+      (equal (fn-bpnf-zero-family-keys
+              (fn-bpnf-held-list *bpnfs-no-zero-state*))
+             nil)
+      (equal (fn-bpnf-family-select-plans
+              *bpnfs-no-zero-state* (fn-bpnf-held-list *bpnfs-no-zero-state*)
+              *bpnfs-live-observation* nil nil)
+             0)))
+
+;; fn-bpnf-family-select-steps-bound, witness: no row planned, one row, one
+;; step.
+(assert-event
+ (and (equal (fn-bpnf-family-select-plans
+              *bpnfs-no-zero-state* (fn-bpnf-held-list *bpnfs-no-zero-state*)
+              *bpnfs-live-observation* nil nil)
+             0)
+      (equal (fn-bpnf-family-select-steps
+              *bpnfs-no-zero-state* (fn-bpnf-held-list *bpnfs-no-zero-state*)
+              *bpnfs-live-observation* nil nil)
+             1)
+      (<= 1 (* (len (fn-bpnf-held-list *bpnfs-no-zero-state*)) (+ 1 0 0)))))
+
+;; Without the no-plan hypothesis: p0's family alone is planned (not ready)
+;; and tried, so the next row's comparisons exceed the bound.
+(defconst *bpnfs-steps-other*
+  (update-nth 15 5 (update-nth 3 5 *bpnfs-other-p3*)))
+(defconst *bpnfs-steps-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*)
+                 (list *bpnff-p0* *bpnfs-steps-other*)
+                 nil nil nil nil nil 3 0))
+(defconst *bpnfs-steps-zero*
+  (fn-bpnf-zero-family-keys (fn-bpnf-held-list *bpnfs-steps-state*)))
+(assert-event
+ (and (fn-bpnf-heldp *bpnfs-steps-other*)
+      (fn-bpnf-fragment-candidatep *bpnfs-steps-other*)
+      (not (equal (fn-bpnf-family-select-plans
+                   *bpnfs-steps-state* (fn-bpnf-held-list *bpnfs-steps-state*)
+                   *bpnfs-live-observation* nil *bpnfs-steps-zero*)
+                  0))
+      (> (fn-bpnf-family-select-steps
+          *bpnfs-steps-state* (fn-bpnf-held-list *bpnfs-steps-state*)
+          *bpnfs-live-observation* nil *bpnfs-steps-zero*)
+         (* (len (fn-bpnf-held-list *bpnfs-steps-state*))
+            (+ 1 (len *bpnfs-steps-zero*) 0)))))

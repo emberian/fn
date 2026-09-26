@@ -1,0 +1,200 @@
+{
+ "b": {
+  "inbox": [
+   {
+    "application_id": "fn-e1",
+    "disposition": "conflict",
+    "message_id": "<fn-e1.r1@agent-m.invalid>",
+    "node_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "node_verdict": "44666e2d650002050505581a3c666e2d65312e7231406167656e742d6d2e696e76616c69643e015820c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3034c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "own_verdict": "verified",
+    "reason": "unentitled",
+    "source_id": "666e2f7375626a6563742f76310001013d6db43e577efc07802ae80af0e7002ac9e4a0ca46b46cf03cad9cc2e7a59f73"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002060606581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r1",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f763100010186cf24f31924340e466de1d705881d2b4b092142761cfca358083b3dee8cad12"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "applied",
+    "message_id": "<fn-e1.r2@agent-a.invalid>",
+    "node_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "node_verdict": "44666e2d650002070707581a3c666e2d65312e7232406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+    "operation_id": "r2",
+    "own_principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "own_verdict": "verified",
+    "reason": null,
+    "source_id": "666e2f7375626a6563742f7631000101587f3bdd84b251517cd01998648a1e49592354d448acfa28ed5be9bad56f27a2"
+   },
+   {
+    "application_id": "fn-e1",
+    "disposition": "conflict",
+    "message_id": "<fn-e1.r2@agent-m.invalid>",
+    "node_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "node_verdict": "44666e2d650002080808581a3c666e2d65312e7232406167656e742d6d2e696e76616c69643e015820c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3034c666e2d6879627269642d7631",
+    "operation_id": "r2",
+    "own_principal": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "own_verdict": "verified",
+    "reason": "unentitled",
+    "source_id": "666e2f7375626a6563742f76310001015fb653288ae35a6db201b0de40b6270581d2f2b3dea0c1b1dd022b1065d66f63"
+   }
+  ],
+  "operations": [
+   {
+    "application_id": "fn-e1",
+    "claimant": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "kind": "originated",
+    "operation_id": "reply-r1",
+    "result": "reply"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "report-receipt",
+    "operation_id": "r1",
+    "result": "replied"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "kind": "originated",
+    "operation_id": "reply-r2",
+    "result": "reply"
+   },
+   {
+    "application_id": "fn-e1",
+    "claimant": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "kind": "report-receipt",
+    "operation_id": "r2",
+    "result": "replied"
+   }
+  ],
+  "outbox": [
+   {
+    "attempts": 1,
+    "journal": [
+     {
+      "exit": 0,
+      "purpose": "submit",
+      "state": "answered",
+      "status": "ACCEPTED"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "settled_by": "post-answer",
+    "sha256": "25b916b9cd085bc8b7eca5e0a973c04a18132d7b51b16f9641e96d766e8672db",
+    "state": "stored"
+   },
+   {
+    "attempts": 1,
+    "journal": [
+     {
+      "exit": 0,
+      "purpose": "submit",
+      "state": "answered",
+      "status": "ACCEPTED"
+     }
+    ],
+    "last_exit": 0,
+    "message_id": "<fn-e1.reply-r2@agent-b.invalid>",
+    "principal": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "settled_by": "post-answer",
+    "sha256": "9425ac0ebcaab14aacfbaa870397c83f59fb37d929f757df911658a89e1f6489",
+    "state": "stored"
+   }
+  ],
+  "pending_ack": null,
+  "state": {
+   "ledger": "718969a2dc4feba77efd71b2c863d204328090d7bbc2a520c511b4bdab37f1ae",
+   "reports": "2"
+  },
+  "transitions": [
+   [
+    "fn-e1",
+    "r1"
+   ],
+   [
+    "fn-e1",
+    "r2"
+   ]
+  ],
+  "unattributed": 0
+ },
+ "log": [
+  [
+   "agent-m",
+   [
+    "report",
+    "r1",
+    "M first"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "A second"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "report",
+    "r2",
+    "A first"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-m",
+   [
+    "report",
+    "r2",
+    "M second"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ]
+}
