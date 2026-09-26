@@ -1,0 +1,8 @@
+test_every_address_serves_plain_and_implicit_tls (tests.test_native_listener_v6.NativeListenerV6Tests.test_every_address_serves_plain_and_implicit_tls) ... ok
+test_refusals_are_named_before_any_listener (tests.test_native_listener_v6.NativeListenerV6Tests.test_refusals_are_named_before_any_listener) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.724s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_listener_v6", "tests": 2, "failures": 0, "errors": 0, "skipped": 0, "executed": 2, "skips": [], "timings": [["tests.test_native_listener_v6.NativeListenerV6Tests.test_every_address_serves_plain_and_implicit_tls", 1.579], ["tests.test_native_listener_v6.NativeListenerV6Tests.test_refusals_are_named_before_any_listener", 1.145]]}
