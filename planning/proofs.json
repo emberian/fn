@@ -7055,7 +7055,8 @@
         "tests/acl2/catalog-tests.lisp",
         "planning/evidence/manifests/certify-20260926T194426Z-1747941.json"
       ],
-      "progress_note": "Lane catalog-slice (Fable, 2026-09-26, wave 5 lane 2, D33): steps 2 and 3 of the brief landed and certified; steps 4 to 9 (PreparedCommit, the delta, the relation at open, the served reads, the host, the measurement) are the continuation (PKT-585)."
+      "progress_note": "Lane catalog-slice (Fable, 2026-09-26, wave 5 lane 2, D33): steps 2 and 3 of the brief landed and certified; steps 4 to 9 (PreparedCommit, the delta, the relation at open, the served reads, the host, the measurement) are the continuation (PKT-585).",
+      "pending_subject": "No host line calls fn-cat yet: the catalog's exports (fn-cat-commit, fn-cat-withdraw, fn-cat-redecide, fn-cat-visible-at) and the interns are proved over the executable the host WILL call once the continuation (PKT-585, steps 4 to 9 of the catalog-slice brief) moves the prepare, the finish and the served reads to the catalog; until then the keystones' subjects are reached only by the test books (SCN-130). The wire record, the codec and every served path are unchanged by this lane."
     },
     {
       "id": "PRF-202",
