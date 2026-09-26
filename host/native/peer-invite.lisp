@@ -151,7 +151,10 @@ slot again, so only a row consumed by exactly this acceptance yields one."
         (progn (fnn-owner-identity-commit service (second step))
                :accepted)))))
 
-(defun fnn-pinv-owner-confirm (service received)
+(defun fnn-pinv-owner-confirm (service received invitation)
+  "PRF-124: one configuration record consumes the invitation and configures
+the invitee as a peer (books/peer-invite.lisp fn-pinv-confirm-record-plan);
+the enrolment follows it."
   (fnn-owner-serialized
    service nil
    (lambda ()
@@ -159,25 +162,28 @@ slot again, so only a row consumed by exactly this acceptance yields one."
        (unless observed
          (return-from fnn-pinv-owner-confirm
            (fnn-pinv-refused :confirm '(:refused :carrier))))
-       (let ((plan (apply #'fnn-core 'fn-pinv-host-confirm-plan received
+       (let ((plan (apply #'fnn-core 'fn-pinv-host-confirm-record-plan
+                          received invitation
                           (append observed
                                   (list (fnn-owner-core
                                          'fn-pinv-host-owner-invitations)
                                         (fnn-owner-core
-                                         'fn-owner-hybrid-snapshots))))))
+                                         'fn-owner-hybrid-snapshots)
+                                        (fnn-owner-core
+                                         'fn-pinv-host-owner-peers))))))
          (case (first plan)
-           (:consume
+           (:configure
             (let ((published
                     (fnn-owner-live-reconfigure-locked
                      service
                      (lambda (cid)
-                       (fnn-owner-action 'fn-pinv-host-owner-reconfigure cid
-                                         (second plan))))))
+                       (fnn-owner-action 'fn-pinv-host-owner-reconfigure-deltas
+                                         cid (second plan))))))
               (unless (eq published :accepted)
                 (return-from fnn-pinv-owner-confirm published))
               ;; The model's crash point between the configuration record
-              ;; and the kind-3 record (fn-pinv-confirm-after-its-consumption-
-              ;; enrols); a developer image dies here on request.
+              ;; and the kind-3 record (fn-pinv-confirm-record-fold-consumes-
+              ;; and-configures); a developer image dies here on request.
               (when (fnn-developer-selector "FN_PEER_TEST_STOP_AFTER_CONSUME")
                 (fnn-err "peer confirm: developer stop after consumption")
                 (sb-ext:exit :code 137 :abort t))
@@ -196,12 +202,12 @@ slot again, so only a row consumed by exactly this acceptance yields one."
                       (fnn-core 'fn-pinv-host-request-decode
                                 (fnn-core 'fn-pinv-host-kind :accept) octets)))
          (confirm (and octets (not issue) (not accept)
-                       (fnn-core 'fn-pinv-host-request-decode
-                                 (fnn-core 'fn-pinv-host-kind :confirm)
+                       (fnn-core 'fn-pinv-host-confirm-request-decode
                                  octets))))
     (cond (issue (fnn-pinv-owner-issue service issue))
           (accept (fnn-pinv-owner-accept service accept))
-          (confirm (fnn-pinv-owner-confirm service confirm))
+          (confirm (fnn-pinv-owner-confirm service (first confirm)
+                                           (second confirm)))
           (*fnn-pinv-next-handler*
            (funcall *fnn-pinv-next-handler* service frame))
           (t nil))))
@@ -290,8 +296,13 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
             +fnn-exit-ok+))))))
 
 (defun fnn-pinv-confirm (control-path words)
-  (fnn-pinv-status-code
-   (fnn-pinv-send control-path :confirm (fnn-pinv-read-document (first words)))))
+  "`peer confirm ACCEPTANCE INVITATION': both documents go to the owner."
+  (let ((request (fnn-core 'fn-pinv-host-confirm-request-encode
+                           (fnn-pinv-read-document (first words))
+                           (fnn-pinv-read-document (second words)))))
+    (when (eq request :bad)
+      (fnn-refuse "ACL2 refused the confirm request's documents"))
+    (fnn-pinv-status-code (fnn-hybrid-control-send control-path request))))
 
 (defun fnn-pinv-execute (result)
   "Execute an accepted `peer genesis|invite|accept|confirm' plan."

@@ -1,0 +1,8 @@
+Path: poster.example.invalid!not-for-mail
+From: poster@example.invalid
+Newsgroups: fn.test
+Subject: corpus client path
+Date: Fri, 25 Sep 2026 12:00:00 +0000
+Message-ID: <sc-client-path@example.invalid>
+
+a supplied Path tail (D32)

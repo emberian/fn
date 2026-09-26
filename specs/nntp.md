@@ -521,6 +521,82 @@ changed source under it is the conflict line
 (`fn-pb-an-existing-action-writes-nothing`); a deliberate second post of the
 same text under a new Message-ID is a new article.
 
+### Stored, visible and absent: settling a lost reply (NNT-019)
+
+NNT-019: 430/423 is a visibility observation, not acceptance evidence;
+acceptance is settled by re-submitting the same source; an ordinary reader
+that cannot resubmit reports unresolved.
+
+A posting agent that lost the reply to a POST does not know whether the node
+accepted the article. A Message-ID lookup does not tell it: the node answers
+`430` for an article it never stored, and also for one it accepted and a
+cancel since withdrew from newly published views (`430 withdrawn`, NNT-011,
+D29 C3), for one whose content was reclaimed (D13), and for one this reader is
+not served. None of these erases the identity history the Store keeps.
+
+The honest question is the re-submission of the SAME source under the SAME
+Message-ID (D25). The node answers it from the Store, not from a reader view:
+
+- `240`: the re-submission is accepted, and it is the one acceptance;
+- `441 posting failed; this article is already stored here`: the source was
+  accepted earlier;
+- `441 posting failed; a different article with this Message-ID is stored
+  here`: this source is not stored under that Message-ID;
+- any other answer (a refusal by a policy the poster no longer satisfies, a
+  lost connection, the node's own uncertain line): unresolved.
+
+What is proved, over the decision the host calls
+(`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
+through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
+decision is `fn-rclb-existing-action`; the carried-signature ingress through
+`fn-owner-existing-action`, `fn-rcl-existing-action`): once a Message-ID is
+held, the decision answers `:duplicate` or `:conflict`, never nil, after any
+Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
+cancel that withdraws the target is such a completion, `fn-sn-finish`) and
+after reclamation (`fn-vj-reclamation-keeps-a-held-message-id-answered`); the
+served reply to it while the re-submission is in flight is one of the two
+441 lines (`fn-vj-a-held-message-id-is-answered-441`). The host returns that
+word before any reservation or prepare, so no transaction or article number
+is allocated. That the same source is `:duplicate` rather than `:conflict`
+after reclamation is `fn-rcl-existing-action-after-reclaim` with its stated
+SHA-256 collision disjuncts. Not proved: the login-binding gate and the
+posting allowance run before the Store's decision, so a poster whose
+authorization changed is answered by them (unresolved); PKT-164 in
+`planning/evidence/visibility-join-2026-09-25.md` is the decision on a
+privileged query for that case.
+
+This is a stronger fn guarantee and a client contract, not an RFC
+requirement: RFC 3977 §6.3.1 allows 441 for any posting failure; the two
+duplicate answers and their meaning are fn's (D25). The clients
+(`tools/fn_client.py` `post --draft` / `reconcile`, `tools/fn_web.py`
+`/reconcile`) keep the original observed outcome, record each
+reconciliation beside it, re-send the stored bytes, and never mint a second
+Message-ID; `docs/agents.md` states it for agents.
+
+### One source, one identity across routes (NNT-020)
+
+NNT-020: one authored source keeps one identity through every route the node offers, and each layer's equality is the one its contract means
+
+The mandate's cross-route corpus (`tests/fixtures/source-corpus`) is driven
+through every route by `tests/test_native_source_corpus.py`, which prints the
+identity table. What each identity is, and which equality holds:
+
+| Layer | Identity | Equality the contract means |
+| --- | --- | --- |
+| Application operation | the client's own (a persisted Message-ID) | a client that omits Message-ID has no retry identity: its resend is a new article (NNT-005) |
+| Message-ID | RFC 5536 s3.1.3 | transit (IHAVE, CHECK, TAKETHIS) and BP admission decide duplicates by it alone (RFC 3977 s6.3.2, RFC 4644); `fn-peer-decide-offer`, `fn-peer-decide-transfer` |
+| Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-rcl-existing-action`: same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
+| Stored representation | the record payload (`store inspect`), its SHA-256 | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
+| Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); unreachable-in-composition until a program writes tombstones (`store reclaim` is not implemented) |
+| Bundle identity | RFC 9171 (source EID, creation time, sequence) | one per carried request; a re-offer of an uncertain forwarding attempt keeps it (specs/bp-node-machine.md s4.3.1) |
+| Forwarding attempt | one durable kind-8 FNBS row | settled by kind 9; never an article identity |
+| Local sequence and number | per node, per group | never compared across nodes; kept across reopen |
+
+The relayed copy's authored source is not a value the receiving node
+recomputes for unsigned articles: its duplicate key is the Message-ID. For a
+signed carrier the receiver verifies the author's signature over
+`fn-hc-authored-source`, which drops exactly the node-added fields.
+
 ### Not yet true of POST
 
 There is no

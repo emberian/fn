@@ -288,6 +288,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-tests \
 	books/store-reclaim-buffer \
 	tests/acl2/store-reclaim-buffer-tests \
+	books/visibility-join \
+	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
 	books/reclaim-admission \
@@ -326,6 +328,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
+	books/record-width-producers \
+	tests/acl2/record-width-producers-tests \
+	tests/acl2/profile-monotonicity-tests \
+	books/store-budget-article \
+	tests/acl2/store-budget-article-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -757,6 +764,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-tests \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
+	tests/acl2/source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
 	tests/acl2/owner-fault-tests \

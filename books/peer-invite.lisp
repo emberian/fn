@@ -33,6 +33,8 @@
 (include-book "principal")
 (include-book "injection")
 (include-book "config")
+; PRF-124: the peer record the confirm step configures.
+(include-book "peer-config")
 
 ; -----------------------------------------------------------------------------
 ; Total selectors and octet helpers
@@ -944,10 +946,11 @@
 (defconst *fn-pinv-confirm-kind* 11)
 (defconst *fn-pinv-request-spec* '(:blob))
 
+; Issue and accept carry one carrier.  Confirm carries two (PRF-124): the
+; acceptance and the invitation it answers, below.
 (defun fn-pinv-request-kindp (kind)
   (declare (xargs :guard t))
-  (member-equal kind (list *fn-pinv-issue-kind* *fn-pinv-accept-kind*
-                           *fn-pinv-confirm-kind*)))
+  (member-equal kind (list *fn-pinv-issue-kind* *fn-pinv-accept-kind*)))
 
 (defun fn-pinv-request-encode (kind received)
   (declare (xargs :guard t))
@@ -964,3 +967,290 @@
                (fn-cbor-octet-listp (car v)) (consp (car v)))
           (car v)
         nil))))
+;; Confirm's request (kind 11): the acceptance, then the invitation.
+(defconst *fn-pinv-confirm-request-spec* '(:blob :blob))
+
+(defun fn-pinv-confirm-request-encode (acceptance invitation)
+  (declare (xargs :guard t))
+  (if (not (and (fn-cbor-octet-listp acceptance) (consp acceptance)
+                (fn-cbor-octet-listp invitation) (consp invitation)))
+      :bad
+    (fn-nhctrl-seal *fn-pinv-confirm-kind* *fn-pinv-confirm-request-spec*
+                    (list acceptance invitation))))
+
+(defun fn-pinv-confirm-request-decode (octets)
+  (declare (xargs :guard t))
+  (let ((v (fn-nhctrl-open-values octets *fn-pinv-confirm-kind*
+                                  *fn-pinv-confirm-request-spec*)))
+    (if (and (true-listp v) (equal (len v) 2)
+             (fn-cbor-octet-listp (car v)) (consp (car v))
+             (fn-cbor-octet-listp (cadr v)) (consp (cadr v)))
+        v
+      nil)))
+
+; =============================================================================
+; PRF-124: the confirm step ends with a configured peer, in the SAME
+; configuration record that consumes the invitation.
+;
+; The inviter's operator named the invitee, its groups and its address when
+; it issued the invitation (the body lines Invitee, Groups, Host, Port); the
+; acceptance names the acceptor's Path identity and principal.  The confirm
+; request carries both documents.  The invitation is the one this node
+; issued exactly when its ACL2 authored-source identity is the one the
+; acceptance names in Invitation-Source-Id, which the consumption already
+; requires to be the pending row's (so, A-CRYPTO, the row this node
+; recorded at issue from that very source).  The record is
+;
+;   ((:consume-invitation NONCE ACCEPTOR 0 ((NONCE ACCEPTOR ASID 1)))
+;    (:set-peer INVITEE "" 0 <the peer's rows>))
+;
+; applied left to right under one generation by `fn-cfg-apply', the fold
+; `fn-cfg-apply-record' runs when the owner completes the publication
+; (host/native/peer-invite.lisp `fnn-pinv-owner-confirm' ->
+; `fnn-owner-live-reconfigure-locked' -> `fn-owner-reconfigure-deltas').
+; A crash can leave neither or both: there is no state with the invitation
+; consumed and no peer.
+;
+; The peer: name Invitee; Path identity the acceptance's Acceptor-Path;
+; transport (:nntp 1 Host Port (:clear)) -- the invitation carries no TLS
+; words, and a protected transport is the operator's `peer add' of the same
+; name, which replaces the record (specs/peering.md section 10); inbound
+; Groups with the record's payload bound and 16 in flight; no outbound half;
+; and the role binding (:principal ACCEPTOR), so an inbound connection is a
+; reader until an AUTHINFO naming the acceptor promotes it (the
+; principal-bound role selection).  A peer of that name already configured
+; refuses the confirm (`:peer-name-taken'): the confirm never replaces a
+; record the operator wrote.
+
+(defun fn-pinv-digitsp (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (integerp (car x)) (<= 48 (car x)) (<= (car x) 57)
+           (fn-pinv-digitsp (cdr x)))
+    (null x)))
+
+(defun fn-pinv-digits-value (x acc)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (fn-pinv-digits-value (cdr x) (+ (* 10 (nfix acc))
+                                       (nfix (- (nfix (car x)) 48))))
+    (nfix acc)))
+
+; A TCP port written as at most five decimal digits, 1 to 65535, or nil.
+(defun fn-pinv-port (x)
+  (declare (xargs :guard t))
+  (if (and (fn-pinv-digitsp x) (consp x) (<= (len x) 5))
+      (let ((n (fn-pinv-digits-value x 0)))
+        (if (and (<= 1 n) (<= n 65535)) n nil))
+    nil))
+
+(defconst *fn-pinv-peer-inflight* 16)
+
+(defun fn-pinv-confirmed-peer (invitation acceptance acceptor)
+  (declare (xargs :guard t))
+  (fn-cfg-peer-make
+   (fn-record-octets-string (fn-pinv-field "Invitee" invitation))
+   (fn-record-octets-string (fn-pinv-field "Acceptor-Path" acceptance))
+   (list :nntp 1 (fn-record-octets-string (fn-pinv-field "Host" invitation))
+         (fn-pinv-port (fn-pinv-field "Port" invitation)) '(:clear))
+   (list (fn-record-octets-string (fn-pinv-field "Groups" invitation))
+         *fn-record-max-payload* *fn-pinv-peer-inflight*)
+   nil
+   (list :principal (fn-pinv-hex-string acceptor))))
+
+(defthm fn-pinv-confirmed-peer-auth
+  (equal (fn-cfg-peer-auth (fn-pinv-confirmed-peer invitation acceptance
+                                                   acceptor))
+         (list :principal (fn-pinv-hex-string acceptor)))
+  :hints (("Goal" :in-theory (e/d (fn-pinv-confirmed-peer)
+                                  (fn-pinv-hex-string)))))
+
+; The acceptance names this invitation: its source identity, as the
+; Invitation-Source-Id line spells it.
+(defun fn-pinv-names-invitation-p (acceptance invitation)
+  (declare (xargs :guard t))
+  (and (fn-pinv-kindp invitation *fn-pinv-invitation-kind*)
+       (equal (fn-pinv-hex (fn-pinv-source-id invitation))
+              (fn-pinv-field "Invitation-Source-Id" acceptance))))
+
+; The owner's confirm plan (host/native/peer-invite.lisp
+; `fnn-pinv-owner-confirm' calls it through `fn-pinv-host-confirm-record-plan').
+; (:configure DELTAS) | (:enrol principal keys) | (:refused why).
+(defun fn-pinv-confirm-record-plan (received invitation observed-ml ed ml
+                                             invitations snapshots peers)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pinv-confirm-plan received observed-ml ed ml invitations
+                                    snapshots)))
+    (if (not (equal (car plan) :consume)) plan
+      (let* ((acc (fn-pinv-received-source received))
+             (inv (fn-pinv-received-source invitation))
+             (peer (fn-pinv-confirmed-peer
+                    inv acc (fn-pinv-received-principal received))))
+        (cond ((not (fn-pinv-kindp inv *fn-pinv-invitation-kind*))
+               (list :refused :invitation-kind))
+              ((not (fn-pinv-names-invitation-p acc inv))
+               (list :refused :another-invitation))
+              ((not (fn-cfg-peerp peer)) (list :refused :peer-record))
+              ((fn-cfg-peer-find (fn-cfg-peer-name peer) peers)
+               (list :refused :peer-name-taken))
+              (t (list :configure
+                       (list (fn-pinv-at 1 plan)
+                             (fn-cfg-set-peer-delta peer)))))))))
+
+(defthm fn-pinv-acceptance-never-configures
+  (not (equal (car (fn-pinv-acceptance received observed-ml ed ml))
+              :configure))
+  :hints (("Goal" :in-theory (enable fn-pinv-acceptance fn-pinv-document))))
+
+(defthm fn-pinv-confirm-plan-never-configures
+  (not (equal (car (fn-pinv-confirm-plan received observed-ml ed ml invitations
+                                         snapshots))
+              :configure))
+  :hints (("Goal" :in-theory (enable fn-pinv-confirm-plan))))
+
+(defthm fn-pinv-confirm-record-plan-passes-the-other-plans
+  (implies (not (equal (car (fn-pinv-confirm-plan received observed-ml ed ml
+                                                  invitations snapshots))
+                       :consume))
+           (equal (fn-pinv-confirm-record-plan received invitation observed-ml
+                                               ed ml invitations snapshots
+                                               peers)
+                  (fn-pinv-confirm-plan received observed-ml ed ml invitations
+                                        snapshots))))
+
+; KEYSTONE (the record the confirm publishes).  A (:configure DELTAS) plan
+; exists only when the consumption plan is (:consume DELTA) (so
+; `fn-pinv-confirm-consumes-only-a-pending-named-invitation' holds of it),
+; the invitation presented is an invitation whose authored-source identity
+; is exactly the pending row's (the invitation this node issued), the peer
+; built from the two documents is a well-formed peer record whose name no
+; configured peer has, and DELTAS is that consumption followed by that
+; peer's (:set-peer) delta.
+(defthm fn-pinv-confirm-record-configures-the-issued-invitations-peer
+  (let* ((rplan (fn-pinv-confirm-record-plan received invitation observed-ml
+                                             ed ml invitations snapshots peers))
+         (plan (fn-pinv-confirm-plan received observed-ml ed ml invitations
+                                     snapshots))
+         (acc (fn-pinv-received-source received))
+         (inv (fn-pinv-received-source invitation))
+         (nonce (fn-record-octets-string (fn-pinv-field "Nonce" acc)))
+         (row (fn-cfg-invitation-row invitations nonce))
+         (peer (fn-pinv-confirmed-peer inv acc
+                                       (fn-pinv-received-principal received))))
+    (implies (equal (car rplan) :configure)
+             (and (equal (car plan) :consume)
+                  (fn-cfg-invitation-pendingp invitations nonce)
+                  (fn-pinv-kindp inv *fn-pinv-invitation-kind*)
+                  (equal (fn-pinv-hex-string (fn-pinv-source-id inv))
+                         (fn-cfg-row-c row))
+                  (fn-cfg-peerp peer)
+                  (equal (fn-cfg-peer-auth peer)
+                         (list :principal
+                               (fn-pinv-hex-string
+                                (fn-pinv-received-principal received))))
+                  (not (fn-cfg-peer-find (fn-cfg-peer-name peer) peers))
+                  (equal (fn-pinv-at 1 rplan)
+                         (list (fn-pinv-at 1 plan)
+                               (fn-cfg-set-peer-delta peer))))))
+  :hints (("Goal" :in-theory (e/d (fn-pinv-names-invitation-p
+                                   fn-pinv-hex-string)
+                                  (fn-pinv-confirmed-peer fn-cfg-peerp
+                                   fn-record-octets-string
+                                   fn-cfg-peer-find fn-pinv-body-names-p
+                                   fn-pinv-confirm-consumes-only-a-pending-named-invitation))
+           :use ((:instance
+                  fn-pinv-confirm-consumes-only-a-pending-named-invitation)))))
+
+; The fold, one delta at a time: the consumption writes the invitations
+; slot only, the peer delta the peers slot only.
+(defthm fn-pinv-peers-of-consume-delta
+  (equal (fn-cfg-peers (fn-cfg-apply-delta v gen stamp
+                                           (fn-cfg-consume-invitation
+                                            nonce acceptor asid)))
+         (fn-cfg-peers v))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta
+                                     fn-cfg-consume-invitation))))
+
+(defthm fn-pinv-invitations-of-set-peer-delta
+  (equal (fn-cfg-invitations (fn-cfg-apply-delta v gen stamp
+                                                 (fn-cfg-set-peer-delta p)))
+         (fn-cfg-invitations v))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-peer-delta
+                                     fn-cfg-set-peer))))
+
+(defthm fn-pinv-invitation-row-after-consumption
+  (equal (fn-cfg-invitation-row
+          (fn-cfg-invitations
+           (fn-cfg-apply-delta v gen stamp
+                               (fn-cfg-consume-invitation nonce acceptor asid)))
+          nonce)
+         (fn-cfg-row-make nonce acceptor asid 1))
+  :hints (("Goal" :in-theory (enable fn-cfg-consume-invitation
+                                     fn-cfg-invitation-row
+                                     fn-cfg-rows-with-key fn-cfg-ag-car))))
+
+; KEYSTONE (over the fold the host calls).  Applying the confirm's record
+; to the live value V (`fn-cfg-apply', under the record's generation and
+; stamp) leaves: the invitation row its nonce keys consumed by exactly this
+; acceptor and this acceptance's source identity; the peers table holding
+; exactly the confirmed peer's rows under its name; and -- the crash point
+; after the one record -- the same acceptance's next confirm an enrolment.
+(defthm fn-pinv-confirm-record-fold-consumes-and-configures
+  (let* ((rplan (fn-pinv-confirm-record-plan
+                 received invitation observed-ml ed ml (fn-cfg-invitations v)
+                 snapshots (fn-cfg-peers v)))
+         (acc (fn-pinv-received-source received))
+         (inv (fn-pinv-received-source invitation))
+         (nonce (fn-record-octets-string (fn-pinv-field "Nonce" acc)))
+         (acceptor (fn-pinv-hex-string (fn-pinv-received-principal received)))
+         (peer (fn-pinv-confirmed-peer inv acc
+                                       (fn-pinv-received-principal received)))
+         (next (fn-cfg-apply v gen stamp (fn-pinv-at 1 rplan))))
+    (implies (equal (car rplan) :configure)
+             (and (equal (fn-cfg-invitation-row (fn-cfg-invitations next) nonce)
+                         (fn-cfg-row-make nonce acceptor
+                                          (fn-pinv-hex-string
+                                           (fn-pinv-source-id acc))
+                                          1))
+                  (equal (fn-cfg-rows-with-key (fn-cfg-peers next)
+                                               (fn-cfg-peer-name peer))
+                         (fn-cfg-peer-rows peer))
+                  (implies (not (fn-pinv-enrolled-withp
+                                 (fn-pinv-received-principal received)
+                                 (fn-pinv-received-keys received) snapshots))
+                           (equal (car (fn-pinv-confirm-plan
+                                        received observed-ml ed ml
+                                        (fn-cfg-invitations next) snapshots))
+                                  :enrol)))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-cfg-apply)
+                           (fn-pinv-confirm-record-plan fn-pinv-confirmed-peer
+                            fn-record-octets-string fn-cfg-invitation-row
+                            fn-cfg-peerp fn-cfg-peer-rows fn-cfg-apply-delta
+                            fn-pinv-invitations-of-apply-delta
+                            fn-pinv-confirm-record-configures-the-issued-invitations-peer
+                            fn-pinv-confirm-consumes-only-a-pending-named-invitation
+                            fn-pinv-confirm-after-its-consumption-enrols))
+           :use ((:instance
+                  fn-pinv-confirm-record-configures-the-issued-invitations-peer
+                  (invitations (fn-cfg-invitations v)) (peers (fn-cfg-peers v)))
+                 (:instance
+                  fn-pinv-confirm-consumes-only-a-pending-named-invitation
+                  (invitations (fn-cfg-invitations v)))
+                 (:instance fn-pinv-confirm-after-its-consumption-enrols)
+                 (:instance fn-pinv-invitations-of-apply-delta
+                            (d (fn-pinv-at 1 (fn-pinv-confirm-plan
+                                              received observed-ml ed ml
+                                              (fn-cfg-invitations v)
+                                              snapshots))))
+                 (:instance fn-cfg-peer-rows-after-set-peer
+                            (p (fn-pinv-confirmed-peer
+                                (fn-pinv-received-source invitation)
+                                (fn-pinv-received-source received)
+                                (fn-pinv-received-principal received)))
+                            (v (fn-cfg-apply-delta
+                                v gen stamp
+                                (fn-pinv-at 1 (fn-pinv-confirm-plan
+                                               received observed-ml ed ml
+                                               (fn-cfg-invitations v)
+                                               snapshots)))))))))

@@ -1721,6 +1721,80 @@
       ]
     },
     {
+      "id": "SCN-069",
+      "title": "Two strangers become peers with one confirm, and a declined key statement stays declined across a restart that adds the grant",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "A and B run `peer genesis`; A: `peer invite nodeB fn.* HOST PORT a.example KEYS INV`; B: `peer accept INV KEYS b.example - ACC`; A: `peer confirm ACC INV`; A: `peer list`.",
+        "A: `peer confirm ACC INV-OTHER` with another invitation A issued; A2 with FN_PEER_TEST_STOP_AFTER_CONSUME: confirm, restart, `peer list`, confirm again.",
+        "Node D: enrol P, POST a succession statement with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The confirm exits 0 and `peer list` shows nodeB with auth principal B.",
+        "Another invitation is refused another-invitation and configures nothing; after the stop A2 already lists nodeB2, and the retry enrols once.",
+        "The statement logs `key-statement declined no-grant`; after each restart the log adds `key-statement declined ... at-open` and the key history is unchanged (the pre-packet image instead logs `enrol-successor committed at-open`)."
+      ]
+    },
+    {
+      "id": "SCN-060",
+      "title": "a POST whose reply was lost, then withdrawn by an authorized cancel, is settled by re-sending the same article: already stored, no new Message-ID, no new number",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-019"
+      ],
+      "steps": [
+        "A developer node with fn.test and control.cancel; the owner runs with FN_NATIVE_POST_FAULT=finish-durable:kill. fn_client posts with --draft and the owner dies after the commit is durable, before the reply (exit 3, uncertain); fn_web posts through its outbox under the same cut.",
+        "The owner restarts; both targets answer 220. A principal granted cancel over fn.test files a signed cancel of each target.",
+        "A fresh reader asks ARTICLE <target> for both; fn_client show <target>.",
+        "fn_client reconcile DRAFT and fn_web POST /reconcile re-send the exact stored lines; then reconcile again.",
+        "On a protected node the poster's login loses posting permission after a lost reply; fn_client reconcile."
+      ],
+      "expected": [
+        "Both lookups answer 430 withdrawn; show exits 1 and says the answer is not evidence about acceptance.",
+        "Both reconciliations draw 441 posting failed; this article is already stored here and settle accepted (already-stored); the transaction files and GROUP fn.test are unchanged; the draft and outbox keep the original outcome uncertain beside the reconciliation.",
+        "The authorization case answers 440 and settles unresolved (exit 4); the article is still served (220) and nothing is stored."
+      ],
+      "evidence": [
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/visibility-join-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-062",
+      "title": "One authored article keeps one identity through every route, and the node shows the table",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-020"
+      ],
+      "steps": [
+        "Two developer-image nodes A and B, A feeding B, each with a path identity",
+        "POST each corpus element to A, retry it at a later second, and POST it with one authored byte changed",
+        "Post three elements again through the operator route; author a signed article through hybrid-author and POST a dual-signature carrier",
+        "Await each accepted article at B and re-offer it by IHAVE",
+        "SIGKILL and reopen A; reread every article and retry four elements",
+        "Stop both nodes and read every record with store inspect",
+        "On one node: target then cancel with a pinned reader, cancel then target, a Supersedes; SIGKILL and reopen"
+      ],
+      "expected": [
+        "Xref refused; every other element 240; a retry 441 already stored; a changed byte 441 a different article; a legacy post without Message-ID is a new article on retry",
+        "The operator route answers DUPLICATE and adds no article; the supplied Path tail is kept behind A's identity; every source and the carrier are stored verbatim after the injected block",
+        "B stores A's octets with its identity and an empty diagnostic spliced into Path; the re-offer is 435; numbers and octets are unchanged across reopen; store inspect equals the served octets",
+        "Both cancel orders withdraw their targets from every fresh view, live and after replay; the pinned reader keeps 220; the superseding article stays visible",
+        "hybrid-author's resend of the same signed carrier is DUPLICATE, exit 0; the same source signed afresh (hedged ML-DSA-65) or changed is REFUSED, exit 1; no article is added"
+      ],
+      "evidence": [
+        "tests/test_native_source_corpus.py",
+        "tests/acl2/source-routes-tests.lisp",
+        "planning/evidence/source-corpus-2026-09-25.md"
+      ]
+    },
+    {
       "id": "SCN-061",
       "title": "Two sleeping consumers exchange a signed report and reply through one node across every ownership cut",
       "milestone": "M4",
