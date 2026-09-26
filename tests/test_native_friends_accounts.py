@@ -222,11 +222,31 @@ class NativeFriendsAccountsTests(unittest.TestCase):
                                         "<robin2-1@friend.example>")
             self.assertTrue(reply.startswith("240"), reply)
             self.stop()
-        # PKT-440: an image from before accounts refuses this store.
+        # PKT-440: an image from before accounts refuses this store, and
+        # (the control) opens a store that never issued a code.  Its fn.toml
+        # names only the store and a listener, which that image parses.
         if OLD_IMAGE:
-            old = subprocess.run([OLD_IMAGE, "--fn", "operator", str(self.config),
-                                  "status"], cwd=ROOT, env=environment([OLD_IMAGE]),
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 timeout=240, check=False)
-            print("NATIVE-ACCOUNTS old-image status ->", old.returncode, text(old)[-200:])
-            self.assertNotEqual(old.returncode, 0)
+            def old_status(store, name):
+                config = self.root / (name + ".toml")
+                config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+                                  'port = {}\n'.format(store, free_port()), encoding="ascii")
+                result = subprocess.run([OLD_IMAGE, "--fn", "operator", str(config),
+                                         "status"], cwd=ROOT, env=environment([OLD_IMAGE]),
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        timeout=240, check=False)
+                print("NATIVE-ACCOUNTS old-image status", name, "->", result.returncode,
+                      text(result)[-160:].replace("\n", " "))
+                return result
+            fresh = self.root / "fresh"
+            fresh_config = self.root / "fresh-new.toml"
+            fresh_config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+                                    'port = {}\n'.format(fresh, free_port()), encoding="ascii")
+            made = subprocess.run([*self.node, "operator", str(fresh_config), "init",
+                                   "local.general"], cwd=ROOT, env=environment(self.node),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  timeout=240, check=False)
+            self.assertEqual(made.returncode, 0, text(made))
+            self.assertEqual(old_status(fresh, "fresh").returncode, 0)
+            refused = old_status(self.store, "redeemed")
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertNotIn("usage", text(refused))
