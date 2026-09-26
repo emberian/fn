@@ -339,3 +339,30 @@
               (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
                                         :verified :verified))
              nil)))
+
+; PKT-433 (d), PRF-179: fn-pcb-transit-refusal-detail-is-the-class-and-the-
+; verdict (no hypotheses).  On each refusal the host relays (CLASS VERDICT):
+; signature-failed / cryptographically-invalid, no-local-binding /
+; unenrolled, malformed / malformed, unsupported-profile /
+; unsupported-profile; on a verified, carried or unsigned input, nothing.
+(assert-event (equal (fn-pcb-transit-refusal-detail *pat-relayed* *pat-snapshots* nil
+                                                    :refused :verified)
+                     '(:signature-failed :cryptographically-invalid)))
+(assert-event (equal (fn-pcb-transit-refusal-detail *pat-relayed* nil nil nil nil)
+                     '(:no-local-binding :unenrolled)))
+(assert-event (equal (fn-pcb-transit-refusal-detail *pat-malformed* *pat-snapshots*
+                                                    nil nil nil)
+                     '(:malformed :malformed)))
+(assert-event (equal (car (fn-pcb-transit-refusal-detail *pcb-unsupported*
+                                                         *pat-snapshots* nil nil nil))
+                     (fn-pcb-refusal-class *pcb-unsupported* *pat-snapshots* nil nil nil)))
+(assert-event (equal (cadr (fn-pcb-transit-refusal-detail *pcb-unsupported*
+                                                          *pat-snapshots* nil nil nil))
+                     (fn-pcb-admission-verdict *pcb-unsupported* *pat-snapshots*
+                                               nil nil nil)))
+(assert-event (null (fn-pcb-transit-refusal-detail *pat-relayed* *pat-snapshots* nil
+                                                   :verified :verified)))
+(assert-event (null (fn-pcb-transit-refusal-detail *pat-relayed* nil *pat-carries*
+                                                   nil nil)))
+(assert-event (null (fn-pcb-transit-refusal-detail *tha-root-source* *pat-snapshots*
+                                                   nil nil nil)))

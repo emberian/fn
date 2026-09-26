@@ -839,7 +839,7 @@ follows is justified only by this line."
 (defun fnn-owner-transit-refused (detail)
   (setq *fnn-owner-transit-detail*
         (if (and (consp detail) (eq (first detail) :refused)
-                 (keywordp (second detail)))
+                 (or (keywordp (second detail)) (consp (second detail))))
             (second detail)
           detail))
   :refused)
@@ -851,9 +851,12 @@ follows is justified only by this line."
 ;;; when they were observed.  Other ingresses keep ACL2's plan reason.
 (defun fnn-owner-transit-class (plan payload nntp-transit-p ed ml)
   (if (not nntp-transit-p) plan
-    (let ((class (fnn-owner-core 'fn-owner-transit-refusal-class
-                                 (fnn-octet-list payload) t ed ml)))
-      (if (keywordp class) (list :refused class) plan))))
+    ;; PKT-433 (d): ACL2's (CLASS VERDICT); the log prints both.
+    (let ((detail (fnn-owner-core 'fn-owner-transit-refusal-class
+                                  (fnn-octet-list payload) t ed ml)))
+      (if (and (consp detail) (keywordp (first detail)))
+          (list :refused detail)
+        plan))))
 
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence
                                   &optional nntp-transit-p)
