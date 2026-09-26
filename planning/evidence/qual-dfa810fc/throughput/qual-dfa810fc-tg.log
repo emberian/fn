@@ -1,0 +1,10 @@
+started throughput-gate-dfa810fceabe-20260926T151727Z on hbox; /tank/fn/scratch/throughput-gate/run-dfa810fceabe-20260926T151727Z
+scp: /tank/fn/scratch/throughput-gate/run-dfa810fceabe-20260926T151727Z/result.json: No such file or directory
+1
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '$here/runtime/sbcl'
+
+rc=1

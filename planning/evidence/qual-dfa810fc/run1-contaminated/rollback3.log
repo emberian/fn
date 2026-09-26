@@ -1,0 +1,273 @@
+# rollback3 start 2026-09-26T13:01:04Z
+QUOTE-DOC Once an account code is redeemed on a release with accounts, releases before it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440: an older image refuses configuration delta kinds 15 and 16 at decode; a store that never issued a code is unaffected). The same rule covers the login-binding rows (delta code 17, `principal bind|unbind` applied live through the running node since 2026-09-26): a store that ever published a binding is refused by releases
+QUOTE-DOC The same rule covers the login-binding rows (delta code 17, `principal bind|unbind` applied live through the running node since 2026-09-26): a store that ever published a binding is refused by releases before it; roll back only from the pre-upgrade snapshot. There are two rollbacks, and they are not the same: - **Restoring the kept `config.json`** (the old release reads the new history under the old profile). `rollback-check KEPT` says `rollback sound transactions=N` wh
+QUOTE-DOC **The pull journals** (`<store>/pull/*.fnpl`). A release from before 2026-09-26 refuses a pull journal that holds the `:pull-unavailable` record (the per-article count that bounds a peer's repeated 430s), so rolling a node back to such a release means deleting its `pull/` journals first; the cursor then restarts one day back, which is bounded duplicate replay with no skipped accepted work (the NEWNEWS pull's own contract). ## Back up Stop the service, then copy th
+## (i-a) an account code on a copy of the live store
+STEP snapshot-pre-upgrade (cp -a of the stopped copy)
+STEP dfa810fc account invite OFFLINE on a side copy rc=0
+  invite rc=0 printed-a-code=True
+STEP bbf52159 status on the issued-only copy rc=0
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | pack-chain none
+  | accepted operator status
+OWNER dfa8-acct pid=1733938 announce='LISTENING 52797'
+STEP dfa810fc account invite (live) rc=0
+  a code was printed once (not logged here)
+  (clear) greeting 201 fn-nntp experimental reader ready
+  (clear) > XREDEEM <code> friend1  -> 483 a protected channel is required; use STARTTLS
+  (clear) > QUIT  -> 205 closing connection
+  XREDEEM over STARTTLS -> 381 send the password with XREDEEM PASS / PASS -> 281 account bound; authenticate with AUT
+  > QUIT  -> 205 closing connection
+  AUTHINFO USER friend1 -> 381 password required
+  AUTHINFO PASS -> 281 authentication accepted
+  > GROUP fn.agents  -> 211 12 1 12 fn.agents
+  > POST  -> 340 send article to be posted
+  > POST <158 octets>  -> 240 article received OK
+  POST as friend1 -> 240 article received OK
+  > QUIT  -> 205 closing connection
+  same code, another login -> 381 send the password with XREDEEM PASS
+  > QUIT  -> 205 closing connection
+OWNER dfa8-acct pid=1733938 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP dfa810fc account list rc=0
+  | redeemed friend1 ce64d8e7dc59a7a96d432d1970d113b6d3bc533380eb93280fd44ec0842e4529
+  | accepted operator account
+  the code is absent from account list: True
+STEP dfa810fc status after the redeem rc=0 OK
+  | transactions=14 articles=14 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=14 transactions-budget=4096 bytes-used=11615 history-bound=805306368 charge-reserved=28 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=14 reserved=28 connections=0
+  | pack-chain none
+  | accepted operator status
+STEP ROLLBACK: bbf52159 status on the redeemed store (want 4) rc=0 UNEXPECTED(want 4)
+  | transactions=14 articles=14 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=14 transactions-budget=4096 bytes-used=11615 history-bound=805306368 charge-reserved=28 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=14 reserved=28 connections=0
+  | pack-chain none
+  | accepted operator status
+STEP ROLLBACK: bbf52159 recover on the redeemed store (want 4) rc=0 UNEXPECTED(want 4)
+  | recovered transactions=14 articles=14 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+OWNER bbf5-on-redeemed pid=1734014 announce='LISTENING 52797'
+OWNER bbf5-on-redeemed pid=1734014 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP RESTORE: bbf52159 recover on the pre-upgrade snapshot rc=0 OK
+  | recovered transactions=13 articles=13 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP RESTORE: bbf52159 status on the pre-upgrade snapshot rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | pack-chain none
+  | accepted operator status
+OWNER bbf5-restored-acct pid=1734564 announce='LISTENING 53209'
+  > GROUP fn.agents  -> 480 authentication required
+  > QUIT  -> 205 closing connection
+OWNER bbf5-restored-acct pid=1734564 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+## (i-b) a login binding applied live on a copy of the live store
+STEP principal set-password qual (no signing binding) rc=0
+  | qual principal=5555555555555555555555555555555555555555555555555555555555555555 posting=true
+  | Password: Confirm password: accepted operator principal set-password effective-at-next-start
+OWNER dfa8-bind pid=1734661 announce='LISTENING 58595'
+  > AUTHINFO USER qual  -> 381 password required
+  session open before the bind: AUTHINFO -> 281 authentication accepted
+STEP dfa810fc principal bind qual P (live) rc=0
+  | qual principal=5555555555555555555555555555555555555555555555555555555555555555 posting=true signing=5555555555555555555555555555555555555555555555555555555555555555
+  | accepted operator principal bind applied
+  bind's last word: applied
+  > GROUP fn.agents  -> 211 12 1 12 fn.agents
+  > QUIT  -> 205 closing connection
+OWNER dfa8-bind pid=1734661 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP principal list rc=0
+  | ember principal=172aaffef4c349ec0e2136f5dde6ab6aa6e5b393443ed0942b2d6d8cb15a338d posting=true
+  | qual principal=5555555555555555555555555555555555555555555555555555555555555555 posting=true signing=5555555555555555555555555555555555555555555555555555555555555555
+  | tulip principal=a95202662c41dbc48192e485b49845432f1ec96290ac1e01c242ae51f86bd849 posting=true
+  | yue principal=d4b77126cded9c40e91ac771ad01ba8f04938c09738022d49501f0682c2464d9 posting=true
+  | accepted operator principal list
+STEP ROLLBACK: bbf52159 status on the store with a published binding (want 4) rc=0 UNEXPECTED(want 4)
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | pack-chain none
+  | accepted operator status
+STEP ROLLBACK: bbf52159 recover (want 4) rc=0 UNEXPECTED(want 4)
+  | recovered transactions=13 articles=13 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP principal set-password qual (control copy) rc=0
+  | qual principal=5555555555555555555555555555555555555555555555555555555555555555 posting=true
+  | Password: Confirm password: accepted operator principal set-password effective-at-next-start
+OWNER dfa8-bind-control pid=1734736 announce='LISTENING 37199'
+OWNER dfa8-bind-control pid=1734736 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+STEP CONTROL: bbf52159 status after a dfa810fc owner ran with no binding (want 0) rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | pack-chain none
+  | accepted operator status
+STEP RESTORE: bbf52159 status on the pre-upgrade snapshot (the pristine copy) rc=0 OK
+  | transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=4096 list-memory-octets=25769803776
+  | headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 debt=0 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=13 reserved=26 connections=0
+  | pack-chain none
+  | accepted operator status
+## (ii) the pull journal's :pull-unavailable record
+STEP bbf52159 image: store init fn.test (the node as deployed) rc=0 OK
+  | initialized /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/pull/store
+STEP bbf52159 image: policy set path-identity rc=0 OK
+  | configured generation=2 record=00000002.cfg verification=VERIFIED
+  | accepted operator policy
+STEP bbf52159 image: peer add S rc=0 OK
+  | configured generation=3 record=00000003.cfg verification=VERIFIED
+  | accepted operator peer
+STEP bbf52159 image: peer pull S 2 (its grammar: no ROUNDS) rc=0 OK
+  | configured generation=4 record=00000004.cfg verification=VERIFIED
+  | accepted operator peer
+STEP bbf52159 status before the upgrade rc=0 OK
+  | transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=128 list-memory-octets=805306368
+  | headroom transactions-used=0 transactions-budget=128 bytes-used=0 history-bound=25165824 charge-reserved=0 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=0 reserved=0 connections=0
+  | accepted operator status
+OWNER dfa8-pull pid=1735549 announce='LISTENING 50985'
+OWNER dfa8-pull pid=1735549 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+  log| pull peer=S round=done cursor=held unavailable=1 transport=clear
+  log| pull peer=S round=done cursor=held unavailable=1 transport=clear
+  pull journal files: ['pull/S.fnfd']
+  journal octets 369; contains 'pull-unavailable': False
+STEP ROLLBACK: bbf52159 status with the :pull-unavailable journal rc=0
+  | transactions=2 articles=2 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=128 list-memory-octets=805306368
+  | headroom transactions-used=2 transactions-budget=128 bytes-used=1076 history-bound=25165824 charge-reserved=4 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=2 reserved=4 connections=0
+  | accepted operator status
+STEP ROLLBACK: bbf52159 recover with the journal rc=0
+  | recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP ROLLBACK: bbf52159 owner with the journal exited rc=4
+  | CONTROL /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/pull/control.sock
+  | LISTENING 50985
+  | OWNER-OPEN open=full-replay reason=absent
+  | owner core/store fault; process stopped: invalid complete FNPL evidence: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/pull/store/pull/S.fnfd
+  | fault operator run
+  fn.log| pull peer=S round=done cursor=held unavailable=1 transport=clear
+  fn.log| accepted peer connection=2 peer=S time=2026-09-26T13:01:35Z
+  fn.log| accepted peer connection=3 peer=S time=2026-09-26T13:01:35Z
+  fn.log| pull peer=S round=done cursor=held unavailable=1 transport=clear
+STEP ROLLBACK: b6759850 status with the :pull-unavailable journal rc=0
+  | transactions=2 articles=2 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=128 list-memory-octets=805306368
+  | headroom transactions-used=2 transactions-budget=128 bytes-used=1076 history-bound=25165824 charge-reserved=4 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=2 reserved=4 connections=0
+  | accepted operator status
+STEP ROLLBACK: b6759850 recover with the journal rc=0
+  | recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none
+  | open=full-replay reason=absent
+  | accepted operator recover
+STEP ROLLBACK: b6759850 owner with the journal exited rc=4
+  | CONTROL /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/pull/control.sock
+  | LISTENING 50985
+  | OWNER-OPEN open=full-replay reason=absent
+  | owner core/store fault; process stopped: invalid complete FNPL evidence: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/pull/store/pull/S.fnfd
+  | fault operator run
+  fn.log| pull peer=S round=done cursor=held unavailable=1 transport=clear
+  fn.log| accepted peer connection=2 peer=S time=2026-09-26T13:01:35Z
+  fn.log| accepted peer connection=3 peer=S time=2026-09-26T13:01:35Z
+  fn.log| pull peer=S round=done cursor=held unavailable=1 transport=clear
+STEP delete pull/ (the documented rollback step)
+OWNER bbf5-pull-deleted pid=1736767 announce='LISTENING 50985'
+OWNER bbf5-pull-deleted pid=1736767 exit=0 stdout-lines-after-LISTENING=0 blank=0 invariant-risk-lines=0
+  NEWNEWS asked by the upgraded image: ['NEWNEWS fn.* 20260925 130132 GMT', 'NEWNEWS fn.* 20260925 130132 GMT']
+  NEWNEWS asked by bbf52159 after pull/ was deleted: ['NEWNEWS fn.* 20260925 130141 GMT', 'NEWNEWS fn.* 20260925 130141 GMT']
+  wall clock now (UTC): 20260926 130144
+STEP bbf52159 status after the rollback rc=0 OK
+  | transactions=2 articles=2 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+  | open-cost replay-records=128 list-memory-octets=805306368
+  | headroom transactions-used=2 transactions-budget=128 bytes-used=1076 history-bound=25165824 charge-reserved=4 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=2 reserved=4 connections=0
+  | accepted operator status
+## (iii) the pre-C1 witness store
+  fixture files: ['SHA256SUMS', 'ordinary/allocation-frontier.json', 'ordinary/committed-history.json', 'ordinary/config.json', 'ordinary/config/00000001.cfg', 'ordinary/transactions/00000000000000000000.txn', 'ordinary/transactions/00000000000000000001.txn', 'witness/allocation-frontier.json', 'witness/committed-history.json', 'witness/config.json', 'witness/config/00000001.cfg', 'witness/transactions/00000000000000000000.txn']
+STEP dfa810fc store witness recover rc=4 UNEXPECTED(want 1)
+  | store: missing store directory: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/prec1-witness/staging
+STEP dfa810fc store witness inspect rc=5 UNEXPECTED(want 1)
+  | fn-host: error: missing arguments
+STEP dfa810fc store witness checkpoint rc=4 UNEXPECTED(want 1)
+  | store: missing store directory: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/prec1-witness/staging
+STEP dfa810fc store witness repair-control (want refusal) rc=1
+  | store: repair semantics undecided (PKT-444)
+STEP dfa810fc operator health (offline) on the witness rc=4
+  | fault operator health missing store directory: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/prec1-witness/staging
+STEP dfa810fc operator run on the witness (want refusal, exit 1) rc=4 UNEXPECTED(want 1)
+  | fault operator run missing store directory: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/prec1-witness/staging
+STEP dfa810fc store ordinary recover rc=4
+  | store: missing store directory: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/prec1-ordinary/staging
+STEP dfa810fc store ordinary inspect rc=5
+  | fn-host: error: missing arguments
+STEP dfa810fc store ordinary checkpoint rc=4
+  | store: missing store directory: /tank/fn/scratch/qual-dfa810fc/upgrade-live/rollback3/prec1-ordinary/staging
+QUOTE-DOC-iii A store written by a release before 2026-09-25 (C1) that holds a signed control article, such as a cancel, filed under its Newsgroups is refused by name by every open (`recover`, `run`, `health`, `inspect`, `checkpoint`): `pre-C1 control record (txid N, <message-id>): run store repair-control`, exit 1. Nothing is changed or replayed. The repair verb `fn store ROOT repair-control` exists but refuses (`repair semantics undecided (PKT-444)`) until what such a repair means is decided; keep the store as it is until then. `fn status` reports what the store is: the configuration generation, the transaction and article
+# rollback3 end 2026-09-26T13:01:45Z
+rc=0

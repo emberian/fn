@@ -1,0 +1,154 @@
+{
+  "image": "/tank/fn/gates/qual-dfa810fc-20260926/build/images/dfa810fceabedde937ba7e4bfa46b43fd599ac62/fn-host",
+  "launcher_sha256": "432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505",
+  "core_sha256": "099429ddd26c4737d2a026db067f6ccd236e1bdd16dafe19da1cb708847509b6",
+  "profile": "scale",
+  "articles": 2048,
+  "octets": 32693,
+  "article0_octets": 32693,
+  "samples": 32,
+  "readers": 3,
+  "port": 49821,
+  "store": "/tank/fn/scratch/qual-dfa810fc/ckpt/n2048/store",
+  "init_out": "initialized /tank/fn/scratch/qual-dfa810fc/ckpt/n2048/store\naccepted operator init\n",
+  "started_utc": "2026-09-26T12:56:56Z",
+  "first_open_seconds": 0.1625522654503584,
+  "residency_empty": {
+    "rss_kib": 335120,
+    "hwm_kib": 335120
+  },
+  "greeting": {
+    "n": 32,
+    "min_ms": 0.306151807308197,
+    "median_ms": 0.46341540291905403,
+    "p95_ms": 0.8244551718235016,
+    "max_ms": 3.5814233124256134
+  },
+  "load_seconds": 473.0603353930637,
+  "post_all": {
+    "n": 2048,
+    "min_ms": 100.92161688953638,
+    "median_ms": 133.7019926868379,
+    "p95_ms": 466.9728586450219,
+    "max_ms": 1533.4470476955175
+  },
+  "post_first_quarter": {
+    "n": 512,
+    "min_ms": 101.07990354299545,
+    "median_ms": 117.42976075038314,
+    "p95_ms": 425.10057240724564,
+    "max_ms": 983.406400308013
+  },
+  "post_last_quarter": {
+    "n": 512,
+    "min_ms": 100.92161688953638,
+    "median_ms": 117.42657935246825,
+    "p95_ms": 441.8704155832529,
+    "max_ms": 1161.2235605716705
+  },
+  "rss_quarters_kib": {
+    "rss_kib_at_512": 677872,
+    "rss_kib_at_1024": 964188,
+    "rss_kib_at_1536": 1248360,
+    "rss_kib_at_2048": 1539772
+  },
+  "residency_after_load": {
+    "rss_kib": 1539772,
+    "hwm_kib": 1567272
+  },
+  "alloc_post": {
+    "n": 32,
+    "timing": {
+      "n": 32,
+      "min_ms": 108.63832663744688,
+      "median_ms": 129.97747398912907,
+      "p95_ms": 1059.7473364323378,
+      "max_ms": 1925.2347880974412
+    }
+  },
+  "alloc_stat": {
+    "n": 32,
+    "timing": {
+      "n": 32,
+      "min_ms": 0.22444408386945724,
+      "median_ms": 0.24004001170396805,
+      "p95_ms": 0.3409115597605705,
+      "max_ms": 0.4356037825345993
+    }
+  },
+  "alloc_article": {
+    "n": 32,
+    "timing": {
+      "n": 32,
+      "min_ms": 47.436521388590336,
+      "median_ms": 96.39050392434001,
+      "p95_ms": 533.8482772931457,
+      "max_ms": 2313.4963754564524
+    }
+  },
+  "group_reply": "211 2080 1 2080 fn.test",
+  "stat_present": {
+    "n": 32,
+    "min_ms": 0.23623555898666382,
+    "median_ms": 0.25498541072010994,
+    "p95_ms": 0.3170156851410866,
+    "max_ms": 0.3450848162174225
+  },
+  "article_present": {
+    "n": 32,
+    "min_ms": 52.52857971936464,
+    "median_ms": 92.09166653454304,
+    "p95_ms": 404.48048897087574,
+    "max_ms": 2160.080154426396
+  },
+  "article_octets_read": 1048672,
+  "over_present": {
+    "n": 32,
+    "min_ms": 2.352955751121044,
+    "median_ms": 2.981943544000387,
+    "p95_ms": 6.154310889542103,
+    "max_ms": 49.253963865339756
+  },
+  "contention": {
+    "readers": 3,
+    "window_seconds": 55.842311521060765,
+    "reader_articles": 164,
+    "reader_octets": 5374444,
+    "post": {
+      "n": 32,
+      "min_ms": 108.25968999415636,
+      "median_ms": 345.5405691638589,
+      "p95_ms": 1329.8317110165954,
+      "max_ms": 3737.201016396284
+    },
+    "article": {
+      "n": 32,
+      "min_ms": 757.489001378417,
+      "median_ms": 1055.7286199182272,
+      "p95_ms": 1334.8072431981564,
+      "max_ms": 1365.181696601212
+    },
+    "reader_errors": []
+  },
+  "articles_total": 2112,
+  "residency_after_reads": {
+    "rss_kib": 14260192,
+    "hwm_kib": 17873632
+  },
+  "reopen_seconds": 32.667670206166804,
+  "reopen_last_stat": "223 0 <t17-002047@example.invalid> retrieved",
+  "residency_after_reopen": {
+    "rss_kib": 4491180,
+    "hwm_kib": 7082628
+  },
+  "checkpoint_seconds": 50.080694273114204,
+  "checkpoint_rc": 0,
+  "checkpoint_out": "\nACL2 Warning [Invariant-risk] in FN-STORE-SCO-PUBLISH-PLAN:  Invariant-\nrisk has been detected for a call of function FN-STORE-SCO-PUBLISH-PLAN\n(as possibly leading to an ill-guarded call of UPDATE-FN-OCTETS$C-FILL);\nsee :DOC invariant-risk.\n\ncheckpoint sequence=2112 octets=210493179 open=checkpoint:2048 suffix=64\naccepted operator checkpoint\n",
+  "reopen_from_checkpoint_seconds": 29.015761504881084,
+  "checkpoint_last_stat": "223 0 <t17-002047@example.invalid> retrieved",
+  "residency_after_checkpoint_open": {
+    "rss_kib": 5417844,
+    "hwm_kib": 7897224
+  },
+  "finished_utc": "2026-09-26T13:08:37Z"
+}

@@ -1,0 +1,337 @@
+init rc 0 initialized /tank/fn/scratch/qual-dfa810fc/mixed/store
+accepted operator init
+{
+ "latency": {
+  "reader-group": {
+   "n": 7044,
+   "p50_ms": 0.6489027291536331,
+   "p95_ms": 428.73025592416525,
+   "p99_ms": 2170.7530952990055,
+   "max_ms": 346746.3177489117
+  },
+  "post": {
+   "n": 1610,
+   "p50_ms": 278.8004670292139,
+   "p95_ms": 602.1795673295856,
+   "p99_ms": 3610.8361380174756,
+   "max_ms": 346560.89167203754
+  },
+  "signed-report": {
+   "n": 139,
+   "p50_ms": 2666.8160958215594,
+   "p95_ms": 12073.0791259557,
+   "p99_ms": 18613.76278847456,
+   "max_ms": 40415.23634083569
+  },
+  "status-live": {
+   "n": 95,
+   "p50_ms": 279.516676440835,
+   "p95_ms": 10176.372602581978,
+   "p99_ms": 10246.03729788214,
+   "max_ms": 10246.03729788214
+  },
+  "health-live": {
+   "n": 95,
+   "p50_ms": 164.46551214903593,
+   "p95_ms": 10174.514891579747,
+   "p99_ms": 10255.646879784763,
+   "max_ms": 10255.646879784763
+  },
+  "bp-queue": {
+   "n": 53,
+   "p50_ms": 6768.160007894039,
+   "p95_ms": 18997.805191203952,
+   "p99_ms": 23185.40753610432,
+   "max_ms": 23185.40753610432
+  },
+  "consumer-wake": {
+   "n": 101,
+   "p50_ms": 1254.1784225031734,
+   "p95_ms": 11240.285502746701,
+   "p99_ms": 16842.053634114563,
+   "max_ms": 45225.88028386235
+  },
+  "consumer-wake:not-ok": {
+   "n": 101,
+   "p50_ms": 1254.1784225031734,
+   "p95_ms": 11240.285502746701,
+   "p99_ms": 16842.053634114563,
+   "max_ms": 45225.88028386235
+  },
+  "control-group-create": {
+   "n": 26,
+   "p50_ms": 10088.718984276056,
+   "p95_ms": 10187.903607264161,
+   "p99_ms": 10244.937995448709,
+   "max_ms": 10244.937995448709
+  },
+  "control-grant": {
+   "n": 26,
+   "p50_ms": 10093.135750852525,
+   "p95_ms": 10206.960126757622,
+   "p99_ms": 10243.351416662335,
+   "max_ms": 10243.351416662335
+  },
+  "bp-resume": {
+   "n": 11,
+   "p50_ms": 6435.613260604441,
+   "p95_ms": 14690.737331286073,
+   "p99_ms": 14690.737331286073,
+   "max_ms": 14690.737331286073
+  },
+  "control-group-create:not-ok": {
+   "n": 22,
+   "p50_ms": 10091.431337408721,
+   "p95_ms": 10187.903607264161,
+   "p99_ms": 10244.937995448709,
+   "max_ms": 10244.937995448709
+  },
+  "status-live:not-ok": {
+   "n": 48,
+   "p50_ms": 10098.343814723194,
+   "p95_ms": 10197.19854183495,
+   "p99_ms": 10246.03729788214,
+   "max_ms": 10246.03729788214
+  },
+  "signed-report:not-ok": {
+   "n": 57,
+   "p50_ms": 10891.741244122386,
+   "p95_ms": 14580.450694076717,
+   "p99_ms": 40415.23634083569,
+   "max_ms": 40415.23634083569
+  },
+  "control-grant:not-ok": {
+   "n": 22,
+   "p50_ms": 10094.135684892535,
+   "p95_ms": 10206.960126757622,
+   "p99_ms": 10243.351416662335,
+   "max_ms": 10243.351416662335
+  },
+  "health-live:not-ok": {
+   "n": 47,
+   "p50_ms": 10094.036406837404,
+   "p95_ms": 10191.87371712178,
+   "p99_ms": 10255.646879784763,
+   "max_ms": 10255.646879784763
+  },
+  "bp-queue:not-ok": {
+   "n": 2,
+   "p50_ms": 169.78887282311916,
+   "p95_ms": 169.78887282311916,
+   "p99_ms": 169.78887282311916,
+   "max_ms": 169.78887282311916
+  },
+  "bp-resume:not-ok": {
+   "n": 1,
+   "p50_ms": 150.40857531130314,
+   "p95_ms": 150.40857531130314,
+   "p99_ms": 150.40857531130314,
+   "max_ms": 150.40857531130314
+  },
+  "reader-over": {
+   "n": 900,
+   "p50_ms": 42.40131936967373,
+   "p95_ms": 110.75562238693237,
+   "p99_ms": 444.3557243794203,
+   "max_ms": 780.2021745592356
+  },
+  "reader-article": {
+   "n": 899,
+   "p50_ms": 31.434664502739906,
+   "p95_ms": 286.8142118677497,
+   "p99_ms": 456.6633515059948,
+   "max_ms": 777.6604918763041
+  },
+  "reader-xpat": {
+   "n": 899,
+   "p50_ms": 55.84106780588627,
+   "p95_ms": 362.71077673882246,
+   "p99_ms": 523.3500022441149,
+   "max_ms": 3693.454382941127
+  }
+ },
+ "first": {
+  "t": 1.6,
+  "cpu_s": 0.13,
+  "rss_kib": "343184",
+  "hwm_kib": "343184",
+  "store_octets": 4853,
+  "store_inodes": 13,
+  "bp_journal_octets": 0,
+  "owner_alive": true
+ },
+ "last": {
+  "t": 3827.5,
+  "cpu_s": 2614.54,
+  "rss_kib": "1056476",
+  "hwm_kib": "1292092",
+  "store_octets": 2878703,
+  "store_inodes": 1790,
+  "bp_journal_octets": 315315,
+  "owner_alive": true
+ },
+ "owner_alive_at_end": true,
+ "owner_exit": 0,
+ "recover_rc": 0,
+ "event_kinds": {
+  "bootstrap": 1,
+  "bp-queue": 53,
+  "bp-resume": 11,
+  "control-grant": 26,
+  "enroll": 2,
+  "group-create": 26,
+  "health": 95,
+  "post-error": 2,
+  "reader-error": 5,
+  "register": 2,
+  "report": 139,
+  "status": 95,
+  "wake": 101
+ },
+ "nonzero": [
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 76.82
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 107.22
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 137.62
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 168.33
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 198.86
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 229.28
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 260.08
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 290.69
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 321.2
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 352.33
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 383.53
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 414.66
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 445.19
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 476.44
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 521.57
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 551.94
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 584.07
+  },
+  {
+   "kind": "wake",
+   "rc": 4,
+   "tail": "\": {}, \"transitions\": [], \"unattributed\": 30}\nconsumer stopped: no keyring configured: the consumer verifies every report itself and trusts no author by default",
+   "t": 614.51
+  },
+  {
+   "kind": "group-create",
+   "n": 5,
+   "rc": 3,
+   "tail": "uncertain operator group",
+   "t": 651.54
+  },
+  {
+   "kind": "status",
+   "rc": 3,
+   "lines": [],
+   "t": 653.78
+  }
+ ]
+}
+	Command being timed: "python3 /tank/fn/scratch/qual-dfa810fc/mixed.py /tank/fn/scratch/qual-dfa810fc/mixed 3600"
+	User time (seconds): 2826.69
+	System time (seconds): 99.56
+	Percent of CPU this job got: 74%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:05:09
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1292092
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 74033
+	Minor (reclaiming a frame) page faults: 24226742
+	Voluntary context switches: 2261303
+	Involuntary context switches: 41482
+	Swaps: 0
+	File system inputs: 733421
+	File system outputs: 56659
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
