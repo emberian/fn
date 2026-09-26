@@ -967,3 +967,21 @@ and feed table, with the committed octets extended from the carried sum."
                                       fn-nh-report-exit-of-render))))
 
 (in-theory (disable fn-nh-report-exit-of-append))
+
+; PKT-269 (PRF-187): the verdict and the three health reports run
+; guard-verified, the owner's `fn-nh-live-report' (FNLS kind 6, under the
+; owner mutex) included.  `fn-nh-answer-report' waits on
+; books/native-live-status.lisp `fn-nls-live-report' for the other kinds
+; (`fn-nls-report''s reclaim words call books/store-reclaim-holders.lisp
+; `fn-rcl-store-counts', :verify-guards nil).
+(verify-guards fn-nh-forward-pins)
+(verify-guards fn-nh-store-hr)
+(verify-guards fn-nh-store-debt)
+(verify-guards fn-nh-o-exhausted)
+(verify-guards fn-nh-o-pressure)
+(verify-guards fn-nh-o-no-route)
+(verify-guards fn-nh-o-debt)
+(verify-guards fn-nh-verdict)
+(verify-guards fn-nh-offline-report)
+(verify-guards fn-nh-fenced-report)
+(verify-guards fn-nh-live-report)

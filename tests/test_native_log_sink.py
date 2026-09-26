@@ -157,6 +157,8 @@ class LogSinkNativeTests(unittest.TestCase):
         first = health.stdout.split(b"\n", 1)[0]
         self.assertEqual(health.returncode, int(first[len(b"health exit="):][:2]),
                          health.stdout.decode())
+        print("under the unread pipe: log-sink pending={} dropped={} written={}".format(
+            pending, dropped, written))
         self.assertGreater(pending, 0, "the writer was not behind the unread pipe")
         self.assertGreaterEqual(pending + dropped + written, POSTS)
 
@@ -171,6 +173,8 @@ class LogSinkNativeTests(unittest.TestCase):
             if pending == 0 or time.monotonic() > deadline:
                 break
             time.sleep(0.2)
+        print("after draining: log-sink pending={} dropped={} written={}".format(
+            pending, dropped, written))
         self.assertEqual(pending, 0)
         self.assertEqual(dropped, 0)
         self.assertGreaterEqual(written, POSTS)
