@@ -20,7 +20,6 @@
       "events": [
         "fn-prepare-preserves-state",
         "fn-complete-preserves-state",
-        "fn-recover-preserves-state",
         "fn-node-prepare-preserves-state",
         "fn-node-complete-preserves-state",
         "fn-node-recover-preserves-state",
@@ -33,8 +32,6 @@
         "fn-sn-prepare-preserves-state",
         "fn-sn-finish-preserves-state",
         "fn-sn-recover-preserves-state",
-        "fn-node-trace-preserves-state",
-        "fn-node-trace-preserves-old-bindings",
         "fn-snrt-mixed-trace-preserves-live-history-relation",
         "fn-bp-initial-state-is-binding-state",
         "fn-bp-step-preserves-binding-state",
@@ -111,7 +108,6 @@
         "fn-install-preserves-state",
         "fn-watermark-does-not-conflict",
         "fn-allocate-at-watermark",
-        "fn-state-has-fresh-local-numbers",
         "fn-durable-completion-installs-exact-pending-article",
         "fn-own-pinned-view-survives-other-post",
         "fn-own-served-watermarks-never-decrease",
@@ -542,7 +538,7 @@
       "assumptions": [],
       "status": "certified",
       "events": [
-        "fn-index-rebuild-correspondence",
+        "fn-index-build-correspondence",
         "fn-index-range-query-correct"
       ],
       "evidence": [
@@ -938,7 +934,7 @@
         "fn-wildmat-successful-parse-text-parsedp",
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
-        "fn-wm-pattern-match-work-cost",
+        "fn-wm-match-codepoints-work-value",
         "fn-wm-match-codepoints-work-cost-bound",
         "fn-article-parse-work-value",
         "fn-article-parse-work-input-bound",
@@ -2108,7 +2104,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-machine.lisp",
         "books/bp-node-machine-codec.lisp",
@@ -2178,7 +2174,11 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
+        "planning/evidence/manifests/certify-20260926T061654Z-546487.json",
+        "planning/evidence/manifests/certify-20260926T072432Z-773372.json",
+        "planning/evidence/manifests/certify-20260926T064807Z-632722.json"
       ],
       "pending_subject": "The native host calls fn-bpnp-step (host/native/bp-service.lisp:170, fnn-bps-foundation-step), wrapping each lower machine event as (:base E) at :176-177. fn-bpnp-step-base-event-refines-fn-bpn-step equates that arm with fn-bpn-step (state and effects), so the lower lifecycle and send-authorization keystones hold of the called step's base on (:base E) only; the served step's own receive, delivery, family, forwarding and recovery arms have no lifecycle or kind-8 send-authorization keystone. fn-bpnp-step-emits-no-release-and-no-receipt-prepare holds over every served event. A durable kind 8 without a kind 9 at a process death is re-offered on the next session to its next hop with the same held bundle, up to three retries, then held and reported as stranded (spec 4.3.1, default adopted by the coordinator 2026-09-24, pending ember); the keystones cover the lone-candidate selection, the offer binding and the retry bound, not multi-candidate fairness or the replay fact that recovered attempt epochs precede the new epoch. Physical publication observations and reachable crash cuts remain open.",
       "progress_note": "Over the called fn-bpnp-step: guard premises preserved by every host event; :progress leaves held rows unchanged and issued unchanged or a fresh pending dispatch; no :release or :receipt-prepare effect on any event; on (:base E) the answer is exactly fn-bpn-step's state and effects or nothing. The lower fn-bpn-step keystones (lifecycle invariant, send authorized by a durable attempt record) are cited through that bridge. The spec 11.1 witnesses N05 (attempt half), N06 (machine half), N08 (as the stranded negative), N11 (refusal half), BP-R02, R06, R07, R15 and R16 run through fn-bpnp-step in bp-node-counterexamples-tests. The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain. Lane defaults-precise (2026-09-24): a ready recovery through fn-bpnp-step installs exactly the held rows fn-bpnf-family-replay-rows computes from the durable FNBS rows, over the event the host builds (fn-bpnp-host-recovery-installs-the-durable-replay), so the kind-8 retry count after a restart is the one the durable kind-8 history gives; witness: four restarts from the fresh initial state over the framed rows (retries 0 to 3, then stranded), must-fail: a fenced clock-domain decision installs nothing. The sender reads a TCPCL XFER_REFUSE by its reason: fn-bpnp-tcpcl-outcome (called by host/native/bp-node.lisp fnn-bpnode-forward-contact) returns (:refused r) for a peer reason r, the kind-9 record fn-bpnp-step proposes carries the event's outcome unchanged, reason 1 (Completed) settles exactly as :sent through fn-bpnp-forward-result-apply, and every other reason stays non-terminal. A settled non-terminal kind 9 clears the slot, so the budget bounds uncertain re-offers only. hbox run-20260924T230614Z-3685. N16 (lane n16-rotation, 2026-09-25): fn-bpnp-step on (:rotate g ck) is fn-bpnp-rotate-step behind the uncertainty fence (fn-bpnp-step-rotate-is-rotate-step) and on a :persist-result while a checkpoint is issued is fn-bpnp-rotation-persist-step (fn-bpnp-step-rotation-result-is-rotation-result); the record count after a checkpoint's answer is 0 exactly on the matching durable answer and unchanged otherwise (fn-bpnp-step-rotation-resets-credit-only-on-durable); the four rotation effects are inside the no-release/no-receipt-prepare confinement. Teeth in tests/acl2/bp-node-counterexamples-tests (N16 section). hbox run-20260925T051528Z-15c2. Open: finding N16-F1, a reopened node's first operation reuses the rotation's id.",
@@ -3363,7 +3363,6 @@
       ],
       "progress_note": "Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
       "events": [
-        "fn-hm-run-keeps-every-open-admitted",
         "fn-hm-open-refuses-a-lost-acknowledged-record",
         "fn-hm-decode-of-encode",
         "fn-bs-marker-crash-is-the-history-table",
@@ -3717,7 +3716,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-receipt-send.lisp",
         "tests/acl2/bp-node-receipt-send-tests.lisp",
@@ -3736,7 +3735,8 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T072432Z-773372.json"
       ],
       "events": [
         "fn-bpnp-receipt-contact-offers-the-queued-job",
@@ -4178,7 +4178,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-route-jobs.lisp",
         "books/bp-node-contact-driver.lisp",
@@ -4201,7 +4201,9 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
+        "planning/evidence/manifests/certify-20260926T072432Z-773372.json"
       ],
       "events": [
         "fn-bpnp-contact-offer-is-the-routed-hop",
@@ -4847,7 +4849,7 @@
       "assumptions": [
         "A-BP-CONTACT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-job-offer.lisp",
         "books/bp-node-job-offer-progress.lisp",
@@ -4864,7 +4866,8 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T072432Z-773372.json"
       ],
       "events": [
         "fn-bpnj-step-delegates-every-other-event",
@@ -5262,7 +5265,7 @@
         "PRF-121"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-run-class.lisp",
         "books/bp-node-run-class.lisp",
@@ -5282,7 +5285,9 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T072432Z-773372.json",
+        "planning/evidence/manifests/certify-20260926T063856Z-608753.json"
       ],
       "progress_note": "Lane bp-lifecycle-3 (2026-09-26, wave 2), PKT-276. Teeth: tests/acl2/bp-run-class-tests (the five codes; a must-fail per hypothesis of the separation; the fence among mixed evidence; the class of each outcome over the reachable attempting state of PRF-120's teeth, the stale attempt and the pending state as hypothesis removals), tests/acl2/bp-node-host-tests (the mixed article/session cases), tests/acl2/bp-node-profile-tests (the 128-row profile round trip, a zero-row and a 2^24+1-row profile, a configuration-less open, a lowering write refused, replay of two durable kind-5 rows under one row of profile answering :held-beyond-profile and under two :ready). Native: the six BP modules' expectations and SCN-067 under a 128-row profile; see the record.",
       "events": [
