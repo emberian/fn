@@ -200,6 +200,8 @@
     "books/store-checkpoint-open",
     "books/store-checkpoint-codec",
     "tests/acl2/store-checkpoint-open-tests",
+    "books/store-checkpoint-shape",
+    "tests/acl2/store-checkpoint-shape-tests",
     "books/owner-checkpoint-open",
     "tests/acl2/owner-checkpoint-open-tests",
     "books/owner-checkpoint-stream",
@@ -900,6 +902,8 @@
     "tests/acl2/public-exposure-tests",
     "books/public-exposure-reply",
     "tests/acl2/public-exposure-reply-tests",
+    "books/owner-open-carried",
+    "tests/acl2/owner-open-carried-tests",
     "books/topic-history-metadata",
     "books/topic-history-metadata-invariants",
     "books/topic-history-authorship",
@@ -975,26 +979,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 996,
-    "books_in_root_closure": 989,
-    "roots": 971,
-    "theorems": 13996,
-    "functions": 9762,
-    "assert_events": 14984,
-    "must_fails": 1774,
+    "books": 1000,
+    "books_in_root_closure": 993,
+    "roots": 975,
+    "theorems": 14016,
+    "functions": 9772,
+    "assert_events": 15043,
+    "must_fails": 1786,
     "prover_refusals": 2,
     "encapsulates": 73,
     "guards": {
       "verified": 2249,
       "declared-off": 769,
-      "default-guarded": 5302,
+      "default-guarded": 5312,
       "default-unguarded": 1442
     },
-    "suspect_theorems": 134,
+    "suspect_theorems": 135,
     "export_hygiene_warnings": 157,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 148,
-    "include_hygiene_warnings": 1004,
+    "include_hygiene_warnings": 1009,
     "host_names_warnings": 1148,
     "hand_written_record_warnings": 18
   },
@@ -11835,6 +11839,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-open-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-advance-carried",
+        "public-exposure"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-prepare-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12083,7 +12114,7 @@
       "book": "books/owner-store-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 42,
+      "theorems": 43,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -12103,6 +12134,7 @@
         "consumer-event-index-store-invariants",
         "owner-checkpoint-open",
         "owner-offer-indexed",
+        "owner-open-carried",
         "owner-served-bound",
         "public-exposure",
         "records-concrete-owner",
@@ -14539,6 +14571,34 @@
       ],
       "suspects": [
         "fn-sccr-decode-plan-refuses-layout-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-checkpoint-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-checkpoint-open"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sco-select-named-unfolds"
       ],
       "read_error": null
     },
@@ -25037,6 +25097,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-open-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 43,
+      "must_fails": 10,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-open-carried",
+        "owner-advance-carried-tests",
+        "public-exposure-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-operator-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26884,6 +26974,35 @@
       "encapsulates": 0,
       "includes": [
         "../../books/store-checkpoint-reader"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-checkpoint-shape-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 16,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-shape",
+        "store-checkpoint-open-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29802,6 +29921,14 @@
       "line": 49,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-pcb-tally-records and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sco-select-named-unfolds",
+      "book": "books/store-checkpoint-shape.lisp",
+      "line": 61,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value"
       ]
     },
     {
@@ -34620,6 +34747,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-open-carried.lisp",
+        "line": 42,
+        "include": "public-exposure",
+        "included": "books/public-exposure.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-recover-ocl.lisp",
         "line": 15,
         "include": "owner-offer-indexed",
@@ -34663,7 +34797,7 @@
       },
       {
         "book": "books/owner-store-indexed.lisp",
-        "line": 51,
+        "line": 52,
         "include": "bp-signed-binding",
         "included": "books/bp-signed-binding.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -34946,6 +35080,13 @@
         "line": 42,
         "include": "store-checkpoint-codec",
         "included": "books/store-checkpoint-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-checkpoint-shape.lisp",
+        "line": 37,
+        "include": "store-checkpoint-open",
+        "included": "books/store-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -38162,6 +38303,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-open-carried-tests.lisp",
+        "line": 6,
+        "include": "owner-advance-carried-tests",
+        "included": "tests/acl2/owner-advance-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-open-carried-tests.lisp",
+        "line": 7,
+        "include": "public-exposure-tests",
+        "included": "tests/acl2/public-exposure-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-operator-tests.lisp",
         "line": 29,
         "include": "../../books/injection-invariants",
@@ -38684,6 +38839,13 @@
         "line": 11,
         "include": "../../books/store-checkpoint-codec",
         "included": "books/store-checkpoint-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-checkpoint-shape-tests.lisp",
+        "line": 6,
+        "include": "store-checkpoint-open-tests",
+        "included": "tests/acl2/store-checkpoint-open-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -44640,21 +44802,21 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2304,
+        "line": 2308,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2853,
+        "line": 2857,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3882,
+        "line": 3886,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -47237,42 +47399,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 249,
+        "line": 250,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 249,
+        "line": 250,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 493,
+        "line": 494,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 734,
+        "line": 735,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 734,
+        "line": 735,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2421,
+        "line": 2432,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -47342,56 +47504,56 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 115,
+        "line": 116,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 310,
+        "line": 311,
         "name": "fn-sccr-decode-plan",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 310,
+        "line": 311,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 349,
+        "line": 357,
         "name": "fn-sccr-file-read-bound",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 358,
+        "line": 366,
         "name": "fn-sccr-admit-segment",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 366,
+        "line": 374,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 453,
+        "line": 461,
         "name": "fn-sccb-plan",
         "source": "books/store-checkpoint-buffer.lisp",
         "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 654,
+        "line": 662,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
