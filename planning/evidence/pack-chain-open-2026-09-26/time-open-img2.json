@@ -1,0 +1,2 @@
+{"fixture": "/tank/fn/scratch/fixtures/chain-20000-8cc3cd4c", "recover_s": 201.5, "recover_exit": 0, "recover_stdout": "recovered transactions=20000 articles=20000 staging-orphans=0 anchor=none checkpoint=none\nopen=checkpoint:20000 suffix=0\n", "recover_peak_kib": 3969716, "listening_s": 196.0, "listening_vmhwm_kib": 3969416, "stop_s": 1.2}
+exit=0
