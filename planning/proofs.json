@@ -6327,7 +6327,7 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/byte-store-marker-candidates.lisp",
         "tests/acl2/byte-store-marker-candidates-tests.lisp",
