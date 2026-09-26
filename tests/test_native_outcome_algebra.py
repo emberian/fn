@@ -30,9 +30,13 @@ import subprocess
 import time
 import unittest
 
-import test_native_operator_verbs as verbs
-from test_native_operator_verbs import (
-    DEVELOPER, IMAGE, ROOT, environment, executable, free_port)
+try:
+    from tests import test_native_operator_verbs as verbs
+except ImportError:
+    import test_native_operator_verbs as verbs
+
+DEVELOPER, IMAGE, ROOT = verbs.DEVELOPER, verbs.IMAGE, verbs.ROOT
+environment, executable, free_port = verbs.environment, verbs.executable, verbs.free_port
 
 # specs/host.md "CLI exit codes": one code per class.
 ACCEPTED, REFUSED, FENCED, FAULT, USAGE, INTERRUPTED, NOT_CONNECTED = 0, 1, 3, 4, 5, 6, 7
@@ -54,7 +58,7 @@ class OutcomeAlgebraSourceTests(unittest.TestCase):
                           ("uncertain", "fenced"), ("fault", "fault"),
                           ("usage", "usage")):
             self.assertIn("(defconstant +fnn-exit-%s+ (fn-outcome-code :%s))" % (name, cls), io)
-        book = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
+        book = (ROOT / "books" / "native-operator.lisp").read_text(encoding="utf-8")
         self.assertNotIn("*fn-nop-no-store-exit*", book)
 
 
