@@ -613,6 +613,28 @@ same ACL2 functions (books/retention-figures.lisp,
 `fn-nls-obligations-figures-are-the-retention-figures`).
 PRF-185; the native case is SCN-114.
 
+HST-012: The owner never waits on its service log. While it serves, each
+log line and diagnostic is offered to a queue: ACL2 queues it, or, once a
+line is pending and the pending octets with this one would pass 1 MiB, drops
+it and counts the drop (books/log-sink.lisp `fn-log-sink-offer`; a line
+offered to an empty queue is always queued, so no line is too long to log).
+One writer thread drains the queue with blocking writes outside every owner
+lock and reports each outcome back (`fn-log-sink-take`); a failed write
+counts as a drop. The relation every offered line is written, pending or
+dropped, and the backlog is within the bound unless one line is pending,
+holds from the writer's start and is preserved by both transitions
+(`fn-log-sink-offer-preserves-okp`, `fn-log-sink-take-preserves-okp`). A
+sink that stops draining (stderr on a pipe nobody reads, a stalled journald,
+a slow disk) therefore costs lines, never service: before this, the writing
+thread blocked under the owner mutex and the whole node, control socket
+included, stopped answering. The running owner's `health` ends with
+`log-sink pending=P dropped=N written=W`; the exit is the verdict's
+whatever follows the eight states (`fn-nh-report-exit-of-render-and-more`).
+Losing a log line loses no decision: the log is an operator's record, never
+evidence of durable acceptance. Under systemd stderr is the journal, which
+drains, so nothing changes there unless journald stalls. PRF-187; the native
+case is SCN-116.
+
 ## Operator walk
 
 HST-008: One installed `fn` (packaging/fn, which locates the saved image and

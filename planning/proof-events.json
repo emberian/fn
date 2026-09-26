@@ -6444,6 +6444,63 @@
           "name": "fn-nls-obligations-figures-are-the-retention-figures"
         }
       ]
+    },
+    {
+      "id": "PRF-187",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-log-sink-init-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-log-sink-offer-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-log-sink-take-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-log-sink-offer-drops-only-past-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-log-sink-drop-counts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render-and-more"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-record-octets-of-drop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-any-request-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-request-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-open-of-request-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-msgid-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cev-request-payload-fits"
+        }
+      ]
     }
   ]
 }

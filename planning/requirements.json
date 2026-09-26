@@ -3272,6 +3272,29 @@
         "books/retention-figures.lisp"
       ],
       "implementation_note": "`operator CONFIG control log` and `control evidence MESSAGE-ID`: status reports the running owner renders over its committed view (FNLS frame kind 3; no FNCT kind taken), and the offline command over the replayed Store as recovery decides. `store ROOT retention` (offline: it takes a store root, so it has no socket to route by) prints the figures `operator CONFIG obligations` opens with, through the same ACL2 functions (fn-nls-obligations-figures-are-the-retention-figures). Live `bp-obligation status`: PKT-500."
+    },
+    {
+      "id": "HST-012",
+      "title": "The owner never waits on its service log: a sink that stops draining costs log lines, counted in `health`, never service",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-187"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/log-sink.lisp",
+        "host/native/io.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_log_sink.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
     }
   ]
 }

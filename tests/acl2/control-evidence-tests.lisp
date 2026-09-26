@@ -162,13 +162,15 @@
                           :live-status)))
 (must-fail
  (defthm cevt-any-round-trip-without-kind
-   (implies (fn-record-uint32p offset)
+   (implies (and (equal kind '(:control-evidence . "nope")) (equal offset 0)
+                 (fn-record-uint32p offset))
             (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
 (must-fail
  (defthm cevt-round-trip-without-kind
-   (implies (fn-record-uint32p offset)
+   (implies (and (equal kind '(:control-evidence . "nope")) (equal offset 0)
+                 (fn-record-uint32p offset))
             (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
@@ -180,13 +182,15 @@
                           :live-status)))
 (must-fail
  (defthm cevt-any-round-trip-without-offset
-   (implies (or (member-equal kind *fn-nls-kinds*) (fn-cevg-kindp kind))
+   (implies (and (equal kind :control-log) (equal offset 4294967296)
+                 (or (member-equal kind *fn-nls-kinds*) (fn-cevg-kindp kind)))
             (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
 (must-fail
  (defthm cevt-round-trip-without-offset
-   (implies (fn-cevg-kindp kind)
+   (implies (and (equal kind :control-log) (equal offset 4294967296)
+                 (fn-cevg-kindp kind))
             (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
