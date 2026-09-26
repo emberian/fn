@@ -183,6 +183,36 @@ profile format=8 max-transactions=100000 max-history-octets=1099511627776 max-re
 headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-bound=1099511627776 charge-reserved=... charge-capacity=...
 ```
 
+**The process heap (PKT-016, HST-013).** The installed `bin/fn` gives the
+node the heap its store profile needs on this machine, and refuses a profile
+the machine cannot hold before anything runs (exit 1, on stderr
+`fn: refused machine-cannot-hold-profile heap=MB MB machine=M MB`). The
+figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp): the image, a
+64 MiB collection nursery, sixteen bytes per octet for twice the history
+bound H plus one record bound R, doubled for the collector, and two
+checkpoint buffers of three times H; the machine is the least of its physical
+memory, the cgroup's `memory.max` (Linux) and the data-size limit (`ulimit
+-d`; OpenBSD's login class). `status` and `health` end with
+`heap=MB MB profile=WORD machine=M MB`. The presets on today's image (a
+389 MB core):
+
+| preset | T | H | R | A | G | K | heap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,002 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
+| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 2,671 MB: refused on a 2 GB machine |
+| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 54,751 MB |
+| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 70 TiB: refused on every machine today (PKT-582) |
+
+`init` with no `--profile` and no field flag writes **small** on a machine
+under 4 GiB, and the D27 default elsewhere. The small preset has no
+`--profile` word yet (PKT-581); on a larger machine name its fields:
+`--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
+196608 --max-article-octets 32768 --max-groups-per-article 16
+--max-open-suffix 128`. A store outgrows its machine only through `store
+upgrade-profile`, which raises H: check the new figure with `status` before
+restarting. A checkout's `packaging/fn` takes the tests' `FN_TEST_HEAP_MB`
+instead; the installed one ignores it.
+
 Every committed transaction (an article, a retention, keyring, consumer or
 topic event) takes one of T, and its record octets count against H. The owner
 refuses the next POST once either is reached, and says so: `441 posting
