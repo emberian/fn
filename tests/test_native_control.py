@@ -611,12 +611,12 @@ class NativeControlTests(unittest.TestCase):
                          header[:6])
         for absent in (yue_id, path_id, xref_id, "<native-control-other@example.invalid>"):
             self.assertNotEqual(self.inspect(absent).returncode, 0, absent)
-        pathed = self.inspect(path_id)
+        pathed = self.inspect(supplied_id)
         self.assertEqual(pathed.returncode, 0, pathed.stderr.decode())
         head = pathed.stdout.split(b"\r\n\r\n", 1)[0].split(b"\r\n")
         self.assertEqual([line for line in head if line.startswith(b"Path: ")],
                          [b"Path: fn.example.invalid!elsewhere!not-for-mail"])
-        self.assertTrue(pathed.stdout.endswith(self.article(path_id)), pathed.stdout)
+        self.assertTrue(pathed.stdout.endswith(self.article(supplied_id)), pathed.stdout)
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:
