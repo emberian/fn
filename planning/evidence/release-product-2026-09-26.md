@@ -222,3 +222,27 @@ tests/test_runpath_check.py. tests/test_release_tarball.py reads
 migration-removal's fixture name FN_FORMAT7_STORE (the fixture is not yet on
 hbox). planning/proofs.json: the evidence paths of files D34 deleted dropped
 from PRF-072, PRF-095 and PRF-141 (dev's check_scaffold was red on them).
+
+### Native evidence at the merge c58d527e (hbox)
+
+- The release build (`rt.sh linux-x86_64 c58d527e... OUT ARCHIVE`, FN_CERT_CACHE
+  /tank/fn/certcache, FN_ACL2 w28 acl2-literal-4g) is REFUSED by its gate, exit 4:
+  `green-check profile=default: 414 books in the closure of 191 roots, 410 green
+  at their current digest; not green: books/heap-figure books/native-config
+  books/nntp-pinned-effects books/nntp-responses` (dev's batch AG/AH/AI books
+  merged uncertified; after dev's 9f02ca7d cite, merged here as 624ec322c, three
+  remain). Classification: environment (certification owed on dev), not this
+  lane's code. No gated tarball exists for this revision.
+- hbox_native (native-merge, images developer, production, dtn, dtn-developer;
+  run.log 676cd1a3...): test_native_image_profiles OK (12), test_native_operator_cli
+  OK (6), test_native_raw_scripts FAILED 3 of 9 (live_config_cache,
+  owner_bound_commit, owner_group_codes): loading host/native/io.lisp under the
+  box's /usr/bin/sbcl 2.2.9 fails at io.lisp:3406, `sb-bsd-sockets:sockopt-error`
+  not found (a 2026-09-21 line; no file of this lane's). Classification: harness
+  (the raw scripts use the system SBCL, not the image's).
+- tests/friends_tarball.sh (--frozen, ungated) on that tree: tarball
+  fn-c58d527e04f2-linux-x86_64.tar.gz sha256 0ef6e505bf153832918c9ee490671601dceb8d85e7173ec063f60f49a25ffe68;
+  test_native_friends_feed 2 OK; log c4ae348b...
+- tests.test_release_tarball on that tarball: 8 ran, 6 OK, 1 skipped
+  (FN_FORMAT7_STORE), 1 FAIL `test_the_release_was_gated`: the correct verdict
+  for a --frozen package (release-gate.txt says ungated); log 48941f0a...
