@@ -99,7 +99,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
 - Host-called subject: `fn-ocl-publish` at host/owner-host.lisp:547.
-- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260926T123813Z-1816946` (earliest archived).
+- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (certified)); certified at the current source and closure by `certify-20260926T123813Z-1816946` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix and native modules; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `bbf52159`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
