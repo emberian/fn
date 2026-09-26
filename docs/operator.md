@@ -560,9 +560,12 @@ FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
 ```
 
 `bin/fn` is `packaging/fn` (`packaging/fn-native` is a link to it): it finds
-the image (`FN_NATIVE_HOST`, else `../libexec/fn/fn-host` beside itself, else
-the checkout's `build/fn-host`) and execs it with every argument, deciding
-nothing. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
+the image and execs it with every argument, deciding nothing. An installed
+`bin/fn` (a `libexec/fn/` beside its `bin/`) always runs its own release's
+`libexec/fn/fn-host` and ignores `FN_NATIVE_HOST`, so an old release's
+`bin/fn` runs the old image in any shell; a checkout's `packaging/fn` runs
+`FN_NATIVE_HOST` when set (the tests' override), else the checkout's
+`build/fn-host`. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
 the other image verbs are as below. The spike's bash `fn` wrapper made its
 own decisions; each is now the image's (its header lists where each went:
 `mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
@@ -1474,7 +1477,9 @@ load). Never deploy an image from d0df09ed up to this check over such a
 node: it opens that checkpoint as `open=checkpoint:S` with a record count of
 0 and a Message-ID index that misses committed articles (PKT-395). A
 checkpoint published before a249a699 is refused too, today as
-`reason=checkpoint-open-refused`.
+`reason=checkpoint-open-refused`. In a rollback the same holds in the other
+direction: older images reject a newer checkpoint file and fall back to a
+full replay.
 
 There are two rollbacks, and they are not the same:
 
