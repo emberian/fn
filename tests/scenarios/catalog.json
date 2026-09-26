@@ -2837,6 +2837,35 @@
         "log": "planning/evidence/reader-2-2026-09-26/tests.test_native_visibility_join.log",
         "record": "planning/evidence/reader-2-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-103",
+      "title": "The 20,000-article chain fixture opens without the quadratic freshness, archive-binding and admission walks, and serves the greeting, GROUP, OVER, ARTICLE and STAT on the opened owner; the reopen from the checkpoint that owner published is timed the same way",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-016"
+      ],
+      "steps": [
+        "Copy hbox:/tank/fn/scratch/fixtures/chain-20000-8cc3cd4c/store (pack-chain-open's fixture, SCN-064; never opened in place) and time `store STORE recover` (peak RSS by /usr/bin/time -v).",
+        "Time `operator CONFIG run` to its LISTENING line; on that owner time K greetings each on a fresh socket, GROUP fn.letters, K OVER, K ARTICLE and K STAT by number spread over 1..20000; stop.",
+        "Recover and run the same store again (the reopen, from the checkpoint the first run published) and time the LISTENING line, K greetings and GROUP.",
+        "Repeat on the image of the lane's base (dev 273cd980) for the before row."
+      ],
+      "expected": [
+        "Both images recover 20,000 transactions and 20,000 articles and GROUP answers 211 20000 1 20000 fn.letters; every OVER, ARTICLE and STAT answers 224, 220 and 223.",
+        "The lane's image opens in less time than the base image on the same fixture copy (the base: recover 311.9 s, LISTENING 280.7 s on a full replay, the fixture's checkpoint refused by the current format); the numbers and their scope are in the record."
+      ],
+      "evidence": [
+        "planning/evidence/served-path-scale-2026-09-26/fixture_open.py",
+        "planning/evidence/served-path-scale-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "planning/evidence/served-path-scale-2026-09-26/fixture_open.py",
+        "native": true,
+        "log": "planning/evidence/served-path-scale-2026-09-26/open-img2-5e15ad4c.log",
+        "record": "planning/evidence/served-path-scale-2026-09-26.md"
+      }
     }
   ]
 }

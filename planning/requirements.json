@@ -2266,7 +2266,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-104"
+        "PRF-104",
+        "PRF-173"
       ],
       "verification": [
         "proof",
@@ -2278,9 +2279,13 @@
         "books/acceptance-alloc.lisp",
         "tests/acl2/linear-recognizers-tests.lisp",
         "tests/acl2/owner-checkpoint-open-tests.lisp",
-        "planning/evidence/checkpoint-cost-2026-09-25.md"
+        "planning/evidence/checkpoint-cost-2026-09-25.md",
+        "books/retention.lisp",
+        "books/owner.lisp",
+        "tests/acl2/open-one-pass-tests.lisp",
+        "planning/evidence/served-path-scale-2026-09-26.md"
       ],
-      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
+      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list. fn-articles-freshp and fn-node-articles-have-archive-bindingsp run one-pass :exec paths and the admission's identity test walks without consing (PRF-173, planning/evidence/served-path-scale-2026-09-26.md); a full replay still makes linear lookups per step (PKT-455)."
     },
     {
       "id": "NNT-014",
