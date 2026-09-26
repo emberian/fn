@@ -1142,7 +1142,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 493 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
-| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1441 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
+| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1443 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-nss-hdr-lines-of-no-numbers` | `books/nntp-search-scope.lisp` | 77 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 859 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
