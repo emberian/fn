@@ -336,6 +336,10 @@
     "tests/acl2/store-budget-article-tests",
     "books/store-maintenance-reserve",
     "tests/acl2/store-maintenance-reserve-tests",
+    "books/store-capacity-vector",
+    "tests/acl2/store-capacity-vector-tests",
+    "books/store-capacity-config",
+    "tests/acl2/store-capacity-config-tests",
     "books/bp-adu",
     "tests/acl2/bp-adu-tests",
     "books/bp-primary-cbor",
@@ -928,25 +932,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 942,
-    "books_in_root_closure": 938,
-    "roots": 924,
-    "theorems": 13215,
-    "functions": 9158,
-    "assert_events": 13613,
-    "must_fails": 1542,
+    "books": 946,
+    "books_in_root_closure": 942,
+    "roots": 928,
+    "theorems": 13254,
+    "functions": 9179,
+    "assert_events": 13658,
+    "must_fails": 1543,
     "encapsulates": 65,
     "guards": {
       "verified": 2198,
-      "declared-off": 727,
-      "default-guarded": 4868,
-      "default-unguarded": 1365
+      "declared-off": 730,
+      "default-guarded": 4883,
+      "default-unguarded": 1368
     },
-    "suspect_theorems": 114,
+    "suspect_theorems": 119,
     "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 135,
-    "include_hygiene_warnings": 950,
+    "include_hygiene_warnings": 953,
     "host_names_warnings": 1071,
     "hand_written_record_warnings": 18
   },
@@ -9447,7 +9451,7 @@
         "owner-config",
         "records-stamp",
         "store-budget",
-        "store-maintenance-reserve",
+        "store-capacity-vector",
         "store-reclaim-holders"
       ],
       "system_includes": [
@@ -13185,6 +13189,63 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-capacity-config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "native-admin",
+        "store-profile-namespace"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-capacity-vector.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 37,
+      "functions": 16,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 12,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-maintenance-reserve"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cvec-debt-from-of-atom",
+        "fn-cvec-debt-from-of-cons",
+        "fn-cvec-history-admittedp-of-cons",
+        "fn-cvec-record-octets-of-atom",
+        "fn-cvec-record-octets-of-cons"
+      ],
       "read_error": null
     },
     {
@@ -24373,6 +24434,61 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-capacity-config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/store-capacity-config"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-capacity-vector-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 37,
+      "must_fails": 1,
+      "defconsts": 17,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-capacity-vector"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26706,6 +26822,46 @@
       "line": 122,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-cvec-debt-from-of-atom",
+      "book": "books/store-capacity-vector.lisp",
+      "line": 618,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-cvec-debt-from-of-cons",
+      "book": "books/store-capacity-vector.lisp",
+      "line": 610,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-cvec-debt-from and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-cvec-history-admittedp-of-cons",
+      "book": "books/store-capacity-vector.lisp",
+      "line": 575,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-cvec-history-admittedp and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-cvec-record-octets-of-atom",
+      "book": "books/store-capacity-vector.lisp",
+      "line": 603,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sbud-record-octets and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-cvec-record-octets-of-cons",
+      "book": "books/store-capacity-vector.lisp",
+      "line": 594,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-sbud-record-octets and the conclusion is that branch's value"
       ]
     },
     {
@@ -31927,6 +32083,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-capacity-config.lisp",
+        "line": 17,
+        "include": "native-admin",
+        "included": "books/native-admin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-capacity-config.lisp",
+        "line": 18,
+        "include": "store-profile-namespace",
+        "included": "books/store-profile-namespace.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-checkpoint-buffer.lisp",
         "line": 42,
         "include": "store-checkpoint-codec",
@@ -35478,6 +35648,13 @@
       {
         "book": "tests/acl2/store-budget-tests.lisp",
         "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-capacity-config-tests.lisp",
+        "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -43480,42 +43657,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 235,
+        "line": 236,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 235,
+        "line": 236,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 422,
+        "line": 424,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 639,
+        "line": 662,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 639,
+        "line": 662,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2126,
+        "line": 2151,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -43571,77 +43748,77 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 100,
+        "line": 107,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 267,
+        "line": 277,
         "name": "fn-sccr-decode-plan",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 267,
+        "line": 277,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 306,
+        "line": 316,
         "name": "fn-sccr-file-read-bound",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 315,
+        "line": 325,
         "name": "fn-sccr-admit-segment",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 323,
+        "line": 333,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 364,
+        "line": 374,
         "name": "fn-rcon-store-event-encode",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 410,
+        "line": 420,
         "name": "fn-sccb-plan",
         "source": "books/store-checkpoint-buffer.lisp",
         "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 611,
+        "line": 621,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 746,
+        "line": 756,
         "name": "fn-rcon-sn-io",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 861,
+        "line": 871,
         "name": "fn-rcon-sbud-pending-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
