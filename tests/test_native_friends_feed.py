@@ -49,10 +49,14 @@ READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK)
 EXIT_OK, EXIT_REFUSED = 0, 1
 
 
-def environment():
+def environment(command=None):
     env = dict(os.environ)
     env["ACL2_CUSTOMIZATION"] = "NONE"
     env.pop("ACL2_SYSTEM_BOOKS", None)
+    if FRIEND_FN and command and command[0] == FRIEND_FN:
+        # bin/fn honours FN_NATIVE_HOST before its own libexec image: the
+        # friend runs the tarball's image only without it.
+        env.pop("FN_NATIVE_HOST", None)
     return env
 
 
@@ -93,7 +97,7 @@ class Node:
 
     def run(self, *words):
         return subprocess.run([*self.command, *map(str, words)], cwd=ROOT,
-                              env=environment(), stdout=subprocess.PIPE,
+                              env=environment(self.command), stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=240, check=False)
 
     def operator(self, *words):
@@ -110,7 +114,7 @@ class Node:
     def start(self):
         self.process = subprocess.Popen(
             [*self.command, "operator", str(self.config), "run"], cwd=ROOT,
-            env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(self.command), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             bufsize=0)
         self.test.addCleanup(self.reap)
         for _ in range(4):
@@ -166,13 +170,14 @@ class NativeFriendsFeedTests(unittest.TestCase):
 
     def test_bare_fn_and_version(self):
         for command in (self.image, self.friend):
-            bare = subprocess.run(command, cwd=ROOT, env=environment(),
+            bare = subprocess.run(command, cwd=ROOT, env=environment(command),
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   timeout=120, check=False)
             print("NATIVE-FRIENDS bare fn ->", bare.returncode, text(bare)[:120])
             self.assertEqual(bare.returncode, EXIT_OK, text(bare))
             self.assertIn("usage: fn operator CONFIG {help|init|", bare.stdout.decode())
-            version = subprocess.run([*command, "--version"], cwd=ROOT, env=environment(),
+            version = subprocess.run([*command, "--version"], cwd=ROOT,
+                                     env=environment(command),
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      timeout=120, check=False)
             print("NATIVE-FRIENDS fn --version ->", version.returncode, text(version))

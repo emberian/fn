@@ -1,0 +1,26 @@
+test_a_cancel_reaches_the_friend_through_the_ordinary_feed (tests.test_native_friends_feed.NativeFriendsFeedTests.test_a_cancel_reaches_the_friend_through_the_ordinary_feed) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 4.777s
+
+OK
+NATIVE-FRIENDS a init local.general -> 0
+NATIVE-FRIENDS a policy set -> 0
+NATIVE-FRIENDS f init local.general -> 0
+NATIVE-FRIENDS f policy set -> 0
+NATIVE-FRIENDS a peer keygen -> 0
+NATIVE-FRIENDS f peer keygen -> 0
+NATIVE-FRIENDS a peer keygen -> 1
+NATIVE-FRIENDS a peer invite -> 0
+NATIVE-FRIENDS f peer accept -> 0
+NATIVE-FRIENDS a peer confirm -> 0
+NATIVE-FRIENDS a peer add -> 0
+NATIVE-FRIENDS f peer add -> 0
+NATIVE-FRIENDS a hybrid-author target -> 0
+NATIVE-FRIENDS f STAT <friends-t@a.example> -> 223 0 <friends-t@a.example> retrieved
+NATIVE-FRIENDS a hybrid-author cancel -> 0
+NATIVE-FRIENDS a STAT <friends-t@a.example> -> 430 withdrawn
+NATIVE-FRIENDS f STAT <friends-t@a.example> -> 430 withdrawn
+NATIVE-FRIENDS f STAT <friends-c@a.example> -> 223 0 <friends-c@a.example> retrieved
+NATIVE-FRIENDS a-log accepted feed peer=f message-id=<friends-t@a.example> code=239 time=2026-09-26T09:35:00Z
+NATIVE-FRIENDS a-log accepted feed peer=f message-id=<friends-c@a.example> code=239 time=2026-09-26T09:35:01Z

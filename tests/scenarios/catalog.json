@@ -2634,7 +2634,7 @@
           "NativeFriendsFeedTests.test_bare_fn_and_version"
         ],
         "native": true,
-        "log": "planning/evidence/friends-peer-2-2026-09-26/native-n1-run.log",
+        "log": "planning/evidence/friends-peer-2-2026-09-26/friends-tarball-t2.log",
         "record": "planning/evidence/friends-peer-2-2026-09-26.md"
       }
     }
