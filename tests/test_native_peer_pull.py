@@ -435,7 +435,6 @@ class NativePeerPullTests(unittest.TestCase):
                 process.communicate(timeout=60)
                 self.processes.remove(process)
                 self.assertEqual(code, -signal.SIGKILL, label)
-                stored_at_death = {i: self.stored(b, i) for i in ids}
                 mark = proxy.mark()
                 self.start(b)
                 for message_id in ids:
@@ -447,8 +446,7 @@ class NativePeerPullTests(unittest.TestCase):
                 counts = {i: self.count_article(b, i) for i in ids}
                 self.stop(b)
                 self.stop(a)
-                results[label] = {"stored_at_death": stored_at_death,
-                                  "newnews_after": newnews[:2],
+                results[label] = {"newnews_after": newnews[:2],
                                   "article_after": articles, "counts": counts,
                                   "pull_lines": self.pull_lines(b)}
                 for message_id in ids:

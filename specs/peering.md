@@ -1547,8 +1547,6 @@ grants is an explicit act (a new statement), never a restart. The selection
 is `*fn-ks-reopen-policy*` (`:recorded`; `:current` restores the old
 behaviour), a one-line switch.
 
-NNT-022: a peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided
-
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
 snapshot here is its tombstone at G, that tombstone is the snapshot G names,
@@ -1636,6 +1634,8 @@ neither or both. The invitation carries no TLS words: a protected transport
 is the operator's `peer add` of the same name, which replaces the record.
 The accepting side gets no peer record from `accept` (the invitation does
 not carry the inviter's address).
+
+NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided
 
 **Crash between consumption and enrolment.** The consuming record is
 published before the enrolment. A process death between the two leaves a row
