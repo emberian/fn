@@ -3,6 +3,7 @@
 ; transfer decision are used; a BP-only boundary grants no inbound scope.
 (in-package "ACL2")
 (include-book "../../books/bp-transit-join")
+(include-book "../../books/bp-native-app-fast")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/codec-attach")
 (include-book "peer-inbound-tests")
