@@ -164,8 +164,11 @@ today, and rises when that ceiling does (packet P2). The relations, each
 reported by name when it fails (exit 1, nothing written): `1 <= T <= 2^32-1`;
 `R <= H`; R at least the worst-case record of every Store event kind (today
 exactly 196,608: the accepted-statement kind's ceiling equals the codec's);
-R, A, G and the name bound within their codec ceilings; `1 <= K <= T`; each
-namespace count in `1..2^32-1`.
+R, A, G and the name bound within their codec ceilings; R at most
+4,294,966,940 octets, the largest Store event the consumer poll reply can
+carry (the Store frame's u32 less the reply's 9 header and 346 cursor
+octets), refused past it as `max-record-octets-above-the-poll-reply`
+(PKT-467); `1 <= K <= T`; each namespace count in `1..2^32-1`.
 
 ```text
 fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters

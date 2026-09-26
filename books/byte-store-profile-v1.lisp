@@ -90,9 +90,10 @@
                             fn-bs-profile-validp fn-bs-profile-of)))))
 
 ;  The window PKT-467 closes: a profile the old relation admitted whose R lies
-; above the poll reply's report ceiling is refused by the new relation's own
-; name for it (at `init', `store upgrade-profile' and open alike), never by a
-; generic failure.
+; above the poll reply's report ceiling fails the new relation by its own
+; name for it, which `init' and `store upgrade-profile' print.  An open of a
+; store saved in that window is refused by the host's generic configuration
+; fault, not by this name (PKT-471: no such store is known).
 (defthm fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name
   (implies (and (not (fn-bs-profile-v1-invalid-reason values))
                 (< *fn-stxa-max-octets* (fn-bs-pf 4 values)))
