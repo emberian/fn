@@ -1008,16 +1008,16 @@
     "books": 1028,
     "books_in_root_closure": 1020,
     "roots": 1001,
-    "theorems": 14508,
-    "functions": 10080,
-    "assert_events": 15256,
-    "must_fails": 1812,
+    "theorems": 14514,
+    "functions": 10095,
+    "assert_events": 15312,
+    "must_fails": 1820,
     "prover_refusals": 2,
     "encapsulates": 77,
     "guards": {
       "verified": 2290,
       "declared-off": 784,
-      "default-guarded": 5513,
+      "default-guarded": 5528,
       "default-unguarded": 1493
     },
     "suspect_theorems": 138,
@@ -1025,7 +1025,7 @@
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 154,
     "include_hygiene_warnings": 1026,
-    "host_names_warnings": 1176,
+    "host_names_warnings": 1177,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -13359,22 +13359,23 @@
       "in_root_closure": true,
       "is_root": false,
       "theorems": 0,
-      "functions": 2,
+      "functions": 10,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 10,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "config"
+        "config",
+        "native-config"
       ],
       "system_includes": [],
       "suspects": [],
@@ -13384,12 +13385,12 @@
       "book": "books/public-exposure.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
-      "functions": 70,
+      "theorems": 31,
+      "functions": 77,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 70,
+        "default-guarded": 77,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -24172,10 +24173,10 @@
         "default-unguarded": 9
       },
       "verify_guards_events": 0,
-      "assert_events": 198,
+      "assert_events": 203,
       "must_fails": 14,
       "prover_refusals": 0,
-      "defconsts": 60,
+      "defconsts": 61,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -26740,10 +26741,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 70,
-      "must_fails": 7,
+      "assert_events": 121,
+      "must_fails": 15,
       "prover_refusals": 0,
-      "defconsts": 38,
+      "defconsts": 60,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -30481,7 +30482,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1489,
+      "line": 1493,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -31403,7 +31404,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 965,
+        "line": 976,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -41010,6 +41011,13 @@
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
+        "host": "host/native-live-status-host.lisp",
+        "line": 24,
+        "name": "fn-owner-exposure-capacity",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
         "host": "host/native/admin.lisp",
         "line": 11,
         "name": "fnn-ascii-octet-list",
@@ -48662,14 +48670,14 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2388,
+        "line": 2394,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2532,
+        "line": 2538,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1028 |
 | Certification roots in the Makefile | 1001 |
 | Books inside the root closure | 1020 |
-| `defthm` and `defthmd` events | 14508 |
-| `defun` events | 10080 |
+| `defthm` and `defthmd` events | 14514 |
+| `defun` events | 10095 |
 | Functions with verified guards | 2290 |
 | Functions declared `:verify-guards nil` and never verified | 784 |
-| Functions left at the default with an explicit guard | 5513 |
+| Functions left at the default with an explicit guard | 5528 |
 | Functions left at the default with no guard | 1493 |
-| `assert-event` checks | 15256 |
-| `must-fail` checks | 1812 |
+| `assert-event` checks | 15312 |
+| `must-fail` checks | 1820 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 138 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 154 |
 | Include-hygiene warnings | 1026 |
-| Host-names warnings | 1176 |
+| Host-names warnings | 1177 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -530,8 +530,8 @@ that `make certify` requests.
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
 | `books/provenance.lisp` | root | 68 | 35 | 12/0/23/0 | 0 | 0 | 1 |
 | `books/public-exposure-reply.lisp` | root | 17 | 7 | 1/0/6/0 | 0 | 0 | 4 |
-| `books/public-exposure-rows.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/public-exposure.lisp` | root | 25 | 70 | 0/0/70/0 | 0 | 0 | 0 |
+| `books/public-exposure-rows.lisp` | closure | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/public-exposure.lisp` | root | 31 | 77 | 0/0/77/0 | 0 | 0 | 0 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/reclaim-tombstone.lisp` | root | 0 | 13 | 0/0/13/0 | 0 | 0 | 0 |
@@ -913,7 +913,7 @@ that `make certify` requests.
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 1 | 0/0/0/1 | 15 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 5 | 0 |
 | `tests/acl2/native-admin-peer-budget-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 19 | 3 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 198 | 14 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 203 | 14 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 67 | 4 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
@@ -1003,7 +1003,7 @@ that `make certify` requests.
 | `tests/acl2/proto-catalog-tests.lisp` | root | 5 | 2 | 0/0/0/2 | 2 | 2 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |
-| `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 70 | 7 | 0 |
+| `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/record-width-producers-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 25 | 4 | 0 |
 | `tests/acl2/records-ceiling-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 16 | 5 | 0 |
@@ -1199,7 +1199,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 493 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
-| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1489 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
+| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1493 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-nss-hdr-lines-of-no-numbers` | `books/nntp-search-scope.lisp` | 77 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 859 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
