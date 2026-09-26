@@ -2293,6 +2293,30 @@
       "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 7.4 defines NEWNEWS; the ack-bounded cursor and its FNPL journal are fn's. `fn operator CONFIG peer pull NAME SECONDS` sets the interval row; the owner's pull worker (host/native/pull-service.lisp) offers each listed id on a logical transit connection of that peer, so the local answer is the served IHAVE's."
     },
     {
+      "id": "NNT-021",
+      "title": "The daily reader: holes, conversations and search are the node's answers within a stated scope, and provenance facts stay apart",
+      "specification": "specs/human-client.md#the-daily-reader",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-122"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-search-scope.lisp",
+        "tests/acl2/nntp-search-scope-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-daily-2026-09-25.md"
+      ],
+      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); tools/fn_web.py sends the commands, shows the node's lines and orders them for display.",
+      "note": "Scripted walk and fake-socket tests; a scripted walk is not a human usability study. Current enrollment is not served by the node (PKT-175)."
+    },
+    {
       "id": "REP-008",
       "title": "An outbound bundle never exceeds the peer's TCPCL Transfer MRU: it goes whole, as RFC 9171 5.8 fragments that reassemble exactly to it, or is refused",
       "specification": "specs/replication.md#scheduling-and-transport",
