@@ -2762,6 +2762,36 @@
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-102",
+      "title": "An operator after a crash: a SIGKILLed owner's socket does not lock out the offline control verbs, and health during a slow start says starting",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-010"
+      ],
+      "steps": [
+        "Start an owner with a configured control socket; SIGKILL it; `operator CONFIG control list`; start the owner again and stop it.",
+        "Start a developer owner with FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN (the store recovered and locked, no socket yet); `operator CONFIG health`; SIGTERM the owner."
+      ],
+      "expected": [
+        "The socket node survives the SIGKILL; `control list` exits 0, prints `stale control socket removed`, and the node is gone; the restarted owner binds and stops with 0.",
+        "health exits 20 and its first line starts `health exit=20 state=fenced reason=starting`; the owner exits 0 on SIGTERM."
+      ],
+      "evidence": [
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_control",
+        "cases": [
+          "test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline",
+          "test_health_during_a_slow_start_says_starting"
+        ],
+        "native": true,
+        "log": "planning/evidence/operator-daily/native-control.log",
+        "record": "planning/evidence/operator-daily-2026-09-26.md"
+      }
     }
   ]
 }

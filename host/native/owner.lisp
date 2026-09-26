@@ -2328,6 +2328,15 @@ The thread is a worker, so the stop joins it with the clients."
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
+                  ;; PKT-283's native witness: the Store is recovered and
+                  ;; its writer lock held, and no control socket listens
+                  ;; yet (the startup hooks start it), so `health' must say
+                  ;; starting.  Held until SIGTERM (or SIGKILL); a developer
+                  ;; image only (fnn-developer-selector-gate).
+                  (when (fnn-developer-selector
+                         "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN")
+                    (fnn-out "OWNER-PAUSED-BEFORE-LISTEN")
+                    (loop until *fnn-sigterm-requested* do (sleep 0.05)))
                   (fnn-owner-run-startup-hooks service)
                   ;; Deterministic native witness for the signal window in
                   ;; which recovery is complete but no listener fd or module

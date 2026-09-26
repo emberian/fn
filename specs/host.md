@@ -172,7 +172,12 @@ NO-STORE, `fn-native-operator-absent-store-is-refused`).
 
 Outside the seven, and never an outcome class: `operator CONFIG health`
 exits with its verdict (0 all clear, 19 unobserved, 20 to 27 the first held
-state; HST-007), a scale disjoint from 1 to 7 (PKT-329); a process ended by
+state; HST-007). It is the one exception to the table, and it never
+overlaps it: for every verdict the code is 0 or at least 19, and it is an
+outcome code exactly when it is 0, the code of `:accepted`
+(`fn-nh-exit-code-is-zero-or-past-the-outcome-codes`, books/native-health.lisp,
+PRF-172, which reads `*fn-outcome-codes*` through `fn-outcome-codep`, so the
+two tables cannot drift apart; PKT-329). A process ended by
 a signal exits 128 plus the signal (143 on SIGTERM before an owner runs).
 `tools/run_simulator.py` and `tools/certify_books.py` are evidence runners
 with their own conventions.
@@ -546,11 +551,30 @@ line from the sources the status report reads: the headroom and profile the
 configuration's BP route table, the running owner's outbound feed table, and
 the host's observation of a fence (a clone fence file, a writer lock held by
 a process the configured socket does not reach, or a socket that accepted and
-did not answer). The running owner renders the same verdict over the state it
+did not answer). A writer lock held where an owner would listen and nothing
+answering yet is the fence reason `starting`, and the report's first line
+says so (`health exit=20 state=fenced reason=starting`); a lock with no
+configured socket, or one the probe could not read, is `store-held`
+(`fn-nh-fence-of-starting-iff`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
 [health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
 describes the verb.
+
+HST-010: The operator's daily verbs distinguish an owner starting, a fenced
+store, a stale control socket and a refusal by name, and ACL2 decides each
+from the host's observations. `health` with the writer lock held where an
+owner would listen, and nothing answering, says `starting`, not `store-held`
+(`fn-nh-fence-of`, PKT-283). An offline `control` or `peer` verb decides its
+path from two observations, the socket node at the configured control path
+and the writer lock (`fn-native-control-liveness`, books/native-control.lisp;
+PKT-344): a socket node with the lock free or absent was left by an owner
+that died, and the verb removes it under the control-path lease, says `stale
+control socket removed` and runs offline; the offline executor starts
+exactly when the lock was seen free or absent
+(`fn-native-control-liveness-decides`), and no socket with a held lock is
+refused `store-held` without opening the store. PRF-172; the native cases
+are SCN-102.
 
 ## Operator walk
 
