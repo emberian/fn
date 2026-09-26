@@ -430,8 +430,8 @@
 ; the clock is unusable, which reclaims nothing under release-after).  S:
 ; the Store state the open replayed (holders, verdicts, articles).  RECORDS:
 ; the committed history as octets (pack plus suffix).  FRONTIER: the durable
-; allocator frontier.  LOWER, NAMES, GENERATIONS, SELECTED, FOOTPRINT: the compact
-; verb's observation.  DRY: `--dry-run'.
+; allocator frontier.  LOWER, NAMES, GENERATIONS, SELECTED: the compact verb's
+; observation; DISK-FREE: the free octets the host observed (PKT-169).  DRY: `--dry-run'.
 ;
 ;   (:compact-first)                 the history is not one selected pack
 ;                                    with no transaction file left: the host
@@ -456,7 +456,7 @@
         (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
 
 (defun fn-rclp-decide (profile rule now s records frontier lower names
-                               generations selected footprint dry)
+                               generations selected disk-free dry)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((used (len records))
          (reclaim (fn-bs-pack-reclaim-plan
@@ -480,8 +480,7 @@
            (list :compact-first))
           (t
            (let ((new (fn-rclp-events records ctx)))
-             (if (< (fn-cverb-space-budget profile)
-                    (+ (fn-cverb-octet-sum footprint) (fn-cverb-pack-octets new)))
+             (if (not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets new)))
                  (list :refused :temporary-space)
                (let ((captured (fn-cc-capture new frontier)))
                  (if (not (equal (car captured) :ok))
@@ -495,7 +494,7 @@
 ; that list is a theorem about the bytes the host writes.
 (defthm fn-rclp-decide-publishes-the-rewrite
   (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected footprint dry)))
+                           generations selected disk-free dry)))
     (implies (equal (car d) :reclaim)
              (and (equal (nth 1 d) *fn-rclp-steps*)
                   (equal (car (fn-cc-capture
@@ -515,10 +514,34 @@
                                       fn-rclp-freed fn-cc-capture fn-cc-encode
                                       fn-rcl-store-counts fn-rclp-ctx
                                       fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                      fn-cverb-octet-sum fn-cverb-space-budget
+                                      fn-cverb-disk-admitsp
                                       fn-cverb-older-count
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-transactions))))
+
+;  KEYSTONE (temporary space against the disk, PKT-169).  When the verb
+; reclaims, the pack file the host seals from the octets it is handed (the
+; payload plus the frame trailer) fits the free octets the host reported for
+; the store's filesystem.
+(defthm fn-rclp-pack-fits-the-disk
+  (let ((d (fn-rclp-decide profile rule now s records frontier lower names
+                           generations selected disk-free dry)))
+    (implies (equal (car d) :reclaim)
+             (<= (+ (len (nth 4 d)) *fn-frame-trailer-octets*) disk-free)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cverb-capture-within-pack-octets
+                                   (records (fn-rclp-events
+                                             records (fn-rclp-ctx rule now s)))))
+           :in-theory (e/d (fn-cverb-disk-admitsp fn-cverb-pack-octets fn-cc-nth)
+                           (fn-rclp-events fn-rclp-rewritten-msgids
+                            fn-cverb-capture-within-pack-octets
+                            fn-rclp-freed fn-cc-capture fn-cc-encode
+                            fn-cc-event-octets-size
+                            fn-rcl-store-counts fn-rclp-ctx
+                            fn-bs-pack-reclaim-plan
+                            fn-cverb-older-count
+                            fn-bs-profile-admittedp
+                            fn-bs-profile-max-transactions)))))
 
 (local
  (defthm rewritten-msgids-under-keep-forever
@@ -531,13 +554,13 @@
 ; :reclaim.
 (defthm fn-rclp-keep-forever-writes-nothing
   (not (equal (car (fn-rclp-decide profile '(:keep-forever) now s records frontier
-                                   lower names generations selected footprint dry))
+                                   lower names generations selected disk-free dry))
               :reclaim))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-rclp-events fn-rclp-freed fn-cc-capture
                                       fn-cc-encode fn-rcl-store-counts
                                       fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                      fn-cverb-octet-sum fn-cverb-space-budget
+                                      fn-cverb-disk-admitsp
                                       fn-rclp-rewritten-msgids fn-cverb-older-count
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-transactions))))

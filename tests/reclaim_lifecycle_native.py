@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The content-reclamation lifecycle on the native image (STO-017, SCN-065).
 
-    reclaim_lifecycle_native.py IMAGE WORK N BODY_OCTETS HISTORY_OCTETS [--cuts]
+    reclaim_lifecycle_native.py IMAGE WORK N BODY_OCTETS HISTORY_OCTETS [--cuts|--headroom-only]
 
 A Python client and harness only: every decision is the image's (ACL2's).
 It builds a store of N articles through NNTP POST, then walks the lifecycle
@@ -273,30 +273,65 @@ def cuts(base):
     shutil.rmtree(ref, ignore_errors=True)
 
 
+def reserve_line(cfg):
+    code, so, se = native("operator", cfg, "status")
+    return next((l for l in so.splitlines() if l.startswith("maintenance-reserve")), "")
+
+
 def headroom():
-    # A tight history bound: fill to the first refused POST, reclaim, retry.
+    # A tight history bound: fill to the first refused POST, then maintain.
+    # PKT-169: the store keeps the maintenance reservation at its bound;
+    # compact and reclaim are checked against the disk (the free octets the
+    # image observes), so both run on the full store; a disk too small for
+    # the pack (FN_NATIVE_DISK_FREE caps the observation on the developer
+    # image) is refused by name with nothing written.
     n = int(os.environ.get("RL_HEADROOM_N", "400"))
     hist = int(os.environ.get("RL_HEADROOM_HIST", "300000"))
     store, cfg, port = build("tight", n, 1024, hist)
     native("operator", cfg, "retention", "set", "released-by-all-holders")
     _, h0, _, _ = status(cfg)
+    r0 = reserve_line(cfg)
     p = owner(cfg)
     try:
         c = m.Conn(port); refused = post(c, 900001, 1024).decode().strip(); c.close()
     finally:
         stop(p)
+    out(tag="tight-full", headroom=h0, reserve=r0, refused=refused)
+    # The disk refusal, on a copy: a disk of 1,000 free octets.
+    small = dict(ENV); small["FN_NATIVE_DISK_FREE"] = "1000"
+    copy = work / "tight-small"; shutil.rmtree(copy, ignore_errors=True); shutil.copytree(store, copy)
+    ccfg, _ = config_for(copy, "tight-small")
+    f0 = footprint(copy)
+    code, so, se = native("operator", ccfg, "store", "compact", env=small)
+    out(tag="small-disk-compact", exit=code, stderr=se.strip()[-200:],
+        unchanged=footprint(copy) == f0)
+    # The real disk: compact, then the disk refusal of the reclaim on a copy.
     code, so, se = native("operator", cfg, "store", "compact")
     out(tag="tight-compact", exit=code, stdout=so.strip()[-200:], stderr=se.strip()[-300:])
+    shutil.rmtree(copy, ignore_errors=True); shutil.copytree(store, copy)
+    f0 = footprint(copy)
+    code, so, se = native("operator", ccfg, "store", "reclaim", env=small)
+    out(tag="small-disk-reclaim", exit=code, stderr=se.strip()[-200:],
+        unchanged=footprint(copy) == f0)
+    shutil.rmtree(copy, ignore_errors=True)
+    before = footprint(store)
     code, so, se = native("operator", cfg, "store", "reclaim")
     out(tag="tight-reclaim", exit=code, head=so.splitlines()[:2], stderr=se.strip()[-300:])
+    after = footprint(store)
     _, h1, _, _ = status(cfg)
+    r1 = reserve_line(cfg)
     p = owner(cfg)
     try:
         c = m.Conn(port); accepted = post(c, 900002, 1024).decode().strip(); c.close()
     finally:
         stop(p)
-    out(tag="headroom", before=h0, refused_before=refused, after=h1, post_after=accepted)
+    out(tag="headroom", before=h0, refused_before=refused, after=h1, reserve_after=r1,
+        freed_octets=before["octets"] - after["octets"], post_after=accepted)
 
 
 if __name__ == "__main__":
-    run()
+    if "--headroom-only" in sys.argv:
+        work.mkdir(parents=True, exist_ok=True)
+        headroom()
+    else:
+        run()

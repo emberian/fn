@@ -50,6 +50,8 @@
 ; The transaction budget: `fn-owner-prepare' installs `fn-sbud-prepare'.
 (include-book "../books/owner-store-budget")
 (include-book "../books/store-budget-article")
+; PKT-169: the maintenance reservation (the served gates below).
+(include-book "../books/store-maintenance-reserve")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -429,13 +431,16 @@
     (mv bytes state)))
 
 ; The owner's verdict on one more record of KIND: the carried profile's count
-; and history gates against the Store it carries.
+; and history gates against the Store it carries, and the maintenance
+; reservation (books/store-maintenance-reserve.lisp `fn-smr-verdict-at': a
+; release consumes it, every other kind leaves it,
+; `fn-smr-admission-keeps-the-reserve').
 (defun fn-owner-publication-verdict (kind state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (bytes state) (fn-owner-record-octets state)
     (let ((s (fn-owner-store state)))
-      (value (fn-sbud-verdict-at (fn-owner-store-profile state) kind
-                                 (fn-sbud-used s) bytes)))))
+      (value (fn-smr-verdict-at (fn-owner-store-profile state) kind
+                                (fn-sbud-used s) bytes)))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -587,9 +592,13 @@
                  ; test reads the last record's txid instead of folding
                  ; every record's through fn-record-p.
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp): 0 when it does not fit H.
-                 (budget (fn-sbud-article-budget-for
-                          (fn-owner-store-profile state) bytes record))
+                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
+                 ; one release record still fits after the article
+                 ; (books/store-maintenance-reserve.lisp
+                 ; `fn-smr-prepare-keeps-the-reserve').
+                 (budget (fn-smr-article-budget-for
+                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
@@ -656,9 +665,13 @@
                           (fn-store-octets->string evidence-octets)
                           charge))
                  ; Packet 1: the history gate at the article's own figure
-                 ; (books/store-budget-article.lisp): 0 when it does not fit H.
-                 (budget (fn-sbud-article-budget-for
-                          (fn-owner-store-profile state) bytes record))
+                 ; (books/store-budget-article.lisp), and PKT-169: 0 unless
+                 ; one release record still fits after the article
+                 ; (books/store-maintenance-reserve.lisp
+                 ; `fn-smr-prepare-keeps-the-reserve').
+                 (budget (fn-smr-article-budget-for
+                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
