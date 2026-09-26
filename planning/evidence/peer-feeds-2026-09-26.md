@@ -101,6 +101,18 @@ unavailable frames are repaired away. Format consequence: PKT-432.
   peer-pull-session and both test books green, no book over 10 s; manifest
   planning/evidence/manifests/certify-20260926T102946Z-380804.json.
 
+- persvati run-20260926T103741Z-075c (r3, 2dc81256): native-admin-peer
+  (the pull words in the closed `fn-native-admin-pull-rows`), its 17
+  dependants and the regenerated docs grammar test book green; manifest
+  planning/evidence/manifests/certify-20260926T103810Z-481225.json. Books
+  over 10 s at two jobs: native-admin 11.1 s (15.0 s in r1; 9.96 s when it
+  landed at f811a7af, and public-exposure changed it since),
+  native-operator 10.4 s (10.3 s in r1; its own events unchanged here).
+  `make check-lane`'s ratchet refuses native-admin (worst 14.995 s, r1,
+  not in baseline). An attempt to close `fn-native-admin-peer-extend-plan`
+  for the admin plan theorems (a kind lemma, then disable) broke a
+  `:set-peer` theorem in native-admin and was reverted; PKT-431 (5).
+
 ## Native (hbox)
 
 Image built by tools/hbox_native.sh at a97ef763
@@ -140,7 +152,15 @@ test_d23_unlisted_relay_refuses_439_and_logs_it: both ok;
 planning/evidence/peer-feeds-2026-09-26/native-hybrid-d23.log sha256
 0fdcc20adbfc7f0e85b1226caf65a589ad88eccd40ae4c5c469c148904aa2676. Retired.
 
-Soak: see "Soak" below (filled when run).
+Final gate at 2dc81256 (hbox_native.sh --label final built
+fn-host-developer sha256 1dec0e37..., core be4f3b83...; the module then run
+with FN_NATIVE_HOST set): planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log
+sha256 9d010fc144ef1dc46ee13163b62f9db8c724d49c98d100a035411fe3712a90ed:
+13 tests, OK, skipped 2 (INN without FN_INN_SRC; the soak without
+FN_PULL_SOAK_SECONDS). Every witness kind above repeats on this image
+(unavailable-drop: three ARTICLE <ghost>).
+
+Soak: see "Soak" below.
 
 ## Not done, and why (PKT-431)
 
