@@ -3538,6 +3538,39 @@
         "record": "planning/evidence/bp-crc-exec-2026-09-26.md",
         "log": "planning/evidence/bp-crc-exec-2026-09-26/bpenc-after-1.out"
       }
+    },
+    {
+      "id": "SCN-121",
+      "title": "A served ARTICLE's reply leaves the owner as a range of the octet buffer, byte for byte the reply of the step's effects, at 2 KiB, 32 KiB and 1, 2 and 3 MiB",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 4194304; start the owner; POST articles of 1,048,576, 2,097,152 and 3,145,728 octets and ARTICLE each back on the same connection (tests/test_native_bounds_join.py LargeReplyTests, the served path now through fn-owner-reply-buffer).",
+        "Measure ARTICLE 32 KiB and 3 MiB with a client that reads in 1 MiB chunks: wall, owner CPU and bytes consed per ARTICLE, before and after (planning/evidence/egress-span-2026-09-26/egress.py)."
+      ],
+      "expected": [
+        "Each ARTICLE is 220 with the posted octets as the stored article's suffix and the owner keeps serving; the bytes are those fn-served-reply-octets of the step's effects decides (fn-served-reply-to-buffer-is-the-reply).",
+        "No per-octet cons for the reply on the served read: the ARTICLE's bytes consed fall by at least the reply list and its host copy."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "books/served-reply-buffer.lisp",
+        "tests/acl2/served-reply-buffer-tests.lisp",
+        "planning/evidence/egress-span-2026-09-26.md",
+        "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving"
+        ],
+        "native": true,
+        "record": "planning/evidence/egress-span-2026-09-26.md",
+        "log": "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
+      }
     }
   ]
 }

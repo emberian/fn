@@ -85,6 +85,23 @@
       (fnn-fault "owner returned non-octets in ~a" name))
     (fnn-octets value)))
 
+;;; PRF-192 (books/served-reply-buffer.lisp; PKT-491): the served read's
+;;; reply is never a list.  ACL2 fills the octet buffer `fn-octets' from the
+;;; step's effects (host/owner-host.lisp fn-owner-reply-buffer ->
+;;; fn-served-reply-to-buffer, whose keystone says the range [0, len) is
+;;; fn-served-reply-octets of the effects), and this copies that range out
+;;; ONCE, a byte copy, under the service mutex.  Why a copy and why this
+;;; buffer: the socket write runs after fnn-owner-handle-chunk returns,
+;;; outside the mutex, and the next locked step (this connection's writer
+;;; drain, fnn-owner-attempt's fnn-octets-fill, or another connection's
+;;; read) refills `fn-octets'; `fn-octets-pub' belongs to the publication
+;;; thread off the mutex and is never touched here.
+(defun fnn-owner-reply-from-buffer ()
+  (unless (eq (fnn-owner-buffer-action 'fn-owner-reply-buffer) :ok)
+    (fnn-fault "owner returned non-octets in its served reply"))
+  (let ((st (fnn-live-octets)))
+    (subseq (the fnn-octets (svref st 0)) 0 (svref st 1))))
+
 (defun fnn-owner-bool-global (name)
   (let ((value (fnn-global name)))
     (unless (member value '(t nil))
@@ -1782,7 +1799,7 @@ EPIPE and the client saw a bare close)."
        (unless (and (listp lines) (every #'fnn-octet-list-p lines))
          (fnn-fault "owner returned malformed refusal log lines"))
        (dolist (line lines) (fnn-log-line line)))
-     (let ((reply (fnn-owner-octets-global 'fn-owner-output))
+     (let ((reply (fnn-owner-reply-from-buffer))
            (closing (fnn-owner-bool-global 'fn-owner-closep))
            (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
            (consumed (fnn-global 'fn-owner-consumed))

@@ -225,6 +225,14 @@ CPU is the reply built as lists: `fn-ag-rev-onto` 19.4, `fn-nntp-crlf-lines-aux`
 31.5, `revappend` 11.7, `fn-octet-listp` 8.4 percent. POST's is the ingress
 byte machine (ingress-span).
 
+Result (egress-span, 2026-09-26, `planning/evidence/egress-span-2026-09-26.md`):
+PKT-555 retired: the 4 s is the harness's client, which reads one octet per
+`recv` (`msgid_measure.Conn`, buffering=0); with a 1 MiB reader ARTICLE
+3 MiB's wall equals owner CPU. The host reply is now a range of the octet
+buffer (PRF-192), matched against dev 6407de33: bytes consed 574.6 to
+469.8 MB, wall and owner CPU about 0.66 to 0.5 s; 32 KiB 5.80 to 4.75 MB.
+PKT-491 narrowed; the renderer's lists are PKT-550.
+
 ### POST (this lane: `n10k/post-200-cpu.json`, `post-200-alloc.json`, the two flats)
 
 At N = 10,000, 200 POSTs of 2 KiB on a reopened owner: 10.2 ms median,

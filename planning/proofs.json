@@ -7139,6 +7139,33 @@
         "fn-bpp-crc32c-scan-table-is-scan",
         "fn-bpp-xor-is-masked-logxor"
       ]
+    },
+    {
+      "id": "PRF-192",
+      "title": "The served read's reply is written from a range of the octet buffer, and that range is the reply the served machine decided",
+      "statement": "fn-served-reply-to-buffer-is-the-reply (books/served-reply-buffer.lisp; keystone): for every EFFECTS and buffer, the answer OKP of (fn-served-reply-to-buffer effects fn-octets) is (fn-srb-effects-octetsp effects) (every (:reply octets) effect carries an octet list), and when OKP holds the buffer's length is (len (fn-served-reply-octets effects)) and its range [0, len) read by fn-oct-slice-list is (fn-served-reply-octets effects). fn-served-reply-to-buffer-refusal-keeps-the-buffer: when OKP is false the buffer is unchanged. The subject is guard-verified (guard t) and conses nothing per octet: the buffer is cleared and each reply effect's octets are written by one fn-octets-append-list export call. host/owner-host.lisp fn-owner-reply-buffer calls it on the step's fn-owner-effects right after fn-owner-chunk (which now installs through fn-owner-install-served-effects and builds no reply list), from host/native/owner.lisp fnn-owner-reply-from-buffer in fnn-owner-handle-chunk; the host copies the live array's cells [0, fill) once under the service mutex and writes them after it. The array's cells are the stobj's logical value by PRF-087's abstraction relation (fn-octets$corr). The exposure's observation is unchanged: fn-exp-observe-effects already reads the effects (PRF-161).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-087",
+        "PRF-161"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/served-reply-buffer.lisp",
+        "tests/acl2/served-reply-buffer-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/egress-span-2026-09-26.md"
+      ],
+      "progress_note": "Lane egress-span (2026-09-26; perf-ledger row 6, PKT-491, PKT-555). Admitted form by form in the persvati REPL (toolchain w25) with the test book's forms; certification is the deputy's batch (BRIEF-COMMON, validation by batch). Teeth: tests/acl2/served-reply-buffer-tests.lisp (a reachable witness: a reply split over two effects with a :close between them over a buffer holding a longer stale value; the must-fail for OKP with a reply effect carrying 300; the refusal witness; a labelled MUTATION witness, the appends without the clear; the served-size witness, a 3 MiB body behind the status line).",
+      "events": [
+        "fn-served-reply-to-buffer-is-the-reply",
+        "fn-served-reply-to-buffer-refusal-keeps-the-buffer"
+      ]
     }
   ]
 }
