@@ -942,13 +942,13 @@
     "books": 954,
     "books_in_root_closure": 950,
     "roots": 935,
-    "theorems": 13381,
-    "functions": 9339,
-    "assert_events": 13931,
-    "must_fails": 1596,
+    "theorems": 13383,
+    "functions": 9340,
+    "assert_events": 13946,
+    "must_fails": 1598,
     "encapsulates": 65,
     "guards": {
-      "verified": 2198,
+      "verified": 2199,
       "declared-off": 753,
       "default-guarded": 5006,
       "default-unguarded": 1382
@@ -7431,18 +7431,18 @@
       "book": "books/consumer-position.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 56,
-      "functions": 29,
+      "theorems": 58,
+      "functions": 30,
       "guards": {
-        "verified": 28,
+        "verified": 29,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 28,
+      "verify_guards_events": 29,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 5,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -20422,7 +20422,7 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 34,
+      "assert_events": 37,
       "must_fails": 1,
       "defconsts": 22,
       "defmacros": 0,
@@ -20504,9 +20504,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
-      "must_fails": 8,
-      "defconsts": 25,
+      "assert_events": 48,
+      "must_fails": 10,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -27637,7 +27637,7 @@
     {
       "theorem": "fn-th-topic-decode-refuses-oversize",
       "book": "books/topic-history-store-events.lisp",
-      "line": 198,
+      "line": 200,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value"
       ]
@@ -28466,7 +28466,7 @@
       {
         "theorem": "fn-th-topic-decode-refuses-oversize",
         "book": "books/topic-history-store-events.lisp",
-        "line": 198,
+        "line": 200,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -29257,13 +29257,13 @@
       {
         "check": "fn-cpt-statep-needs-valid-start",
         "book": "tests/acl2/consumer-position-tests.lisp",
-        "line": 151,
+        "line": 215,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-cpt-trace-needs-valid-start",
         "book": "tests/acl2/consumer-position-tests.lisp",
-        "line": 153,
+        "line": 217,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -44265,7 +44265,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2324,
+        "line": 2330,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
