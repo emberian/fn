@@ -5423,10 +5423,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-keys-not-readyp-of-nil"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnf-zero-family-keys-bound"
         },
         {
