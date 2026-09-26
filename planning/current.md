@@ -86,7 +86,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **a connection-local fault costs one connection.** A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.
 
-- Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:2384.
+- Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:2420.
 - Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:327; PRF-040 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260924T161521Z-1600877` passed this source of `books/owner-served-invariants.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/accounts.lisp` and 80 more changed.
 - Tested: image `b6759850` ([qual-b6759850-2026-09-26](evidence/qual-b6759850-2026-09-26.md), closure `certify-20260926T050746Z-356474`), profile native modules, image's own tests (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate); changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `bbf52159`; changed since it: `host/owner-host.lisp`.
