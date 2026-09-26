@@ -1156,6 +1156,9 @@
 (assert-event (equal (fn-native-operator-result-run-listener-port *fn-nop-implicit-run*)
                      1119))
 ; `run --once' serves one client on the plaintext listener: no TLS port.
+(assert-event (fn-native-operator-result-run-oncep
+               (fn-native-operator-run *fn-nop-implicit-config*
+                                       (fn-nop-test-argv '("run" "--once")))))
 (assert-event (null (fn-native-operator-result-run-implicit-tls-port
                      (fn-native-operator-run *fn-nop-implicit-config*
                                              (fn-nop-test-argv '("run" "--once"))))))

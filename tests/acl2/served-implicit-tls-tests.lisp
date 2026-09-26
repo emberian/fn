@@ -128,3 +128,9 @@
 ; The conclusion is not the opened state's: before the event there is no
 ; TLS layer.
 (assert-event (not (fn-auth-session-tlsp (fn-served-conn-session (sit-open *sit-acfg*)))))
+; Anchor: the STARTTLS connection before its event IS handshaking, so the
+; negative above is not the predicate's constant.
+(assert-event
+ (fn-auth-session-handshakingp
+  (fn-served-conn-session
+   (fn-served-result-conn (fn-served-dispatch (sit-open *sit-acfg*) *fn-sit-starttls-event*)))))
