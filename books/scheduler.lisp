@@ -417,6 +417,9 @@
 
 (defconst *fn-sched-magic* '(70 78 83 67)) ; FNSC
 (defconst *fn-sched-kind* 1)
+; WORK bound of a fixed record shape (D27; community-bounds 2026-09-26): one
+; FNSC decision record, three texts and naturals, independent of the node's
+; data.
 (defconst *fn-sched-max-payload* 4096)
 
 ; The frame grammar never opens here (board 2026-09-19 time-anchor, NOTE on

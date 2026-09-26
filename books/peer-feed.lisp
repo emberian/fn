@@ -847,6 +847,10 @@
 ; lemmas.
 
 (defconst *fn-feed-magic* '(70 78 70 68))   ; FNFD
+; WORK bound of a fixed record shape (D27; community-bounds 2026-09-26): one
+; FNFD record is one tuple of *fn-feed-specs*, whatever the node's peer or
+; article count; the encoder refuses a tuple past it (:bad), never truncates.
+; That every producer's worst tuple fits is not yet proved (PKT-435).
 (defconst *fn-feed-max-payload* 1024)
 
 (defconst *fn-feed-kinds*
