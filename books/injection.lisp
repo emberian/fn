@@ -404,20 +404,54 @@
 ; The configuration record.  Opaque: shape and accessor-of-constructor lemmas
 ; are proved once here and the definition runes are withdrawn immediately.
 
+; A configuration is four fields, or five when it names the groups closed to
+; local posting (O2, RFC 3977 section 7.6.3 status "n"): the fifth field,
+; `fn-inj-config-closed', is the octets of each served group whose
+; configured status is "n" (books/config.lisp `fn-cfg-closed-names';
+; books/owner-agent.lisp `fn-oag-post-config' fills it).  A four-field
+; configuration closes no group.  The injection decision `fn-inj-decide'
+; does not read the fifth field: the gate is books/group-status.lisp's,
+; called by the served POST step before the decision.
 (defun fn-inj-config-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)))
+  (and (true-listp x) (or (equal (len x) 4) (equal (len x) 5))))
 (defun fn-inj-config-allow (x) (declare (xargs :guard t)) (fn-inj-nth 0 x))
 (defun fn-inj-config-agent (x) (declare (xargs :guard t)) (fn-inj-nth 1 x))
 (defun fn-inj-config-groups (x) (declare (xargs :guard t)) (fn-inj-nth 2 x))
 (defun fn-inj-config-max-octets (x) (declare (xargs :guard t)) (fn-inj-nth 3 x))
+(defun fn-inj-config-closed (x) (declare (xargs :guard t)) (fn-inj-nth 4 x))
 
 (defun fn-inj-make-config (allow agent groups max-octets)
   (declare (xargs :guard t))
   (list allow agent groups max-octets))
 
+(defun fn-inj-make-config-closed (allow agent groups max-octets closed)
+  (declare (xargs :guard t))
+  (list allow agent groups max-octets closed))
+
 (defthm fn-inj-config-shapep-of-fn-inj-make-config
   (fn-inj-config-shapep (fn-inj-make-config allow agent groups max-octets)))
+(defthm fn-inj-config-closed-of-fn-inj-make-config
+  (equal (fn-inj-config-closed (fn-inj-make-config allow agent groups max))
+         nil))
+(defthm fn-inj-config-shapep-of-fn-inj-make-config-closed
+  (fn-inj-config-shapep
+   (fn-inj-make-config-closed allow agent groups max-octets closed)))
+(defthm fn-inj-config-allow-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-allow (fn-inj-make-config-closed allow agent groups max closed))
+         allow))
+(defthm fn-inj-config-agent-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-agent (fn-inj-make-config-closed allow agent groups max closed))
+         agent))
+(defthm fn-inj-config-groups-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-groups (fn-inj-make-config-closed allow agent groups max closed))
+         groups))
+(defthm fn-inj-config-max-octets-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-max-octets (fn-inj-make-config-closed allow agent groups max closed))
+         max))
+(defthm fn-inj-config-closed-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-closed (fn-inj-make-config-closed allow agent groups max closed))
+         closed))
 (defthm fn-inj-config-allow-of-fn-inj-make-config
   (equal (fn-inj-config-allow (fn-inj-make-config allow agent groups max))
          allow))
@@ -433,7 +467,8 @@
 
 (in-theory (disable (:d fn-inj-config-shapep) (:d fn-inj-make-config)
                     (:d fn-inj-config-allow) (:d fn-inj-config-agent)
-                    (:d fn-inj-config-groups) (:d fn-inj-config-max-octets)))
+                    (:d fn-inj-config-groups) (:d fn-inj-config-max-octets)
+                    (:d fn-inj-config-closed) (:d fn-inj-make-config-closed)))
 
 (defun fn-inj-group-namesp (xs)
   (declare (xargs :guard t))

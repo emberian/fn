@@ -466,6 +466,16 @@
                                   (fn-nntp-list-counts-command
                                    fn-nntp-list-counts)))))
 
+(defthm fn-nntp-list-status-response-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-list-status-response session archive closed args))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-list-status-response
+                                   fn-nntp-list-active-status)))))
+
 (defthm fn-nntp-list-command-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-list-command session archive env args))
          session)

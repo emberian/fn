@@ -691,7 +691,7 @@
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
-    :add-peer-rows :remove-peer-rows))
+    :add-peer-rows :remove-peer-rows :set-group-status))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -714,6 +714,7 @@
         ((equal kind :login-binding) 17)
         ((equal kind :add-peer-rows) 18)
         ((equal kind :remove-peer-rows) 19)
+        ((equal kind :set-group-status) 21)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -737,6 +738,7 @@
         ((equal code 17) :login-binding)
         ((equal code 18) :add-peer-rows)
         ((equal code 19) :remove-peer-rows)
+        ((equal code 21) :set-group-status)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -802,6 +804,54 @@
 (defun fn-cfg-remove-peer-rows (name rows)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :remove-peer-rows name "" 0 rows))
+
+;; A group's posting status (O2; RFC 3977 section 7.6.3, RFC 6048 section
+;; 2.1: the LIST ACTIVE status field).  The group entry's policy identifier
+;; is the group's posting policy: `*fn-cfg-default-policy-id*' is status "y"
+;; (posting permitted) and `*fn-cfg-read-only-policy-id*' is status "n"
+;; (local posting not permitted; articles still arrive from peers, RFC 6048
+;; section 2.1.1).  The delta is
+;;   (:set-group-status NAME STATUS 0 nil)                          code 21
+;; with STATUS "y" or "n"; it rewrites the live entry's policy identifier and
+;; nothing else (`fn-cfg-groups-set-policy').  Code 20 is
+;; :set-group-description (lane usenet-headers).  "m" (moderated, P3) and
+;; "x" are deferred; "j" and "=" are never (no junk group, no aliases).
+(defconst *fn-cfg-default-policy-id* "fn-policy-default-1")
+(defconst *fn-cfg-read-only-policy-id* "fn-policy-read-only-1")
+
+(defun fn-cfg-status-policy-id (status)
+  (declare (xargs :guard t))
+  (if (equal status "n") *fn-cfg-read-only-policy-id* *fn-cfg-default-policy-id*))
+
+(defun fn-cfg-set-group-status (name status)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-group-status name status 0 nil))
+
+; The status field of group NAME at generation GEN: "n" when the group is
+; live and its policy identifier is the read-only one, else "y".  The one
+; reader: LIST ACTIVE's field and the POST gate both come from here
+; (`fn-cfg-closed-names').
+(defun fn-cfg-group-status (v gen name)
+  (declare (xargs :guard t))
+  (let ((e (fn-cfg-group-find (fn-cfg-groups v) name)))
+    (if (and (fn-cfg-entry-livep e gen)
+             (equal (fn-cfg-group-policy-id e) *fn-cfg-read-only-policy-id*))
+        "n"
+      "y")))
+
+; The names among NAMES whose status in V at GEN is "n".
+(defun fn-cfg-closed-filter (names v gen)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (if (equal (fn-cfg-group-status v gen (car names)) "n")
+          (cons (car names) (fn-cfg-closed-filter (cdr names) v gen))
+        (fn-cfg-closed-filter (cdr names) v gen))
+    nil))
+
+; The live groups whose status is "n", in served-table order.
+(defun fn-cfg-closed-names (v gen)
+  (declare (xargs :guard t))
+  (fn-cfg-closed-filter (fn-cfg-group-names v gen) v gen))
 
 ;; Control authority (D29, packet C2; specs/peering.md section 8).  A grant
 ;; is one authorities row (NAMESPACE PRINCIPAL-HEX VERB 0), keyed on the pair
@@ -1147,6 +1197,21 @@
         (cons (car es) (fn-cfg-groups-retire (cdr es) gen name)))
     nil))
 
+(defun fn-cfg-groups-set-policy (es name policy)
+  ; Rewrite the first entry named NAME's policy identifier.  Creation,
+  ; retirement and the watermark stay.
+  (declare (xargs :guard t))
+  (if (consp es)
+      (if (equal (fn-cfg-group-name (car es)) name)
+          (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
+                                   (fn-cfg-group-created-stamp (car es))
+                                   (fn-cfg-group-retired-gen (car es))
+                                   policy
+                                   (fn-cfg-group-next (car es)))
+                (cdr es))
+        (cons (car es) (fn-cfg-groups-set-policy (cdr es) name policy)))
+    nil))
+
 (defun fn-cfg-set-groups (v es)
   (declare (xargs :guard t))
   (fn-cfg-value-make es (fn-cfg-capacity v) (fn-cfg-quotas v)
@@ -1168,6 +1233,9 @@
                                                  a b)))
      ((equal kind :remove-group)
       (fn-cfg-set-groups v (fn-cfg-groups-retire (fn-cfg-groups v) gen a)))
+     ((equal kind :set-group-status)
+      (fn-cfg-set-groups v (fn-cfg-groups-set-policy
+                            (fn-cfg-groups v) a (fn-cfg-status-policy-id b))))
      ((equal kind :set-capacity)
       (fn-cfg-value-make (fn-cfg-groups v) n (fn-cfg-quotas v)
                          (fn-cfg-policies v) (fn-cfg-listeners v)
@@ -1338,6 +1406,11 @@
             (t nil)))
      ((equal kind :remove-group)
       (if (fn-cfg-group-livep v gen a) nil :no-such-group))
+     ((equal kind :set-group-status)
+      (cond ((not (fn-cfg-group-livep v gen a)) :no-such-group)
+            ((not (member-equal (fn-cfg-delta-b d) '("y" "n"))) :group-status)
+            ((not (equal (fn-cfg-delta-rows d) nil)) :group-status)
+            (t nil)))
      ((equal kind :set-capacity)
       (if (< n (nfix reserved)) :capacity-below-reserved nil))
      ((equal kind :set-limit)
@@ -1901,7 +1974,6 @@
 ; reading it is willing to certify, and the design's clock discipline says so
 ; explicitly rather than inventing a time.
 
-(defconst *fn-cfg-default-policy-id* "fn-policy-default-1")
 
 (defconst *fn-cfg-default-stamp* (fn-clock-observation 0 0 0 nil))
 
@@ -2011,7 +2083,10 @@
     (:d fn-cfg-source-id-hexp) (:d fn-cfg-issue-invitation)
     (:d fn-cfg-consume-invitation) (:d fn-cfg-invitation-row)
     (:d fn-cfg-invitation-pendingp) (:d fn-cfg-invitation-delta-rowp)
-    (:d fn-cfg-groups-retire) (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
+    (:d fn-cfg-groups-retire) (:d fn-cfg-groups-set-policy)
+    (:d fn-cfg-status-policy-id) (:d fn-cfg-set-group-status)
+    (:d fn-cfg-group-status) (:d fn-cfg-closed-filter) (:d fn-cfg-closed-names)
+    (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
     (:d fn-cfg-apply) (:d fn-cfg-name-line-octets) (:d fn-cfg-delta-reason)
     (:d fn-cfg-admissible-reason) (:d fn-cfg-admissiblep)
     (:d fn-cfg-recordp) (:d fn-cfg-apply-record)

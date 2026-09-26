@@ -277,7 +277,7 @@
     (fn-nntp-result-effects
      (fn-nntp-step-pinned
       (fn-post-session-base ps) archive index verdicts
-      (fn-nntp-env observation nil (and (fn-inj-config-allow config) t))
+      (fn-post-reader-env config observation)
       wire-event))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-post-step-pinned)
@@ -308,9 +308,7 @@
   :hints (("Goal"
            :use ((:instance fn-auth-fold-reader-offer-has-a-post-command-origin
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env
-                                  observation nil
-                                  (and (fn-inj-config-allow config) t)))))
+                            (env (fn-post-reader-env config observation))))
            :in-theory (disable fn-nntp-post-step-pinned
                                fn-nntp-step-pinned fn-post-offeredp))))
 

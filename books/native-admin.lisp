@@ -191,6 +191,17 @@
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
         (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil nil))
+       ; O2 (books/group-status.lisp): `group policy NAME n|y' sets the
+       ; group's LIST ACTIVE status (RFC 3977 section 7.6.3): "n" closes it
+       ; to local posting, "y" opens it.  A durable :set-group-status
+       ; configuration record (code 21), offline or live.
+       ((and (equal (len words) 4)
+             (equal (car words) "group")
+             (equal (cadr words) "policy")
+             (fn-record-group-namep (caddr words))
+             (member-equal (cadddr words) '("y" "n")))
+        (fn-native-admin-result :accepted nil :set-group-status (caddr argv) 0
+                                nil (cadddr argv)))
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "retire")
@@ -358,6 +369,10 @@
                  nil))))
             ((equal kind :set-exposure)
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
+            ((equal kind :set-group-status)
+             (list (fn-cfg-set-group-status
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-policy)
              (list (fn-cfg-set-policy
                     name

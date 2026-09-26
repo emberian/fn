@@ -37,8 +37,7 @@
     (fn-nntp-archive-command-pinned
      ns (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)
      (fn-served-conn-verdicts conn)
-     (fn-nntp-env (fn-served-conn-observation conn) nil
-                  (and (fn-inj-config-allow (fn-served-conn-config conn)) t))
+     (fn-post-reader-env (fn-served-conn-config conn) (fn-served-conn-observation conn))
      (car tokens) (cdr tokens))))
 
 (defthm fn-octl-reply-of-with-wire

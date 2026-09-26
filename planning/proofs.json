@@ -7015,6 +7015,37 @@
         "fn-osi-ocar-exp-open-keeps-store",
         "fn-sco-thaw-checked-accepts-own-publication"
       ]
+    },
+    {
+      "id": "PRF-196",
+      "title": "A group set read-only refuses a local POST naming it by name, and LIST ACTIVE lists it with status n, from one configured list on the same connection",
+      "statement": "fn-cfg-set-group-status-sets-the-status (books/config-invariants.lisp, KEYSTONE): for a typed configuration value V, a group NAME live at GEN and STATUS in (\"y\" \"n\"), fn-cfg-apply-delta of (fn-cfg-set-group-status NAME STATUS) (code 21) makes fn-cfg-group-status of NAME equal STATUS and leaves every other group's status unchanged; fn-cfg-closed-names-are-the-n-groups: the closed list the owner installs (books/owner-agent.lisp fn-oag-post-config, fifth field fn-inj-config-closed) holds exactly the groups whose status is \"n\". fn-gst-post-gate-refuses-exactly-a-listed-n-group (books/group-status.lisp, KEYSTONE): the gate fn-nntp-post-step runs before the injection decision refuses (441, :group-read-only) exactly when the ordinary article names a group whose fn-nntp-closed-status under the configuration's closed list is \"n\" -- the status field LIST ACTIVE renders from the same list through fn-post-reader-env (fn-post-reader-env-closed). Host lines: books/nntp-post.lisp fn-nntp-post-step (fn-nntp-post-step-pinned, peer-offer-indexed fn-pix-post-step-pinned) on the served path; the verb through books/native-admin.lisp fn-native-admin-plan-deltas, live (host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure) and offline (fn-native-admin-host-apply). RFC 3977 section 7.6.3 and RFC 6048 section 2.1 (status n: local postings not permitted); a relayed article is not gated.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/group-status.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/owner-agent.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/group-status-tests.lisp",
+        "tests/test_native_group_policy.py",
+        "planning/evidence/group-policy-2026-09-26.md"
+      ],
+      "events": [
+        "fn-cfg-set-group-status-sets-the-status",
+        "fn-cfg-closed-names-are-the-n-groups",
+        "fn-gst-post-gate-refuses-exactly-a-listed-n-group",
+        "fn-gst-first-closed-is-named-and-listed-n",
+        "fn-post-reader-env-closed"
+      ]
     }
   ]
 }
