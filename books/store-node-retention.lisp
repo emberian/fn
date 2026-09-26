@@ -358,7 +358,7 @@
                           keyring-generation verdicts snapshots identity-next
                           config-history consumer topic event-index))
           node)
-   :hints (("Goal" :in-theory (enable fn-sn-make-v6 fn-sn-node)))))
+   :hints (("Goal" :in-theory (enable fn-sn-make-v6 fn-sn-make-v7 fn-sn-node)))))
 (local
  (defthm fn-snrt-node-of-sn-with-consumer
    (equal (fn-sn-node (fn-sn-with-consumer s consumer)) (fn-sn-node s))
@@ -410,7 +410,7 @@
                                     fn-sn-with-consumer fn-sn-with-topic
                                     fn-sn-advance-identity-next
                                     fn-sn-update-indexed fn-sn-update-accepted
-                                    fn-sn-finish-identity fn-sn-make-v6
+                                    fn-sn-finish-identity fn-sn-make-v6 fn-sn-make-v7
                                     fn-stx-index-add fn-stx-verdict-of-octets
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))

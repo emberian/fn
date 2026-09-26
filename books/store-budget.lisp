@@ -69,6 +69,21 @@ ceiling cannot hold KIND's worst-case encoded record."
   (declare (xargs :guard t :verify-guards nil))
   (fn-sbud-record-octets (fn-sf-records (fn-sn-files s))))
 
+; What the served owner reads (host/owner-host.lisp fn-owner-record-octets
+; and fn-owner-publication-verdict): the committed record count and octets
+; the Store carries, equal to fn-sbud-used and fn-sbud-bytes-used on a
+; related Store (books/store-record-tally.lisp
+; fn-srt-carried-figures-are-the-kernel-figures).
+(defun fn-sbud-carried-used (s)
+  "The committed record count the Store carries (fn-sn-record-tally)."
+  (declare (xargs :guard t))
+  (fn-sn-tally-count (fn-sn-record-tally s)))
+
+(defun fn-sbud-carried-bytes (s)
+  "The committed record octets the Store carries (fn-sn-record-tally)."
+  (declare (xargs :guard t))
+  (fn-sn-tally-octets (fn-sn-record-tally s)))
+
 (defun fn-sbud-verdict-at (profile kind used bytes-used)
   "The publication verdict for one more record of KIND, given the committed
 count USED and committed record octets BYTES-USED: the count is below the

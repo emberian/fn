@@ -225,7 +225,7 @@
                (fn-sn-identity-next s)))
    :hints (("Goal" :in-theory
             (e/d (fn-sn-set-keyring)
-                 (fn-sn-make-v6 fn-sn-groups fn-sn-capacity
+                 (fn-sn-make-v6 fn-sn-make-v7 fn-sn-groups fn-sn-capacity
                   fn-sn-files fn-sn-node fn-sn-consumer fn-sn-topic
                   fn-sn-identity-next))))))
 
@@ -235,7 +235,7 @@
           (fn-sn-completion-record s))
    :hints (("Goal" :use fn-spc-set-keyring-keeps-store-components
             :in-theory (e/d (fn-sn-completion-record)
-                            (fn-sn-set-keyring fn-sn-make-v6))))))
+                            (fn-sn-set-keyring fn-sn-make-v6 fn-sn-make-v7))))))
 
 ; Reconfiguration keeps the snapshot list and the identity cursor, so it
 ; keeps the identity replay context `6e992351' and `4bb7bb3d' made

@@ -72,7 +72,7 @@
 ; used that the proofs below also use (read from the certify log's Rules and
 ; :use hints) are restated here, locally, unchanged.
 (local (in-theory (disable fn-snt-relation-implies-structural-state)))
-(local (in-theory (disable fn-sn-make-v6)))
+(local (in-theory (disable fn-sn-make-v6 fn-sn-make-v7)))
 (local
  (defthm fn-snt-recoverable-frontier-is-natural
    (implies (fn-sf-history-recoverablep groups capacity history frontier)
