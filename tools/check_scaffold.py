@@ -153,7 +153,7 @@ def main() -> int:
 
     for entries, statuses, advanced in [
         (requirements, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
-        (proofs, {"planned", "in-progress", "certified", "deferred"}, {"certified"}),
+        (proofs, {"planned", "uncertified-at-current-digest", "certified"}, {"certified"}),
         (scenarios, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
     ]:
         for ident, entry in entries.items():
