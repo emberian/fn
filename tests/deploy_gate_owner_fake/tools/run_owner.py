@@ -4,7 +4,10 @@
 The gate selects `tools/run_owner.py` whenever bin/fn's `run` takes no
 --store, so the fake tree needs an owner of its own: without one the real
 owner starts against the fake store CLI, dies on an import, and the gate
-falls back to the reader it did not claim to drive.  This serves the fake
+falls back to the reader it did not claim to drive.  It lives beside
+tests/deploy_gate_fake, not in it: the two-node and scale gates share that
+overlay and drive owner behaviour (feeds, peering) this fake does not have,
+so there the honest outcome stays the pinned fallback.  This serves the fake
 store with POST on and every connection concurrent, announces itself in its
 greeting so the evidence shows which entry point answered, and accepts the
 owner's arguments.  It touches nothing but the fake store it is given, and
