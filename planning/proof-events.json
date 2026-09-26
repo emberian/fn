@@ -7010,6 +7010,18 @@
         {
           "kind": "theorem",
           "name": "fn-ores-config-refused-is-a-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-record-peers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-frame-item-of-encode-records"
         }
       ]
     }

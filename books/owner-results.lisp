@@ -192,23 +192,55 @@
       (fn-ores-index-induction (- i 1) (cdr records))
     (list i records))))
 
+(defthm fn-ores-nth-of-sealed-plan
+  (equal (nth i (fn-ores-sealed-plan records))
+         (if (< (nfix i) (len records))
+             (cons (fn-ores-record-peer (nth i records))
+                   (fn-ores-seal
+                    (fn-feed-encode (fn-feed-journal-kind (nth i records))
+                                    (fn-feed-journal-values (nth i records))
+                                    *fn-ores-zero-trailer*)))
+           nil))
+  :hints (("Goal" :induct (fn-ores-index-induction i records)
+                  :expand ((fn-ores-sealed-plan records))
+                  :in-theory (disable fn-ores-seal fn-ores-record-peer fn-feed-encode
+                                      fn-feed-journal-kind fn-feed-journal-values
+                                      fn-ores-len-of-sealed-plan))))
+(defthm fn-ores-nth-of-record-peers
+  (equal (nth i (fn-ores-record-peers records))
+         (if (< (nfix i) (len records))
+             (fn-ores-record-peer (nth i records))
+           nil))
+  :hints (("Goal" :induct (fn-ores-index-induction i records)
+                  :expand ((fn-ores-record-peers records))
+                  :in-theory (disable fn-ores-record-peer fn-ores-len-of-record-peers))))
+(defthm fn-ores-frame-item-of-encode-records
+  (implies (natp i)
+           (equal (fn-frame-item i (fn-ores-encode-records records))
+                  (if (< i (len records))
+                      (fn-feed-encode (fn-feed-journal-kind (nth i records))
+                                      (fn-feed-journal-values (nth i records))
+                                      *fn-ores-zero-trailer*)
+                    nil)))
+  :hints (("Goal" :induct (fn-ores-index-induction i records)
+                  :expand ((fn-ores-encode-records records))
+                  :in-theory (e/d (fn-frame-item)
+                                  (fn-feed-encode fn-feed-journal-kind
+                                   fn-feed-journal-values
+                                   fn-ores-len-of-encode-records)))))
 (defthm fn-ores-sealed-plan-is-indexed-fetch
-  ; No hypothesis: an index outside the plan reads nil on both sides, and a
-  ; non-natural index is the natural nth and fn-frame-item both read.
+  ; No hypothesis: past the end both sides are nil, and a non-natural index
+  ; is the natural nth and fn-frame-item both read.
   (equal (nth i (fn-ores-sealed-plan records))
          (if (< (nfix i) (len records))
              (cons (nth i (fn-ores-record-peers records))
                    (fn-ores-seal
                     (fn-frame-item (nfix i) (fn-ores-encode-records records))))
            nil))
-  :hints (("Goal" :induct (fn-ores-index-induction (nfix i) records)
-                  :expand ((fn-ores-sealed-plan records)
-                           (fn-ores-record-peers records)
-                           (fn-ores-encode-records records)
-                           (fn-frame-item (nfix i) (fn-ores-encode-records records))
-                           (:free (x) (nth i x)))
-                  :in-theory (disable fn-ores-seal fn-ores-record-peer fn-feed-encode
-                                      fn-ores-len-of-sealed-plan))))
+  :hints (("Goal" :in-theory (disable fn-ores-seal fn-ores-record-peer fn-feed-encode
+                                      fn-feed-journal-kind fn-feed-journal-values
+                                      fn-ores-sealed-plan fn-ores-record-peers
+                                      fn-ores-encode-records))))
 
 ; ---------------------------------------------------------------------------
 ; SubmissionTaken: what fn-owner-take wrote into seven globals.

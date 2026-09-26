@@ -7491,7 +7491,10 @@
         "fn-ores-len-of-sealed-plan",
         "fn-ores-feed-port-publication-by-definition",
         "fn-ores-config-staged-result-by-definition",
-        "fn-ores-config-refused-is-a-result"
+        "fn-ores-config-refused-is-a-result",
+        "fn-ores-nth-of-sealed-plan",
+        "fn-ores-nth-of-record-peers",
+        "fn-ores-frame-item-of-encode-records"
       ]
     }
   ]
