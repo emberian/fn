@@ -7497,12 +7497,11 @@
     },
     {
       "id": "PRF-206",
-      "title": "The served overview carries an Xref:full field naming exactly the groups and local numbers at which the node serves each article, and the posting-account value is a keyed MAC of the login in hex",
-      "statement": "R3: over the served step the host runs (host/owner-host.lisp fn-owner-chunk -> fn-served-step), a framed OVER RANGE line on a connection whose pinned configuration's listing names a server answers fn-nntp-over-range-served over the pinned buckets and trie with that server (fn-served-step-over-range-carries-the-xref); every served line is the eight-field line of fn-nov-lines-for-numbers-numbered followed by TAB and the Xref field of the article the number index resolves (fn-nov-served-lines-numbered-extend-the-eight-fields, fn-nov-served-lines-numbered-has-the-article-line); the field's locations are exactly the pairs (G . N) with G a colon-free printable group and N the article's available local number fn-nntp-article-number G (fn-xref-pairs-exact), each an entry the group index builds (fn-xref-pair-is-an-index-entry); the server of fn-oag-post-config's listing is the node's path-identity when set (fn-oag-listing-server-is-the-path-identity); LIST OVERVIEW.FMT names Xref:full on the same condition; every reply is well-formed (fn-nntp-effects-*-served) and without a server the renderers are the eight-field ones (*-without-a-server). P2 primitive: the posting-account value fn-pa-account-value KEY LOGIN (HMAC-SHA256, RFC 2104/4231 vectors in the test book) is 64 lowercase hex digits for every login (fn-pa-account-value-is-hex), depends on the login only through its MAC (fn-pa-account-value-depends-only-on-the-mac) and names the MAC (fn-pa-account-value-determines-the-mac); login injectivity is HMAC's collision resistance, NOT proved. The Injection-Info wiring (P2) is PKT-597.",
+      "title": "The served overview carries an Xref:full field naming exactly the groups and local numbers at which the node serves each article",
+      "statement": "R3: over the served step the host runs (host/owner-host.lisp fn-owner-chunk -> fn-served-step), a framed OVER RANGE line on a connection whose pinned configuration's listing names a server answers fn-nntp-over-range-served over the pinned buckets and trie with that server (fn-served-step-over-range-carries-the-xref); every served line is the eight-field line of fn-nov-lines-for-numbers-numbered followed by TAB and the Xref field of the article the number index resolves (fn-nov-served-lines-numbered-extend-the-eight-fields, fn-nov-served-lines-numbered-has-the-article-line); the field's locations are exactly the pairs (G . N) with G a colon-free printable group and N the article's available local number fn-nntp-article-number G (fn-xref-pairs-exact), each an entry the group index builds (fn-xref-pair-is-an-index-entry); the server of fn-oag-post-config's listing is the node's path-identity when set (fn-oag-listing-server-is-the-path-identity); LIST OVERVIEW.FMT names Xref:full on the same condition; every reply is well-formed (fn-nntp-effects-*-served) and without a server the renderers are the eight-field ones (*-without-a-server). Not an event of this target yet: books/posting-account.lisp (the P2 posting-account value, HMAC-SHA256 of the login in hex; fn-pa-account-value-is-hex, -depends-only-on-the-mac, -determines-the-mac; RFC 4231 vectors in its test book) is certified but no host line calls it until PKT-597 wires Injection-Info, so reach_check rightly refuses it as evidence.",
       "milestone": "M6",
       "requirements": [
-        "NNT-006",
-        "NNT-004"
+        "NNT-006"
       ],
       "depends_on": [
         "PRF-195"
@@ -7543,10 +7542,7 @@
         "fn-nntp-archive-command-pinned-over-range-served",
         "fn-served-dispatch-over-range-served",
         "fn-served-step-over-range-carries-the-xref",
-        "fn-oag-listing-server-is-the-path-identity",
-        "fn-pa-account-value-is-hex",
-        "fn-pa-account-value-depends-only-on-the-mac",
-        "fn-pa-account-value-determines-the-mac"
+        "fn-oag-listing-server-is-the-path-identity"
       ]
     }
   ]
