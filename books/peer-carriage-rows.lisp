@@ -77,11 +77,17 @@
 ; interval supersedes the old one on extension.
 (defconst *fn-pcb-pull-interval-slot* "pull-interval")
 
+; How many consecutive complete rounds an id the peer lists but answers 430
+; holds the pull cursor (PRF-165, books/peer-pull.lisp; `peer pull NAME
+; SECONDS ROUNDS').  Single-valued; absent means the book's policy default.
+(defconst *fn-pcb-pull-unavailable-slot* "pull-unavailable-rounds")
+
 (defun fn-pcb-budget-slotp (slot)
   ; The single-valued slots: a new row replaces the old one on extension.
   (declare (xargs :guard t))
   (or (equal slot *fn-pcb-charge-slot*) (equal slot *fn-pcb-count-slot*)
-      (equal slot *fn-pcb-pull-interval-slot*)))
+      (equal slot *fn-pcb-pull-interval-slot*)
+      (equal slot *fn-pcb-pull-unavailable-slot*)))
 
 (defun fn-pcb-slot-memberp (slot rows)
   (declare (xargs :guard t))

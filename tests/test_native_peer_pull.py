@@ -12,6 +12,13 @@ so the cases read B's NEWNEWS lines rather than trusting B's own account.
 - test_kill_mid_round_recovery_asks_the_same_newnews: the proxy withholds
   B's first ARTICLE; B is killed (SIGKILL) there; after restart B's first
   NEWNEWS is byte-identical to the dead round's and the article is stored.
+- test_unavailable_id_is_dropped_at_the_bound (PRF-165, PKT-213): a
+  scripted peer lists an id it answers 430; the other ids are stored, the
+  cursor holds for BOUND-1 rounds and advances at the BOUND-th, logging the
+  drop once.
+- test_unavailable_count_survives_a_cut: the held close's FNPL append is
+  cut after its fsync (the count survives the restart) and before its
+  write (the count starts again).
 - test_pull_from_inn: INN (FN_INN_SRC, an installed INN 2.7 tree) holds an
   article in fn.test; B pulls it from nnrpd and stores it.
 
@@ -201,6 +208,85 @@ class RecordingProxy:
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
+class ScriptedPeer:
+    """A reader-only NNTP server (PRF-165, PKT-213): DATE answers the wall
+    clock, every NEWNEWS lists LISTED, and ARTICLE serves ARTICLES and
+    answers 430 for any other id -- a peer that keeps listing an article it
+    cannot produce.  It records each command, as the proxy does."""
+
+    def __init__(self, listed, articles):
+        self.listed = list(listed)
+        self.articles = dict(articles)
+        self.listener = socket.socket()
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(8)
+        self.port = self.listener.getsockname()[1]
+        self.lock = threading.Lock()
+        self.commands = []
+        self.closed = False
+        threading.Thread(target=self.accept_loop, daemon=True).start()
+
+    def accept_loop(self):
+        while not self.closed:
+            try:
+                client, _ = self.listener.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.serve, args=(client,), daemon=True).start()
+
+    def serve(self, client):
+        try:
+            stream = client.makefile("rwb", buffering=0)
+            stream.write(b"200 scripted peer ready (no posting)\r\n")
+            while True:
+                line = stream.readline()
+                if not line:
+                    return
+                text = line.rstrip(b"\r\n").decode("ascii", "replace")
+                with self.lock:
+                    self.commands.append(text)
+                word = text.split(" ", 1)[0].upper()
+                if word == "DATE":
+                    stream.write(time.strftime("111 %Y%m%d%H%M%S\r\n",
+                                               time.gmtime()).encode("ascii"))
+                elif word == "NEWNEWS":
+                    body = b"".join(m.encode("ascii") + b"\r\n" for m in self.listed)
+                    stream.write(b"230 list follows\r\n" + body + b".\r\n")
+                elif word == "ARTICLE":
+                    mid = text.split(" ", 1)[1] if " " in text else ""
+                    if mid in self.articles:
+                        octets = self.articles[mid].replace(b"\r\n.", b"\r\n..")
+                        stream.write("220 0 {}\r\n".format(mid).encode("ascii")
+                                     + octets + b".\r\n")
+                    else:
+                        stream.write(b"430 no such article\r\n")
+                elif word == "QUIT":
+                    stream.write(b"205 bye\r\n")
+                    return
+                else:
+                    stream.write(b"500 what\r\n")
+        except OSError:
+            pass
+        finally:
+            try:
+                client.close()
+            except OSError:
+                pass
+
+    def count(self, prefix):
+        with self.lock:
+            return sum(1 for c in self.commands if c.startswith(prefix))
+
+    def newnews(self):
+        with self.lock:
+            return [c for c in self.commands if c.upper().startswith("NEWNEWS")]
+
+    def close(self):
+        self.closed = True
+        self.listener.close()
+
+
 class NativePeerPullTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-pull-")
@@ -716,6 +802,101 @@ class NativePeerPullTests(unittest.TestCase):
         self.witness("tls-cursor-cuts", results, [])
 
     @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
+    # ------------------------------------------------------------ PRF-165
+
+    def unavailable_pair(self, name, bound):
+        ghost = "<ghost-{}@example.invalid>".format(name)
+        real = ["<real-{}-{}@example.invalid>".format(name, k) for k in range(2)]
+        peer = ScriptedPeer([real[0], ghost, real[1]],
+                            {m: article(m, "real-" + m[6:12], path="scripted!not-for-mail")
+                             for m in real})
+        self.addCleanup(peer.close)
+        b = self.initialize("B" + name, ["fn.test"], "b.pull.example.invalid")
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add",
+                      "S", "s.pull.example.invalid", "127.0.0.1", str(peer.port),
+                      "fn.*", "-", "127.0.0.9", "true"])
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull",
+                      "S", INTERVAL, str(bound)])
+        return peer, b, ghost, real
+
+    def test_unavailable_id_is_dropped_at_the_bound(self):
+        """PKT-213: the peer lists <ghost> between two real articles and
+        answers its ARTICLE 430.  The real articles are stored in the first
+        round; the cursor holds for BOUND-1 complete rounds, each naming the
+        same instant; at the BOUND-th the cursor advances and the log names
+        <ghost> once; the next NEWNEWS names a later instant."""
+        bound = 3
+        peer, b, ghost, real = self.unavailable_pair("drop", bound)
+        self.start(b)
+        for message_id in real:
+            self.await_article(b, message_id)
+        self.await_log(b, "dropped=" + ghost, 1)
+        self.await_log(b, "cursor=advanced", 1)
+        lines = self.pull_lines(b)
+        ghost_articles = peer.count("ARTICLE " + ghost)
+        newnews = peer.newnews()
+        counts = {m: self.count_article(b, m) for m in real}
+        fnpl = self.fnpl_files(b)
+        self.stop(b)
+        self.witness("unavailable-drop", {"pull_lines": lines, "newnews": newnews,
+                                          "ghost_article_commands": ghost_articles,
+                                          "counts": counts, "fnpl": fnpl, "bound": bound},
+                     [b])
+        done = [l for l in lines if "round=done" in l]
+        advanced_at = next(i for i, l in enumerate(done) if "cursor=advanced" in l)
+        self.assertEqual(advanced_at, bound - 1, done)
+        for l in done[:bound - 1]:
+            self.assertIn("cursor=held unavailable=1", l)
+            self.assertNotIn("dropped=", l)
+        self.assertIn("unavailable=1 dropped=" + ghost, done[bound - 1])
+        self.assertEqual(sum("dropped=" in l for l in lines), 1, lines)
+        self.assertEqual(len(set(newnews[:bound])), 1, newnews)
+        self.assertGreaterEqual(ghost_articles, bound)
+        for m in real:
+            self.assertEqual(counts[m], 1, counts)
+
+    def test_unavailable_count_survives_a_cut(self):
+        """PKT-213 at the FNPL cuts: append 2 is round 1's held close (the
+        :pull-unavailable record, then the cursor record).  Killed after its
+        fsync, the restarted node recovers <ghost>'s count of 1 and drops it
+        after BOUND-1 more rounds (BOUND ARTICLE <ghost> in all); killed
+        before its write, round 1 is not durable and the count starts again
+        (BOUND+1 in all).  Either way the real articles are stored once."""
+        bound = 3
+        results = {}
+        for cut, total in (("after-fsync:2", bound), ("before-write:2", bound + 1)):
+            name = cut.replace(":", "-")
+            peer, b, ghost, real = self.unavailable_pair(name, bound)
+            self.env["FN_PULL_TEST_KILL"] = cut
+            try:
+                self.start(b)
+            except Exception:
+                pass
+            finally:
+                del self.env["FN_PULL_TEST_KILL"]
+            process = b["process"]
+            code = process.wait(timeout=120)
+            b.pop("process")
+            process.communicate(timeout=60)
+            self.processes.remove(process)
+            self.assertEqual(code, -signal.SIGKILL, cut)
+            before = peer.count("ARTICLE " + ghost)
+            self.start(b)
+            self.await_log(b, "dropped=" + ghost, 1)
+            self.await_log(b, "cursor=advanced", 1)
+            ghost_articles = peer.count("ARTICLE " + ghost)
+            counts = {m: self.count_article(b, m) for m in real}
+            lines = self.pull_lines(b)
+            self.stop(b)
+            results[cut] = {"ghost_before_kill": before, "ghost_total": ghost_articles,
+                            "counts": counts, "pull_lines": lines,
+                            "log_sha256": sha256_of(b["log"])}
+            self.assertEqual(before, 1, (cut, before))
+            self.assertEqual(ghost_articles, total, (cut, ghost_articles, lines))
+            for m in real:
+                self.assertEqual(counts[m], 1, (cut, counts))
+        self.witness("unavailable-cuts", results, [])
+
     def test_pull_from_inn(self):
         inn = InnLab(self.base / "inn", Path(INN_SRC))
         self.addCleanup(inn.stop)

@@ -9,8 +9,8 @@
 ;;; handshake happens and what every reply means (fn-pull-session-step: the
 ;;; feed-connection machine's preamble, then fn-pull-step), whether the
 ;;; cursor moves (fn-pull-close), the FNPL record and its envelope (fn-pull-cursor-
-;;; frame, fn-pull-journal-wrap) and what a journal read means at open
-;;; (fn-pull-journal-scan, fn-pull-replay).  This file dials, moves octets,
+;;; envelope, fn-pull-cursor-envelope) and what a journal read means at open
+;;; (fn-pull-journal-scan, fn-pull-records-replay).  This file dials, moves octets,
 ;;; appends and fsyncs, and carries the ACL2 values it is handed back to ACL2
 ;;; unopened.
 ;;;
@@ -80,7 +80,7 @@
 (defun fnn-pull-journal-open (store peer-octets)
   "Open, scan and repair one FNPL file; return (values journal cursor)."
   (let ((peer (fnn-pull-peer-string peer-octets)) (fd nil) (journal nil)
-        (cursors nil) (offset 0))
+        (records nil) (offset 0) (committed 0))
     (handler-case
         (multiple-value-bind (directory path) (fnn-pull-path store peer)
           (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
@@ -97,13 +97,16 @@
                      (frame (if (and (integerp plan) (>= plan 0))
                                 (fnn-owner-feed-read journal plan)
                               (fnn-make-octets 0)))
+                     ;; PRF-165: ACL2 carries the committed offset (the end of
+                     ;; the last cursor record); a repair truncates to it.
                      (result (fnn-core 'fn-pull-journal-scan peer-octets
                                        (fnn-octet-list prefix)
-                                       (fnn-octet-list frame) offset))
+                                       (fnn-octet-list frame) offset committed))
                      (status (first result)))
                 (case status
-                  (:next (setq offset (fnn-nat (second result)))
-                         (push (third result) cursors))
+                  (:next (setq offset (fnn-nat (second result))
+                               committed (fnn-nat (fourth result)))
+                         (push (third result) records))
                   (:invalid (fnn-fault "invalid complete FNPL evidence: ~a" path))
                   ((:end :repair)
                    (fnn-owner-feed-phase journal status)
@@ -118,9 +121,9 @@
           (fnn-pull-sync-namespace store directory journal)
           (fnn-posix (path) (sb-posix:lseek fd 0 sb-posix:seek-end))
           (values journal
-                  (fnn-core 'fn-pull-replay
+                  (fnn-core 'fn-pull-records-replay
                             (fnn-core 'fn-pull-fresh-cursor peer-octets)
-                            (nreverse cursors))))
+                            (nreverse records))))
       (error (e)
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
@@ -149,8 +152,9 @@
 (defun fnn-pull-journal-append (journal cursor)
   (incf *fnn-pull-append-count*)
   (handler-case
-      (let* ((frame (fnn-core 'fn-pull-cursor-frame cursor))
-             (envelope (fnn-core 'fn-pull-journal-wrap frame)))
+      ;; PRF-165: one :pull-unavailable frame per pending id, then the
+      ;; :pull-cursor frame that commits them, in one write and one fsync.
+      (let* ((envelope (fnn-core 'fn-pull-cursor-envelope cursor)))
         (unless (fnn-octet-list-p envelope)
           (fnn-fault "owner refused FNPL envelope"))
         (fnn-pull-test-cut "before-write")
@@ -257,6 +261,20 @@
                    (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
                               (error () (enqueue (list :lost)))))
                    (:open-local
+                    (multiple-value-bind (opened greeting)
+                        (fnn-pull-local-open service peer)
+                      (setq cid opened)
+                      (enqueue (cons :local (fnn-octet-list greeting)))))
+                   ;; PRF-165: the peer answered ARTICLE 430; the transit
+                   ;; connection is inside an IHAVE it cannot finish.  Close
+                   ;; it (the owner discards the unfinished IHAVE) and open a
+                   ;; fresh one; its greeting is the round's next event.
+                   (:reopen-local
+                    (when cid
+                      (let ((old cid))
+                        (setq cid nil)
+                        (fnn-owner-serialized service nil
+                                              (lambda () (fnn-owner-action 'fn-owner-close old)))))
                     (multiple-value-bind (opened greeting)
                         (fnn-pull-local-open service peer)
                       (setq cid opened)
