@@ -5756,6 +5756,10 @@
         {
           "kind": "theorem",
           "name": "fn-ks-a-redecide-that-acted-is-refused-the-second-time"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class"
         }
       ]
     }
