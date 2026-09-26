@@ -7,7 +7,7 @@
 set -u
 REV=$1; shift
 MODS=${*:-"test_bp_service_native test_bp_contact_native test_bp_contact_relay_native test_bp_app_native test_bp_node_native test_bp_receive_integrity_native test_bp_fragment_node_native"}
-S=/tank/fn/scratch/bp-lifecycle-4; T=$S/t$REV; L=$S/logs-$REV
+S=/tank/fn/scratch/bp-lifecycle-4; T=$S/t$REV; L=$S/logs-$REV${LOGSUFFIX:-}
 ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
 export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8 LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
 export FN_ACL2=$ACL2 FN_CERT_CACHE=/tank/fn/certcache PYTHONDONTWRITEBYTECODE=1
