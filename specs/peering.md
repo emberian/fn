@@ -812,6 +812,25 @@ again (§3.3). Backoff on `431`/`436` is exponential with the peer record's
 base and capped at the retry bound; a `:dropped` entry is never re-offered
 automatically and is reported as refused by the CLI.
 
+### 3.2.1 A control article's scope (PRF-163)
+
+NNT-033: A control article is offered to every peer whose outbound wildmat matches a group its Newsgroups names or its filing group, so a friend's ordinary group filter receives the cancel of an article it carries
+
+The groups the feed matches peers' outbound wildmats against are
+`fn-own-sub-feed-groups` (books/owner.lisp): the submission's base groups
+(the injection decision's for a local or signed submission, the relayed
+article's Newsgroups for transit) and, for a control article, its
+Newsgroups names and its filing group `control.<verb>` too, from one parse
+(`fn-own-feed-control-groups-of`). RFC 5537 section 3.6 relays by the
+Newsgroups field and section 5.3 gives a cancel its target's Newsgroups
+"to best ensure that it will be relayed to the same news servers as the
+original message"; section 3.7 files it under `control.cancel`. fn does
+both: it files by 3.7 (`fn-pa-filing-plan`) and offers by 3.6 plus the
+filing group, a stronger fn guarantee that keeps a peer which asked for
+`control.cancel` by name. An ordinary article's groups are unchanged
+(`fn-own-sub-feed-groups-of-an-ordinary-article`). The keystones, over the
+host's `fn-own-submission-targets`, are in books/owner-feed-subject.lisp.
+
 ### 3.3 The feed journal: a record kind
 
 Frame family `FNFD` (schema 1) has one file per peer at

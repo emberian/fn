@@ -5848,6 +5848,33 @@
         "fn-native-operator-inspect-report-is-the-lookup"
       ],
       "progress_note": "Certified on persvati (runs of 2026-09-26, manifests above) and observed natively on the r3 images; the live (owner-running) inspect answer is PKT-410."
+    },
+    {
+      "id": "PRF-163",
+      "title": "A control article is offered to every peer whose outbound wildmat matches its Newsgroups names or its filing group, and an ordinary article's feed scope is unchanged",
+      "statement": "fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group: for an owner O with a submission in flight whose octets classify :control (fn-own-feed-control-of, equal to fn-ctl-classify-octets whenever the article parses: fn-own-feed-control-of-is-the-filing-classification), a peer NAME of the feed table (fn-own-feed-tablep, fn-own-feed-entry-of) with an outbound half whose wildmat matches a group of the article's Newsgroups (fn-own-feed-groups-of) or its filing group (fn-ctl-filing-group of the verb), whose path-identity the Path does not name, which is not the origin and whose queue does not hold the Message-ID, is a member of fn-own-submission-targets O (books/owner-feed-subject.lisp; the host's intent calls it through fn-icar-submission-targets, equal to it, at host/owner-host.lisp fn-owner-submission-intent, and the durable enqueue fn-own-feed-durable through fn-own-outcome, fn-own-control-outcome and fn-own-transit-outcome). fn-own-submission-target-of-a-control-article-is-in-its-scope: every target of a control article matches its base groups, its Newsgroups names or its filing group. fn-own-sub-feed-groups-of-an-ordinary-article: a submission whose octets do not classify :control has exactly its base groups. Not covered: the pull side (NEWNEWS serves by the filed group), the receiving node's acceptance of the cancel (PRF-097/C3's), RFC 5537 section 5.3's advice that a cancel's Newsgroups equal its target's (the author's, not checked).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-033"
+      ],
+      "depends_on": [
+        "PRF-160"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner.lisp",
+        "books/owner-feed-subject.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "tests/test_native_friends_feed.py",
+        "planning/evidence/friends-peer-2-2026-09-26.md"
+      ],
+      "events": [
+        "fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group",
+        "fn-own-submission-target-of-a-control-article-is-in-its-scope",
+        "fn-own-sub-feed-groups-of-an-ordinary-article"
+      ]
     }
   ]
 }
