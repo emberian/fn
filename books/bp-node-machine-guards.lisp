@@ -104,7 +104,23 @@
   :hints (("Goal" :in-theory
            (disable fn-bpn-machine-statep fn-bpn-machine-recordp))))
 
-(verify-guards fn-bpnf-recovery-heldp)
+(verify-guards fn-bpnf-all-heldp)
+(verify-guards fn-bpnf-recovery-heldp-fast)
+
+; The one-pass recovery check is the recursive one (bp-catalog): a suffix's
+; row count and octet total never exceed the whole list's, so checking the
+; bounds once at the head decides every level's.
+(defthm fn-bpnf-recovery-heldp-fast-is-logic
+  (equal (fn-bpnf-recovery-heldp-fast held max-held max-octets)
+         (fn-bpnf-recovery-heldp held max-held max-octets))
+  :hints (("Goal" :induct (fn-bpnf-all-heldp held)
+           :in-theory (e/d (fn-bpnf-recovery-heldp fn-bpnf-recovery-heldp-fast
+                            fn-bpnf-all-heldp fn-bpnf-held-octets)
+                           (fn-bpnf-heldp)))))
+
+(verify-guards fn-bpnf-recovery-heldp
+  :hints (("Goal" :in-theory (e/d (fn-bpnf-recovery-heldp-fast-is-logic)
+                                  (fn-bpnf-recovery-heldp-fast)))))
 
 ; The restart step's guard is the caller's hypotheses verbatim; opening the
 ; replay loop under it reached the wildmat decoder and took 11 s.

@@ -168,6 +168,8 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
+(include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
