@@ -3,7 +3,7 @@
 Lane `lane/post-identity-index` from dev `6407de336` (Opus 5.5), the
 performance ledger's fix lane 3 (planning/performance-2026-09-26.md row 5).
 Ids: PRF-191, SCN-120, PKT-548 (what remains), PKT-549 (the decision packet
-below). No wire, delta or format code taken. Commits: 50aebab85 (books, tests, host lines), and the record/registry commit carrying this file.
+below). No wire, delta or format code taken. Commits: 50aebab85 (books, tests, host lines), 4c8d78e60 (record, registry, SCN-120), 4efc49e85 (merge of dev 096df0a2c), and the build-lists test commit.
 
 ## What changed for a user
 
@@ -210,7 +210,12 @@ and the lookup answers the signed composite's article as the scan does.
   2.0 s), certify-20260926T154311Z-3572486 (books/owner-store-indexed 3.9 s,
   tests/acl2/post-identity-index-tests 1.8 s). Manifests under
   planning/evidence/manifests/.
-- `make check-lane`: green in the worktree (build/check-lane-2.log).
+- `make check-lane`: green in the worktree after merging dev 096df0a2c (the
+  base's tools/native_program_check.py crashed on 6407de336 itself, fixed on
+  dev). tests/test_build_lists_check.py's missing-include teeth now name the
+  owner host's real calls (`fn-pidx-existing-action`, `fn-pidx-sbud-prepare`
+  from books/post-identity-index.lisp) and remove that include in the bare
+  fixture, since the served POST no longer calls `fn-rclb-existing-action`.
 - hbox `tools/hbox_native.sh --label r1 50aebab85 tests.test_native_owner`
   (/tank/fn/scratch/post-identity-index/native-r1): certify, acquire,
   validate and the developer image exit 0 (core
