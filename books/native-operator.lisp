@@ -10,6 +10,7 @@
 (include-book "native-config")
 (include-book "native-config-show")
 (include-book "native-admin")
+(include-book "accounts")
 (include-book "native-auth-admin")
 (include-book "byte-store-frame")
 (include-book "outcome-class")

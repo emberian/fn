@@ -30,7 +30,6 @@
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
 (include-book "reclaim-rule")
-(include-book "accounts")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -285,7 +284,7 @@
        ; `fn-acct-list-report').  `account invite DIGEST SECONDS' is the
        ; form the operator's `account invite [--expires SECONDS]' sends
        ; after ACL2 rendered the code and its digest on the operator's side
-       ; (host/native/accounts.lisp): the code itself never reaches this
+       ; (host/native/operator.lisp): the code itself never reaches this
        ; argv, the owner or any record.
        ((and (equal (len words) 2)
              (equal (car words) "account")
@@ -543,21 +542,8 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (cond ((equal (fn-native-admin-result-kind plan) :list-control)
          (fn-native-admin-control-report (fn-cfg-authorities value)))
-        ((equal (fn-native-admin-result-kind plan) :list-accounts)
-         (fn-acct-list-report value))
         (t (fn-native-admin-peer-report (fn-cfg-peers value)))))
 
-; The pending row an accepted `account invite DIGEST SECONDS' plan stages at
-; STAMP (the live owner's clock, or the offline record's), or nil.
-(defun fn-native-admin-account-deltas (plan stamp)
-  (declare (xargs :guard t))
-  (if (and (equal (fn-native-admin-result-status plan) :accepted)
-           (equal (fn-native-admin-result-kind plan) :account-invite))
-      (let ((d (fn-acct-invite-delta
-                (fn-record-octets-string (fn-native-admin-result-name plan))
-                (fn-native-admin-result-capacity plan) stamp)))
-        (if d (list d) nil))
-    nil))
 
 (encapsulate ()
 (local (in-theory (disable fn-bp-eid-shapep)))

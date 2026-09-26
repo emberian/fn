@@ -363,23 +363,7 @@ observation into the outcome and this function only carries it out."
 ;;; pattern).  The code is printed once, to stdout, and only after the
 ;;; pending row is durable; it is never logged, stored or put in an argv.
 (defun fnn-operator-account-entropy ()
-  (let ((width (fnn-core 'fn-acct-host-entropy-octets)))
-    (unless (and (integerp width) (< 0 width))
-      (fnn-fault "ACL2 returned an invalid code width"))
-    (let ((fd (fnn-open "/dev/urandom" sb-posix:o-rdonly))
-          (answer (fnn-make-octets width))
-          (offset 0))
-      (unwind-protect
-           (progn
-             (loop while (< offset width) do
-               (let* ((chunk (fnn-make-octets (- width offset)))
-                      (count (fnn-read-fd fd chunk)))
-                 (when (zerop count)
-                   (fnn-fault "OS CSPRNG ended before one invitation code"))
-                 (replace answer chunk :start1 offset :end2 count)
-                 (incf offset count)))
-             (fnn-octet-list answer))
-        (fnn-close fd)))))
+  (fnn-csprng-octets (fnn-core 'fn-acct-host-entropy-octets) "invitation code"))
 
 (defun fnn-operator-execute-account-invite (result)
   (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
@@ -414,7 +398,9 @@ observation into the outcome and this function only carries it out."
                                  (fnn-control-admin control-path argv))
                      (fnn-admin-execute root plan)))))
           (when (eql exit +fnn-exit-ok+)
-            (write-line code *fnn-stdout*)
+            (write-sequence (fnn-octets (fnn-ascii-octet-list
+                                         (format nil "~a~%" code)))
+                            *fnn-stdout*)
             (finish-output *fnn-stdout*))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code exit)
                                     "account")

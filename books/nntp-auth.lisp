@@ -1480,6 +1480,20 @@
            (fn-auth-session-handshakingp as))
   :hints (("Goal" :in-theory (e/d (fn-auth-redeem-outcome) (fn-auth-single)))))
 
+(defthm fn-auth-redeem-outcome-leaves-no-subject-when-it-answers
+  (implies (and (fn-auth-redeem-waitp as) (fn-auth-redeem-eventp wire-event))
+           (null (fn-auth-session-subject
+                  (fn-post-result-session
+                   (fn-auth-redeem-outcome as wire-event)))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-redeem-outcome) (fn-auth-single)))))
+
+(defthm fn-auth-redeem-outcome-is-inert-unless-it-answers
+  (implies (not (and (fn-auth-redeem-waitp as)
+                     (fn-auth-redeem-eventp wire-event)))
+           (equal (fn-auth-redeem-outcome as wire-event)
+                  (fn-post-make-result as nil nil)))
+  :hints (("Goal" :in-theory (enable fn-auth-redeem-outcome))))
+
 (in-theory (disable fn-auth-xredeem fn-auth-redeem-outcome fn-auth-redeem-waitp))
 (defthm fn-auth-xredeem-keeps-the-peer
   (equal (fn-auth-session-peer
