@@ -340,6 +340,37 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         finally:
             bridge.close()
 
+    @staticmethod
+    def drain(process):
+        """Read PROCESS's stdout in a thread so a receiver that prints a line
+        per session never blocks on a full pipe; returns a function that
+        joins the thread and answers what was read."""
+        import threading
+        chunks = []
+        errors = []
+
+        def pump(stream, into):
+            while True:
+                chunk = os.read(stream.fileno(), 65536)
+                if not chunk:
+                    return
+                into.append(chunk)
+
+        threads = [threading.Thread(target=pump, args=(process.stdout, chunks),
+                                    daemon=True),
+                   threading.Thread(target=pump, args=(process.stderr, errors),
+                                    daemon=True)]
+        for thread in threads:
+            thread.start()
+
+        def finish(timeout):
+            process.wait(timeout=timeout)
+            for thread in threads:
+                thread.join(timeout=60)
+            finish.stderr = b"".join(errors)
+            return b"".join(chunks)
+        return finish
+
     def send_many(self, port, numbers, paths, workers=4):
         """Send each fragment in its own TCPCL session, WORKERS at a time;
         every send must be accepted."""
@@ -373,9 +404,10 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         order = list(reversed(range(count)))
         half = count // 2
         first, port = self.start_receiver(once=False)
+        first_out = self.drain(first)
         self.send_many(port, order[:half], paths)
         first.kill()
-        out, err = first.communicate(timeout=120)
+        out = first_out(120)
         self.assertNotIn(b"BP fragment family durable", out)
         killed = time.monotonic()
         print(f"SCN-077 first-half-seconds={killed - authored:.1f}", flush=True)
@@ -384,18 +416,21 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertIn(b"BP journal generation retired", rotated)
         self.assertEqual(self.recovered_held(), half)
         second, port = self.start_receiver(once=False)
+        second_out = self.drain(second)
         self.send_many(port, order[half:-1], paths)
         second.terminate()
-        out, err = second.communicate(timeout=300)
+        out = second_out(300)
         self.assertNotIn(b"BP fragment family durable", out)
         before_last = time.monotonic()
         print(f"SCN-077 second-half-seconds={before_last - killed:.1f}",
               flush=True)
         third, port = self.start_receiver()
+        third_out = self.drain(third)
         number = order[-1]
-        sent = self.send_fragment(port, paths[number], number)
+        sent = self.send_fragment(port, paths[number], number, 3600)
         self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
-        out, err = third.communicate(timeout=3600)
+        out = third_out(3600)
+        err = third_out.stderr
         done = time.monotonic()
         print(f"SCN-077 reassembly-and-handoff-seconds={done - before_last:.1f}",
               flush=True)
