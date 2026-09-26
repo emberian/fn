@@ -671,8 +671,10 @@
     "books/octets-stobj",
     "books/payload-arena",
     "books/poster-bytes-buffer",
+    "books/store-checkpoint-buffer",
     "tests/acl2/octets-stobj-tests",
     "tests/acl2/payload-arena-tests",
+    "tests/acl2/store-checkpoint-buffer-tests",
     "books/sha256-buffer",
     "tests/acl2/sha256-buffer-tests",
     "books/owner-advance-carried",
@@ -920,26 +922,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 934,
-    "books_in_root_closure": 930,
-    "roots": 916,
-    "theorems": 12998,
-    "functions": 9069,
-    "assert_events": 13489,
-    "must_fails": 1515,
+    "books": 936,
+    "books_in_root_closure": 932,
+    "roots": 918,
+    "theorems": 13040,
+    "functions": 9082,
+    "assert_events": 13499,
+    "must_fails": 1520,
     "encapsulates": 65,
     "guards": {
-      "verified": 2191,
+      "verified": 2193,
       "declared-off": 716,
-      "default-guarded": 4813,
+      "default-guarded": 4824,
       "default-unguarded": 1349
     },
     "suspect_theorems": 113,
-    "export_hygiene_warnings": 152,
+    "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 125,
-    "include_hygiene_warnings": 940,
-    "host_names_warnings": 1055,
+    "teeth_form_warnings": 128,
+    "include_hygiene_warnings": 941,
+    "host_names_warnings": 1057,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -13128,6 +13130,34 @@
       "read_error": null
     },
     {
+      "book": "books/store-checkpoint-buffer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 37,
+      "functions": 11,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "octets-stobj",
+        "store-checkpoint-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24199,6 +24229,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 5,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-buffer"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-checkpoint-open-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -27695,6 +27752,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-sccb-scc-octetp-is-cbor-octetp",
+        "book": "books/store-checkpoint-buffer.lisp",
+        "line": 128,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-scc-encode-is-program",
         "book": "books/store-checkpoint-codec.lisp",
         "line": 505,
@@ -29154,6 +29217,24 @@
         "check": "sbnt-refusals-distinct-without-distinct-words",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
         "line": 367,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "sccbt-r-encodes-octets-without-treep",
+        "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "line": 134,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "sccbt-r-append-list-without-true-listp-buffer",
+        "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "line": 162,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "sccbt-r-append-list-without-true-listp-xs",
+        "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "line": 188,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -31593,6 +31674,13 @@
         "line": 31,
         "include": "byte-store-frame",
         "included": "books/byte-store-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-checkpoint-buffer.lisp",
+        "line": 42,
+        "include": "store-checkpoint-codec",
+        "included": "books/store-checkpoint-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -40818,7 +40906,7 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2416,
+        "line": 2458,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -43142,21 +43230,35 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 555,
+        "line": 381,
+        "name": "fn-sccb-plan",
+        "source": "books/store-checkpoint-buffer.lisp",
+        "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 381,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 582,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 690,
+        "line": 717,
         "name": "fn-rcon-sn-io",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 805,
+        "line": 832,
         "name": "fn-rcon-sbud-pending-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

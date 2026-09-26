@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 934 |
-| Certification roots in the Makefile | 916 |
-| Books inside the root closure | 930 |
-| `defthm` and `defthmd` events | 12998 |
-| `defun` events | 9069 |
-| Functions with verified guards | 2191 |
+| Books read | 936 |
+| Certification roots in the Makefile | 918 |
+| Books inside the root closure | 932 |
+| `defthm` and `defthmd` events | 13040 |
+| `defun` events | 9082 |
+| Functions with verified guards | 2193 |
 | Functions declared `:verify-guards nil` and never verified | 716 |
-| Functions left at the default with an explicit guard | 4813 |
+| Functions left at the default with an explicit guard | 4824 |
 | Functions left at the default with no guard | 1349 |
-| `assert-event` checks | 13489 |
-| `must-fail` checks | 1515 |
+| `assert-event` checks | 13499 |
+| `must-fail` checks | 1520 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 113 |
-| Export-hygiene warnings | 152 |
+| Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 125 |
-| Include-hygiene warnings | 940 |
-| Host-names warnings | 1055 |
+| Teeth-form warnings | 128 |
+| Include-hygiene warnings | 941 |
+| Host-names warnings | 1057 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -542,6 +542,7 @@ that `make certify` requests.
 | `books/store-budget-article.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-budget-naming.lisp` | root | 15 | 11 | 0/1/10/0 | 0 | 0 | 0 |
 | `books/store-budget.lisp` | root | 9 | 13 | 0/7/6/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-buffer.lisp` | root | 37 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 67 | 46 | 14/2/30/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-open.lisp` | root | 42 | 34 | 11/0/23/0 | 0 | 0 | 0 |
 | `books/store-compact-verb.lisp` | root | 17 | 5 | 0/2/3/0 | 0 | 0 | 0 |
@@ -948,6 +949,7 @@ that `make certify` requests.
 | `tests/acl2/store-budget-article-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-budget-naming-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 61 | 17 | 0 |
 | `tests/acl2/store-budget-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 28 | 3 | 0 |
+| `tests/acl2/store-checkpoint-buffer-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 10 | 5 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 23 | 11 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 29 | 6 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
