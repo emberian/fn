@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1008 |
-| Certification roots in the Makefile | 983 |
-| Books inside the root closure | 1001 |
-| `defthm` and `defthmd` events | 14137 |
-| `defun` events | 9831 |
+| Books read | 1010 |
+| Certification roots in the Makefile | 985 |
+| Books inside the root closure | 1003 |
+| `defthm` and `defthmd` events | 14145 |
+| `defun` events | 9839 |
 | Functions with verified guards | 2255 |
 | Functions declared `:verify-guards nil` and never verified | 772 |
-| Functions left at the default with an explicit guard | 5346 |
+| Functions left at the default with an explicit guard | 5354 |
 | Functions left at the default with no guard | 1458 |
-| `assert-event` checks | 15102 |
-| `must-fail` checks | 1802 |
+| `assert-event` checks | 15109 |
+| `must-fail` checks | 1804 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 135 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 150 |
 | Include-hygiene warnings | 1015 |
-| Host-names warnings | 1154 |
+| Host-names warnings | 1156 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -557,6 +557,7 @@ that `make certify` requests.
 | `books/scheduler.lisp` | root | 64 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served-carried.lisp` | root | 17 | 12 | 1/0/11/0 | 0 | 0 | 0 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/served-reply-buffer.lisp` | root | 8 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/served-tls-prefix.lisp` | root | 12 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 111 | 52 | 2/4/46/0 | 0 | 0 | 0 |
 | `books/sha256-buffer.lisp` | root | 41 | 10 | 0/0/10/0 | 0 | 0 | 1 |
@@ -1003,6 +1004,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-implicit-tls-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 19 | 2 | 0 |
+| `tests/acl2/served-reply-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 2 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |
 | `tests/acl2/served-tls-prefix-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 9 | 1 | 0 |
 | `tests/acl2/sha256-buffer-tests.lisp` | root | 1 | 7 | 0/1/6/0 | 24 | 0 | 0 |
