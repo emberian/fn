@@ -1721,6 +1721,50 @@
       ]
     },
     {
+      "id": "SCN-069",
+      "title": "Two strangers become peers with one confirm, and a declined key statement stays declined across a restart that adds the grant",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "A and B run `peer genesis`; A: `peer invite nodeB fn.* HOST PORT a.example KEYS INV`; B: `peer accept INV KEYS b.example - ACC`; A: `peer confirm ACC INV`; A: `peer list`.",
+        "A: `peer confirm ACC INV-OTHER` with another invitation A issued; A2 with FN_PEER_TEST_STOP_AFTER_CONSUME: confirm, restart, `peer list`, confirm again.",
+        "Node D: enrol P, POST a succession statement with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The confirm exits 0 and `peer list` shows nodeB with auth principal B.",
+        "Another invitation is refused another-invitation and configures nothing; after the stop A2 already lists nodeB2, and the retry enrols once.",
+        "The statement logs `key-statement declined no-grant`; after each restart the log adds `key-statement declined ... at-open` and the key history is unchanged (the pre-packet image instead logs `enrol-successor committed at-open`)."
+      ]
+    },
+    {
+      "id": "SCN-060",
+      "title": "a POST whose reply was lost, then withdrawn by an authorized cancel, is settled by re-sending the same article: already stored, no new Message-ID, no new number",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-019"
+      ],
+      "steps": [
+        "A developer node with fn.test and control.cancel; the owner runs with FN_NATIVE_POST_FAULT=finish-durable:kill. fn_client posts with --draft and the owner dies after the commit is durable, before the reply (exit 3, uncertain); fn_web posts through its outbox under the same cut.",
+        "The owner restarts; both targets answer 220. A principal granted cancel over fn.test files a signed cancel of each target.",
+        "A fresh reader asks ARTICLE <target> for both; fn_client show <target>.",
+        "fn_client reconcile DRAFT and fn_web POST /reconcile re-send the exact stored lines; then reconcile again.",
+        "On a protected node the poster's login loses posting permission after a lost reply; fn_client reconcile."
+      ],
+      "expected": [
+        "Both lookups answer 430 withdrawn; show exits 1 and says the answer is not evidence about acceptance.",
+        "Both reconciliations draw 441 posting failed; this article is already stored here and settle accepted (already-stored); the transaction files and GROUP fn.test are unchanged; the draft and outbox keep the original outcome uncertain beside the reconciliation.",
+        "The authorization case answers 440 and settles unresolved (exit 4); the article is still served (220) and nothing is stored."
+      ],
+      "evidence": [
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/visibility-join-2026-09-25.md"
+      ]
+    },
+    {
       "id": "SCN-068",
       "title": "A person reads a conversation across a withdrawn message, searches a stated window, and resends an uncertain post only on request",
       "milestone": "M6",
@@ -1730,12 +1774,12 @@
       ],
       "steps": [
         "On a scratch developer-image node, post a root, a signed reply and a further reply; withdraw the signed reply with its author's signed cancel.",
-        "Open the group, the withdrawn number, the conversation of the last reply, and a search of the group in the web reader; post while the node's reply is lost, restart the client, and press Send the same bytes again."
+        "Open the group, the withdrawn number, the conversation of the last reply, and a search of the group in the web reader; reply with a double-click, go Back and press Post again; post while the node is unreachable, restart the client, and press Re-send this same article to settle it."
       ],
       "expected": [
         "The group window lists the withdrawn number with the node's 423 withdrawn; the conversation lists the withdrawn reply with the node's 430 withdrawn and shows the root and the last reply from the node's XPAT References answer.",
         "The search page names the node's XPAT command and window; the article page shows claimed From, carriers, the node's historical verdict, current enrollment as not served and no independent verification, separately.",
-        "After restart the intent is uncertain and nothing is sent until the button; the re-send's answer is recorded beside the unchanged original."
+        "Back after posting shows that the form was already posted and sends nothing; after restart the intent is uncertain and nothing is sent until the button; the reconciliation answer is recorded beside the unchanged original (NNT-019)."
       ],
       "evidence": [
         "tests/test_fn_web.py",

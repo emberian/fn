@@ -4606,6 +4606,52 @@
       ]
     },
     {
+      "id": "PRF-124",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-record-configures-the-issued-invitations-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-record-fold-consumes-and-configures"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-reopen-is-blind-to-later-configuration"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-a-decline-replays-as-a-decline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recorded-recovery-completes-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-verdict-names-its-class"
+        }
+      ]
+    },
+    {
+      "id": "PRF-115",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-vj-a-completion-keeps-a-held-message-id-answered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-vj-reclamation-keeps-a-held-message-id-answered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-vj-a-held-message-id-is-answered-441"
+        }
+      ]
+    },
+    {
       "id": "PRF-122",
       "events": [
         {

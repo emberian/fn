@@ -267,3 +267,44 @@
  (assert-event (equal (fn-pcb-refusal-class *pat-relayed* nil nil
                                             :refused :refused)
                       :signature-failed)))
+
+; =============================================================================
+; Packet 4 (PRF-124): fn-pcb-admission-verdict names every input's class.
+; One reachable witness per verdict.
+(assert-event (equal (fn-pcb-admission-verdict *tha-root-source* *pat-snapshots*
+                                               nil nil nil)
+                     :unsigned))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil *pat-carries*
+                                               nil nil)
+                     :carried))
+(assert-event (equal (fn-pcb-admission-verdict *pat-malformed* *pat-snapshots*
+                                               nil nil nil)
+                     :malformed))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                               :refused :verified)
+                     :cryptographically-invalid))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil)
+                     :unenrolled))
+(assert-event (equal (fn-pcb-admission-verdict *pcb-unsupported* *pat-snapshots*
+                                               nil nil nil)
+                     :unsupported-profile))
+(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                               :verified :verified)
+                     :verified))
+; The inner hypothesis (a present carrier): without it the verdict is
+; :unsigned, which the conclusion excludes for present carriers.
+(assert-event (equal (fn-pa-carrier-kind *tha-root-source*) :absent))
+(must-fail
+ (assert-event (not (equal (fn-pcb-admission-verdict *tha-root-source*
+                                                     *pat-snapshots* nil nil nil)
+                           :unsigned))))
+; :verified needs BOTH observations: one refused is not :verified.
+(must-fail
+ (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
+                                                :verified :refused)
+                      :verified)))
+; A carried input is never :verified, even under verified observations.
+(must-fail
+ (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil *pat-carries*
+                                                :verified :verified)
+                      :verified)))

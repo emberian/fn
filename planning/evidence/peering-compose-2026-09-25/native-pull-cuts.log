@@ -1,0 +1,62 @@
+test_cursor_publication_cuts (tests.test_native_peer_pull.NativePeerPullTests.test_cursor_publication_cuts)
+Packet 5 (PRF-124): SIGKILL at every write of the cursor's ... /tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:462: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Abefore-write-1/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:429: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bbefore-write-1/stderr.log'>
+  pass
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:439: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bbefore-write-1/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:462: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Aafter-write-1/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:429: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-write-1/stderr.log'>
+  pass
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:439: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-write-1/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:462: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Aafter-fsync-1/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:429: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-fsync-1/stderr.log'>
+  pass
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:439: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-fsync-1/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:462: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Abefore-write-2/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:427: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bbefore-write-2/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:439: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bbefore-write-2/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:462: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Aafter-write-2/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:427: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-write-2/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:439: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-write-2/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:462: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Aafter-fsync-2/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:427: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-fsync-2/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:439: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-ti0ihbya/Bafter-fsync-2/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"after-fsync:1": {"article_after": ["ARTICLE <cut-after-fsync-1-1@example.invalid>", "ARTICLE <cut-after-fsync-1-0@example.invalid>"], "counts": {"<cut-after-fsync-1-0@example.invalid>": 1, "<cut-after-fsync-1-1@example.invalid>": 1}, "newnews_after": ["NEWNEWS fn.* 20260925 000650 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced"]}, "after-fsync:2": {"article_after": [], "counts": {"<cut-after-fsync-2-0@example.invalid>": 1, "<cut-after-fsync-2-1@example.invalid>": 1}, "newnews_after": ["NEWNEWS fn.* 20260926 000655 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced"]}, "after-write:1": {"article_after": ["ARTICLE <cut-after-write-1-1@example.invalid>", "ARTICLE <cut-after-write-1-0@example.invalid>"], "counts": {"<cut-after-write-1-0@example.invalid>": 1, "<cut-after-write-1-1@example.invalid>": 1}, "newnews_after": ["NEWNEWS fn.* 20260925 000647 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced"]}, "after-write:2": {"article_after": [], "counts": {"<cut-after-write-2-0@example.invalid>": 1, "<cut-after-write-2-1@example.invalid>": 1}, "newnews_after": ["NEWNEWS fn.* 20260926 000653 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced"]}, "before-write:1": {"article_after": ["ARTICLE <cut-before-write-1-1@example.invalid>", "ARTICLE <cut-before-write-1-0@example.invalid>"], "counts": {"<cut-before-write-1-0@example.invalid>": 1, "<cut-before-write-1-1@example.invalid>": 1}, "newnews_after": ["NEWNEWS fn.* 20260925 000645 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced"]}, "before-write:2": {"article_after": [], "counts": {"<cut-before-write-2-0@example.invalid>": 1, "<cut-before-write-2-1@example.invalid>": 1}, "newnews_after": ["NEWNEWS fn.* 20260925 000652 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced"]}, "core_sha256": "76d2ff381a30a830c6b1505d12ca65d8f0baf7a971821c8fbc282ccd2d9d87f4", "image_sha256": "784ceb5c61ef4ed8c8b5bc5642fa98a6e098cbc5f71cdd32047f8ff61650ce4c", "kind": "cursor-cuts"}
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 14.154s
+
+OK

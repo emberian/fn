@@ -2345,6 +2345,73 @@
         "fn-bpfs-plan-fragments-restore-parent"
       ],
       "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059."
+    },
+    {
+      "id": "NNT-022",
+      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided",
+      "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-124"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/key-statements.lisp",
+        "books/peer-carriage.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_invite.py",
+        "tests/test_native_key_statements.py",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-compose-2026-09-25.md"
+      ],
+      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule), with *fn-ks-reopen-policy* as the switch. Pull over TLS (packet 8) is not part of this requirement yet."
+    },
+    {
+      "id": "NNT-019",
+      "title": "430/423 is a visibility observation, not acceptance evidence; acceptance is settled by re-submitting the same source; an ordinary reader that cannot resubmit reports unresolved",
+      "specification": "specs/nntp.md#stored-visible-and-absent-settling-a-lost-reply-nnt-019",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-115"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "rfc3977.txt",
+        "books/visibility-join.lisp",
+        "tests/acl2/visibility-join-tests.lisp",
+        "tests/test_native_visibility_join.py",
+        "tools/fn_client.py",
+        "tools/fn_web.py",
+        "tests/test_fn_client.py",
+        "tests/test_fn_web.py",
+        "docs/agents.md",
+        "docs/human-web-client.md",
+        "planning/evidence/visibility-join-2026-09-25.md"
+      ],
+      "keystones": [
+        "fn-vj-a-completion-keeps-a-held-message-id-answered",
+        "fn-vj-reclamation-keeps-a-held-message-id-answered",
+        "fn-vj-a-held-message-id-is-answered-441"
+      ],
+      "implementation_note": "A stronger fn guarantee and a client contract, not an RFC requirement (RFC 3977 6.3.1 allows 441 for any posting failure; the duplicate/conflict answers are D25's). Proved over the host-called decision (fn-rclb-existing-action via host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-rcl-existing-action via fn-owner-existing-action): a held Message-ID is answered :duplicate or :conflict across every fn-sn-finish (the withdrawing cancel's acceptance is one) and across reclamation, and the in-flight reply is one of the two 441 lines. Clients: fn_client post --draft/reconcile (exit 4 unresolved), fn_web /reconcile; both keep the original outcome and re-send the stored bytes. Native (SCN-060) passes on the developer image. Not covered: a native reclamation (no host verb yet); a poster whose authorization changed is answered by the login gate or posting allowance before the Store and stays unresolved (PKT-164)."
     }
   ]
 }
