@@ -51,7 +51,7 @@
 (defconst *scs-t-trie-f* (scs-t-with-index *scs-t-f* (car *scs-t-index*)))
 (assert-event (equal (fn-sco-thaw-checked *scs-t-trie-f*) (list :refused :index-shape)))
 
-; The named selection: witness, and fn-sco-select-named-is-select-unless-index-shape
+; The named selection: witness, and fn-sco-select-named-unfolds
 ; without its hypothesis (fn-sco-select calls :index-shape :corrupt).
 (assert-event (equal (fn-sco-select-named :index-shape 0 2 4)
                      (list :full-replay :checkpoint-index-shape)))

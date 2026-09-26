@@ -58,7 +58,7 @@
       (list :full-replay :checkpoint-index-shape)
     (fn-sco-select status sequence count k)))
 
-(defthm fn-sco-select-named-is-select-unless-index-shape
+(defthm fn-sco-select-named-unfolds
   (implies (not (eq status :index-shape))
            (equal (fn-sco-select-named status sequence count k)
                   (fn-sco-select status sequence count k))))
