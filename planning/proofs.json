@@ -6327,7 +6327,15 @@
         "fn-auth-config-with-accounts-is-a-config",
         "fn-auth-config-with-accounts-finds-the-redeemed-credential",
         "fn-auth-config-with-accounts-keeps-the-operators-credential",
-        "fn-auth-account-creds-find-the-row"
+        "fn-auth-account-creds-find-the-row",
+        "fn-auth-step-pinned-xredeem-before-tls-is-483",
+        "fn-auth-step-pinned-xredeem-pass-holds-for-the-owner",
+        "fn-auth-step-pinned-redeem-outcome-answers-the-word",
+        "fn-auth-step-redeem-hold-keeps-the-role",
+        "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
+        "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
+        "fn-acct-redeem-word-of-an-unknown-code-is-refused",
+        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
       ]
     },
     {
@@ -6455,7 +6463,7 @@
         "PRF-116"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-signed-post.lisp",
         "tests/acl2/owner-signed-post-tests.lisp",
