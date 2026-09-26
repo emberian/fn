@@ -2299,7 +2299,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-114"
+        "PRF-114",
+        "PRF-121"
       ],
       "verification": [
         "proof",
@@ -2312,15 +2313,21 @@
         "tests/acl2/bp-fragment-send-tests.lisp",
         "host/native/bp-service.lisp",
         "tests/test_bp_node_native.py",
-        "planning/evidence/bp-n16-prod-2026-09-25.md"
+        "planning/evidence/bp-n16-prod-2026-09-25.md",
+        "books/bp-fragment-sweep.lisp",
+        "tests/acl2/bp-fragment-sweep-tests.lisp",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-lifecycle-2026-09-25.md"
       ],
-      "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler keeps its 65538-octet and 64-fragment caps.",
+      "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler has no family-size ceiling since PRF-121 (fn-bpfw-reassemble, linear in the octets received), but a family is still bounded by the held-image cap, the 1 MiB bundle decoder and the 65538-octet ADU record (P5).",
       "keystones": [
         "fn-bpfs-plan-fragments-fit-mru",
         "fn-bpfs-plan-fragments-reassemble-exactly",
-        "fn-bpfs-plan-fragments-restore-parent"
+        "fn-bpfs-plan-fragments-restore-parent",
+        "fn-bpfw-reassemble-is-spec",
+        "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067."
     }
   ]
 }

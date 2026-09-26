@@ -214,6 +214,6 @@
                             (held (fn-bpnf-held-list st)) (tried nil)))
            :in-theory (union-theories
                        '(fn-bpnf-subsetp-equal-reflexive
-                         (:executable-counterpart fn-bpnf-family-tried-okp))
+                         fn-bpnf-family-tried-okp)
                        (theory 'minimal-theory)))))
 (verify-guards fn-bpnf-fragment-step)

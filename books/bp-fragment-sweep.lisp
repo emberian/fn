@@ -85,29 +85,32 @@
        (consp fs)
        (fn-bpfw-same-total fs total)))
 
-(defthm fn-bpfw-fragmentp-fields
-  (implies (fn-bpfw-fragmentp f)
-           (and (true-listp f)
-                (natp (fn-bpf-offset f))
-                (integerp (fn-bpf-offset f))
-                (<= 0 (fn-bpf-offset f))
-                (fn-cbor-octet-listp (fn-bpf-bytes f))
-                (true-listp (fn-bpf-bytes f))
-                (consp (fn-bpf-bytes f))
-                (<= (+ (fn-bpf-offset f) (len (fn-bpf-bytes f)))
-                    (fn-bpf-total f))))
-  :rule-classes (:rewrite :forward-chaining))
+(local
+ (defthm fn-bpfw-fragmentp-fields
+   (implies (fn-bpfw-fragmentp f)
+            (and (true-listp f)
+                 (natp (fn-bpf-offset f))
+                 (integerp (fn-bpf-offset f))
+                 (<= 0 (fn-bpf-offset f))
+                 (fn-cbor-octet-listp (fn-bpf-bytes f))
+                 (true-listp (fn-bpf-bytes f))
+                 (consp (fn-bpf-bytes f))
+                 (<= (+ (fn-bpf-offset f) (len (fn-bpf-bytes f)))
+                     (fn-bpf-total f))))
+   :rule-classes (:rewrite :forward-chaining)))
 
-(defthm fn-bpfw-fragment-listp-is-a-true-list
-  (implies (fn-bpfw-fragment-listp fs) (true-listp fs))
-  :rule-classes (:rewrite :forward-chaining))
+(local
+ (defthm fn-bpfw-fragment-listp-is-a-true-list
+   (implies (fn-bpfw-fragment-listp fs) (true-listp fs))
+   :rule-classes (:rewrite :forward-chaining)))
 
 (defthm fn-bpfw-same-total-is-the-reference
   (equal (fn-bpfw-same-total fs total) (fn-bpf-same-total fs total)))
 
 ; The capped recognizer is the uncapped one with every total under the cap.
-(defthm fn-bpfw-capped-fragment-list
-  (implies (fn-bpf-fragment-listp fs) (fn-bpfw-fragment-listp fs)))
+(local
+ (defthm fn-bpfw-capped-fragment-list
+   (implies (fn-bpf-fragment-listp fs) (fn-bpfw-fragment-listp fs))))
 
 (local
  (defthm fn-bpfw-fragment-list-under-the-cap
@@ -285,7 +288,10 @@
 
 (defthm fn-bpfw-all-at-least-of-merge
   (equal (fn-bpfw-all-at-least (fn-bpfw-merge a b) k)
-         (and (fn-bpfw-all-at-least a k) (fn-bpfw-all-at-least b k))))
+         (and (fn-bpfw-all-at-least a k) (fn-bpfw-all-at-least b k)))
+  :hints (("Goal" :induct (fn-bpfw-merge a b)
+           :in-theory (disable fn-bpfw-fragment-listp fn-bpfw-fragmentp
+                               fn-bpfw-all-at-least-weakens))))
 
 (local
  (defthm fn-bpfw-sorted-at-least-its-head
@@ -301,7 +307,8 @@
            (fn-bpfw-sortedp (fn-bpfw-merge a b)))
   :hints (("Goal" :induct (fn-bpfw-merge a b)
            :do-not '(generalize fertilize)
-           :in-theory (disable fn-bpfw-all-at-least-weakens))
+           :in-theory (disable fn-bpfw-all-at-least-weakens fn-bpfw-fragmentp
+                               fn-bpfw-all-at-least-of-merge))
           ("Subgoal *1/3" :expand ((fn-bpfw-merge a b) (fn-bpfw-sortedp a)
                                    (fn-bpfw-sortedp b)))
           ("Subgoal *1/4" :expand ((fn-bpfw-merge a b) (fn-bpfw-sortedp a)
