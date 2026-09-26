@@ -117,6 +117,20 @@ class RunpathCheckTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("starts /usr/local/bin/python3", err)
 
+    def test_sbcl_fasl_header_passes_and_other_interpreters_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            contrib = top / "libexec/fn/runtime/sbcl-home/contrib"
+            contrib.mkdir(parents=True)
+            (contrib / "sb-posix.fasl").write_bytes(b"#!/usr/obj/ports/sbcl/src/runtime/sbcl --script\n\0\1")
+            code, out, err = self.run_main(["--tree", str(top)])
+            self.assertEqual(code, 0, err)
+            self.assertIn("1 SBCL contrib fasls", out)
+            (top / "libexec/fn/tool").write_text("#!/usr/bin/perl\n")
+            code, _, err = self.run_main(["--tree", str(top)])
+            self.assertEqual(code, 1)
+            self.assertIn("libexec/fn/tool: interpreter /usr/bin/perl is neither /bin/sh nor SBCL", err)
+
     def test_unlisted_process_site_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
