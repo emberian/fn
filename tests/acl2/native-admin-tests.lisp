@@ -359,6 +359,27 @@
          (fn-native-admin-plan
           (fn-na-test-argv '("policy" "set" "posting-policy" "strict"))))
         :policy))
+; PRF-211: the trusted range, a :set-policy row whose word every range of
+; parses; `none' clears it; a malformed range is refused :policy.
+(defconst *fn-na-trusted*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "exposure-trusted" "192.168.1.0/24,fd00::/8"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-trusted*) :set-policy))
+(assert-event (equal (fn-native-admin-result-value *fn-na-trusted*)
+                     (fn-record-string-octets "192.168.1.0/24,fd00::/8")))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-trusted*)
+                     (list (fn-cfg-set-policy "exposure-trusted"
+                                              "192.168.1.0/24,fd00::/8"))))
+(assert-event
+ (equal (fn-native-admin-result-kind
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "exposure-trusted" "none"))))
+        :set-policy))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "exposure-trusted" "192.168.1.0/33"))))
+        :policy))
 ; The other kinds carry no value.
 (assert-event (null (fn-native-admin-result-value *fn-na-create*)))
 (assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))

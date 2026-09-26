@@ -5861,7 +5861,7 @@
     {
       "id": "PRF-161",
       "title": "The limits of a public reader port as the host calls them: admission bounded by the total and per-address rows in force, a step budget per quantum that waits and never refuses, the none anonymous policy gating every reader and posting command 480, and no limit or reconfiguration dropping a connection",
-      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step, as books/public-exposure-reply.lisp's fn-exp-observe-effects over the step's effects (fn-exp-observe-effects-unfolds: it is fn-exp-observe of fn-served-reply-octets of the effects, so every fn-exp-observe theorem here is about the host's call; its executable reads the reply's two facts, answered and the 481 count, by one constant-stack scan of the effects with no copy of the reply: fn-exp-481-scan-counts-the-481-replies, fn-exp-effects-scan-is-the-reply-scan, fn-exp-observe-effects-is-the-observation-of-the-reply; exposure-reply-size, PKT-481: fn-exp-481-count's per-octet recursion over a 2 MiB reply had exhausted the control stack and stopped the owner); fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the run's max_connections, ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total and the address below its per-address limit in force, and leaves the address at most one higher and within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
+      "statement": "books/public-exposure.lisp. The host calls: fn-exp-open through host/owner-host.lisp fn-owner-exposure-open from host/native/owner.lisp fnn-owner-serve-client at every accept (it admits or refuses and opens the owner connection in the same call, over fn-ocfg-open / fn-ocfg-open-peer with the pinned AUTHINFO configuration fn-exp-pinned-acfg); fn-exp-charge through fn-owner-exposure-charge from fnn-owner-exposure-wait before every served step; fn-exp-observe through fn-owner-exposure-observe inside fn-owner-chunk after every served step, as books/public-exposure-reply.lisp's fn-exp-observe-effects over the step's effects (fn-exp-observe-effects-unfolds: it is fn-exp-observe of fn-served-reply-octets of the effects, so every fn-exp-observe theorem here is about the host's call; its executable reads the reply's two facts, answered and the 481 count, by one constant-stack scan of the effects with no copy of the reply: fn-exp-481-scan-counts-the-481-replies, fn-exp-effects-scan-is-the-reply-scan, fn-exp-observe-effects-is-the-observation-of-the-reply; exposure-reply-size, PKT-481: fn-exp-481-count's per-octet recursion over a 2 MiB reply had exhausted the control stack and stopped the owner); fn-exp-idle through fn-owner-exposure-idle on every receive timeout; fn-exp-release in the serve loop's unwind; fn-exp-health-lines through host/native-live-status-host.lisp for `health'. The limits are fn-exp-limits over the LIVE configuration value (rows written by `policy set', books/native-admin.lisp :set-exposure / :set-policy), the owner's bound (a run's is *fn-exp-owner-connection-bound*, PRF-211), ACL2's reading of the bound listener (fn-exp-address-publicp) and `[auth] required'. KEYSTONES: fn-exp-open-admits-within-the-limits-in-force (an open that returns an id happened only with the owner below the total, leaves the address at most one higher, and, for an address outside the trusted range (PRF-211), happened only with the address below its per-address limit in force and leaves it within that limit); fn-exp-open-never-exceeds-a-limit-in-force (no open carries an address outside the trusted range past max(before, limit): a lowered limit closes nothing and admits nothing more); fn-exp-charge-bounds-steps-per-quantum (under a positive steps row a step proceeds only below the budget and leaves the address's count for the quantum within it; exhaustion is (:defer MS), never a close: fn-exp-charge-waits-and-never-closes); fn-exp-anonymous-none-gates-every-restricted-command (under the none policy the pinned configuration requires authentication, and for any session carrying it with no subject every restricted command -- POST included -- is 480, no submission, session unchanged: composed with books/nntp-auth.lisp's fn-auth-gated-command-is-refused-and-not-performed); fn-exp-limits-never-drop-a-connection (for any limits, open, charge, observe and idle keep every registered connection; only release removes); fn-exp-idle-closes-only-silence and fn-exp-observe-closes-only-on-a-failed-login (the only two closes the book asks for). NOT covered: that the pinned configuration IS the session's (fn-auth-open-session and served.lisp's fn-served-peer-and-reader-open-under-the-same-policy state it; no composed theorem over fn-ocfg-open is proved here); that the host's loop makes exactly these calls (source, and the native campaign tests/test_native_public_exposure.py); a read-only anonymous level and a public-groups level (need an nntp-auth change, 281 dependent books: deferred, PKT-405); TLS renegotiation and handshake cost (OpenSSL, host trust); what happens behind a reverse proxy (every client one address).",
       "milestone": "M6",
       "requirements": [
         "NNT-031"
@@ -7465,12 +7465,79 @@
       "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md)."
     },
     {
+      "id": "PRF-196",
+      "title": "A group set read-only refuses a local POST naming it by name, and LIST ACTIVE lists it with status n, from one configured list on the same connection",
+      "statement": "fn-cfg-set-group-status-sets-the-status (books/config-invariants.lisp, KEYSTONE): for a typed configuration value V, a group NAME live at GEN and STATUS in (\"y\" \"n\"), fn-cfg-apply-delta of (fn-cfg-set-group-status NAME STATUS) (code 21) makes fn-cfg-group-status of NAME equal STATUS and leaves every other group's status unchanged; fn-cfg-closed-names-are-the-n-groups: the closed list the owner installs (books/owner-agent.lisp fn-oag-post-config, fifth field fn-inj-config-closed) holds exactly the groups whose status is \"n\". fn-gst-post-gate-refuses-exactly-a-listed-n-group (books/group-status.lisp, KEYSTONE): the gate fn-nntp-post-step runs before the injection decision refuses (441, :group-read-only) exactly when the ordinary article names a group whose fn-nntp-closed-status under the configuration's closed list is \"n\" -- the status field LIST ACTIVE renders from the same list through fn-post-reader-env (fn-post-reader-env-closed). Host lines: books/nntp-post.lisp fn-nntp-post-step (fn-nntp-post-step-pinned, peer-offer-indexed fn-pix-post-step-pinned) on the served path; the verb through books/native-admin.lisp fn-native-admin-plan-deltas, live (host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure) and offline (fn-native-admin-host-apply). RFC 3977 section 7.6.3 and RFC 6048 section 2.1 (status n: local postings not permitted); a relayed article is not gated.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/group-status.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/owner-agent.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/group-status-tests.lisp",
+        "tests/test_native_group_policy.py",
+        "planning/evidence/group-policy-2026-09-26.md"
+      ],
+      "events": [
+        "fn-cfg-set-group-status-sets-the-status",
+        "fn-cfg-closed-names-are-the-n-groups",
+        "fn-gst-post-gate-refuses-exactly-a-listed-n-group",
+        "fn-gst-first-closed-is-named-and-listed-n",
+        "fn-post-reader-env-closed"
+      ]
+    },
+    {
+      "id": "PRF-211",
+      "title": "The reader port's connection capacity is the operator's exposure-connections row with no fixed ceiling under it, the port refuses exactly at the capacity with RFC 3977's named 400, and an address in the operator's trusted range is never refused on the per-address rule while one outside is refused exactly at its limit",
+      "statement": "books/public-exposure.lisp over books/public-exposure-rows.lisp. The subject is fn-exp-open, which host/owner-host.lisp fn-owner-exposure-open calls at every accept (host/native/owner.lisp fnn-owner-serve-client) through fn-ocar-exp-open (equal to it under the configured owner's relation: fn-ocar-exp-open-is-exp-open-under-ocl-relation, books/owner-open-carried.lisp), over the limits fn-owner-exposure-limits reads with fn-exp-limits from the owner's LIVE configuration value and the owner's bound. A run's owner is installed with *fn-exp-owner-connection-bound* = one past the limit rows' width (books/native-operator.lisp fn-native-operator-result-run-max-connections, host/native/operator.lisp `run' through fnn-control-owner-run-normalized), so fn.toml's fixed 32 no longer bounds a run. fn-exp-owner-bound-exceeds-every-capacity: under fn-cfg-limits-withinp (carried by fn-cfg-valuep, preserved by every delta) the capacity fn-exp-connections-capacity (the exposure-connections row, 31 with none) is below that bound. fn-exp-limits-total-is-the-capacity: the total in force is the capacity whenever the owner's bound exceeds it. KEYSTONE fn-exp-open-refuses-exactly-at-the-capacity: under the run's bound, fn-cfg-limits-withinp and the failed-login rule not refusing the address (fn-exp-auth-refusesp), fn-exp-admit-decision is exactly (:refuse busy-400 1) when the owner holds the capacity or more, else (:refuse address-400 2) for an address outside the trusted range at its per-address limit, else :admit; fn-exp-open-refusal-is-a-400-and-opens-nothing (PRF-161) makes a refusal the named line (`400 too many connections; try again later', RFC 3977 section 5.1.1) with nothing opened. KEYSTONE fn-exp-trusted-address-is-never-refused-by-address: an address fn-exp-trusted-addressp accepts under the limits' trusted range (the `exposure-trusted' :set-policy row, parsed by fn-exp-trusted-of-word; `policy set exposure-trusted' admits only fn-exp-trusted-wordp, books/native-admin.lisp) is never given the per-address refusal. fn-exp-untrusted-address-is-refused-exactly-at-its-limit: outside the range, with the failed-login rule not refusing and the owner below the total, the decision is the per-address 400 exactly when the address holds its limit. Not proved: the CIDR parser's agreement with RFC 4632 text beyond the witnesses; the memory a capacity costs (PKT-605).",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-043"
+      ],
+      "depends_on": [
+        "PRF-161"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-host-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_public_limits.py",
+        "docs/operator.md",
+        "planning/evidence/public-limits-2026-09-26.md"
+      ],
+      "progress_note": "Lane public-limits 2026-09-26: every changed book and test book certified in the lane's persvati tree (tools/certify_books.py --incremental --no-publish, discovery); certification is the batch's.",
+      "events": [
+        "fn-exp-owner-bound-exceeds-every-capacity",
+        "fn-exp-limits-total-is-the-capacity",
+        "fn-exp-open-refuses-exactly-at-the-capacity",
+        "fn-exp-trusted-address-is-never-refused-by-address",
+        "fn-exp-untrusted-address-is-refused-exactly-at-its-limit"
+      ]
+    },
+    {
       "id": "PRF-207",
       "title": "One admission decision, three wire forms: CHECK and TAKETHIS answer as IHAVE does, the streaming pipeline is bounded, and fn's feed falls back to IHAVE on a peer that does not stream",
       "statement": "books/peer-transit-forms.lisp over the functions the served path calls. fn-peer-check-and-ihave-answer-one-offer-decision: for one connection state and one well-formed Message-ID, the code fn-peer-command answers to IHAVE and to CHECK are fn-peer-offer-code's IHAVE and CHECK images of the same fn-peer-decide-offer decision, so CHECK's code is the RFC 4644 section 2.4 form of IHAVE's RFC 3977 section 6.3.2 code (238/335, 438/435, 431/436). fn-peer-takethis-and-ihave-answer-one-transfer-verdict: for every transfer decision and durable completion, fn-peer-transit-outcome-effects renders TAKETHIS's code as the streaming form of IHAVE's (239/235, 439/437, 436/436; 436 after TAKETHIS is fn's local policy, RFC 4644 section 2.5 names 400) and closes exactly when IHAVE's does. fn-peer-transfer-submission-differs-only-in-form-unfolds: the transfer arm hands the owner the same (peer, Message-ID, octets) whatever the form. fn-peer-step-pinned-keeps-outstanding-offers-within-the-peer-bound: no served event raises the connection's outstanding 238 count above the larger of its value and the peer record's inbound max-inflight (D27: a pipeline past the bound is 431). books/feed-connection.lisp fn-fc-mode-stream-unsupported-falls-back-to-ihave: a 500 or 501 answer to MODE STREAM (RFC 3977 section 3.2.1) makes the same connection ready with streaming off, security and credential kept, and records no stop; books/owner.lisp fn-own-feed-connect-in-ihave-form-offers-ihave, -sends-the-bare-article and fn-own-feed-connect-in-stream-form-offers-check: after a connect in the :ihave form the feed offers the IHAVE line and sends the bare article, after a streaming connect to a streaming record it offers CHECK. Not claimed: that a real peer's code means what the RFC says (the INN lab measures that), nor a CAPABILITIES-driven choice of form (RFC 4644 section 2.3 prefers CAPABILITIES; fn asks MODE STREAM).",
       "milestone": "M5",
       "requirements": [
-        "NNT-042"
+        "NNT-045"
       ],
       "depends_on": [
         "PRF-130"

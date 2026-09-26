@@ -526,7 +526,7 @@ class NativePeeringTests(unittest.TestCase):
         }, sort_keys=True))
 
     # -------------------------------------------------------------------
-    # Streaming (RFC 4644), PRF-207 / NNT-042 / SCN-138
+    # Streaming (RFC 4644), PRF-207 / NNT-045 / SCN-138
 
     def test_inn_shaped_streaming_driver_gets_the_ihave_verdicts(self):
         """An INN-shaped peer streams into fn: MODE STREAM, then CHECKs

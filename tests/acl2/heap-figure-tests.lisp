@@ -85,7 +85,10 @@
 ; The keystone: a reachable witness with every hypothesis and the conclusion
 ; (the small store full to H), then per hypothesis a counterexample where the
 ; others hold, it fails, and the conclusion fails, and the must-fail of the
-; theorem without it.
+; theorem without it.  Each must-fail runs under the keystone's own hints, so
+; it shows the keystone's proof fails without that hypothesis (open, the five
+; searches took 23.4, 3.6, 3.9, 3.9 and 3.9 s on persvati; hinted, 0.1 s each);
+; the concrete counterexample above each one is the evidence of falsity.
 
 (assert! (equal (hft-hyps *fn-heap-small-profile* *hft-core* *hft-nursery*
                           (list *hft-2g*) 8388608)
@@ -109,7 +112,14 @@
                      (* 2 *fn-heap-octets-per-list-octet*
                         (+ used used (fn-bs-profile-max-record-octets profile)))
                      (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))))
+                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
+   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
+                                       fn-bs-profile-admittedp
+                                       fn-bs-profile-max-history-octets
+                                       fn-bs-profile-max-record-octets
+                                       fn-heap-profile-word))
+            :use ((:instance fn-heap-mb-of-covers
+                             (octets (fn-heap-figure-octets profile core nursery))))))))
 
 ; Without the accepted decision: the development profile on 2 GiB is refused.
 (assert! (equal (hft-hyps *fn-bs-profile-development* *hft-core* *hft-nursery*
@@ -127,7 +137,14 @@
                      (* 2 *fn-heap-octets-per-list-octet*
                         (+ used used (fn-bs-profile-max-record-octets profile)))
                      (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))))
+                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
+   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
+                                       fn-bs-profile-admittedp
+                                       fn-bs-profile-max-history-octets
+                                       fn-bs-profile-max-record-octets
+                                       fn-heap-profile-word))
+            :use ((:instance fn-heap-mb-of-covers
+                             (octets (fn-heap-figure-octets profile core nursery))))))))
 
 ; Without the history bound: a history past H.
 (assert! (equal (hft-hyps *fn-heap-small-profile* *hft-core* *hft-nursery*
@@ -145,7 +162,14 @@
                      (* 2 *fn-heap-octets-per-list-octet*
                         (+ used used (fn-bs-profile-max-record-octets profile)))
                      (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))))
+                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
+   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
+                                       fn-bs-profile-admittedp
+                                       fn-bs-profile-max-history-octets
+                                       fn-bs-profile-max-record-octets
+                                       fn-heap-profile-word))
+            :use ((:instance fn-heap-mb-of-covers
+                             (octets (fn-heap-figure-octets profile core nursery))))))))
 
 ; Without a natural core: a fractional core the figure reads as 0.
 (assert! (equal (hft-hyps *fn-heap-small-profile* (+ 1000000000 1/2) *hft-nursery*
@@ -164,7 +188,14 @@
                      (* 2 *fn-heap-octets-per-list-octet*
                         (+ used used (fn-bs-profile-max-record-octets profile)))
                      (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))))
+                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
+   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
+                                       fn-bs-profile-admittedp
+                                       fn-bs-profile-max-history-octets
+                                       fn-bs-profile-max-record-octets
+                                       fn-heap-profile-word))
+            :use ((:instance fn-heap-mb-of-covers
+                             (octets (fn-heap-figure-octets profile core nursery))))))))
 
 ; Without a natural nursery: the same with the nursery.
 (assert! (equal (hft-hyps *fn-heap-small-profile* *hft-core* (+ 1000000000 1/2)
@@ -183,7 +214,14 @@
                      (* 2 *fn-heap-octets-per-list-octet*
                         (+ used used (fn-bs-profile-max-record-octets profile)))
                      (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))))
+                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
+   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
+                                       fn-bs-profile-admittedp
+                                       fn-bs-profile-max-history-octets
+                                       fn-bs-profile-max-record-octets
+                                       fn-heap-profile-word))
+            :use ((:instance fn-heap-mb-of-covers
+                             (octets (fn-heap-figure-octets profile core nursery))))))))
 
 ; -----------------------------------------------------------------------------
 ; The refusal theorem's witnesses: both arms reached on admitted profiles.

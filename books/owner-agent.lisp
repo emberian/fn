@@ -99,9 +99,16 @@ The host calls this at host/owner-host.lisp `fn-owner-post-config', which
 fn-own-configure.  MAX-OCTETS is the store's payload bound, which the host
 supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (declare (xargs :guard t))
-  (fn-inj-make-config-listed t (fn-oag-agent cfg)
-                             (fn-oag-group-octets (fn-cnode-served-of cfg))
-                             max-octets (fn-oag-listing cfg)))
+  (fn-inj-make-config-full
+   t (fn-oag-agent cfg)
+   (fn-oag-group-octets (fn-cnode-served-of cfg))
+   max-octets
+   (fn-oag-listing cfg)
+   ;; O2: the served groups whose configured status is "n"
+   ;; (books/config.lisp `fn-cfg-closed-names'), read by the served POST
+   ;; gate and LIST ACTIVE's status field (books/group-status.lisp).
+   (fn-oag-group-octets (fn-cfg-closed-names (fn-cfg-value cfg)
+                                             (fn-cfg-generation cfg)))))
 
 (defthm fn-oag-post-config-agent-is-the-path-identity
   (implies (fn-oag-identity-setp cfg)

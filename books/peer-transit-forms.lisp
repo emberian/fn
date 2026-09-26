@@ -1,4 +1,4 @@
-; fn: one admission decision, three wire forms (PRF-207, NNT-042).
+; fn: one admission decision, three wire forms (PRF-207, NNT-045).
 ;
 ; A peer offers an article with IHAVE (RFC 3977 section 6.3.2) or streams it
 ; with CHECK and TAKETHIS after MODE STREAM (RFC 4644 sections 2.3 to 2.5).

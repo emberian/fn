@@ -6989,6 +6989,56 @@
       ]
     },
     {
+      "id": "PRF-196",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-status-sets-the-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-closed-names-are-the-n-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gst-post-gate-refuses-exactly-a-listed-n-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gst-first-closed-is-named-and-listed-n"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-reader-env-closed"
+        }
+      ]
+    },
+    {
+      "id": "PRF-211",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-exp-owner-bound-exceeds-every-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-limits-total-is-the-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-refuses-exactly-at-the-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-trusted-address-is-never-refused-by-address"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-untrusted-address-is-refused-exactly-at-its-limit"
+        }
+      ]
+    },
+    {
       "id": "PRF-207",
       "events": [
         {

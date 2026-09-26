@@ -1,91 +1,161 @@
 #!/bin/sh
-# Package one frozen native image as the release tarball a stranger downloads.
+# Build the release a stranger downloads: one tarball per platform (D35).
 #
-#   packaging/release-tarball.sh [PLATFORM] FROZEN_DIR REVISION OUT_DIR
+#   packaging/release-tarball.sh PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]
+#   packaging/release-tarball.sh --frozen FROZEN_DIR PLATFORM REV OUT_DIR
 #
-# PLATFORM is linux-x86_64 (the default) or openbsd-amd64, and must be the
-# system this runs on: the installer executes the image to check its profile.
-# FROZEN_DIR is the output of packaging/freeze-native-image.sh (its production
-# fn-host, fn-host.core, runtime/ and lib/ (libsodium, libfn-mldsa65.so, and
-# on OpenBSD the runtime's libzstd) checked by image.sha256).  The tarball is
-# the installed layout of
-# packaging/install-native.sh under one top directory, fn-REV12/, plus the
-# operator documentation and SHA256SUMS:
+# PLATFORM is linux-x86_64 or openbsd-amd64 and must be the system this runs
+# on (the image is built here, and the installer executes it).  REV is the
+# full 40-digit commit.  OUT_DIR (absolute) receives
+#   fn-REV12-PLATFORM.tar.gz   one top directory fn/ (below)
+#   SHA256SUMS                 the tarballs in OUT_DIR (sha256sum lines on
+#                              Linux, sha256's BSD lines on OpenBSD)
+# and the work directory build-REV12-PLATFORM/ with every step's log.
 #
-#   fn-REV12/bin/fn                      the one command (packaging/fn)
-#   fn-REV12/libexec/fn/                 launcher, core, SBCL runtime,
-#                                        libsodium and ML-DSA-65 (vendored
-#                                        PQClean, third_party/), on OpenBSD
-#                                        libzstd
-#   fn-REV12/share/fn/                   native-artifacts.txt, the service file:
-#                                        systemd/ and launchd/ (Linux), rc.d/fn
-#                                        (OpenBSD)
-#   fn-REV12/share/doc/fn/               operator.md, peering-with-a-friend.md,
-#                                        agents.md, fn.toml.example
-#   fn-REV12/SHA256SUMS                  every file above (OpenBSD: sha256's
-#                                        BSD format, `sha256 -c SHA256SUMS')
+# The first form builds from a `git archive' of REV, never a worktree:
+# SOURCE_ARCHIVE is that archive (its pax header must name REV), or, without
+# it, this runs `git archive REV' in the current checkout.  In the unpacked
+# source it then
+#   1. refuses unless every book in the default image profile's include
+#      closure is green at its current digest (tools/green_check.py
+#      --profile default --strict; the line goes into the release),
+#   2. acquires and load-checks that closure's certificates from the cache
+#      (tools/proof_artifacts.py acquire/validate --profile default;
+#      FN_CERT_CACHE and FN_ACL2 name the cache and ACL2; nothing is
+#      certified here),
+#   3. builds the PRODUCTION image (tools/build_native_host.sh, under
+#      swarm-build where it exists) and freezes it,
+#   4. stages it (packaging/install-native.sh), checks that no Python is on
+#      the deployed path (tools/runpath_check.py --tree) and that
+#      `bin/fn --version' prints REV, and packs it.
+# The second form packages an already frozen production image (tests,
+# tests/friends_tarball.sh); its share/fn/release-gate.txt says it was not
+# gated, and it is not a release.
 #
-# The frozen launcher finds its runtime and libraries beside itself, so the
-# directory runs from wherever it is unpacked -- on OpenBSD, wherever the
-# mount allows W^X mappings (SBCL is linked wxneeded; /usr/local is mounted
-# wxallowed by default); nothing is read from the build box.  The system
-# provides the TLS library: OpenSSL 3.0 or later (any current Linux
-# distribution's libssl3) or LibreSSL 3 or later (OpenBSD's base; HST-016);
-# the image checks its version and every function it calls at start.  The
-# rendered service files name the placeholder prefix: /opt/fn-REV12 on Linux,
-# /usr/local/fn-REV12 on OpenBSD.  Before packing, tools/runpath_check.py
-# --tree checks that no Python is on the deployed path.  Run from the
-# repository root.
+# The tarball's layout (HST-017):
+#   fn/SHA256SUMS                every file below
+#   fn/install.sh                the installer (packaging/install.sh)
+#   fn/bin/fn                    the one command (packaging/fn)
+#   fn/libexec/fn/               the frozen launcher, the production core,
+#                                source-revision, runtime/ (SBCL) and lib/
+#                                (libsodium, libfn-mldsa65; libzstd on
+#                                OpenBSD).  TLS is the system's libssl.
+#   fn/share/fn/                 fn.toml.example, systemd/fn.service.in or
+#                                rc.d/fn.rc.in, docs/install.md,
+#                                native-artifacts.txt, release-gate.txt,
+#                                runpath-check.txt
 set -eu
-platform=linux-x86_64
-if [ "$#" -eq 4 ]; then platform=$1; shift; fi
-[ "$#" -eq 3 ] || { echo 'usage: release-tarball.sh [linux-x86_64|openbsd-amd64] FROZEN_DIR REVISION OUT_DIR' >&2; exit 2; }
-frozen=$1 rev=$2 out=$3
+usage() {
+  echo 'usage: release-tarball.sh PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]' >&2
+  echo '       release-tarball.sh --frozen FROZEN_DIR PLATFORM REV OUT_DIR' >&2
+  exit 2
+}
+frozen=
+if [ "${1:-}" = --frozen ]; then
+  [ "$#" -eq 5 ] || usage
+  frozen=$2; shift 2
+  [ "$#" -eq 3 ] || usage
+else
+  [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
+fi
+platform=$1 rev=$2 out=$3 archive=${4:-}
 case $platform in
   linux-x86_64) system=Linux base=/opt ;;
   openbsd-amd64) system=OpenBSD base=/usr/local ;;
-  *) echo "release-tarball: unknown platform $platform" >&2; exit 2 ;;
+  *) echo "release-tarball: unknown platform $platform (linux-x86_64, openbsd-amd64)" >&2; exit 2 ;;
 esac
-[ "$(uname -s)" = "$system" ] || { echo "release-tarball: $platform is packaged on $system" >&2; exit 2; }
-case $rev in *[!0-9a-f]*|'') echo 'release-tarball: REVISION must be a lowercase hex commit' >&2; exit 2;; esac
-[ "${#rev}" -eq 40 ] || { echo 'release-tarball: REVISION must be the full 40-digit commit' >&2; exit 2; }
+[ "$(uname -s)" = "$system" ] || { echo "release-tarball: $platform is built on $system" >&2; exit 2; }
+case $rev in *[!0-9a-f]*|'') echo 'release-tarball: REV must be a lowercase hex commit' >&2; exit 2;; esac
+[ "${#rev}" -eq 40 ] || { echo 'release-tarball: REV must be the full 40-digit commit' >&2; exit 2; }
 case $out in /*) ;; *) echo 'release-tarball: OUT_DIR must be absolute' >&2; exit 2;; esac
 short=$(printf '%s' "$rev" | cut -c1-12)
-name=fn-$short
-[ -x "$frozen/fn-host" ] && [ -s "$frozen/fn-host.core" ] || {
-  echo "release-tarball: no frozen production image in $frozen" >&2; exit 4; }
-mkdir -p "$out"
-tarball=$out/$name-$platform.tar.gz
+tarball=$out/fn-$short-$platform.tar.gz
 [ ! -e "$tarball" ] || { echo "release-tarball: exists: $tarball" >&2; exit 4; }
-stage=$(mktemp -d "${TMPDIR:-/tmp}/fn-release.XXXXXX")
-trap 'rm -rf "$stage"' EXIT HUP INT TERM
+if [ "$system" = Linux ]; then sums=sha256sum; else sums=sha256; fi
+mkdir -p "$out"
+
+if [ -z "$frozen" ]; then
+  work=$out/build-$short-$platform
+  [ ! -e "$work" ] || { echo "release-tarball: exists: $work" >&2; exit 4; }
+  : "${FN_CERT_CACHE:?set FN_CERT_CACHE to the certificate cache}"
+  : "${FN_ACL2:?set FN_ACL2 to the ACL2 executable the cache was certified with}"
+  mkdir -p "$work/src"
+  if [ -z "$archive" ]; then
+    archive=$work/source.tar
+    git archive --format=tar "$rev" > "$archive"
+  fi
+  # git archive's first header is a pax global header whose record
+  # `52 comment=REV' names the commit (git get-tar-commit-id reads the same).
+  named=$(dd if="$archive" bs=512 skip=1 count=1 2>/dev/null | tr '\0' '\n' | sed -n 's/^52 comment=//p')
+  [ "$named" = "$rev" ] || {
+    echo "release-tarball: $archive is not a git archive of $rev (it names ${named:-no commit})" >&2; exit 4; }
+  tar -xf "$archive" -C "$work/src"
+  cd "$work/src"
+  python=${PYTHON:-python3}
+  echo "== 1. release gate: the default profile's closure green at REV's digests"
+  "$python" tools/green_check.py --profile default --strict > "$work/green-check.txt" 2>&1 || {
+    cat "$work/green-check.txt" >&2; echo 'release-tarball: the closure is not green at REV' >&2; exit 4; }
+  cat "$work/green-check.txt"
+  echo "== 2. certificates from the cache: acquire and validate"
+  "$python" tools/proof_artifacts.py acquire --profile default --root "$work/src" \
+    --cache "$FN_CERT_CACHE" --acl2 "$FN_ACL2" > "$work/acquire.txt" 2>&1 || {
+      tail -20 "$work/acquire.txt" >&2; echo 'release-tarball: acquire failed' >&2; exit 4; }
+  tail -1 "$work/acquire.txt"
+  "$python" tools/proof_artifacts.py validate --profile default --acl2 "$FN_ACL2" \
+    > "$work/validate.txt" 2>&1 || {
+      tail -20 "$work/validate.txt" >&2; echo 'release-tarball: validate failed' >&2; exit 4; }
+  tail -1 "$work/validate.txt"
+  echo "== 3. the production image"
+  wrap=
+  command -v swarm-build >/dev/null 2>&1 && wrap=swarm-build
+  FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp \
+    FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG="$work/native-build.log" \
+    $wrap sh tools/build_native_host.sh
+  FN_FREEZE_VARIANTS=fn-host sh packaging/freeze-native-image.sh "$work/src/build" "$work/frozen"
+  frozen=$work/frozen
+  stage=$work/stage
+  {
+    echo "source=$rev (git archive, $(wc -c < "$archive" | tr -d ' ') octets)"
+    cat "$work/green-check.txt"
+    echo "acquire: $(tail -1 "$work/acquire.txt")"
+    echo "validate: $(tail -1 "$work/validate.txt")"
+    echo "acl2: $FN_ACL2"
+  } > "$work/release-gate.txt"
+  gate=$work/release-gate.txt
+else
+  [ -x "$frozen/fn-host" ] && [ -s "$frozen/fn-host.core" ] || {
+    echo "release-tarball: no frozen production image in $frozen" >&2; exit 4; }
+  stage=$(mktemp -d "${TMPDIR:-/tmp}/fn-release.XXXXXX")
+  trap 'rm -rf "$stage"' EXIT HUP INT TERM
+  gate=$stage/release-gate.txt
+  echo "ungated: packaged with --frozen from $frozen; not a release" > "$gate"
+fi
+
+echo "== 4. stage, check, pack"
+[ ! -e "$stage$base/fn" ] || { echo "release-tarball: exists: $stage$base/fn" >&2; exit 4; }
 FN_NATIVE_HOST=$frozen/fn-host FN_NATIVE_CORE=$frozen/fn-host.core \
-  FN_NATIVE_SOURCE_REVISION=$rev DESTDIR=$stage PREFIX=$base/$name \
+  FN_NATIVE_SOURCE_REVISION=$rev DESTDIR=$stage PREFIX=$base/fn \
   sh packaging/install-native.sh
-top=$stage$base/$name
+top=$stage$base/fn
+mkdir -p "$top/share/fn/docs"
+install -m 0644 packaging/fn.toml.example "$top/share/fn/fn.toml.example"
+install -m 0644 docs/install.md "$top/share/fn/docs/install.md"
+install -m 0644 "$gate" "$top/share/fn/release-gate.txt"
+version=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
+[ "$version" = "fn $rev" ] || {
+  echo "release-tarball: bin/fn --version printed '$version', not 'fn $rev'" >&2; exit 4; }
+"${PYTHON:-python3}" tools/runpath_check.py --tree "$top" > "$stage/runpath-check.txt" 2>&1 || {
+  cat "$stage/runpath-check.txt" >&2; echo 'release-tarball: Python on the deployed path' >&2; exit 4; }
+install -m 0644 "$stage/runpath-check.txt" "$top/share/fn/runpath-check.txt"
+tail -1 "$stage/runpath-check.txt"
+(cd "$top" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs $sums > SHA256SUMS)
 if [ "$system" = Linux ]; then
-  install -m 0644 packaging/fn-native.service.in "$top/share/fn/systemd/fn.service.in"
+  tar -C "$stage$base" --owner=0 --group=0 --numeric-owner --sort=name -czf "$tarball" fn
 else
-  install -m 0644 packaging/fn.rc.in "$top/share/fn/rc.d/fn.rc.in"
+  # pax(1) in ustar format from a sorted list; -d keeps it from descending.
+  (cd "$stage$base" && find fn | LC_ALL=C sort | pax -w -d -x ustar | gzip -n -9 > "$tarball")
 fi
-mkdir -p "$top/share/doc/fn"
-for doc in docs/operator.md docs/peering-with-a-friend.md docs/agents.md packaging/fn.toml.example; do
-  [ -r "$doc" ] || { echo "release-tarball: missing document $doc" >&2; exit 4; }
-  install -m 0644 "$doc" "$top/share/doc/fn/"
-done
-printf '%s\n' "$rev" > "$top/share/fn/source-revision"
-"${PYTHON:-python3}" tools/runpath_check.py --tree "$top" >&2
-if [ "$system" = Linux ]; then
-  (cd "$top" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs sha256sum > SHA256SUMS)
-  tar -C "$stage/opt" --owner=0 --group=0 --numeric-owner --sort=name \
-      -czf "$tarball" "$name"
-  (cd "$out" && sha256sum "$(basename "$tarball")" > "$(basename "$tarball").sha256")
-else
-  (cd "$top" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs sha256 > SHA256SUMS)
-  # pax(1) in ustar format from a sorted list; -d keeps it from descending, so
-  # the order is the list's.  Owners are the builder's (root in the VM).
-  (cd "$stage$base" && find "$name" | LC_ALL=C sort | pax -w -d -x ustar | gzip -n -9 > "$tarball")
-  (cd "$out" && sha256 "$(basename "$tarball")" > "$(basename "$tarball").sha256")
-fi
+(cd "$out" && ls fn-*.tar.gz | LC_ALL=C sort | xargs $sums > SHA256SUMS)
 echo "release $tarball"
-cat "$tarball.sha256"
+echo "version $version"
+grep -F "fn-$short-$platform.tar.gz" "$out/SHA256SUMS"
