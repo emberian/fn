@@ -6523,6 +6523,45 @@
         "fn-lb-a-connection-opened-after-a-publication-is-bound-anew",
         "fn-native-auth-admin-effect-word-applied-only-when-published"
       ]
+    },
+    {
+      "id": "PRF-176",
+      "title": "A relay serves every admitted BP neighbour at once: bp-node serve binds one listener per transport-bp boundary row that admits a session and a session on a bound listener is admitted under exactly that row; held transit is dispatched to the neighbour the route table names for its own destination and one pass offers a held row on at most one session",
+      "statement": "Over the functions the host calls. LISTENERS (host/native/bp-node.lisp fnn-command-bp-node binds fn-bpaj-listener-ports through host/bp-native-app-host.lisp fn-owner-bp-listener-ports, then fnn-accept-any-loop; each session's admission is fn-bpaj-session-principal inside fn-bpaj-tcpcl-ingress-result, host fn-owner-bp-tcpcl-ingress): fn-bpaj-listener-session-is-admitted-under-its-row: for PORT in (fn-bpaj-listener-ports CFG) and an EID ANNOUNCED, the session principal on (:tcp4 127.0.0.1 PORT 127.0.0.1) is (:admitted NAME GEN) for the listener's boundary NAME when ANNOUNCED is NAME's unique transport-bp EID, else (:refused :eid-mismatch): never :ambiguous-peer or :no-trust-profile. fn-bpaj-admitted-session-arrives-on-a-bound-listener: an admitted session on a positive port arrived on a port in the set. fn-bpaj-listener-ports-are-distinct. DISPATCH (fnn-bpnode-dispatch-one's :progress event with fn-bpnp-host-routes = (:table TABLE), through fn-bpnj-step to fn-bpnp-step and fn-bpnp-progress-step): fn-bpnp-progress-dispatch-names-the-routed-hop: when the step proposes :persist-dispatch, the record applies (:ready), its peer (written into the row's next-hop slot 11 by fn-bpnp-dispatched-held) is an EID, and its text is the EID of the route fn-bprt-outbound-choice selects for the named row's own destination (a :hop; the route is a live matching one by the carried fn-bprt-next-hop-names-a-live-matching-route); fn-bpnp-table-route-peer-is-the-routed-hop. FORWARDING (fnn-bpnode-forward-contact opens one fnn-bpnode-forward-session per entry of fn-bpnp-forward-plan; the routed :session event's fn-bpnp-routed-start runs fn-bpnp-forward-scan): fn-bpnp-forward-plan-has-one-session-per-peer; fn-bpnp-forward-plan-offers-a-row-on-one-session: two plan entries whose sessions' scans select the same held row are the same entry. The single-peer routes form is the one-row instance for a node with no route rows (fn-bpnp-host-routes).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-007"
+      ],
+      "depends_on": [
+        "PRF-079",
+        "PRF-103",
+        "PRF-128"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-listener-set.lisp",
+        "books/bp-node-forward-plan.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-listener-set-tests.lisp",
+        "tests/acl2/bp-node-forward-plan-tests.lisp",
+        "host/native/bp-node.lisp",
+        "host/native/io.lisp",
+        "host/bp-native-app-host.lisp",
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/multi-peer-relay-2026-09-26.md"
+      ],
+      "events": [
+        "fn-bpaj-listener-session-is-admitted-under-its-row",
+        "fn-bpaj-admitted-session-arrives-on-a-bound-listener",
+        "fn-bpaj-listener-ports-are-distinct",
+        "fn-bpnp-progress-dispatch-names-the-routed-hop",
+        "fn-bpnp-table-route-peer-is-the-routed-hop",
+        "fn-bpnp-forward-plan-has-one-session-per-peer",
+        "fn-bpnp-forward-plan-offers-a-row-on-one-session"
+      ]
     }
   ]
 }
