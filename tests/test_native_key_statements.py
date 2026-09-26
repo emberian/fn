@@ -211,6 +211,8 @@ class NativeKeyStatementTests(unittest.TestCase):
         self.fn("operator", b["config"], "peer", "add", "a", "a.example.invalid",
                 "127.0.0.1", str(free_port()), "fn.*", "-", "source-address", "127.0.0.1",
                 "true", "carries", Q.hex())
+        # PRF-099: a carrying boundary carries nothing without a budget.
+        self.fn("operator", b["config"], "peer", "budget", "a", "1048576", "16")
         self.start(b)
         try:
             self.enrol_and_grant(b)

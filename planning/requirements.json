@@ -2321,6 +2321,39 @@
         "fn-bpfs-plan-fragments-restore-parent"
       ],
       "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059."
+    },
+    {
+      "id": "NNT-022",
+      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided",
+      "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-124"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/key-statements.lisp",
+        "books/peer-carriage.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_invite.py",
+        "tests/test_native_key_statements.py",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-compose-2026-09-25.md"
+      ],
+      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule), with *fn-ks-reopen-policy* as the switch. Pull over TLS (packet 8) is not part of this requirement yet."
     }
   ]
 }
