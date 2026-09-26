@@ -6,16 +6,17 @@
 # PLATFORM is linux-x86_64 (the default) or openbsd-amd64, and must be the
 # system this runs on: the installer executes the image to check its profile.
 # FROZEN_DIR is the output of packaging/freeze-native-image.sh (its production
-# fn-host, fn-host.core, runtime/ and lib/, plus openssl/lib on Linux, checked
-# by image.sha256).  The tarball is the installed layout of
+# fn-host, fn-host.core, runtime/ and lib/ (libsodium, libfn-mldsa65.so, and
+# on OpenBSD the runtime's libzstd) checked by image.sha256).  The tarball is
+# the installed layout of
 # packaging/install-native.sh under one top directory, fn-REV12/, plus the
 # operator documentation and SHA256SUMS:
 #
 #   fn-REV12/bin/fn                      the one command (packaging/fn)
-#   fn-REV12/libexec/fn/                 launcher, core, SBCL runtime and the
-#                                        libraries it loads: libsodium, and on
-#                                        Linux OpenSSL 3.5, on OpenBSD libzstd
-#                                        (TLS is the system LibreSSL)
+#   fn-REV12/libexec/fn/                 launcher, core, SBCL runtime,
+#                                        libsodium and ML-DSA-65 (vendored
+#                                        PQClean, third_party/), on OpenBSD
+#                                        libzstd
 #   fn-REV12/share/fn/                   native-artifacts.txt, the service file:
 #                                        systemd/ and launchd/ (Linux), rc.d/fn
 #                                        (OpenBSD)
@@ -27,10 +28,14 @@
 # The frozen launcher finds its runtime and libraries beside itself, so the
 # directory runs from wherever it is unpacked -- on OpenBSD, wherever the
 # mount allows W^X mappings (SBCL is linked wxneeded; /usr/local is mounted
-# wxallowed by default).  The rendered service files name the placeholder
-# prefix: /opt/fn-REV12 on Linux, /usr/local/fn-REV12 on OpenBSD.  Before
-# packing, tools/runpath_check.py --tree checks that no Python is on the
-# deployed path.  Run from the repository root.
+# wxallowed by default); nothing is read from the build box.  The system
+# provides the TLS library: OpenSSL 3.0 or later (any current Linux
+# distribution's libssl3) or LibreSSL 3 or later (OpenBSD's base; HST-016);
+# the image checks its version and every function it calls at start.  The
+# rendered service files name the placeholder prefix: /opt/fn-REV12 on Linux,
+# /usr/local/fn-REV12 on OpenBSD.  Before packing, tools/runpath_check.py
+# --tree checks that no Python is on the deployed path.  Run from the
+# repository root.
 set -eu
 platform=linux-x86_64
 if [ "$#" -eq 4 ]; then platform=$1; shift; fi

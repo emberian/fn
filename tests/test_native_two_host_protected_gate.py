@@ -17,11 +17,10 @@ EXEC_TAIL = (
 
 
 def frozen(runtime='$here/runtime/sbcl', core='$here/fn-host.core'):
-    return ("#!/bin/sh\n# fn frozen image launcher v1\n"
+    return ("#!/bin/sh\n# fn frozen image launcher v2\n"
             'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
             'export SBCL_HOME="$here/runtime/sbcl-home/"\n'
-            'export FN_OPENSSL_PREFIX="$here/openssl"\n'
-            'export LD_LIBRARY_PATH="$here/lib:$here/openssl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\n'
+            'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\n'
             + 'exec "{}" '.format(runtime) + EXEC_TAIL.format(core) + "\n")
 
 
@@ -48,8 +47,8 @@ class LauncherPathsTests(unittest.TestCase):
             frozen(core="$here/fn-host-dtn.core"),
             frozen().replace('exec "$here/runtime/sbcl"',
                              'echo unsafe\nexec "$here/runtime/sbcl"'),
-            frozen().replace('export FN_OPENSSL_PREFIX="$here/openssl"',
-                             'export FN_OPENSSL_PREFIX="$other/openssl"'),
+            frozen().replace('export LD_LIBRARY_PATH="$here/lib',
+                             'export LD_LIBRARY_PATH="$other/lib'),
             frozen().replace('${SBCL_USER_ARGS}', '${OTHER_ARGS}'),
             frozen().replace('"$@"', '"$@"\nexec "/other/runtime"'),
             frozen().replace('"$@"', '"$(touch /tmp/unwanted)" "$@"'),

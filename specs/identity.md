@@ -16,12 +16,16 @@ authorship is not reduced to an externally supplied content-id digest.
 Both signatures must verify; unsupported, absent or invalid components cannot
 authorize via a classical-only fallback. `fn-hsig-authorize` is the final ACL2
 decision called through `host/hybrid-signature-host.lisp`. The native boundary
-uses libsodium for Ed25519 and OpenSSL 3.5 or newer for ML-DSA-65, sharing the
-TLS process library and explicitly fetching the provider algorithm. Callers
-supply independent key material. Legacy unsigned NNTP submissions
+uses libsodium for Ed25519 and the vendored PQClean ML-DSA-65
+(`third_party/pqclean-ml-dsa-65`, FIPS 204 final, pure with the empty
+context) behind `host/native/fn-mldsa65.c` for ML-DSA-65; neither shares the
+TLS library (HST-016). The key files are the PKCS#8 and SubjectPublicKeyInfo
+PEMs OpenSSL 3.5 writes, read and written byte for byte, and every committed
+OpenSSL-made signature verifies under PQClean (`tests/mldsa65_interop.py`).
+Callers supply independent key material. Legacy unsigned NNTP submissions
 retain their explicit gateway provenance. The standard primitive is
 [ML-DSA in FIPS 204](https://csrc.nist.gov/pubs/fips/204/final);
-[OpenSSL 3.5's ML-DSA interface](https://docs.openssl.org/3.5/man7/EVP_SIGNATURE-ML-DSA/)
+[PQClean's ml-dsa-65 clean implementation](https://github.com/PQClean/PQClean)
 is the native implementation boundary, not a proved primitive.
 
 The production image exposes `fn hybrid-sign PRINCIPAL ED-PUBLIC ED-SECRET

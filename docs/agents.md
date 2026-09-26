@@ -297,7 +297,7 @@ authored source and the signed preimage from the specification
 ([the signed bytes](../specs/identity.md#the-signed-bytes)). Both
 signatures are checked with other libraries: pyca/cryptography for
 Ed25519, where the node uses libsodium, and dilithium-py, a pure-Python
-FIPS 204 implementation, for ML-DSA-65, where the node uses OpenSSL. When
+FIPS 204 implementation, for ML-DSA-65, where the node uses PQClean. When
 PyNaCl or pyca's ML-DSA is installed, it is consulted too, and all
 implementations must agree. It imports nothing from fn and runs no fn
 binary.

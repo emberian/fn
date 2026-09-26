@@ -4,10 +4,9 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/fn-image-upgrade.XXXXXX")
 tmp=$(CDPATH= cd -- "$tmp" && pwd)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
-mkdir -p "$tmp/build" "$tmp/openssl/lib" "$tmp/home" "$tmp/node/releases" "$tmp/node/store" "$tmp/node/tls" "$tmp/mock"
+mkdir -p "$tmp/build/lib" "$tmp/home" "$tmp/node/releases" "$tmp/node/store" "$tmp/node/tls" "$tmp/mock"
 printf core > "$tmp/home/sbcl.core"
-printf crypto > "$tmp/openssl/lib/libcrypto.so.3"
-printf ssl > "$tmp/openssl/lib/libssl.so.3"
+printf mldsa > "$tmp/build/lib/libfn-mldsa65.so"
 printf sodium > "$tmp/libsodium.so.23"
 cat > "$tmp/runtime" <<'RUNTIME'
 #!/bin/sh
@@ -15,7 +14,8 @@ if [ "${3:-}" = --fn ] && [ "${4:-}" = reader ]; then
   echo 'reader is available only in the developer image' >&2
   exit 5
 fi
-[ -s "$2" ] && [ -s "$SBCL_HOME/sbcl.core" ] && [ -s "$FN_OPENSSL_PREFIX/lib/libcrypto.so.3" ] || exit 8
+# The ML-DSA-65 library sits in lib/ beside the core the image loads.
+[ -s "$2" ] && [ -s "$SBCL_HOME/sbcl.core" ] && [ -s "$(dirname "$2")/lib/libfn-mldsa65.so" ] || exit 8
 printf '%s\n' "$2"
 RUNTIME
 chmod +x "$tmp/runtime"
@@ -29,18 +29,21 @@ LAUNCHER
   printf '%s' "$name-core" > "$tmp/build/$name.core"
 done
 FN_FREEZE_SODIUM="$tmp/libsodium.so.23" sh "$root/packaging/freeze-native-image.sh" \
-  "$tmp/build" "$tmp/image" "$tmp/openssl"
+  "$tmp/build" "$tmp/image"
+# HST-016: the frozen image bundles no TLS library.
+[ ! -e "$tmp/image/openssl" ] && [ -s "$tmp/image/lib/libfn-mldsa65.so" ]
+! grep -q OPENSSL "$tmp/image/fn-host"
 # A targeted qualification can freeze only the cores it built; an invalid
 # selection must fail before producing a misleading image directory.
 FN_FREEZE_SODIUM="$tmp/libsodium.so.23" FN_FREEZE_VARIANTS='fn-host fn-host-developer' \
-  sh "$root/packaging/freeze-native-image.sh" "$tmp/build" "$tmp/image-pair" "$tmp/openssl"
+  sh "$root/packaging/freeze-native-image.sh" "$tmp/build" "$tmp/image-pair"
 [ -s "$tmp/image-pair/fn-host.core" ] && [ -s "$tmp/image-pair/fn-host-developer.core" ]
 [ ! -e "$tmp/image-pair/fn-host-dtn" ] && [ ! -e "$tmp/image-pair/fn-host-dtn.core" ]
 (cd "$tmp/image-pair" && sha256sum -c image.sha256 >/dev/null)
 for selection in 'fn-host fn-host' 'fn-host unknown'; do
   if FN_FREEZE_SODIUM="$tmp/libsodium.so.23" FN_FREEZE_VARIANTS="$selection" \
       sh "$root/packaging/freeze-native-image.sh" "$tmp/build" "$tmp/invalid" \
-      "$tmp/openssl" >"$tmp/out" 2>"$tmp/err"; then
+      >"$tmp/out" 2>"$tmp/err"; then
     echo "invalid frozen variant selection passed: $selection" >&2
     exit 1
   fi
