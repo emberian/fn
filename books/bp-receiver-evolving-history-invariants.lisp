@@ -265,8 +265,10 @@
 (defun fn-bprv-phase (store) (fn-sf-phase (fn-sn-files store)))
 
 ; Grounding of one context: fn-bpr-request-acceptablep with the Store conjunct
-; replaced by history membership (searched by fn-bprv-find-grounding-record)
-; and the trusted-policy argument already at t.
+; replaced by membership in the history's article records (searched by
+; fn-bprv-find-grounding-record over `fn-bpr-article-records': a plain article
+; record, or the one a signed kind-4 composite carries) and the
+; trusted-policy argument already at t.
 (defun fn-bprv-record-grounds (config context record)
   (let ((request (fn-bpr-context-request context)))
     (and (consp record) (fn-record-p record)
@@ -286,7 +288,8 @@
         (fn-bprv-find-grounding-record config context (cdr history)))
     nil))
 (defun fn-bprv-context-groundedp (config context history)
-  (consp (fn-bprv-find-grounding-record config context history)))
+  (consp (fn-bprv-find-grounding-record config context
+                                        (fn-bpr-article-records history))))
 (defun fn-bprv-contexts-groundedp (config contexts history)
   (if (consp contexts)
       (and (fn-bprv-context-groundedp config (car contexts) history)
@@ -319,6 +322,13 @@
   :hints (("Goal" :induct (fn-sf-prefixp h1 h2)
            :in-theory (enable fn-sf-prefixp))))
 
+(defthm fn-bprv-article-records-prefix
+  (implies (fn-sf-prefixp h1 h2)
+           (fn-sf-prefixp (fn-bpr-article-records h1)
+                          (fn-bpr-article-records h2)))
+  :hints (("Goal" :induct (fn-sf-prefixp h1 h2)
+           :in-theory (enable fn-sf-prefixp fn-bpr-article-records))))
+
 (defthm fn-bprv-record-grounds-consp
   (implies (fn-bprv-record-grounds config context record) (consp record))
   :rule-classes :forward-chaining)
@@ -348,19 +358,34 @@
            (fn-bprv-context-groundedp config context h2))
   :hints (("Goal"
            :use ((:instance fn-bprv-find-grounding-record-from-member
-                            (record (fn-bprv-find-grounding-record config context h1))
-                            (history h2))
+                            (record (fn-bprv-find-grounding-record
+                                     config context (fn-bpr-article-records h1)))
+                            (history (fn-bpr-article-records h2)))
+                 (:instance fn-bprv-found-grounding-record-is-member
+                            (history (fn-bpr-article-records h1)))
+                 (:instance fn-bprv-found-grounding-record-grounds
+                            (history (fn-bpr-article-records h1)))
+                 fn-bprv-article-records-prefix
                  (:instance fn-bprv-prefix-preserves-member
-                            (x (fn-bprv-find-grounding-record config context h1))))
+                            (h1 (fn-bpr-article-records h1))
+                            (h2 (fn-bpr-article-records h2))
+                            (x (fn-bprv-find-grounding-record
+                                config context (fn-bpr-article-records h1)))))
            :in-theory (e/d (fn-bprv-context-groundedp)
                            (fn-bprv-find-grounding-record
                             fn-bprv-find-grounding-record-from-member
+                            fn-bprv-found-grounding-record-is-member
+                            fn-bprv-found-grounding-record-grounds
+                            fn-bprv-article-records-prefix
+                            fn-bpr-article-records
                             fn-bprv-prefix-preserves-member)))))
 (defthm fn-bprv-grounded-implies-consp-context
   (implies (fn-bprv-context-groundedp config context h) (consp context))
-  :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds (history h))
+  :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds
+                                   (history (fn-bpr-article-records h)))
                         (:instance fn-bprv-grounds-implies-consp-context
-                                   (record (fn-bprv-find-grounding-record config context h))))
+                                   (record (fn-bprv-find-grounding-record
+                                            config context (fn-bpr-article-records h)))))
            :in-theory (e/d (fn-bprv-context-groundedp)
                            (fn-bprv-find-grounding-record
                             fn-bprv-found-grounding-record-grounds
@@ -415,7 +440,8 @@
   :hints (("Goal"
            :use ((:instance fn-bprv-find-grounding-record-from-member
                             (context (fn-bpr-context-from-request record request))
-                            (history (fn-sf-records (fn-sn-files store))))
+                            (history (fn-bpr-article-records
+                                      (fn-sf-records (fn-sn-files store)))))
                  fn-bprv-acceptable-record-is-member fn-bprv-acceptable-grounds)
            :in-theory (e/d (fn-bprv-context-groundedp fn-bprv-history)
                            (fn-bprv-find-grounding-record
@@ -518,9 +544,10 @@
 
 (defthm fn-bprv-grounded-context-has-history-record
   (implies (fn-bprv-context-groundedp config context h)
-           (let ((record (fn-bprv-find-grounding-record config context h)))
+           (let ((record (fn-bprv-find-grounding-record
+                          config context (fn-bpr-article-records h))))
              (and (fn-record-p record)
-                  (member-equal record h)
+                  (member-equal record (fn-bpr-article-records h))
                   (equal context (fn-bpr-context-from-request
                                   record (fn-bpr-context-request context)))
                   (equal (fn-bpa-request-article (fn-bpr-context-request context))
@@ -528,8 +555,10 @@
                   (equal (fn-bpa-request-subject (fn-bpr-context-request context))
                          (fn-record-content-subject record)))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds (history h))
-                        (:instance fn-bprv-found-grounding-record-is-member (history h)))
+  :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds
+                                   (history (fn-bpr-article-records h)))
+                        (:instance fn-bprv-found-grounding-record-is-member
+                                   (history (fn-bpr-article-records h))))
            :in-theory (e/d (fn-bprv-context-groundedp fn-bprv-record-grounds)
                            (fn-bprv-find-grounding-record
                             fn-bprv-found-grounding-record-grounds
@@ -567,11 +596,12 @@
                   (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                               (fn-bpr-state-receipts st)))
                   (record (fn-bprv-find-grounding-record
-                           (fn-bpr-state-config st) context (fn-bprv-history store))))
+                           (fn-bpr-state-config st) context
+                           (fn-bpr-article-records (fn-bprv-history store)))))
              (and (consp context)
                   (equal request (fn-bpr-context-request context))
                   (fn-record-p record)
-                  (member-equal record (fn-bprv-history store))
+                  (member-equal record (fn-bpr-article-records (fn-bprv-history store)))
                   (equal context (fn-bpr-context-from-request record request))
                   (equal (fn-bpa-request-article request) (fn-record-payload record))
                   (equal (fn-bpa-request-subject request)

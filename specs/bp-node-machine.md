@@ -1748,7 +1748,7 @@ on, and the announced EID never selects among boundaries
 (`fn-bpaj-announced-eid-never-selects-a-peer`). Two boundaries on one
 listener are therefore `ambiguous-peer`, refused. A relay needs one listener
 per boundary; `bp-node serve` listens on one port, so a relay listens on the
-boundary of the neighbour that sends toward it (PKT-247).
+boundary of the neighbour that sends toward it (PKT-291).
 
 A delivered request the node does not accept prints ACL2's reason on one
 line, `BP node delivery refused result=R reason=C`
@@ -1763,6 +1763,42 @@ injecting node's Injection-Info, which the injecting agent's check (section
 3.4.1) refuses. The transit lookups used that check until 2026-09-26, so
 every Store-rendered hybrid-signed carrier was refused as
 `intent-store-conflict` at its destination.
+
+#### 4.9.2 A signed article binds once, under the receiving Store's verdict (2026-09-26, lane mission-signed-2, PRF-132)
+
+A signed article is committed at its destination as a kind-4 acceptance
+composite (`fn-stxa-p`), not as a plain article record: the composite
+carries the article record and the receiving Store's own kind-2 verdict,
+which `fn-hsig-authorized-article-event` builds from the receiving node's
+enrolled keyring snapshot and its own two primitive observations over the
+authored source (D23: the carrier's presence is not the author's
+verification). The BP receiver's Store binding reads a history's article
+records (`fn-bpr-article-records`, `books/bp-receipt.lisp`): a plain record,
+or the record a composite carries, decoded as replay decodes and installs
+it. `fn-bpaj-dispatch-fast`, which `fn-bprj-request-action`
+(`host/bp-receipt-journal-host.lisp`) calls for `fnn-bpapp-action`
+(`host/native/bp-app.lisp`), therefore binds the committed signed record:
+
+- `fn-bpaj-dispatch-never-resubmits-a-stored-article`: once the Store's
+  article records hold an article record with the Message-ID the dispatcher
+  reads, it never answers `(:submit)`. The first durable commit is the only
+  submission; a repeated delivery of the same signed record is the D25
+  duplicate (bound, never refused as `history`).
+- `fn-bpaj-dispatch-binds-the-stores-own-record`: what it binds is the
+  article record of an event of the Store's own history, for that
+  Message-ID, accepted by the receiver's Store check; when the event is a
+  signed composite, the composite binds its verdict to exactly that record
+  (`fn-stxa-bindsp`). The request carries no verdict.
+
+Before this rule the binding read plain records only: after the commit the
+lookup answered `(:absent)`, the dispatcher submitted again and the owner's
+transfer decision refused the second submission as `(:have :history)`
+(`BP node delivery refused result=refused reason=history`, PKT-247). The
+receiver invariants (`specs/bp-evolving-store.md`) ground contexts in the
+same article records; the replay loop installs a composite's record
+(`fn-bprv-apply-composite-installs-record`). Cost: a lookup decodes every
+composite of the history before its end once (the article record's
+octets); a Message-ID index over events is owed (PKT-291).
 
 ## 5. The theorems
 

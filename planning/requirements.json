@@ -2503,7 +2503,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-120",
-        "PRF-128"
+        "PRF-128",
+        "PRF-132"
       ],
       "verification": [
         "proof",
@@ -2528,9 +2529,15 @@
         "tests/acl2/bp-transit-join-tests.lisp",
         "host/native/bp.lisp",
         "host/bp-native-app-host.lisp",
-        "planning/evidence/mission-signed-2026-09-26.md"
+        "planning/evidence/mission-signed-2026-09-26.md",
+        "books/bp-signed-binding.lisp",
+        "tests/acl2/bp-signed-binding-tests.lisp",
+        "books/bp-receipt.lisp",
+        "host/bp-receipt-journal-host.lisp",
+        "host/native/bp-app.lisp",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed. Custody (PRF-128, lane mission-signed; D23): a relay takes custody only over an admitted channel; a bundle from a refused channel is refused at reception with the admission's reason (fn-bpaj-admitted-receive-event, called by fnn-bps-receive); a local policy (D23): RFC 9171 leaves the acceptance of a received bundle to the node."
+      "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed. Custody (PRF-128, lane mission-signed; D23): a relay takes custody only over an admitted channel; a bundle from a refused channel is refused at reception with the admission's reason (fn-bpaj-admitted-receive-event, called by fnn-bps-receive); a local policy (D23): RFC 9171 leaves the acceptance of a received bundle to the node. A signed article (PRF-132, lane mission-signed-2; D23, D25): the BP receiver binds the article record of the kind-4 composite its Store committed and never submits it a second time; the verdict the delivery is bound to is the receiving Store's own (fn-bpaj-dispatch-fast, called by fn-bprj-request-action)."
     },
     {
       "id": "NNT-023",

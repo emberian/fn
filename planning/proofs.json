@@ -5022,6 +5022,41 @@
         "fn-bpaj-refused-channel-takes-no-custody",
         "fn-bpaj-admitted-channel-receives-under-its-ingress"
       ]
+    },
+    {
+      "id": "PRF-132",
+      "title": "The BP receiver binds a signed article its Store committed and never submits it a second time: the first durable commit is the only submission, and the verdict the delivery is bound to is the receiving Store's own",
+      "statement": "host/bp-receipt-journal-host.lisp fn-bprj-request-action calls fn-bpaj-dispatch-fast (books/bp-native-app-fast.lisp) over the owner's bound Store for host/native/bp-app.lisp fnn-bpapp-action, before every step of fnn-bpapp-accept-locked; host/bp-native-app-host.lisp fn-owner-app-plan-install and fn-owner-app-record call the lookup it uses, fn-bpaj-transit-record-lookup-fast. A signed article is committed as a kind-4 composite (fn-stxa-p) carrying the article record and the receiving Store's kind-2 verdict; the Store binding now reads a history's article records (fn-bpr-article-records, books/bp-receipt.lisp: a plain record, or the record a composite carries, as replay installs it). fn-bpaj-dispatch-never-resubmits-a-stored-article: when the Store's article records contain an article record whose Message-ID is the one the dispatcher reads (fn-bpaj-dispatch-msgid: the relaying agent's check for a transit intent), the dispatcher does not answer (:submit). fn-bpaj-dispatch-binds-the-stores-own-record: a (:bind RECORD) answer names an article record for that Message-ID, accepted by the receiver's Store check, that is the article record of an event of the Store's own history, and when that event is a signed composite the composite binds its verdict to exactly RECORD (fn-stxa-bindsp). The request carries no verdict. Cites PRF-128 (the channel is admitted first), PRF-127 (relaying keeps the authored source), PRF-117 (the D23 source decision) and PRF-026 (a kind-4 completion records its verdict); D23, D25. Retires PKT-247.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-128"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-signed-binding.lisp",
+        "tests/acl2/bp-signed-binding-tests.lisp",
+        "books/bp-receipt.lisp",
+        "books/bp-native-app.lisp",
+        "books/bp-native-app-fast.lisp",
+        "books/bp-receiver-store-invariants.lisp",
+        "books/bp-receiver-evolving-history-invariants.lisp",
+        "books/bp-receiver-evolving-node-invariants.lisp",
+        "host/bp-receipt-journal-host.lisp",
+        "host/native/bp-app.lisp",
+        "host/bp-native-app-host.lisp",
+        "specs/bp-node-machine.md",
+        "specs/bp-evolving-store.md",
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
+      ],
+      "events": [
+        "fn-bpaj-dispatch-never-resubmits-a-stored-article",
+        "fn-bpaj-dispatch-binds-the-stores-own-record"
+      ]
     }
   ]
 }
