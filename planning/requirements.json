@@ -2908,7 +2908,7 @@
       "title": "A reader is told the current enrollment of the principal a historical verdict names, as a fact distinct from the verdict",
       "specification": "specs/peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred",
       "milestone": "M6",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-168"
       ],
@@ -2924,7 +2924,8 @@
         "tests/test_fn_web.py",
         "tests/test_fn_web_native.py",
         "specs/human-client.md",
-        "planning/evidence/reader-2-2026-09-26.md"
+        "planning/evidence/reader-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T101956Z-272280.json"
       ],
       "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 section 8.5 lets a server offer HDR metadata items (the `:` prefix). PKT-175 implemented as the coordinator's default (a); (b), authenticated readers only, is a one-line policy switch on the served step. The historical signature verdict, historical local acceptance, current enrollment and current administrative authority stay separate (mandate section 5.4). ACL2 decides the item (fn-enr-item); tools/fn_web.py shows the node's words as the fourth provenance fact.",
       "note": "The keyring view is pinned per committed view like the verdicts, so a reader opened before a rotation or revocation still reads the enrollment of its view."
