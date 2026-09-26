@@ -1719,6 +1719,36 @@
         "tests/acl2/bp-fragment-send-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-062",
+      "title": "One authored article keeps one identity through every route, and the node shows the table",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-020"
+      ],
+      "steps": [
+        "Two developer-image nodes A and B, A feeding B, each with a path identity",
+        "POST each corpus element to A, retry it at a later second, and POST it with one authored byte changed",
+        "Post three elements again through the operator route; author a signed article through hybrid-author and POST a dual-signature carrier",
+        "Await each accepted article at B and re-offer it by IHAVE",
+        "SIGKILL and reopen A; reread every article and retry four elements",
+        "Stop both nodes and read every record with store inspect",
+        "On one node: target then cancel with a pinned reader, cancel then target, a Supersedes; SIGKILL and reopen"
+      ],
+      "expected": [
+        "Xref refused; every other element 240; a retry 441 already stored; a changed byte 441 a different article; a legacy post without Message-ID is a new article on retry",
+        "The operator route answers DUPLICATE and adds no article; the supplied Path tail is kept behind A's identity; every source and the carrier are stored verbatim after the injected block",
+        "B stores A's octets with its identity and an empty diagnostic spliced into Path; the re-offer is 435; numbers and octets are unchanged across reopen; store inspect equals the served octets",
+        "Both cancel orders withdraw their targets from every fresh view, live and after replay; the pinned reader keeps 220; the superseding article stays visible",
+        "Open: hybrid-author's retry of the same signed source is answered exit 1 (PKT-166)"
+      ],
+      "evidence": [
+        "tests/test_native_source_corpus.py",
+        "tests/acl2/source-routes-tests.lisp",
+        "planning/evidence/source-corpus-2026-09-25.md"
+      ]
     }
   ]
 }
