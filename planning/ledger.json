@@ -144,6 +144,10 @@
     "tests/acl2/native-control-host-tests",
     "books/native-live-status",
     "tests/acl2/native-live-status-tests",
+    "books/retention-figures",
+    "books/control-evidence-grammar",
+    "books/control-evidence",
+    "tests/acl2/control-evidence-tests",
     "books/native-health",
     "tests/acl2/native-health-tests",
     "books/feed-filename",
@@ -965,26 +969,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 986,
-    "books_in_root_closure": 979,
-    "roots": 961,
-    "theorems": 13879,
-    "functions": 9677,
-    "assert_events": 14740,
-    "must_fails": 1737,
+    "books": 990,
+    "books_in_root_closure": 983,
+    "roots": 965,
+    "theorems": 13891,
+    "functions": 9716,
+    "assert_events": 14772,
+    "must_fails": 1740,
     "prover_refusals": 2,
     "encapsulates": 69,
     "guards": {
       "verified": 2226,
-      "declared-off": 779,
-      "default-guarded": 5241,
-      "default-unguarded": 1431
+      "declared-off": 785,
+      "default-guarded": 5268,
+      "default-unguarded": 1437
     },
     "suspect_theorems": 132,
     "export_hygiene_warnings": 154,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 148,
-    "include_hygiene_warnings": 999,
+    "include_hygiene_warnings": 1000,
     "host_names_warnings": 1139,
     "hand_written_record_warnings": 18
   },
@@ -8068,6 +8072,59 @@
       "read_error": null
     },
     {
+      "book": "books/control-evidence-grammar.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/control-evidence.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 27,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 23,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "control-evidence-grammar",
+        "control-visible",
+        "native-control-reason",
+        "native-live-status"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/control-served.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10001,7 +10058,7 @@
       "book": "books/native-health.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 30,
       "functions": 61,
       "guards": {
         "verified": 0,
@@ -10018,7 +10075,8 @@
       "encapsulates": 1,
       "includes": [
         "native-live-status",
-        "outcome-class"
+        "outcome-class",
+        "retention-figures"
       ],
       "system_includes": [
         "arithmetic-5/top"
@@ -10139,6 +10197,7 @@
       "includes": [
         "accounts",
         "byte-store-frame",
+        "control-evidence-grammar",
         "native-admin",
         "native-auth-admin",
         "native-config",
@@ -13548,6 +13607,32 @@
         "node-retention-transitions",
         "records-seam",
         "store-events"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/retention-figures.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -22128,6 +22213,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/control-evidence-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 23,
+      "must_fails": 3,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/control-evidence"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/control-served-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -23564,7 +23677,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 71,
+      "assert_events": 74,
       "must_fails": 13,
       "prover_refusals": 0,
       "defconsts": 20,
@@ -23710,10 +23823,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 240,
+      "assert_events": 246,
       "must_fails": 23,
       "prover_refusals": 0,
-      "defconsts": 48,
+      "defconsts": 49,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -29231,7 +29344,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1443,
+      "line": 1460,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -30102,7 +30215,7 @@
       {
         "theorem": "fn-nh-report-exit-of-render",
         "book": "books/native-health.lisp",
-        "line": 731,
+        "line": 733,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -31609,31 +31722,31 @@
       {
         "check": "nopt-developer-init-groups-are-not-flags-without-init",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 994,
+        "line": 1013,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 1129,
+        "line": 1148,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 1135,
+        "line": 1154,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 1196,
+        "line": 1215,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/native-operator-tests.lisp",
-        "line": 1240,
+        "line": 1259,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -33955,6 +34068,13 @@
         "line": 61,
         "include": "outcome-class",
         "included": "books/outcome-class.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-health.lisp",
+        "line": 63,
+        "include": "retention-figures",
+        "included": "books/retention-figures.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -39407,35 +39527,35 @@
       },
       {
         "host": "host/native-live-status-host.lisp",
-        "line": 19,
+        "line": 24,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-live-status-host.lisp",
-        "line": 19,
+        "line": 24,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-live-status-host.lisp",
-        "line": 19,
-        "name": "fn-owner-store-profile",
-        "source": "host/owner-host.lisp",
-        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native-live-status-host.lisp",
-        "line": 19,
+        "line": 24,
         "name": "fn-owner-ocfg",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native-live-status-host.lisp",
-        "line": 19,
+        "line": 24,
+        "name": "fn-owner-store-profile",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native-live-status-host.lisp",
+        "line": 24,
         "name": "fn-owner-exposure-health",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -46918,56 +47038,56 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 113,
+        "line": 115,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 308,
+        "line": 310,
         "name": "fn-sccr-decode-plan",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 308,
+        "line": 310,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 347,
+        "line": 349,
         "name": "fn-sccr-file-read-bound",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 356,
+        "line": 358,
         "name": "fn-sccr-admit-segment",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 364,
+        "line": 366,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 451,
+        "line": 453,
         "name": "fn-sccb-plan",
         "source": "books/store-checkpoint-buffer.lisp",
         "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 652,
+        "line": 654,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
