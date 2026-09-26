@@ -935,15 +935,15 @@
     "books": 946,
     "books_in_root_closure": 942,
     "roots": 928,
-    "theorems": 13254,
-    "functions": 9179,
-    "assert_events": 13658,
-    "must_fails": 1543,
+    "theorems": 13259,
+    "functions": 9182,
+    "assert_events": 13678,
+    "must_fails": 1548,
     "encapsulates": 65,
     "guards": {
       "verified": 2198,
       "declared-off": 730,
-      "default-guarded": 4883,
+      "default-guarded": 4886,
       "default-unguarded": 1368
     },
     "suspect_theorems": 119,
@@ -11625,12 +11625,12 @@
       "book": "books/peer-invite.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
-      "functions": 65,
+      "theorems": 39,
+      "functions": 68,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 65,
+        "default-guarded": 68,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -23492,10 +23492,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 59,
-      "must_fails": 11,
-      "defconsts": 16,
-      "defmacros": 30,
+      "assert_events": 79,
+      "must_fails": 16,
+      "defconsts": 17,
+      "defmacros": 33,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
@@ -27138,7 +27138,7 @@
     {
       "theorem": "fn-pinv-confirm-record-plan-passes-the-other-plans",
       "book": "books/peer-invite.lisp",
-      "line": 1111,
+      "line": 1120,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-pinv-confirm-record-plan and the conclusion is that branch's value"
       ]
@@ -42608,104 +42608,104 @@
       {
         "host": "host/native/peer-invite.lisp",
         "line": 117,
-        "name": "fnn-owner-identity-commit",
-        "source": "host/native/owner.lisp",
-        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/peer-invite.lisp",
-        "line": 154,
         "name": "fnn-developer-selector",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 194,
+        "line": 117,
+        "name": "fnn-owner-identity-commit",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/peer-invite.lisp",
+        "line": 222,
         "name": "*fnn-hybrid-control-handler*",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 220,
+        "line": 248,
         "name": "fnn-hybrid-control-send",
         "source": "host/native/hybrid-control.lisp",
         "reason": "defined in host/native/hybrid-control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 228,
+        "line": 256,
         "name": "fnn-ascii-octet-list",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 230,
+        "line": 258,
         "name": "probe-file",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 230,
+        "line": 258,
         "name": "fnn-anchor-csprng-nonce",
         "source": "host/native/anchor.lisp",
         "reason": "defined in host/native/anchor.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 230,
+        "line": 258,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 230,
+        "line": 258,
         "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 249,
+        "line": 277,
         "name": "fnn-owner-wall-milliseconds",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 307,
+        "line": 337,
         "name": "fnn-octets-string",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 307,
+        "line": 337,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 307,
+        "line": 337,
         "name": "fnn-operator-emit-status",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 307,
+        "line": 337,
         "name": "fnn-operator-status-of-exit-code",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 307,
+        "line": 337,
         "name": "fnn-exit-code-for",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -43699,28 +43699,28 @@
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 68,
+        "line": 76,
         "name": "fn-owner-config",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 72,
+        "line": 80,
         "name": "fn-owner-reconfigure-deltas",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 100,
+        "line": 108,
         "name": "fn-native-operator-result-peering-words",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 104,
+        "line": 112,
         "name": "fn-native-operator-result-peering-control-path-octets",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
