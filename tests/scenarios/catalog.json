@@ -3264,6 +3264,39 @@
         "log": "planning/evidence/operator-daily-3/native-control_evidence.log",
         "record": "planning/evidence/operator-daily-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-108",
+      "title": "A POST on a store of N committed records reads the count, record octets, completion debt and carriage usage without walking the history: at N=1,000 and N=10,000 x 2 KiB the owner's byte-count term is one record's encoding per POST, and no full re-encoding follows the open",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Build the developer profiling image of dev 5c6825b2 (before) and of lane hot-path-scans-2 (after) on hbox, same scripts (planning/evidence/hot-path-scans-2026-09-26/part1-all.sh).",
+        "For each image and N in 1,000 and 10,000 x 2 KiB: rep_measure (default profile, K=32, R=3, checkpoint skipped), then reopen the owner on the loaded store and take an sb-sprof :alloc profile over 200 POSTs (allocprof.py)."
+      ],
+      "expected": [
+        "The profile's samples under the byte-count term (FN-SBUD-RECORD-OCTETS before; FN-SBUD-OCTETS-ADVANCE after) over the 200 POSTs after a reopen: before, the full re-encoding at the first verdict (growing with N); after, about one record's encoding per POST, the same at both N.",
+        "Steady-state bytes consed per POST (rep_measure alloc_post) do not grow from the removed terms: the len/nthcdr walks allocated nothing."
+      ],
+      "evidence": [
+        "planning/evidence/hot-path-scans-2026-09-26.md",
+        "planning/evidence/hot-path-scans-2026-09-26/part1-all.sh",
+        "tools/rep_measure.py",
+        "planning/evidence/hot-path-scans-2026-09-26/part1-runs.log"
+      ],
+      "implementation": {
+        "test": "tools/rep_measure.py",
+        "cases": [
+          "alloc_post",
+          "allocprof 200 POSTs"
+        ],
+        "native": true,
+        "record": "planning/evidence/hot-path-scans-2026-09-26.md",
+        "log": "planning/evidence/hot-path-scans-2026-09-26/part1-runs.log"
+      }
     }
   ]
 }

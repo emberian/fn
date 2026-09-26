@@ -1,0 +1,58 @@
+Running as unit: run-r9e3e56251cf340a6bf472c27b9b2fca5.scope; invocation ID: d40715942c8a4c729e8a24ce4d72ba2a
+before-n1000-2k rc=0
+ 08:56:56 up 72 days, 14:41, 59 users,  load average: 7.70, 7.45, 7.63
+Running as unit: run-rb82fe04d49554bdcad19860c4886bd57.scope; invocation ID: 82a048b304834ecdbe8b662db65f91a8
+after-n1000-2k rc=0
+ 09:00:58 up 72 days, 14:45, 59 users,  load average: 11.33, 9.80, 8.54
+Running as unit: run-r45b78c6e447e4992975e078600822fc8.scope; invocation ID: 10290f71871941fdb57f16f3c823177b
+before-n10000-2k rc=0
+ 09:49:21 up 72 days, 15:33, 57 users,  load average: 8.36, 8.93, 10.29
+Running as unit: run-r1be9378ed35e4c389424e99104def1e0.scope; invocation ID: 61bbcc62addf4abc8f2f777b82ffc356
+after-n10000-2k rc=0
+ 10:34:31 up 72 days, 16:18, 55 users,  load average: 6.57, 6.59, 7.40
+== results/alloc-after2-n10000.out
+Running as unit: run-r2fc0d71c90474ed59911818a088c5e66.scope; invocation ID: 681da44547ab4d2a9a58935bff671ec9
+posts 200 median_ms 316.7805625125766
+== results/alloc-after2-n1000.out
+Running as unit: run-rb1dacdf950b94f88940c2a3c9cab7c51.scope; invocation ID: 130100e7ae3345f180c2cee6a94dc741
+posts 200 median_ms 183.6132500320673
+== results/alloc-after-n10000.out
+Running as unit: run-racca6f290fc34daea515bef5f1259ef2.scope; invocation ID: a553c574480d4bb2bb6db2095ec0b9ac
+posts 200 median_ms 262.0073305442929
+== results/alloc-after-n1000.out
+Running as unit: run-ra54b9b50c75245a3b23117d40f57112d.scope; invocation ID: 32f3c336ec70439fb334ab49b923f322
+posts 200 median_ms 125.07045827805996
+== results/alloc-before-n10000.out
+Running as unit: run-r7eb5ab7683fc49aabd8cdff80bf49889.scope; invocation ID: ed0270cc084a446d88c31b2115b08c63
+posts 200 median_ms 179.6546494588256
+== results/alloc-before-n1000.out
+Running as unit: run-rc107469586454d1685904a7c180bf203.scope; invocation ID: 86520420d06941a886586afa04460d25
+posts 200 median_ms 83.62844120711088
+== alloc-before-n1000 graph.txt byte-count and debt rows
+     0   0.0   2555  14.0   FN-SBUD-RECORD-OCTETS [187]
+     0   0.0    982   5.4   FN-OWNER-RECORD-OCTETS [185]
+     0   0.0    660   3.6   FN-OWNER-RECORD-DEBT [210]
+== alloc-after-n1000 graph.txt byte-count and debt rows
+     0   0.0    673   4.2   FN-OWNER-RECORD-DEBT [157]
+     0   0.0    401   2.5   FN-SBUD-OCTETS-ADVANCE [123]
+     0   0.0    401   2.5   FN-OWNER-RECORD-OCTETS [122]
+     0   0.0    110   0.7   FN-SCF-DEBT-ADVANCE [158]
+== alloc-before-n10000 graph.txt byte-count and debt rows
+     0   0.0  20752  28.8   FN-SBUD-RECORD-OCTETS [171]
+     0   0.0   5432   7.5   FN-OWNER-RECORD-DEBT [457]
+     0   0.0    986   1.4   FN-OWNER-RECORD-OCTETS [169]
+== alloc-after-n10000 graph.txt byte-count and debt rows
+     0   0.0   5436  10.5   FN-OWNER-RECORD-DEBT [136]
+     0   0.0    401   0.8   FN-SBUD-OCTETS-ADVANCE [109]
+     0   0.0    401   0.8   FN-OWNER-RECORD-OCTETS [108]
+     0   0.0    111   0.2   FN-SCF-DEBT-ADVANCE [137]
+== alloc-after2-n1000 graph.txt byte-count and debt rows
+     0   0.0    403   2.5   FN-SBUD-OCTETS-ADVANCE [110]
+     0   0.0    403   2.5   FN-OWNER-RECORD-OCTETS [109]
+     0   0.0    104   0.6   FN-SCF-DEBT-ADVANCE [140]
+     0   0.0    104   0.6   FN-OWNER-RECORD-DEBT [139]
+== alloc-after2-n10000 graph.txt byte-count and debt rows
+     0   0.0    405   0.9   FN-SBUD-OCTETS-ADVANCE [210]
+     0   0.0    405   0.9   FN-OWNER-RECORD-OCTETS [209]
+     0   0.0    107   0.2   FN-SCF-DEBT-ADVANCE [144]
+     0   0.0    107   0.2   FN-OWNER-RECORD-DEBT [143]

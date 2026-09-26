@@ -1,0 +1,188 @@
+{
+  "image": "/tank/fn/scratch/hot-path-scans-2/after-tree/build/fn-host-developer-prof",
+  "launcher_sha256": "0751334cbcf95bc76d5c93b46da78be0cb1fe4d794f0a6b209ae2100a5816b26",
+  "core_sha256": "44c7a15379ef5f43d45bba8b1d3bff6ed5c8990bc9fd2f1454eb7ed29f32874c",
+  "profile": "default",
+  "articles": 10000,
+  "octets": 2048,
+  "article0_octets": 2048,
+  "samples": 32,
+  "readers": 3,
+  "port": 38851,
+  "store": "/tank/fn/scratch/hot-path-scans-2/work/after-n10000-2k/m/store",
+  "init_out": "fnh: heap hook installed\ninitialized /tank/fn/scratch/hot-path-scans-2/work/after-n10000-2k/m/store\naccepted operator init\n",
+  "started_utc": "2026-09-26T13:50:52Z",
+  "first_open_seconds": 0.15630093775689602,
+  "residency_empty": {
+    "rss_kib": 355060,
+    "hwm_kib": 355060,
+    "heap": {
+      "tag": "gc-001-empty",
+      "bytes_consed": 285310496,
+      "dynamic_usage": 285310496,
+      "dynamic_usage_after_gc": 269251248,
+      "gc_seconds": 0.008,
+      "bytes_consed_between_gcs": 67108864,
+      "gc_run_time_ms": 7
+    },
+    "rss_after_gc_kib": 339568
+  },
+  "greeting": {
+    "n": 32,
+    "min_ms": 0.2903910353779793,
+    "median_ms": 0.3570667468011379,
+    "p95_ms": 0.652845948934555,
+    "max_ms": 3.1001530587673187
+  },
+  "load_seconds": 2485.7182908924296,
+  "post_all": {
+    "n": 10000,
+    "min_ms": 56.060416623950005,
+    "median_ms": 192.06160632893443,
+    "p95_ms": 475.1334683969617,
+    "max_ms": 6079.43126745522
+  },
+  "post_first_quarter": {
+    "n": 2500,
+    "min_ms": 56.060416623950005,
+    "median_ms": 200.03779092803597,
+    "p95_ms": 517.2291854396462,
+    "max_ms": 6079.43126745522
+  },
+  "post_last_quarter": {
+    "n": 2500,
+    "min_ms": 58.00629407167435,
+    "median_ms": 200.25848178192973,
+    "p95_ms": 460.3927070274949,
+    "max_ms": 1376.533130183816
+  },
+  "rss_quarters_kib": {
+    "rss_kib_at_2500": 542156,
+    "rss_kib_at_5000": 740876,
+    "rss_kib_at_7500": 906832,
+    "rss_kib_at_10000": 820884
+  },
+  "residency_after_load": {
+    "rss_kib": 820884,
+    "hwm_kib": 1170832,
+    "heap": {
+      "tag": "gc-002-load",
+      "bytes_consed": 49420043536,
+      "dynamic_usage": 733142880,
+      "dynamic_usage_after_gc": 640728720,
+      "gc_seconds": 0.506,
+      "bytes_consed_between_gcs": 67108864,
+      "gc_run_time_ms": 2874
+    },
+    "rss_after_gc_kib": 704236
+  },
+  "alloc_post": {
+    "n": 32,
+    "timing": {
+      "n": 32,
+      "min_ms": 125.79347658902407,
+      "median_ms": 157.92756201699376,
+      "p95_ms": 306.8599756807089,
+      "max_ms": 392.00520142912865
+    },
+    "bytes_consed_per_op": 7955659.0
+  },
+  "alloc_stat": {
+    "n": 32,
+    "timing": {
+      "n": 32,
+      "min_ms": 0.09444169700145721,
+      "median_ms": 0.09765662252902985,
+      "p95_ms": 0.25208480656147003,
+      "max_ms": 0.42638368904590607
+    },
+    "bytes_consed_per_op": 51369.5
+  },
+  "alloc_article": {
+    "n": 32,
+    "timing": {
+      "n": 32,
+      "min_ms": 2.581702545285225,
+      "median_ms": 2.7989810332655907,
+      "p95_ms": 2.8666527941823006,
+      "max_ms": 5.31926192343235
+    },
+    "bytes_consed_per_op": 499354.5
+  },
+  "group_reply": "211 10032 1 10032 fn.test",
+  "stat_present": {
+    "n": 32,
+    "min_ms": 0.09370502084493637,
+    "median_ms": 0.10023778304457664,
+    "p95_ms": 0.16905274242162704,
+    "max_ms": 0.20731985569000244
+  },
+  "article_present": {
+    "n": 32,
+    "min_ms": 2.465643920004368,
+    "median_ms": 2.521627116948366,
+    "p95_ms": 2.5581372901797295,
+    "max_ms": 2.6121288537979126
+  },
+  "article_octets_read": 68032,
+  "over_present": {
+    "n": 32,
+    "min_ms": 1.1480767279863358,
+    "median_ms": 3.709180746227503,
+    "p95_ms": 6.0929544270038605,
+    "max_ms": 7.0827072486281395
+  },
+  "contention": {
+    "readers": 3,
+    "window_seconds": 7.701148305088282,
+    "reader_articles": 193,
+    "reader_octets": 410318,
+    "post": {
+      "n": 32,
+      "min_ms": 123.86233080178499,
+      "median_ms": 171.67653189972043,
+      "p95_ms": 356.65908455848694,
+      "max_ms": 388.95008713006973
+    },
+    "article": {
+      "n": 32,
+      "min_ms": 29.577236622571945,
+      "median_ms": 42.30108531191945,
+      "p95_ms": 53.26216761022806,
+      "max_ms": 56.25635106116533
+    },
+    "reader_errors": []
+  },
+  "articles_total": 10064,
+  "residency_after_reads": {
+    "rss_kib": 843052,
+    "hwm_kib": 1176276,
+    "heap": {
+      "tag": "gc-009-reads",
+      "bytes_consed": 88923748176,
+      "dynamic_usage": 694677776,
+      "dynamic_usage_after_gc": 643657840,
+      "gc_seconds": 0.168,
+      "bytes_consed_between_gcs": 67108864,
+      "gc_run_time_ms": 4043
+    },
+    "rss_after_gc_kib": 708476
+  },
+  "reopen_seconds": 33.03959603328258,
+  "reopen_last_stat": "223 0 <t17-009999@example.invalid> retrieved",
+  "residency_after_reopen": {
+    "rss_kib": 1301592,
+    "hwm_kib": 1829488,
+    "heap": {
+      "tag": "gc-001-reopen",
+      "bytes_consed": 24712074272,
+      "dynamic_usage": 1218857760,
+      "dynamic_usage_after_gc": 642094192,
+      "gc_seconds": 0.601,
+      "bytes_consed_between_gcs": 67108864,
+      "gc_run_time_ms": 2304
+    },
+    "rss_after_gc_kib": 705672
+  },
+  "finished_utc": "2026-09-26T14:34:31Z"
+}

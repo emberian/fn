@@ -1,0 +1,48 @@
+
+Number of samples:     18259
+Unique traces:         1977
+Alloc interval:        1 regions (approximately 32 kB)
+Total sampling amount: 18259 regions (approximately 584288 kB)
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=1710012 "main thread" RUNNING {1200068003}> (280/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=1710099 "fn-alloc" RUNNING {1211191E33}> (1536/1048576 bytes, 10 hash buckets)
+   #<THREAD tid=1710262 "fn pull feed" RUNNING {1212D23C83}> (328/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=1710266 "fn owner client" RUNNING {1212E95A13}> (715880/1048576 bytes, 1928 hash buckets)
+   #<THREAD tid=1710261 "fn outbound feed" RUNNING {1212D23A33}> (360/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2  17927  98.2  17927  98.2  17927  98.2        -  LIST-ALLOC-TRAMP
+   4    280   1.5    280   1.5  18207  99.7        -  ALLOC-TRAMP
+   6     25   0.1     25   0.1  18232  99.9        -  foreign function listify_rest_arg
+   8     18   0.1     18   0.1  18250 100.0        -  SYS-LIST-ALLOC-TRAMP
+  10      9   0.0      9   0.0  18259 100.0        -  SYS-ALLOC-TRAMP
+  12      0   0.0  11516  63.1  18259 100.0        -  SB-SPROF::UNAVAILABLE-FRAMES
+  14      0   0.0  11166  61.2  18259 100.0        -  (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  16      0   0.0  11147  61.0  18259 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  18      0   0.0  11115  60.9  18259 100.0        -  FNN-OWNER-SHARED-ACTION-LOCKED
+  20      0   0.0  11111  60.9  18259 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX)
+  22      0   0.0  11093  60.8  18259 100.0        -  SB-THREAD::FAST-CALL-WITH-MUTEX
+  24      0   0.0  11093  60.8  18259 100.0        -  SB-THREAD::RUN
+  26      0   0.0  11082  60.7  18259 100.0        -  (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK)
+  28      0   0.0  11079  60.7  18259 100.0        -  foreign function call_into_lisp_
+  30      0   0.0  11067  60.6  18259 100.0        -  FNN-OWNER-SERVE-CLIENT
+  32      0   0.0  11062  60.6  18259 100.0        -  foreign function funcall1
+  34      0   0.0  11058  60.6  18259 100.0        -  FNN-OWNER-SERIALIZED
+  36      0   0.0  11054  60.5  18259 100.0        -  (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT)
+  38      0   0.0  11043  60.5  18259 100.0        -  foreign function new_thread_trampoline
+  40      0   0.0   9954  54.5  18259 100.0        -  FNN-CALL
+  42      0   0.0   7449  40.8  18259 100.0        -  FNN-CORE-STATE
+  44      0   0.0   6865  37.6  18259 100.0        -  FNN-OWNER-DRAIN-ONE
+  46      0   0.0   6672  36.5  18259 100.0        -  FNN-OWNER-ACTION
+  48      0   0.0   6201  34.0  18259 100.0        -  FN-SCAR-FEED-COUNTED
+  50      0   0.0   5904  32.3  18259 100.0        -  FNN-OWNER-ATTEMPT-SERVED
+  52      0   0.0   5026  27.5  18259 100.0        -  FNN-OWNER-ATTEMPT
+  54      0   0.0   4565  25.0  18259 100.0        -  FN-SCAR-FEED-BYTE
+  56      0   0.0   4052  22.2  18259 100.0        -  FN-OWNER-CHUNK
+  58      0   0.0   4038  22.1  18259 100.0        -  FN-SCAR-OCFG-READ-TLS-PREFIX
+  60      0   0.0   4035  22.1  18259 100.0        -  FN-SCAR-OWN-READ-TLS-PREFIX
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere
