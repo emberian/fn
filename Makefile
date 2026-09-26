@@ -1099,8 +1099,10 @@ tooling-test:
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module
-# still running at 300 s is terminated and fails the target (exit 2; test
-# failures exit 1).  tests/test_budgets.json may lower a module's budget,
+# still running at 180 s is terminated, or one whose test ran over 20 s is
+# named, and either fails the target (exit 2; test failures exit 1).
+# `--order reverse` runs each module's tests last to first, which is how a
+# test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
 # never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
 # chosen set the same way.
 test: check certify
