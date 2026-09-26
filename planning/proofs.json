@@ -5906,14 +5906,15 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-enrollment.lisp",
         "books/owner-enrollment-read.lisp",
         "tests/acl2/owner-enrollment-read-tests.lisp",
-        "planning/evidence/reader-2-2026-09-26.md"
+        "planning/evidence/reader-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T101956Z-272280.json"
       ],
-      "progress_note": "Implemented as PKT-175's default (a) by lane reader-2 (2026-09-26); certification pending (see the record). Teeth: reachable witnesses with an active (reader B), a retired (reader C, after a durable rotation) and a revoked (reader D, after a durable revocation) principal over fn-own-read, and must-fails for premises 1, 5, 8, 9, 10, 11, 12 and 15.",
+      "progress_note": "Implemented as PKT-175's default (a) by lane reader-2 (2026-09-26); certified by persvati run-20260926T101927Z-0d72 (certify-20260926T101956Z-272280: 332 passed, 0 failed, 2 jobs; books/owner-invariants 11.8 s, over D26, open in PKT-437). Teeth: reachable witnesses with an active (reader B), a retired (reader C, after a durable rotation) and a revoked (reader D, after a durable revocation) principal over fn-own-read, and must-fails for premises 1, 5, 8, 9, 10, 11, 12 and 15.",
       "events": [
         "fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment",
         "fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment",

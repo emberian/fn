@@ -1,0 +1,10 @@
+test_login_over_tls_is_the_nodes_answer_and_the_command_line_exits_by_it (tests.test_fn_web_native.NativeProtectedWebClientTests.test_login_over_tls_is_the_nodes_answer_and_the_command_line_exits_by_it) ... ok
+test_thread_reply_outcomes_verdict_unread_and_resume (tests.test_fn_web_native.NativeProtectedWebClientTests.test_thread_reply_outcomes_verdict_unread_and_resume) ... ok
+test_enrollment_rotation_and_revocation_beside_the_historical_verdict (tests.test_fn_web_native.NativeProvenanceWebTests.test_enrollment_rotation_and_revocation_beside_the_historical_verdict) ... ok
+test_durable_draft_lost_post_reply_and_restart_keep_one_native_article (tests.test_fn_web_native.NativeWebClientTests.test_durable_draft_lost_post_reply_and_restart_keep_one_native_article) ... ok
+test_web_post_and_thread_read_use_the_native_owner (tests.test_fn_web_native.NativeWebClientTests.test_web_post_and_thread_read_use_the_native_owner) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 11.377s
+
+OK
