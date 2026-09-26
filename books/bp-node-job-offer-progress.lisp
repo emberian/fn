@@ -14,18 +14,25 @@
 ;; KEYSTONE (conditional progress).  If a contact to PEER sustains the asks
 ;; A-BP-CONTACT names, and in every ask the job KEY names stays ready with
 ;; the same PREFIX of keys at or ahead of it, and the prefix is no longer
-;; than the asks, then the contact offers KEY.  The environment may do
+;; than the asks, then the host's first ask is answered with an offer and the
+;; contact offers KEY.  The environment may do
 ;; anything else between two asks: requeue, refuse or finish other jobs.
 (defthm fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact
   (implies (and (fn-bpnj-stays-ready-p sts peer routing key prefix)
                 (member-equal key prefix)
                 (<= (len prefix) (fn-assume-bp-contact-asks peer))
                 (equal (len sts) (fn-assume-bp-contact-asks peer)))
-           (member-equal key (fn-bpnj-contact-offers sts peer routing nil)))
+           (and (equal (car (fn-bpnj-contact-next (car sts) peer routing nil)) :offer)
+                (member-equal key (fn-bpnj-contact-offers sts peer routing nil))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnj-contact-offers-a-ready-job-within-its-prefix
                   (offered nil))
                  (:instance fn-bpnj-unoffered-is-no-longer-than-its-keys
-                  (keys prefix) (offered nil)))
-           :in-theory (union-theories '(member-equal (:e member-equal))
+                  (keys prefix) (offered nil))
+                 (:instance fn-bpnj-unoffered-key-counts (keys prefix) (offered nil))
+                 (:instance fn-bpnj-one-ask-offers-within-the-prefix
+                  (st (car sts)) (offered nil)))
+           :in-theory (union-theories '(member-equal (:e member-equal) fn-bpnj-stays-ready-p
+                                        len (:type-prescription len) fn-bpn-nth fn-cbor-ag-car
+                                        (:e zp) (:e natp) zp natp)
                                       (theory 'minimal-theory)))))
