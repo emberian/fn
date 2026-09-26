@@ -61,6 +61,8 @@
 (include-book "outcome-class")
 ; PKT-220: the offline `store retention' figures.
 (include-book "retention-figures")
+; PKT-508: the owner's service-log sink, whose counts health prints.
+(include-book "log-sink")
 
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
@@ -905,3 +907,63 @@ and feed table, with the committed octets extended from the carried sum."
                     (fn-retain-pins (fn-node-retention (fn-sn-node s)))))))
   :hints (("Goal" :in-theory '(fn-nls-live-report fn-nls-report fn-nls-retention
                                fn-rtf-pin-count fn-rtf-reserved))))
+
+; -----------------------------------------------------------------------------
+; PKT-508 (PRF-187): the owner's log sink after the eight states.
+;
+; The running owner's `health' ends with one line of its service-log sink
+; (books/log-sink.lisp): the lines pending in the writer's queue, the lines
+; dropped because the sink did not drain (or a write failed), and the lines
+; written.  host/native-live-status-host.lisp `fn-native-live-status-host-answer'
+; appends it, with the exposure lines, after `fn-nh-render''s report, from the
+; sink the host carries (host/native/io.lisp `fnn-log-sink-snapshot').
+(defun fn-nh-log-sink-line (sink)
+  (declare (xargs :guard t))
+  (append (fn-nls-text "log-sink")
+          (fn-nls-field "pending" (fn-log-sink-pending-lines sink))
+          (fn-nls-field "dropped" (fn-log-sink-dropped sink))
+          (fn-nls-field "written" (fn-log-sink-written sink))
+          *fn-nls-lf*))
+
+; KEYSTONE (lines after the eight states leave the exit alone).  The host
+; returns `fn-nh-report-exit' of the whole page it received, which carries
+; the exposure lines and the log-sink line after the verdict's report; for
+; every verdict of at most eight outcomes and whatever follows, that is the
+; verdict's code.  So `log-sink dropped=N' is reported without a ninth code
+; and without moving the scale monitors read (HST-007).
+(local
+ (defthm fn-nh-render-long-enough
+   (<= 14 (len (fn-nh-render v)))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-nh-render fn-nh-header)
+                                   (fn-nh-digit2 fn-nh-header-reason fn-nh-lines
+                                    fn-nls-text fn-nh-state-word))))))
+
+(local
+ (defthm fn-nh-nth-of-append-short
+   (implies (< (nfix i) (len x))
+            (equal (fn-nh-nth i (append x more)) (fn-nh-nth i x)))))
+
+(local
+ (defthm fn-nh-take-of-append-short
+   (implies (<= (nfix n) (len x))
+            (equal (take n (append x more)) (take n x)))))
+
+(defthm fn-nh-report-exit-of-append
+  (implies (and (true-listp x) (true-listp more) (<= 14 (len x)))
+           (equal (fn-nh-report-exit (append x more)) (fn-nh-report-exit x)))
+  :hints (("Goal" :in-theory (e/d (fn-nh-report-exit)
+                                  (fn-nh-digit-value take (:e fn-nh-exit-prefix)
+                                   fn-nh-exit-prefix)))))
+
+(defthm fn-nh-report-exit-of-render-and-more
+  (implies (and (<= (len v) 8) (true-listp more))
+           (equal (fn-nh-report-exit (append (fn-nh-render v) more))
+                  (fn-nh-exit-code v)))
+  :hints (("Goal" :use (fn-nh-report-exit-of-render
+                        (:instance fn-nh-report-exit-of-append (x (fn-nh-render v))))
+                  :in-theory (disable fn-nh-render fn-nh-report-exit fn-nh-exit-code
+                                      fn-nh-report-exit-of-append
+                                      fn-nh-report-exit-of-render))))
+
+(in-theory (disable fn-nh-report-exit-of-append))
