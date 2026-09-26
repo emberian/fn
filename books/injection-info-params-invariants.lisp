@@ -711,3 +711,76 @@
                             (params (fn-ipp-params secret login (fn-ipp-complaints cfg))))
                  (:instance fn-inj-source-of-inverts-the-injection
                             (observation obs))))))
+
+; -----------------------------------------------------------------------------
+; D25: the Injection-Info parameters are outside the authored-source identity.
+
+; KEYSTONE (D25 with parameters; subject books/poster-bytes.lisp
+; fn-pb-subject, the comparison subject fn-pb-same-articlep reads for the
+; Store's duplicate test, which host/owner-host.lisp fn-owner-existing-action-
+; buffer runs through the buffer twin fn-pbb-existing-action).  The stored
+; octets of an injection, with whatever parameters the owner writes, have the
+; same D25 subject as the injection without them: the poster's source.  The
+; node's Injection-Info line (and its parameters) is injecting-node metadata
+; and never part of the authored-source identity.
+(defthm fn-ipp-injected-octets-keep-the-d25-subject
+  (let ((d (fn-inj-decide source config obs)))
+    (implies (fn-inj-injectedp d)
+             (and (equal (fn-pb-subject (fn-ipp-injected-octets d secret login cfg)
+                                        (fn-inj-config-agent config)
+                                        (fn-inj-decision-msgid d))
+                         (cons :source source))
+                  (equal (fn-pb-subject (fn-inj-decision-octets d)
+                                        (fn-inj-config-agent config)
+                                        (fn-inj-decision-msgid d))
+                         (cons :source source)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-pb-subject car-cons cdr-cons))
+           :use ((:instance fn-ipp-injected-octets-carry-the-parameters)
+                 (:instance fn-inj-source-of-inverts-the-injection
+                            (observation obs))))))
+
+(local
+ (defthm fn-ipp-a-configured-agent-has-no-lf
+   (implies (fn-inj-configp config)
+            (not (member-equal 10 (fn-inj-config-agent config))))
+   :hints (("Goal" :in-theory (enable fn-inj-configp fn-af-dot-atom-textp)))))
+
+; A same-source retry is the same article (recipe v2, the poster supplied
+; the Message-ID and no Path): two injections of one source at any two clock
+; readings, stored under any two logins' parameters and any two complaints
+; addresses, are one article for the Store's duplicate test.
+(defthm fn-ipp-a-same-source-retry-is-the-same-article
+  (let ((d1 (fn-inj-decide source config obs1))
+        (d2 (fn-inj-decide source config obs2)))
+    (implies (and (fn-inj-injectedp d1) (fn-inj-injectedp d2)
+                  (not (fn-inj-supplies-pathp source))
+                  (equal (fn-inj-decision-msgid d1) (fn-inj-decision-msgid d2)))
+             (fn-pb-same-articlep (fn-inj-decision-msgid d1)
+                                  (fn-ipp-injected-octets d2 secret2 login2 cfg2)
+                                  (fn-ipp-injected-octets d1 secret1 login1 cfg1))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-pb-same-articlep fn-ipp-prefix-with
+                                               fn-ipp-inj-append-is-append
+                                               fn-ipp-append-assoc car-cons cdr-cons))
+           :use ((:instance fn-ipp-injected-octets-keep-the-d25-subject
+                            (obs obs1) (secret secret1) (login login1) (cfg cfg1))
+                 (:instance fn-ipp-injected-octets-keep-the-d25-subject
+                            (obs obs2) (secret secret2) (login login2) (cfg cfg2))
+                 (:instance fn-ipp-injected-octets-carry-the-parameters
+                            (obs obs2) (secret secret2) (login login2) (cfg cfg2))
+                 (:instance fn-ipp-an-injection-configures-first (obs obs2))
+                 (:instance fn-ipp-a-configured-agent-is-a-true-list)
+                 (:instance fn-ipp-a-configured-agent-is-a-cons)
+                 (:instance fn-ipp-a-configured-agent-has-no-lf)
+                 (:instance fn-pb-path-agent-of-a-path-line
+                            (agent (fn-inj-config-agent config))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs1)))
+                            (rest (append (fn-ipp-block-with
+                                           (fn-ipp-date obs2)
+                                           (fn-inj-decision-msgid (fn-inj-decide source config obs2))
+                                           (fn-inj-config-agent config)
+                                           (fn-ipp-gid source) (fn-ipp-gdate source)
+                                           (fn-ipp-params secret2 login2
+                                                          (fn-ipp-complaints cfg2)))
+                                          source)))))))

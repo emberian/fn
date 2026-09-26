@@ -287,3 +287,63 @@ Hello, news.
             (fn-inj-decide (append *ipt-withid* (ipt-o "more")) *ipt-inj-cfg* *ipt-obs-next*)
             *ipt-secret* *ipt-login* *ipt-cfg1*)))
    (not (fn-pb-same-articlep (fn-inj-decision-msgid *ipt-d1*) s3 s1))))
+
+; fn-ipp-injected-octets-keep-the-d25-subject: positive on the alice post
+; (both conclusions); the omitted injection: a refused decision's octets
+; are no source.
+(assert-event
+ (and (fn-inj-injectedp *ipt-d*)
+      (equal (fn-pb-subject *ipt-stored* *ipt-agent* (fn-inj-decision-msgid *ipt-d*))
+             (cons :source *ipt-source*))
+      (equal (fn-pb-subject (fn-inj-decision-octets *ipt-d*) *ipt-agent*
+                            (fn-inj-decision-msgid *ipt-d*))
+             (cons :source *ipt-source*))))
+(assert-event
+ (and (not (fn-inj-injectedp *ipt-refused*))
+      (not (equal (fn-pb-subject (fn-ipp-injected-octets *ipt-refused* *ipt-secret*
+                                                         *ipt-login* *ipt-cfg1*)
+                                 *ipt-agent* (fn-inj-decision-msgid *ipt-refused*))
+                  (cons :source *ipt-source*)))))
+(must-fail
+ (defthm ipt-d25-subject-without-an-injection
+   (equal (fn-pb-subject (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                                 secret login cfg)
+                         (fn-inj-config-agent config)
+                         (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+          (cons :source source))))
+
+; fn-ipp-a-same-source-retry-is-the-same-article: the positive witness is
+; the D25 pair above (*ipt-d1*, *ipt-d2*, alice then bob).  Omitted
+; Message-ID equality: a generated Message-ID differs per clock reading, and
+; the two injections of *ipt-source* are then two articles.  Omitted
+; injection of the held one: a blind clock refuses it.
+(defconst *ipt-g1* (fn-inj-decide *ipt-source* *ipt-inj-cfg* *ipt-obs*))
+(defconst *ipt-g2* (fn-inj-decide *ipt-source* *ipt-inj-cfg* *ipt-obs-next*))
+(assert-event
+ (and (fn-inj-injectedp *ipt-g1*) (fn-inj-injectedp *ipt-g2*)
+      (not (fn-inj-supplies-pathp *ipt-source*))
+      (not (equal (fn-inj-decision-msgid *ipt-g1*) (fn-inj-decision-msgid *ipt-g2*)))
+      (not (fn-pb-same-articlep
+            (fn-inj-decision-msgid *ipt-g1*)
+            (fn-ipp-injected-octets *ipt-g2* *ipt-secret* *ipt-login* *ipt-cfg1*)
+            (fn-ipp-injected-octets *ipt-g1* *ipt-secret* *ipt-login* *ipt-cfg1*)))))
+(defconst *ipt-blind* (fn-clock-observation 1000000 843004800000 500 nil))
+(assert-event
+ (let ((d0 (fn-inj-decide *ipt-withid* *ipt-inj-cfg* *ipt-blind*)))
+   (and (not (fn-inj-injectedp d0)) (fn-inj-injectedp *ipt-d2*)
+        (not (fn-pb-same-articlep
+              (fn-inj-decision-msgid *ipt-d2*)
+              (fn-ipp-injected-octets *ipt-d2* *ipt-secret* *ipt-login* *ipt-cfg1*)
+              (fn-ipp-injected-octets d0 *ipt-secret* *ipt-login* *ipt-cfg1*))))))
+(must-fail
+ (defthm ipt-retry-without-one-message-id
+   (implies (and (fn-inj-injectedp (fn-inj-decide source config obs1))
+                 (fn-inj-injectedp (fn-inj-decide source config obs2))
+                 (not (fn-inj-supplies-pathp source)))
+            (fn-pb-same-articlep
+             (fn-inj-decision-msgid (fn-inj-decide source config obs1))
+             (fn-ipp-injected-octets (fn-inj-decide source config obs2) s2 l2 c2)
+             (fn-ipp-injected-octets (fn-inj-decide source config obs1) s1 l1 c1)))))
+; The supplied-Path hypothesis is a scope limit, not shown necessary: a v3
+; retry is believed to be the same article too (the block agent is read
+; through fn-pb-params-line-agent), but that walk is not proved here.

@@ -7139,6 +7139,14 @@
         {
           "kind": "theorem",
           "name": "fn-pa-account-value-determines-the-mac"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-injected-octets-keep-the-d25-subject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-a-same-source-retry-is-the-same-article"
         }
       ]
     },
