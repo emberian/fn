@@ -75,6 +75,14 @@ class HboxNativeDryRunTests(unittest.TestCase):
             self.assertEqual(answer.returncode, 2, (args, answer.stdout))
 
 
+    def test_options_may_follow_rev_and_modules(self):
+        # PKT-490 (3): `hbox_native.sh HEAD MODULE --images ...` was refused
+        # as a bad module name.
+        after = dry("HEAD", "tests.test_bp_service_native", "--images", "dtn-developer")
+        before = dry("--images", "dtn-developer", "HEAD", "tests.test_bp_service_native")
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertEqual(after.stdout, before.stdout)
+
     def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
         # PKT-437 (2): the default run builds only the developer image, and
         # this module reads FN_NATIVE_HOST (the production image).

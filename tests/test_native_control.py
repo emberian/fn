@@ -557,6 +557,13 @@ class NativeControlTests(unittest.TestCase):
         # One gate, before any store is opened: exit 5 naming the variable,
         # no control socket, no listener, the store's bytes unchanged.  This
         # replaces the mid-request refusals of campaign dabebb84 F4 to F6.
+        # Every selector is refused on `operator run'; `store recover' is
+        # asked with one selector, because the gate is one call in main on
+        # the whole argv before any verb is dispatched
+        # (fnn-developer-selector-gate; test_the_gate_runs_before_dispatch pins its place
+        # and test_every_selector_is_read_only_through_the_accessor that every
+        # selector goes through it).  PKT-445 (b): 96 image
+        # starts at about 1.3 s each were this module's over-budget test.
         before = self.store_digest()
         for name in SELECTORS:
             with self.subTest(selector=name):
@@ -571,6 +578,8 @@ class NativeControlTests(unittest.TestCase):
                 self.assertIn(name.encode("ascii"), started.stderr)
                 self.assertEqual(started.stdout, b"")
                 self.assertFalse(self.control.exists())
+                if name != SELECTORS[0]:
+                    continue
                 recovered = subprocess.run(
                     [str(IMAGE), "--fn", "store", str(self.store), "recover"],
                     cwd=ROOT, env=env, stdout=subprocess.PIPE,
