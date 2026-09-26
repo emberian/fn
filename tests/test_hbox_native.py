@@ -75,5 +75,48 @@ class HboxNativeDryRunTests(unittest.TestCase):
             self.assertEqual(answer.returncode, 2, (args, answer.stdout))
 
 
+    def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
+        # PKT-437 (2): the default run builds only the developer image, and
+        # this module reads FN_NATIVE_HOST (the production image).
+        answer = dry("HEAD", "tests.test_native_hybrid_author")
+        self.assertEqual(answer.returncode, 2, answer.stdout)
+        self.assertEqual(answer.stdout, "")
+        self.assertIn("tests.test_native_hybrid_author reads FN_NATIVE_HOST: build the "
+                      "production image with --images developer,production", answer.stderr)
+        # Named by --env instead of built: no refusal.
+        given = dry("--env", "FN_NATIVE_HOST=/x/fn-host", "HEAD", "tests.test_native_hybrid_author")
+        self.assertEqual(given.returncode, 0, given.stderr)
+
+    def test_each_module_gets_the_variables_it_reads(self):
+        answer = dry("--images", "developer,production", "HEAD",
+                     "tests.test_native_hybrid_author", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        lines = answer.stdout.splitlines()
+        hybrid = next(line for line in lines
+                      if line.startswith("tstep test-tests.test_native_hybrid_author "))
+        for assignment in ("FN_NATIVE_HOST=$T/build/fn-host ", "FN_RUN_HYBRID_E2E=1 ",
+                           "FN_TEST_OPENSSL=$FN_OPENSSL_PREFIX/bin/openssl "):
+            self.assertIn(assignment, hybrid)
+        self.assertIn("test_budget.py --one tests.test_native_hybrid_author", hybrid)
+        owner = next(line for line in lines if line.startswith("tstep test-tests.test_native_owner "))
+        self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", owner)
+        self.assertNotIn("FN_NATIVE_HOST=", owner)
+        # The images are checked on the box before the first test.
+        need = lines.index("need tests.test_native_hybrid_author FN_NATIVE_HOST $T/build/fn-host")
+        self.assertLess(need, lines.index(hybrid))
+
+    def test_every_image_or_opt_in_variable_a_native_module_reads_is_classified(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from tools import native_env
+        known = set(native_env.IMAGES) | set(native_env.FIXED) | set(native_env.MANUAL)
+        unclassified = sorted(
+            name for name in native_env.readers()
+            if (name.endswith("_HOST") or name.startswith("FN_RUN_")) and name not in known)
+        self.assertEqual(unclassified, [])
+        # FN_NATIVE_HOST is only ever the production image (operator-daily-2).
+        self.assertEqual(native_env.IMAGES["FN_NATIVE_HOST"], ("production",))
+
+
 if __name__ == "__main__":
     unittest.main()
