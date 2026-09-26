@@ -5250,12 +5250,12 @@
         {
           "kind": "theorem",
           "name": "fn-bpaj-dispatch-never-resubmits-a-stored-article",
-          "note": "KEYSTONE (exactly one submission, PKT-247). Over fn-bpaj-dispatch-fast, which host/bp-receipt-journal-host.lisp fn-bprj-request-action calls for host/native/bp-app.lisp fnn-bpapp-action: once the Store's article records (fn-bpr-article-records: a plain record, or the one a signed kind-4 composite carries) hold an article record with the Message-ID the dispatcher reads, the answer is not (:submit). Teeth: tests/acl2/bp-signed-binding-tests (a signed composite committed by the Store's own transitions after a hybrid enrollment: before the commit (:submit), after it (:bind RECORD); hypothesis removal: the enrolled Store before the commit submits; a constructed non-record carrying the Message-ID submits; another Message-ID over the signed Store submits; labelled mutation witness: the pre-PRF-132 plain-record search finds nothing over the signed Store)."
+          "note": "KEYSTONE (exactly one submission, PKT-247), over the Store the host dispatches over: books/owner-store-indexed.lisp states it of (fn-osi-live-store configs prefix suffix frontier max-conns evs), the Store of the owner host/owner-host.lisp fn-owner-recover-extended installs (fn-osi-open) after any sequence of the owners the host installs (fn-osi-host-run), which host/native/bp-app.lisp fnn-bpapp-accept-locked binds (fn-owner-app-bind-receipt-store) before fn-bprj-request-action calls fn-bpaj-dispatch-fast. No index premise: fn-osi-live-owner-store-is-indexed discharges the refinement lemma fn-bpaj-dispatch-never-resubmits-under-index (books/bp-signed-binding.lisp). Hypotheses as before PRF-144: the record is among the live Store's article records, is an article record, and carries the dispatcher's Message-ID. Teeth: tests/acl2/owner-store-indexed-tests (the live owner opened over the signed history under the default configuration and brought :ready by the host's recovery barriers: antecedent and conclusion asserted; hypothesis removal over live Stores: the owner opened over the enrolment alone submits; another Message-ID over the signed live Store submits; fn-record-p has no live counter-witness (an open admits only Store events) and keeps its constructed must-fail on the refinement lemma, bp-signed-binding-tests (2))."
         },
         {
           "kind": "theorem",
           "name": "fn-bpaj-dispatch-binds-the-stores-own-record",
-          "note": "KEYSTONE (the verdict is the receiving Store's). A (:bind RECORD) answer of fn-bpaj-dispatch-fast names an article record for the dispatcher's Message-ID, accepted by the receiver's Store check (fn-bpaj-store-record-accepted-fast), that is the article record of an event of the Store's own history (fn-bpaj-article-event); when that event is a signed composite, fn-stxa-bindsp binds its kind-2 verdict to exactly RECORD. Teeth: the signed witness names the composite itself and its verdict (:verified, the report's Message-ID); the bound record's transit context replays and the request moves to :prepare-receipt; hypothesis removal: without a :bind answer (the Store before the commit) the conclusion fails."
+          "note": "KEYSTONE (the verdict is the receiving Store's), over the live Store (fn-osi-live-store, as above): a (:bind RECORD) answer of fn-bpaj-dispatch-fast names an article record for the dispatcher's Message-ID, accepted by the receiver's Store check, that is the article record of an event of the Store's own history; a signed composite binds its kind-2 verdict to exactly RECORD (fn-stxa-bindsp). No index premise (fn-osi-live-owner-store-is-indexed discharges fn-bpaj-dispatch-binds-the-stores-own-record-under-index). Teeth: owner-store-indexed-tests (the live signed Store binds the composite's record, the named event is the composite; the owner that committed the composite through the host's own transitions submitted before and binds after; hypothesis removal: without a :bind answer, the live Store before the commit, the conclusion fails)."
         }
       ]
     },
@@ -5433,7 +5433,32 @@
         {
           "kind": "theorem",
           "name": "fn-bpaj-indexed-records-are-the-walk",
-          "note": "PRF-144 part 1 at the BP boundary: under fn-bpaj-store-indexedp the index answer is fn-bpaj-record-for-msgid's walk, so the dispatcher's lookups and fn-bpaj-store-record-accepted-fast answer as before. Teeth: bp-signed-binding-tests (hypothesis removal 2b: a stale index makes the dispatcher submit a stored signed article again)."
+          "note": "PRF-144 part 1 at the BP boundary, the refinement lemma: under fn-ceis-indexedp (the Store's derived index is the index of its history) the index answer is fn-bpaj-record-for-msgid's walk, so the dispatcher's lookups and fn-bpaj-store-record-accepted-fast answer as the checked walks. The premise is carried, not assumed, for the Store the host dispatches over (fn-osi-live-owner-store-is-indexed). Teeth: bp-signed-binding-tests (hypothesis removal 2b, labelled CORRUPTED: the committed Store with the index it carried before the commit makes the dispatcher submit a stored signed article again)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ceis-io-preserves-indexed",
+          "note": "The maintained relation fn-ceis-indexedp (books/consumer-event-index-store-invariants.lisp: the index is fn-cei-build of the history in every phase) across fn-sn-io, the one Store transition that grows the history: the record-directory append extends the index by fn-cei-put of the appended event (fn-ceis-record-directory-extension); every other io keeps both. The same book keeps it across the five prepares, finish and recover (fn-ceis-prepare-*-preserves-indexed, fn-ceis-finish-preserves-indexed, fn-ceis-recover-preserves-indexed) and establishes it at fn-sn-initial (fn-ceis-initial-indexed). Teeth: owner-store-indexed-tests (the host's own commit of a signed composite: before and after indexed, the index after is fn-cei-build of the extended history)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-open-installs-indexed-store",
+          "note": "KEYSTONE (establishment), no hypothesis: the owner host/owner-host.lisp fn-owner-recover-extended installs on either path (fn-owner-recover's full replay, fn-owner-recover-from-checkpoint and fn-owner-recover-from-store-open), fn-osi-open = fn-ock-recover-extended of the extended checkpoint, has an indexed Store; through fn-owner-recover-from-checkpoint-equals-full-recover it is fn-ock-install over fn-cpo-open-observed, whose opened Store carries fn-cei-build of the history it read (fn-osi-cpo-open-observed-is-indexed); a refused open is :fault, whose empty Store is indexed. The model reopen fn-sn-open-observed establishes it too (fn-osi-sn-open-observed-is-indexed). Teeth: owner-store-indexed-tests (the open over the signed history, full and checkpoint paths equal and not :fault, index answers the composite's record; the refused open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-host-step-keeps-indexed",
+          "note": "PRESERVATION, no hypothesis beyond the relation: every owner host/owner-host.lisp installs keeps the live Store indexed. fn-osi-host-step names each install with the ACL2 function the host calls: fn-owner-step's fn-ocfg-step (every event but the kernel (:store (:crash ...)), which the host never issues: a crash is process death and the next owner is the open), fn-owner-io's fn-rcon-ocfg-io, fn-pcar-sbud-prepare, fn-ccar-ocfg-prepare-identity, fn-ccar-ocfg-complete, fn-ccar-own-finish, fn-ocl-publish, fn-own-configure, fn-osb-install, fn-own-with-feeds, fn-own-transit-outcome, fn-acar-own-outcome, fn-ocfg-open-peer, -read-step, -open, fn-exp-open, fn-scar-ocfg-read-tls-prefix, fn-ocfg-fault and fn-ocfg-observe. Teeth: owner-store-indexed-tests (the crash exclusion: the crash image is not indexed and recovery rebuilds it; the host's commit of a signed composite keeps it)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-live-owner-store-is-indexed",
+          "note": "KEYSTONE (PKT-330 (3)), no hypothesis: the Store of every owner the host reaches from its open by the owners it installs (fn-osi-live-store) satisfies fn-ceis-indexedp. That Store is the one host/native/bp-app.lisp fnn-bpapp-accept-locked binds before each dispatch, so PRF-132's keystones and the fast/checked equalities over it carry no index premise. Teeth: owner-store-indexed-tests (the live signed Store after the recovery barriers; the owner that commits the composite through the host's transitions)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-live-dispatch-fast-is-checked",
+          "note": "Over the live Store (fn-osi-live-store) and a joined state satisfying fn-bpaj-statep, with fn-sn-statep of the Store (the pre-PRF-144 hypothesis, carried by fn-ocl-relation), fn-bpaj-dispatch-fast is fn-bpaj-dispatch, the checked walk; likewise fn-osi-live-store-record-accepted-fast-is-checked, fn-osi-live-record-lookup-fast-is-checked and fn-osi-live-transit-record-lookup-fast-is-checked. No index premise. Teeth: owner-store-indexed-tests (fast and checked answers equal at the live signed Store)."
         }
       ]
     },

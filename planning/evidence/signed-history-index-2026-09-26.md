@@ -205,3 +205,168 @@ before-10000.log bcfeafac…, after-10000.log a655b10a…, summary.log
   reconfiguration that drops a group is open for both (the corrupted-state
   witness shows exactly that state). PKT-330 (4).
 - No deployment; the live node was not touched.
+
+## Continuation (lane signed-history-index-2, 2026-09-26)
+
+Brief: `build/coordinator/queue/done/w3-signed-history-index-2.txt`, on the
+coordinator's statement item 11 (f370581b): the result is not merged while
+PRF-132's keystones and the BP fast/checked equalities carry the index
+premise as an assumption. Mandate §6: make the relation true at the actual
+open and preserve it across every admitted transition that can reach the
+call. Base: this branch at 4284073a, dev f370581b merged (268a807e).
+
+### The relation, named once
+
+`fn-ceis-indexedp` (books/consumer-event-index-store-invariants.lisp): the
+Store's derived event index is `fn-cei-build` of its committed history, in
+every phase. It replaces `fn-bpaj-store-indexedp` (retired: one name).
+`fn-ceis-relatedp`, the earlier relation, is its crash-tolerant weakening
+(vacuous while `:replaying` or `:fault`): `fn-ceis-indexedp-implies-related`,
+`fn-ceis-related-live-phase-is-indexed`. The consumer poll's premise
+(`fn-col-poll-agrees-under-maintained-store-relations`) is the weakening in
+a live phase, so the same carried relation serves it.
+
+### Established (host lines)
+
+| entry | theorem |
+| --- | --- |
+| host/owner-host.lisp `fn-owner-recover-extended` (all three open paths: `fn-owner-recover`, `fn-owner-recover-from-checkpoint`, `fn-owner-recover-from-store-open`) installs `fn-ock-recover-extended` of the extended checkpoint = `fn-osi-open` | `fn-osi-open-installs-indexed-store`, **no hypothesis** (a refused open is `:fault`, whose empty Store is indexed: `fn-osi-refused-open-is-indexed`) |
+| the Store open underneath, host/store-node-host.lisp (comment at :235: `fn-cpo-open-observed`, full replay `fn-cpr-replay`) | `fn-osi-cpo-open-observed-is-indexed` (the opened Store carries `fn-cei-build` of the history it read) |
+| host/checkpoint-host.lisp :277 `fn-sn-open-observed` (and the model restart `fn-own-reopen`) | `fn-osi-sn-open-observed-is-indexed`, `fn-osi-own-reopen-is-indexed` |
+| `fn-sn-initial` | `fn-ceis-initial-indexed` |
+
+The BP service does not open the Store separately: host/native/bp-service.lisp
+`fnn-bps-open` (:1076) opens the FNRJ journal and the BP node state; the
+Store the dispatcher reads is the owner's (`fnn-bpapp-bind-owner-store` ->
+host/bp-native-app-host.lisp `fn-owner-app-bind-receipt-store`, which binds
+`(fn-own-store (fn-ocfg-owner oc))` of the installed owner before every
+`fn-bprj-request-action`).
+
+### Preserved
+
+Store level (books/consumer-event-index-store-invariants.lisp):
+`fn-ceis-io-preserves-indexed` (the record-directory append, the one
+transition that grows the history, extends the index by `fn-cei-put` of the
+appended event; every other io keeps both), `fn-ceis-prepare-article-`,
+`-identity-`, `-retention-`, `-consumer-`, `-topic-preserves-indexed`,
+`fn-ceis-finish-preserves-indexed`, `fn-ceis-recover-preserves-indexed`.
+books/owner-store-indexed.lisp adds the transitions the record said kept it
+"by construction" with no theorem: `fn-osi-refuse-reservation-keeps-indexed`,
+`fn-osi-known-abort-keeps-indexed`, `fn-osi-ccar-prepare-identity-keeps-indexed`
+(the carried identity prepare), `fn-osi-spc-prepare-keeps-indexed` (the
+carried article prepare), `fn-osi-cpo-configure-durable-keeps-indexed` (the
+configuration publication's Store; `fn-sn-with-configuration` inside it),
+and `fn-osi-snrt-step-keeps-indexed` over the whole Store event family.
+`fn-sn-set-keyring` and `fn-sn-sweep-staging` are not reachable at the
+owner's Store (the sweep runs on the operator's standalone Store,
+host/store-node-host.lisp :1099).
+
+Owner level: `fn-osi-own-step-keeps-indexed`, `fn-osi-ocfg-step-keeps-indexed`
+and one lemma per owner the host installs outside `fn-ocfg-step`.
+`fn-osi-host-step` names every install in host/owner-host.lisp
+(`fn-owner-install-ocfg` / `fn-owner-replace-core`, 21 sites) with the ACL2
+function installed: `fn-ocfg-step` (fn-owner-step and its callers),
+`fn-rcon-ocfg-io` (fn-owner-io), `fn-pcar-sbud-prepare` (fn-owner-prepare,
+-prepare-buffer), `fn-ccar-ocfg-prepare-identity`, `fn-ccar-ocfg-complete`
+(fn-owner-finish), `fn-ccar-own-finish` (fn-owner-finish-submission),
+`fn-ocl-publish` (fn-owner-reconfigure-complete), `fn-own-configure`
+(posting), `fn-osb-install` (profile), `fn-own-with-feeds` (feed port),
+`fn-own-transit-outcome`, `fn-acar-own-outcome`, `fn-ocfg-open-peer`,
+`fn-ocfg-read-step`, `fn-ocfg-open`, `fn-exp-open` (exposure open),
+`fn-scar-ocfg-read-tls-prefix` (fn-owner-chunk), `fn-ocfg-fault`,
+`fn-ocfg-observe`. **KEYSTONES**: `fn-osi-host-step-keeps-indexed`,
+`fn-osi-host-run-keeps-indexed`, and `fn-osi-live-owner-store-is-indexed`,
+no hypothesis: the Store of every owner the host reaches from its open by
+those transitions (`fn-osi-live-store`) is indexed. This closes PKT-330 (3).
+
+The one Store event that breaks the relation is the kernel's
+`(:store (:crash ...))`: the crash image carries the empty index while its
+history is kept. The host never issues it (a crash is process death; the
+process's next owner is the open above), so `fn-osi-host-own-eventp`
+excludes it from the `fn-ocfg-step` arm; the crash-tolerant
+`fn-ceis-relatedp` holds across it and recovery rebuilds the index
+(witnessed). No transition was found that fails to keep the index; no
+defect needed a code change.
+
+### PRF-132 restated, premise discharged
+
+`fn-bpaj-dispatch-never-resubmits-a-stored-article` and
+`fn-bpaj-dispatch-binds-the-stores-own-record` now live in
+books/owner-store-indexed.lisp and are stated over
+`(fn-osi-live-store configs prefix suffix frontier max-conns evs)` with
+their pre-PRF-144 hypotheses only (record in the Store's article records,
+`fn-record-p`, the Message-ID agreement; the `:bind` answer). Conclusions
+unchanged. The store-level versions are the refinement lemmas
+`fn-bpaj-dispatch-never-resubmits-under-index` and
+`fn-bpaj-dispatch-binds-the-stores-own-record-under-index`
+(books/bp-signed-binding.lisp), with `fn-bpaj-indexed-records-are-the-walk`
+under them. The fast/checked equalities over the live Store:
+`fn-osi-live-store-record-accepted-fast-is-checked`,
+`fn-osi-live-record-lookup-fast-is-checked`,
+`fn-osi-live-transit-record-lookup-fast-is-checked`,
+`fn-osi-live-dispatch-fast-is-checked` (hypothesis `fn-sn-statep` of the
+Store, as before PRF-144, carried by `fn-ocl-relation`). Assurance chain:
+`fnn-bpapp-accept-locked` -> `fn-bprj-request-action` ->
+`fn-bpaj-dispatch-fast` over the bound owner Store -> refinement
+`fn-bpaj-indexed-records-are-the-walk` -> maintained relation
+`fn-ceis-indexedp` (established at `fn-owner-recover-extended`, preserved by
+`fn-osi-host-step`) -> PRF-132's keystones -> the mission's signed binding.
+
+### Teeth (tests/acl2/owner-store-indexed-tests.lisp)
+
+- Reachable positive witness at open: `fn-osi-open` over the signed history
+  (a hybrid enrolment, then the kind-4 composite) under the default
+  configuration record: not `:fault`, `fn-ocl-relation`, full and
+  checkpoint paths equal, the Store indexed, the index answers the
+  composite's record; after the five recovery barriers (host `:io` events)
+  the live Store is `:ready`, both keystones' antecedents and conclusions
+  hold (the dispatcher binds the composite's record, named event = the
+  composite), and fast = checked.
+- Transition sequence through the host's own functions: the owner opened
+  over the enrolment alone, then barriers, reservation, the carried
+  identity prepare of the composite, record-file/link/directory and the
+  completion: indexed before and after, the index after is `fn-cei-build`
+  of the extended history, the dispatcher submitted before and binds after.
+  Crash (labelled: excluded from the host family): the crashed Store is not
+  indexed, is `fn-ceis-relatedp`, and recovery re-indexes it.
+- Hypothesis removal over live Stores: the enrolment-only live Store
+  (record absent: submits); another Message-ID over the signed live Store
+  (submits); the `:bind` antecedent (conclusion fails before the commit).
+  `fn-record-p` has no live counter-witness (an open admits only Store
+  events); its constructed must-fail stays on the refinement lemma; the
+  hypothesis is kept, no weakened theorem proved (PKT-330 (5)).
+- CORRUPTED (labelled), tests/acl2/bp-signed-binding-tests.lisp 2b: the
+  committed Store with the index it carried before its commit fails
+  `fn-ceis-indexedp` and the dispatcher submits a stored signed article.
+
+### PKT-330 (4), answered (labelled counterexample, and a packet)
+
+A group removal keeps `fn-own-relation`'s Store conjunct: `fn-ocl-publish`
+installs `fn-cpo-configure-durable` of the Store
+(`fn-ocl-complete-success-install-exact-store`), and removing `fn.letters`
+from the live signed Store keeps the allocation domain (retired names stay),
+so `fn-snt-relation` still holds (witness). But `fn-own-relation` does not
+hold of every live owner: the owner the host's open installs over a history
+whose configuration later reduced the capacity below an accepted undertaking
+(config-observed-tests' image) satisfies `fn-ocl-relation` and
+`fn-ceis-indexedp` and fails `fn-snt-relation`, hence `fn-own-relation`
+(witness, labelled COUNTEREXAMPLE, reachable at the open). So the article
+and identity prepare keystones stated under `fn-own-relation`
+(`fn-opc-prepare-equals-owner-event-under-relation`,
+`fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation`) do not cover
+that live owner; the index relation of this continuation does.
+
+Packet (PKT-330 (4)). Trace: open over events (undertake 10, release) with
+configs (default, set-capacity 1 at txid 7): `fn-ocl-relation` T,
+`fn-own-relation` NIL. Constraint: the served path must not replay.
+Default: restate both prepare keystones under `fn-ocl-relation`, against a
+configured specification prepare whose replay is `fn-cst-replay-node`
+(the configured replay `fn-cst-relation` already carries). Rejected
+alternative: require every reconfiguration to keep the store-only replay
+(forbids a valid capacity reduction below history, which the configured open accepts
+(`fn-cst-open-success-has-historical-relation`); the configuration model deliberately keeps historical acceptance).
+Affected: books/owner-prepare-correspondence.lisp,
+books/owner-commit-carried.lisp, PRF-144 part 2 and the article prepare's
+keystone. What continues without it: the host's behaviour (the carried
+prepare stages; the store-only specification would refuse on such an owner)
+and every index theorem here.
