@@ -275,3 +275,29 @@
 (must-fail
  (thm (equal (fn-gidx-refresh buckets old-articles new-articles)
              (fn-gidx-build new-articles))))
+
+; -----------------------------------------------------------------------------
+; Part 3: the admission's identity test, fn-retain-known-id-scanp-is-known-idp
+; (books/retention.lisp; fn-retain-admissiblep's :exec runs the scan).  No
+; hypothesis: witnesses on the reachable ledger of the twelve-article node.
+
+(defconst *opt-ledger* (fn-node-retention *opt-node*))
+(assert-event (equal (len (fn-retain-pins *opt-ledger*)) 12))
+; Known: an archive identity the node committed; unknown: a fresh one.
+(assert-event (fn-retain-known-id-scanp "archive-f" (fn-retain-pins *opt-ledger*)
+                                        (fn-retain-releases *opt-ledger*)))
+(assert-event (fn-retain-known-idp "archive-f" (fn-retain-pins *opt-ledger*)
+                                   (fn-retain-releases *opt-ledger*)))
+(assert-event (not (fn-retain-known-id-scanp "archive-z" (fn-retain-pins *opt-ledger*)
+                                             (fn-retain-releases *opt-ledger*))))
+(assert-event (not (fn-retain-known-idp "archive-z" (fn-retain-pins *opt-ledger*)
+                                        (fn-retain-releases *opt-ledger*))))
+; The admission the host runs refuses the known identity and admits the fresh
+; one, through the scan.
+(assert-event (not (fn-retain-admissiblep *opt-ledger* "archive-f" "content-z" :archive
+                                          "release-z" 1)))
+(assert-event (fn-retain-admissiblep *opt-ledger* "archive-z" "content-z" :archive
+                                     "release-z" 1))
+(assert-event (not (intersectp-eq (opt-callees '(fn-retain-known-id-scanp) (w state) nil)
+                                  '(fn-retain-obligation-ids fn-retain-release-ids
+                                    member-equal))))
