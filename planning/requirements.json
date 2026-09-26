@@ -2391,6 +2391,28 @@
         "fn-vj-a-held-message-id-is-answered-441"
       ],
       "implementation_note": "A stronger fn guarantee and a client contract, not an RFC requirement (RFC 3977 6.3.1 allows 441 for any posting failure; the duplicate/conflict answers are D25's). Proved over the host-called decision (fn-rclb-existing-action via host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-rcl-existing-action via fn-owner-existing-action): a held Message-ID is answered :duplicate or :conflict across every fn-sn-finish (the withdrawing cancel's acceptance is one) and across reclamation, and the in-flight reply is one of the two 441 lines. Clients: fn_client post --draft/reconcile (exit 4 unresolved), fn_web /reconcile; both keep the original outcome and re-send the stored bytes. Native (SCN-060) passes on the developer image. Not covered: a native reclamation (no host verb yet); a poster whose authorization changed is answered by the login gate or posting allowance before the Store and stays unresolved (PKT-164)."
+    },
+    {
+      "id": "NNT-020",
+      "title": "One authored source keeps one identity through every route the node offers, and each layer's equality is the one its contract means",
+      "specification": "specs/nntp.md#one-source-one-identity-across-routes-nnt-020",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-117"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/source-routes.lisp",
+        "tests/acl2/source-routes-tests.lisp",
+        "tests/test_native_source_corpus.py",
+        "tests/fixtures/source-corpus/supplied-date.article",
+        "planning/evidence/source-corpus-2026-09-25.md"
+      ],
+      "implementation_note": "fn guarantee over RFC 5536 s3.1.3 and RFC 5537 s3.4/s3.5 (D25, D32): on the injecting routes (served POST, operator post, hybrid-author) the verdict is fn-rcl-existing-action on the poster's source; transit and BP admission key on Message-ID (RFC 3977 s6.3.2, RFC 4644). PKT-166 decided and implemented: hybrid-author asks fn-owner-existing-action first; a resend of the same signed carrier is DUPLICATE (exit 0), a changed or re-signed source the refusal (exit 1). Open: BP carriage of the corpus not exercised by the module; the tombstone arm is unreachable-in-composition until a program writes tombstones."
     }
   ]
 }
