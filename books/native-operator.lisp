@@ -354,6 +354,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
 ; `store checkpoint': publish the exact-state checkpoint (P3,
 ; books/store-checkpoint-open.lisp).  It takes no argument.
+; `store reclaim [--dry-run]': content reclamation's durable step (D13,
+; STO-017, books/store-reclaim-pack.lisp).  What it removes is
+; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
   (cond ((and (consp words) (equal (car words) "upgrade-profile"))
@@ -383,6 +386,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          (fn-nop-result :accepted :plan "store" config (list :compact)))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
+        ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config (list :reclaim)))
+        ((and (consp words) (equal (car words) "reclaim")
+              (equal (cdr words) '("--dry-run")))
+         (fn-nop-result :accepted :plan "store" config (list :reclaim-dry-run)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
 
 ;; `status --watch N': the seconds between two asks.  A work bound on the
@@ -418,7 +426,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | compact | checkpoint} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | compact | checkpoint | reclaim [--dry-run]} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "control")
@@ -1035,6 +1043,12 @@ when that store already exists is `fn-native-operator-init-outcome'."
                          :checkpoint)
                   :checkpoint)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :reclaim)
+                  :reclaim)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :reclaim-dry-run)
+                  :reclaim-dry-run)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :needs-upgrade)
                   :needs-upgrade)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1374,6 +1388,242 @@ when that store already exists is `fn-native-operator-init-outcome'."
                             (config (fn-ncfg-second (fn-native-config-load config)))
                             (argv argv))
                  (:instance fn-nop-parse-command-checkpoint-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config nil) (argv argv))))))
+
+; KEYSTONE (STO-017, the operator entry to content reclamation).  The
+; same subject and projection as the compaction keystone above: an
+; accepted `store reclaim' is the :reclaim action, and the
+; :reclaim action arises from that argv and no other, so the raw host
+; reaches `fnn-command-reclaim' without --dry-run only for it.
+(defthm fn-native-operator-run-store-reclaim-is-the-reclaim-action
+  (implies (and (equal (fn-nop-argument-texts argv) '("store" "reclaim"))
+                (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted))
+           (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-store
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
+
+(local
+ (defthm fn-nop-parse-store-reclaim-words
+   (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
+                        :accepted)
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-store w c)))
+                        :reclaim))
+            (equal w '("reclaim")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+                                      fn-native-operator-result-status
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-words
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-command words config argv)))
+                        :reclaim))
+            (equal words '("store" "reclaim")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp))
+            :use ((:instance fn-nop-parse-store-reclaim-words
+                             (w (cdr words)) (c config)))))))
+
+(local
+ (defthm fn-nop-reclaim-action-shape
+   (implies (equal (fn-native-operator-result-native-action result) :reclaim)
+            (and (equal (fn-native-operator-result-status result) :accepted)
+                 (equal (fn-native-operator-result-command result) "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                        :reclaim)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-action-words
+   (implies (equal (fn-native-operator-result-native-action
+                    (fn-nop-parse-command words config argv))
+                   :reclaim)
+            (equal words '("store" "reclaim")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-nop-reclaim-action-shape
+                                       fn-native-operator-result-native-action
+                                       fn-nop-parse-command)
+            :use ((:instance fn-nop-reclaim-action-shape
+                             (result (fn-nop-parse-command words config argv)))
+                  fn-nop-parse-command-reclaim-words)))))
+
+(defthm fn-native-operator-run-reclaim-action-is-only-store-reclaim
+  (implies (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim)
+           (equal (fn-nop-argument-texts argv) '("store" "reclaim")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-usage)
+                                  (fn-nop-result
+                                   fn-native-operator-result-native-action
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-nop-parse-command fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep))
+           :use ((:instance fn-nop-parse-command-reclaim-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config (fn-ncfg-second (fn-native-config-load config)))
+                            (argv argv))
+                 (:instance fn-nop-parse-command-reclaim-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config nil) (argv argv))))))
+
+; KEYSTONE (STO-017, the operator entry to content reclamation).  The
+; same subject and projection as the compaction keystone above: an
+; accepted `store reclaim --dry-run' is the :reclaim-dry-run action, and the
+; :reclaim-dry-run action arises from that argv and no other, so the raw host
+; reaches `fnn-command-reclaim' with --dry-run only for it.
+(defthm fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action
+  (implies (and (equal (fn-nop-argument-texts argv) '("store" "reclaim" "--dry-run"))
+                (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted))
+           (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim-dry-run))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-store
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
+
+(local
+ (defthm fn-nop-parse-store-reclaim-dry-run-words
+   (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
+                        :accepted)
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-store w c)))
+                        :reclaim-dry-run))
+            (equal w '("reclaim" "--dry-run")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+                                      fn-native-operator-result-status
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-dry-run-words
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-command words config argv)))
+                        :reclaim-dry-run))
+            (equal words '("store" "reclaim" "--dry-run")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp))
+            :use ((:instance fn-nop-parse-store-reclaim-dry-run-words
+                             (w (cdr words)) (c config)))))))
+
+(local
+ (defthm fn-nop-reclaim-dry-run-action-shape
+   (implies (equal (fn-native-operator-result-native-action result) :reclaim-dry-run)
+            (and (equal (fn-native-operator-result-status result) :accepted)
+                 (equal (fn-native-operator-result-command result) "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                        :reclaim-dry-run)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-parse-command-reclaim-dry-run-action-words
+   (implies (equal (fn-native-operator-result-native-action
+                    (fn-nop-parse-command words config argv))
+                   :reclaim-dry-run)
+            (equal words '("store" "reclaim" "--dry-run")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-nop-reclaim-dry-run-action-shape
+                                       fn-native-operator-result-native-action
+                                       fn-nop-parse-command)
+            :use ((:instance fn-nop-reclaim-dry-run-action-shape
+                             (result (fn-nop-parse-command words config argv)))
+                  fn-nop-parse-command-reclaim-dry-run-words)))))
+
+(defthm fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run
+  (implies (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :reclaim-dry-run)
+           (equal (fn-nop-argument-texts argv) '("store" "reclaim" "--dry-run")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-usage)
+                                  (fn-nop-result
+                                   fn-native-operator-result-native-action
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-nop-parse-command fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep))
+           :use ((:instance fn-nop-parse-command-reclaim-dry-run-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config (fn-ncfg-second (fn-native-config-load config)))
+                            (argv argv))
+                 (:instance fn-nop-parse-command-reclaim-dry-run-action-words
                             (words (fn-nop-argument-texts argv))
                             (config nil) (argv argv))))))
 
