@@ -1843,7 +1843,7 @@
       "id": "SCN-066",
       "title": "A signed report crosses four native fn nodes and two dtn7-rs relays with outages and restarts; its receipt settles before the receiver's consumer wakes; the reply returns",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "REP-009",
         "REP-007"
@@ -1861,9 +1861,10 @@
       ],
       "evidence": [
         "tests/bp-dtn7/run_mission_four_node.py",
-        "planning/evidence/mission-four-node-2026-09-25.md"
+        "planning/evidence/mission-four-node-2026-09-25.md",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "note": "Unsigned report and reply pass on image abbd8aef (all seven steps); the signed report is refused at B (request-refused, reason not logged): the scenario stays specified until the signed run passes. planning/evidence/mission-four-node-2026-09-25.md."
+      "note": "Passes on the lane image aa0f6c16 (not deployed; loopback on hbox): the signed report and the signed reply, all seven steps, 153.9 s (native-aa0f6c16/signed-r2, report.json 55580c3b36fb66dd...), and the unsigned control, all seven steps (unsigned-r2, 25bcafe453675d7e...). Relays listen per boundary, so the driver turns a relay's listener and restarts the node whose receipt is owed (PKT-291). planning/evidence/mission-signed-2-2026-09-26.md."
     },
     {
       "id": "SCN-071",
@@ -1895,11 +1896,12 @@
       "id": "SCN-067",
       "title": "A family of more fragments than the old 64-fragment ceiling, interrupted by a receiver kill, reassembles once and is delivered once",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "REP-008"
       ],
       "steps": [
+        "Raise the receiving node's profile to 128 held rows (`bp-node profile JOURNAL NODE 128 16777216`); a write that lowers it again is refused (exit 1).",
         "Author one request ADU and cut it into 70 fragments (fn-bpf-cut).",
         "Serve the receiver continuously; send 35 fragments, highest offset first; kill the receiver with SIGKILL.",
         "Restart the receiver on the same journal and send the other 35, offset zero last."
@@ -1911,7 +1913,9 @@
       "evidence": [
         "tests/test_bp_fragment_node_native.py",
         "tests/acl2/bp-fragment-sweep-tests.lisp",
-        "planning/evidence/bp-lifecycle-2026-09-25.md"
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "books/bp-node-profile.lisp",
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md"
       ]
     },
     {
@@ -2047,7 +2051,7 @@
       "id": "SCN-074",
       "title": "The signed mission: A's hybrid-signed report crosses four fn nodes and two dtn7-rs relays to B, B's signed reply comes back, every refusal names its reason, and a relay takes no custody from a channel its policy refused",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "REP-009",
         "REP-007"
@@ -2065,9 +2069,56 @@
       ],
       "evidence": [
         "tests/bp-dtn7/run_mission_four_node.py",
-        "planning/evidence/mission-signed-2026-09-26.md"
+        "planning/evidence/mission-signed-2026-09-26.md",
+        "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "note": "Not passing (PKT-247). On image f1734955 steps 0-2 and 5 hold with the signed report (fragmentation at X, X SIGKILL and restart, B's stored copy verifies with hybrid-verify-source); B stores A's signed report and then refuses the delivery with reason=history (the BP receiver's Store binding does not see the kind-4 acceptance), and A refuses B's signed reply the same way. Layer 1 (reason=intent-store-conflict, the injecting agent's check on transit) is fixed. The ambiguous-peer case: see planning/evidence/mission-signed-2026-09-26.md."
+      "note": "Passes on the lane image aa0f6c16 (not deployed): B answers request-accepted for A's hybrid-signed report and its copy verifies with hybrid-verify-source (authored source f7fe359e...), A's receipt-accepted releases A's pin (pinned=no) before B's consumer wakes, B's signed reply is request-accepted at A and A's receipt releases B's pin; all seven steps (signed-r2). The ambiguous-peer case holds (X refuses with reason=ambiguous-peer, no BP accepted, A's obligation stays pinned). PRF-132 closed the layer-2 refusal (reason=history, PKT-247). planning/evidence/mission-signed-2-2026-09-26.md."
+    },
+    {
+      "id": "SCN-063",
+      "title": "A pinned reader's payload handle reads the same octets after later commits, and an opened store's arena is its history's payloads in order",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010"
+      ],
+      "steps": [
+        "Seal three payloads into a live local arena (a list, the octet buffer's contents, the empty payload) and read every handle back; seal 3,000 octets three times through the byte array's doubling and the handle arrays' growth.",
+        "Read handle 1 before and after a later seal, and after a sequence of seals; read the handle at the count after a seal.",
+        "Build a two-record history, seal a third record's payload as a commit would, and seal every record's payload from the empty arena as an open would."
+      ],
+      "expected": [
+        "Every handle reads back the payload sealed under it; the count is the number of seals; a clear empties the arena.",
+        "Handle 1 is unchanged by every later seal; the handle at the old count is the new payload; a negative handle or a handle at the count is not covered and reads otherwise (the must-fail witnesses).",
+        "The arena after the commit's seal is the appended history's payloads; the arena after the open's seals equals the history's payloads; an arena with the payloads in the wrong order or one payload missing does not satisfy the relation."
+      ],
+      "evidence": [
+        "tests/acl2/payload-arena-tests.lisp",
+        "planning/evidence/rep-wave-d-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-077",
+      "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "steps": [
+        "Raise the receiving node's profile (`bp-node profile`) to at least 2,561 held rows and 16 MiB of held octets, and the Store profile's max-article-octets to at least 10 MiB.",
+        "Author one 10 MiB request ADU and send it through a route whose Transfer MRU is 4 KiB, so the sender cuts it into fragments (RFC 9171 5.8).",
+        "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
+      ],
+      "expected": [
+        "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
+        "Blocked today, before any of this: the sender's ADU record refuses a payload over *fn-bpa-max-octets* (65,538, books/bp-adu.lisp) and the bundle decoder reads at most *fn-bpb-max-input* (1 MiB, books/bp-bundle.lisp); the whole reassembled bundle is one held image capped by *fn-bpnf-max-held-image* (131,072). The node's held rows and held octets are no longer a blocker (PRF-131). PKT-276."
+      ],
+      "evidence": [
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md",
+        "books/bp-node-profile.lisp"
+      ]
     },
     {
       "id": "SCN-073",

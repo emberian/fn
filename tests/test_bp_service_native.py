@@ -13,6 +13,13 @@ from tests.native_process import AcceptThenClosePeer, refused_port
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
+# connection lost after it existed is exit 6 (connection-local: the job stays
+# and is re-offered; no recovery); a connect that never produced a socket is
+# exit 7; exit 3 stays the fence (a publication whose outcome is unknown).
+LOST = 6
+NOT_CONNECTED = 7
+
 
 class NativeBpServiceTests(unittest.TestCase):
     @classmethod
@@ -68,7 +75,7 @@ class NativeBpServiceTests(unittest.TestCase):
 
     def test_outage_restart_duplicate_and_conflict(self):
         first = self.run_outage()
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
         self.assertIn("BP forwarding retained reason=uncertain", first.stdout)
         self.assertEqual(len(self.records()), 3)  # queued, attempting, requeued
@@ -77,13 +84,13 @@ class NativeBpServiceTests(unittest.TestCase):
         frontier = (self.journal / "sequence" / "frontier.fnb").read_bytes()
         domain = (self.journal / "clock-domain.fnb").read_bytes()
         resumed = self.resume()
-        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertEqual(resumed.returncode, LOST, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertEqual(len(self.records()), 5)
         self.assertEqual((self.journal / "clock-domain.fnb").read_bytes(), domain)
 
         duplicate = self.run_outage()
-        self.assertEqual(duplicate.returncode, 3, duplicate.stderr)
+        self.assertEqual(duplicate.returncode, LOST, duplicate.stderr)
         self.assertIn("status=duplicate", duplicate.stdout)
         self.assertEqual(
             (self.journal / "sequence" / "frontier.fnb").read_bytes(), frontier,
@@ -93,25 +100,26 @@ class NativeBpServiceTests(unittest.TestCase):
         contrary = self.tmp / "contrary"
         contrary.write_bytes(b"contrary bytes")
         conflict = self.run_outage(contrary)
-        self.assertEqual(conflict.returncode, 3, conflict.stderr)
+        self.assertEqual(conflict.returncode, LOST, conflict.stderr)
         self.assertIn("BP queue refused reason=enqueue-conflict", conflict.stdout)
 
     def test_connect_without_socket_is_failed_and_requeued(self):
         # specs/bp-node-machine.md: a connect that never produced a socket
-        # reads :failed (no octet left; ACL2 requeues the job).
+        # reads :failed (no octet left; ACL2 requeues the job); specs/host.md
+        # "BP run classes": the run is :not-connected, exit 7.
         reservation, port = refused_port()
         self.addCleanup(reservation.close)
         first = self.invoke(
             "run", "127.0.0.1", port, self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "work-1", "attempt-1", "0",
         )
-        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(first.returncode, NOT_CONNECTED, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
         self.assertNotIn("reason=uncertain", first.stdout)
         self.assertEqual(len(self.records()), 3)  # queued, attempting, requeued
 
         resumed = self.resume()
-        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(resumed.returncode, NOT_CONNECTED, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertNotIn("reason=uncertain", resumed.stdout)
         self.assertEqual(self.peer.accepted, 0)
@@ -122,7 +130,7 @@ class NativeBpServiceTests(unittest.TestCase):
             "dtn://fn-a/", "dtn://fn-b/", "work-expiry", "attempt-expiry",
             "0", "3600000", "2", "32", "1048576", "0", "0",
         )
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
         before = tuple((p.name, p.read_bytes()) for p in self.records())
 
@@ -130,7 +138,7 @@ class NativeBpServiceTests(unittest.TestCase):
             "resume", self.journal, "dtn://fn-a/", "3600000", "2", "32",
             "1048576", "3600001", "0",
         )
-        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertEqual(resumed.returncode, LOST, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertNotIn("release", resumed.stdout.lower())
         self.assertNotIn("status=expired", resumed.stdout)
@@ -143,7 +151,7 @@ class NativeBpServiceTests(unittest.TestCase):
             "dtn://fn-a/", "dtn://fn-b/", "work-aged", "attempt-aged",
             "0", "1500", "2", "32", "1048576", "0", "0",
         )
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
         before = tuple((p.name, p.read_bytes()) for p in self.records())
         time.sleep(1.7)
@@ -162,7 +170,7 @@ class NativeBpServiceTests(unittest.TestCase):
 
     def test_corrupt_clock_domain_fences_before_replay(self):
         first = self.run_outage()
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         domain = self.journal / "clock-domain.fnb"
         saved = domain.read_bytes()
         self.assertGreater(len(saved), 36)
@@ -180,7 +188,7 @@ class NativeBpServiceTests(unittest.TestCase):
 
     def test_legacy_durable_records_without_clock_domain_fence(self):
         first = self.run_outage()
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         (self.journal / "clock-domain.fnb").unlink()
         before = tuple((p.name, p.read_bytes()) for p in self.records())
 
@@ -241,7 +249,7 @@ class NativeBpServiceTests(unittest.TestCase):
         )
 
         recovered = self.resume()
-        self.assertEqual(recovered.returncode, 3, recovered.stderr)
+        self.assertEqual(recovered.returncode, LOST, recovered.stderr)
         self.assertIn("BP queue recovered jobs=1", recovered.stdout)
         self.assertNotIn("restart fenced", recovered.stderr)
 
@@ -249,13 +257,13 @@ class NativeBpServiceTests(unittest.TestCase):
         injected_env = dict(self.env)
         injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "cleanup"
         cut = self.run_outage(env=injected_env)
-        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertEqual(cut.returncode, LOST, cut.stderr)
         self.assertIn("BP queue accepted", cut.stdout)
         self.assertNotIn("BP queue uncertain reason=persistence", cut.stdout)
         self.assertEqual(len(self.records()), 3)
 
         recovered = self.resume()
-        self.assertEqual(recovered.returncode, 3, recovered.stderr)
+        self.assertEqual(recovered.returncode, LOST, recovered.stderr)
         self.assertIn("BP queue recovered jobs=1", recovered.stdout)
         self.assertNotIn("restart fenced", recovered.stderr)
 
@@ -286,7 +294,7 @@ class NativeBpServiceTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 shutil.rmtree(self.journal, ignore_errors=True)
                 first = self.run_outage()
-                self.assertEqual(first.returncode, 3, first.stderr)
+                self.assertEqual(first.returncode, LOST, first.stderr)
                 records = self.records()
                 self.assertEqual(len(records), 3)
 
@@ -309,19 +317,19 @@ class NativeBpServiceTests(unittest.TestCase):
         injected_env = dict(self.env)
         injected_env["FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION"] = "1"
         first = self.run_outage(env=injected_env)
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
         self.assertEqual(len(self.records()), 3)
         self.assertNotIn("enumerated after recovery", first.stderr)
 
     def test_hidden_stage_is_bounded_recovery_evidence(self):
         first = self.run_outage()
-        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertEqual(first.returncode, LOST, first.stderr)
         stage = self.journal / "lifecycle" / ".interrupted-stage"
         stage.write_bytes(b"uncommitted evidence")
 
         resumed = self.resume()
-        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertEqual(resumed.returncode, LOST, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertTrue(stage.exists(), "recovery must retain hidden stage evidence")
 
@@ -405,7 +413,7 @@ class NativeBpServiceTests(unittest.TestCase):
                 output = listener_log.read_text(errors="replace")
                 self.assertIn("BP summary accepted=0 refused=1 uncertain=0", output)
                 self.assertIn("TCPCL passive uncertain", output)
-                self.assertEqual(listener.returncode, 3, output)
+                self.assertEqual(listener.returncode, LOST, output)
             finally:
                 if listener.poll() is None:
                     listener.kill()

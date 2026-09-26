@@ -5187,6 +5187,99 @@
       ]
     },
     {
+      "id": "PRF-118",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-keeps-sealed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seals-keep-sealed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-new-handle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arn-store-corr-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arn-store-corr-of-open"
+        }
+      ]
+    },
+    {
+      "id": "PRF-131",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-exit-code-separates-the-classes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-fence-is-never-masked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-connection-local-never-fences"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-uncertain-article-fences"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrc-job-result-class-is-the-transport-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-read-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-valid-profile-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-write-never-lowers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-read-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-row-past-the-profile-is-named"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-replay-past-the-profile-is-refused"
+        }
+      ]
+    },
+    {
+      "id": "PRF-132",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-dispatch-never-resubmits-a-stored-article",
+          "note": "KEYSTONE (exactly one submission, PKT-247). Over fn-bpaj-dispatch-fast, which host/bp-receipt-journal-host.lisp fn-bprj-request-action calls for host/native/bp-app.lisp fnn-bpapp-action: once the Store's article records (fn-bpr-article-records: a plain record, or the one a signed kind-4 composite carries) hold an article record with the Message-ID the dispatcher reads, the answer is not (:submit). Teeth: tests/acl2/bp-signed-binding-tests (a signed composite committed by the Store's own transitions after a hybrid enrollment: before the commit (:submit), after it (:bind RECORD); hypothesis removal: the enrolled Store before the commit submits; a constructed non-record carrying the Message-ID submits; another Message-ID over the signed Store submits; labelled mutation witness: the pre-PRF-132 plain-record search finds nothing over the signed Store)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-dispatch-binds-the-stores-own-record",
+          "note": "KEYSTONE (the verdict is the receiving Store's). A (:bind RECORD) answer of fn-bpaj-dispatch-fast names an article record for the dispatcher's Message-ID, accepted by the receiver's Store check (fn-bpaj-store-record-accepted-fast), that is the article record of an event of the Store's own history (fn-bpaj-article-event); when that event is a signed composite, fn-stxa-bindsp binds its kind-2 verdict to exactly RECORD. Teeth: the signed witness names the composite itself and its verdict (:verified, the report's Message-ID); the bound record's transit context replays and the request moves to :prepare-receipt; hypothesis removal: without a :bind answer (the Store before the commit) the conclusion fails."
+        }
+      ]
+    },
+    {
       "id": "PRF-127",
       "events": [
         {
