@@ -1925,9 +1925,7 @@
         "fn-bs-k0-record-linked-cut-relation-by-step",
         "fn-bs-k0-staging-fsync-error-preserves-relation",
         "fn-bs-k0-state-checkpoint-cuts-relation-by-step",
-        "fn-bs-k0-profile-cuts-relation-by-step",
         "fn-bs-step-at-state-checkpoint-pairs-preserves-k0-coverage",
-        "fn-bs-step-at-profile-pairs-preserves-k0-coverage",
         "fn-bs-k0a-authority-fsync-error-preserves-relation",
         "fn-bs-k0a-drop-dir-preserves-relation",
         "fn-bs-k0w-step-preserves-relation",
@@ -3227,14 +3225,7 @@
       ],
       "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject was removed with it (the offline upgrade relation fn-profile-upgradep, fn-profile-upgrade-verdict and P-PROFILE, books/store-profile-upgrade.lisp and books/byte-store-profile-program.lisp). What now covers the property: a deploy is a reinstall plus store import (PRF-205); the store has one format (books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept.",
       "events": [
-        "fn-profile-upgrade-keeps-txn-observation",
-        "fn-profile-upgrade-keeps-replay-bound",
-        "fn-profile-upgrade-keeps-publication-admissibility",
-        "fn-profile-upgrade-keeps-verdict",
-        "fn-profile-upgrade-verdict-writes-only-upgrades",
-        "fn-bs-config-decode-of-encode",
-        "fn-bs-profile-program-crash-is-old-or-new",
-        "fn-bs-profile-program-crash-budget-is-old-or-new"
+        "fn-bs-config-decode-of-encode"
       ]
     },
     {
@@ -3295,7 +3286,6 @@
         "fn-ccp-covered-deletion-keeps-reconstruction",
         "fn-ccp-complete-observation-reconstructs-its-records",
         "fn-ccp-reclaim-preserves-reconstructed-history",
-        "fn-ccp-profile-upgrade-keeps-reclaim-plan",
         "fn-bs-selected-reclaim-crash-preserves-suffix-payload",
         "fn-cverb-pack-fits-the-disk",
         "fn-cverb-capture-within-pack-octets",
@@ -3435,9 +3425,7 @@
         "fn-bs-marker-crash-is-the-history-table",
         "fn-bs-marker-crash-open-stays-admitted",
         "fn-hmr-open-refuses-below-every-answered-record",
-        "fn-hmr-required-store-never-admits-an-absent-marker",
-        "fn-hmr-requirement-follows-a-covering-marker",
-        "fn-hmr-legacy-store-migrates-by-the-two-step"
+        "fn-hmr-required-store-never-admits-an-absent-marker"
       ]
     },
     {
@@ -4138,10 +4126,7 @@
         "fn-olog-served-refusal-line-is-one-line",
         "fn-olog-control-refusal-line-says-refused-iff-submit-refused",
         "fn-olog-control-refusal-line-is-one-line",
-        "fn-native-auth-admin-effect-word-restart-unless-no-owner",
-        "fn-profile-format-7-store-needs-upgrade",
-        "fn-profile-rollback-sound-iff-records-within",
-        "fn-profile-rollback-keeps-a-required-marker"
+        "fn-native-auth-admin-effect-word-restart-unless-no-owner"
       ],
       "evidence": [
         "books/owner-served-bound.lisp",
@@ -4204,8 +4189,7 @@
         "fn-native-admin-publication-within-the-operator-bound",
         "fn-native-auth-parse-lines-within-the-operator-bound",
         "fn-native-auth-load-within-the-operator-bound",
-        "fn-bs-profile-namespace-counts-within-width",
-        "fn-profile-upgrade-keeps-namespace-counts"
+        "fn-bs-profile-namespace-counts-within-width"
       ]
     },
     {
@@ -4837,7 +4821,6 @@
         "fn-sbud-article-verdict-keeps-history",
         "fn-sbud-prepare-under-article-budget-keeps-history",
         "fn-post-admitted-article-keeps-history",
-        "fn-profile-upgrade-keeps-article-verdict",
         "fn-sbud-article-figure-bounds-the-record"
       ]
     },
@@ -5263,7 +5246,6 @@
       "events": [
         "fn-native-operator-absent-store-is-refused",
         "fn-native-operator-store-outcome-passes-a-present-store",
-        "fn-native-operator-snapshot-loss-counts-the-suffix",
         "fn-fc-mode-stream-refusal-stops-the-dial",
         "fn-fc-dial-allowedp-of-put-other"
       ]
@@ -5309,7 +5291,6 @@
         "fn-smr-roomp-antitone-in-octets",
         "fn-smr-roomp-is-within-the-bound",
         "fn-smr-admitted-profile-starts-reserved",
-        "fn-smr-profile-upgrade-keeps-the-reserve",
         "fn-cverb-pack-fits-the-disk",
         "fn-rclp-pack-fits-the-disk"
       ]
@@ -5771,10 +5752,6 @@
         "planning/evidence/manifests/certify-20260926T093542Z-1162878.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "events": [
-        "fn-native-operator-history-loss-is-ancestry",
-        "fn-native-operator-history-loss-is-snapshot-loss"
-      ],
       "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject was removed with it (store rollback-check --snapshot, fn-native-operator-history-*, fn-native-operator-snapshot-loss). What now covers the property: a deploy is a reinstall plus store import (PRF-205); the store has one format (books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept."
     },
     {
@@ -5845,7 +5822,6 @@
         "fn-cvec-article-verdict-keeps-the-vector-at-producer-width",
         "fn-cvec-roomp-discharges-every-debt",
         "fn-cvec-admitted-profile-starts-held",
-        "fn-cvec-profile-upgrade-keeps-the-vector",
         "fn-cvec-roomp-antitone-in-octets",
         "fn-cvec-roomp-is-within-the-profile",
         "fn-cvec-roomp-without-debt-is-the-reserve",
@@ -6710,8 +6686,7 @@
         "fn-col-poll-report-of-an-admitted-payload-fits",
         "fn-nls-page-refuses-exactly-past-the-total-width",
         "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name",
-        "fn-spo-config-open-refuses-only-what-the-old-open-rejected",
-        "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
+        "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
       ]
     },
     {
