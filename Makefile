@@ -1079,6 +1079,9 @@ check:
 # every error-arm observation is one of the program's error constants.  A
 # source check; it states what it cannot decide.  Mechanical, no ACL2.
 	$(PYTHON) tools/native_program_check.py
+# No Python on the path a deployed node executes (D35): the process sites in
+# host/, the libraries the image loads, the shipped launcher and service files.
+	$(PYTHON) tools/runpath_check.py --quiet
 # The served command chain is four session records deep and every base
 # accessor is `car', so a call that stops one level short is answered with a
 # plausible value rather than an error: four such misses shipped on
@@ -1269,7 +1272,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

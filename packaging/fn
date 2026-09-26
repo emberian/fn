@@ -34,7 +34,10 @@ set -eu
 #   developer  -- packaging/fn in a checkout (no libexec/fn beside it):
 #                 FN_NATIVE_HOST when set (the tests' named override), else
 #                 the tree's build/fn-host.
-here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+self=$0
+# A link to bin/fn (say /usr/local/bin/fn) finds the release it points into.
+if [ -L "$self" ] && resolved=$(readlink -f -- "$self" 2>/dev/null); then self=$resolved; fi
+here=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
 if [ -d "$here/../libexec/fn" ]; then
     image=$(CDPATH= cd -- "$here/../libexec/fn" && pwd)/fn-host
 elif [ -n "${FN_NATIVE_HOST:-}" ]; then

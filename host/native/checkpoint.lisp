@@ -724,11 +724,13 @@ selection-* process-death cuts (fn-cpp-marker-step)."
          (when (zerop (fnn-%statvfs path buffer))
            (let ((sap (sb-alien:alien-sap buffer)))
              (declare (ignorable sap))
-             #+(and linux x86-64)
+             ;; f_frsize at 8 and f_bavail at 32: the Linux x86-64 and the
+             ;; OpenBSD amd64 struct statvfs (sys/statvfs.h, 7.9) agree.
+             #+(and (or linux openbsd) x86-64)
              (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-64 sap 32))
              #+darwin
              (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-32 sap 24))
-             #-(or (and linux x86-64) darwin)
+             #-(or (and (or linux openbsd) x86-64) darwin)
              nil))
       (sb-alien:free-alien buffer))))
 
