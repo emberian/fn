@@ -16,6 +16,8 @@
 (include-book "../books/store-budget-article")
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/store-capacity-vector")
+; PKT-220: the retention figures `operator CONFIG obligations' opens with.
+(include-book "../books/retention-figures")
 (include-book "../books/store-capacity-config")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
@@ -969,15 +971,11 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sn-pin-count (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (len (fn-retain-pins
-               (fn-node-retention
-                (fn-sn-node (f-get-global 'fn-store-sn state)))))))
+  (value (fn-rtf-pin-count (f-get-global 'fn-store-sn state))))
 
 (defun fn-store-sn-reserved (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-retain-reserved
-          (fn-node-retention
-           (fn-sn-node (f-get-global 'fn-store-sn state))))))
+  (value (fn-rtf-reserved (f-get-global 'fn-store-sn state))))
 
 (defun fn-store-sn-lookup (msgid-octets state)
   (declare (xargs :stobjs state :mode :program))

@@ -147,6 +147,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
+	books/retention-figures \
+	books/control-evidence-grammar \
+	books/control-evidence \
+	tests/acl2/control-evidence-tests \
 	books/native-health \
 	tests/acl2/native-health-tests \
 	books/feed-filename \

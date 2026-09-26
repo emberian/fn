@@ -1,0 +1,12 @@
+test_help_does_not_open_missing_config (tests.test_native_operator_cli.NativeOperatorCliTests.test_help_does_not_open_missing_config) ... ok
+test_missing_directory_and_oversize_config_are_usage (tests.test_native_operator_cli.NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage) ... ok
+test_operator_run_uses_acl2_projected_ipv4_loopbacks (tests.test_native_operator_cli.NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv4_loopbacks) ... ok
+test_operator_run_uses_acl2_projected_ipv6_loopback (tests.test_native_operator_cli.NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv6_loopback) ... ok
+test_unreadable_config_is_fault (tests.test_native_operator_cli.NativeOperatorCliTests.test_unreadable_config_is_fault) ... ok
+test_operator_calls_existing_acl2_credential_plan_and_executor (tests.test_native_operator_cli.NativeOperatorPrincipalCompositionTests.test_operator_calls_existing_acl2_credential_plan_and_executor) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 6.762s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_operator_cli", "tests": 6, "failures": 0, "errors": 0, "skipped": 0, "executed": 6, "skips": [], "timings": [["tests.test_native_operator_cli.NativeOperatorCliTests.test_help_does_not_open_missing_config", 0.062], ["tests.test_native_operator_cli.NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage", 0.179], ["tests.test_native_operator_cli.NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv4_loopbacks", 4.29], ["tests.test_native_operator_cli.NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv6_loopback", 2.145], ["tests.test_native_operator_cli.NativeOperatorCliTests.test_unreadable_config_is_fault", 0.06], ["tests.test_native_operator_cli.NativeOperatorPrincipalCompositionTests.test_operator_calls_existing_acl2_credential_plan_and_executor", 0.025]]}
