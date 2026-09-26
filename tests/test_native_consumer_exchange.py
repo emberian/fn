@@ -316,6 +316,35 @@ class NativeConsumerExchangeTests(unittest.TestCase):
                          "identical resend answered %d, not D25 duplicate"
                          % again.returncode)
 
+    def test_identical_operator_post_resend_answers_duplicate(self):
+        """D25 on the operator post route (unsigned, same control socket)."""
+        base = self.root / "node"
+        base.mkdir()
+        self.store, self.control = base / "store", base / "control.sock"
+        self.config = base / "fn.toml"
+        self.config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+            'port = {}\n[control]\npath = "{}"\n'.format(
+                self.store, free_port(), self.control), encoding="ascii")
+        self.native("store", self.store, "init", "fn.test")
+        self.owner = self.start_owner()
+        msgid = "<operator-resend@example.invalid>"
+        article = self.root / "plain.eml"
+        article.write_bytes(b"From: author@example.invalid\r\n"
+                            b"Date: Fri, 25 Sep 2026 12:00:00 +0000\r\n"
+                            b"Newsgroups: fn.test\r\nSubject: resend\r\n"
+                            b"Message-ID: " + msgid.encode() + b"\r\n\r\nexact\r\n")
+        words = ("operator", self.config, "post", "--message-id", msgid,
+                 "--payload", article, "--group", "fn.test")
+        self.native(*words)
+        again = subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=ROOT,
+                               env=self.env, capture_output=True, timeout=300,
+                               check=False)
+        self.stop_owner(self.owner)
+        self.assertEqual(again.returncode, 0,
+                         "identical operator post resend answered %d: %s"
+                         % (again.returncode, (again.stdout + again.stderr).decode()))
+
 
 if __name__ == "__main__":
     unittest.main()
