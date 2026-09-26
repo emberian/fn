@@ -5397,6 +5397,87 @@
           "name": "fn-bpnf-family-next-memo-is-aux"
         }
       ]
+    },
+    {
+      "id": "PRF-138",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admitted-history-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admitted-history-from-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-record-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admission-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-release-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-prepare-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-article-verdict-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-discharges-every-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admitted-profile-starts-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-profile-upgrade-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-antitone-in-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-is-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-without-debt-is-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-verdict-without-debt-is-the-reserve-gate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-debt-extend-is-the-record-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admit-forward-adds-one-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-release-forward-removes-one-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-release-never-raises-the-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-config-publication-keeps-the-release-generation"
+        }
+      ]
     }
   ]
 }

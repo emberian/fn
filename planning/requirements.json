@@ -2723,6 +2723,29 @@
       ],
       "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
+    },
+    {
+      "id": "STO-020",
+      "title": "The Store's capacity is a resource vector: admission never consumes the last resource an accepted promise needs, so a full store can complete its outstanding work, release, maintain itself, recover and reuse the space",
+      "specification": "specs/storage.md#the-capacity-vector-sto-020",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-138"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-capacity-vector.lisp",
+        "books/store-capacity-config.lisp",
+        "host/owner-host.lisp",
+        "host/store-node-host.lisp",
+        "tests/test_native_capacity_vector.py",
+        "planning/evidence/capacity-vector-2026-09-26.md"
+      ],
+      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`."
     }
   ]
 }
