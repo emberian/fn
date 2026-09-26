@@ -1,0 +1,26 @@
+; perf-ledger: the BP bundle codec's executed cost in the developer image's raw Lisp
+; (what fnn-core runs after the guard): fn-bpb-bundlep (the guard fnn-core evaluates),
+; fn-bpb-encode and fn-bpb-decode over one bundle per payload size.
+(in-package "ACL2")
+(defun pl-measure (label thunk)
+  (sb-ext:gc :full t)
+  (let* ((b0 (sb-ext:get-bytes-consed)) (t0 (get-internal-real-time))
+         (v (funcall thunk))
+         (t1 (get-internal-real-time)) (b1 (sb-ext:get-bytes-consed)))
+    (format t "~a seconds ~,4f bytes-consed ~d~%" label
+            (/ (- t1 t0) (float internal-time-units-per-second)) (- b1 b0))
+    v))
+(let* ((sender (cons :dtn '(47 47 98 112 45 115 101 110 100 101 114 47)))
+       (dest (cons :dtn '(47 47 98 112 45 100 101 115 116 47)))
+       (config (fn-bpn-config sender 3600000 2 32 1048576))
+       (obs (fn-clock-observation 1000 0 0 nil)))
+  (format t "max-data ~d~%" *fn-bpb-max-data*)
+  (dolist (n (list 4096 49152 (min 1048576 (- *fn-bpb-max-data* 0))))
+    (let* ((adu (make-list n :initial-element 65))
+           (bundle (fn-bpn-send-bundle config dest adu 7 obs)))
+      (format t "== payload ~d octets~%" n)
+      (pl-measure "bundlep(guard)" (lambda () (fn-bpb-bundlep bundle)))
+      (let ((wire (pl-measure "encode" (lambda () (fn-bpb-encode bundle)))))
+        (format t "wire ~d octets~%" (len wire))
+        (pl-measure "decode" (lambda () (fn-bpb-decode wire (+ 16 (len wire)))))
+        (pl-measure "cbor-octet-listp(decode guard)" (lambda () (fn-cbor-octet-listp wire)))))))

@@ -1,0 +1,4 @@
+fnh: heap hook installed
+OWNER-OPEN open=full-replay reason=checkpoint-open-refused
+CHECKPOINT auto sequence=20000 suffix=20000 octets=151595032 ms=74126
+accepted operator run

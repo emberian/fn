@@ -1,0 +1,56 @@
+
+Number of samples:   8364
+Sample interval:     0.001 seconds
+Total sampling time: 8.364 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2177779 "main thread" RUNNING {1200068003}> (942344/1048576 bytes, 2347 hash buckets)
+   #<THREAD tid=2177785 "fn-heap" RUNNING {1211A67443}> (2480/1048576 bytes, 18 hash buckets)
+   #<THREAD tid=2177782 "finalizer" RUNNING {1210ECE2A3}> (128/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2177786 "fn-prof" RUNNING {1211A9C6D3}> (2016/1048576 bytes, 13 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    984  11.8   1576  18.8    984  11.8        -  FN-CBOR-OCTET-LISTP
+   4    853  10.2   1718  20.5   1837  22.0        -  FN-RECORD-STRING-OCTETS-AUX
+   6    757   9.1    757   9.1   2594  31.0        -  FN-CBOR-OCTETP
+   8    663   7.9   1742  20.8   3257  38.9        -  FN-RECORD-PAYLOADP
+  10    585   7.0    810   9.7   3842  45.9        -  FN-SCCB-SLICE-ACC
+  12    518   6.2    519   6.2   4360  52.1        -  FN-SHS-ROUNDS
+  14    247   3.0    247   3.0   4607  55.1        -  FN-OCTETS$C-GET
+  16    240   2.9    244   2.9   4847  58.0        -  APPEND
+  18    226   2.7    344   4.1   5073  60.7        -  FN-SHS-LOAD-LIST-WORD
+  20    216   2.6   1393  16.7   5289  63.2        -  FN-SHS-DIGEST-LIST
+  22    216   2.6    307   3.7   5505  65.8        -  FN-OCTET-LISTP
+  24    215   2.6    215   2.6   5720  68.4        -  FN-SHS-EXTEND
+  26    195   2.3    207   2.5   5915  70.7        -  FN-RECORD-STRING-OCTETS
+  28    186   2.2    186   2.2   6101  72.9        -  FN-CBOR-AT-MOSTP
+  30    158   1.9    286   3.4   6259  74.8        -  FN-CBOR-VALUEP-BOUNDED
+  32    131   1.6    131   1.6   6390  76.4        -  GENERIC--
+  34    116   1.4    116   1.4   6506  77.8        -  foreign function pthread_sigmask
+  36    112   1.3    112   1.3   6618  79.1        -  FN-SHS-LIST-BYTE
+  38    108   1.3    108   1.3   6726  80.4        -  FN-OCTETP
+  40     99   1.2    202   2.4   6825  81.6        -  FN-SCC-OCTETS-CHARS
+  42     98   1.2    267   3.2   6923  82.8        -  REPLACE
+  44     75   0.9     75   0.9   6998  83.7        -  LENGTH
+  46     72   0.9    358   4.3   7070  84.5        -  FN-CBOR-ENCODE-BOUNDED
+  48     66   0.8     66   0.8   7136  85.3        -  FN-ARTICLE-BODY-CRLFP
+  50     63   0.8     85   1.0   7199  86.1        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+  52     60   0.7     64   0.8   7259  86.8        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  54     50   0.6     50   0.6   7309  87.4        -  GENERIC->
+  56     48   0.6     48   0.6   7357  88.0        -  (SB-VM::OPTIMIZED-DATA-VECTOR-SET (UNSIGNED-BYTE 8))
+  58     44   0.5     44   0.5   7401  88.5        -  GENERIC-+
+  60     38   0.5     39   0.5   7439  88.9        -  SB-IMPL::LIST-REVERSE
+  62     32   0.4     32   0.4   7471  89.3        -  %DATA-VECTOR-AND-INDEX
+  64     31   0.4     31   0.4   7502  89.7        -  foreign function read
+  66     29   0.3     29   0.3   7531  90.0        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-SET/CHECK-BOUNDS
+  68     28   0.3     28   0.3   7559  90.4        -  SB-IMPL::%SXHASH-STRING/TRUNCATING
+  70     27   0.3    706   8.4   7586  90.7        -  FN-SCCR-STEP
+  72     26   0.3    404   4.8   7612  91.0        -  FN-SHS-LOAD-LIST-BLOCK
+  74     25   0.3    653   7.8   7637  91.3        -  FN-SBUD-RECORD-OCTETS
+  76     23   0.3     23   0.3   7660  91.6        -  FN-CBOR-AG-CDR
+  78     22   0.3     22   0.3   7682  91.8        -  (FLET "WRAPPER2" :IN FNN-OCTET-LIST-P)
+  80     20   0.2     20   0.2   7702  92.1        -  SB-KERNEL:TWO-ARG-<=
+------------------------------------------------------------------------
+        131   1.6                                     elsewhere

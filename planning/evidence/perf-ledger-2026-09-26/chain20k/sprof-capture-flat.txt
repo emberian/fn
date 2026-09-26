@@ -1,0 +1,60 @@
+
+Number of samples:   16506
+Sample interval:     0.001 seconds
+Total sampling time: 16.506 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2179029 "main thread" RUNNING {1200068003}> (504/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2179049 "fn-heap" RUNNING {1211A77663}> (7344/1048576 bytes, 51 hash buckets)
+   #<THREAD tid=2179046 "finalizer" RUNNING {1210ECE2A3}> (128/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2190561 "fn outbound feed" RUNNING {121A56C823}> (776/1048576 bytes, 5 hash buckets)
+   #<THREAD tid=2190563 "fn local control accept" RUNNING {121A694B93}> (256/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2190562 "fn pull feed" RUNNING {121A56CA73}> (488/1048576 bytes, 4 hash buckets)
+   #<THREAD tid=2179050 "fn-prof" RUNNING {1211AAC8C3}> (4128/1048576 bytes, 29 hash buckets)
+   #<THREAD tid=2190774 "fn owner checkpoint" FINISHED values: NIL {121A695053}> (674536/1048576 bytes, 2924 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2   1553   9.4   1587   9.6   1553   9.4        -  REVAPPEND
+   4   1171   7.1   1196   7.2   2724  16.5        -  APPEND
+   6   1150   7.0   1165   7.1   3874  23.5        -  SB-IMPL::APPEND2
+   8   1099   6.7   1102   6.7   4973  30.1        -  FN-SHS-ROUNDS
+  10   1023   6.2   1040   6.3   5996  36.3        -  TAKE
+  12    796   4.8   1139   6.9   6792  41.1        -  REPLACE
+  14    728   4.4   1181   7.2   7520  45.6        -  FN-SCC-OCTET-LISTP
+  16    708   4.3    708   4.3   8228  49.8        -  TRUE-LISTP
+  18    686   4.2   3308  20.0   8914  54.0        -  FN-SHS-DIGEST-LIST
+  20    614   3.7   6388  38.7   9528  57.7        -  FN-SCC-FRAMES
+  22    608   3.7    608   3.7  10136  61.4        -  NTHCDR
+  24    598   3.6    598   3.6  10734  65.0        -  FN-SCC-LONG-ENOUGHP
+  26    575   3.5    575   3.5  11309  68.5        -  LENGTH
+  28    551   3.3    708   4.3  11860  71.9        -  FN-CBOR-OCTET-LISTP
+  30    499   3.0    499   3.0  12359  74.9        -  FN-SCC-OCTETP
+  32    488   3.0    488   3.0  12847  77.8        -  FN-SHS-EXTEND
+  34    459   2.8    816   4.9  13306  80.6        -  FN-SHS-LOAD-LIST-WORD
+  36    353   2.1    476   2.9  13659  82.8        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+  38    349   2.1    349   2.1  14008  84.9        -  FN-SHS-LIST-BYTE
+  40    273   1.7    273   1.7  14281  86.5        -  (SB-VM::OPTIMIZED-DATA-VECTOR-SET (UNSIGNED-BYTE 8))
+  42    199   1.2   2085  12.6  14480  87.7        -  FN-SCC-RENC
+  44    175   1.1    175   1.1  14655  88.8        -  FN-CBOR-OCTETP
+  46    169   1.0    337   2.0  14824  89.8        -  FN-SCC-CHARS-OCTETS
+  48    132   0.8    132   0.8  14956  90.6        -  (FLET "WRAPPER2" :IN FNN-OCTET-LIST-P)
+  50    110   0.7    110   0.7  15066  91.3        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-SET/CHECK-BOUNDS
+  52    109   0.7    109   0.7  15175  91.9        -  foreign function poll
+  54    100   0.6    175   1.1  15275  92.5        -  FN-OCTET-LISTP
+  56     96   0.6     96   0.6  15371  93.1        -  foreign function clock_nanosleep
+  58     79   0.5     79   0.5  15450  93.6        -  FN-OCTETP
+  60     75   0.5    175   1.1  15525  94.1        -  SB-KERNEL:VECTOR-TO-LIST
+  62     72   0.4     72   0.4  15597  94.5        -  GENERIC-+
+  64     68   0.4    940   5.7  15665  94.9        -  FN-SHS-LOAD-LIST-BLOCK
+  66     68   0.4     68   0.4  15733  95.3        -  (SB-VM::OPTIMIZED-DATA-VECTOR-REF CHARACTER)
+  68     60   0.4     60   0.4  15793  95.7        -  GENERIC--
+  70     50   0.3     50   0.3  15843  96.0        -  FN-SHS-H-ADD
+  72     48   0.3     48   0.3  15891  96.3        -  foreign function gc_find_freeish_pages
+  74     45   0.3    385   2.3  15936  96.5        -  FN-SCC-STRING-OCTETS
+  76     42   0.3     42   0.3  15978  96.8        -  FPR-RESTORE
+  78     30   0.2     30   0.2  16008  97.0        -  foreign function fstatat
+  80     30   0.2     30   0.2  16038  97.2        -  FPR-SAVE
+------------------------------------------------------------------------
+         33   0.2                                     elsewhere

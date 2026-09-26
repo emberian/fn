@@ -1,0 +1,60 @@
+
+Number of samples:   2071
+Sample interval:     0.001 seconds
+Total sampling time: 2.071 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2161942 "main thread" RUNNING {1200068003}> (576/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2161952 "fn-heap" RUNNING {1211A67443}> (976/1048576 bytes, 7 hash buckets)
+   #<THREAD tid=2161944 "finalizer" RUNNING {1210ECE2A3}> (128/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2163416 "fn outbound feed" RUNNING {1229CD4BC3}> (424/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2163419 "fn owner client" RUNNING {122A268B93}> (252880/1048576 bytes, 876 hash buckets)
+   #<THREAD tid=2163418 "fn local control accept" RUNNING {1229FD7083}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2163417 "fn pull feed" RUNNING {1229CD4E13}> (264/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2161953 "fn-prof" RUNNING {1211A9C6C3}> (752/1048576 bytes, 5 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    676  32.6    676  32.6    676  32.6        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+   4     82   4.0     82   4.0    758  36.6        -  SB-KERNEL:STRING=*
+   6     51   2.5     51   2.5    809  39.1        -  FN-AG-CAR
+   8     41   2.0     41   2.0    850  41.0        -  FN-AG-CDR
+  10     35   1.7     60   2.9    885  42.7        -  FN-CBOR-OCTET-LISTP
+  12     29   1.4     29   1.4    914  44.1        -  FN-CBOR-OCTETP
+  14     26   1.3     26   1.3    940  45.4        -  FN-WIRE-AG-CDR
+  16     25   1.2     25   1.2    965  46.6        -  foreign function __write
+  18     22   1.1     22   1.1    987  47.7        -  foreign function __open64
+  20     19   0.9     29   1.4   1006  48.6        -  FN-OWN-REFRESH
+  22     14   0.7     14   0.7   1020  49.3        -  foreign function rename
+  24     13   0.6     74   3.6   1033  49.9        -  FN-WIRE-FEED-BYTE
+  26     12   0.6    239  11.5   1045  50.5        -  FN-SCAR-FEED-COUNTED
+  28     11   0.5     11   0.5   1056  51.0        -  FN-CBOR-AT-MOSTP
+  30     10   0.5    578  27.9   1066  51.5        -  FN-RETAIN-PIN-ID-SCANP
+  32     10   0.5    453  21.9   1076  52.0        -  FN-FIND-ARTICLE
+  34     10   0.5     29   1.4   1086  52.4        -  FN-PCAR-CANDIDATEP
+  36     10   0.5     12   0.6   1096  52.9        -  APPEND
+  38     10   0.5     11   0.5   1106  53.4        -  SB-IMPL::APPEND2
+  40     10   0.5     11   0.5   1116  53.9        -  FN-SHS-ROUNDS
+  42     10   0.5     10   0.5   1126  54.4        -  FN-ACAR-NNTP-PROJECTIONP
+  44      9   0.4    150   7.2   1135  54.8        -  FN-SCAR-FEED-BYTE
+  46      9   0.4      9   0.4   1144  55.2        -  GENERIC-+
+  48      9   0.4      9   0.4   1153  55.7        -  EQUAL
+  50      9   0.4      9   0.4   1162  56.1        -  FN-SBUD-USED
+  52      8   0.4     39   1.9   1170  56.5        -  FN-RECORD-PAYLOADP
+  54      8   0.4     12   0.6   1178  56.9        -  REPLACE
+  56      8   0.4      8   0.4   1186  57.3        -  FN-CCAR-SEEK
+  58      8   0.4      8   0.4   1194  57.7        -  FN-ARTICLE-BODY-CRLFP
+  60      8   0.4      8   0.4   1202  58.0        -  FN-WIRE-AG-CAR
+  62      7   0.3     13   0.6   1209  58.4        -  FN-SERVED-CONN-VERDICTS
+  64      7   0.3     13   0.6   1216  58.7        -  SB-KERNEL:VECTOR-TO-LIST
+  66      7   0.3     11   0.5   1223  59.1        -  FN-SERVED-CONN-CONTROL
+  68      7   0.3      7   0.3   1230  59.4        -  SB-IMPL::%LOOKUP-SYMBOL
+  70      7   0.3      7   0.3   1237  59.7        -  FN-INJ-CDR
+  72      7   0.3      7   0.3   1244  60.1        -  foreign function link
+  74      6   0.3     14   0.7   1250  60.4        -  FN-RECORD-STRING-OCTETS-AUX
+  76      6   0.3     10   0.5   1256  60.6        -  FN-WIRE-STATE-LINE-LEN
+  78      6   0.3      8   0.4   1262  60.9        -  FN-SERVED-CONN-GROUP-INDEX
+  80      6   0.3      6   0.3   1268  61.2        -  foreign function clock_nanosleep
+------------------------------------------------------------------------
+        415  20.0                                     elsewhere

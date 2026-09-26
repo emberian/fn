@@ -1,0 +1,19 @@
+max-data 16777216
+== payload 4096 octets
+bundlep(guard) seconds 0.0010 bytes-consed 0
+encode seconds 0.0280 bytes-consed 196512
+wire 4198 octets
+decode seconds 0.0610 bytes-consed 327520
+cbor-octet-listp(decode guard) seconds 0.0000 bytes-consed 0
+== payload 49152 octets
+bundlep(guard) seconds 0.0010 bytes-consed 0
+encode seconds 0.3700 bytes-consed 2358144
+wire 49254 octets
+decode seconds 0.7060 bytes-consed 3930240
+cbor-octet-listp(decode guard) seconds 0.0000 bytes-consed 0
+== payload 1048576 octets
+bundlep(guard) seconds 0.0230 bytes-consed 0
+encode seconds 8.0371 bytes-consed 50339824
+wire 1048680 octets
+decode seconds 15.3622 bytes-consed 83877872
+cbor-octet-listp(decode guard) seconds 0.0060 bytes-consed 0
