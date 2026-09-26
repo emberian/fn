@@ -12,7 +12,7 @@ case $prefix in *[!A-Za-z0-9_./-]*) echo "install-native: PREFIX contains unsupp
 case $source_revision in ''|*[!A-Za-z0-9._-]*) echo "install-native: invalid FN_NATIVE_SOURCE_REVISION" >&2; exit 2;; esac
 [ -x "$image" ] || { echo "install-native: missing executable image: $image" >&2; exit 4; }
 [ -s "$core" ] || { echo "install-native: missing image core: $core" >&2; exit 4; }
-for support in packaging/fn packaging/fn-native.service.in packaging/net.fn.native.plist.in; do
+for support in packaging/fn packaging/fn-native.service.in packaging/net.fn.native.plist.in packaging/fn.rc.in; do
   [ -r "$support" ] || { echo "install-native: missing package input: $support" >&2; exit 4; }
 done
 grep -q '^#!.*sh' "$image" || { echo "install-native: image launcher is not the generated shell form" >&2; exit 4; }
@@ -21,13 +21,22 @@ if grep -q '^# fn frozen image launcher v1$' "$image"; then
   launcher_core=$image_dir/$(basename -- "$image").core
   runtime=$image_dir/runtime/sbcl
   sbcl_home=$image_dir/runtime/sbcl-home
+  # Linux freezes list `sha256sum' lines; OpenBSD's base `sha256' writes
+  # and checks its own BSD-format lines (packaging/freeze-native-image.sh).
+  if command -v sha256sum >/dev/null 2>&1; then check_sums='sha256sum -c'; else check_sums='sha256 -c'; fi
   [ -s "$image_dir/image.sha256" ] &&
-    (cd "$image_dir" && sha256sum -c image.sha256 >/dev/null) || {
+    (cd "$image_dir" && $check_sums image.sha256 >/dev/null) || {
       echo "install-native: frozen image digest check failed" >&2; exit 4; }
-  [ -s "$image_dir/openssl/lib/libcrypto.so.3" ] &&
-  [ -s "$image_dir/openssl/lib/libssl.so.3" ] &&
-  [ -s "$image_dir/lib/libsodium.so.23" ] || {
-    echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  if [ "$(uname -s)" = OpenBSD ]; then
+    # TLS is the system LibreSSL; only libsodium travels with the image.
+    set -- "$image_dir"/lib/libsodium.so.*
+    [ -s "$1" ] || { echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  else
+    [ -s "$image_dir/openssl/lib/libcrypto.so.3" ] &&
+    [ -s "$image_dir/openssl/lib/libssl.so.3" ] &&
+    [ -s "$image_dir/lib/libsodium.so.23" ] || {
+      echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  fi
   frozen=yes
 else
   core_refs=$(grep -o -- '--core "[^"]*"' "$image" | wc -l | tr -d ' ')
@@ -45,6 +54,7 @@ cmp -s "$core" "$launcher_core" || {
 
 hash_command=sha256sum
 command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
+command -v sha256sum >/dev/null 2>&1 || ! command -v sha256 >/dev/null 2>&1 || hash_command='sha256 -r'
 crypto_inventory=
 if [ "$frozen" = yes ]; then
   : # The frozen launcher loads the pinned libraries in its own directory.
@@ -91,13 +101,16 @@ trap - EXIT HUP INT TERM
 bindir=$destdir$prefix/bin
 libdir=$destdir$prefix/libexec/fn
 sharedir=$destdir$prefix/share/fn
-mkdir -p "$bindir" "$libdir" "$sharedir" "$sharedir/systemd" "$sharedir/launchd"
+mkdir -p "$bindir" "$libdir" "$sharedir"
 mkdir -p "$libdir/runtime/sbcl-home"
 install -m 0755 "$runtime" "$libdir/runtime/sbcl"
 cp -RL "$sbcl_home"/. "$libdir/runtime/sbcl-home"/
 if [ "$frozen" = yes ]; then
-  mkdir -p "$libdir/openssl/lib" "$libdir/lib"
-  cp -p "$image_dir/openssl/lib/"* "$libdir/openssl/lib/"
+  mkdir -p "$libdir/lib"
+  if [ -d "$image_dir/openssl/lib" ]; then
+    mkdir -p "$libdir/openssl/lib"
+    cp -p "$image_dir/openssl/lib/"* "$libdir/openssl/lib/"
+  fi
   cp -p "$image_dir/lib/"* "$libdir/lib/"
   cp -p "$image" "$libdir/fn-host"
 else
@@ -118,8 +131,15 @@ case $source_revision in
      fi ;;
 esac
 
-sed "s|@PREFIX@|$prefix|g" packaging/fn-native.service.in > "$sharedir/systemd/fn.service"
-sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd/net.fn.plist"
+if [ "$(uname -s)" = OpenBSD ]; then
+  mkdir -p "$sharedir/rc.d"
+  sed "s|@PREFIX@|$prefix|g" packaging/fn.rc.in > "$sharedir/rc.d/fn"
+  chmod 0555 "$sharedir/rc.d/fn"
+else
+  mkdir -p "$sharedir/systemd" "$sharedir/launchd"
+  sed "s|@PREFIX@|$prefix|g" packaging/fn-native.service.in > "$sharedir/systemd/fn.service"
+  sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd/net.fn.plist"
+fi
 
 {
   echo "profile=production (verified by disabled reader entrypoint)"
@@ -135,11 +155,16 @@ sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd
   $hash_command "$libdir/fn-host" "$libdir/fn-host.core"
   echo "runtime-identity:"
   $hash_command "$runtime" "$libdir/runtime/sbcl"
-  if command -v otool >/dev/null 2>&1; then otool -L "$runtime"
+  if [ "$(uname -s)" = OpenBSD ]; then objdump -p "$runtime" | awk '$1 == "NEEDED"'
+  elif command -v otool >/dev/null 2>&1; then otool -L "$runtime"
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
   echo "dlopen-requirements: libsodium.so.23|libsodium.so libcrypto.so.3 libssl.so.3"
-  if [ "$frozen" = yes ]; then
+  if [ "$frozen" = yes ] && [ ! -d "$image_dir/openssl/lib" ]; then
+    echo "tls: the system library (OpenBSD LibreSSL), not bundled"
+    $hash_command "$image_dir"/lib/*
+    $hash_command "$libdir"/lib/*
+  elif [ "$frozen" = yes ]; then
     $hash_command "$image_dir/openssl/lib/libcrypto.so.3" "$image_dir/openssl/lib/libssl.so.3" "$image_dir/lib/libsodium.so.23"
     $hash_command "$libdir/openssl/lib/libcrypto.so.3" "$libdir/openssl/lib/libssl.so.3" "$libdir/lib/libsodium.so.23"
   elif [ -n "$crypto_inventory" ]; then
