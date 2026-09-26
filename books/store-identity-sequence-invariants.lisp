@@ -13,8 +13,8 @@
                           config-history consumer topic event-index))
           identity-next)
    :hints (("Goal" :in-theory (enable fn-sn-identity-next
-                                      fn-sn-make-v6 fn-sn-make-v7)))))
-(local (in-theory (disable fn-sn-make-v6 fn-sn-make-v7)))
+                                      fn-sn-make-v6)))))
+(local (in-theory (disable fn-sn-make-v6)))
 
 ; A successful record-directory observation has appended the record before the
 ; single fn-sn-finish call advances the carried journal cursor.  Therefore the
@@ -52,7 +52,7 @@
          (fn-sn-identity-next s))
   :hints (("Goal" :in-theory (e/d (fn-sn-refuse-reservation
                                    fn-sn-update)
-                                  (fn-sn-make-v6 fn-sn-make-v7)))))
+                                  (fn-sn-make-v6)))))
 
 (defthm fn-sn-refuse-reservation-preserves-identity-sequence
   (implies (fn-sn-identity-sequencep s)
@@ -461,6 +461,6 @@
                             fn-sf-phase-shapep fn-sf-candidatep
                             fn-sn-identity-sequencep)
                            (fn-store-event-p fn-sf-record-listp
-                            fn-sn-make-v6 fn-sn-make-v7)))))
+                            fn-sn-make-v6)))))
 
 (in-theory (disable fn-sn-identity-sequencep))

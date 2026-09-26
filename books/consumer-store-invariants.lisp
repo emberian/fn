@@ -50,61 +50,61 @@
 (defthm fn-csi-consumer-of-with-topic
   (equal (fn-sn-consumer (fn-sn-with-topic s topic))
          (fn-sn-consumer s))
-  :hints (("Goal" :in-theory (enable fn-sn-with-topic fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-with-topic fn-sn-make-v6
                                      fn-sn-consumer fn-store-event-nth))))
 
 (defthm fn-csi-consumer-of-with-consumer
   (equal (fn-sn-consumer (fn-sn-with-consumer s consumer))
          consumer)
-  :hints (("Goal" :in-theory (enable fn-sn-with-consumer fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-with-consumer fn-sn-make-v6
                                      fn-sn-consumer fn-store-event-nth))))
 
 (defthm fn-csi-consumer-of-with-event-index
   (equal (fn-sn-consumer (fn-sn-with-event-index s index))
          (fn-sn-consumer s))
-  :hints (("Goal" :in-theory (enable fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-with-event-index fn-sn-make-v6
                                      fn-sn-consumer fn-store-event-nth))))
 
 (defthm fn-csi-files-of-with-topic
   (equal (fn-sn-files (fn-sn-with-topic s topic))
          (fn-sn-files s))
-  :hints (("Goal" :in-theory (enable fn-sn-with-topic fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-with-topic fn-sn-make-v6
                                      fn-sn-files))))
 
 (defthm fn-csi-files-of-with-consumer
   (equal (fn-sn-files (fn-sn-with-consumer s consumer))
          (fn-sn-files s))
-  :hints (("Goal" :in-theory (enable fn-sn-with-consumer fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-with-consumer fn-sn-make-v6
                                      fn-sn-files))))
 
 (defthm fn-csi-files-of-update-replayed
   (equal (fn-sn-files (fn-sn-update-replayed s files node index context))
          files)
-  :hints (("Goal" :in-theory (enable fn-sn-update-replayed fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-update-replayed fn-sn-make-v6
                                      fn-sn-files))))
 
 (defthm fn-csi-identity-next-of-with-event-index
   (equal (fn-sn-identity-next (fn-sn-with-event-index s index))
          (fn-sn-identity-next s))
-  :hints (("Goal" :in-theory (enable fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-with-event-index fn-sn-make-v6
                                      fn-sn-identity-next))))
 
 (defthm fn-csi-identity-next-of-update
   (equal (fn-sn-identity-next (fn-sn-update s files node))
          (fn-sn-identity-next s))
-  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6
                                      fn-sn-identity-next))))
 
 (defthm fn-csi-consumer-of-update
   (equal (fn-sn-consumer (fn-sn-update s files node))
          (fn-sn-consumer s))
-  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6
                                      fn-sn-consumer fn-store-event-nth))))
 
 ; The Store's v6 tuple is representation, not the consumer proof vocabulary.
 ; Subsequent transition proofs use the exported selector facts above.  A
 ; theorem that truly needs constructor internals can enable it in its hint.
-(local (in-theory (disable fn-sn-make-v6 fn-sn-make-v7)))
+(local (in-theory (disable fn-sn-make-v6)))
 
 (defthm fn-csi-finish-advances-projection-by-definition
   (implies (fn-sn-completion-enabledp s)
@@ -116,7 +116,7 @@
                     (fn-sn-identity-next s)))))
   :hints (("Goal" :in-theory
            (e/d (fn-sn-finish)
-                (fn-sn-with-topic fn-sn-with-consumer fn-sn-make-v6 fn-sn-make-v7
+                (fn-sn-with-topic fn-sn-with-consumer fn-sn-make-v6
                  fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-cpe-eventp
                  fn-stxe-p fn-stxk-p fn-stxa-p
@@ -150,7 +150,7 @@
            (e/d (fn-sn-recover)
                 (fn-sn-with-topic fn-sn-with-event-index
                  fn-sn-with-consumer fn-sn-update-replayed fn-sn-update
-                 fn-sn-make-v6 fn-sn-make-v7 fn-sf-recover fn-sf-replay-node
+                 fn-sn-make-v6 fn-sf-recover fn-sf-replay-node
                  fn-replay-identity fn-cpe-projection-replay
                  fn-th-prefix-project)))))
 
@@ -257,7 +257,7 @@
            :in-theory (e/d (fn-sn-io fn-sn-file-step fn-sn-update
                             fn-sf-record-dir-result fn-sn-completion-record
                             fn-sn-identity-sequencep fn-sf-completion-phasep)
-                           (fn-sn-make-v6 fn-sn-make-v7 fn-sn-with-event-index fn-cei-put
+                           (fn-sn-make-v6 fn-sn-with-event-index fn-cei-put
                             fn-sn-statep fn-sf-statep
                             fn-sf-candidatep fn-sf-record-listp
                             fn-snt-find-published-candidate
@@ -283,7 +283,7 @@
                             fn-sf-record-link-result
                             fn-sf-record-dir-result
                             fn-sf-recovery-barrier)
-                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
+                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
                             fn-cei-put fn-cpe-projection-replay fn-sn-statep
                             fn-sf-statep fn-csi-take-append-after-prefix)))))
 
@@ -1209,7 +1209,7 @@
                             fn-sn-identity-sequencep fn-sf-prepare-record
                             fn-sn-update fn-sf-statep fn-sf-phase-shapep)
                            (fn-sn-statep fn-cpe-projection-replay
-                            fn-cpe-projection-step fn-sn-make-v6 fn-sn-make-v7
+                            fn-cpe-projection-step fn-sn-make-v6
                             fn-th-topic-eventp fn-sf-record-listp
                             fn-csi-live-ready-exact-replay
                             fn-csi-ready-full-replay)))))

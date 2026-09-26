@@ -124,7 +124,7 @@
           g2 c2 node2 history2)
          (fn-sn-make-v6 g2 c2 files node2 keyring index kgen verdicts snapshots
                         next history2 consumer topic event-index))
-  :hints (("Goal" :in-theory (enable fn-sn-with-configuration fn-sn-make-v6 fn-sn-make-v7)))))
+  :hints (("Goal" :in-theory (enable fn-sn-with-configuration fn-sn-make-v6)))))
 
 (local (defthm fn-sob-statep-of-v6-fields
    (implies (and (fn-string-listp groups)
@@ -142,7 +142,7 @@
                             keyring-generation verdicts snapshots identity-next
                             config-history consumer topic event-index)))
    :hints (("Goal" :in-theory
-            (enable fn-sn-statep fn-sn-shapep fn-sn-make-v6 fn-sn-make-v7
+            (enable fn-sn-statep fn-sn-shapep fn-sn-make-v6
                     fn-sn-groups fn-sn-capacity fn-sn-files fn-sn-node
                     fn-sn-keyring fn-sn-keyring-generation fn-sn-verdicts
                     fn-sn-keyring-snapshots fn-sn-identity-next)))))
@@ -191,7 +191,7 @@
                  )
                 (fn-cpr-replay fn-cpr-loop fn-replay-identity fn-replay-identity-loop
                  fn-stx-index-of-store fn-cnode-statep fn-sn-statep
-                 fn-sn-with-configuration fn-sn-make-v6 fn-sn-make-v7 fn-sn-make fn-sn-make-v2
+                 fn-sn-with-configuration fn-sn-make-v6 fn-sn-make fn-sn-make-v2
                  fn-replay-advance-txid 
                  fn-cpe-projection-replay fn-cpr-replay-ok-is-configured
                  fn-th-prefix-project fn-cei-build)))))
@@ -330,7 +330,7 @@
                 (fn-cpr-replay fn-cpr-loop fn-replay-identity fn-replay-identity-loop
                  fn-stx-index-of-store fn-cnode-statep fn-sn-observed-seed
                  fn-replay-advance-txid fn-sn-with-configuration fn-sn-statep
-                 fn-sn-make-v6 fn-sn-make-v7 fn-sn-make fn-sn-make-v2
+                 fn-sn-make-v6 fn-sn-make fn-sn-make-v2
                  fn-cpe-projection-replay fn-th-prefix-project fn-cei-build
                  fn-sn-observed-historyp)))))
 

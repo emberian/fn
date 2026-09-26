@@ -411,7 +411,7 @@
                                  (fn-sn-event-index s))
                   s))
   :hints (("Goal" :in-theory (enable len nth fn-sn-statep fn-sn-shapep
-                                     fn-sn-make-v6 fn-sn-make-v7 fn-sn-groups
+                                     fn-sn-make-v6 fn-sn-groups
                                      fn-sn-capacity fn-sn-files fn-sn-node
                                      fn-sn-keyring fn-sn-index
                                      fn-sn-keyring-generation fn-sn-verdicts
@@ -436,7 +436,7 @@
 ; The reconstruction theorem supplies the Store shape to later trace proofs.
 ; Keeping the fourteen-field constructor closed prevents every preparation
 ; and completion goal from expanding its unchanged projection slots.
-(local (in-theory (disable fn-sn-make-v6 fn-sn-make-v7)))
+(local (in-theory (disable fn-sn-make-v6)))
 
 (defthm fn-snt-typed-store-components
   (implies (fn-sn-statep s)
