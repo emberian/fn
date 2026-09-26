@@ -306,13 +306,22 @@
                 (fn-bpfw-fragment-listp a) (fn-bpfw-fragment-listp b))
            (fn-bpfw-sortedp (fn-bpfw-merge a b)))
   :hints (("Goal" :induct (fn-bpfw-merge a b)
-           :do-not '(generalize fertilize)
+           :do-not '(generalize fertilize eliminate-destructors)
            :in-theory (disable fn-bpfw-all-at-least-weakens fn-bpfw-fragmentp
-                               fn-bpfw-all-at-least-of-merge))
-          ("Subgoal *1/3" :expand ((fn-bpfw-merge a b) (fn-bpfw-sortedp a)
-                                   (fn-bpfw-sortedp b)))
-          ("Subgoal *1/4" :expand ((fn-bpfw-merge a b) (fn-bpfw-sortedp a)
-                                   (fn-bpfw-sortedp b)))))
+                               fn-bpfw-fragment-listp fn-bpfw-sortedp
+                               fn-bpfw-sorted-at-least-its-head))
+          ("Subgoal *1/3" :expand ((fn-bpfw-merge a b) (fn-bpfw-fragment-listp a)
+                                   (fn-bpfw-fragment-listp b)
+                                   (fn-bpfw-sortedp a)
+                                   (:free (x y) (fn-bpfw-sortedp (cons x y))))
+           :use ((:instance fn-bpfw-sorted-at-least-its-head
+                            (k (nfix (fn-bpf-offset (car a)))))))
+          ("Subgoal *1/4" :expand ((fn-bpfw-merge a b) (fn-bpfw-fragment-listp a)
+                                   (fn-bpfw-fragment-listp b)
+                                   (fn-bpfw-sortedp b)
+                                   (:free (x y) (fn-bpfw-sortedp (cons x y))))
+           :use ((:instance fn-bpfw-sorted-at-least-its-head
+                            (b a) (k (nfix (fn-bpf-offset (car b)))))))))
 
 (defthm fn-bpfw-sortedp-of-sort
   (implies (fn-bpfw-fragment-listp fs)

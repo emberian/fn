@@ -18,9 +18,10 @@ its work was (total x fragments). Numbers:
 - The node's family selector now plans each family once per host call
   instead of once per member. That removes a factor of the family size from
   every scheduling step.
-- Natively, a family of 70 fragments is reassembled once and handed off
-  once, with the receiver killed by SIGKILL after fragment 35 (SCN-067;
-  results below). 70 is beyond the old 64-fragment ceiling.
+- A native case exists for a family of 70 fragments, beyond the old
+  64-fragment ceiling, with the receiver killed by SIGKILL after fragment
+  35 (SCN-067). It is **not yet run**: the image of the lane's final commit
+  was not built (see "Runs").
 
 The brief's user-visible result, a 10 MiB article carried through 4 KiB
 fragments, is **not** reached. Four other ceilings still bound a family
@@ -104,7 +105,7 @@ queue equals the canvas from I on.
 - `fn-bpnf-family-plan-at-of-member`: every member of one family has the
   same plan. This is what lets the memo skip a family.
 
-**Observed.** SCN-067 natively (below).
+**Observed.** Nothing native yet (see "Runs").
 
 ## Statements
 
@@ -157,7 +158,9 @@ hypotheses. Their teeth are the witnesses of both sides.
 
 ## Proof cost
 
-The lane's books are all under 10 s at two jobs (manifest below). Moving
+None of the final commit's books is certified by a manifest yet (see
+"Runs"). The final sweep book's event times sum to 7.02 s in a fresh proof
+session on hbox; at r2 the book was 10.20 s. Moving
 the generic lemmas into `local` was necessary:
 - the nthcdr and nth rewrites;
 - the merge-cell algebra and the disable of `fn-bpf-merge-cell`;
@@ -263,3 +266,42 @@ Each must admit it:
 **What continues without it.** Families up to the held-image cap already
 reassemble without the fragment ceiling. That includes more than 64
 fragments of any request the Store accepts today.
+
+## Runs
+
+Farm runs, all on hbox, `--affected-by books/bp-fragment-sweep`, 2 jobs,
+300 s. Manifests are in `planning/evidence/manifests/`:
+
+| run | commit | manifest | result |
+| --- | --- | --- | --- |
+| r1 `run-20260925T235154Z-37c4` | f79fe679 | `certify-20260925T235236Z-4052629.json` | red. `fn-bpnf-same-family-selects-same-rows` timed out; repaired with narrow theories. The sweep book, its teeth, send, send-tests, family, plan and family-tests certified. |
+| r2 `run-20260926T000937Z-56e1` | 4e9d3d5d | `certify-20260926T001016Z-4091270.json` | red, two defects. `verify-guards fn-bpnf-family-next`'s theory lacked `fn-bpnf-family-tried-okp`. The sweep teeth's `bpfwt-frags` measure had lost a global nthcdr lemma. Cost regressions: route-step 36.5 s against 7.09 on dev, machine-gaps 28.6 against 6.44, debt-cache-invariants 24.8 against 6.94, fragment-replacement 20.1 against 6.78, fragment-guards 26.2. Cause: the sweep's exported generic rules, above all `fn-bpfw-fragmentp-fields`, a rewrite on `(true-listp f)` that backchains through an enabled recognizer. Those rules were made local. A scratch certification on hbox then measured fragment-replacement at 7.15 s. |
+| r3 `run-20260926T002156Z-319a` | fd13d1d4 | `certify-20260926T002231Z-4118107.json` | red. `fn-bpfw-sortedp-of-merge` hit the 300 s timeout (log `/tank/fn/gates/bp-lifecycle-r3/build/acl2/certify-20260926T002231Z-4118107/books--bp-fragment-sweep.certify.log`). Every other red book in the run is a cascade from it. A hint that disabled `fn-bpfw-all-at-least-of-merge` was checked in a proof session that already held the theorem, so the check was circular. Repaired at the final commit with explicit expansions: 0.87 s in a fresh session, 7.02 s for the whole book. |
+
+The brief's three runs are spent. **The final commit is not certified.**
+
+The native campaign at fd13d1d4
+(`/tank/fn/scratch/bp-lifecycle/native-fd13d1d4.out`) stopped at
+`VALIDATE-FAILED dtn` for the same sweep book. No image was built, and
+neither native module ran.
+
+Laptop: `make check` is green in the worktree, with planning/ledger.* and
+planning/current.md regenerated there and not committed.
+`fn-bpfs-canvas-of-extents` was dropped from PRF-114's proof events. Its
+subject had been reached only through the capped reassembler's success
+path. The served claim now goes through
+`fn-bpfs-plan-fragments-reassemble-uncapped` (PRF-121), and
+`reach_check --strict` passes.
+
+**Next exact actions:**
+1. One farm run at the lane head, the same command with `--remote-root
+   /tank/fn/gates/bp-lifecycle-r4`. Expected: the sweep book about 7 s. The
+   guards book's `fn-bpnf-family-next` guard has not been checked since its
+   hint was repaired. Watch route-step, machine-gaps, debt-cache and
+   fragment-replacement for a return to dev's times.
+2. `sh planning/evidence/bp-lifecycle-2026-09-25/native.sh REV` on hbox at
+   that commit, from a `git archive` into `/tank/fn/scratch/bp-lifecycle/tREV`,
+   under `systemd-run --user -p MemoryMax=24G`. It runs:
+   - `test_bp_fragment_node_native`, which includes SCN-067;
+   - `test_bp_node_native`.
+3. With both green, set SCN-067 and the record to observed.
