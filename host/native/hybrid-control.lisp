@@ -151,7 +151,25 @@
                                       (mapcar #'fnn-octet-list groups) received))
                   msgid (fnn-octets received) groups evidence generation txid
                   (lambda ()
-                    (fnn-owner-identity-commit service event))))
+                    ;; PKT-166 (D25): the held-Message-ID verdict every other
+                    ;; injecting route asks first.  The retry of an accepted
+                    ;; signed source is the article already stored
+                    ;; (books/source-routes.lisp
+                    ;; fn-sr-a-signed-retry-is-already-stored), a changed one
+                    ;; the conflict; only an unheld Message-ID commits.
+                    (let ((codes (fnn-owner-core
+                                  'fn-owner-group-codes
+                                  (mapcar #'fnn-octet-list groups))))
+                      (when (or (keywordp codes) (not (listp codes))
+                                (/= (length codes) (length groups)))
+                        (fnn-fault "owner returned malformed group codes ~a" codes))
+                      (case (fnn-owner-action 'fn-owner-existing-action
+                                              (fnn-octet-list msgid)
+                                              (fnn-octet-list received) codes)
+                        (:duplicate :duplicate)
+                        (:conflict :conflict)
+                        (:absent (fnn-owner-identity-commit service event))
+                        (t (fnn-fault "owner returned malformed existing action")))))))
              :refused)))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
@@ -228,9 +246,14 @@
               source-path (fnn-core 'fn-hsig-host-max-source-octets)))
             (fnn-hsig-command-read-exact ed-path 64 "Ed25519 signature")
             (fnn-hsig-command-read-exact ml-path 3309 "ML-DSA-65 signature")
-            (fnn-octet-list (fnn-string-octets ml-public)))))
-      (fnn-core 'fn-native-control-host-status-exit-code
-                (fnn-hybrid-control-send control request)))))
+            (fnn-octet-list (fnn-string-octets ml-public))))
+           (status (fnn-hybrid-control-send control request)))
+      ;; ACL2's status word, rendered as `operator post' renders it
+      ;; (host/native/operator.lisp fnn-operator-emit-status), so a retry
+      ;; answered DUPLICATE is never a silent exit.
+      (fnn-err "~(~a~) hybrid-author ~:@(~a~)"
+               (fnn-core 'fn-native-control-host-status-class status) status)
+      (fnn-core 'fn-native-control-host-status-exit-code status))))
 
 (defun fnn-command-hybrid-revoke (args)
   (unless (= (length args) 3)

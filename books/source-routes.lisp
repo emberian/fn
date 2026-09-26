@@ -25,8 +25,10 @@
 (in-package "ACL2")
 (include-book "poster-bytes-invariants")
 (include-book "store-reclaim")
+(include-book "hybrid-store-injected")
 
-(local (in-theory (disable fn-inj-decide fn-inj-injectedp fn-inj-source-of
+(local (in-theory (disable fn-hsig-injected-carrier-octets fn-hsig-injected-carrier-plan
+                           fn-inj-decide fn-inj-injectedp fn-inj-source-of
                            fn-inj-decision-octets fn-inj-decision-msgid
                            fn-pb-same-articlep fn-pb-path-agent fn-pb-subject
                            fn-find-article fn-sha256 fn-rcl-tombstone-of
@@ -183,6 +185,37 @@
                                    (msgid (fn-record-string-octets msgid))))
                   :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
                                   (fn-rcl-tombstonep fn-article-groups))))
+  :rule-classes nil)
+
+;  KEYSTONE (PKT-166, the signed control route).  host/native/hybrid-control.lisp
+; fnn-hybrid-control-author stores fn-hsig-injected-carrier-octets and, since
+; PKT-166, asks fn-owner-existing-action (fn-rcl-existing-action) before it
+; commits.  A retry of an accepted signed source -- the same source, key and
+; signatures authored again at any later clock under the same Message-ID and
+; filed groups -- is :duplicate: never a fresh acceptance, and the client
+; renders it DUPLICATE with exit 0 (fn-native-control-status-exit-code).
+(defthm fn-sr-a-signed-retry-is-already-stored
+  (let ((held (fn-find-article
+               msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+        (pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
+        (pb (fn-hsig-injected-carrier-plan source principal keys signatures config b))
+        (oa (fn-hsig-injected-carrier-octets source principal keys signatures config a))
+        (ob (fn-hsig-injected-carrier-octets source principal keys signatures config b)))
+    (implies (and oa ob
+                  (equal (fn-article-payload held) oa)
+                  (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
+                  (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid))
+                  (equal groups (fn-article-groups held)))
+             (equal (fn-rcl-existing-action msgid ob groups s) :duplicate)))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-injected-carrier-octets
+                                   fn-hsig-injected-carrier-plan)
+                                  (fn-rcl-existing-action fn-hc-render-at-most
+                                   fn-inj-supplies-pathp))
+           :use ((:instance fn-sr-a-retry-is-already-stored
+                  (source (fn-hc-render-at-most *fn-article-max-octets*
+                                                source principal keys signatures)))
+                 (:instance fn-inj-refusal-produces-no-octets
+                  (source nil) (observation a)))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
