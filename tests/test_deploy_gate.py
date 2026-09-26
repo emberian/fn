@@ -15,6 +15,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -155,9 +156,15 @@ class DryRunTests(unittest.TestCase):
         (books / "acceptance.cert").write_text("(:CERT fake)\n")
         (books / "acceptance.port").write_text("()\n")
         cls.evidence = Path(cls.temp.name) / "deploy-evidence.md"
+        # The shared fake entry points plus this gate's fake owner: the gate
+        # takes one overlay, and the owner fake is this test's alone (see
+        # tests/deploy_gate_owner_fake/tools/run_owner.py).
+        overlay = Path(cls.temp.name) / "overlay"
+        shutil.copytree(ROOT / "tests/deploy_gate_fake", overlay)
+        shutil.copytree(ROOT / "tests/deploy_gate_owner_fake", overlay, dirs_exist_ok=True)
         cls.code = deploy_gate.main([
             commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
-            "--overlay", str(ROOT / "tests/deploy_gate_fake"),
+            "--overlay", str(overlay),
             "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep",
             # The fake ACL2 by name: the farm host's default launcher moved to
             # a gate toolchain path the fake HOME does not hold, and the
@@ -174,8 +181,21 @@ class DryRunTests(unittest.TestCase):
                 if line.startswith("| ") and fragment in line]
 
     def test_the_gate_completed(self):
-        self.assertIn(self.code, (0, 1), self.text[-3000:])
+        # 0, not "0 or 1": the one violation this run used to carry was the
+        # real owner dying on the fake store CLI's imports (below).
+        self.assertEqual(self.code, 0, self.text[-3000:])
         self.assertNotIn("gate error", self.text)
+
+    def test_the_owner_the_gate_claims_is_the_one_that_answered(self):
+        # bin/fn's `run` takes no --store, so the gate drives
+        # tools/run_owner.py; the overlay's fake owner must be what answers,
+        # never a fallback to the reader under the owner's name.
+        rows = self.named("start server (owner, main)")
+        self.assertTrue(rows and "| 0 |" in rows[0], rows)
+        self.assertFalse(self.named("start server (reader, main)"))
+        self.assertIn("201 fn-nntp fake owner ready", self.text)
+        rows = self.named("entry-point-listening")
+        self.assertTrue(rows and "| held |" in rows[0], rows)
 
     def test_the_three_outcomes_stay_distinct(self):
         self.assertIn("accepted=0 refused=1 uncertain=3", self.text)

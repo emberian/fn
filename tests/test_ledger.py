@@ -320,6 +320,69 @@ class RepositoryLedgerTests(unittest.TestCase):
             self.assertIn(assumption, book, f"{assumption} has no encapsulate")
 
 
+class TreeCacheTests(unittest.TestCase):
+    """The analysed tree persists across processes, named by its content."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.cache = Path(self.directory.name)
+        patcher = mock.patch.dict("os.environ", {"FN_LEDGER_TREE_CACHE": str(self.cache)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        ledger._TREE_CACHE = None
+        self.addCleanup(setattr, ledger, "_TREE_CACHE", None)
+
+    def test_a_later_process_reads_the_tree_an_earlier_one_analysed(self):
+        first = ledger.load_tree()
+        entries = list(self.cache.glob("*.pickle"))
+        self.assertEqual(len(entries), 1)
+        ledger._TREE_CACHE = None          # what a new process starts with
+        reads = []
+        genuine_read = ledger._tree_cache_read
+
+        def counted(directory, key):
+            tree = genuine_read(directory, key)
+            reads.append(tree is not None)
+            return tree
+
+        with mock.patch.object(ledger, "_tree_cache_read", counted):
+            second = ledger.load_tree()
+        self.assertEqual(reads, [True])
+        self.assertIsNot(second, first)
+        self.assertEqual(json.dumps(ledger.build_ledger(second), sort_keys=True),
+                         json.dumps(ledger.build_ledger(first), sort_keys=True))
+
+    def test_an_entry_is_valid_only_under_its_own_name(self):
+        tree = tree_from({"books/a.lisp": "(defun f (x) x)"}, roots=["books/a"])
+        ledger._tree_cache_write(self.cache, "k1", tree)
+        self.assertIsInstance(ledger._tree_cache_read(self.cache, "k1"), ledger.Tree)
+        # A file renamed onto another key's name, and a damaged file.
+        (self.cache / "k1.pickle").rename(self.cache / "k2.pickle")
+        self.assertIsNone(ledger._tree_cache_read(self.cache, "k2"))
+        (self.cache / "k3.pickle").write_bytes(b"not a pickle")
+        self.assertIsNone(ledger._tree_cache_read(self.cache, "k3"))
+        self.assertIsNone(ledger._tree_cache_read(self.cache, "absent"))
+
+    def test_the_directory_is_bounded(self):
+        tree = tree_from({"books/a.lisp": "(defun f (x) x)"}, roots=["books/a"])
+        for number in range(ledger.TREE_CACHE_ENTRIES + 3):
+            ledger._tree_cache_write(self.cache, "k{}".format(number), tree)
+        self.assertEqual(len(list(self.cache.glob("*.pickle"))), ledger.TREE_CACHE_ENTRIES)
+        self.assertEqual(list(self.cache.glob(".*.tmp")), [])
+
+    def test_a_substituted_analysis_never_persists(self):
+        self.assertEqual(ledger._tree_cache_dir(), self.cache)
+        with mock.patch.object(ledger, "analyze_book", lambda path, relative: None):
+            self.assertIsNone(ledger._tree_cache_dir())
+        with mock.patch.object(ledger, "makefile_roots", lambda: []):
+            self.assertIsNone(ledger._tree_cache_dir())
+        with mock.patch.object(ledger, "ROOT", self.cache):
+            self.assertIsNone(ledger._tree_cache_dir())
+        with mock.patch.dict("os.environ", {"FN_LEDGER_TREE_CACHE": "0"}):
+            self.assertIsNone(ledger._tree_cache_dir())
+
+
 if __name__ == "__main__":
     unittest.main()
 
