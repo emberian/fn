@@ -1340,6 +1340,52 @@
                     fn-nntp-xpat-msgid-lines
                     fn-nntp-xpat-response))
 
+; PRF-195: LIST NEWSGROUPS with the reader listing's descriptions, and LIST
+; MOTD.  A description is sent only when it is printable ASCII, which is
+; response text; otherwise the marker is, which fn-nntp-newsgroup-lines
+; already sends.
+(defthm fn-nntp-description-text-is-response-text
+  (implies (fn-nntp-description-textp bytes)
+           (fn-nntp-response-textp bytes))
+  :hints (("Goal" :in-theory (enable fn-nntp-description-textp
+                                     fn-nntp-response-textp
+                                     fn-nntp-response-octetp))))
+
+(defthm fn-nntp-described-lines-are-response-text
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-block-textp (fn-nntp-described-lines groups descs)))
+  :hints (("Goal" :induct (fn-nntp-described-lines groups descs)
+           :in-theory (enable fn-nntp-described-lines fn-nntp-block-textp
+                              fn-nntp-description-field
+                              fn-nntp-safe-group-listp
+                              fn-nntp-append-pieces))))
+
+(defthm fn-nntp-motd-lines-are-response-text
+  (fn-nntp-block-textp (fn-nntp-motd-lines lines))
+  :hints (("Goal" :induct (fn-nntp-motd-lines lines)
+           :in-theory (enable fn-nntp-motd-lines fn-nntp-block-textp))))
+
+(defthm fn-nntp-effects-list-newsgroups-described
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-list-newsgroups-described session archive descs args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-newsgroups-described)
+                                  (fn-nntp-projectionp
+                                   fn-statep fn-state-groups
+                                   fn-state-articles fn-state-nexts
+                                   fn-nntp-described-lines
+                                   fn-nntp-filter-groups-by-wildmat
+                                   fn-wildmat-parse)))))
+
+(defthm fn-nntp-effects-list-motd
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-list-motd session env args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-motd)
+                                  (fn-nntp-motd-lines)))))
+
+(in-theory (disable fn-nntp-list-newsgroups-described fn-nntp-list-motd))
+
 (defthm fn-nntp-effects-list-command
   (implies (fn-nntp-projectionp archive)
            (fn-nntp-effectsp

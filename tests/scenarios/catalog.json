@@ -3710,6 +3710,39 @@
         "native": false,
         "record": "planning/evidence/reader-clients-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-124",
+      "title": "An operator describes a group and sets the message of the day on a running node; a new reader connection is shown both, a restart keeps them, and clearing them restores the marker and an empty message",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-039"
+      ],
+      "steps": [
+        "Init a store with fn.test, create fn.live, start the owner; LIST NEWSGROUPS shows the marker for both and LIST MOTD an empty block.",
+        "While the owner runs: group describe fn.test Friends 'and letters'; motd set 'Welcome to fn.' 'Ask ember for a code.'; group describe fn.nosuch x and group describe fn.test '   ' are refused.",
+        "A new reader: LIST NEWSGROUPS, LIST NEWSGROUPS fn.t*, LIST MOTD, LIST MOTD x.",
+        "Stop and restart the owner; read again; clear both and read again."
+      ],
+      "expected": [
+        "fn.test\\tFriends and letters and fn.live\\t(no description); the wildmat form lists fn.test only; LIST MOTD the two lines; LIST MOTD x is 501.",
+        "After restart the same; after clearing, both markers and an empty 215 block.",
+        "The refused commands exit non-zero and change nothing a reader is shown."
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "planning/evidence/usenet-headers-2026-09-26-native.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_reader_index",
+        "cases": [
+          "test_list_newsgroups_descriptions_and_motd_published_live"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-2026-09-26.md"
+      }
     }
   ]
 }

@@ -6923,6 +6923,91 @@
           "name": "fn-nntp-served-keywordp-unfolds"
         }
       ]
+    },
+    {
+      "id": "PRF-195",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-description-after-set-is-its-pieces"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-description-after-set-of-another-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-motd-after-set-is-its-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-descriptions-of-other-kinds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-admitted-description-rows-are-printable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-description-of-descs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-description-of-the-listing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-motd-of-the-listing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-list-newsgroups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-list-motd"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-list-newsgroups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-list-motd"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-list-newsgroups-is-the-described-listing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-list-motd-is-the-configured-message"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-described-lines-of-no-descs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-described-lines-are-response-text"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-motd-lines-are-response-text"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-list-newsgroups-described"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-list-motd"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-inj-decide-ignores-the-listing"
+        }
+      ]
     }
   ]
 }

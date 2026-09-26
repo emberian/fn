@@ -124,6 +124,7 @@
                             fn-gidx-list-counts-command
                             fn-nntp-list-counts-command
                             fn-nntp-list-active-times fn-nntp-list-response
+                            fn-nntp-list-newsgroups-described fn-nntp-list-motd
                             fn-gidx-build fn-nntp-projectionp
                             fn-nntp-msgid-retrieval-indexed
                             fn-gidx-listgroup-command

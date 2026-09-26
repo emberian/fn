@@ -69,7 +69,7 @@
 ; CAPABILITIES advertises it.
 (assert-event
  (member-equal (fn-nntp-string-octets
-                "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
+                "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT")
                (fn-nntp-capability-lines nil)))
 
 ; fn-gidx-list-counts-command-is-the-archive-fold, hypothesis 2: buckets

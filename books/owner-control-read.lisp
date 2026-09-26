@@ -37,8 +37,9 @@
     (fn-nntp-archive-command-pinned
      ns (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)
      (fn-served-conn-verdicts conn)
-     (fn-nntp-env (fn-served-conn-observation conn) nil
-                  (and (fn-inj-config-allow (fn-served-conn-config conn)) t))
+     (fn-nntp-env-listed (fn-served-conn-observation conn) nil
+                  (and (fn-inj-config-allow (fn-served-conn-config conn)) t)
+                  (fn-inj-config-listing (fn-served-conn-config conn)))
      (car tokens) (cdr tokens))))
 
 (defthm fn-octl-reply-of-with-wire
@@ -246,6 +247,7 @@
    (true-listp (fn-nntp-result-effects (fn-nntp-list-command session archive env args)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-list-command fn-nntp-single fn-nntp-multi
+                                    fn-nntp-list-newsgroups-described fn-nntp-list-motd
                                     fn-nntp-multi-octets fn-nntp-make-result)
                                    (fn-nntp-result-effects))))))
 

@@ -217,9 +217,10 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-pinned-effects-well-formed
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env
+                            (env (fn-nntp-env-listed
                                   observation nil
-                                  (and (fn-inj-config-allow config) t)))))
+                                  (and (fn-inj-config-allow config) t)
+                                  (fn-inj-config-listing config)))))
            :in-theory
            (e/d (fn-nntp-post-step-pinned fn-post-session-consistentp
                   fn-post-single fn-nntp-effectsp fn-post-refusal-line)
