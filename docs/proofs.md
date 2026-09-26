@@ -567,7 +567,14 @@ usually shows); `farm.py submit` runs the same scan over `books/`, `host/` and
 `tests/acl2/` and refuses before any rsync. Native images and tests on hbox
 go through `tools/hbox_native.sh REV MODULE...`, whose `--images` takes
 `developer`, `production`, `dtn` and `dtn-developer` (the DTN pair built from
-`host/native/build-dtn.lisp` as the image runbook builds them).
+`host/native/build-dtn.lisp` as the image runbook builds them). Each module
+gets the variables its source reads, as
+[`tools/native_env.py`](../tools/native_env.py)'s table maps them to the
+images the run builds (`FN_NATIVE_HOST` is only ever the production image); a
+module that reads an image the run does not build is refused by name before
+anything ships, and a module whose every test skipped is reported
+`SKIPPED (N of N)` with each reason and makes the status 4, never OK
+(`tools/test_budget.py`'s exit bit 4).
 [`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
 `submit` mirrors the worktree and starts the runner detached with its own log
 and status file, `wait` blocks with a bounded sleep-and-report loop and then
