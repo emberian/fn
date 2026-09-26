@@ -117,7 +117,8 @@ def selected_pack(store):
 def build(name, n, body=BODY, hist=HIST):
     store = work / name
     cfg, port = config_for(store, name)
-    native("operator", cfg, "init", "--max-history-octets", hist, GROUP, expected=0)
+    flags = os.environ.get("RL_INIT_FLAGS", "--max-record-octets 262144 --max-article-octets 131072 --max-groups-per-article 16").split()
+    native("operator", cfg, "init", *flags, "--max-history-octets", hist, GROUP, expected=0)
     p = owner(cfg)
     t0 = time.perf_counter(); refused = []
     try:
@@ -256,8 +257,8 @@ def cuts(base):
 
 def headroom():
     # A tight history bound: fill to the first refused POST, reclaim, retry.
-    n = int(os.environ.get("RL_HEADROOM_N", "60"))
-    hist = int(os.environ.get("RL_HEADROOM_HIST", "124000"))
+    n = int(os.environ.get("RL_HEADROOM_N", "400"))
+    hist = int(os.environ.get("RL_HEADROOM_HIST", "300000"))
     store, cfg, port = build("tight", n, 1024, hist)
     native("operator", cfg, "retention", "set", "released-by-all-holders")
     _, h0, _, _ = status(cfg)
@@ -266,6 +267,8 @@ def headroom():
         c = m.Conn(port); refused = post(c, 900001, 1024).decode().strip(); c.close()
     finally:
         stop(p)
+    code, so, se = native("operator", cfg, "store", "compact")
+    out(tag="tight-compact", exit=code, stdout=so.strip()[-200:], stderr=se.strip()[-300:])
     code, so, se = native("operator", cfg, "store", "reclaim")
     out(tag="tight-reclaim", exit=code, head=so.splitlines()[:2], stderr=se.strip()[-300:])
     _, h1, _, _ = status(cfg)
