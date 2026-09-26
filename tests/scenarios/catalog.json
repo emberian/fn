@@ -3042,7 +3042,8 @@
       "evidence": [
         "planning/evidence/hot-path-scans-2026-09-26.md",
         "planning/evidence/hot-path-scans-2026-09-26/part1-all.sh",
-        "tools/rep_measure.py"
+        "tools/rep_measure.py",
+        "planning/evidence/hot-path-scans-2026-09-26/part1-runs.log"
       ],
       "implementation": {
         "test": "tools/rep_measure.py",
@@ -3051,7 +3052,8 @@
           "allocprof 200 POSTs"
         ],
         "native": true,
-        "record": "planning/evidence/hot-path-scans-2026-09-26.md"
+        "record": "planning/evidence/hot-path-scans-2026-09-26.md",
+        "log": "planning/evidence/hot-path-scans-2026-09-26/part1-runs.log"
       }
     }
   ]
