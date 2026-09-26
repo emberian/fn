@@ -845,7 +845,7 @@ the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
-`init` seeds them once, and `fn operator CONFIG group create|retire`
+`init` seeds them once, and `fn operator CONFIG group create NAME` (or `group retire NAME`)
 changes them afterwards, live or offline. The
 configuration file holds only what the host needs in order to start.
 
