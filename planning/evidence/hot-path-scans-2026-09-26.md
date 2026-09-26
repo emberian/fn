@@ -340,6 +340,8 @@ Every term is flat in N. At N=10,000, the octet and debt terms of the 200
 POSTs after the open went from 26,184 samples (about 840 MB) to 512 (about
 16 MB).
 
+The runs' exit lines and the profile rows are in `hot-path-scans-2026-09-26/part1-runs.log`. It was produced by tools/rep_measure.py through `run.sh`, and by `allocprof.py`.
+
 **Visits per POST**, from the definitions:
 
 | | per query of the three caches | first query after open |
