@@ -2552,7 +2552,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/mailbox.lisp",
         "books/injection.lisp",
