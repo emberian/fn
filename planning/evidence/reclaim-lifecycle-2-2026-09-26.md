@@ -85,6 +85,15 @@ keeps its own reservation, the FNBS debt cover (books/bp-node-debt.lisp
 `fn-bpnd-spend-admission-preserves-cover`, unchanged); its bundles enter the
 Store through the gates above.
 
+Host lines at 90f97075: host/owner-host.lisp:442 (`fn-owner-publication-verdict`
+-> `fn-smr-verdict-at`), :599 and :672 (`fn-owner-prepare`,
+`fn-owner-prepare-buffer` -> `fn-smr-article-budget-for`);
+host/store-node-host.lisp:71 and :83 (`fn-store-sn-publication-verdict`,
+`fn-store-sn-article-verdict`); host/native/checkpoint.lisp:640 and :745
+(the observation `fnn-disk-free-octets` handed to `fn-store-compact-decide`
+and `fn-store-reclaim-decide`); books/native-live-status.lisp:398 (the
+status line).
+
 ## 3. Theorems
 
 books/store-maintenance-reserve.lisp (PRF-129):
@@ -244,6 +253,10 @@ PKT-263 (for the next continuation; nothing here needs ember):
   nil`, called through the `:program` wrapper `fn-store-reclaim-decide`.
 - **N=5,000 (step 7)**: owed; chained packs (pack-chain-serve) are not on
   dev at 9d687b49.
+- The BP namespace's reservation is its FNBS debt cover, unchanged here;
+  its `*fn-bpnd-rotation-reserve*` is 0 (books/bp-node-debt.lisp), which
+  says a rotation needs no slot beyond the owed debt. Whether that holds
+  for every rotation is the BP lanes' question; nothing here depends on it.
 - The free-octet observation is environmental: a concurrent writer can
   take the space between the observation and the write; the write then
   fails before the selection, which the publication cuts cover.
