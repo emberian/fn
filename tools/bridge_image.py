@@ -88,6 +88,7 @@ OWNER_FORMS = STORE_FORMS + (
     # host-fault boundary in `Owner.guard' calls.
     '(include-book "books/owner-fault")',
     '(include-book "books/codec-attach")',
+    '(include-book "books/served-span")',
     '(ld "host/owner-host.lisp"' + LD,
     '(ld "host/feed-filename-host.lisp"' + LD,
 )

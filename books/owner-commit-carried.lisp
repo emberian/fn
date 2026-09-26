@@ -43,6 +43,7 @@
 (include-book "config-owner-live")
 (include-book "records-concrete")
 (include-book "store-events-carried")
+(include-book "owner-prepare-carried")
 
 ; -----------------------------------------------------------------------------
 ; The lookup.
@@ -627,9 +628,12 @@
 ; composite) host/owner-host.lisp fn-owner-prepare-identity installs: the
 ; configured owner's (:store (:prepare-identity e)), guard-verified.  The
 ; body is fn-sn-prepare-identity's gate with the projection step and the
-; composite recognizer carried, and the file stage is fn-spc-stage-record
-; (books/store-prepare-correspondence.lisp): the specification's exact
-; candidate predicate without the appended-history replay
+; composite recognizer carried, and the file stage is fn-pcar-stage-record
+; (books/owner-prepare-carried.lisp), which is fn-spc-stage-record
+; (books/store-prepare-correspondence.lisp) with no hypothesis
+; (fn-pcar-stage-record-is-stage-record): the specification's exact
+; candidate predicate, its txid fold read from the history's last record
+; (PRF-193, below), without the appended-history replay
 ; (fn-sf-history-recoverablep over (append records (list event)), O(N*L)
 ; per signed POST, PKT-223).  The replay is carried instead: in a state the
 ; maintained store relation admits, the live node is the replay at the
@@ -653,7 +657,7 @@
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))
                   :ok))
-      (let ((files (fn-spc-stage-record (fn-sn-files s) event)))
+      (let ((files (fn-pcar-stage-record (fn-sn-files s) event)))
         (if (equal (fn-sf-phase files) :record-staged)
             (fn-sn-update s files (fn-sn-node s))
           s))
@@ -681,6 +685,7 @@
            :in-theory (union-theories
                        '(fn-ccar-sn-prepare-identity fn-sn-prepare-identity
                          fn-sf-prepare-record fn-spc-stage-record
+                         fn-pcar-stage-record-is-stage-record
                          fn-evc-carried-definitions
                          fn-ccar-cpe-projection-step-is-cpe-projection-step
                          fn-ccar-identity-event-is-a-store-event)
@@ -690,8 +695,58 @@
                                   (fn-sf-statep fn-node-statep fn-store-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p
                                    fn-replay-apply-record fn-replay-identity-step
-                                   fn-replay-composite-record fn-spc-stage-record)))))
+                                   fn-replay-composite-record fn-spc-stage-record
+                                   fn-pcar-stage-record)))))
 (in-theory (disable fn-ccar-sn-prepare-identity))
+
+; What the identity prepare reads of the history (PRF-193, PKT-330 (2)).  The
+; candidate test compared the event's txid with fn-sf-next-lower, the txid
+; fold over every record, whose fn-store-event-txid re-ran fn-record-p over
+; each record's octets: 70 percent of a signed POST's owner CPU at N = 10,000
+; (planning/evidence/signed-post-linear-2026-09-26.md).  The fold's value is
+; one past the LAST record's txid, and fn-pcar-stage-record reads only that
+; record (fn-pcar-next-lower, books/owner-prepare-carried.lisp).
+(local
+ (defthm fn-ccar-next-lower-is-after-the-last-record
+   (implies (consp records)
+            (equal (fn-sf-next-lower records lower)
+                   (+ 1 (fn-store-event-txid (car (last records))))))
+   :hints (("Goal" :induct (fn-sf-next-lower records lower)
+            :in-theory (e/d (fn-sf-next-lower) (fn-store-event-txid))))))
+
+; KEYSTONE (PRF-193).  When the prepare host/owner-host.lisp
+; fn-owner-prepare-identity installs (through fn-ccar-ocfg-prepare-identity)
+; stages anything, it stages EVENT itself as the record candidate, keeps the
+; history and the node, and EVENT is the history's next event: its sequence
+; is the history's length, its txid is the frontier's predecessor, and it is
+; above the last record's txid.  No other record of the history enters the
+; decision.  With PRF-144's keystone
+; (fn-ccar-sn-prepare-identity-is-sn-prepare-identity-under-relation) this is
+; the specification's staging.
+(defthm fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record
+  (let* ((records (fn-sf-records (fn-sn-files s)))
+         (r (fn-ccar-sn-prepare-identity s event))
+         (files (fn-sn-files r)))
+    (implies (not (equal r s))
+             (and (equal (fn-sf-phase files) :record-staged)
+                  (equal (fn-sf-records files) records)
+                  (equal (fn-sf-record-candidate files) event)
+                  (equal (fn-sn-node r) (fn-sn-node s))
+                  (equal (fn-store-event-sequence event) (len records))
+                  (equal (+ 1 (fn-store-event-txid event))
+                         (fn-sf-frontier (fn-sn-files s)))
+                  (implies (consp records)
+                           (< (fn-store-event-txid (car (last records)))
+                              (fn-store-event-txid event))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ccar-sn-prepare-identity fn-spc-stage-record
+                                   fn-sf-candidatep)
+                                  (fn-sf-next-lower fn-store-event-txid
+                                   fn-store-event-sequence fn-store-event-p
+                                   fn-sn-statep fn-stxe-p fn-stxk-p fn-stxa-p
+                                   fn-replay-apply-record fn-replay-identity-step
+                                   fn-replay-composite-record
+                                   fn-ccar-cpe-projection-step)))))
 (defun fn-ccar-ocfg-prepare-identity (oc event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
   (let ((o (fn-ocfg-owner oc)))

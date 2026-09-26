@@ -197,6 +197,14 @@ percent. Cause and fix: fix lane 1. hot-path-checker's PKT-448 (c) named
 the served read walks as OVER's candidates; this profile names the one
 that costs.
 
+Result (over-number-index, 2026-09-26, rows 1 and 7; planning/evidence/over-number-index-2026-09-26.md):
+OVER's rows come from a number index the group index carries (PRF-189);
+same fixture and harness on hbox, before/after at N = 10,000: OVER 40 rows
+204.5 -> 9.9 ms median, OVER 1-2000 12.6 -> 0.55 s; at 20,000: 1.39 s ->
+17.5 ms and 40.8 -> 0.71 s; served bytes identical. Row 7 does not reproduce:
+ARTICLE by number costs what ARTICLE by Message-ID costs on each image (the
+by-number path never used the walk); what remains is PKT-544.
+
 Large articles (this lane: `big/big.json`, `big/sprof-article3m-flat.txt`;
 a default-profile store with `--max-article-octets 4194304`, N < 30):
 
@@ -217,6 +225,14 @@ CPU is the reply built as lists: `fn-ag-rev-onto` 19.4, `fn-nntp-crlf-lines-aux`
 31.5, `revappend` 11.7, `fn-octet-listp` 8.4 percent. POST's is the ingress
 byte machine (ingress-span).
 
+Result (egress-span, 2026-09-26, `planning/evidence/egress-span-2026-09-26.md`):
+PKT-555 retired: the 4 s is the harness's client, which reads one octet per
+`recv` (`msgid_measure.Conn`, buffering=0); with a 1 MiB reader ARTICLE
+3 MiB's wall equals owner CPU. The host reply is now a range of the octet
+buffer (PRF-192), matched against dev 6407de33: bytes consed 574.6 to
+469.8 MB, wall and owner CPU about 0.66 to 0.5 s; 32 KiB 5.80 to 4.75 MB.
+PKT-491 narrowed; the renderer's lists are PKT-550.
+
 ### POST (this lane: `n10k/post-200-cpu.json`, `post-200-alloc.json`, the two flats)
 
 At N = 10,000, 200 POSTs of 2 KiB on a reopened owner: 10.2 ms median,
@@ -235,6 +251,17 @@ CPU, graph totals: `fn-owner-prepare-buffer` 52.8, `fn-retain-known-id-scanp`
 (service-envelope; 7.2 fsyncs a commit, commit-regression). Signed POST:
 service-envelope's rows (282 ms p95 tmpfs, 786 ms ZFS at 10,000; 963 ms at
 36,208); not profiled here.
+
+Result (row 4, signed-post-linear, 2026-09-26; PRF-193): the linear term
+was `fn-sf-next-lower` under `fn-ccar-sn-prepare-identity` (the identity
+prepare's candidate test folded every record's txid through `fn-record-p`):
+69.9 percent of a signed POST's owner CPU at N = 10,000, 21.8 percent at
+1,000. The prepare now reads the last record (`fn-pcar-stage-record`).
+Signed POST owner CPU on tmpfs, dev 6407de336 against the lane, two
+interleaved rounds, load average 10 to 11: N = 1,000 84.5 / 108.5 ms
+against 67.0 / 92.5 ms; N = 10,000 260.5 / 293.5 ms against 91.0 / 93.0 ms
+(planning/evidence/signed-post-linear-2026-09-26.md). Flat in N within the
+box's noise; what remains is per-request and constant in N (PKT-552).
 
 ### Automatic checkpoint capture (this lane: `chain20k/chain.json`, `chain20k/sprof-capture-flat.txt`)
 
@@ -270,6 +297,13 @@ term; its "three scans encode every candidate" multiplies it. 10 MiB
 90.2 s (under 70 ms a fragment), and the receiver's open of those rows
 51.9 s, 39.2 s of it `fn-bpb-encode` and `fn-bpb-decode`. A 1 MiB transfer
 end to end was not run (PKT-554).
+
+**Result (bp-crc-exec, 2026-09-26, PRF-190):** the CRC-32C runs a table and
+`fn-bpp-xor` runs `logxor`, each proved equal to the bitwise definition; on
+hbox back to back a 1 MiB bundle encodes in 0.058 s against 3.68 s and
+decodes in 0.140 s against 7.65 s on the base image (1.5 and 1.8 percent), the
+wire bytes identical. Row 11 narrowed to the allocation and PKT-546
+(planning/evidence/bp-crc-exec-2026-09-26.md).
 
 ### Consumer poll (this lane: `consumer-poll.json`)
 

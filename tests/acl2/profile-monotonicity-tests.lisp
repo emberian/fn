@@ -9,11 +9,11 @@
 ;       (`fn-profile-replay-within-boundp', host/native/io.lisp
 ;       `fnn-durable-records');
 ;   (2) the truthful figure, the article record of (A, G), makes the history
-;       gate depend on A and G, so raising A without H is an upgrade
-;       (`fn-profile-upgradep') after which a verdict the old profile gave is
-;       refused: `fn-profile-upgrade-keeps-verdict' does not hold of it.
+;       gate depend on A and G, so raising A without H (a field an import
+;       raises over its archive's profile, D34) refuses a verdict the old
+;       profile gave.
 (in-package "ACL2")
-(include-book "../../books/store-profile-upgrade")
+(include-book "../../books/store-profile-facts")
 (include-book "../../books/codec-attach")
 
 ; A valid profile: T 4, H 250 000, R 196 608 (the minimum every kind needs),
@@ -74,29 +74,30 @@
                      :admissible))
 (assert-event (fn-profile-replay-within-boundp
                *pmt-old* (+ (- 250000 164351) *pmt-len*)))
-; NEW raises A to 60 000 and nothing else: a valid profile and an upgrade by
-; `fn-profile-upgradep' (no field smaller).  Its article ceiling is 191 583.
+; NEW raises A to 60 000 and nothing else: a valid profile, no field
+; smaller.  Its article ceiling is 191 583.
 (defconst *pmt-new* (fn-bs-profile-set-fields *pmt-old* '((5 . 60000))))
 (assert-event (fn-bs-profile-validp *pmt-new*))
-(assert-event (fn-profile-upgradep *pmt-old* *pmt-new*))
+(assert-event (equal *pmt-new* (fn-bs-profile-put 5 60000 *pmt-old*)))
+(assert-event (< (fn-bs-pf 5 *pmt-old*) (fn-bs-pf 5 *pmt-new*)))
 (assert-event (equal (fn-record-encoded-octets-ceiling 60000 500) 191583))
-; The counterexample: the old profile admits, the upgraded one refuses.
+; The counterexample: the old profile admits, the raised one refuses.
 (assert-event (equal (pmt-derived-verdict-at *pmt-old* 1 (- 250000 164351))
                      :admissible))
 (assert-event (equal (pmt-derived-verdict-at *pmt-new* 1 (- 250000 164351))
                      :unaffordable))
-; The fixed figure keeps the verdict (`fn-profile-upgrade-keeps-verdict'),
-; at the price of (1).
+; The fixed figure keeps the verdict, at the price of (1).
 (assert-event (equal (fn-sbud-verdict-at *pmt-new* :article 1
                                          (- 250000 164351))
                      :admissible))
 
-; The two promises, separately.  Reopen: `fn-profile-upgradep' keeps the
-; replay bound and the per-file read bound (H and R never shrink), so every
-; existing store still opens under NEW.  Future admissibility: the derived
+; The two promises, separately.  Reopen: raising fields keeps the replay
+; bound and the per-file read bound (H and R do not shrink), so the history
+; replays under NEW.  Future admissibility: the derived
 ; verdict is kept when H grows by at least the figure's growth; with H
 ; raised by 27 232 (191 583 - 164 351) the same state is admitted again.
 (defconst *pmt-new-h* (fn-bs-profile-set-fields *pmt-new* '((3 . 277232))))
-(assert-event (fn-profile-upgradep *pmt-old* *pmt-new-h*))
+(assert-event (equal *pmt-new-h* (fn-bs-profile-put 3 277232 *pmt-new*)))
+(assert-event (fn-bs-profile-validp *pmt-new-h*))
 (assert-event (equal (pmt-derived-verdict-at *pmt-new-h* 1 (- 250000 164351))
                      :admissible))

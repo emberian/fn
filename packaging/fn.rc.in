@@ -1,0 +1,24 @@
+#!/bin/ksh
+#
+# OpenBSD rc.d(8) script for a native fn node, rendered by
+# packaging/release-tarball.sh openbsd (@PREFIX@ = the release directory).
+# Install as /etc/rc.d/fn (mode 0555), then `rcctl enable fn; rcctl start fn`.
+# The node directory is /var/fn (fn.toml, store/, tls/, log/), owned by _fn;
+# the image needs a readable working directory, so the daemon starts there.
+# The node runs in the foreground, so rc_bg; bin/fn execs the frozen launcher,
+# which execs the bundled SBCL runtime, so pexp matches that final process.
+
+daemon="@PREFIX@/bin/fn"
+daemon_flags="operator /var/fn/fn.toml run"
+daemon_user="_fn"
+daemon_logger="daemon.info"
+daemon_timeout=120
+daemon_execdir="/var/fn"
+
+. /etc/rc.d/rc.subr
+
+pexp="@PREFIX@/libexec/fn/runtime/sbcl .* --fn ${daemon_flags}"
+rc_bg=YES
+rc_reload=NO
+
+rc_cmd $1

@@ -84,9 +84,9 @@
 ;; refusal (exit 1) that recovery passes through unchanged, never the
 ;; generic "cannot reconstruct committed history" fault.
 (define-condition fnn-store-open-refusal (fnn-store-error) ())
-;; The open's named refusal of a saved profile (PKT-471,
-;; books/store-profile-open.lisp): `store upgrade-profile' answers it with
-;; the repair (fnn-command-repair-profile).
+;; The open's named refusal of a saved profile (PKT-471, D34,
+;; books/store-profile-open.lisp): a profile the poll reply cannot carry, or a
+;; store of another format; the line names the reinstall and import.
 (define-condition fnn-store-profile-refusal (fnn-store-open-refusal) ())
 
 ;; One POSIX failure, reported the way Python's OSError prints itself.
@@ -880,12 +880,12 @@ execution-boundary fault, never a claim that the core refused an input."
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
-  "ACL2's decoded store profile: a format-8 profile, or a format-7 tuple the
-store runs under by its translation.  The host keeps the value opaque and
+  "ACL2's decoded store profile: a format-8 profile (the one format, D34).  The host keeps the value opaque and
 reads every field through an ACL2 accessor.  The verdict is ACL2's open
 (books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
-record bound the poll reply cannot carry is refused by name, exit 1, with
-ACL2's line (PKT-471); a frame that is no saved profile stays a fault."
+record bound the poll reply cannot carry, or a profile frame of another
+format, is refused by name, exit 1, with ACL2's line (PKT-471, D34); a frame
+that is no saved profile stays a fault."
   (let ((verdict (fnn-core 'fn-store-metadata-config-open
                            (fnn-octet-list octets))))
     (cond ((and (consp verdict) (eq (first verdict) :opened)
@@ -899,29 +899,6 @@ ACL2's line (PKT-471); a frame that is no saved profile stays a fault."
           ((equal verdict '(:rejected))
            (fnn-fault "ACL2 rejected durable configuration frame"))
           (t (fnn-fault "ACL2 returned a malformed profile open verdict")))))
-
-;; `store upgrade-profile' over a store whose open refused its profile by
-;; name (PKT-471): while it is bound, the open under the writer lock reads
-;; config.json through ACL2's repair verdict instead, and keeps the frame to
-;; write in *fnn-profile-repair-octets*.
-(defvar *fnn-profile-repair-target* nil)
-(defvar *fnn-profile-repair-octets* nil)
-
-(defun fnn-metadata-config-repair (octets target)
-  "The profile the repair verb opens the store under: the one it will write,
-decoded through the ordinary open (fn-spo-repair-verdict: the saved profile
-with R lowered to the poll reply's width, admitted only for that target)."
-  (let ((verdict (fnn-core 'fn-store-profile-repair-verdict
-                           (fnn-octet-list octets) target)))
-    (unless (and (consp verdict) (member (first verdict) '(:repair :refused)))
-      (fnn-fault "ACL2 returned a malformed profile repair verdict"))
-    (when (eq (first verdict) :refused)
-      (fnn-refuse "store profile upgrade refused: ~(~a~)" (second verdict)))
-    (unless (and (fnn-octet-list-p (second verdict)) (second verdict))
-      (fnn-fault "ACL2 returned a malformed profile frame"))
-    (let ((frame (fnn-octets (second verdict))))
-      (prog1 (fnn-metadata-config-decode frame)
-        (setf *fnn-profile-repair-octets* frame)))))
 
 (defun fnn-metadata-frontier-frame (frontier)
   (let ((value (fnn-core 'fn-store-metadata-frontier-frame frontier)))
@@ -1648,14 +1625,13 @@ after the syscall."
   (let ((raw (handler-case
                  (fnn-read-regular-bounded (fnn-config-path store) 16384)
                (fnn-os-error (e) (fnn-fault "invalid durable config: ~a" e)))))
-    ;; Format 5 is deliberately retained.  Opening never rewrites it into a
-    ;; format-6 FNSM frame; migration is a separate offline operation.
+    ;; JSON metadata (format 5 and older) is another store format (D34): the
+    ;; open refuses it by ACL2's name, and never rewrites it.
     (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
-      (fnn-fault "legacy JSON metadata is retained in place; explicit offline migration is required"))
-    (setf (fnn-store-config store)
-          (if *fnn-profile-repair-target*
-              (fnn-metadata-config-repair raw *fnn-profile-repair-target*)
-              (fnn-metadata-config-decode raw)))))
+      (error 'fnn-store-profile-refusal
+             :message (fnn-core 'fn-store-metadata-config-refusal-text
+                                '(:refused :store-format))))
+    (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
 
 (defun fnn-load-frontier (store)
   (fnn-check-regular (fnn-frontier-path store))
@@ -1837,8 +1813,7 @@ acknowledged without its marker."
         (fnn-check-regular path)
         (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
           (incf aggregate (length record))
-          ;; ACL2's bound (fn-profile-replay-within-boundp, monotone under a
-          ;; profile upgrade: fn-profile-upgrade-keeps-replay-bound).
+          ;; ACL2's bound (fn-profile-replay-within-boundp).
           (unless (fnn-core 'fn-store-profile-replay-within-bound
                             (fnn-store-config store) aggregate)
             (fnn-fault "transaction recovery input exceeds configured bound"))
@@ -2690,46 +2665,7 @@ groups is refused, never created as a group."
                :message (format nil "init refused: ~(~a~)" (second plan)))
       (fnn-command-init root (second plan) (third plan)))))
 
-(defun fnn-command-needs-upgrade (root)
-  "Whether the no-argument `store upgrade-profile' would write: ACL2's
-fn-profile-needs-upgrade-verdict over the profile decoded from config.json.
-Reads config.json only (no lock, no replay); prints the verdict word."
-  (let ((store (make-fnn-store root)))
-    (fnn-load-config store)
-    (let ((verdict (fnn-core 'fn-profile-needs-upgrade-verdict
-                             (fnn-store-config store))))
-      (unless (member verdict '(:needs-upgrade :current :invalid-current-profile))
-        (fnn-fault "ACL2 returned a malformed needs-upgrade verdict"))
-      (fnn-out "~(~a~)" verdict)
-      (if (eq verdict :invalid-current-profile) +fnn-exit-refused+ +fnn-exit-ok+))))
-
-(defun fnn-command-rollback-check (root old-path)
-  "Whether reinstating the kept config.json at OLD-PATH is sound: ACL2's
-fn-profile-rollback-verdict over the kept profile, the store's own config.json
-profile (a kept profile that drops its history-marker requirement is refused
-by name) and the octet lengths of the store's committed transaction files.
-The host reads and measures; it decides nothing."
-  (let ((store (make-fnn-store root)))
-    (fnn-load-config store)
-    (let* ((old (fnn-core 'fn-store-metadata-config-decode
-                          (fnn-octet-list (fnn-read-regular-bounded old-path 16384))))
-           (lengths (mapcar (lambda (pair)
-                              (let ((st (fnn-lstat (cdr pair))))
-                                (unless st (fnn-fault "transaction file vanished"))
-                                (sb-posix:stat-size st)))
-                            (fnn-transaction-files store)))
-           (verdict (fnn-core 'fn-profile-rollback-verdict old
-                                    (fnn-store-config store) lengths)))
-      (unless (and (consp verdict) (member (first verdict) '(:sound :refused)))
-        (fnn-fault "ACL2 returned a malformed rollback verdict"))
-      (if (eq (first verdict) :sound)
-          (progn (fnn-out "rollback sound transactions=~d" (length lengths))
-                 +fnn-exit-ok+)
-          (progn (fnn-out "rollback refused ~(~a~)~{ ~a~}" (second verdict)
-                          (cddr verdict))
-                 +fnn-exit-refused+)))))
-
-(defun fnn-rollback-history (store)
+(defun fnn-committed-history (store)
   "The committed history of the acquired STORE as the open reads it: the
 selected pack's records and then the suffix files (`fnn-durable-records' and
 the pack callbacks, as `fnn-recover-full-replay'), each record's exact octets
@@ -2743,159 +2679,136 @@ for a record."
       (fnn-check-history-marker store (length records))
       records)))
 
-(defun fnn-command-rollback-snapshot (root snapshot)
-  "What restoring the snapshot store at SNAPSHOT would lose against ROOT.
+;;; `store export DIR' and `store import DIR' (D34, books/store-export.lisp).
 
-Both stores are acquired read-only under their shared writer locks (a store an
-owner holds is refused, never read unlocked) and held while ACL2 compares:
-`fn-native-operator-history-step' once per snapshot record with the store's
-record at the same position, then `fn-native-operator-history-verdict' over
-the store's record count (books/native-operator.lisp; PRF-141,
-fn-native-operator-history-loss-is-ancestry).  The host reads and prints;
-ACL2 compares and counts."
-  (let ((current (make-fnn-store root :writable nil))
-        (earlier (make-fnn-store snapshot :writable nil)))
-    (fnn-acquire current)
+(defun fnn-archive-write-file (path octets)
+  "Create PATH (it must not exist), write OCTETS, fence it."
+  (let ((fd (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                    +fnn-o-nofollow+)
+                      #o600)))
+    (unwind-protect (progn (fnn-write-all fd (fnn-octets octets)) (fnn-fsync-file fd))
+      (fnn-close fd))))
+
+(defun fnn-archive-name (octets)
+  (let ((name (fnn-octets-string (fnn-octets octets))))
+    (when (or (zerop (length name)) (search ".." name) (char= (char name 0) #\/))
+      (fnn-fault "ACL2 returned an invalid archive entry name"))
+    name))
+
+(defun fnn-command-store-export (root dir)
+  "Offline: write the archive of ROOT's committed history to DIR (it must not
+exist).  The store is acquired under its writer lock (a running owner refuses
+this), the history is the one the open reads (`fnn-committed-history': the
+selected pack's records then the suffix files, the marker checked), and the
+entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
+  (when (fnn-lstat dir)
+    (fnn-refuse "export refused reason=archive-exists"))
+  (let ((store (make-fnn-store root :writable nil)))
+    (fnn-acquire store)
     (unwind-protect
-         (progn
-           (fnn-acquire earlier)
-           (unwind-protect
-                (let* ((cur (fnn-rollback-history current))
-                       (snap (fnn-rollback-history earlier))
-                       (rest cur)
-                       (acc (fnn-core 'fn-native-operator-host-history-start)))
-                  (dolist (event snap)
-                    (setq acc (fnn-core 'fn-native-operator-host-history-step acc
-                                        (fnn-octet-list event) (consp rest)
-                                        (and (consp rest) (fnn-octet-list (car rest)))))
-                    (setq rest (cdr rest)))
-                  (let ((verdict (fnn-core 'fn-native-operator-host-history-verdict
-                                           acc (length cur))))
-                    (unless (and (consp verdict) (member (first verdict) '(:loses :refused)))
-                      (fnn-fault "ACL2 returned a malformed snapshot verdict"))
-                    (fnn-out "~a" (fnn-core 'fn-native-operator-host-snapshot-loss-report
-                                            verdict (length snap) (length cur)))
-                    (if (eq (first verdict) :loses) +fnn-exit-ok+ +fnn-exit-refused+)))
-             (fnn-store-close earlier)))
-      (fnn-store-close current))))
-
-;; The offline profile upgrade's cuts, in the order
-;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
-;; (books/byte-store-profile-program.lisp) five `:cut' steps.
-(defparameter +fnn-profile-model-cuts+
-  '("profile-created" "profile-written" "profile-staged-durable"
-    "profile-replaced" "profile-durable"))
-
-(defun fnn-profile-test-fault ()
-  "Developer-only FN_NATIVE_PROFILE_FAULT=MODEL-CUT:eio|kill selector.
-
-Not an operator option: it selects one `fnn-at' cut of the profile upgrade's
-byte program.  kill is SIGKILL at the cut, so the next command is a new
-process; eio raises the host's EIO there."
-  (let ((raw (fnn-developer-selector "FN_NATIVE_PROFILE_FAULT")))
-    (when raw
-      (let ((colon (position #\: raw :from-end t)))
-        (unless colon
-          (fnn-fault "invalid FN_NATIVE_PROFILE_FAULT (expected MODEL-CUT:eio|kill)"))
-        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
-          ;; The upgrade's open runs the marker catch-up before the profile
-          ;; program (the two-step of books/store-history-required).
-          (unless (or (member label +fnn-profile-model-cuts+ :test #'string=)
-                      (member label (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
-            (fnn-fault "unknown FN_NATIVE_PROFILE_FAULT cut: ~a" label))
-          (list (intern (string-upcase label) :keyword)
-                (cond ((string= action "eio") 'fnn-os-error)
-                      ((string= action "kill") :fnn-test-kill)
-                      (t (fnn-fault "invalid FN_NATIVE_PROFILE_FAULT action: ~a" action)))
-                "developer-only native profile-upgrade fault"))))))
-
-(defun fnn-upgrade-profile-write (store octets)
-  "P-PROFILE, books/byte-store-profile-program.lisp `fn-bs-profile-program'.
-
-Stage OCTETS under a `.stage-' name (the recovery sweep's), fence it, rename
-it onto config.json, fence the root.  Before the rename a failure is known:
-config.json is the old frame and the stage is an orphan the next open sweeps
-(exit 1).  At or after it the outcome is uncertain (exit 3): the next open
-reads whichever frame the directory holds, old or new, never a torn one
-(fn-bs-profile-program-crash-is-old-or-new)."
-  (let ((stage (fnn-join (fnn-staging store) (format nil ".stage-profile-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
-        (attempted nil))
-    (handler-case
-        (progn
-          (fnn-write-staged-at store stage octets :profile-created :profile-written)
-          (fnn-at store :profile-staged-durable)
-          (setq attempted t)
-          (fnn-replace stage (fnn-config-path store))
-          (fnn-at store :profile-replaced)
-          (fnn-fsync-dir (fnn-store-root store))
-          (fnn-at store :profile-durable))
-      (fnn-os-error (e)
-        (if attempted
-            (fnn-indeterminate "store profile replacement is indeterminate: ~a" e)
-            (fnn-refuse-io "known failure before the profile replacement: ~a" e))))))
-
-(defun fnn-command-repair-profile (root profile)
-  "Offline: the one lowering, over a store whose open refused its saved
-profile by name (PKT-471).  The store is opened as the upgrade opens it, under
-the profile ACL2's repair verdict would write; the verdict decides, the host
-writes its frame with the upgrade's byte program.  Any other target is
-refused by name (exit 1) and nothing is written."
-  (let ((*fnn-profile-repair-target* profile)
-        (*fnn-profile-repair-octets* nil))
-    (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
-      (unwind-protect
-           (let ((octets *fnn-profile-repair-octets*))
-             (unless octets
-               (fnn-fault "the profile repair opened without a verdict"))
-             (fnn-upgrade-profile-write store octets)
-             (fnn-out "repaired profile=max-record-octets transactions-used=~d"
-                      (length records))
-             (fnn-out-profile (fnn-metadata-config-decode octets))
-             +fnn-exit-ok+)
-        (fnn-store-close store)))))
-
-(defun fnn-command-upgrade-profile-open (root profile)
-  "Offline: replace the store's profile by PROFILE when ACL2 calls it an upgrade.
-
-The store is opened as `recover' opens it: the exclusive writer lock (so a
-running owner refuses this with `store is already locked'), the old profile's
-bounds, full replay and recovery barriers.  ACL2's verdict
-(`fn-profile-upgrade-verdict') decides and supplies the frame; the host only
-writes it.  Same profile and anything but an upgrade are refused (exit 1) and
-write nothing."
-  (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
-    (unwind-protect
-         ;; The open (fnn-recover) already wrote the catch-up marker; the
-         ;; verdict reads it back and grants `required' only over a marker
-         ;; that counts the reconstructed history (fn-hmr-upgrade-verdict).
-         (let ((verdict (fnn-core 'fn-hmr-upgrade-verdict
-                                  (fnn-store-config store) profile
-                                  (fnn-history-marker-observation store)
-                                  (length records))))
-           (unless (and (consp verdict) (member (first verdict) '(:upgrade :refused)))
-             (fnn-fault "ACL2 returned a malformed profile verdict"))
-           (if (eq (first verdict) :refused)
-               (fnn-refuse "store profile upgrade refused: ~(~a~)~@[ ~a~]"
-                           (second verdict) (third verdict))
-               (destructuring-bind (octets old-budget new-budget) (rest verdict)
-                 (unless (and (fnn-octet-list-p octets) octets
-                              (integerp old-budget) (integerp new-budget))
-                   (fnn-fault "ACL2 returned a malformed profile frame"))
-                 (fnn-upgrade-profile-write store (fnn-octets octets))
-                 (fnn-out "upgraded profile=~(~a~) transactions-used=~d transactions-budget=~d previous-budget=~d"
-                          (if (symbolp profile) profile (first profile))
-                          (length records) new-budget old-budget)
-                 (fnn-out-profile (fnn-metadata-config-decode octets))
-                 +fnn-exit-ok+)))
+         (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
+                (frontier (fnn-octet-list (fnn-read-regular-bounded (fnn-frontier-path store) 4096)))
+                (configs (mapcar (lambda (pair) (cons (car pair) (fnn-octet-list (cdr pair))))
+                                 (fnn-config-record-observation store)))
+                (records (mapcar (lambda (record)
+                                   (cons (fnn-bridge-record-sequence record)
+                                         (fnn-octet-list record)))
+                                 (fnn-committed-history store)))
+                (entries (fnn-core 'fn-sxp-entries profile frontier configs records))
+                (manifest (fnn-core 'fn-sxp-manifest entries)))
+           (unless (and (consp entries) (fnn-octet-list-p manifest))
+             (fnn-fault "ACL2 returned a malformed archive"))
+           (fnn-mkdir dir #o700)
+           (fnn-mkdir (fnn-join dir "config") #o700)
+           (fnn-mkdir (fnn-join dir "records") #o700)
+           (dolist (entry entries)
+             (fnn-archive-write-file (fnn-join dir (fnn-archive-name (car entry))) (cdr entry)))
+           (fnn-archive-write-file (fnn-join dir "MANIFEST") manifest)
+           (fnn-fsync-dir (fnn-join dir "records"))
+           (fnn-fsync-dir (fnn-join dir "config"))
+           (fnn-fsync-dir dir)
+           (fnn-out "exported records=~d configuration=~d" (length records) (length configs))
+           +fnn-exit-ok+)
       (fnn-store-close store))))
 
-(defun fnn-command-upgrade-profile (root profile)
-  "Offline: replace the store's profile by PROFILE when ACL2 calls it an
-upgrade; over a store whose open refuses its profile by name, the repair
-(fnn-command-repair-profile)."
-  (handler-case (fnn-command-upgrade-profile-open root profile)
-    (fnn-store-profile-refusal ()
-      (fnn-command-repair-profile root profile))))
+(defun fnn-archive-read-dir (dir sub)
+  (sort (copy-list (fnn-list-directory (fnn-join dir sub))) #'string<))
+
+(defun fnn-command-store-import (root dir request)
+  "Offline: make a new store at ROOT (it must not exist) from the archive at
+DIR.  ACL2's plan (fn-sxp-import-plan) checks the MANIFEST, the order and the
+profile (REQUEST's field overrides over the archive's) and refuses by name;
+the host writes the plan's files into ROOT.import-XXXX as init writes its
+files, opens that store the ordinary way (full replay, marker catch-up), and
+renames it onto ROOT only when the open admitted it."
+  (when (fnn-lstat root)
+    (fnn-refuse "import refused reason=store-exists"))
+  (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-join dir "profile") 16384)))
+         (frontier (fnn-octet-list (fnn-read-regular-bounded (fnn-join dir "frontier") 4096)))
+         (config-names (fnn-archive-read-dir dir "config"))
+         (record-names (fnn-archive-read-dir dir "records"))
+         ;; Work bounds, not data bounds: one record file is read within the
+         ;; archive profile's record bound (the bound it was committed under),
+         ;; and the MANIFEST within one line per entry.
+         (record-bound (fnn-core 'fn-store-profile-read-bound
+                                 (fnn-core 'fn-bs-config-decode profile)))
+         (manifest (fnn-octet-list
+                    (fnn-read-regular-bounded
+                     (fnn-join dir "MANIFEST")
+                     (* 512 (+ 2 (length config-names) (length record-names))))))
+         (configs (mapcar (lambda (name)
+                            (cons name (fnn-octet-list
+                                        (fnn-read-regular-bounded
+                                         (fnn-join (fnn-join dir "config") name)
+                                         +fnn-config-record-bytes+))))
+                          config-names))
+         (records (mapcar (lambda (name)
+                            (let ((octets (fnn-read-regular-bounded
+                                           (fnn-join (fnn-join dir "records") name)
+                                           record-bound)))
+                              (cons (fnn-bridge-record-sequence octets)
+                                    (fnn-octet-list octets))))
+                          record-names))
+         (plan (fnn-core 'fn-sxp-import-plan manifest profile frontier configs records
+                         (or request '(:current nil)))))
+    (unless (and (consp plan) (member (first plan) '(:import :refused)))
+      (fnn-fault "ACL2 returned a malformed import plan"))
+    (when (eq (first plan) :refused)
+      (fnn-refuse "import refused reason=~(~a~)~@[ ~a~]" (second plan)
+                  (let ((detail (third plan)))
+                    (cond ((null detail) nil)
+                          ((fnn-octet-list-p detail) (fnn-octets-string (fnn-octets detail)))
+                          ((keywordp detail) (string-downcase (symbol-name detail)))
+                          (t detail)))))
+    (destructuring-bind (values frontier configs records) (rest plan)
+      (let* ((stage-root (format nil "~a.import-~a" (string-right-trim "/" root) (fnn-random-hex 6)))
+             (stage (make-fnn-store stage-root :writable t)))
+        (fnn-mkdir stage-root #o700)
+        (dolist (sub '("transactions" "staging" "config"))
+          (fnn-mkdir (fnn-join stage-root sub) #o700))
+        (fnn-archive-write-file (fnn-config-path stage)
+                                (fnn-core 'fn-bs-config-encode values))
+        (fnn-archive-write-file (fnn-frontier-path stage) frontier)
+        (dolist (config configs)
+          (fnn-archive-write-file (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+        (dolist (record records)
+          (fnn-archive-write-file (fnn-join (fnn-transactions stage)
+                                            (fnn-transaction-name (car record)))
+                                  (fnn-frame (fnn-octets (cdr record)))))
+        (dolist (sub '("transactions" "staging" "config"))
+          (fnn-fsync-dir (fnn-join stage-root sub)))
+        (fnn-fsync-dir stage-root)
+        ;; The ordinary open admits the imported history or refuses it.
+        (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
+          (unwind-protect
+               (unless (= (length replayed) (length records))
+                 (fnn-fault "the imported store replayed ~d of ~d records"
+                            (length replayed) (length records)))
+            (fnn-store-close opened)))
+        (fnn-replace stage-root root)
+        (fnn-fsync-dir (directory-namestring (string-right-trim "/" root)))
+        (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
+        +fnn-exit-ok+))))
 
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
@@ -3798,7 +3711,7 @@ serialized profile when the saved image later starts."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
-    "FN_NATIVE_PROFILE_FAULT" "FN_NATIVE_STATE_CHECKPOINT_FAULT"
+    "FN_NATIVE_STATE_CHECKPOINT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
@@ -3917,12 +3830,9 @@ serialized profile when the saved image later starts."
            (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
                  ((string= command "status") (fnn-command-status root))
-                 ((string= command "upgrade-profile")
-                  (need 4)
-                  (fnn-command-upgrade-profile
-                   root (fnn-core 'fn-store-profile-word
-                                  (fnn-octet-list (fnn-string-octets (first rest))))))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
+                 ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
+                 ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
                  ;; PKT-444: the repair of a pre-C1 control record.  Its
                  ;; semantics wait on ember; until then it refuses by name

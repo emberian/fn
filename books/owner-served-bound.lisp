@@ -25,10 +25,11 @@
 (defun fn-osb-config (cfg profile)
   "CFG with its article bound replaced by PROFILE's payload bound."
   (declare (xargs :guard t))
-  (fn-inj-make-config (fn-inj-config-allow cfg)
-                      (fn-inj-config-agent cfg)
-                      (fn-inj-config-groups cfg)
-                      (fn-sbud-payload-bound profile)))
+  (fn-inj-make-config-listed (fn-inj-config-allow cfg)
+                             (fn-inj-config-agent cfg)
+                             (fn-inj-config-groups cfg)
+                             (fn-sbud-payload-bound profile)
+                             (fn-inj-config-listing cfg)))
 
 (defun fn-osb-install (o profile)
   "(mv VERDICT OWNER): :installed and O with the served bound of PROFILE, or

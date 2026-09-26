@@ -6,25 +6,21 @@ v2) meet here.  Two things neither lane could run alone:
 * an operator profile whose article field is 4 MiB admits POSTs of 33 KiB,
   200 KiB and 3 MiB, each re-read identical, and refuses one octet past the
   bound with the 441 that names the size;
-* the deployed store's offline step, rehearsed on a format-7 scale store
-  written by a pre-D27 image (FN_FORMAT7_IMAGE): open under the new image,
-  upgrade with a 4 MiB article field, roll back by restoring the kept
-  config.json and reopen under the old image, upgrade again, POST 3 MiB,
-  re-read, restart, still open (planning/evidence/bounds-join-2026-09-25.md).
-
 * one served step whose reply is several MiB (PKT-481): the ARTICLE of 1, 2
   and 3 MiB articles and an OVER of about 4 MB, the owner still serving.
 
 Run on hbox with FN_NATIVE_HOST naming the image under test.
 """
+import hashlib
+import os
+from pathlib import Path
 import shutil
 import signal
 import socket
 import unittest
 
 from tests import test_native_operator_verbs as verbs
-from tests.test_native_profile_upgrade import (FORMAT7_IMAGE, FORMAT7_SCALE_FRAME,
-                                               ProfileUpgradeFixture)
+from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 MIB4 = 4 * 1024 * 1024
@@ -226,69 +222,95 @@ class LargeReplyTests(JoinFixture):
         self.stop_serving(owner)
 
 
-@unittest.skipUnless(FORMAT7_IMAGE, "FN_FORMAT7_IMAGE names a pre-D27 image")
-class DeployRehearsalTests(JoinFixture):
-    """The offline 7-to-8 step for the deployed node, on a scratch store."""
+class SpanReferenceTests(JoinFixture):
+    """SCN-110: the span read serves what the per-read-list read served.
 
-    def old(self, *words):
-        return self.operator(*words, image=FORMAT7_IMAGE)
+    The image under test (FN_NATIVE_HOST) consumes each socket read in place
+    from the octet buffer (host/native/owner.lisp fnn-owner-handle-chunk ->
+    fn-owner-chunk-span); the reference image (FN_SPAN_REFERENCE_HOST, a
+    build of the base whose owner coerced every read to a list and called
+    fn-owner-chunk) is driven with the same POSTs on a fresh store.  Every
+    reply line and every ARTICLE's octets must agree, the values of the
+    injected Date and Injection-Date fields (the wall clock) aside.  The articles are
+    33 KiB, 200 KiB and 3 MiB of 78-octet lines (so body lines straddle the
+    512-octet reads) and one article of dot-led lines written in 7-octet
+    pieces (a dot-stuffed line split across reads).
+    """
 
-    def test_step_rollback_step_post_3_mib_restart(self):
-        created = self.old("init", "--profile", "scale", "fn.test")
+    SIZES = (33792, 204800, 3145728)
+
+    def dotted(self, message_id):
+        head = ("From: join@example.invalid\r\nNewsgroups: fn.test\r\n"
+                "Subject: span split\r\nMessage-ID: {}\r\n\r\n").format(message_id)
+        body = "".join(".{} dot-led line {}\r\n".format("." * (i % 3), i) for i in range(200))
+        return (head + body).encode("ascii")
+
+    def masked(self, stored):
+        if stored is None:
+            return None
+        head, sep, body = stored.partition(b"\r\n\r\n")
+        lines = [ln.split(b":", 1)[0] + b": *"
+                 if ln.lower().startswith((b"date:", b"injection-date:")) else ln
+                 for ln in head.split(b"\r\n")]
+        return b"\r\n".join(lines) + sep + body
+
+    def served(self, image, tag):
+        self.image = image
+        base = self.root / tag
+        base.mkdir()
+        self.store, self.config = base / "store", base / "fn.toml"
+        self.control, self.port = base / "control.sock", verbs.free_port()
+        self.config.write_text(
+            '[store]\npath = "{}"\n'
+            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
+            encoding="ascii")
+        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        self.assertEqual(self.frame(), FORMAT7_SCALE_FRAME)
-        owner = self.start_owner(FORMAT7_IMAGE)
-        self.assertEqual(self.post_many(["<seed@example.invalid>"]), ["240 article received OK"])
+        owner = self.start_owner(image)
+        rows = []
+        client = NntpClient(self.port)
+        try:
+            for n in self.SIZES:
+                msgid = "<span-{}@example.invalid>".format(n)
+                data = article(msgid, n)
+                reply = client.post(data)
+                status, stored = client.article(msgid)
+                rows.append((n, reply, status, self.masked(stored),
+                             stored is not None and stored.endswith(data.split(b"\r\n\r\n", 1)[1])))
+            msgid = "<span-dotted@example.invalid>"
+            data = dot_stuff(self.dotted(msgid)) + b".\r\n"
+            client.stream.write(b"POST\r\n")
+            client.stream.flush()
+            self.assertTrue(client.stream.readline().startswith(b"340"))
+            for i in range(0, len(data), 7):
+                client.stream.write(data[i:i + 7])
+                client.stream.flush()
+            reply = client.stream.readline().rstrip(b"\r\n").decode("ascii", "replace")
+            status, stored = client.article(msgid)
+            rows.append(("dotted", reply, status, self.masked(stored),
+                         stored is not None and stored.endswith(self.dotted(msgid).split(b"\r\n\r\n", 1)[1])))
+        finally:
+            client.close()
         self.stop(owner)
-        # Step 2: keep config.json (the rollback) with the unit stopped.
-        kept = self.root / "config.json.format-7"
-        shutil.copyfile(self.store / "config.json", kept)
-        # Step 3: the new image opens the format-7 store under its translation.
-        status = self.op("status")
-        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
-        self.assertIn(b"profile format=7", status.stdout)
-        print(status.stdout.decode(), flush=True)
-        # Step 4 with the article field alone is refused by the relation: the
-        # translated R (17,138,486) does not hold a 4 MiB article's record.
-        alone = self.op("store", "upgrade-profile", "--max-article-octets", str(MIB4))
-        self.assertEqual(alone.returncode, EXIT_REFUSED, alone.stderr.decode())
-        self.assertIn(b"max-record-octets-below-the-article-record", alone.stderr)
-        self.assertEqual(self.frame(), FORMAT7_SCALE_FRAME)
-        step = ("store", "upgrade-profile", "--max-article-octets", str(MIB4),
-                "--max-record-octets", "33554432")
-        upgraded = self.op(*step)
-        self.assertEqual(upgraded.returncode, EXIT_OK, upgraded.stderr.decode())
-        print(upgraded.stdout.decode(), flush=True)
-        self.assertIn(b"transactions-used=1 transactions-budget=4096 previous-budget=4096",
-                      upgraded.stdout)
-        line = self.profile_line()
-        self.assertEqual((line["format"], line["max-article-octets"],
-                          line["max-record-octets"]), (8, MIB4, 33554432))
-        # Rollback: the old image refuses format 8; the kept frame restores it.
-        refused = self.old("status")
-        self.assertNotEqual(refused.returncode, EXIT_OK)
-        shutil.copyfile(kept, self.store / "config.json")
-        self.assertEqual(self.frame(), FORMAT7_SCALE_FRAME)
-        reopened = self.old("status")
-        self.assertEqual(reopened.returncode, EXIT_OK, reopened.stderr.decode())
-        # Step 4 again, then serve.
-        self.assertEqual(self.op(*step).returncode, EXIT_OK)
-        owner = self.start_owner(self.image)
-        rows = self.post_and_reread([3145728])
-        self.stop(owner)
-        self.assertTrue(rows[3145728][0].startswith("240"), rows)
-        self.assertTrue(rows[3145728][1])
-        # Restart: still open, the 3 MiB article rereads, the next POST lands.
-        status = self.op("status")
-        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
-        owner = self.start_owner(self.image)
-        self.assertTrue(self.reread("<join-3145728@example.invalid>", 3145728))
-        self.assertEqual(self.post_many(["<after@example.invalid>"]), ["240 article received OK"])
-        self.stop(owner)
-        self.assertEqual(self.headroom()["transactions-used"], 3)
+        return rows
 
-    profile_line = __import__("tests.test_native_profile_upgrade",
-                              fromlist=["OperatorFieldsTests"]).OperatorFieldsTests.profile_line
+    def test_span_read_serves_the_reference_images_bytes_at_33k_200k_3m_and_split_dot_lines(self):
+        reference = os.environ.get("FN_SPAN_REFERENCE_HOST")
+        if not reference or not verbs.executable(Path(reference)):
+            self.skipTest("FN_SPAN_REFERENCE_HOST (the base image) is required")
+        under_test = self.image
+        after = self.served(under_test, "after")
+        before = self.served(Path(reference), "before")
+        for a, b in zip(after, before):
+            print("SPAN", a[0], a[1], a[2].rstrip(), len(a[3] or b""),
+                  hashlib.sha256(a[3] or b"").hexdigest()[:16],
+                  hashlib.sha256(b[3] or b"").hexdigest()[:16], flush=True)
+            self.assertTrue(a[1].startswith("240"), a[:3])
+            self.assertTrue(a[4], "{} did not reread identical".format(a[0]))
+            self.assertEqual(a[1:3], b[1:3], a[0])
+            self.assertEqual(a[3], b[3], "{}: served octets differ from the reference".format(a[0]))
+        self.assertEqual(len(after), len(before))
 
 
 if __name__ == "__main__":

@@ -12,15 +12,8 @@ books/store-history-required.lisp decides; host/native/io.lisp performs:
   the store, twice;
 * the catch-up's own marker cuts (FN_NATIVE_RECOVERY_FAULT on `recover`):
   after each, the next open completes it and the same sequence is refused;
-* the migration: `store upgrade-profile --history-marker required` over a
-  store whose marker is absent writes the marker (its open's catch-up) and
-  then the profile; afterwards a deleted marker is `marker-missing` damage
-  (exit 4) and a lost newest file is `history-short-of-marker`; a downgrade
-  is refused by name and `init` never writes the requirement;
-* the migration's cuts (FN_NATIVE_PROFILE_FAULT at the five marker cuts and
-  the five profile cuts, SIGKILL and EIO): the store reopens either
-  `unmarked` or `required`, and when it is `required` its marker is the
-  covering one.
+* D34: no verb marks a store later; `init` refuses `required` by name (a
+  store is born `unmarked`; how one is born `required` is PKT-587).
 """
 import os
 from pathlib import Path
@@ -37,8 +30,6 @@ DEVELOPER = verbs.DEVELOPER
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT = 0, 1, 3, 4
 MARKER_CUTS = ("marker-created", "marker-written", "marker-staged-durable",
                "marker-replaced", "marker-durable")
-PROFILE_CUTS = ("profile-created", "profile-written", "profile-staged-durable",
-                "profile-replaced", "profile-durable")
 ACTIONS = (("kill", None), ("eio", EXIT_UNCERTAIN))
 SELECTORS = ("FN_NATIVE_POST_FAULT", "FN_NATIVE_RECOVERY_FAULT", "FN_NATIVE_PROFILE_FAULT",
              "FN_NATIVE_CONTROL_FAULT")
@@ -50,8 +41,6 @@ class HistoryRequiredSourceTests(unittest.TestCase):
         check = native_cuts.host_function(io, "fnn-check-history-marker")
         self.assertIn("'fn-hmr-open-verdict", check)
         self.assertIn("'fn-hmr-catch-up", check)
-        upgrade = native_cuts.host_reach(io, "fnn-command-upgrade-profile")
-        self.assertIn("'fn-hmr-upgrade-verdict", upgrade)
         native_cuts.verify_recovery_order()
 
 
@@ -244,96 +233,6 @@ class RetryResolutionTests(Fixture):
                     again = self.cli_post(retried)
                     self.assertEqual(again.stdout.decode().strip(), "duplicate")
                     self.assert_newest_loss_refused(2, 1)
-
-
-class MigrationTests(Fixture):
-    """D31 case 1: the requirement, and the two-step that makes it durable."""
-
-    def legacy(self, name, posts=2):
-        self.store = self.root / name
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        self.op("init", "fn.test")
-        for n in range(posts):
-            self.cli_post("<{}-{}@example.invalid>".format(name, n))
-        (self.store / "committed-history.json").unlink()   # a store from before the marker
-
-    def test_migrate_then_absence_and_loss_are_damage(self):
-        self.legacy("migrate")
-        count = len(self.files())
-        covering = self.reference_marker(count)
-        self.assertEqual(self.profile(), "unmarked")
-        refused_init = self.operator("init", "--history-marker", "required", "fn.other",
-                                     image=DEVELOPER, env=self.env)
-        self.assertNotEqual(refused_init.returncode, EXIT_OK)
-        # The unmarked config.json kept before the migration is a sound
-        # rollback now (qual-e747dbcc U1's kept file).
-        kept = self.store.parent / "config.json.unmarked"
-        kept.write_bytes((self.store / "config.json").read_bytes())
-        sound = self.op("store", "rollback-check", str(kept))
-        self.assertIn("rollback sound", sound.stdout.decode())
-        upgraded = self.op("store", "upgrade-profile", "--history-marker", "required")
-        self.assertIn("history-marker=required", upgraded.stdout.decode())
-        self.assertEqual(self.profile(), "required")
-        self.assertEqual(self.marker(), covering)
-        # After it, reinstating the kept file would drop the requirement:
-        # refused by name (fn-profile-rollback-keeps-a-required-marker).
-        dropped = self.op("store", "rollback-check", str(kept), expected=EXIT_REFUSED)
-        self.assertIn("rollback refused history-marker-required-dropped",
-                      dropped.stdout.decode())
-        # A downgrade is refused by name and writes nothing.
-        config = (self.store / "config.json").read_bytes()
-        down = self.op("store", "upgrade-profile", "--history-marker", "unmarked",
-                       expected=EXIT_REFUSED)
-        self.assertIn("not-an-upgrade history-marker", down.stderr.decode())
-        self.assertEqual((self.store / "config.json").read_bytes(), config)
-        # The marker deleted: damage, not legacy.
-        saved = self.marker()
-        (self.store / "committed-history.json").unlink()
-        for _ in range(2):
-            missing = self.op("recover", expected=EXIT_FAULT)
-            self.assertIn("marker-missing", missing.stderr.decode())
-        (self.store / "committed-history.json").write_bytes(saved)
-        self.op("recover")
-        self.cli_post("<after@example.invalid>")
-        self.assert_newest_loss_refused(count + 1, count)
-
-    def test_every_migration_cut_reopens_consistently(self):
-        for cut in MARKER_CUTS + PROFILE_CUTS:
-            for action, expected in ACTIONS:
-                with self.subTest(cut=cut, action=action):
-                    self.legacy("mig-{}-{}".format(cut, action))
-                    covering = self.reference_marker(len(self.files()))
-                    faulted = self.op("store", "upgrade-profile", "--history-marker", "required",
-                                      env=self.with_fault("FN_NATIVE_PROFILE_FAULT",
-                                                          "{}:{}".format(cut, action)),
-                                      expected=None)
-                    if expected is None:
-                        self.assertLess(faulted.returncode, 0, faulted.stderr.decode())
-                    elif cut in ("profile-created", "profile-written", "profile-staged-durable"):
-                        self.assertEqual(faulted.returncode, EXIT_REFUSED, faulted.stderr.decode())
-                    else:
-                        self.assertEqual(faulted.returncode, EXIT_UNCERTAIN, faulted.stderr.decode())
-                    self.op("recover")
-                    state = self.profile()
-                    print("migration cut", cut, action, faulted.returncode, state)
-                    self.assertIn(state, ("unmarked", "required"))
-                    if cut in MARKER_CUTS:
-                        self.assertEqual(state, "unmarked")
-                    if state == "required":
-                        self.assertEqual(self.marker(), covering)
-                    # The reopen caught the marker up either way; the retried
-                    # migration ends required over it.
-                    self.assertEqual(self.marker(), covering)
-                    if state == "unmarked":
-                        self.op("store", "upgrade-profile", "--history-marker", "required")
-                    self.assertEqual(self.profile(), "required")
-                    (self.store / "committed-history.json").unlink()
-                    missing = self.op("recover", expected=EXIT_FAULT)
-                    self.assertIn("marker-missing", missing.stderr.decode())
 
 
 if __name__ == "__main__":

@@ -479,8 +479,9 @@
       (fn-nntp-post-step ps archive config observation injection wire-event)
     (let ((r (fn-pix-step-pinned
               (fn-post-session-base ps) archive index verdicts
-              (fn-nntp-env observation nil
-                           (and (fn-inj-config-allow config) t))
+              (fn-nntp-env-listed observation nil
+                           (and (fn-inj-config-allow config) t)
+                           (fn-inj-config-listing config))
               wire-event)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
