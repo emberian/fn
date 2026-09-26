@@ -87,6 +87,8 @@
     ("docs/operator.md#initialize" 1 "group" "create" "peer1")
     ("docs/operator.md#initialize" 2 "peer" "pull" "peer1" "60" "5")
     ("docs/operator.md#initialize" 3 "peer" "add" "peer1" "news.example.invalid" "127.0.0.1" "1119" "fn.*" "fn.*" "source-address" "127.0.0.1" "true")
+    ("docs/operator.md#what-a-logins-post-discloses-injection-infos-posting-account" 1 "policy" "set" "complaints-to" "abuse@example.org")
+    ("docs/operator.md#what-a-logins-post-discloses-injection-infos-posting-account" 2 "account" "hash" "alice")
     ("docs/operator.md#bind-a-login-to-its-signing-principal" 1 "principal" "bind" "alice" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a")
     ("docs/operator.md#bind-a-login-to-its-signing-principal" 2 "policy" "set" "posting-policy" "bound-logins")
     ("docs/operator.md#re-decide-a-declined-key-statement-keys-redecide" 1 "control" "grant" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "keys" "fn.keys")
