@@ -7731,6 +7731,34 @@
         "fn-served-step-over-range-carries-the-xref",
         "fn-oag-listing-server-is-the-path-identity"
       ]
+    },
+    {
+      "id": "PRF-212",
+      "title": "`tls reload` takes the renewed certificate and key exactly when they load, match, are valid now and keep every served name, and refuses by name otherwise",
+      "statement": "Subject fn-tlsr-decide (books/tls-reload.lisp), which host/tls-reload-host.lisp fn-tlsr-host-decide computes for host/native/tls-reload.lisp fnn-tls-owner-reload, the owner's handler of the FNCT kind-19 `reload` request (`operator CONFIG tls reload`); the host swaps the served SSL_CTX (fnn-tls-context-swap, under the context lock fnn-tls-accept holds across SSL_new) exactly when the decision is :accept and frees the candidate otherwise. (1) fn-tlsr-decide-accepts-exactly-loaded-matching-current-covering-material (KEYSTONE, no hypotheses): the decision accepts iff the chain loaded, the key loaded, the key matches (the three library observations), the clock is an integer with notBefore <= now < notAfter (both times parsed from the leaf's UTCTime/GeneralizedTime contents), the subjectAltName is readable, and every dNSName of the served facts is among the new ones. (2) fn-tlsr-decide-carries-the-facts-or-a-named-refusal: an accepted decision is (:accept NAMES NOT-AFTER) of the parsed facts; any other is (:refuse R) with R one of the nine named reasons the reply and the operator's line carry. Teeth: tests/acl2/tls-reload-tests.lisp (a real EC P-256 certificate's times and subjectAltName octets; the positive witness asserting every conjunct and the acceptance; per conjunct a witness where it alone fails and the decision refuses by its name; per conjunct a must-fail of the acceptance without it; the window ends; the frames' round trip and an old owner's plain refusal). Trusted, not proved: the library's parse of the certificate and its three booleans (HST-016's seam), that SSL_new takes its own SSL_CTX reference (OpenSSL 3, LibreSSL), and the host clock. Native: tests/test_native_tls_reload.py (SCN-143) on the production and developer images.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/tls-reload.lisp",
+        "tests/acl2/tls-reload-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/tls-reload-host.lisp",
+        "host/native/tls-reload.lisp",
+        "host/native/tls.lisp",
+        "tests/test_native_tls_reload.py",
+        "planning/evidence/tls-reload-2026-09-26.md"
+      ],
+      "events": [
+        "fn-tlsr-decide-accepts-exactly-loaded-matching-current-covering-material",
+        "fn-tlsr-decide-carries-the-facts-or-a-named-refusal"
+      ],
+      "progress_note": "Lane tls-reload (2026-09-26): the book, its test book and the changed native-operator book with its test book admitted in the persvati REPL (proof_repl, toolchain w25); certification is the batch's (Validation by batch)."
     }
   ]
 }

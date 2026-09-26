@@ -233,6 +233,8 @@
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 (ld "host/peer-invite-host.lisp" :ld-error-action :error)
+; `tls reload' and the served certificate line (PRF-212).
+(ld "host/tls-reload-host.lisp" :ld-error-action :error)
 (ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -332,6 +334,8 @@
         (load "host/native/keys.lisp")
         ; `principal bind|unbind' live (PKT-221): request 14, wrapping keys.
         (load "host/native/login-bindings.lisp")
+        ; `tls reload' (PRF-212): request 19, wrapping login-bindings.
+        (load "host/native/tls-reload.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
         (load "host/native/proto-catalog.lisp")

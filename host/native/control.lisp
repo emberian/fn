@@ -141,6 +141,11 @@ unlinked; the lease is released before the verb runs."
             ((and (consp status) (eq (first status) :reasoned-reply))
              (fnn-core 'fn-native-control-host-reasoned-reply-encode
                        (second status) (third status)))
+            ;; `tls reload' / the served line (PRF-212): FNCT kind 20,
+            ;; sealed by ACL2 (host/native/tls-reload.lisp).
+            ((and (consp status) (eq (first status) :tls-reply))
+             (fnn-core 'fn-tlsr-host-reply-encode
+                       (second status) (third status) (fourth status)))
             ((and (consp status) (eq (first status) :topic-reply))
              (fnn-core 'fn-native-control-host-topic-reply-encode
                        (second status)))

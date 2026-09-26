@@ -3872,6 +3872,31 @@
         "planning/evidence/adapter-retirement-2026-09-26.md"
       ],
       "implementation_note": "First half (lane adapter-retirement): the feed results (FeedPublication) and the configuration staging results (ConfigResult) are typed; fnn-owner-name-list and fnn-owner-config-names are deleted and the feed flush consumes one sealed frame plan. The submission-taken, served-step and capture results are defined in books/owner-results.lisp and still travel through their globals until the continuation wires them (and the catalog slice's completion token)."
+    },
+    {
+      "id": "HST-020",
+      "title": "A running owner takes a renewed TLS certificate and key for new connections without a restart, keeps open sessions on theirs, and refuses bad material by name leaving the served certificate in place; status prints the served names and notAfter",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-212"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/tls-reload.lisp",
+        "tests/acl2/tls-reload-tests.lisp",
+        "host/native/tls-reload.lisp",
+        "host/native/tls.lisp",
+        "tests/test_native_tls_reload.py",
+        "docs/operator.md",
+        "planning/evidence/tls-reload-2026-09-26.md"
+      ],
+      "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
     }
   ]
 }

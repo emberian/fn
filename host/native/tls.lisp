@@ -43,8 +43,19 @@
 (define-condition fnn-tls-handshake-error (fnn-tls-error) ())
 (define-condition fnn-tls-io-error (fnn-tls-error) ())
 
+;;; A server context's POINTER is replaced only by `tls reload'
+;;; (FNN-TLS-CONTEXT-SWAP, PRF-212), under LOCK, which FNN-TLS-ACCEPT also
+;;; holds across SSL_new: SSL_new takes its own reference to the SSL_CTX (in
+;;; OpenSSL 3 and LibreSSL alike), so once the swap releases the lock no
+;;; new session can start on the old pointer and the sessions already open
+;;; keep it alive until each is freed.  SERVED is ACL2's accepted decision
+;;; for the material in POINTER (books/tls-reload.lisp fn-tlsr-decide), the
+;;; source of the `tls names=... not-after=...' line; NIL when no decision was
+;;; taken (a client context).
 (defstruct (fnn-tls-context (:constructor fnn-tls-context-make))
-  pointer certificate-path private-key-path)
+  pointer certificate-path private-key-path
+  (lock (sb-thread:make-mutex :name "fn native TLS context"))
+  served)
 
 (defstruct (fnn-tls-channel (:constructor fnn-tls-channel-make))
   pointer fd)
@@ -106,7 +117,12 @@ FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
     "SSL_CTX_set_verify" "SSL_CTX_load_verify_locations" "SSL_new" "SSL_free"
     "SSL_set_fd" "SSL_accept" "SSL_connect" "SSL_set1_host" "SSL_ctrl"
     "SSL_get_verify_result" "SSL_get_error" "SSL_pending" "SSL_read"
-    "SSL_write" "SSL_shutdown"))
+    "SSL_write" "SSL_shutdown"
+    ;; `tls reload' and the served line (PRF-212): the leaf and its facts.
+    ;; OpenSSL 1.1+ and LibreSSL 2.7+ (OpenBSD 6.3) export all of them.
+    "SSL_CTX_get0_certificate" "X509_get0_notBefore" "X509_get0_notAfter"
+    "ASN1_STRING_get0_data" "ASN1_STRING_length" "X509_get_ext_by_NID"
+    "X509_get_ext" "X509_EXTENSION_get_data"))
 
 (defun fnn-tls-missing-symbols ()
   (remove-if #'sb-sys:find-foreign-symbol-address *fnn-tls-required-symbols*))
@@ -199,6 +215,22 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
 (sb-alien:define-alien-routine ("SSL_shutdown" fnn-%ssl-shutdown)
     sb-alien:int
   (ssl (* t)))
+(sb-alien:define-alien-routine ("SSL_CTX_get0_certificate" fnn-%ssl-ctx-get0-certificate)
+    (* t) (context (* t)))
+(sb-alien:define-alien-routine ("X509_get0_notBefore" fnn-%x509-get0-not-before)
+    (* t) (x509 (* t)))
+(sb-alien:define-alien-routine ("X509_get0_notAfter" fnn-%x509-get0-not-after)
+    (* t) (x509 (* t)))
+(sb-alien:define-alien-routine ("ASN1_STRING_get0_data" fnn-%asn1-string-get0-data)
+    (* sb-alien:unsigned-char) (string (* t)))
+(sb-alien:define-alien-routine ("ASN1_STRING_length" fnn-%asn1-string-length)
+    sb-alien:int (string (* t)))
+(sb-alien:define-alien-routine ("X509_get_ext_by_NID" fnn-%x509-get-ext-by-nid)
+    sb-alien:int (x509 (* t)) (nid sb-alien:int) (lastpos sb-alien:int))
+(sb-alien:define-alien-routine ("X509_get_ext" fnn-%x509-get-ext)
+    (* t) (x509 (* t)) (location sb-alien:int))
+(sb-alien:define-alien-routine ("X509_EXTENSION_get_data" fnn-%x509-extension-get-data)
+    (* t) (extension (* t)))
 (sb-alien:define-alien-routine ("recv" fnn-%recv-peek)
     sb-alien:long
   (fd sb-alien:int) (buffer (* sb-alien:unsigned-char))
@@ -310,8 +342,51 @@ configured server context and never a protected client session."
   (fnn-tls-initialize)
   (list *fnn-tls-libraries* *fnn-tls-version*))
 
-(defun fnn-tls-open-context (certificate-path private-key-path)
-  "Load and validate one server certificate chain/private-key pair."
+(defconstant +fnn-tls-nid-subject-alt-name+ 85)
+;; A certificate's times and its subjectAltName extension are a few dozen
+;; to a few thousand octets; this is a work bound on one copy, far above
+;; any certificate a CA issues, and a larger one is reported absent (so ACL2
+;; refuses it by name) rather than copied.
+(defconstant +fnn-tls-max-fact-octets+ 65536)
+
+(defun fnn-tls-asn1-octets (string)
+  "The contents octets of one ASN1_STRING, as a list, or NIL."
+  (if (fnn-tls-null-pointer-p string)
+      nil
+    (let ((count (fnn-%asn1-string-length string))
+          (data (fnn-%asn1-string-get0-data string)))
+      (if (or (not (integerp count)) (<= count 0) (> count +fnn-tls-max-fact-octets+)
+              (sb-alien:null-alien data))
+          nil
+        (loop for i below count collect (sb-alien:deref data i))))))
+
+(defun fnn-tls-leaf-facts (pointer)
+  "The loaded leaf's notBefore and notAfter contents octets and its
+subjectAltName extension value (NIL without one), for ACL2
+(books/tls-reload.lisp fn-tlsr-facts).  The library parsed the certificate;
+this copies three of its fields and decides nothing."
+  (let ((leaf (fnn-%ssl-ctx-get0-certificate pointer)))
+    (if (fnn-tls-null-pointer-p leaf)
+        (values nil nil nil)
+      (let* ((location (fnn-%x509-get-ext-by-nid
+                        leaf +fnn-tls-nid-subject-alt-name+ -1))
+             (extension (and (>= location 0) (fnn-%x509-get-ext leaf location)))
+             (san (and extension (not (fnn-tls-null-pointer-p extension))
+                       (fnn-tls-asn1-octets
+                        (fnn-%x509-extension-get-data extension)))))
+        (values (fnn-tls-asn1-octets (fnn-%x509-get0-not-before leaf))
+                (fnn-tls-asn1-octets (fnn-%x509-get0-not-after leaf))
+                san)))))
+
+(defun fnn-tls-server-candidate (certificate-path private-key-path)
+  "Build one server SSL_CTX from the pair and report what the library
+observed.  Returns (values POINTER CHAIN KEY MATCH DETAIL): POINTER is the
+context (the caller owns it and frees it), CHAIN, KEY and MATCH whether
+SSL_CTX_use_certificate_chain_file, SSL_CTX_use_PrivateKey_file and
+SSL_CTX_check_private_key returned 1 (the key and the chain are each
+attempted; the match only when both loaded), and DETAIL the first failure's
+text, the chain's before the key's.  A context the
+library cannot create at all is a config error."
   (fnn-tls-initialize)
   (unless (and (stringp certificate-path) (> (length certificate-path) 0)
                (stringp private-key-path) (> (length private-key-path) 0))
@@ -336,32 +411,66 @@ configured server context and never a protected client session."
             (error 'fnn-tls-config-error
                    :detail (format nil "cannot require TLS 1.2+: ~a"
                                    (fnn-tls-error-stack))))
-          (fnn-%err-clear-error)
-          (unless (= (fnn-%ssl-ctx-use-chain-file pointer certificate-path) 1)
-            (error 'fnn-tls-config-error
-                   :detail (format nil "certificate chain ~a cannot be loaded: ~a"
-                                   certificate-path (fnn-tls-error-stack))))
+          ;; The key first, then the chain.  SSL_CTX_use_PrivateKey_file
+          ;; after a certificate refuses a key that does not match it, which
+          ;; would report a readable key as unloadable; loaded before the
+          ;; chain, a key that does not belong to the leaf is dropped when the
+          ;; leaf is set (OpenSSL 3 and LibreSSL ssl_set_cert), so the three
+          ;; observations stay distinct: key readable, chain readable, match.
           (fnn-%ssl-ctx-set-default-passwd-cb
            pointer
            (sb-alien:cast
             (sb-alien:alien-callable-function 'fnn-%tls-no-password) (* t)))
           (fnn-%err-clear-error)
-          (unless (= (fnn-%ssl-ctx-use-private-key-file
-                      pointer private-key-path +fnn-tls-filetype-pem+) 1)
-            (error 'fnn-tls-config-error
-                   :detail (format nil "private key ~a cannot be loaded; encrypted keys are unsupported: ~a"
-                                   private-key-path (fnn-tls-error-stack))))
-          (fnn-%err-clear-error)
-          (unless (= (fnn-%ssl-ctx-check-private-key pointer) 1)
-            (error 'fnn-tls-config-error
-                   :detail (format nil "certificate/private-key mismatch: ~a"
-                                   (fnn-tls-error-stack))))
-          (fnn-tls-context-make :pointer pointer
-                                :certificate-path certificate-path
-                                :private-key-path private-key-path))
+          (let* ((key (= (fnn-%ssl-ctx-use-private-key-file
+                          pointer private-key-path +fnn-tls-filetype-pem+) 1))
+                 (key-detail
+                   (unless key
+                     (format nil "private key ~a cannot be loaded; encrypted keys are unsupported: ~a"
+                             private-key-path (fnn-tls-error-stack))))
+                 (chain (progn (fnn-%err-clear-error)
+                               (= (fnn-%ssl-ctx-use-chain-file pointer certificate-path) 1)))
+                 (chain-detail
+                   (unless chain
+                     (format nil "certificate chain ~a cannot be loaded: ~a"
+                             certificate-path (fnn-tls-error-stack)))))
+            (unless (and chain key)
+              (return-from fnn-tls-server-candidate
+                (values pointer chain key nil (or chain-detail key-detail))))
+            (fnn-%err-clear-error)
+            (unless (= (fnn-%ssl-ctx-check-private-key pointer) 1)
+              (return-from fnn-tls-server-candidate
+                (values pointer t t nil
+                        (format nil "certificate/private-key mismatch: ~a"
+                                (fnn-tls-error-stack))))))
+          (values pointer t t t nil))
       (error (condition)
         (fnn-%ssl-ctx-free pointer)
         (error condition)))))
+
+(defun fnn-tls-open-context (certificate-path private-key-path)
+  "Load and validate one server certificate chain/private-key pair."
+  (multiple-value-bind (pointer chain key match detail)
+      (fnn-tls-server-candidate certificate-path private-key-path)
+    (unless (and chain key match)
+      (fnn-%ssl-ctx-free pointer)
+      (error 'fnn-tls-config-error :detail detail))
+    (fnn-tls-context-make :pointer pointer
+                          :certificate-path certificate-path
+                          :private-key-path private-key-path)))
+
+(defun fnn-tls-context-swap (context pointer served)
+  "Serve POINTER (and SERVED, ACL2's accepted decision) to every session
+that starts after this returns; free the pointer it replaces.  A session
+already open holds its own reference to the old SSL_CTX (SSL_new took it),
+so freeing here only drops the context's reference."
+  (let ((old nil))
+    (sb-thread:with-mutex ((fnn-tls-context-lock context))
+      (setq old (fnn-tls-context-pointer context))
+      (setf (fnn-tls-context-pointer context) pointer
+            (fnn-tls-context-served context) served))
+    (when old (fnn-%ssl-ctx-free old))
+    t))
 
 (defun fnn-tls-open-client-context (trust-anchor-path)
   "Create a peer-verifying client context rooted only in TRUST-ANCHOR-PATH."
@@ -419,9 +528,12 @@ configured server context and never a protected client session."
       (error (condition) (fnn-%ssl-free ssl) (error condition)))))
 
 (defun fnn-tls-close-context (context)
-  (when (and context (fnn-tls-context-pointer context))
-    (fnn-%ssl-ctx-free (fnn-tls-context-pointer context))
-    (setf (fnn-tls-context-pointer context) nil))
+  (when context
+    (let ((pointer nil))
+      (sb-thread:with-mutex ((fnn-tls-context-lock context))
+        (setq pointer (fnn-tls-context-pointer context))
+        (setf (fnn-tls-context-pointer context) nil))
+      (when pointer (fnn-%ssl-ctx-free pointer))))
   nil)
 
 (defun fnn-tls-deadline (seconds)
@@ -457,7 +569,12 @@ configured server context and never a protected client session."
   "Complete a nonblocking server handshake and return a live TLS channel."
   (let ((ssl nil) (deadline (fnn-tls-deadline seconds)))
     (fnn-%err-clear-error)
-    (setq ssl (fnn-%ssl-new (fnn-tls-context-pointer context)))
+    ;; Under the context's lock: `tls reload' swaps the pointer (PRF-212).
+    (sb-thread:with-mutex ((fnn-tls-context-lock context))
+      (let ((pointer (fnn-tls-context-pointer context)))
+        (unless pointer
+          (error 'fnn-tls-handshake-error :detail "the TLS context is closed"))
+        (setq ssl (fnn-%ssl-new pointer))))
     (when (fnn-tls-null-pointer-p ssl)
       (error 'fnn-tls-handshake-error
              :detail (format nil "SSL_new failed: ~a" (fnn-tls-error-stack))))

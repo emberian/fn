@@ -483,9 +483,27 @@ at every start (a missing library or function refuses the start by name):
 
 | Seam | Library | Functions | Found |
 | --- | --- | --- | --- |
-| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
+| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, and for `tls reload` and the served line (HST-020) `SSL_CTX_get0_certificate`, `X509_get0_notBefore/notAfter`, `X509_get_ext_by_NID/get_ext`, `X509_EXTENSION_get_data`, `ASN1_STRING_get0_data/length`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
 | Ed25519, SHA-512 | libsodium | `crypto_sign_verify_detached`, `crypto_sign_detached`, `crypto_sign_keypair`, `crypto_hash_sha512`, width and init checks, in `host/native/crypto.lisp`, `signatures.lisp`, `peer-invite.lisp` | the system's (Linux, OpenBSD package, Homebrew) or the release's `lib/libsodium.so.23` |
 | ML-DSA-65 | `lib/libfn-mldsa65`: vendored PQClean ml-dsa-65 clean (`third_party/pqclean-ml-dsa-65`, upstream commit in `UPSTREAM.txt`) behind `host/native/fn-mldsa65.c`, built by `tools/build_mldsa65.sh` | `fn_mldsa65_public_from_pem_file`, `fn_mldsa65_sign_pem_file`, `fn_mldsa65_verify`, `fn_mldsa65_generate_pem`, `fn_mldsa65_widths`, in `host/native/signatures.lisp` and `peer-invite.lisp` | `lib/` beside the image's core (`FN_MLDSA_LIBRARY` overrides) |
+
+HST-020: A running owner takes a renewed certificate and key without a
+restart. `operator CONFIG tls reload` (FNCT request kind 19, reply kind 20,
+`books/tls-reload.lisp`) makes the owner build a candidate context from the
+paths `run` loaded and report what the library observed: whether the chain
+loaded, the key loaded, the key matches the leaf (booleans), the leaf's
+notBefore and notAfter contents octets, its subjectAltName extension value,
+and the host clock. ACL2 parses the times (RFC 5280 section 4.1.2.5) and
+the dNSNames (section 4.2.1.6) and decides (`fn-tlsr-decide`, PRF-212): the
+new pair is served exactly when both loaded, they match, the clock lies in
+the validity window, the names are readable and every name the served
+certificate names is still named; otherwise the refusal names the first
+failing fact and the served context is untouched. An accepted pair is
+swapped in under the context's lock that `SSL_new` also takes, so every
+handshake after the swap uses it and a session already open keeps the
+context it was created from (SSL_new holds its own reference). `status`
+against a running owner prints the served names and notAfter
+(`tls names=... not-after=...`, rendered by ACL2).
 
 HST-015: No Python on the path a deployed node executes. A release runs
 `bin/fn` (`/bin/sh`), which execs the frozen launcher `libexec/fn/fn-host`

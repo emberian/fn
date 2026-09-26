@@ -7278,6 +7278,19 @@
           "name": "fn-oag-listing-server-is-the-path-identity"
         }
       ]
+    },
+    {
+      "id": "PRF-212",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-decide-accepts-exactly-loaded-matching-current-covering-material"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-decide-carries-the-facts-or-a-named-refusal"
+        }
+      ]
     }
   ]
 }
