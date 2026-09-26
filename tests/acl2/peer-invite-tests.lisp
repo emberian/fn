@@ -507,3 +507,17 @@
                                                    :verified :refused
                                                    *fn-pinv-invitation-kind*)))
 
+
+; PRF-166 (PKT-325): the `keys redecide' request (kind 12) round-trips its
+; Message-ID, and is no other request.
+(defconst *pinv-redecide-msgid* (fn-record-string-octets "<s@x.invalid>"))
+(assert-event
+ (equal (fn-pinv-redecide-request-decode
+         (fn-pinv-redecide-request-encode *pinv-redecide-msgid*))
+        *pinv-redecide-msgid*))
+(assert-event
+ (not (fn-pinv-request-decode *fn-pinv-issue-kind*
+                              (fn-pinv-redecide-request-encode *pinv-redecide-msgid*))))
+(assert-event (equal (fn-pinv-redecide-request-encode nil) :bad))
+(assert-event
+ (equal (fn-pinv-redecide-request-encode (make-list 251 :initial-element 60)) :bad))

@@ -1088,6 +1088,8 @@
         ((eq x :proof-of-possession) "proof-of-possession")
         ((eq x :committed) "committed")
         ((eq x :refused) "refused")
+        ((eq x :not-a-key-statement) "not-a-key-statement")
+        ((eq x :already-acted) "already-acted")
         (t "other")))
 
 (defun fn-ks-log-line (plan outcome at-open)
@@ -1110,3 +1112,379 @@
                     (:d fn-ks-source) (:d fn-ks-pop-request) (:d fn-ks-plan)
                     (:d fn-ks-event) (:d fn-ks-execute) (:d fn-ks-pending)
                     (:d fn-ks-accept) (:d fn-ks-cut) (:d fn-ks-recover)))
+
+;; =============================================================================
+;; PKT-325, PRF-166: `operator CONFIG keys redecide MSGID' -- the operator
+;; re-decides a stored key statement (specs/peering.md 7.4).
+;;
+;; A statement that declined (no `keys' grant yet, say) is not re-decided by
+;; the open (PRF-124: the recorded reopen is blind to later configuration).
+;; The operator asks for it explicitly, over the control socket, and the owner
+;; decides it under its mutex as a NEW acceptance of the stored statement: the
+;; plan is `fn-ks-plan' over the stored composite, the Store's keyring now and
+;; the grants of the configuration in force at the redecide's OWN txid (the
+;; live configuration, which is the replay of the whole journal:
+;; fn-ks-redecide-decides-under-the-configuration-at-its-own-txid).
+;;
+;; The record: when the plan acts, the one durable record is the kind-3 key
+;; change itself, committed at the redecide's own coordinates; no statement is
+;; re-filed and no new record kind exists.  So there is no cut: the change is
+;; durable or it never happened, and the next open's recorded recovery sees a
+;; newest record that is no statement and repeats nothing
+;; (fn-ks-reopen-after-a-redecide); PRF-124 and PRF-140 carry over unchanged
+;; (a redecide that did not act left the Store exactly as it was).
+;;
+;; Refused by name, with the Store unchanged: MSGID names no stored key
+;; statement (:not-a-key-statement), or the change the statement asks for is
+;; already in the keyring at a generation after the statement's own
+;; (:already-acted).  A statement that is merely superseded declines
+;; `not-current' through the plan.
+;;
+;; Host: host/native/keys.lisp fnn-keys-owner-redecide calls
+;; host/owner-host.lisp fn-owner-key-statement-redecide-find, -request, -plan
+;; and -event, which are fn-ks-find-statement, fn-ks-pop-request,
+;; fn-ks-redecide-plan and fn-ks-redecide-event over the owner's Store records,
+;; keyring snapshots and live authorities rows.
+
+; The stored statement MSGID names among the Store's RECORDS, or nil.
+; Message-IDs are unique in a Store, so the scan's order does not matter.
+(defun fn-ks-find-statement (msgid records)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (if (and (fn-ks-pending (car records))
+               (equal (fn-ks-msgid (car records)) msgid))
+          (car records)
+        (fn-ks-find-statement msgid (cdr records)))
+    nil))
+
+; SNAPSHOT is the change STATEMENT asks for: a revocation of its principal,
+; or an enrolment of its principal under its new keys.
+(defun fn-ks-change-snapshotp (statement snapshot)
+  (declare (xargs :guard t))
+  (and (consp statement)
+       (true-listp statement)
+       (fn-stxk-p snapshot)
+       (equal (fn-hl-snapshot-principal snapshot) (nth 1 statement))
+       (if (eq (car statement) :revocation)
+           (equal (fn-stxk-profile snapshot) *fn-hl-revoked-profile*)
+         (let ((value (fn-hsig-keyring-snapshot-value snapshot)))
+           (and (consp value) (consp (cdr value))
+                (equal (cadr value) (nth 3 statement)))))))
+
+(defun fn-ks-acted-in (statement generation snapshots)
+  (declare (xargs :guard t))
+  (if (consp snapshots)
+      (or (and (fn-stxk-p (car snapshots))
+               (< (nfix generation)
+                  (nfix (fn-stxk-keyring-generation (car snapshots))))
+               (fn-ks-change-snapshotp statement (car snapshots)))
+          (fn-ks-acted-in statement generation (cdr snapshots)))
+    nil))
+
+; The statement EVENT already acted: its change is in the keyring at a
+; generation after the one its stored verdict was decided against.
+(defun fn-ks-acted-p (event snapshots)
+  (declare (xargs :guard t))
+  (fn-ks-acted-in (fn-ks-statement (fn-ks-source event))
+                  (fn-stx-verdict-generation (fn-ks-verdict event))
+                  snapshots))
+
+(defun fn-ks-redecide-plan (event snapshots rows observed-ml-key ed-observation
+                                  ml-observation)
+  (declare (xargs :guard t))
+  (cond ((not (fn-ks-pending event)) (list :refused :not-a-key-statement))
+        ((fn-ks-acted-p event snapshots) (list :refused :already-acted))
+        (t (fn-ks-plan event snapshots rows observed-ml-key ed-observation
+                       ml-observation))))
+
+; The kind-3 event the redecide commits, or nil.
+(defun fn-ks-redecide-event (event snapshots rows observed-ml-key
+                                   ed-observation ml-observation sequence txid
+                                   store-generation)
+  (declare (xargs :guard t))
+  (fn-ks-event (fn-ks-redecide-plan event snapshots rows observed-ml-key
+                                    ed-observation ml-observation)
+               sequence txid store-generation snapshots))
+
+; The model transition over STATE (RECORDS . SNAPSHOTS), newest first.
+(defun fn-ks-redecide (st msgid rows observed ed ml sequence txid
+                          store-generation)
+  (declare (xargs :guard t))
+  (let* ((records (and (consp st) (car st)))
+         (snapshots (and (consp st) (cdr st)))
+         (ev (fn-ks-redecide-event (fn-ks-find-statement msgid records)
+                                   snapshots rows observed ed ml sequence txid
+                                   store-generation)))
+    (if ev
+        (cons (cons ev records) (cons ev snapshots))
+      st)))
+
+; The grants of the configuration in force at TXID, the fold of the journal.
+(defun fn-ks-redecide-rows (txid configs)
+  (declare (xargs :guard t))
+  (fn-cfg-authorities (fn-cfg-value (fn-ctl-config-at txid configs))))
+
+(defun fn-ks-redecide-log-line (plan outcome)
+  (declare (xargs :guard t))
+  (fn-record-string-octets
+   (concatenate 'string "key-statement redecide "
+                (if (consp plan) (fn-ks-word (car plan)) "none")
+                (if (and (consp plan) (member-eq (car plan) '(:decline :refused))
+                         (consp (cdr plan)))
+                    (concatenate 'string " " (fn-ks-word (cadr plan)))
+                  "")
+                (if (member-eq outcome '(:committed :refused))
+                    (concatenate 'string " " (fn-ks-word outcome))
+                  ""))))
+
+(defthm fn-ks-a-keyring-record-is-no-composite
+  (implies (fn-stxk-p x) (not (fn-stxa-p x)))
+  :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxa-p fn-stxk-shapep
+                                     fn-stxa-shapep))))
+
+(defthm fn-ks-a-key-change-is-no-pending-statement
+  (not (fn-ks-pending (fn-ks-event plan sequence txid store-generation
+                                   snapshots)))
+  :hints (("Goal" :in-theory (enable fn-ks-pending fn-ks-source fn-ks-event
+                                     fn-hl-enroll-event fn-hl-revoke-event
+                                     fn-hsig-keyring-event))))
+
+; KEYSTONE (PRF-166 1: the redecide's own txid).  The live configuration the
+; owner holds is the replay of its whole journal; every record of that journal
+; precedes the redecide's own TXID, so the grants the host passes (the live
+; rows) are the grants of the configuration in force at TXID.  Subject:
+; `fn-ks-redecide', whose plan and event host/owner-host.lisp
+; fn-owner-key-statement-redecide-plan/-event compute over the live rows.
+(defthm fn-ks-redecide-decides-under-the-configuration-at-its-own-txid
+  (implies (and (fn-ctl-configs-all-through-p txid configs)
+                (not (equal (fn-config-replay reserved ceiling configs) :fault)))
+           (equal (fn-ks-redecide st msgid
+                                  (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-config-replay reserved ceiling configs)))
+                                  observed ed ml sequence txid store-generation)
+                  (fn-ks-redecide st msgid (fn-ks-redecide-rows txid configs)
+                                  observed ed ml sequence txid
+                                  store-generation)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ks-redecide-rows)
+                           (fn-ks-redecide fn-ctl-config-at fn-config-replay
+                            fn-ctl-configs-all-through-p))
+           :use ((:instance fn-ks-config-replay-needs-a-true-list
+                            (records configs))
+                 fn-ctl-config-at-after-every-record-is-the-replay))))
+
+; KEYSTONE (PRF-166 2: the next open repeats nothing).  After a redecide that
+; acted, the open's recorded recovery -- under ANY journal, so under any
+; configuration published later -- leaves the Store as the redecide left it;
+; after one that did not act it is the recovery of the unchanged Store
+; (PRF-124, PRF-140 apply as before).
+(defthm fn-ks-reopen-after-a-redecide
+  (equal (fn-ks-recover-recorded
+          (fn-ks-redecide st msgid rows observed ed ml sequence txid
+                          store-generation)
+          configs observed2 ed2 ml2 sequence2 txid2 store-generation2)
+         (if (fn-ks-redecide-event (fn-ks-find-statement msgid (car st))
+                                   (cdr st) rows observed ed ml sequence txid
+                                   store-generation)
+             (fn-ks-redecide st msgid rows observed ed ml sequence txid
+                             store-generation)
+           (fn-ks-recover-recorded st configs observed2 ed2 ml2 sequence2
+                                   txid2 store-generation2)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ks-redecide fn-ks-redecide-event)
+                           (fn-ks-recover-recorded fn-ks-event
+                            fn-ks-redecide-plan fn-ks-find-statement))
+           :use ((:instance fn-ks-recover-recorded-without-a-pending-record
+                            (st (fn-ks-redecide st msgid rows observed ed ml
+                                                sequence txid store-generation))
+                            (observed observed2) (ed ed2) (ml ml2)
+                            (sequence sequence2) (txid txid2)
+                            (store-generation store-generation2))
+                 (:instance fn-ks-a-key-change-is-no-pending-statement
+                            (plan (fn-ks-redecide-plan
+                                   (fn-ks-find-statement msgid (car st))
+                                   (cdr st) rows observed ed ml))
+                            (snapshots (cdr st)))))))
+
+(defthm fn-ks-find-statement-is-a-statement
+  (implies (fn-ks-find-statement msgid records)
+           (and (fn-ks-pending (fn-ks-find-statement msgid records))
+                (equal (fn-ks-msgid (fn-ks-find-statement msgid records))
+                       msgid)))
+  :hints (("Goal" :in-theory (disable fn-ks-pending fn-ks-msgid))))
+
+(defthm fn-ks-acted-p-needs-a-statement
+  (implies (not (fn-ks-statement (fn-ks-source event)))
+           (not (fn-ks-acted-p event snapshots)))
+  :hints (("Goal" :in-theory (disable fn-ks-statement fn-ks-source))))
+
+; KEYSTONE (PRF-166 3: refused by name, nothing changed).
+(defthm fn-ks-redecide-of-no-stored-statement-is-refused-by-name
+  (implies (not (fn-ks-find-statement msgid (car st)))
+           (and (equal (fn-ks-redecide-plan (fn-ks-find-statement msgid (car st))
+                                            (cdr st) rows observed ed ml)
+                       '(:refused :not-a-key-statement))
+                (equal (fn-ks-redecide st msgid rows observed ed ml sequence txid
+                                       store-generation)
+                       st)))
+  :hints (("Goal" :in-theory (e/d (fn-ks-redecide fn-ks-redecide-event
+                                   fn-ks-event)
+                                  (fn-ks-find-statement)))))
+
+; No separate "MSGID names a statement" hypothesis: an acted statement is one
+; (fn-ks-acted-p-needs-a-statement).
+(defthm fn-ks-redecide-of-an-acted-statement-is-refused-by-name
+  (implies (fn-ks-acted-p (fn-ks-find-statement msgid (car st)) (cdr st))
+           (and (equal (fn-ks-redecide-plan (fn-ks-find-statement msgid (car st))
+                                            (cdr st) rows observed ed ml)
+                       '(:refused :already-acted))
+                (equal (fn-ks-redecide st msgid rows observed ed ml sequence txid
+                                       store-generation)
+                       st)))
+  :hints (("Goal" :in-theory (e/d (fn-ks-redecide fn-ks-redecide-event
+                                   fn-ks-event fn-ks-pending)
+                                  (fn-ks-find-statement fn-ks-acted-p
+                                   fn-ks-statement fn-ks-source))
+           :cases ((fn-ks-find-statement msgid (car st)))
+           :use ((:instance fn-ks-acted-p-needs-a-statement
+                            (event (fn-ks-find-statement msgid (car st)))
+                            (snapshots (cdr st)))))))
+
+; KEYSTONE (PRF-166 4: a redecide is the acceptance's decision).  For a stored
+; statement that has not acted, the redecide's plan and kind-3 event are
+; exactly `fn-ks-plan' and `fn-ks-execute' of that statement -- so every
+; PRF-098 keystone over them (acts only on a verified, granted statement about
+; its own current principal, with a valid proof of possession) holds of it.
+(defthm fn-ks-redecide-of-an-unacted-statement-is-its-acceptance-decision
+  (let ((event (fn-ks-find-statement msgid records)))
+    (implies (and event (not (fn-ks-acted-p event snapshots)))
+             (and (equal (fn-ks-redecide-plan event snapshots rows observed ed
+                                              ml)
+                         (fn-ks-plan event snapshots rows observed ed ml))
+                  (equal (fn-ks-redecide-event event snapshots rows observed ed
+                                               ml sequence txid
+                                               store-generation)
+                         (fn-ks-execute event snapshots rows observed ed ml
+                                        sequence txid store-generation)))))
+  :hints (("Goal" :in-theory (e/d (fn-ks-execute)
+                                  (fn-ks-find-statement fn-ks-acted-p
+                                   fn-ks-plan)))))
+
+(defthm fn-ks-statement-shape
+  (let ((s (fn-ks-statement source)))
+    (implies s (and (consp s) (true-listp s)
+                    (member-equal (car s) '(:succession :revocation)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ks-statement))))
+
+(defthm fn-ks-acting-plan-is-the-statement-change
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (s (fn-ks-statement (fn-ks-source event))))
+    (and (implies (equal (car plan) :enroll)
+                  (and (consp s) (true-listp s) (equal (car s) :succession)
+                       (equal (nth 1 plan) (nth 1 s))
+                       (equal (nth 2 plan) (nth 3 s))))
+         (implies (equal (car plan) :revoke)
+                  (and (consp s) (true-listp s) (equal (car s) :revocation)
+                       (equal (nth 1 plan) (nth 1 s))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-plan)
+                                  (fn-ks-statement fn-ks-source fn-ks-verdict
+                                   fn-ks-msgid fn-ks-pop-source
+                                   fn-hsig-authored-source-fields
+                                   fn-ctl-authorize fn-hl-current-enrollment
+                                   fn-hsig-authorize fn-stx-verdict-generation
+                                   fn-stx-verdict-detail))
+           :use ((:instance fn-ks-statement-shape
+                            (source (fn-ks-source event)))))))
+
+(defthm fn-ks-enrol-event-is-the-change
+  (let ((ev (fn-hl-enroll-event sequence txid store-generation
+                                (fn-hl-next-generation snapshots)
+                                principal keys snapshots)))
+    (implies (and ev (consp s) (true-listp s) (equal (car s) :succession)
+                  (equal principal (nth 1 s)) (equal keys (nth 3 s)))
+             (and (fn-stxk-p ev)
+                  (equal (fn-stxk-keyring-generation ev)
+                         (fn-hl-next-generation snapshots))
+                  (fn-ks-change-snapshotp s ev))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-hl-enroll-event fn-ks-change-snapshotp
+                                   fn-hl-snapshot-principal
+                                   fn-hsig-keyring-event)
+                                  (fn-hsig-keyring-snapshot-value
+                                   fn-hl-next-generation))
+           :use ((:instance fn-hsig-keyring-snapshot-value-of-keyring-event
+                            (generation store-generation)
+                            (keyring-generation (fn-hl-next-generation snapshots)))))))
+
+(defthm fn-ks-revoke-event-is-the-change
+  (let ((ev (fn-hl-revoke-event sequence txid store-generation
+                                (fn-hl-next-generation snapshots)
+                                principal snapshots)))
+    (implies (and ev (consp s) (true-listp s) (equal (car s) :revocation)
+                  (equal principal (nth 1 s)))
+             (and (fn-stxk-p ev)
+                  (equal (fn-stxk-keyring-generation ev)
+                         (fn-hl-next-generation snapshots))
+                  (fn-ks-change-snapshotp s ev))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-hl-revoke-event fn-ks-change-snapshotp
+                                   fn-hl-snapshot-principal)
+                                  (fn-hsig-keyring-snapshot-value
+                                   fn-hl-next-generation))
+           :use ((:instance fn-hsig-keyring-snapshot-value-requires-the-key-profile
+                            (snapshot (fn-stxk-make sequence txid store-generation
+                                                    (fn-hl-next-generation snapshots)
+                                                    *fn-hl-revoked-profile*
+                                                    principal)))))))
+
+; KEYSTONE (PRF-166 5: an acted statement is recognized).  A redecide that
+; committed its change leaves a Store in which the same MSGID is refused
+; :already-acted, whatever the grants then (the statement's generation precedes
+; the keyring's next one in every Store the owner serves).
+(defthm fn-ks-a-redecide-that-acted-is-refused-the-second-time
+  (let* ((event (fn-ks-find-statement msgid (car st)))
+         (st2 (fn-ks-redecide st msgid rows observed ed ml sequence txid
+                              store-generation)))
+    (implies (and (fn-ks-redecide-event event (cdr st) rows observed ed ml
+                                        sequence txid store-generation)
+                  (< (nfix (fn-stx-verdict-generation (fn-ks-verdict event)))
+                     (fn-hl-next-generation (cdr st))))
+             (equal (fn-ks-redecide-plan (fn-ks-find-statement msgid (car st2))
+                                         (cdr st2) rows2 observed2 ed2 ml2)
+                    '(:refused :already-acted))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ks-redecide fn-ks-redecide-event fn-ks-event
+                            fn-ks-redecide-plan fn-ks-acted-p fn-ks-acted-in
+                            fn-ks-find-statement)
+                           (fn-ks-plan fn-ks-statement fn-ks-source
+                            fn-ks-verdict fn-ks-msgid fn-hl-enroll-event
+                            fn-hl-revoke-event fn-ks-change-snapshotp
+                            fn-hl-next-generation fn-ks-pending))
+           :use ((:instance fn-ks-plan-shape (snapshots (cdr st))
+                            (event (fn-ks-find-statement msgid (car st))))
+                 (:instance fn-ks-acting-plan-is-the-statement-change
+                            (snapshots (cdr st))
+                            (event (fn-ks-find-statement msgid (car st))))
+                 (:instance fn-ks-enrol-event-is-the-change
+                            (snapshots (cdr st))
+                            (s (fn-ks-statement (fn-ks-source (fn-ks-find-statement msgid (car st)))))
+                            (principal (nth 1 (fn-ks-plan (fn-ks-find-statement msgid (car st)) (cdr st) rows observed ed ml)))
+                            (keys (nth 2 (fn-ks-plan (fn-ks-find-statement msgid (car st)) (cdr st) rows observed ed ml))))
+                 (:instance fn-ks-revoke-event-is-the-change
+                            (snapshots (cdr st))
+                            (s (fn-ks-statement (fn-ks-source (fn-ks-find-statement msgid (car st)))))
+                            (principal (nth 1 (fn-ks-plan (fn-ks-find-statement msgid (car st)) (cdr st) rows observed ed ml))))
+                 (:instance fn-ks-a-key-change-is-no-pending-statement
+                            (plan (fn-ks-redecide-plan
+                                   (fn-ks-find-statement msgid (car st))
+                                   (cdr st) rows observed ed ml))
+                            (snapshots (cdr st)))))))
+
+(in-theory (disable (:d fn-ks-find-statement) (:d fn-ks-change-snapshotp)
+                    (:d fn-ks-acted-in) (:d fn-ks-acted-p)
+                    (:d fn-ks-redecide-plan) (:d fn-ks-redecide-event)
+                    (:d fn-ks-redecide) (:d fn-ks-redecide-rows)))

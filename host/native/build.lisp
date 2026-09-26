@@ -278,6 +278,8 @@
         ; Peering invitations (PRF-097): after the hybrid control handler it
         ; wraps, the signing commands it reuses and the admin publisher.
         (load "host/native/peer-invite.lisp")
+        ; `keys redecide' (PRF-166): request 12, wrapping the peering handler.
+        (load "host/native/keys.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.

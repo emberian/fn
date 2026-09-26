@@ -444,7 +444,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "retention")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -485,8 +485,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; restart to apply)")
+        ((equal subject "keys")
+         "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|pins|obligations|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|control|principal|keys}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -544,6 +546,21 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         (fn-nop-result :accepted :plan "peer" config
                        (list* :peering verb args))
       (fn-nop-usage :invalid-peering-command "peer" config words))))
+
+;; PRF-166 (PKT-325): `keys redecide MSGID'.  The word is a Message-ID's
+;; spelling, <...>, bounded like a header value; whether it names a stored key
+;; statement, and what the statement now does, is the owner's
+;; (books/key-statements.lisp fn-ks-redecide-plan, asked by
+;; host/native/keys.lisp over the control socket).
+(defun fn-nop-parse-keys (words config)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-ncfg-first words) "redecide")
+           (consp (fn-ncfg-rest words))
+           (null (fn-ncfg-rest (fn-ncfg-rest words)))
+           (fn-nop-msgid-wordp (fn-ncfg-second words)))
+      (fn-nop-result :accepted :plan "keys" config
+                     (list :keys "redecide" (fn-ncfg-second words)))
+    (fn-nop-usage :invalid-keys-command "keys" config words)))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -631,6 +648,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
+            ((equal command "keys") (fn-nop-parse-keys rest config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
 (defun fn-native-operator-command-preflight (argv-octets)
@@ -1111,6 +1129,25 @@ formed and the operator asked for something the node declined to do."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+(defun fn-native-operator-result-keys-msgid-octets (result)
+  "The Message-ID of an accepted `keys redecide MSGID', as octets."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "keys")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :keys)
+           (stringp (fn-ncfg-third (fn-native-operator-result-arguments result))))
+      (fn-record-string-octets
+       (fn-ncfg-third (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-keys-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-keys-msgid-octets result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -1170,6 +1207,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
+          ((equal (fn-native-operator-result-command result) "keys") :keys)
           ((equal (fn-native-operator-result-command result) "show") :show)
           ((equal (fn-native-operator-result-command result) "mission") :mission)
           (t :owner-required))))
@@ -1813,7 +1851,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
     :reclaim-dry-run :needs-upgrade :rollback-check :rollback-snapshot
     :upgrade-profile :admin :inspect
-    :peering :principal))
+    :peering :principal :keys))
 
 (defun fn-native-operator-result-needs-storep (result)
   "An accepted plan whose native action opens the configured store."

@@ -1216,3 +1216,35 @@
 (must-fail
  (thm (equal (cadr (fn-native-operator-inspect-report m t))
              (cadr (fn-native-operator-inspect-report m nil)))))
+
+; PRF-166 (PKT-325): `keys redecide MSGID' is an accepted plan whose native
+; action is :keys and whose Message-ID octets the host sends to the owner; a
+; missing or malformed Message-ID, or another verb, is usage.
+(defconst *fn-nop-keys*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("keys" "redecide" "<s@x.invalid>"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-keys*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-keys*) :keys))
+(assert-event (equal (fn-native-operator-result-keys-msgid-octets *fn-nop-keys*)
+                     (fn-record-string-octets "<s@x.invalid>")))
+(assert-event (fn-native-operator-result-needs-storep *fn-nop-keys*))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("keys" "redecide" "s@x.invalid"))))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("keys" "redecide"))))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("keys" "revoke" "<s@x.invalid>"))))
+        :usage))
+(assert-event
+ (not (fn-native-operator-result-keys-msgid-octets
+       (fn-native-operator-run *fn-nop-minimal-config*
+                               (fn-nop-test-argv '("principal" "list"))))))
+(assert-event (fn-nop-help-subjectp "keys"))
