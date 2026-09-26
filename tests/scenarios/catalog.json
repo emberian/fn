@@ -3029,7 +3029,8 @@
       ],
       "evidence": [
         "tests/test_native_control_reply_fit.py",
-        "planning/evidence/control-reply-fit-2026-09-26.md"
+        "planning/evidence/control-reply-fit-2026-09-26.md",
+        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
       ],
       "implementation": {
         "test": "tests.test_native_control_reply_fit",
@@ -3038,7 +3039,8 @@
           "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it"
         ],
         "native": true,
-        "record": "planning/evidence/control-reply-fit-2026-09-26.md"
+        "record": "planning/evidence/control-reply-fit-2026-09-26.md",
+        "log": "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
       }
     }
   ]

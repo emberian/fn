@@ -210,11 +210,49 @@ request or stream rows per page from an index.
   tests 2.22 s). r2's passes and r3 together cover every book the lane's
   changes reach.
 
-## Native
+## Native (hbox, developer image)
 
-(filled below)
+- r2 (632c228f; `tools/hbox_native.sh --label r2 --env
+  FN_NATIVE_HOST=$T/build/fn-host-developer`),
+  `/tank/fn/scratch/control-reply-fit/native-r2`, status 0; developer image
+  `e0f65bb4...`, core `faed8bd5...`.
+  `tests.test_native_control_reply_fit` 3 OK (log `168c07eb...`, committed
+  as planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log):
+  `init` one octet past the ceiling: `refused operator init
+  MAX-RECORD-OCTETS-ABOVE-THE-POLL-REPLY`, exit 1, no config.json; at the
+  ceiling written and the owner takes a POST (240). `store upgrade-profile`
+  one octet past: `store profile upgrade refused:
+  max-record-octets-above-the-poll-reply`, exit 1, config.json
+  byte-identical, the owner serves after it; the upgrade to the ceiling
+  exits 0, status reads R 4,294,966,940, the owner serves.
+  `NativeOperatorInitTests` OK (`9441fa86...`), `NativeOperatorCapacityTests`
+  OK (`04b9e322...`).
+- r1 (976ffd83) is not evidence: its first pass ran every module against the
+  production image path the lane had not built (all skipped); the rerun on
+  the developer image showed both refusals by name on the wire, but two
+  assertions of this module were harness defects (the init reason is
+  printed upper-cased; a helper was missing), fixed in 632c228f; and
+  `tests.test_native_control` pointed at the developer image through
+  FN_NATIVE_HOST exercises its production-selector cases against the wrong
+  image (errors of the invocation, not the host); the lane stopped that run.
+- The FNLS width refusal is not driven natively (a 2^32-octet report);
+  its host carriage is checked statically by the module's source test.
 
 ## Not done
+
+- PKT-399 (a sweep row the deputy added mid-lane, from keys-and-accounts-3's
+  trace): the XREDEEM admission's used count `(len creds)` and TAKENP are
+  computed on the HOST in host/native-admin-host.lisp
+  `fn-acct-host-owner-redeem-stage` (friends-accounts-2), while
+  `fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound`
+  states the bound over what the host hands it. The repair: the count moves
+  into the redeem plan (`fn-auth-account-creds` over the live table plus
+  the credential file's table, the profile's max-credentials the bound),
+  the exact-bound theorem restated over the ACL2-computed count with a
+  must-fail, binding rows (mark 2) not counted, the host passing tables not
+  numbers. NOT done here: that code is not on this lane's base (dev
+  12f447e8 has no `fn-acct-host-owner-redeem-stage`), and the lane was at
+  its farm budget; PKT-399 stays open with this trace.
 
 - PKT-470: (1) the `:oversize` arm's reachability through a store whose
   event exceeds its own R; (2) the whole-report render before the FNLS
