@@ -95,6 +95,8 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
+; PRF-192: the served reply as a range of the octet buffer (fn-owner-reply-buffer).
+(include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -175,10 +177,15 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-core state)))
 
-(defun fn-owner-install-effects (effects state)
+; The served read's install (fn-owner-chunk): every projection
+; `fn-owner-install-effects' makes EXCEPT the reply octets, which are never
+; built as a list here: `fn-owner-output' is NIL, and the host writes the
+; reply from the octet buffer that `fn-owner-reply-buffer' fills from
+; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
+(defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
-         (state (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state))
+         (state (f-put-global 'fn-owner-output nil state))
          (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
          ; RFC 4642 section 2.2.2: the host owes a TLS handshake.  The book
          ; decided it (fn-auth-starttls, books/nntp-auth.lisp); this reads
@@ -188,6 +195,12 @@
          (state (f-put-global 'fn-owner-submittedp
                               (if (fn-served-submission effects) t nil) state)))
     state))
+
+(defun fn-owner-install-effects (effects state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (fn-owner-install-served-effects effects state)))
+    (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state)))
+
 
 ;; The process root (P3 owner open, books/owner-checkpoint-open.lisp).  Both
 ;; paths extend a checkpoint over the records after it (`fn-sco-extend') and
@@ -2297,7 +2310,7 @@
                       (fn-owner-ocfg state) id octets))
              (state (fn-owner-install-ocfg
                      (fn-own-tls-result-owner result) state))
-             (state (fn-owner-install-effects
+             (state (fn-owner-install-served-effects
                      (fn-own-tls-result-effects result) state))
              (state (f-put-global 'fn-owner-consumed
                                   (fn-own-tls-result-consumed result) state))
@@ -2313,6 +2326,20 @@
                                    (fn-own-tls-result-effects result))
                                   state)))
         (value :ok)))))
+
+; The served read's reply, into the octet buffer (PRF-192; PKT-491): the
+; host calls this right after `fn-owner-chunk' (host/native/owner.lisp
+; fnn-owner-handle-chunk) and writes the buffer's range [0, len) to the
+; socket.  `fn-served-reply-to-buffer-is-the-reply': under :ok that range
+; is `fn-served-reply-octets' of the step's effects, the reply
+; `fn-owner-install-effects' would have put in `fn-owner-output'.
+; :malformed (a reply effect that is not octets) is a host fault, as a
+; non-octet `fn-owner-output' was.
+(defun fn-owner-reply-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (mv-let (okp fn-octets)
+    (fn-served-reply-to-buffer (f-get-global 'fn-owner-effects state) fn-octets)
+    (mv nil (if okp :ok :malformed) fn-octets state)))
 
 (defun fn-owner-close (id state)
   (declare (xargs :stobjs state :mode :program))
