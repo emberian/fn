@@ -370,3 +370,61 @@ books/owner-commit-carried.lisp, PRF-144 part 2 and the article prepare's
 keystone. What continues without it: the host's behaviour (the carried
 prepare stages; the store-only specification would refuse on such an owner)
 and every index theorem here.
+
+### Certification (hbox, `w28/acl2-literal-4g`, 2 jobs, 300 s)
+
+- r1 `run-20260926T095318Z-11e6`: the merged owner closure the REPL needed
+  (22 books, all passed); `manifests/certify-20260926T095327Z-1211581.json`.
+  Three dev books over 10 s under load (owner-invariants 13.5 s,
+  public-exposure 12.4, config-owner-live 11.4; unchanged by this lane).
+- r2 `run-20260926T101316Z-99af` (`--affected-by` bp-native-app-fast,
+  bp-signed-binding, consumer-event-index-store-invariants,
+  consumer-event-index, owner-store-indexed; 385 roots): **220 certified, 0
+  failed**, `manifests/certify-20260926T101447Z-1353583.json`. This lane's
+  books: owner-store-indexed 3.5 s, its test 2.0, bp-native-app-fast 2.5,
+  bp-signed-binding 1.5, consumer-owner-index-invariants 3.8, the tests
+  1.1 to 1.8; consumer-event-index-store-invariants 2.9 s (r1). Over 10 s:
+  native-admin 12.2 s (load average 7).
+- r3 `run-20260926T102042Z-bd5b` (native-admin, owner-invariants,
+  public-exposure, config-owner-live recertified alone): passed, but at load
+  average 13 all four read 13.2 to 15.0 s;
+  `manifests/certify-20260926T102123Z-1374076.json`.
+- r4 `run-20260926T103124Z-9c1b` (the same four, load average 6.3): passed,
+  **no book over 10 s** (native-admin 9.5, owner-invariants 9.4,
+  public-exposure 9.4, config-owner-live 8.0);
+  `manifests/certify-20260926T103144Z-1409638.json`. These are the quiet
+  figures; proof_cost keeps the newest per book.
+- Every changed book and test book was admitted form by form in the hbox
+  REPL first. `make check-lane` green.
+- reach_check: `fn-osi-live-owner-store-is-indexed` is stated over the proof
+  abbreviation `fn-osi-live-store`, so the syntactic check finds no host
+  function in it; it is cited in the notes of `fn-osi-host-step-keeps-indexed`
+  and PRF-132's keystones instead of being a registry event. Restating it with
+  `fn-own-store`/`fn-ocfg-owner`/`fn-ock-recover-extended` spelled out would
+  register it; left for the merge (no run budget left).
+
+### Native (hbox, image from 5579d4c3, `tools/hbox_native.sh --label cont-5579d4c3`)
+
+The continuation changes no behaviour (definitions of executed functions are
+unchanged; only theorems and the retired proof-only predicate moved).
+`tests.test_native_bp_node` named in the brief does not exist; the BP node
+and application modules ran instead:
+
+| module | result | log sha256 |
+| --- | --- | --- |
+| tests.test_bp_node_native | 27 tests OK (162 s) | 9b2eda83503d78122136e6aed36a647c6c9b8c5a431a68e6de08dc92d0322a2a |
+| tests.test_bp_app_native | 5 tests OK | 32263e8a9e1a0a320f2c56949215e30961312d9dc43aa80a009fa72112814645 |
+
+Image `build/fn-host-developer` 06739ffe...3c310b, core 4fef5872...0e31e9
+(SHA256SUMS in hbox:/tank/fn/scratch/signed-history-index/native-cont-5579d4c3).
+The four-node mission's signed run was not repeated (budget). The measured
+rows stand from 4284073a: signed POST median at N=10,000 18.92 s -> 0.241 s
+(N=1,000: 0.355 -> 0.101 s); the signed-entry lookup 36.5 ms -> 0.2 us.
+
+### Not done (continuation)
+
+- PKT-330 (1) the loaded greeting (served-path-scale), (2) the linear
+  no-decode walks, (4)'s owed restatement of the prepare keystones under
+  `fn-ocl-relation` (packet above), (5), (6).
+- `fn-osi-live-owner-store-is-indexed` as a registry event (reach_check form).
+- The four-node signed mission run on this tree.
