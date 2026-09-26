@@ -6697,6 +6697,63 @@
         "fn-col-poll-report-of-an-admitted-payload-fits",
         "fn-nls-page-refuses-exactly-past-the-total-width"
       ]
+    },
+    {
+      "id": "PRF-184",
+      "title": "A poster whose statement's key change the Store refused is told so in its 240; the transit log names the verdict on accepted arms; a friend's node that already holds the inviter at the invitation's keys accepts it by name, configuring it and enrolling nothing",
+      "statement": "(1) Subject fn-pa-served-post-word (books/peer-authored-accept.lisp), host host/owner-host.lisp fn-owner-served-post-word called by host/native/owner.lisp fnn-owner-attempt-served: :durable-key-change-refused exactly for the :durable attempt whose detail is :key-change-refused (set by fnn-owner-statement-committed), fn-pa-served-word otherwise. books/owner.lisp fn-own-durable-wordp makes it a durable word of fn-own-outcome-completion and fn-own-post-rendering keeps it for the POST reply; books/nntp-post.lisp fn-nntp-post-outcome renders `240 article received OK; the key change it carries was refused (key-change-refused)' (fn-post-outcome-names-a-refused-key-change-only-for-its-completion: that line is the reply of no other completion). fn-osp-served-post-names-a-refused-key-change (over fn-own-outcome; host/owner-host.lisp fn-owner-outcome, from fnn-owner-drain-one, calls books/owner-advance-carried.lisp fn-acar-own-outcome, which also renders through fn-own-post-rendering and is fn-own-outcome under the owner relation, fn-acar-own-outcome-is-own-outcome / fn-acar-own-outcome-is-reference-under-ocl-relation): after a consumed completion the reply is that line and the owner moves exactly as for :durable; fn-osp-key-change-reply-only-for-a-consumed-refused-key-change: the reply is that line only for a :durable attempt with the :key-change-refused detail and a consumed completion. fn-own-consumed-completion-is-240-or-uncertain restated with the word's arm. (2) fn-pcb-transit-verdict-names-the-accepted-arm (no hypotheses; books/peer-carriage.lisp fn-pcb-transit-verdict, host fn-owner-transit-verdict read by fnn-owner-attempt-transit on each accepted arm before the kind-4 commit): unsigned, carried, verified and revoked name their arms, elsewhere the admission verdict; books/owner-log.lisp fn-olog-detail-fields-print-an-accepted-arms-verdict prints `detail=D verdict=V'. (3) books/peer-invite.lisp: fn-pinv-accept-step-current-only-for-a-bound-current-inviter, fn-pinv-accept-of-a-current-inviter-configures-it (host fnn-pinv-owner-accept through fn-pinv-host-accept-record-plan / fn-pinv-host-accept-step; (:current) is accepted with a named line), fn-pinv-accept-words-are-the-owners-plan and fn-pinv-accepted-step-is-an-enrolling-plan (host fnn-pinv-accept, fn-pinv-host-acceptance-source after the owner answered accepted). Not claimed: the history-relation and pairs-okp hypotheses of fn-lb-a-connection-opened-after-a-publication-is-bound-anew are not separated by a counter-witness (PKT-497).",
+      "milestone": "M3",
+      "requirements": [
+        "SEC-005"
+      ],
+      "depends_on": [
+        "PRF-026",
+        "PRF-098",
+        "PRF-099",
+        "PRF-124",
+        "PRF-160",
+        "PRF-179"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-authored-accept.lisp",
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "books/owner-signed-post.lisp",
+        "tests/acl2/owner-signed-post-tests.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/acl2/login-binding-live-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/peer-invite.lisp",
+        "tests/test_native_key_statements.py",
+        "tests/test_native_peer_invite.py",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/keys-and-accounts-2026-09-26.md"
+      ],
+      "events": [
+        "fn-pa-served-post-word-names-a-refused-key-change-only-when-durable",
+        "fn-post-outcome-names-a-refused-key-change-only-for-its-completion",
+        "fn-own-consumed-completion-is-240-or-uncertain",
+        "fn-osp-served-post-names-a-refused-key-change",
+        "fn-osp-key-change-reply-only-for-a-consumed-refused-key-change",
+        "fn-pcb-transit-verdict-names-the-accepted-arm",
+        "fn-olog-detail-fields-print-an-accepted-arms-verdict",
+        "fn-pinv-accept-step-current-only-for-a-bound-current-inviter",
+        "fn-pinv-accept-of-a-current-inviter-configures-it",
+        "fn-pinv-accept-words-are-the-owners-plan",
+        "fn-pinv-accepted-step-is-an-enrolling-plan"
+      ]
     }
   ]
 }

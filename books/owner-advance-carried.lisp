@@ -254,7 +254,7 @@
                                        (fn-own-conn-verdicts conn)
                                        (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
-                  (fn-own-outcome-rendering o word)))
+                  (fn-own-post-rendering o word)))
                 (if (equal completion :durable)
                     (cdr (fn-acar-own-advance-result next id))
                   next)))
@@ -275,6 +275,7 @@
                                    fn-auth-sessionp
                                    fn-own-outcome-completion
                                    fn-own-outcome-rendering
+                                   fn-own-post-rendering
                                    fn-own-feed-durable
                                    fn-served-post-outcome fn-statep))
            :use ((:instance fn-acar-own-advance-result-is-own-advance-result

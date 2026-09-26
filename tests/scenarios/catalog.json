@@ -3159,6 +3159,39 @@
         "record": "planning/evidence/service-envelope-2026-09-26.md",
         "log": "planning/evidence/service-envelope-2026-09-26/driver.log"
       }
+    },
+    {
+      "id": "SCN-113",
+      "title": "A POST whose statement's key change the Store refused is answered with the 240 naming the refusal; accepted transit lines name their verdict; fn_verify reports revoked against a node that stored an article after revoking its principal; a friend's node holding the inviter at the invitation's keys accepts it by name",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "SEC-005"
+      ],
+      "steps": [
+        "Node D (tests.test_native_key_statements): a probe store measures the transactions enrolment, a `keys' grant and one owner start use (U); D is initialised with --max-transactions U+1, P enrolled and granted, then a succession statement signed by P's keys is POSTed, then an ordinary signed article.",
+        "Node B: P enrolled, succeeded and revoked by key statements; an article under P's last keys arrives by IHAVE from the configured peer a; HDR :fn-verified; tools/fn_verify.py against B with P pinned at those keys.",
+        "The D23 chain (tests.test_native_hybrid_author): an allowlisted relay carries an article to an enrolled sink; both transit log lines are read.",
+        "Nodes A5 and B5 (tests.test_native_peer_invite): A enrolled at B and on A, then succeeded (generation 2) on both; A invites B with its current keys and its address; B accepts; B accepts the same invitation again; A confirms."
+      ],
+      "expected": [
+        "D's POST reply is exactly `240 article received OK; the key change it carries was refused (key-change-refused)`, the owner log has `key-statement enrol-successor refused`, the next POST is a 441, U+1 transactions are used, and P's history is generation 1 active only.",
+        "B answers 235; HDR says `0 revoked P keyring G`; the transit line is `accepted transit ... detail=revoked verdict=revoked ...`; fn_verify exits 1 saying the node revoked P.",
+        "The relay's line has ` detail=carried verdict=carried `, the sink's ` detail=none verdict=verified `.",
+        "B's accept exits 0 and writes the acceptance; B's log says `peer accept: the inviter's current keys; nothing to enrol`; B's `peer list` names a5.example with A's principal; the second accept is refused `already-enrolled`; A's confirm exits 0; B's history for A is generations 2 (active) and 1 (retired), nothing added."
+      ],
+      "implementation": {
+        "test": "tests.test_native_key_statements",
+        "cases": [
+          "NativeKeyStatementTests.test_a_refused_key_change_is_named_in_the_post_reply",
+          "NativeKeyStatementTests.test_succession_revocation_and_carried_statement",
+          "NativeHybridAuthorTest.test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies",
+          "NativePeerInviteTests.test_a_succeeded_inviter_known_here_is_accepted_by_name"
+        ],
+        "native": true,
+        "log": "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "record": "planning/evidence/keys-and-accounts-2026-09-26.md"
+      }
     }
   ]
 }

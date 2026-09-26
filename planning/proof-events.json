@@ -6358,6 +6358,55 @@
           "name": "fn-nls-page-refuses-exactly-past-the-total-width"
         }
       ]
+    },
+    {
+      "id": "PRF-184",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pa-served-post-word-names-a-refused-key-change-only-when-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-outcome-names-a-refused-key-change-only-for-its-completion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-consumed-completion-is-240-or-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-served-post-names-a-refused-key-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-key-change-reply-only-for-a-consumed-refused-key-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-transit-verdict-names-the-accepted-arm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-detail-fields-print-an-accepted-arms-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-step-current-only-for-a-bound-current-inviter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-of-a-current-inviter-configures-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-words-are-the-owners-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accepted-step-is-an-enrolling-plan"
+        }
+      ]
     }
   ]
 }
