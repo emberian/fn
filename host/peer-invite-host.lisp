@@ -122,10 +122,6 @@
   (declare (xargs :mode :program))
   (fn-pinv-bindings-request-decode octets))
 
-(defun fn-native-operator-host-result-principal-control-path-octets (result)
-  (declare (xargs :mode :program))
-  (fn-native-operator-result-principal-control-path-octets result))
-
 ;; PRF-166 (PKT-325): `keys redecide MSGID' (kind 12) and its operator words.
 (defun fn-pinv-host-redecide-request-encode (msgid)
   (declare (xargs :mode :program))

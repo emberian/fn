@@ -158,6 +158,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-principal-store-octets result))
 
+(defun fn-native-operator-host-result-principal-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-principal-control-path-octets result))
+
 (defun fn-native-operator-host-init-marker-octets ()
   "The store entry names raw Lisp may lstat before an init plan runs."
   (declare (xargs :mode :program))

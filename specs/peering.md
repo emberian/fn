@@ -1719,7 +1719,28 @@ or the statement's change is already in the keyring at a later generation
 (`already-acted`); a statement that declines again is reported `declined
 REASON`.
 
-SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, without a restart, and never re-decided by an open
+SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened
+
+**A login's signing binding, live (PKT-221, PRF-175).** The posting policy's
+login-to-principal table (`posting-policy bound-logins`,
+`books/login-binding.lisp`) is rows of the configuration: mark-2 rows
+`(LOGIN PRINCIPAL-HEX "" 2)` of the `accounts` slot beside the account rows
+(one credential table), written only by the delta kind `:login-binding`
+(code 17), which replaces that login's row or removes it and leaves every
+account row in place. The credential file's `signing` fields stay the
+operator's statement: the owner publishes them at start, and again when
+`operator CONFIG principal bind|unbind` (after rewriting the file) sends
+control request 14 to the running owner, each time through the live
+reconfiguration (`fnn-owner-live-reconfigure-locked`, `fn-ocl-publish`) with
+ACL2's plan `fn-lb-sync-plan` (one delta per login that differs, in records of
+at most 64). The verb answers `applied` only after the owner published it
+(`fn-native-auth-admin-effect-word`). The gate the host calls
+(`fn-lb-ocfg-gate`) reads the policy from the live configuration and the
+table from the configuration the submission's connection pinned when it
+opened: a session keeps the binding in force when it opened, and a
+connection opened after a publication is decided under the published table.
+An image older than the one that writes code 17 refuses a store whose
+configuration log holds it (as PKT-440 records for codes 15 and 16).
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
