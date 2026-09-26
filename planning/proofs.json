@@ -6383,7 +6383,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
@@ -6412,7 +6412,11 @@
         "fn-nh-exit-code-cases",
         "fn-nh-fence-of-starting-iff",
         "fn-nh-fence-of-route",
-        "fn-native-control-liveness-decides"
+        "fn-native-control-liveness-decides",
+        "fn-nh-starting-clears-on-listening",
+        "fn-native-control-printed-reason-is-the-decisions",
+        "fn-nctrl-reasoned-read-of-encode",
+        "fn-nctrl-reason-word-of-a-reason-is-not-none"
       ]
     },
     {
