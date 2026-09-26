@@ -2115,7 +2115,8 @@
         "planning/evidence/bp-budgets-receipts-2026-09-25.md",
         "books/bp-node-busy-delivery.lisp",
         "planning/evidence/manifests/certify-20260925T070406Z-2708294.json",
-        "planning/evidence/manifests/certify-20260925T071636Z-2729359.json"
+        "planning/evidence/manifests/certify-20260925T071636Z-2729359.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "pending_subject": "The native host calls fn-bpnp-step (host/native/bp-service.lisp:170, fnn-bps-foundation-step), wrapping each lower machine event as (:base E) at :176-177. fn-bpnp-step-base-event-refines-fn-bpn-step equates that arm with fn-bpn-step (state and effects), so the lower lifecycle and send-authorization keystones hold of the called step's base on (:base E) only; the served step's own receive, delivery, family, forwarding and recovery arms have no lifecycle or kind-8 send-authorization keystone. fn-bpnp-step-emits-no-release-and-no-receipt-prepare holds over every served event. A durable kind 8 without a kind 9 at a process death is re-offered on the next session to its next hop with the same held bundle, up to three retries, then held and reported as stranded (spec 4.3.1, default adopted by the coordinator 2026-09-24, pending ember); the keystones cover the lone-candidate selection, the offer binding and the retry bound, not multi-candidate fairness or the replay fact that recovered attempt epochs precede the new epoch. Physical publication observations and reachable crash cuts remain open.",
       "progress_note": "Over the called fn-bpnp-step: guard premises preserved by every host event; :progress leaves held rows unchanged and issued unchanged or a fresh pending dispatch; no :release or :receipt-prepare effect on any event; on (:base E) the answer is exactly fn-bpn-step's state and effects or nothing. The lower fn-bpn-step keystones (lifecycle invariant, send authorized by a durable attempt record) are cited through that bridge. The spec 11.1 witnesses N05 (attempt half), N06 (machine half), N08 (as the stranded negative), N11 (refusal half), BP-R02, R06, R07, R15 and R16 run through fn-bpnp-step in bp-node-counterexamples-tests. The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain. Lane defaults-precise (2026-09-24): a ready recovery through fn-bpnp-step installs exactly the held rows fn-bpnf-family-replay-rows computes from the durable FNBS rows, over the event the host builds (fn-bpnp-host-recovery-installs-the-durable-replay), so the kind-8 retry count after a restart is the one the durable kind-8 history gives; witness: four restarts from the fresh initial state over the framed rows (retries 0 to 3, then stranded), must-fail: a fenced clock-domain decision installs nothing. The sender reads a TCPCL XFER_REFUSE by its reason: fn-bpnp-tcpcl-outcome (called by host/native/bp-node.lisp fnn-bpnode-forward-contact) returns (:refused r) for a peer reason r, the kind-9 record fn-bpnp-step proposes carries the event's outcome unchanged, reason 1 (Completed) settles exactly as :sent through fn-bpnp-forward-result-apply, and every other reason stays non-terminal. A settled non-terminal kind 9 clears the slot, so the budget bounds uncertain re-offers only. hbox run-20260924T230614Z-3685. N16 (lane n16-rotation, 2026-09-25): fn-bpnp-step on (:rotate g ck) is fn-bpnp-rotate-step behind the uncertainty fence (fn-bpnp-step-rotate-is-rotate-step) and on a :persist-result while a checkpoint is issued is fn-bpnp-rotation-persist-step (fn-bpnp-step-rotation-result-is-rotation-result); the record count after a checkpoint's answer is 0 exactly on the matching durable answer and unchanged otherwise (fn-bpnp-step-rotation-resets-credit-only-on-durable); the four rotation effects are inside the no-release/no-receipt-prepare confinement. Teeth in tests/acl2/bp-node-counterexamples-tests (N16 section). hbox run-20260925T051528Z-15c2. Open: finding N16-F1, a reopened node's first operation reuses the rotation's id.",
@@ -3018,7 +3019,8 @@
         "planning/evidence/manifests/certify-20260924T160912Z-2158325.json",
         "planning/evidence/manifests/certify-20260924T230658Z-1653033.json",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lanes group-name-validity (grammar, 2026-09-24) and group-names-2 (reserved names, 2026-09-24). Teeth: records-shape-tests has the grammar witnesses and seven must-fails; native-admin-tests and native-operator-tests have the reserved witnesses (example, example.test, Example.a, EXAMPLE.test, poster, POSTER, Poster refused; fn.example, examples.test, poster.x, fn.poster accepted; retire of example.test accepted) and one must-fail per hypothesis. fn-record-group-namep-bounds-length-by-definition is the local bound by definition and is not cited. Lane defaults-precise (2026-09-24): specific-purpose recognizer and the local-agreement theorem; teeth in native-admin-tests (15 special witnesses, 12 near misses, the plan witness over five special names and one ordinary, one must-fail per hypothesis). persvati run-20260924T230642Z-0e1b.",
       "events": [
@@ -3120,7 +3122,8 @@
         "planning/evidence/m5-compact-verb/campaign-checkpoint.json",
         "planning/evidence/m5-compact-verb/native-modules-2.log",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5).",
       "events": [
@@ -3205,7 +3208,8 @@
         "tests/acl2/bp-release-authority-tests.lisp",
         "planning/evidence/d23-issuer-authority-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T231054Z-2148356.json",
-        "planning/evidence/manifests/certify-20260924T232040Z-2181356.json"
+        "planning/evidence/manifests/certify-20260924T232040Z-2181356.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane d23-issuer-authority (2026-09-24): receipts release only under the release list and the exact obligation; certified on hbox w28 run-20260924T231033Z-cfaf (manifest certify-20260924T231054Z-2148356, 94 books, the affected sets of bp-session-admission and native-admin) and run-20260924T232022Z-575d (certify-20260924T232040Z-2181356, 20 books, bp-release-authority and native-admin after the cost fix; every book under 10 s). Lab: planning/evidence/d23-issuer-authority-2026-09-24.md. Lane d23-bp-carrier (2026-09-24). Certified on hbox with the w28 toolchain: run-20260924T222039Z-5919 (manifest certify-20260924T222100Z-2041510, 85 books, the affected set of bp-session-admission, native-admin and native-operator, every book under 9 s); bp-session-admission and its tests in certify-20260924T221731Z-2038126. Lab: through dtn7-rs with one and two relays the request is accepted under the author's enrollment and the receipt is accepted at home (planning/evidence/d23-bp-carrier-2026-09-24.md). The bp-boundary verb takes `carries EID ...'; its rows ride the :set-peer delta, the configuration record round-trips and replay recovers them (ground witness in native-admin-tests). Teeth: one must-fail per hypothesis of each theorem and reachable witnesses in bp-transit-join-tests (a relay carrying dtn://b/ with dtnB enrolled plans the same :submit under dtnB), bp-session-admission-tests and bp-app-handoff-tests (a relayed receipt). Open: bp-node serve's own forwarding still expects the application peer as its TCPCL neighbour (a routing choice, not this rule); verification of a signed article against the author's enrollment is the posting path's.",
       "events": [
@@ -3341,7 +3345,8 @@
         "planning/evidence/manifests/certify-20260925T043708Z-2506982.json",
         "planning/evidence/manifests/certify-20260925T044231Z-2513080.json",
         "planning/evidence/manifests/certify-20260925T045027Z-2521559.json",
-        "planning/evidence/manifests/certify-20260925T050457Z-2551445.json"
+        "planning/evidence/manifests/certify-20260925T050457Z-2551445.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane bp-routing (2026-09-25). Teeth in tests/acl2/bp-route-tests.lisp: a reachable witness (the bp-node-forward-retry fixture's held transit to dtn://bp-dest/, routed to relay, proposes the attempt) and must-fail cases for an unlisted hop, a wrong announced EID, a prefix route to another boundary, the route present (no report), and tables whose matching sets differ.",
       "events": [
@@ -3421,7 +3426,8 @@
         "tests/acl2/bp-node-retire-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T190512Z-3605421.json",
-        "planning/evidence/manifests/certify-20260925T191828Z-3623771.json"
+        "planning/evidence/manifests/certify-20260925T191828Z-3623771.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests.",
       "events": [
@@ -3469,7 +3475,8 @@
         "tests/acl2/owner-checkpoint-open-tests.lisp",
         "books/config-physical-replay.lisp",
         "tests/acl2/config-physical-replay-tests.lisp",
-        "planning/evidence/owner-checkpoint-open-2026-09-25.md"
+        "planning/evidence/owner-checkpoint-open-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Open items: K0 coverage of the publish program's :root rename and :root fsync (fn-bs-k0-step-inputp admits neither; the profile program has the same gap); the whole-file statement over the host's range loop; the publication keystone's history hypothesis has no must-fail (the identity fold's fault is absorbing); the owner's open still re-encodes the covered prefix's octets for fnn-open-live-store's other callers (P3 finding 4) and the Store open and the owner open each replay the suffix.",
       "events": [
@@ -3596,7 +3603,8 @@
         "specs/bp-node-machine.md",
         "planning/evidence/manifests/certify-20260925T080134Z-2821914.json",
         "planning/evidence/manifests/certify-20260925T080424Z-2827312.json",
-        "tests/test_bp_node_native.py"
+        "tests/test_bp_node_native.py",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "events": [
         "fn-bpnp-receipt-contact-offers-the-queued-job",
@@ -3628,7 +3636,8 @@
         "books/native-admin.lisp",
         "planning/evidence/deploy-fixes-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
@@ -3808,7 +3817,8 @@
         "tests/acl2/store-reclaim-holders-tests.lisp",
         "planning/evidence/reclaim-host-2026-09-25.md",
         "books/reclaim-admission.lisp",
-        "tests/acl2/reclaim-admission-tests.lisp"
+        "tests/acl2/reclaim-admission-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048).",
       "events": [
@@ -3921,7 +3931,8 @@
         "tests/acl2/store-profile-upgrade-tests.lisp",
         "planning/evidence/deploy-fixes-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile, the store's own config.json profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted, does not drop the store's history-marker requirement (fn-profile-rollback-drops-markerp), and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). fn-profile-rollback-keeps-a-required-marker: when the store's profile requires the committed-history marker and the verdict is :sound, the kept profile requires it too; the kept format-7 config.json over a migrated store is refused as history-marker-required-dropped (qual-e747dbcc U1). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
       "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
@@ -4036,7 +4047,8 @@
         "specs/bp-node-machine.md",
         "tests/test_bp_node_native.py",
         "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
-        "planning/evidence/bp-routing-2-2026-09-25.md"
+        "planning/evidence/bp-routing-2-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "events": [
         "fn-bpnp-contact-offer-is-the-routed-hop",
@@ -4302,7 +4314,8 @@
         "planning/evidence/manifests/certify-20260925T183424Z-3570225.json",
         "tests/test_native_peer_invite.py",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "events": [
         "fn-pinv-accept-step-enrols-only-a-bound-invitation",
@@ -4394,7 +4407,8 @@
         "tests/acl2/owner-bound-commit-tests.lisp",
         "planning/evidence/operator-config-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "statement": "fn-native-config-show-round-trip: for every configuration C that fn-native-config-show-wfp admits, fn-native-config-load -- the loader fn-native-operator-run (host/native-operator-host.lisp:19) reads fn.toml through -- of fn-native-config-show-octets C, the text `operator CONFIG show' prints and a mission writes, is (:accepted C); the [alerts] and [ops] rows are part of C. fn-native-config-load-renderable: every configuration fn-native-config-load accepts satisfies fn-native-config-show-wfp (the parser's values are parsed-shaped and each field's normalization keeps its bound), so fn-native-config-show carries no run-time check; with the round trip, fn-native-config-loaded-show-round-trip: the rendering of every loaded configuration loads back as itself. fn-native-mission-profiles-valid and fn-native-mission-store-opens-with-its-profile: for each of small-community, relay and archive, the mission's profile request resolves to an admitted profile, and the frame `init' writes for it (fn-bs-config-frame-for-profile, host/store-host.lisp fn-store-metadata-config-frame) decodes at every later open to exactly that profile (under A-CRYPTO through fn-bs-config-decode-of-encode). fn-native-operator-run-init-under-a-mission: under a configuration naming a mission, an accepted init plan's profile is the mission's request. fn-olr-reopen-iff-requested: fn-olr-decide, which host/owner-host.lisp fn-owner-log-reopen answers host/native/owner.lisp fnn-owner-maybe-reopen-log with, reopens exactly when a log path is configured and a SIGHUP arrived since the last one handled, and every counted request is then handled. fn-obc-commit-only-after-filing: fn-obc-commit-gate, which fnn-owner-complete-bound-submission asks (through fn-owner-bound-commit-gate) before any commit callback, answers :commit only when fn-pa-filing-plan files the article in exactly the committed groups; with C1's keystone a control article then commits only in its filing group (fn-obc-control-commits-only-in-its-filing-group). Covered scope: that the host calls the callback only on :commit, and swaps the log descriptor under the log mutex, is host code measured natively, not proved.",
       "progress_note": "Lane operator-config, 2026-09-25: PKT-096, PKT-097, PKT-101, PKT-069."
@@ -4465,7 +4479,8 @@
         "planning/evidence/peering-compose-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T235912Z-4066344.json",
         "planning/evidence/manifests/certify-20260926T002322Z-3065393.json",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "events": [
         "fn-pinv-confirm-record-configures-the-issued-invitations-peer",
@@ -4565,7 +4580,8 @@
         "planning/evidence/manifests/certify-20260925T235018Z-2734100.json",
         "host/native/hybrid-control.lisp",
         "planning/evidence/manifests/certify-20260926T001006Z-2934089.json",
-        "planning/evidence/manifests/certify-20260926T001123Z-2946946.json"
+        "planning/evidence/manifests/certify-20260926T001123Z-2946946.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane source-corpus (2026-09-25). Certified on persvati run-20260925T235003Z-3cb2 (source-routes 1.9 s, source-routes-tests 7.1 s at 2 jobs). Teeth: reachable witnesses over the real fn-inj-decide and Store for a supplied Date, a generated Date and a supplied Path (recipe v3); hypothesis-removal witnesses for the held payload, the groups, the first Message-ID and distinct sources; the held hypothesis was removed after proving the weakened statements.",
       "events": [
@@ -4597,7 +4613,8 @@
         "books/nntp-search-scope.lisp",
         "tests/acl2/nntp-search-scope-tests.lisp",
         "planning/evidence/reader-daily-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T004042Z-3226778.json"
+        "planning/evidence/manifests/certify-20260926T004042Z-3226778.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Certified on hbox (planning/evidence/reader-daily-2026-09-25.md names the manifest); the native walk and tin session are in the same record.",
       "events": [
@@ -4624,7 +4641,8 @@
         "host/owner-host.lisp",
         "planning/evidence/consumer-e2-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
-        "planning/evidence/manifests/certify-20260926T005533Z-4181560.json"
+        "planning/evidence/manifests/certify-20260926T005533Z-4181560.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane consumer-e2 (2026-09-25), PKT-165 for the retaining-mode decision.",
       "events": [
@@ -4663,7 +4681,8 @@
         "specs/bp-node-machine.md",
         "tests/bp-dtn7/run_mission_four_node.py",
         "planning/evidence/mission-four-node-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T011543Z-36645.json"
+        "planning/evidence/manifests/certify-20260926T011543Z-36645.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "events": [
         "fn-bpnj-step-delegates-every-other-event",
@@ -4741,7 +4760,8 @@
         "books/bp-node-fragment-guards.lisp",
         "host/native/bp-service.lisp",
         "tests/test_bp_fragment_node_native.py",
-        "planning/evidence/bp-lifecycle-2026-09-25.md"
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs.",
       "events": [
@@ -4780,7 +4800,8 @@
         "books/native-operator.lisp",
         "tests/acl2/native-operator-tests.lisp",
         "planning/evidence/reclaim-lifecycle-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json"
+        "planning/evidence/manifests/certify-20260926T012306Z-3609003.json",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "Open: the replay correspondence of the reclaimed record (the open of the reclaiming pack equals fn-rcl-reclaim-state of the open of the history: PRF-088's own open step); guard verification of books/store-reclaim-pack (all :verify-guards nil, called through a :program host wrapper); the maintenance reservation as an admission invariant (PKT-169); the retention charge (the archive pin is kept); holders from feed state, FNBS rows and BP obligations are not read (the BP journal is a separate namespace; the offline verb reads the Store's consumer projection only); chained packs for N above one pack (4,096 events, 4 MiB).",
       "events": [
@@ -4818,7 +4839,8 @@
         "tests/acl2/native-health-tests.lisp",
         "host/native-live-status-host.lisp",
         "host/native/operator.lisp",
-        "planning/evidence/operator-health-2026-09-25.md"
+        "planning/evidence/operator-health-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T013116Z-3680360.json"
       ],
       "progress_note": "See planning/evidence/operator-health-2026-09-25.md for the farm manifest and the native cases.",
       "events": [
