@@ -351,7 +351,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-360 deploy the qualified candidate b6759850 (or a later cut): ember's go (sweep 10)
 - PKT-404 how a node faces the internet and with which certificate: ember's packet (sweep 10)
 - ~~PKT-355~~ friends-peer-2's merge certification `--affected-by books/owner.lisp` at the merged bytes (sweep 10) — retired at 17ff24aa
-- PKT-365 lower the throughput baseline after 735614d6 with a named improvement (sweep 10)
+- ~~PKT-365~~ lower the throughput baseline after 735614d6 with a named improvement (sweep 10) — retired at 114af152
 - PKT-408 the gate once per host/books batch; a quiet run to arm the wall-clock figures (sweep 10)
 - PKT-326 owner-invariants and owner-control-read: a quiet re-measure, never a lane (sweep 10)
 
