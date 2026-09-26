@@ -493,6 +493,17 @@ first line (`health exit=NN`) is what the command exits with: ACL2 renders
 it and reads it back from the same octets
 (`fn-nh-report-exit-of-render`, books/native-health.lisp).
 
+The running owner's report ends with its service log's line,
+`log-sink pending=P dropped=N written=W`. The owner never waits on its log:
+a line goes to a queue that one writer thread drains, so stderr on a pipe
+nobody reads, a stalled journald or a slow disk costs lines, not service.
+`pending` is what the writer has not yet written (it grows while the sink
+does not drain), `dropped` counts lines lost because the backlog passed
+1 MiB or a write failed, and `written` those the sink took
+(books/log-sink.lisp). Under systemd stderr is the journal, which drains, so
+`dropped` stays 0 unless journald stalls. The line never changes the exit
+code (`fn-nh-report-exit-of-render-and-more`).
+
 ### From the release tarball
 
 `packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR` packages one

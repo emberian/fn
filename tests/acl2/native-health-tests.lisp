@@ -373,13 +373,14 @@
         0))
 (must-fail
  (defthm nht-render-and-more-without-length
-   (implies (true-listp more)
+   (implies (and (equal v *nht-long*) (equal more (fn-nh-log-sink-line *nht-sink*))
+                 (true-listp more))
             (equal (fn-nh-report-exit (append (fn-nh-render v) more)) (fn-nh-exit-code v)))
    :rule-classes nil))
 ; Without (true-listp more): an improper tail makes the page malformed.
 (assert-event (equal (fn-nh-report-exit (append (fn-nh-render *nht-v26*) 7)) :malformed))
 (must-fail
  (defthm nht-render-and-more-without-true-list
-   (implies (<= (len v) 8)
+   (implies (and (equal v *nht-v26*) (equal more 7) (<= (len v) 8))
             (equal (fn-nh-report-exit (append (fn-nh-render v) more)) (fn-nh-exit-code v)))
    :rule-classes nil))

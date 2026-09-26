@@ -42,7 +42,8 @@
 (assert-event (not (fn-log-sink-okp (cadr (fn-log-sink-offer *lst-bad* 1 *lst-b*)) *lst-b*)))
 (must-fail
  (defthm lst-offer-preserves-without-okp
-   (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound)
+   (implies (and (equal s *lst-bad*) (equal len 1) (equal bound *lst-b*))
+            (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
    :rule-classes nil))
 ; fn-log-sink-take-preserves-okp without its hypothesis: two lines pending
 ; past the bound stay past it after a take of nothing.
@@ -51,7 +52,9 @@
 (assert-event (not (fn-log-sink-okp (fn-log-sink-take *lst-over* 0 :written) *lst-b*)))
 (must-fail
  (defthm lst-take-preserves-without-okp
-   (fn-log-sink-okp (fn-log-sink-take s len outcome) bound)
+   (implies (and (equal s *lst-over*) (equal len 0) (equal outcome :written)
+                 (equal bound *lst-b*))
+            (fn-log-sink-okp (fn-log-sink-take s len outcome) bound))
    :rule-classes nil))
 
 ; fn-log-sink-offer-drops-only-past-the-bound (no hypothesis): both sides.
@@ -64,7 +67,8 @@
 ; bound: the empty-queue line of 5000 is queued.
 (must-fail
  (defthm lst-drops-any-line-past-the-bound
-   (implies (< (nfix bound) (+ (fn-log-sink-pending-octets s) (nfix len)))
+   (implies (and (equal s (fn-log-sink-init)) (equal len 5000) (equal bound *lst-b*)
+                 (< (nfix bound) (+ (fn-log-sink-pending-octets s) (nfix len))))
             (equal (car (fn-log-sink-offer s len bound)) :drop))
    :rule-classes nil))
 
@@ -76,6 +80,7 @@
                      (fn-log-sink-dropped (cadr *lst-o1*))))
 (must-fail
  (defthm lst-drop-counts-without-drop
-   (equal (fn-log-sink-dropped (cadr (fn-log-sink-offer s len bound)))
-          (+ 1 (fn-log-sink-dropped s)))
+   (implies (and (equal s (cadr *lst-o1*)) (equal len 40) (equal bound *lst-b*))
+            (equal (fn-log-sink-dropped (cadr (fn-log-sink-offer s len bound)))
+                   (+ 1 (fn-log-sink-dropped s))))
    :rule-classes nil))
