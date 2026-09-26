@@ -140,6 +140,7 @@
                   fn-nntp-list-command fn-nntp-list-response
                   fn-nntp-list-counts-command fn-nntp-list-counts
                   fn-nntp-list-active fn-nntp-list-active-times
+                  fn-nntp-list-status-response fn-nntp-list-active-status
                   fn-nntp-list-active-or-newsgroups
                   fn-nntp-list-newsgroups
                   fn-nntp-list-filtered-response

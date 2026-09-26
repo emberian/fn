@@ -245,7 +245,9 @@
    (true-listp (fn-nntp-result-effects (fn-nntp-list-command session archive env args)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-list-command fn-nntp-single fn-nntp-multi
-                                    fn-nntp-multi-octets fn-nntp-make-result)
+                                    fn-nntp-multi-octets fn-nntp-make-result
+                                    fn-nntp-list-status-response
+                                    fn-nntp-list-active-status)
                                    (fn-nntp-result-effects))))))
 
 (local

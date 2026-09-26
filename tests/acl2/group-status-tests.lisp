@@ -205,18 +205,15 @@
   (fn-post-result-effects
    (fn-nntp-post-step *gst-s0* *gst-archive* cfg *gst-obs* *gst-obs*
                       (list :command (gst-o words)))))
-(defconst *gst-active-closed*
-  (list (fn-nntp-reply-effect
-         (fn-nntp-multi-octets nil "215 list of active newsgroups follows"
-                               (list (gst-o "fn.announce 0 1 n")
-                                     (gst-o "fn.test 0 1 y"))))))
+(defun gst-listing (lines)
+  (fn-nntp-result-effects
+   (fn-nntp-multi nil "215 list of active newsgroups follows" lines)))
+(assert-event (equal (gst-list *gst-cfg* "LIST")
+                     (gst-listing (list (gst-o "fn.announce 0 1 n")
+                                        (gst-o "fn.test 0 1 y")))))
 (assert-event (equal (gst-list *gst-cfg* "LIST") (gst-list *gst-cfg* "LIST ACTIVE")))
 (assert-event (equal (gst-list *gst-cfg* "LIST ACTIVE fn.a*")
-                     (list (fn-nntp-reply-effect
-                            (fn-nntp-multi-octets nil "215 list of active newsgroups follows"
-                                                  (list (gst-o "fn.announce 0 1 n")))))))
+                     (gst-listing (list (gst-o "fn.announce 0 1 n")))))
 (assert-event (equal (gst-list *gst-open-cfg* "LIST ACTIVE")
-                     (list (fn-nntp-reply-effect
-                            (fn-nntp-multi-octets nil "215 list of active newsgroups follows"
-                                                  (list (gst-o "fn.announce 0 1 y")
-                                                        (gst-o "fn.test 0 1 y")))))))
+                     (gst-listing (list (gst-o "fn.announce 0 1 y")
+                                        (gst-o "fn.test 0 1 y")))))

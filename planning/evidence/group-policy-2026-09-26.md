@@ -110,11 +110,47 @@ pin semantics).
 
 ## 3. REPL (persvati, ~/fn-gates/group-policy-repl)
 
-RESULTS-PLACEHOLDER
+Validation by batch: no farm run. Each changed book and the test book was
+admitted in the REPL on persvati in its own session (`gp-each`, started on
+tests/acl2/article-fields-tests so every certified book is a real include),
+with every changed or affected book below it loaded
+`:ld-skip-proofsp 'include-book` (locals skipped, as an include would) and
+the book itself proved: config (as the session book), config-invariants,
+injection, injection-invariants (in an injection-first session),
+nntp-responses (as the session book), nntp-invariants, nntp-effects,
+group-status, nntp-post, nntp-pinned-effects, owner-agent,
+owner-served-bound, native-admin, nntp-auth-fold, peer-offer-indexed,
+owner-list-counts-read, owner-control-read, owner-enrollment-read and
+tests/acl2/group-status-tests: all admitted, every assert-event and
+must-fail passing. Found on the way and fixed: the gate first placed before
+the injection decision broke `fn-post-without-a-clock-refuses-with-the-clock-line`
+(the clockless server's line), so the gate now runs on an accepted article
+only; hints in nntp-invariants, nntp-effects, nntp-auth-fold and
+owner-control-read name the new list functions. A red seen only in a session
+that had proved books with local `arithmetic/top` (injection-invariants'
+`fn-inj-refusal-names-a-reason`) was a session artifact: the same book was
+admitted in a session without those locals. Not REPL-run: every other
+affected book (the batch certifies the roots below).
 
 ## 4. Native
 
-NATIVE-PLACEHOLDER
+`tools/hbox_native.sh --name group-policy --label n1 --images
+developer,production 41ec18743 tests.test_native_group_policy`
+(hbox:/tank/fn/scratch/group-policy/native-n1; developer image
+`fn-host-developer.core` c8518f28..., production `fn-host.core` 8010ca42...):
+**OK, 4 ran, 0 skipped** (the image case 2.8 s). Log
+planning/evidence/group-policy-2026-09-26/native-n1-test_native_group_policy.log
+`5e41f87e25c2c315d578ffcda3aa3edd725a227367f51f65b68302daf1583a60`;
+SHA256SUMS native-n1-SHA256SUMS
+`198049d217e655ad34aeeb17f36c194c37b9375f944be4480934e1cb06c9351a`.
+Observed (SCN-125): offline `group policy fn.absent n` refused, `fn.ro m` not
+accepted, `fn.ro n` accepted; LIST ACTIVE `fn.ro ... n`, `fn.test ... y`;
+POST to fn.ro and to fn.test,fn.ro answered the read-only 441, fn.test 240,
+STAT of the refused Message-ID 430; live `y` then a new connection lists `y`
+and posts 240; live `n` then a new connection's POST is refused; after a
+restart LIST ACTIVE shows `n` and POST is refused. The commits after
+41ec18743 change proof hints and the test book only, no executable
+definition.
 
 ## 5. CT3 and P1: not done (PKT-575), and the decision (PKT-576)
 

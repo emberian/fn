@@ -613,8 +613,8 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
   live through the control socket) stages `(:set-group-status NAME STATUS 0
   nil)`, configuration delta code 21 (`books/config.lisp`), admitted only for
   a live group and `y` or `n` (`:no-such-group`, `:group-status`). The fold
-  rewrites the group entry's policy identifier (`fn-policy-read-only-1` is
-  `n`, the default `fn-policy-default-1` is `y`); nothing else about the
+  rewrites the group entry's policy identifier (`*fn-cfg-read-only-policy-id*` is
+  `n`, the default `*fn-cfg-default-policy-id*` is `y`); nothing else about the
   group changes. Keystone `fn-cfg-set-group-status-sets-the-status`
   (`books/config-invariants.lisp`) over `fn-cfg-apply-delta`: the status set
   is the status read, and no other group's changes. No store record and no

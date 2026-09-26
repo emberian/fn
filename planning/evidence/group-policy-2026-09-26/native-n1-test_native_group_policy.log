@@ -1,0 +1,10 @@
+test_read_only_group_offline_live_and_after_restart (tests.test_native_group_policy.GroupPolicyImageTests.test_read_only_group_offline_live_and_after_restart) ... ok
+test_the_delta_code_is_21 (tests.test_native_group_policy.GroupPolicySourceTests.test_the_delta_code_is_21) ... ok
+test_the_owner_installs_the_closed_list (tests.test_native_group_policy.GroupPolicySourceTests.test_the_owner_installs_the_closed_list) ... ok
+test_the_post_step_gates_an_accepted_article (tests.test_native_group_policy.GroupPolicySourceTests.test_the_post_step_gates_an_accepted_article) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.811s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_group_policy", "tests": 4, "failures": 0, "errors": 0, "skipped": 0, "executed": 4, "skips": [], "timings": [["tests.test_native_group_policy.GroupPolicyImageTests.test_read_only_group_offline_live_and_after_restart", 2.811], ["tests.test_native_group_policy.GroupPolicySourceTests.test_the_delta_code_is_21", 0.0], ["tests.test_native_group_policy.GroupPolicySourceTests.test_the_owner_installs_the_closed_list", 0.0], ["tests.test_native_group_policy.GroupPolicySourceTests.test_the_post_step_gates_an_accepted_article", 0.0]]}
