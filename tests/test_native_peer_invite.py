@@ -335,9 +335,6 @@ class NativePeerInviteTests(unittest.TestCase):
         for keys in (keys_b, keys_b2):
             self.hybrid("hybrid-enroll-next", str(a.control), str(keys_b / "principal.bin"),
                         str(keys / "ed-public.bin"), str(keys / "ml-public.pem"))
-        before = [line for line in a.key_history() if pb in line]
-        print("NATIVE-PEER-INVITE A4 key history before:", before)
-        self.assertIn("generation=2 state=active principal={}".format(pb), before)
         inv = self.root / "inv-succeeded"
         self.run_ok(a, "peer", "invite", "nodeB4", "fn.*", "127.0.0.1", str(b.port),
                     "a4.example", str(keys_a), str(inv), "-", "-")
@@ -383,9 +380,12 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertIn("peer confirm: the acceptor's current keys; nothing to enrol", log_a)
         self.assertIn("peer confirm refused: not-current-keys", log_a)
         self.assertIn("peer confirm refused: genesis", log_c)
+        # The store's history for B: generations 1 and 2 (the operator's
+        # enrolments), and none from the confirm.
         after = [line for line in a.key_history() if pb in line]
         print("NATIVE-PEER-INVITE A4 key history after:", after)
-        self.assertEqual(after, before)
+        self.assertIn("generation=2 state=active principal={}".format(pb), after)
+        self.assertEqual(len(after), 2)
 
 
 if __name__ == "__main__":

@@ -2731,16 +2731,19 @@
       ],
       "steps": [
         "Node E: enrol P; POST a succession signed by the old keys with no `keys` grant; `control grant P keys fn.keys` live; `keys redecide MSGID`; `keys redecide MSGID` again; `keys redecide <absent@keys.invalid>`; stop; `keys redecide MSGID` offline; restart E.",
-        "The login binding (PKT-221; its native case is tests.test_native_auth NativeAuthTests.test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding): a login bound to P under `posting-policy bound-logins`; P enrolled; session A authenticates; `principal bind LOGIN Q` against the running owner; A POSTs an article signed by P; a new session B POSTs another article signed by P."
+        "The login binding (PKT-221; its native case is tests.test_native_auth NativeAuthTests.test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding): a login bound to P under `posting-policy bound-logins`; P enrolled; session A authenticates; `principal bind LOGIN Q` against the running owner; A POSTs an article signed by P; a new session B POSTs another article signed by P.",
+        "The succession-era peering (PKT-211, PRF-179): node A enrols B (hybrid-enroll-next) and then B's successor keys (generation 2, the same principal and token); A invites B; B accepts signing with its current keys; A confirms; A `peer budget nodeB4 1048576 16` and `peer list`; a fresh node D accepts another A invitation under B's genesis keys and A confirms it; C, which never enrolled B, invites B, B accepts under its current keys and C confirms."
       ],
       "expected": [
         "The log reads `key-statement declined no-grant`, then `key-statement redecide enrol-successor committed` (exit 0), `key-statement redecide refused already-acted` (exit 1), `key-statement redecide refused not-a-key-statement` (exit 1); the history shows generation 2 active and 1 retired; the offline redecide exits non-zero; the restart logs no key-statement line and leaves the history unchanged.",
-        "The live bind answers `accepted operator principal bind applied` with the owner still running; A's article is 240 (the log reads `post login=LOGIN bound=P`); B's is 441 `... not bound ...` (the log reads `post login=LOGIN refused login-not-bound`)."
+        "The live bind answers `accepted operator principal bind applied` with the owner still running; A's article is 240 (the log reads `post login=LOGIN bound=P`); B's is 441 `... not bound ...` (the log reads `post login=LOGIN refused login-not-bound`).",
+        "A's confirm exits 0 with `peer confirm: the acceptor's current keys; nothing to enrol` in A's log, `peer list` names nodeB4 bound to B's principal and its line ends ` budget-octets=1048576 budget-count=16`; a second confirm is refused already-confirmed; A refuses D's acceptance `not-current-keys` and C refuses B's `genesis` (exit 1 each, the reason in the owner's log); A's key history for B is unchanged (no generation 3)."
       ],
       "implementation": {
         "test": "tests.test_native_key_statements",
         "cases": [
-          "NativeKeyStatementTests.test_redecide_a_declined_statement_after_its_grant"
+          "NativeKeyStatementTests.test_redecide_a_declined_statement_after_its_grant",
+          "NativePeerInviteTests.test_a_succeeded_friend_is_confirmed_under_its_current_keys"
         ],
         "native": true,
         "log": "planning/evidence/keys-and-accounts-2026-09-26.md",
