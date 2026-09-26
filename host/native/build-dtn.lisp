@@ -140,6 +140,9 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
+;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
+;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+(include-book "books/post-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
 ;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.

@@ -72,6 +72,9 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
+;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
+;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+(include-book "books/post-identity-index")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")
