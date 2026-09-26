@@ -1244,3 +1244,19 @@ node's own identity (the RFC's injecting-agent rule), the supplied tail kept
 verbatim as part of the poster's source under D25 (a changed Path is a
 changed source). The refusal stays for a Path that is not syntactically a
 path. A supplied Xref is still refused (it is the server's).
+
+### 2026-09-26: D33 — Consolidation (~16:50 UTC; PENDING EMBER'S CONFIRMATION)
+goal: Wave 5's lanes own architectural boundaries with a deletion map each, in gpt-6's order: (1) one resumable checkpoint pipeline with a resource decision before allocation and the storage schema; (2) the committed catalog and byte owner as one vertical slice (the arena behind an explicit abstraction, parsed byte facts, event references, PreparedCommit tokens, view deltas); (3) adapter retirement (typed results, no mailboxes, no history-search completion, no refresh-by-rediscovery), then BP and configuration/consumer paths. A prototype of `attach-stobj` precedes the catalog slice.
+Status: adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); pending ember's confirmation; the wave-5 briefs follow a design lane.
+
+### 2026-09-26: D34 — Fresh deploys, no migrations (~16:50 UTC; PENDING EMBER'S CONFIRMATION)
+goal: Every deploy is torn down and reinstalled from the release; the format-7 translation, `upgrade-profile`'s upgrade relation, `rollback-check`, the versioned release directories and the rollback sentences go; the store format is one format until v1 ships, with a `store export/import` for data that must survive a reinstall.
+Status: adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); pending ember's confirmation; the wave-5 briefs follow a design lane.
+
+### 2026-09-26: D35 — The release is the product (~16:50 UTC; PENDING EMBER'S CONFIRMATION)
+goal: One tarball per platform with its runtime, OpenSSL 3.5 and libsodium bundled; Linux x86-64 and OpenBSD amd64 (SBCL W^X, rc.d, LibreSSL absent: bundle OpenSSL); a check that no Python is in the runpath of a deployed node; docs a stranger installs from.
+Status: adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); pending ember's confirmation; the wave-5 briefs follow a design lane.
+
+### 2026-09-26: D36 — A public node (~16:50 UTC; PENDING EMBER'S CONFIRMATION)
+goal: fn.fg-goose.online peered with spwashi and pug; the public-exposure limits on; the certificate and the storage tier from ember.
+Status: adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); pending ember's confirmation; the wave-5 briefs follow a design lane.
