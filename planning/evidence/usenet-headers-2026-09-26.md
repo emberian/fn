@@ -132,7 +132,16 @@ Dependent test books (nntp-list-counts, nntp-auth, nntp-xpat, nntp-legacy, confi
 
 ## Native
 
-See LANEDUMP "READY FOR BATCH" for the run and its log SHA-256.
+hbox, `tools/hbox_native.sh --label desc --images developer,production --env
+FN_RUN_NATIVE_READER_INDEX=1 . tests.test_native_reader_index` on the lane tree
+(the bytes of 4904bc529): `tests.test_native_reader_index: OK (6 ran, 0
+skipped)`, `== modules: 1 OK, 0 SKIPPED, 0 FAILED`, the new case
+`test_list_newsgroups_descriptions_and_motd_published_live ... ok` (2.47 s).
+Module log sha256 `a924c542f91896fd545f7ffb1449e2034e6c73ee48a4adb6adb1123afd9a512d`
+(copied to `planning/evidence/usenet-headers-2026-09-26-native.log`), run.log
+sha256 `1258ab2aeb0b50d839d89955efbeb48788fb735fc5090297995c9635223aead1`, tree
+hbox:/tank/fn/scratch/usenet-headers/native-desc (SHA256SUMS there). This is
+the lane's one targeted module; the batch's image run is the claim.
 
 ## Not done (PKT-573) and the decision (PKT-574)
 

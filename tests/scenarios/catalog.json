@@ -3430,7 +3430,7 @@
       "id": "SCN-124",
       "title": "An operator describes a group and sets the message of the day on a running node; a new reader connection is shown both, a restart keeps them, and clearing them restores the marker and an empty message",
       "milestone": "M6",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-039"
       ],
@@ -3446,9 +3446,10 @@
         "The refused commands exit non-zero and change nothing a reader is shown."
       ],
       "evidence": [
-        "tests/test_native_reader_index.py"
+        "tests/test_native_reader_index.py",
+        "planning/evidence/usenet-headers-2026-09-26-native.log"
       ],
-      "implementation": "tests/test_native_reader_index.py NativeReaderIndexTest.test_list_newsgroups_descriptions_and_motd_published_live"
+      "implementation": "tests/test_native_reader_index.py NativeReaderIndexTest.test_list_newsgroups_descriptions_and_motd_published_live; evidence log planning/evidence/usenet-headers-2026-09-26-native.log (hbox, developer and production images of the lane tree at 4904bc529's bytes, 6 ran, 0 skipped, 0 failed)"
     }
   ]
 }
