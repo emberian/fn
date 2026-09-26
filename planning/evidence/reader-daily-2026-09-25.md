@@ -68,7 +68,7 @@ Certification: farm run `run-20260925T234642Z-ec19` on hbox (w28, 2 jobs,
 `planning/evidence/manifests/certify-20260925T234713Z-4045738.json`: passed,
 `books/nntp-search-scope` 3.4 s, `tests/acl2/nntp-search-scope-tests` 3.2 s,
 `books/nntp-xpat` 2.8 s, `tests/acl2/control-served-tests` 2.8 s. After the
-dev merge, `run-20260926T002150Z-62b8` found both roots already certified at
+dev merge, `run-20260926T002150Z-62b8` (manifest `planning/evidence/manifests/certify-20260926T002211Z-4117190.json`) found both roots already certified at
 the merged bytes (0 certified). `make check` green with a locally regenerated
 ledger (ledger files not committed; the deputy regenerates).
 
