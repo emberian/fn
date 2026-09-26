@@ -1,29 +1,30 @@
-"""Opt-in native: a friend cancels their own unsigned post (SEC-006, PRF-210).
+"""Opt-in native: a friend cancels their own unsigned post by RFC 8315 (SEC-006, PRF-210).
 
-Three saved-image nodes on loopback.  H requires AUTHINFO and has two
-logins, alice and bob; A and B receive over IHAVE from a configured peer.
-Nothing is signed: the only authority is the login, carried as RFC 8315
-Cancel-Lock / Cancel-Key lines the owner writes (books/cancel-lock.lisp
-fn-cl-served-payload, called at host/native/owner.lisp
-fnn-owner-attempt-served).
+Three saved-image nodes on loopback.  H requires AUTHINFO (logins alice and
+bob); A and B receive over IHAVE from a configured peer.  Nothing is signed.
+The poster's client supplies the RFC 8315 lines, as tin does with its own
+secret: alice's post carries `Cancel-Lock: sha256:Base64(SHA-256(K))`, her
+cancel `Cancel-Key: sha256:K`; bob's cancel carries a key of his own.  The
+decision is ACL2's (books/control-authority.lisp fn-ctl-withdrawal-plan and
+the :poster arm of fn-ctl-withdrawal-effect; keystone
+fn-ctl-withdrawal-authority-is-exactly-signer-or-poster).
 
-- alice POSTs T: the stored T carries one `Cancel-Lock: sha256:` line,
-  directly after the node's Injection-Info line.
-- bob POSTs a cancel of T (240, filed): T is still served (220), since
-  bob's key opens nothing (fn-ctl-key-record-without-an-opened-lock-
-  declines-by-definition).
-- alice POSTs a cancel of T (240): ARTICLE T answers 430 and OVER over the
-  group no longer lists it (fn-ctl-withdrawal-authority-is-exactly-signer-
-  or-poster, :poster).  After a SIGKILL and restart the answer is unchanged
-  (the decision replays from the two stored articles).
-- Across nodes: T, bob's cancel and alice's cancel, as H stored them, are
-  relayed to A (target first) and B (cancels first).  Both end at 430 for
-  T: alice's key travels in her cancel's octets (visible(T,C) =
-  visible(C,T)); after T and bob's cancel alone A still serves T.
+- bob's cancel (240, filed): T is still served (220): his key opens nothing.
+- alice's cancel (240): ARTICLE T answers 430 and OVER no longer lists it;
+  after a SIGKILL and restart the answer is unchanged.
+- T and both cancels, as H stored them, relayed to A (target first) and B
+  (cancels first): both end at 430 for T; A still serves T after T and bob's
+  cancel alone.
+
+The node-written lock keyed by the login (books/cancel-lock.lisp, for
+Thunderbird, which writes no Cancel-Lock) is not wired into the owner yet:
+planning/evidence/newsreader-cancel-2026-09-26.md section 6.
 
 Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_own_cancel
 """
 
+import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -58,8 +59,21 @@ def article(message_id, extra=None, subject=None):
     return ("\r\n".join(lines) + "\r\n\r\nbody\r\n").encode("ascii")
 
 
-def cancel_of(message_id, target):
-    return article(message_id, "Control: cancel " + target, "cmsg cancel " + target)
+def cancel_of(message_id, target, key):
+    lines = ["From: friend <friend@example.invalid>", "Newsgroups: fn.own.t",
+             "Subject: cmsg cancel " + target, "Message-ID: " + message_id,
+             "Control: cancel " + target, "Cancel-Key: sha256:" + key]
+    return ("\r\n".join(lines) + "\r\n\r\ncancel\r\n").encode("ascii")
+
+
+def key_of(secret):
+    """A client's c-key-string: Base64 of 32 octets (RFC 8315 section 4)."""
+    return base64.b64encode(hashlib.sha256(secret).digest()).decode("ascii")
+
+
+def lock_of(key):
+    """RFC 8315 section 2.1: Base64(SHA-256(the key's octets))."""
+    return base64.b64encode(hashlib.sha256(key.encode("ascii")).digest()).decode("ascii")
 
 
 def stuffed(octets):
@@ -103,9 +117,14 @@ class NativeOwnCancelTests(unittest.TestCase):
                 "store": store, "starts": 0}
         if auth:
             for login in ("alice", "bob"):
-                self.command([sys.executable, "bin/fn", "--config", config, "principal",
-                              "set-password", login, "--password", login + "-pw",
-                              "--posting"], timeout=600)
+                # The native operator reads the password on stdin.
+                result = subprocess.run(
+                    [str(IMAGE), "--fn", "operator", str(config), "principal",
+                     "set-password", login, "--posting"],
+                    cwd=ROOT, env=self.env, input=((login + "-correct-horse-battery\n") * 2).encode(),
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600,
+                    check=False)
+                self.assertEqual(result.returncode, 0, result)
         else:
             self.command([IMAGE, "--fn", "operator", config, "peer", "add", "source",
                           "source.example.invalid", "127.0.0.1", str(free_port()),
@@ -143,7 +162,7 @@ class NativeOwnCancelTests(unittest.TestCase):
         if login:
             stream.write(b"AUTHINFO USER " + login.encode() + b"\r\n")
             self.assertTrue(stream.readline().startswith(b"381"))
-            stream.write(b"AUTHINFO PASS " + login.encode() + b"-pw\r\n")
+            stream.write(b"AUTHINFO PASS " + login.encode() + b"-correct-horse-battery\r\n")
             reply = stream.readline()
             self.assertTrue(reply.startswith(b"281"), reply)
         return stream
@@ -214,13 +233,25 @@ class NativeOwnCancelTests(unittest.TestCase):
         return first
 
     def test_a_login_cancels_its_own_post_here_and_on_peers(self):
+        try:
+            self.scenario()
+        except BaseException:
+            # The nodes' own logs name a host fault; the temporary tree goes.
+            for log in sorted(self.base.glob("*/node-*.log")):
+                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
+                    "utf-8", "replace")))
+            raise
+
+    def scenario(self):
         h = self.initialize("h", True)
         a = self.initialize("a", False)
         b = self.initialize("b", False)
         for node in (h, a, b):
             self.start(node)
         seen = {}
-        seen["post T"] = self.post(h, "alice", article(TARGET))
+        alice_key, bob_key = key_of(b"alice client secret"), key_of(b"bob client secret")
+        seen["post T"] = self.post(h, "alice", article(
+            TARGET, "Cancel-Lock: sha256:" + lock_of(alice_key)))
         target = self.fetch(h, TARGET)
         header = target.partition(b"\r\n\r\n")[0].split(b"\r\n")
         info = [i for i, f in enumerate(header) if f.startswith(b"Injection-Info: ")]
@@ -228,9 +259,9 @@ class NativeOwnCancelTests(unittest.TestCase):
         seen["T lock lines"] = [header[i].decode() for i in locks]
 
         bob_id, alice_id = "<own-cancel-bob@example.invalid>", "<own-cancel-alice@example.invalid>"
-        seen["post bob cancel"] = self.post(h, "bob", cancel_of(bob_id, TARGET))
+        seen["post bob cancel"] = self.post(h, "bob", cancel_of(bob_id, TARGET, bob_key))
         seen["T after bob"] = self.answer(h, TARGET)
-        seen["post alice cancel"] = self.post(h, "alice", cancel_of(alice_id, TARGET))
+        seen["post alice cancel"] = self.post(h, "alice", cancel_of(alice_id, TARGET, alice_key))
         seen["T after alice"] = self.answer(h, TARGET)
         seen["over after alice"] = self.over_ids(h)
         bob_cancel = self.fetch(h, bob_id)
@@ -252,16 +283,17 @@ class NativeOwnCancelTests(unittest.TestCase):
         print("NATIVE-OWN-CANCEL-WITNESS " + json.dumps(seen, sort_keys=True))
 
         self.assertTrue(seen["post T"].startswith("240"), seen)
-        self.assertEqual(len(locks), 1, seen)
-        self.assertEqual(locks[0], info[0] + 1, seen)
+        self.assertEqual(seen["T lock lines"],
+                         ["Cancel-Lock: sha256:" + lock_of(alice_key)], seen)
+        self.assertTrue(info, seen)
         self.assertTrue(seen["post bob cancel"].startswith("240"), seen)
         self.assertTrue(seen["T after bob"].startswith("220"), seen)
         self.assertTrue(seen["post alice cancel"].startswith("240"), seen)
         self.assertTrue(seen["T after alice"].startswith("430"), seen)
         self.assertNotIn(TARGET, seen["over after alice"][1], seen)
         self.assertTrue(seen["T after restart"].startswith("430"), seen)
-        self.assertIn(b"\r\nCancel-Key: sha256:", alice_cancel)
-        self.assertIn(b"\r\nCancel-Key: sha256:", bob_cancel)
+        self.assertIn(("Cancel-Key: sha256:" + alice_key).encode(), alice_cancel)
+        self.assertIn(("Cancel-Key: sha256:" + bob_key).encode(), bob_cancel)
         self.assertTrue(seen["A T after T and bob"].startswith("220"), seen)
         self.assertTrue(seen["A T after alice"].startswith("430"), seen)
         self.assertTrue(seen["B T"].startswith("430"), seen)

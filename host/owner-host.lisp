@@ -1761,19 +1761,6 @@
                               (fn-lb-verdict-line verdict) state)))
     (value verdict)))
 
-;; SEC-006 (PRF-210): the served POST's octets as the owner stores them,
-;; books/login-binding-live.lisp fn-lb-ocfg-cancel-lock-payload over the
-;; live owner, the node's Cancel-Lock secret (nil when the host could not
-;; read one), the injected Message-ID and octets.
-(defun fn-owner-cancel-lock-created-line (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cl-secret-created-line)))
-
-(defun fn-owner-cancel-lock-payload (secret msgid payload state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-lb-ocfg-cancel-lock-payload (fn-owner-ocfg state) secret msgid
-                                         payload)))
-
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan

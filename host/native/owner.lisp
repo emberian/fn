@@ -1142,28 +1142,6 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (when pending
         (fnn-owner-key-statement service pending t)))))
 
-;;; SEC-006 (PRF-210): the node's Cancel-Lock secret, 32 octets from the OS
-;;; CSPRNG in STORE/cancel-lock.key, created once at the first owner start
-;;; (staged, fsynced, linked: fnn-publish-initial-file, whose EEXIST answer
-;;; keeps an existing file) and read at every start.  It is never served and
-;;; never written into a record.  A file of the wrong size is a named fault:
-;;; the node does not start on a damaged secret.  A deleted file is replaced
-;;; by a new secret, and the service log says so: the locks already written
-;;; can then no longer be opened by a login's cancel on this node (a signed
-;;; canceller and a poster's own Cancel-Key still can).
-(defvar *fnn-owner-cancel-lock-secret* nil)
-
-(defun fnn-owner-load-cancel-lock-secret (store)
-  (let ((path (fnn-join (fnn-store-root store) "cancel-lock.key")))
-    (unless (fnn-check-regular path)
-      (when (eq (fnn-publish-initial-file store path (fnn-anchor-csprng-nonce 32))
-                :published)
-        (fnn-log-line (fnn-owner-core 'fn-owner-cancel-lock-created-line))))
-    (let ((octets (fnn-read-regular-bounded path 64)))
-      (unless (= (length octets) 32)
-        (fnn-fault "cancel-lock secret ~a is not 32 octets" path))
-      (setq *fnn-owner-cancel-lock-secret* (fnn-octet-list octets)))))
-
 ;;; The served POST's attempt, and the bound local submission's.  The one
 ;;; ingress decision transit uses (fnn-owner-attempt-transit: ACL2's
 ;;; fn-pa-carrier-form and fn-pa-current-plan over these octets and this
@@ -1183,16 +1161,6 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (setq *fnn-owner-transit-detail* nil
         *fnn-owner-transit-verdict* nil)
-  ;; SEC-006: the lock (and a cancel's key) keyed by the in-flight login,
-  ;; decided by ACL2 (fn-lb-ocfg-cancel-lock-payload); without a login or a
-  ;; secret the octets come back unchanged.
-  (let ((locked (fnn-owner-core 'fn-owner-cancel-lock-payload
-                                *fnn-owner-cancel-lock-secret*
-                                (fnn-octet-list msgid)
-                                (fnn-octet-list payload))))
-    (unless (fnn-octet-list-p locked)
-      (fnn-fault "owner returned malformed cancel-lock payload"))
-    (setq payload (fnn-octets locked)))
   (let ((gate (fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))))
     (unless (and (consp gate) (member (first gate) '(:pass :refused)))
       (fnn-fault "owner returned malformed login gate ~a" gate))
@@ -2448,8 +2416,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
-                  (fnn-owner-load-cancel-lock-secret
-                   (fnn-owner-service-store service))
                   ;; PRF-161: the listener this run binds decides the default
                   ;; of every absent exposure row (fn-exp-address-publicp).
                   (unless (member (fnn-owner-action 'fn-owner-exposure-install-set
