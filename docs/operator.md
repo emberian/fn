@@ -1281,6 +1281,47 @@ credential file: both are read once at start-up. A login's `signing` binding
 is the exception (next section): `principal bind` and `unbind` apply to the
 running node at once.
 
+### Renew the certificate without a restart: `tls reload`
+
+The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (the
+Let's Encrypt hook, `tools/runbooks/public-node/acme/fn-cert-install.sh`)
+has replaced the two files, ask the running node to take them:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml tls reload
+```
+
+The owner builds a new context from the same two paths and serves it to
+every connection that starts after the command returns; a session already
+open keeps the certificate it handshook with until it ends. ACL2 decides
+whether to take the new pair (books/tls-reload.lisp `fn-tlsr-decide`,
+PRF-212) from what the TLS library observed: it is taken exactly when the
+chain and the key load, the key matches the chain's leaf, the host clock
+lies between the leaf's notBefore and notAfter, its subjectAltName is
+readable, and every DNS name the served certificate names is still named.
+The command prints the line of the certificate now served and exits 0; the
+service log says `tls reload accepted: tls names=... not-after=...`.
+Otherwise it is refused by name (exit 1, `refused operator tls REASON`) and
+the old certificate is still served: `chain-unreadable`, `key-unreadable`
+(an encrypted key is refused here, as at `run`), `key-mismatch`,
+`validity-malformed`, `not-yet-valid`, `expired`, `names-malformed`, or
+`names-dropped`. A certificate for a different set of names is a restart,
+not a reload: a peer that verifies this node by a name would fail its next
+handshake. Without a running owner the command reaches no one and exits
+non-zero.
+
+`status` against a running owner prints one more line after its report,
+the served certificate's names and notAfter (UTC):
+
+```
+tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
+```
+
+`tls names=none` is a leaf without DNS names (a CN-only self-signed
+certificate), `tls none` a node without `tls_cert`, and `tls unknown
+REASON` an owner that did not answer the question (an owner older than
+this command answers `owner-lacks-tls-reload`).
+
 ### Bind a login to its signing principal
 
 A signed POST is `verified` for whichever principal signed it, whatever

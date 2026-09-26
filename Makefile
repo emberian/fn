@@ -908,6 +908,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/key-statements-tests \
 	books/peer-invite \
 	tests/acl2/peer-invite-tests \
+	books/tls-reload \
+	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-served \

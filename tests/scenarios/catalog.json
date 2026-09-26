@@ -3923,6 +3923,40 @@
         "native": true,
         "record": "planning/evidence/group-policy-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-143",
+      "title": "A certificate renewal reaches a running node by `tls reload`: new connections get the new certificate, an open session keeps working, and a mismatched key or a dropped name is refused by name with the old certificate still served",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-020"
+      ],
+      "steps": [
+        "`store init fn.test`; certificate A (SAN localhost) at tls/cert.pem and tls/key.pem; `run` with protected_only and a control socket; a reader completes STARTTLS and stays open; `status`.",
+        "Replace both files with pair B (SAN localhost, reload.localhost) by rename; a new reader handshakes; `tls reload`; a new reader handshakes; the open reader sends DATE; `status`.",
+        "Replace the key with one from another pair; `tls reload`; a new reader handshakes.",
+        "Install pair D (SAN localhost only); `tls reload`; a new reader handshakes; the open reader sends QUIT.",
+        "With no owner running, `tls reload`."
+      ],
+      "expected": [
+        "The first reader is served A; `status` prints `tls names=localhost not-after=YYYY-MM-DDTHH:MM:SSZ`.",
+        "Before the reload the new reader is still served A; `tls reload` exits 0 and prints `tls names=localhost,reload.localhost not-after=...`; the next reader is served B; the open reader's DATE answers 111; `status` prints B's names.",
+        "`tls reload` exits 1 with `refused operator tls key-mismatch`; the new reader is served B.",
+        "`tls reload` exits 1 with `refused operator tls names-dropped`; the new reader is served B; QUIT answers 205 and the owner is still running.",
+        "The command exits non-zero and is not accepted."
+      ],
+      "implementation": {
+        "test": "tests.test_native_tls_reload",
+        "cases": [
+          "ProductionTlsReloadTests.test_reload_serves_new_connections_and_keeps_open_sessions",
+          "ProductionTlsReloadTests.test_reload_without_an_owner_is_not_accepted",
+          "DeveloperTlsReloadTests.test_reload_serves_new_connections_and_keeps_open_sessions",
+          "DeveloperTlsReloadTests.test_reload_without_an_owner_is_not_accepted"
+        ],
+        "native": true,
+        "record": "planning/evidence/tls-reload-2026-09-26.md"
+      }
     }
   ]
 }
