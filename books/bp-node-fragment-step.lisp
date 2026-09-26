@@ -156,8 +156,14 @@
                          (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1))
             (if (fn-bpnf-family-tried-p h tried)
                 (fn-bpnf-family-next-memo st (cdr held) observation tried)
-              (if (equal (fn-cbor-ag-car
-                          (fn-bpnf-family-plan-at st h observation)) :ready)
+              ;; A family without its offset-zero fragment is never ready
+              ;; (fn-bpnf-family-without-offset-zero-is-not-ready), so its
+              ;; plan -- a reassembly canvas as long as the whole ADU -- is
+              ;; not built: an arrival before offset zero costs the rows, not
+              ;; the ADU (PRF-134; PKT-294 for the general coverage check).
+              (if (and (fn-bpnf-offset-zero-source (fn-bpnf-active-set st h))
+                       (equal (fn-cbor-ag-car
+                               (fn-bpnf-family-plan-at st h observation)) :ready))
                   (list :ready (fn-bpn-nth 3 h))
                 (fn-bpnf-family-next-memo st (cdr held) observation
                                           (cons h tried))))
@@ -243,6 +249,19 @@
                     fn-bpnf-fragment-query-of-member
                     fn-bpnf-family-plan-at-of-member))
 
+;; A plan is ready only with the family's offset-zero row
+;; (fn-bpnf-family-ready-has-valid-whole).
+(defthm fn-bpnf-family-without-offset-zero-is-not-ready
+  (implies (not (fn-bpnf-offset-zero-source (fn-bpnf-active-set st h)))
+           (not (equal (fn-cbor-ag-car (fn-bpnf-family-plan-at st h observation))
+                       :ready)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-family-ready-has-valid-whole
+                            (anchor h)))
+           :in-theory (union-theories
+                       '(fn-bpnf-family-plan-at fn-cbor-ag-car car-cons)
+                       (theory 'minimal-theory)))))
+
 ;; The memo's invariant: every tried row is a held active fragment whose plan
 ;; is not ready.
 (defun fn-bpnf-family-tried-okp (st tried observation)
@@ -274,21 +293,36 @@
           ("Subgoal *1/3" :use ((:instance fn-bpnf-family-plan-at-of-member
                                            (a h) (b (car tried)))))))
 
+(local
+ (defthm fn-bpnf-family-tried-okp-of-cons
+   (implies (and (fn-bpnf-family-tried-okp st tried observation)
+                 (fn-bpnf-active-fragmentp h)
+                 (member-equal h (fn-bpnf-held-list st))
+                 (not (equal (fn-cbor-ag-car
+                              (fn-bpnf-family-plan-at st h observation))
+                             :ready)))
+            (fn-bpnf-family-tried-okp st (cons h tried) observation))
+   :hints (("Goal" :do-not-induct t
+            :expand ((fn-bpnf-family-tried-okp st (cons h tried) observation))
+            :in-theory (union-theories '(car-cons cdr-cons)
+                                       (theory 'minimal-theory))))))
+
 (defthm fn-bpnf-family-next-memo-is-aux
   (implies (and (subsetp-equal held (fn-bpnf-held-list st))
                 (fn-bpnf-family-tried-okp st tried observation))
            (equal (fn-bpnf-family-next-memo st held observation tried)
                   (fn-bpnf-family-next-aux st held observation)))
   :hints (("Goal" :induct (fn-bpnf-family-next-memo st held observation tried)
-           :in-theory (disable fn-bpnf-family-tried-member-not-ready
-                               fn-bpnf-family-plan-at
-                               fn-bpnf-active-fragmentp
-                               fn-bpnf-arrival-count
-                               fn-bpnf-family-tried-p))
-          ("Subgoal *1/1" :use ((:instance fn-bpnf-family-tried-member-not-ready
-                                           (h (car held)))))))
+           :in-theory (union-theories
+                       '(fn-bpnf-family-next-memo fn-bpnf-family-next-aux
+                         fn-bpnf-family-tried-member-not-ready
+                         fn-bpnf-family-without-offset-zero-is-not-ready
+                         fn-bpnf-family-tried-okp-of-cons
+                         subsetp-equal car-cons cdr-cons)
+                       (theory 'minimal-theory)))))
 
 (in-theory (disable fn-bpnf-family-tried-member-not-ready
+                    fn-bpnf-family-without-offset-zero-is-not-ready
                     fn-bpnf-family-next-memo-is-aux))
 
 (local

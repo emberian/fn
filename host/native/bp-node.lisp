@@ -523,29 +523,34 @@ observations back.  Nil when there is nothing to observe."
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
 
-;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS': raise the node's profile,
-;;; the held rows and held octets its FNBS machine may hold (D27; books/
-;;; bp-node-profile.lisp, PRF-131).  ACL2 reads the profile in force and
-;;; answers the frame to publish, or refuses a write that lowers a field or
-;;; leaves the machine's limits (fn-bpnpf-write-octets).  The next open of the
-;;; journal runs under it.  Run it with the node stopped: it takes the FNBS
-;;; lifecycle lock as `bp-node serve' does.
-(defun fnn-command-bp-node-profile (journal-root node-id rows octets)
+;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE]': raise the
+;;; node's profile: the held rows and held octets its FNBS machine may hold,
+;;; the largest ADU it admits and the largest bundle it decodes (D27; books/
+;;; bp-node-profile.lisp, PRF-131, PRF-134).  ADU and BUNDLE omitted keep the
+;;; values in force.  ACL2 reads the profile in force and answers the frame to
+;;; publish, or refuses a write that lowers a field or leaves the machine's
+;;; limits (fn-bpnpf-profile-write-octets).  The next open of the journal runs
+;;; under it.  Run it with the node stopped: it takes the FNBS lifecycle lock
+;;; as `bp-node serve' does.
+(defun fnn-command-bp-node-profile (journal-root node-id rows octets
+                                    &optional adu bundle)
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config nil 0)))
     (unwind-protect
          (let* ((root (fnn-bps-root bp))
-                (frame (fnn-core 'fn-bpnpf-write-octets (fnn-bps-profile bp)
-                                 rows octets))
+                (in-force (fnn-bps-profile bp))
+                (adu (or adu (third in-force)))
+                (bundle (or bundle (fourth in-force)))
+                (frame (fnn-core 'fn-bpnpf-profile-write-octets in-force
+                                 rows octets adu bundle))
                 (final (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
                 (stage (fnn-join root (format nil ".bp-node-profile-~d-~a"
                                               (sb-posix:getpid)
                                               (fnn-random-hex 12)))))
            (unless frame
-             (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a (in force ~a ~a)"
-                         rows octets (first (fnn-bps-profile bp))
-                         (second (fnn-bps-profile bp))))
+             (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a max-adu-octets=~a max-bundle-octets=~a (in force ~{~a~^ ~})"
+                         rows octets adu bundle in-force))
            (fnn-write-staged stage (fnn-octets frame))
            (fnn-replace stage final)
            ;; The rename is visible: from here a failed barrier leaves the
@@ -553,7 +558,8 @@ observations back.  Nil when there is nothing to observe."
            (handler-case (fnn-fsync-dir root)
              (fnn-os-error (e)
                (fnn-indeterminate "bp-node profile: directory barrier failed: ~a" e)))
-           (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d" rows octets)
+           (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d max-adu-octets=~d max-bundle-octets=~d"
+                    rows octets adu bundle)
            +fnn-exit-ok+)
       (fnn-bps-release bp))))
 
@@ -959,15 +965,17 @@ uncertain, as it does everywhere else."
        (and (fourth args) (parse-integer (fourth args)))
        (if (fifth args) (parse-integer (fifth args)) 0))))
   (when (string= command "profile")
-    ;; JOURNAL NODE-ID ROWS OCTETS
-    (unless (= (length args) 4)
+    ;; JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE]
+    (unless (member (length args) '(4 6))
       (error 'fnn-usage-error
-             :message "bp-node profile: JOURNAL NODE-ID MAX-HELD-ROWS MAX-HELD-OCTETS"))
+             :message "bp-node profile: JOURNAL NODE-ID MAX-HELD-ROWS MAX-HELD-OCTETS [MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]"))
     (return-from fnn-dispatch-bp-node
       (fnn-command-bp-node-profile
        (first args) (second args)
        (fnn-bpc-u64-argument (third args) "max held rows")
-       (fnn-bpc-u64-argument (fourth args) "max held octets"))))
+       (fnn-bpc-u64-argument (fourth args) "max held octets")
+       (and (fifth args) (fnn-bpc-u64-argument (fifth args) "max ADU octets"))
+       (and (sixth args) (fnn-bpc-u64-argument (sixth args) "max bundle octets")))))
   (when (string= command "checkpoint")
     ;; JOURNAL NODE-ID [WALL WALL-ERROR]
     (when (< (length args) 2)

@@ -2107,17 +2107,19 @@
         "STO-015"
       ],
       "steps": [
-        "Raise the receiving node's profile (`bp-node profile`) to at least 2,561 held rows and 16 MiB of held octets, and the Store profile's max-article-octets to at least 10 MiB.",
+        "Raise the receiving node's profile (`bp-node profile JOURNAL NODE ROWS OCTETS ADU BUNDLE`) to at least 2,623 held rows, 16 MiB of held octets and an ADU of at least 10,486,094 octets, and the Store profile's max-article-octets to at least 10 MiB.",
         "Author one 10 MiB request ADU and send it through a route whose Transfer MRU is 4 KiB, so the sender cuts it into fragments (RFC 9171 5.8).",
         "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
       ],
       "expected": [
         "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
-        "Blocked today, before any of this: the sender's ADU record refuses a payload over *fn-bpa-max-octets* (65,538, books/bp-adu.lisp) and the bundle decoder reads at most *fn-bpb-max-input* (1 MiB, books/bp-bundle.lisp); the whole reassembled bundle is one held image capped by *fn-bpnf-max-held-image* (131,072). The node's held rows and held octets are no longer a blocker (PRF-131). PKT-276."
+        "Blocked today by per-arrival cost, not by a cap (PRF-134 made the ADU, bundle-decoder and held-image bounds the profile's; the adu-beyond-profile and held-beyond-profile cases pass natively): each arrival costs about 45 ms per held row (0.7 s at 20 held, 6.3 s at 140; the 2,622-fragment family projects to about 43 hours), consistent with the family selector re-validating every held row (fn-bpnf-heldp re-encodes the bundle) on each call. PKT-294."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
-        "books/bp-node-profile.lisp"
+        "books/bp-node-profile.lisp",
+        "planning/evidence/bp-lifecycle-4-2026-09-26.md",
+        "books/bp-node-profile-admission.lisp"
       ]
     },
     {

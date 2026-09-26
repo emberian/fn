@@ -1241,10 +1241,15 @@ For the BP verbs (specs/host.md "BP run classes"), exit 3 keeps this
 meaning; a connection lost after it existed is exit 6 and a connection
 that never existed exit 7. Neither asks for recovery: the job is durable
 and the next contact re-offers it under the same identity. A BP node's
-held rows and held octets are raised offline with `bp-node profile
-JOURNAL NODE MAX-HELD-ROWS MAX-HELD-OCTETS` (default 64 and 16 MiB; never
-lowered); a journal opened under a profile smaller than its rows fences
-with `held-beyond-profile`.
+held rows, held octets, largest ADU and largest bundle are raised offline
+with `bp-node profile JOURNAL NODE MAX-HELD-ROWS MAX-HELD-OCTETS
+[MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]` (default 64, 16 MiB, 65,538 and 1 MiB;
+each at most 2^24; never lowered). A bundle past the ADU or bundle bound is
+refused (`BP refused reason=adu-beyond-profile` or
+`bundle-beyond-profile`, exit 1); a journal opened under a profile smaller
+than its rows or held octets fences with `held-beyond-profile`, and since
+`bp-node profile` opens the journal too, the remedy is to restore the
+profile file that was in force.
 
 `uncertain` (exit 3) is not a soft failure. It means fn asked the operating
 system to make something durable and did not get an answer it can act on:
