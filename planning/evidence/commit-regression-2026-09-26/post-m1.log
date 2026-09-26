@@ -1,0 +1,16 @@
+post label=a-b30763a6 fs=tmpfs rep=1 {"n": 100, "octets": 2048, "median_ms": 1.85, "p95_ms": 3.42, "max_ms": 4.51, "load_s": 0.214, "owner_cpu_s": 0.2, "owner_cpu_ms_per_post": 2.0}
+post label=a-b30763a6 fs=zfs rep=1 {"n": 100, "octets": 2048, "median_ms": 155.14, "p95_ms": 397.33, "max_ms": 609.1, "load_s": 20.487, "owner_cpu_s": 0.33, "owner_cpu_ms_per_post": 3.3}
+post label=b-483987b1 fs=tmpfs rep=1 {"n": 100, "octets": 2048, "median_ms": 1.58, "p95_ms": 2.23, "max_ms": 4.28, "load_s": 0.18, "owner_cpu_s": 0.18, "owner_cpu_ms_per_post": 1.8}
+post label=b-483987b1 fs=zfs rep=1 {"n": 100, "octets": 2048, "median_ms": 149.5, "p95_ms": 357.41, "max_ms": 661.85, "load_s": 17.136, "owner_cpu_s": 0.31, "owner_cpu_ms_per_post": 3.1}
+post label=c-8d4ea42c fs=tmpfs rep=1 {"n": 100, "octets": 2048, "median_ms": 1.75, "p95_ms": 2.28, "max_ms": 4.9, "load_s": 0.194, "owner_cpu_s": 0.19, "owner_cpu_ms_per_post": 1.9}
+post label=c-8d4ea42c fs=zfs rep=1 {"n": 100, "octets": 2048, "median_ms": 66.72, "p95_ms": 294.97, "max_ms": 350.13, "load_s": 9.623, "owner_cpu_s": 0.42, "owner_cpu_ms_per_post": 4.2}
+post label=d-59654ce8 fs=tmpfs rep=1 {"n": 100, "octets": 2048, "median_ms": 1.87, "p95_ms": 3.9, "max_ms": 4.96, "load_s": 0.228, "owner_cpu_s": 0.21, "owner_cpu_ms_per_post": 2.1}
+post label=d-59654ce8 fs=zfs rep=1 {"n": 100, "octets": 2048, "median_ms": 74.46, "p95_ms": 274.39, "max_ms": 358.49, "load_s": 9.95, "owner_cpu_s": 0.42, "owner_cpu_ms_per_post": 4.2}
+post label=a-b30763a6 fs=tmpfs rep=2 {"n": 100, "octets": 2048, "median_ms": 1.72, "p95_ms": 3.59, "max_ms": 4.58, "load_s": 0.208, "owner_cpu_s": 0.19, "owner_cpu_ms_per_post": 1.9}
+post label=a-b30763a6 fs=zfs rep=2 {"n": 100, "octets": 2048, "median_ms": 158.4, "p95_ms": 476.69, "max_ms": 566.72, "load_s": 19.819, "owner_cpu_s": 0.42, "owner_cpu_ms_per_post": 4.2}
+post label=b-483987b1 fs=tmpfs rep=2 {"n": 100, "octets": 2048, "median_ms": 2.97, "p95_ms": 4.03, "max_ms": 6.69, "load_s": 0.299, "owner_cpu_s": 0.28, "owner_cpu_ms_per_post": 2.8}
+post label=b-483987b1 fs=zfs rep=2 {"n": 100, "octets": 2048, "median_ms": 166.76, "p95_ms": 383.23, "max_ms": 425.56, "load_s": 17.727, "owner_cpu_s": 0.31, "owner_cpu_ms_per_post": 3.1}
+post label=c-8d4ea42c fs=tmpfs rep=2 {"n": 100, "octets": 2048, "median_ms": 1.57, "p95_ms": 2.25, "max_ms": 4.44, "load_s": 0.18, "owner_cpu_s": 0.17, "owner_cpu_ms_per_post": 1.7}
+post label=c-8d4ea42c fs=zfs rep=2 {"n": 100, "octets": 2048, "median_ms": 121.56, "p95_ms": 325.12, "max_ms": 358.39, "load_s": 14.495, "owner_cpu_s": 0.36, "owner_cpu_ms_per_post": 3.6}
+post label=d-59654ce8 fs=tmpfs rep=2 {"n": 100, "octets": 2048, "median_ms": 1.62, "p95_ms": 3.09, "max_ms": 4.36, "load_s": 0.187, "owner_cpu_s": 0.18, "owner_cpu_ms_per_post": 1.8}
+post label=d-59654ce8 fs=zfs rep=2 {"n": 100, "octets": 2048, "median_ms": 83.43, "p95_ms": 285.28, "max_ms": 481.98, "load_s": 11.12, "owner_cpu_s": 0.31, "owner_cpu_ms_per_post": 3.1}
