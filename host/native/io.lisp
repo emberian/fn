@@ -596,7 +596,12 @@ label; it does not select a policy."
   (fnn-emit *fnn-stdout* (fnn-concat (apply #'format nil control args) (string #\Newline))))
 
 (defun fnn-err (control &rest args)
-  (fnn-emit *fnn-stderr* (fnn-concat (apply #'format nil control args) (string #\Newline))))
+  ;; PKT-508: while the owner's log writer runs, a diagnostic is offered to
+  ;; its queue like a log line (fnn-log-offer), so a serving thread never
+  ;; blocks on stderr; otherwise (every offline command) it is written here.
+  (let ((text (fnn-concat (apply #'format nil control args) (string #\Newline))))
+    (unless (fnn-log-offer :stderr (fnn-string-octets text))
+      (fnn-emit *fnn-stderr* text))))
 ;;; The service log.  `fn operator CONFIG run' opens `[log] path' append-only
 ;;; before the store (host/native/operator.lisp) and leaves its descriptor
 ;;; here; NIL means stderr.  Every line is ACL2's (books/owner-log.lisp); this
@@ -632,19 +637,162 @@ entropy is a host fault.  WIDTH is ACL2's."
            (fnn-octet-list answer))
       (fnn-close fd))))
 
+;;; PKT-508 (PRF-187): the served path never waits on the log.  While the
+;;; owner runs (host/native/operator.lisp starts and stops the writer around
+;;; `fnn-control-owner-run-normalized'), a line or diagnostic is OFFERED:
+;;; ACL2 decides :queue or :drop over the sink it returns
+;;; (books/log-sink.lisp fn-log-sink-offer, counted, never silent: `health'
+;;; prints `log-sink pending= dropped= written='), and the thread that
+;;; decided it returns.  One writer thread (`fnn-log-writer-loop') takes the
+;;; queue's head and writes it whole with blocking writes, holding no owner
+;;; lock and not the queue mutex, and reports the outcome back
+;;; (fn-log-sink-take).  The queue mutex is held only for an ACL2 call and a
+;;; list update, never across I/O, so a sink that stops draining costs the
+;;; serving threads nothing: its backlog stops at ACL2's bound and later lines
+;;; are dropped and counted.  `[log] path' reopen (SIGHUP) swaps the
+;;; descriptor through the same queue, in order.
+(defvar *fnn-log-queue-mutex* (sb-thread:make-mutex :name "fn log queue"))
+(defvar *fnn-log-queue-ready* (sb-thread:make-waitqueue :name "fn log queue ready"))
+;; FIFO of (DESTINATION . OCTETS), DESTINATION :log or :stderr; (:swap . FD);
+;; (:stop).  Read and written under the queue mutex only.
+(defvar *fnn-log-queue-head* nil)
+(defvar *fnn-log-queue-tail* nil)
+;; ACL2's sink (PENDING-OCTETS PENDING-LINES DROPPED WRITTEN OFFERED), NIL
+;; when no writer runs.
+(defvar *fnn-log-sink* nil)
+(defvar *fnn-log-writer* nil)
+
+(defun fnn-log-queue-push (item)
+  "Append ITEM; the caller holds the queue mutex."
+  (let ((cell (list item)))
+    (if *fnn-log-queue-tail*
+        (setf (cdr *fnn-log-queue-tail*) cell)
+        (setq *fnn-log-queue-head* cell))
+    (setq *fnn-log-queue-tail* cell)
+    (sb-thread:condition-notify *fnn-log-queue-ready*)))
+
+(defun fnn-log-sink-accept (sink what)
+  (unless (and (listp sink) (= (length sink) 5)
+               (every (lambda (n) (and (integerp n) (<= 0 n))) sink))
+    (fnn-fault "ACL2 returned a malformed log sink after ~a" what))
+  (setq *fnn-log-sink* sink))
+
+(defun fnn-log-offer (destination octets)
+  "Offer one whole line.  NIL when no writer runs (the caller writes it);
+otherwise T, the line queued or dropped as ACL2 decided."
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (when *fnn-log-writer*
+      (let ((answer (fnn-core 'fn-log-sink-offer *fnn-log-sink* (length octets)
+                              (fnn-core 'fn-log-sink-pending-bound))))
+        (unless (and (consp answer) (member (first answer) '(:queue :drop)))
+          (fnn-fault "ACL2 returned a malformed log sink decision"))
+        (fnn-log-sink-accept (second answer) "an offer")
+        (when (eq (first answer) :queue)
+          (fnn-log-queue-push (cons destination octets)))
+        t))))
+
+(defun fnn-log-sink-snapshot ()
+  "The sink ACL2 last returned, for `health' (fn-nh-log-sink-line); NIL when
+no writer runs."
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    *fnn-log-sink*))
+
+(defun fnn-log-write-item (destination octets)
+  "Write one whole line: :written, or :failed (ACL2 counts it dropped)."
+  (handler-case
+      (cond ((and (eq destination :log) *fnn-owner-log-fd*)
+             (fnn-write-all *fnn-owner-log-fd* octets)
+             :written)
+            (*fnn-stderr*
+             (write-sequence octets *fnn-stderr*)
+             (finish-output *fnn-stderr*)
+             :written)
+            (t :failed))
+    (error () :failed)))
+
+(defun fnn-log-writer-loop ()
+  (loop
+    (let ((item (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+                  (loop until *fnn-log-queue-head*
+                        do (sb-thread:condition-wait *fnn-log-queue-ready*
+                                                     *fnn-log-queue-mutex*))
+                  (prog1 (pop *fnn-log-queue-head*)
+                    (unless *fnn-log-queue-head*
+                      (setq *fnn-log-queue-tail* nil))))))
+      (case (car item)
+        (:stop (return))
+        (:swap
+         ;; Only this thread writes the descriptor while it runs.
+         (let ((old *fnn-owner-log-fd*))
+           (setq *fnn-owner-log-fd* (cdr item))
+           (when old (ignore-errors (fnn-close old)))))
+        (t
+         (let ((outcome (fnn-log-write-item (car item) (cdr item))))
+           (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+             (fnn-log-sink-accept
+              (fnn-core 'fn-log-sink-take *fnn-log-sink* (length (cdr item)) outcome)
+              "a write"))))))))
+
+(defun fnn-log-writer-start ()
+  "Start the owner's log writer with ACL2's empty sink (fn-log-sink-init)."
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (unless *fnn-log-writer*
+      (fnn-log-sink-accept (fnn-core 'fn-log-sink-init) "init")
+      (setq *fnn-log-queue-head* nil
+            *fnn-log-queue-tail* nil
+            *fnn-log-writer*
+            (sb-thread:make-thread #'fnn-log-writer-loop
+                                   :name "fn service log writer")))))
+
+(defun fnn-log-writer-stop ()
+  "Ask the writer to drain and stop, and wait for it at most ACL2's
+fn-log-sink-close-wait-seconds.  A writer still blocked on its sink then is
+left running (lines keep being offered and dropped, never waited on) and the
+process exits without it: what it had queued, a wedged sink would lose
+anyway."
+  (let ((thread (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+                  (when *fnn-log-writer*
+                    (fnn-log-queue-push (list :stop))
+                    *fnn-log-writer*))))
+    (when thread
+      (multiple-value-bind (value outcome)
+          (sb-thread:join-thread thread
+                                 :timeout (fnn-core 'fn-log-sink-close-wait-seconds)
+                                 :default :timeout)
+        (declare (ignore value))
+        (unless (eq outcome :timeout)
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (setq *fnn-log-writer* nil
+                  *fnn-log-queue-head* nil
+                  *fnn-log-queue-tail* nil)))))))
+
+(defun fnn-log-swap-fd (fd)
+  "Install FD as the service log: through the writer's queue while it runs
+(in order after the lines before it), else under the log mutex."
+  (unless (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (when *fnn-log-writer*
+              (fnn-log-queue-push (cons :swap fd))
+              t))
+    (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+      (let ((old *fnn-owner-log-fd*))
+        (setq *fnn-owner-log-fd* fd)
+        (when old (ignore-errors (fnn-close old)))))))
+
 (defun fnn-log-line (line)
-  "Write the ACL2-rendered octet list LINE and one LF to the service log."
+  "Write the ACL2-rendered octet list LINE and one LF to the service log:
+offered to the writer while the owner runs (PKT-508), else written here."
   (unless (fnn-octet-list-p line)
     (fnn-fault "ACL2 returned a malformed log line"))
   (let ((octets (concatenate 'fnn-octets (fnn-octets line) (fnn-octets (list 10)))))
-    (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-      (if *fnn-owner-log-fd*
-          (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
-            (error (condition)
-              (fnn-err "service log write failed: ~a" condition)))
-        (when *fnn-stderr*
-          (write-sequence octets *fnn-stderr*)
-          (finish-output *fnn-stderr*))))))
+    (unless (fnn-log-offer :log octets)
+      (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+        (if *fnn-owner-log-fd*
+            (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
+              (error (condition)
+                (fnn-err "service log write failed: ~a" condition)))
+          (when *fnn-stderr*
+            (write-sequence octets *fnn-stderr*)
+            (finish-output *fnn-stderr*)))))))
 
 (defun fnn-exit (code)
   (when *fnn-stdout* (finish-output *fnn-stdout*))

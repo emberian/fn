@@ -6928,6 +6928,52 @@
         "planning/evidence/manifests/certify-20260926T143919Z-2974417.json"
       ],
       "progress_note": "Lane checkpoint-capture-stream (2026-09-26): certified on persvati (run-20260926T143854Z-252a, ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s: 21 books passed, none over 10 s) after every book and test book was certified locally in the lane's REPL tree; PKT-315 landed with it (fn-octets-append-list, one export call per payload, fn-oct-write-list as :exec)."
+    },
+    {
+      "id": "PRF-187",
+      "title": "The owner never waits on its service log: ACL2 queues or drops (counted) each line offered while it serves, every offered line is accounted for, the backlog stays within the bound, and `health` reports the counts without changing its exit; the health verdict and reports run guard-verified; the FNLS kind-3 request round-trips",
+      "milestone": "M4",
+      "requirements": [
+        "HST-012"
+      ],
+      "depends_on": [
+        "PRF-172",
+        "PRF-185"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "statement": "books/log-sink.lisp (PKT-508): fn-log-sink-offer-preserves-okp and fn-log-sink-take-preserves-okp: for every sink S, BOUND, LEN and OUTCOME, if (fn-log-sink-okp S BOUND) then the sink after fn-log-sink-offer (host/native/io.lisp fnn-log-offer, from fnn-log-line and fnn-err while fnn-owner-run runs the writer) and after fn-log-sink-take (fnn-log-writer-loop) satisfies it; fn-log-sink-okp says every offered line is written, pending or dropped (offered = written + pending + dropped), nothing pending means no pending octets, and the pending octets are within BOUND unless one line is pending; fn-log-sink-init-okp establishes it (fnn-log-writer-start). fn-log-sink-offer-drops-only-past-the-bound: the offer's decision is :queue or :drop and is :drop iff a line is pending and the pending octets with this line exceed BOUND (a line offered to an empty queue is always queued). fn-log-sink-drop-counts: a drop adds one to the dropped count and leaves the pending lines and octets. books/native-health.lisp fn-nh-report-exit-of-render-and-more: for a verdict V of at most eight outcomes and any true list MORE, (fn-nh-report-exit (append (fn-nh-render V) MORE)) = (fn-nh-exit-code V): the exposure and log-sink lines host/native-live-status-host.lisp fn-native-live-status-host-answer appends after the eight states never change the exit fnn-operator-execute-health returns. PKT-269: fn-store-event-encode's path (verified in books/store-budget.lisp), fn-sbud-record-octets, -bytes-used, -verdict, -headroom-at, -headroom, -bytes-extend (an mbe over fn-sbud-drop, fn-sbud-record-octets-of-drop), the retention lines, fn-nh-verdict and fn-nh-offline-report, fn-nh-fenced-report and fn-nh-live-report are guard-verified. PKT-518: books/control-evidence.lisp fn-cev-any-request-decode-of-encode: for every KIND that is a status kind (*fn-nls-kinds*) or a control report kind (fn-cevg-kindp) and every uint32 OFFSET, (fn-cev-any-request-decode (fn-cev-any-request-encode KIND OFFSET)) = (:live-status KIND OFFSET); the client encodes through fn-native-live-status-host-request-encode (host/native/control.lisp fnn-control-live-status-page), the owner decodes in fn-native-live-status-host-answer (fnn-control-live-status-answer).",
+      "evidence": [
+        "books/log-sink.lisp",
+        "tests/acl2/log-sink-tests.lisp",
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "books/store-budget.lisp",
+        "books/native-live-status.lisp",
+        "books/control-evidence.lisp",
+        "tests/acl2/control-evidence-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_log_sink.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "progress_note": "Lane operator-daily-4 (2026-09-26): PKT-508, PKT-269 (to fn-nh-live-report), PKT-518, PKT-499 (d). Open: PKT-512.",
+      "events": [
+        "fn-log-sink-init-okp",
+        "fn-log-sink-offer-preserves-okp",
+        "fn-log-sink-take-preserves-okp",
+        "fn-log-sink-offer-drops-only-past-the-bound",
+        "fn-log-sink-drop-counts",
+        "fn-nh-report-exit-of-render-and-more",
+        "fn-nh-report-exit-of-append",
+        "fn-sbud-record-octets-of-drop",
+        "fn-cev-any-request-decode-of-encode",
+        "fn-cev-request-decode-of-encode",
+        "fn-cev-open-of-request-encode",
+        "fn-cev-msgid-octets",
+        "fn-cev-request-payload-fits"
+      ]
     }
   ]
 }

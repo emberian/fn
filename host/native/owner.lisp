@@ -2292,10 +2292,9 @@ here, and written only through fn-owner-sco-publication-done."
         (when (eq (first decision) :reopen)
           (handler-case
               (let ((fd (fnn-owner-open-log *fnn-owner-log-path*)))
-                (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-                  (let ((old *fnn-owner-log-fd*))
-                    (setq *fnn-owner-log-fd* fd)
-                    (when old (ignore-errors (fnn-close old)))))
+                ;; PKT-508: through the writer's queue while it runs, so
+                ;; the swap never waits on a write in progress.
+                (fnn-log-swap-fd fd)
                 (fnn-owner-log 'fn-owner-log-line))
             (error (condition)
               ;; The old descriptor stays: a failed reopen loses no line.
@@ -2382,6 +2381,10 @@ The thread is a worker, so the stop joins it with the clients."
            (setq *fnn-sigterm-owner-active* t
                  *fnn-sigterm-requested* nil
                  *fnn-sigterm-wakeup-fd* nil)
+           ;; PKT-508 (PRF-187): from here until the service is closed, a
+           ;; log line or diagnostic is offered to the writer's queue and
+           ;; never waited on (host/native/io.lisp fnn-log-offer).
+           (fnn-log-writer-start)
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
@@ -2473,6 +2476,8 @@ The thread is a worker, so the stop joins it with the clients."
                (setq *fnn-sigterm-wakeup-fd* nil)
                (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
+      ;; Drain and stop the writer before the caller closes `[log] path'.
+      (fnn-log-writer-stop)
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
             *fnn-sigterm-owner-active* old-active))))

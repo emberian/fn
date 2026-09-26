@@ -21,7 +21,7 @@
                            (f-get-global 'fn-store-cfg state)
                            obs)))
 
-(defun fn-native-live-status-host-answer (request cached obs min state)
+(defun fn-native-live-status-host-answer (request cached obs min log-sink state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -29,7 +29,9 @@
   ; of the buffer its first page stored (`fn-nls-cached-buffer',
   ; `fn-nls-page-of-buffer-is-reply').  CACHED is carried by the host and
   ; chosen here.  The carried octet sum is read, not extended in place:
-  ; `fn-owner-headroom' stores its extension, this does not.
+  ; `fn-owner-headroom' stores its extension, this does not.  LOG-SINK is
+  ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
+  ; writer runs; `health' ends with its line.
   (declare (xargs :stobjs state :mode :program))
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
@@ -75,7 +77,11 @@
                                                  (list (fn-owner-sco-deferred state)))
                                          min)
                     (if (equal kind :health)
-                        (fn-owner-exposure-health state)
+                        ;; PKT-508 (PRF-187): the log sink's line last;
+                        ;; fn-nh-report-exit-of-render-and-more: the exit is
+                        ;; the verdict's whatever follows the eight states.
+                        (append (fn-owner-exposure-health state)
+                                (if log-sink (fn-nh-log-sink-line log-sink) nil))
                       nil)))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))

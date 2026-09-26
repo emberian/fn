@@ -1160,3 +1160,10 @@ malformed page."
   :hints (("Goal" :induct (fn-nls-cache-put kind buffer cached)
                   :in-theory '(fn-nls-cached-buffer fn-nls-cache-put
                                car-cons cdr-cons))))
+
+; PKT-269 (PRF-187): the retention lines the health verdict reads
+; (books/native-health.lisp fn-nh-forward-pins) run guard-verified.
+(verify-guards fn-nls-connection-lines)
+(verify-guards fn-nls-obligation-lines)
+(verify-guards fn-nls-retention)
+(verify-guards fn-nls-pins-line)

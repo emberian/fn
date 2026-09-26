@@ -3364,6 +3364,37 @@
         "log": "planning/evidence/checkpoint-capture-stream-2026-09-26/test-tests.test_native_checkpoint_auto.log",
         "record": "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-116",
+      "title": "An owner whose stderr nobody reads keeps serving: 2,000 POSTs are answered and `health` answers with the log lines pending behind the full pipe",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-012"
+      ],
+      "steps": [
+        "Start `operator CONFIG run` with stderr on a pipe the test does not read.",
+        "POST 2,000 articles over one NNTP connection; run `operator CONFIG health`.",
+        "Read stderr; run `health` until the sink is empty; SIGTERM the owner."
+      ],
+      "expected": [
+        "Every POST answers 240; `health` answers (its exit is its first line's) with `log-sink pending=P` and P > 0, and P + dropped + written >= 2,000.",
+        "After draining: `pending=0 dropped=0` and written >= 2,000; the owner exits 0; stderr holds at least `written` lines.",
+        "On the pre-fix image the same case times out waiting for a POST reply (the owner wedged on the pipe)."
+      ],
+      "evidence": [
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_log_sink",
+        "cases": [
+          "test_an_unread_stderr_does_not_stop_the_node"
+        ],
+        "native": true,
+        "log": "planning/evidence/operator-daily-4/native-log_sink.log",
+        "record": "planning/evidence/operator-daily-2026-09-26.md"
+      }
     }
   ]
 }
