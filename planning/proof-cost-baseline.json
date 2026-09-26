@@ -12,15 +12,36 @@
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 10.291,
-      "run": "certify-20260926T064807Z-632722",
-      "host": "hbox",
+      "seconds": 16.236,
+      "run": "certify-20260926T110838Z-807334",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/store-node-invariants": {
-      "seconds": 11.29,
-      "run": "certify-20260926T100254Z-46471",
+    "books/peer-authored-accept": {
+      "seconds": 11.487,
+      "run": "certify-20260926T110838Z-807334",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/public-exposure": {
+      "seconds": 10.633,
+      "run": "certify-20260926T110838Z-807334",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/topic-history-store-invariants": {
+      "seconds": 11.379,
+      "run": "certify-20260926T110838Z-807334",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/source-routes-tests": {
+      "seconds": 10.234,
+      "run": "certify-20260926T110838Z-807334",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
