@@ -1910,8 +1910,10 @@ after it; else (:refused :snapshot-not-a-prefix)."
 
 ; The host's loop, as a function: `fnn-command-rollback-snapshot' calls
 ; `fn-native-operator-history-step' once per snapshot record in order, with
-; the store's records consumed alongside, and then
-; `fn-native-operator-history-verdict' with the store's record count.
+; the store's records consumed alongside, from
+; `fn-native-operator-history-start', and then
+; `fn-native-operator-history-verdict' with the store's record count: the
+; composition the two theorems below are stated over.
 (defun fn-nop-history-run (acc snap cur)
   (declare (xargs :guard t))
   (if (consp snap)
@@ -1919,12 +1921,6 @@ after it; else (:refused :snapshot-not-a-prefix)."
                            acc (car snap) (consp cur) (fn-ncfg-first cur))
                           (cdr snap) (fn-ncfg-rest cur))
     acc))
-
-(defun fn-native-operator-history-loss (snap cur)
-  (declare (xargs :guard t))
-  (fn-native-operator-history-verdict
-   (fn-nop-history-run (fn-native-operator-history-start) snap cur)
-   (len cur)))
 
 (local
  (defthm fn-nop-history-run-diverged
@@ -1956,7 +1952,9 @@ after it; else (:refused :snapshot-not-a-prefix)."
 ; The streamed comparison is the list-level one: the host's calls compute
 ; `fn-native-operator-snapshot-loss' of the two record lists.
 (defthm fn-native-operator-history-loss-is-snapshot-loss
-  (equal (fn-native-operator-history-loss snap cur)
+  (equal (fn-native-operator-history-verdict
+          (fn-nop-history-run (fn-native-operator-history-start) snap cur)
+          (len cur))
          (fn-native-operator-snapshot-loss snap cur)))
 
 (local
@@ -1970,22 +1968,23 @@ after it; else (:refused :snapshot-not-a-prefix)."
             (equal (fn-nop-history-suffix snap cur)
                    (nthcdr (len snap) cur)))))
 
-; KEYSTONE (PRF-141, the rollback verb's history claim).  The subject is
-; `fn-native-operator-history-loss', the loop `fnn-command-rollback-snapshot'
-; (host/native/io.lisp) runs through `fn-native-operator-host-history-step'
-; and `fn-native-operator-host-history-verdict' over the two stores' committed
-; records.  The verb answers :loses exactly when the store's history is the
+; KEYSTONE (PRF-141, the rollback verb's history claim).  The subject is the
+; composition `fnn-command-rollback-snapshot' (host/native/io.lisp) runs
+; through `fn-native-operator-host-history-start', `-step' and `-verdict'
+; over the two stores' committed records.  The verb answers :loses exactly when the store's history is the
 ; snapshot's records followed by more records, and the count it prints is the
 ; number of those later records: the ones restoring the snapshot throws away.
 ; Two histories that agree in record counts and lengths but differ in any
 ; record's octets are refused.
 (defthm fn-native-operator-history-loss-is-ancestry
-  (and (iff (equal (car (fn-native-operator-history-loss snap cur)) :loses)
-            (equal (append snap (nthcdr (len snap) cur)) cur))
-       (implies (equal (append snap (nthcdr (len snap) cur)) cur)
-                (equal (cadr (fn-native-operator-history-loss snap cur))
-                       (len (nthcdr (len snap) cur)))))
-  :hints (("Goal" :in-theory (disable fn-native-operator-history-loss))))
+  (let ((verdict (fn-native-operator-history-verdict
+                  (fn-nop-history-run (fn-native-operator-history-start) snap cur)
+                  (len cur))))
+    (and (iff (equal (car verdict) :loses)
+              (equal (append snap (nthcdr (len snap) cur)) cur))
+         (implies (equal (append snap (nthcdr (len snap) cur)) cur)
+                  (equal (cadr verdict)
+                         (len (nthcdr (len snap) cur)))))))
 
 (defun fn-nop-nat-text (n)
   (declare (xargs :guard t))
