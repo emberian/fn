@@ -48,7 +48,7 @@ class ControlReplyFitSourceTests(unittest.TestCase):
         self.assertEqual(operator.count('(fnn-refuse "live status refused: ~(~a~)" (second answer))'), 2)
 
 
-class ControlReplyFitTests(ProfileUpgradeFixture):
+class ControlReplyFitFixture(ProfileUpgradeFixture):
     def profile_line(self):
         status = self.op("status")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
@@ -70,6 +70,8 @@ class ControlReplyFitTests(ProfileUpgradeFixture):
         finally:
             self.stop(owner)
 
+
+class ControlReplyFitTests(ControlReplyFitFixture):
     def test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling(self):
         refused = self.op("init", "--max-record-octets", str(PAST),
                           "--max-history-octets", str(PAST), "fn.test")
@@ -135,7 +137,7 @@ class ProfileOpenRefusalSourceTests(unittest.TestCase):
         self.assertEqual(bytes(int(w) for w in octets.replace("'(", " ").split()), WINDOW_FRAME)
 
 
-class ProfileOpenRefusalTests(ControlReplyFitTests):
+class ProfileOpenRefusalTests(ControlReplyFitFixture):
     def files(self):
         return {str(p.relative_to(self.store)): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in sorted(self.store.rglob("*"))
