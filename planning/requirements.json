@@ -1814,6 +1814,31 @@
       "note": "Selected v1 experiment, not a v0 gate. Native 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with lost reply/recovery and clone-incarnation refusal; the separate Mini join established a durable application transaction before ACK. Native e160442f additionally passed local consumer status and exact-file projection bounds. The current source retrieves its at-most-16-event poll window through a maintained derived sequence index; scoped correspondence is certified, while the new topic/index composition still needs broad qualification and native cost/recovery evidence. Remote authenticated multi-group poll/ack/rebase, complete native physical crash refinement, durable reply publication and the full adversarial E2 trace set remain open. Journal-event distance is not article unreadness or application processing."
     },
     {
+      "id": "CNS-002",
+      "title": "Two sleeping consumers exchange a signed report and reply through one node, each acknowledgement meaning one thing",
+      "specification": "specs/consumer-progress.md",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-116"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-owner-local-progress.lisp",
+        "tests/acl2/consumer-owner-local-progress-tests.lisp",
+        "tools/fn_consumer.py",
+        "tests/test_native_consumer_exchange.py",
+        "tests/test_native_consumer_e2.py",
+        "planning/evidence/consumer-e2-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
+        "planning/evidence/consumer-e2/test_native_consumer_exchange.gate-eca72d1c.log"
+      ],
+      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical resend over local control is answered D25's duplicate (PKT-166); the consumer settles an uncertain POST by that answer or by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet)."
+    },
+    {
       "id": "TOP-002",
       "title": "Experimental root-only local topic anchor and report admission",
       "specification": "specs/topic-history.md#experimental-root-only-admission-component",
