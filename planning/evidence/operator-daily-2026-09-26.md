@@ -148,3 +148,102 @@ book). Repaired in 9f760025; green in n2.
   so its mtime is not an observation of the holder.
 - Include hygiene: native-health now includes outcome-class, which ends with
   no theory withdrawal (warn; PKT-329 item 4).
+
+## Continuation (operator-daily-2, 2026-09-26)
+
+Brief: build/coordinator/queue/done/w4-operator-daily-2.txt. Base dev
+5c6825b2; branch lane/operator-daily-2. Ids: PRF-172, HST-010, SCN-102
+(extended), PKT-453 (retired into PKT-472), PKT-472.
+
+### What an operator now reads
+
+- `operator CONFIG post` refused by the running owner prints ACL2's reason
+  word after the status: `refused operator post REFUSED unknown-group`,
+  `refused operator post REFUSED from-invalid`; before, every such line read
+  `refused operator post REFUSED` and the reason was only in the owner's
+  log. A named status keeps its word (`ARTICLE-EXCEEDS-PROFILE-BOUND
+  oversize`). Exit codes unchanged (1).
+- A live administrative verb refused by the owner does too: `control revoke`
+  of a grant that is not there prints `refused operator control REFUSED
+  no-such-grant` (fn-cfg-delta-reason's word, through the owner's staging
+  step); a plan the owner refuses prints the plan's reason.
+- `health` during an owner's start: unchanged words (`state=fenced
+  reason=starting`, exit 20, PKT-454 decided), now with the theorem that it
+  clears on the listening observation.
+
+### Theorems and the host lines that call their subjects
+
+- `fn-nh-starting-clears-on-listening` (books/native-health.lisp; PKT-454).
+  Subject `fn-nh-health-step (socket-present outcome lock clone listener)`,
+  the whole decision of one `health` invocation: (:answered OCTETS),
+  (:refused), (:fenced REASON) or (:offline). Statement: the step is
+  (:fenced :starting) iff no clone fence, lock :held, listener expected and
+  `(fn-nls-route socket-present outcome)` is :offline; and with the socket
+  present, (:done OCTETS) for the same lock, fence and listener is
+  (:answered OCTETS), no fence. Host: `fnn-operator-health-report`
+  (host/native/operator.lisp) now takes every observation first and calls
+  `fn-native-health-host-step` (host/native-live-status-host.lisp); the host
+  no longer branches on the owner's answer (the old `(if (:done ...))` and
+  the route/fence calls are gone).
+- `fn-native-control-printed-reason-is-the-decisions`
+  (books/native-control-reason.lisp; PKT-453 (a)). For every status of
+  `*fn-nctrl-statuses*`: the client's step on the reasoned reply the owner
+  sealed, `(fn-native-control-reasoned-client-step
+  (fn-native-control-reasoned-reply-read
+  (fn-native-control-reasoned-reply-encode STATUS REASON)))`, is `(:status
+  STATUS (fn-nctrl-reason-word REASON))`; and when STATUS classes :refused
+  and REASON is non-nil, `fn-native-control-reply-detail` of it is
+  `(fn-nctrl-reason-word REASON)`. Supporting: `fn-nctrl-reasoned-read-of-encode`
+  (the round trip through the seal, `fn-nctrl-open-of-seal`),
+  `fn-nctrl-reason-word-of-a-reason-is-not-none` (the no-reason word `NONE`
+  is upper case, which no rendered symbol is), `fn-nctrl-reason-word-is-a-field`.
+  Host: the owner seals it in `fnn-control-reply-octets` (the
+  `:reasoned-reply` arm, `fn-native-control-host-reasoned-reply-encode`)
+  for a frame `fn-native-control-reasoned-framep` names, with the reason
+  `fnn-owner-control-submit-serialized` (host/native/owner.lisp;
+  `fn-owner-operator-refusal-reason`) or `fnn-owner-live-admin-serialized`
+  (host/native/admin.lisp; `fnn-admin-plan-reason`, or
+  `fn-owner-reconfigure-reason` through `fnn-owner-live-reconfigure-locked`'s
+  second value) answered as `(:reason STATUS REASON)`; the client is
+  `fnn-control-reasoned-exchange` (host/native/control.lisp) and the line
+  `fnn-operator-status-detail` (host/native/operator.lisp) from
+  `fnn-operator-execute-post` and `fnn-operator-execute-admin`.
+
+### The wire (the field's shape, and why it is not an appended field)
+
+The brief asked for a reason field appended to the FNCT reply "so an old
+client still parses the status". It cannot be: `fn-frame-fields-parse`
+refuses a trailing octet (books/frame-fields.lisp: "a record payload is
+exactly its fields"), and a client reads to EOF, so any octet after the
+kind-2 frame, in its payload or as a second frame, makes an old decoder
+answer :bad, which its client reports uncertain (exit 3). The reason
+therefore goes only to a client that asks: request kinds 13 (a post) and 17
+(an administrative vector) carry kinds 1 and 3's payloads unchanged, and the
+owner answers them, and only them, with reply kind 18: `(:enum
+*fn-nctrl-statuses*)` then `(:blob . 512)` the reason word. Kind 2 is
+untouched: an old client's plain request reads what it always read (native
+case `test_an_old_clients_plain_request_gets_the_plain_reply`, and the
+executed witness that the plain decoder refuses kind 13 as :frame). A new
+client that meets an old owner gets that owner's `:refused` to a frame it
+could not decode (it acted on nothing) and resends the plain request once
+(`fn-native-control-reasoned-client-step` :resend). control-reply-fit
+(4f5167d3 and its uncommitted tree) changes FNLS in native-live-status.lisp
+and none of the FNCT encoders; the LANEDUMP records the agreement. FNCT kinds
+now: 1-3 native-control, 4-8 hybrid, 9-12 and 14 peer-invite, 13 17 18 this
+lane; 15 and 16 were not taken (PKT-220 below).
+
+### PKT-220 (not taken; findings)
+
+- `store ROOT retention`: its figures (`pins=N reserved=R`, the store node's
+  `fn-retain-pins` length and `fn-retain-reserved`) are already answered live
+  by `operator CONFIG pins` and `operator CONFIG obligations` (FNLS kinds 2
+  and 4, `fn-nls-report` over the owner's store node). The `store` verb takes
+  a store root, not a configuration, so it has no control path to route by;
+  owed is either its refusal naming `operator CONFIG obligations`, or the
+  theorem that `fn-nls-report :obligations`'s two figures equal the offline
+  `fn-store-sn-pin-count`/`fn-store-sn-reserved` on the same store node.
+- `bp-obligation status`: the running NNTP owner does not carry the FNWF
+  workflow state (`fn-workflow-state` is set only under
+  `fnn-bpo-call-with-owner-journal`, which installs its own owner and takes
+  the exclusive lock). A live answer needs the owner to open the workflow
+  journal: a design decision, not a routing change.

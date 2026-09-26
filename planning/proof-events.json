@@ -6089,6 +6089,22 @@
         {
           "kind": "theorem",
           "name": "fn-native-control-liveness-decides"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-starting-clears-on-listening"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-printed-reason-is-the-decisions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-reasoned-read-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-reason-word-of-a-reason-is-not-none"
         }
       ]
     },
