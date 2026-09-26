@@ -154,7 +154,7 @@ tree): fn-host b7e04b95..., fn-host.core 9a5d8df7..., fn-host-developer.core
 | native-r3 (+ the DTN developer image) | test_native_outcome_algebra | OK 9 | see native-r3/SHA256SUMS |
 | native-r3 | test_bp_service_native | OK 17 | ibid. |
 | native-r3 | test_bp_receive_integrity_native | OK 4 | ibid. |
-| native-r1, r2, r3 | test_bp_fragment_node_native | the 10 MiB case times out at 120 s in `bp-node dispatch` (the recovered-held reopen) | 7ce98d4e, 2fd8d5a3 |
+| native-r1, r2, r3 | test_bp_fragment_node_native | 6 of 7 OK; the 10 MiB case (SCN-077) times out at 120 s in `bp-node dispatch` (the recovered-held reopen) on this image, three times. Unclassified: the control, the same module against b6759850's developer image (native-r3/test-bp_fragment_node_b6759850.log, unit oa-native-r3), was still inside that case after 30 minutes at report time, under other lanes' load on the box; nothing this lane changed is on the dispatch path except the exit-code map at exit | 7ce98d4e, 2fd8d5a3 |
 
 The per-class native cases (tests/test_native_outcome_algebra.py), each
 against specs/host.md's table:
@@ -174,3 +174,22 @@ against specs/host.md's table:
   lifetime); `bp decode` of a hand-built bundle with a creation time and no
   Bundle Age block, without a clock: `BP decode outcome=uncertain
   reason=lifetime-uncertain`, exit 1 (was 3).
+
+## Not done, and why (PKT-329)
+
+- `operator CONFIG health` exits with its verdict (0, 19, 20..27; HST-007),
+  outside the seven classes: the brief's "every native command exits one of
+  seven codes" is not yet true for it. It is disjoint from 1..7 and named in
+  the spec table as the one exception. Packet: keep the verdict scale and
+  prove `fn-nh-exit-code` is 0 or at least 19 (default), or move health to
+  0/1 with the state on the line (a monitor contract change for ember).
+- The Python host (`tools/run_store.py` `exit_code_for`) and tools/fn_native.py
+  keep their own tables; only tools/fn_client.py carries the scope field.
+- `hybrid-author`'s CONFLICT is shown by ACL2 and the shared completion path,
+  not natively (a native case needs an enrolled ML-DSA-65 key pair).
+- books/outcome-class.lisp ends with no theory withdrawal (include-hygiene
+  warn); host/native/io.lisp names ACL2 functions directly (host-names warn),
+  which is how a handler must call them.
+- The fragment timeout above, pending its control.
+- No SCN id was assigned: HST-009 is linked to SCN-076 (the operator walk),
+  whose NO-STORE expectation now reads exit 1.
