@@ -13,20 +13,20 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 984 |
 | Certification roots in the Makefile | 959 |
 | Books inside the root closure | 977 |
-| `defthm` and `defthmd` events | 13830 |
-| `defun` events | 9657 |
+| `defthm` and `defthmd` events | 13862 |
+| `defun` events | 9668 |
 | Functions with verified guards | 2225 |
 | Functions declared `:verify-guards nil` and never verified | 779 |
-| Functions left at the default with an explicit guard | 5224 |
-| Functions left at the default with no guard | 1429 |
-| `assert-event` checks | 14680 |
-| `must-fail` checks | 1727 |
+| Functions left at the default with an explicit guard | 5233 |
+| Functions left at the default with no guard | 1431 |
+| `assert-event` checks | 14727 |
+| `must-fail` checks | 1735 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 69 |
 | Theorems flagged SUSPECT by shape | 128 |
 | Export-hygiene warnings | 154 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 149 |
+| Teeth-form warnings | 148 |
 | Include-hygiene warnings | 998 |
 | Host-names warnings | 1139 |
 | Hand-written-record warnings | 18 |
@@ -308,14 +308,14 @@ that `make certify` requests.
 | `books/checkpoint-compaction-preservation.lisp` | root | 35 | 13 | 0/5/7/1 | 0 | 0 | 0 |
 | `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/15/4/0 | 0 | 0 | 0 |
 | `books/checkpoint-pack-chain.lisp` | root | 73 | 54 | 0/25/27/2 | 0 | 0 | 1 |
-| `books/checkpoint-pack-retire.lisp` | root | 10 | 11 | 0/0/11/0 | 0 | 0 | 0 |
-| `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
+| `books/checkpoint-pack-retire.lisp` | root | 12 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-crash-replay.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
-| `books/config-invariants.lisp` | root | 41 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/config-invariants.lisp` | root | 43 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/config-observed.lisp` | root | 5 | 4 | 3/0/1/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-reader-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -326,7 +326,7 @@ that `make certify` requests.
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
-| `books/config.lisp` | root | 46 | 176 | 1/0/175/0 | 0 | 0 | 0 |
+| `books/config.lisp` | root | 46 | 180 | 1/0/179/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-event-index-store-invariants.lisp` | root | 28 | 2 | 0/2/0/0 | 0 | 0 | 1 |
 | `books/consumer-event-index.lisp` | root | 23 | 18 | 2/1/15/0 | 0 | 0 | 0 |
@@ -492,7 +492,7 @@ that `make certify` requests.
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/payload-arena.lisp` | root | 98 | 29 | 2/3/20/4 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 20 | 12 | 0/0/12/0 | 0 | 0 | 0 |
-| `books/peer-carriage-rows.lisp` | root | 14 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/peer-carriage-rows.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/peer-carriage.lisp` | root | 43 | 20 | 0/1/18/1 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 36 | 35 | 0/0/30/5 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 134 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -808,8 +808,8 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-compaction-preservation-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 26 | 15 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
 | `tests/acl2/checkpoint-pack-chain-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 48 | 19 | 0 |
-| `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 8 | 0 |
-| `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 0 | 0 |
+| `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 9 | 0 |
+| `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 92 | 2 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
@@ -881,7 +881,7 @@ that `make certify` requests.
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 1 | 0/0/0/1 | 15 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 5 | 0 |
 | `tests/acl2/native-admin-peer-budget-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 19 | 3 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 196 | 14 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 198 | 14 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 67 | 4 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
@@ -952,7 +952,7 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/payload-arena-tests.lisp` | root | 21 | 5 | 0/0/1/4 | 4 | 10 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 46 | 14 | 0 |
-| `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 69 | 14 | 0 |
+| `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 100 | 19 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
 | `tests/acl2/peer-guard-carried-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 37 | 6 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 219 | 5 | 0 |
