@@ -260,14 +260,35 @@ article under a live pin); it is D03's release, open.
 - **The maintenance reservation** (item 2 of the brief): the finding and
   packet F2, not an invariant.
 
-## 8. The N=4,000 run (live at the lane's budget)
+## 8. The N=4,000 run
 
-`run.sh n4000 4000 256 67108864` (no cut campaign; the campaign is the
-N=300 one above) was started on the 9c5baa89 image at 00:5x UTC and is
-still building its store when this record is committed: 995 articles after
-about 17 minutes, about one POST per second at N near 1,000 on the
-developer image (not attributed: the served POST path's cost is not this
-lane's change, and no matched profile was taken). Its log is
-/tank/fn/scratch/reclaim-lifecycle/logs/n4000.jsonl; the next action is to
-read its before/after lines (files, octets, bytes-used, reclaim wall) into
-this section with the log's SHA-256. Until then the scale claim is N=300.
+`run.sh n4000 4000 256 67108864` (no cut campaign; the campaign is the N=300
+one in section 5), on the 9c5baa89 image (developer core b6fc8d02...). Log
+/tank/fn/scratch/reclaim-lifecycle/logs/n4000.jsonl, sha256
+781519e4d4d23807555cfd06c77723601d6ed3eb1f994b47c62bc623152132b4, harness exit 0.
+There are 4,000 articles of 256 octets in fn.letters, inside one pack (4,096 events).
+
+| Step | Observed |
+| --- | --- |
+| build | 4,000 POSTs accepted in 1,190 s |
+| keep-forever; release-after 1 `--dry-run` | `reclaimed=0` both, nothing written |
+| released-by-all-holders `--dry-run` | `would-reclaim=4000 freed-octets=1546890`, nothing written |
+| before `store compact` | 4,007 files, 3,382,520 octets, du 18,990,592 |
+| after compaction (packing) | 9 files, 3,226,610 octets, du 1,014,784; bytes-used 3,214,050 |
+| `store reclaim` | exit 0 in 23.6 s, `reclaimed=4000 freed-octets=1546890 generation=1 retired=1` |
+| after | 9 files, 1,679,720 octets (exactly 1,546,890 fewer), du 297,984; bytes-used 1,667,160 (exactly 1,546,890 fewer); charge-reserved 8000 unchanged (F4) |
+| rerun | `reclaimed=0`, same pack bytes |
+| served | GROUP `211 4000 1 4000` unchanged; 430/423 article reclaimed; OVER 423; NEWNEWS lists none; re-POST 441 duplicate |
+| tight store (H 300,000) | the 151st POST refused 441; `store compact` and `store reclaim` both `temporary-space`, exit 1 (F2) |
+
+The files and inodes come back when `store compact` packs them (4,007 to 9),
+and the octets come back when `store reclaim` runs. The two verbs are
+reported separately. N=5,000 does not fit one pack; it needs chained packs.
+
+## 9. PKT-169 decided (coordinator, 2026-09-26)
+
+As proposed. The temporary-space check for compact and reclaim is made against
+the disk, not the history bound. Admission reserves room for the release's
+configuration record and the cleanup work, stated as an explicit reservation
+invariant. Halving the bound is rejected. This lane does not implement it;
+the continuation does (LANEDUMP).
