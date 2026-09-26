@@ -123,7 +123,7 @@
            (fn-ocl-view-historyp
             (fn-own-refresh
              (fn-own-make st view conns next-id max-conns pending ledger
-                          clock facts config queue inflight feeds))))
+                          clock facts config queue inflight feeds node-secret))))
   :rule-classes nil
   :hints (("Goal" :use fn-ocl-refreshed-idle-view-history
            :in-theory (disable fn-own-refresh fn-ocl-view-historyp
@@ -133,7 +133,7 @@
                  (fn-ocfg-make
                   (fn-own-refresh
                    (fn-own-make st view conns next-id max-conns pending ledger
-                                clock facts config queue inflight feeds))
+                                clock facts config queue inflight feeds node-secret))
                   cfg pins staged))
                 (equal (fn-sf-phase (fn-sn-files st)) :ready)
                 (true-listp (fn-sf-records (fn-sn-files st))))
@@ -141,7 +141,7 @@
             (fn-ocfg-make
              (fn-own-refresh
               (fn-own-make st view conns next-id max-conns pending ledger
-                           clock facts config queue inflight feeds))
+                           clock facts config queue inflight feeds node-secret))
              cfg pins staged)))
   :rule-classes nil
   :hints (("Goal"

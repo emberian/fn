@@ -6,7 +6,7 @@
 ;
 ; The owner record is
 ;   (store view conns next-id max-conns pending ledger clock facts
-;    config queue inflight feeds)
+;    config queue inflight feeds node-secret)
 ; where
 ;   store     the actual fn-sn composition (books/store-node.lisp), stepped
 ;             only through fn-snrt-step and fn-sn-finish;
@@ -32,7 +32,16 @@
 ;   config    the posting configuration (fn-inj-configp, books/injection.lisp)
 ;             pinned into every connection at open; nil refuses POST with 440;
 ;   queue     the submissions served reads produced and the writer has not
-;             taken, each (id version mark decision), in arrival order;
+;             taken, each (id version mark decision [login]), in arrival
+;             order; login is the AUTHINFO name of an authenticated served
+;             POST (fn-own-finish-read), absent otherwise;
+;   node-secret nil, or the node's 32-octet secret (books/node-secret.lisp
+;             fn-ns-secretp) the host read from STORE/keys/node-secret.key
+;             and installed with fn-own-with-node-secret after every open
+;             and recovery; every owner step carries it unchanged.  The
+;             stored octets of a served POST under a login carry the
+;             RFC 8315 Cancel-Lock keyed by it
+;             (books/owner-served-invariants.lisp fn-own-sub-stored-octets);
 ;   feeds     the outbound feed table (books/owner-feed.lisp): one
 ;             (name record feed) per configured peer with an outbound half.
 ;             Built from the configuration by the (:feeds cfg) arm, enqueued
@@ -399,7 +408,7 @@
 
 (defun fn-own-sub-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)))
+  (and (true-listp x) (or (equal (len x) 4) (equal (len x) 5))))
 (defun fn-own-sub-id (x)
   (declare (xargs :guard t))
   (mbe :logic (car x) :exec (fn-ag-car x)))
@@ -433,8 +442,53 @@
 (defthm fn-own-sub-make-is-consp
   (consp (fn-own-sub-make id version mark decision))
   :rule-classes (:rewrite :type-prescription))
+
+; The login a served submission was posted under (SEC-006, PRF-210): the
+; AUTHINFO USER name the connection had authenticated as BEFORE the read
+; that completed the article (the session fn-own-finish-read is handed,
+; not the one the read leaves: an AUTHINFO later in the same read never
+; claims an article posted before it), recorded when it is enqueued, so the stored octets can carry the
+; login's Cancel-Lock even when the connection is gone by the time the
+; writer takes it.  A submission without a login (control, BP, transit, an
+; unauthenticated POST) keeps the four-element shape it always had:
+; fn-own-sub-make-login with a nil login IS fn-own-sub-make.
+(defun fn-own-sub-login (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+(defun fn-own-sub-make-login (id version mark decision login)
+  (declare (xargs :guard t))
+  (if login
+      (list id version mark decision login)
+    (fn-own-sub-make id version mark decision)))
+
+(defthm fn-own-sub-make-login-of-no-login-by-definition
+  (equal (fn-own-sub-make-login id version mark decision nil)
+         (fn-own-sub-make id version mark decision)))
+(defthm fn-own-sub-login-of-fn-own-sub-make
+  (equal (fn-own-sub-login (fn-own-sub-make id version mark decision)) nil))
+(defthm fn-own-sub-shapep-of-fn-own-sub-make-login
+  (fn-own-sub-shapep (fn-own-sub-make-login id version mark decision login)))
+(defthm fn-own-sub-id-of-fn-own-sub-make-login
+  (equal (fn-own-sub-id (fn-own-sub-make-login id version mark decision login)) id))
+(defthm fn-own-sub-version-of-fn-own-sub-make-login
+  (equal (fn-own-sub-version (fn-own-sub-make-login id version mark decision login))
+         version))
+(defthm fn-own-sub-mark-of-fn-own-sub-make-login
+  (equal (fn-own-sub-mark (fn-own-sub-make-login id version mark decision login)) mark))
+(defthm fn-own-sub-decision-of-fn-own-sub-make-login
+  (equal (fn-own-sub-decision (fn-own-sub-make-login id version mark decision login))
+         decision))
+(defthm fn-own-sub-login-of-fn-own-sub-make-login
+  (equal (fn-own-sub-login (fn-own-sub-make-login id version mark decision login))
+         login))
+(defthm fn-own-sub-make-login-is-consp
+  (consp (fn-own-sub-make-login id version mark decision login))
+  :rule-classes (:rewrite :type-prescription))
+
 (in-theory (disable (:d fn-own-sub-shapep) (:d fn-own-sub-id) (:d fn-own-sub-version)
-                    (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)))
+                    (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)
+                    (:d fn-own-sub-login) (:d fn-own-sub-make-login)))
 
 ; -----------------------------------------------------------------------------
 ; The committed view record:
@@ -672,7 +726,7 @@
 
 (defun fn-own-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 13)))
+  (and (true-listp x) (equal (len x) 14)))
 (defun fn-own-store (o)
   (declare (xargs :guard t))
   (mbe :logic (car o) :exec (fn-ag-car o)))
@@ -722,53 +776,60 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr o)))))))))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o)))))))))))))))
+(defun fn-own-node-secret (o)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr o))))))))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o))))))))))))))))
 (defun fn-own-make (store view conns next-id max-conns pending ledger clock facts
-                          config queue inflight feeds)
+                          config queue inflight feeds node-secret)
   (declare (xargs :guard t))
   (list store view conns next-id max-conns pending ledger clock facts
-        config queue inflight feeds))
+        config queue inflight feeds node-secret))
 
 (defthm fn-own-shapep-of-fn-own-make
-  (fn-own-shapep (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds)))
+  (fn-own-shapep (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret)))
 (defthm fn-own-store-of-fn-own-make
-  (equal (fn-own-store (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-store (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          store))
 (defthm fn-own-view-of-fn-own-make
-  (equal (fn-own-view (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-view (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          view))
 (defthm fn-own-conns-of-fn-own-make
-  (equal (fn-own-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          conns))
 (defthm fn-own-next-id-of-fn-own-make
-  (equal (fn-own-next-id (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-next-id (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          next-id))
 (defthm fn-own-max-conns-of-fn-own-make
-  (equal (fn-own-max-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-max-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          max-conns))
 (defthm fn-own-pending-of-fn-own-make
-  (equal (fn-own-pending (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-pending (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          pending))
 (defthm fn-own-ledger-of-fn-own-make
-  (equal (fn-own-ledger (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-ledger (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          ledger))
 (defthm fn-own-clock-of-fn-own-make
-  (equal (fn-own-clock (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-clock (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          clock))
 (defthm fn-own-facts-of-fn-own-make
-  (equal (fn-own-facts (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-facts (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          facts))
 (defthm fn-own-config-of-fn-own-make
-  (equal (fn-own-config (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-config (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          config))
 (defthm fn-own-queue-of-fn-own-make
-  (equal (fn-own-queue (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-queue (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          queue))
 (defthm fn-own-inflight-of-fn-own-make
-  (equal (fn-own-inflight (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-inflight (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          inflight))
 (defthm fn-own-feeds-of-fn-own-make
-  (equal (fn-own-feeds (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds))
+  (equal (fn-own-feeds (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
          feeds))
+(defthm fn-own-node-secret-of-fn-own-make
+  (equal (fn-own-node-secret (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret))
+         node-secret))
 (defthm fn-own-shapep-forward-shape
   (implies (fn-own-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -785,7 +846,8 @@
        (implies (fn-own-config x) (consp x))
        (implies (fn-own-queue x) (consp x))
        (implies (fn-own-inflight x) (consp x))
-       (implies (fn-own-feeds x) (consp x)))
+       (implies (fn-own-feeds x) (consp x))
+       (implies (fn-own-node-secret x) (consp x)))
   :rule-classes ((:forward-chaining :corollary (implies (fn-own-store x) (consp x))
                                     :trigger-terms ((fn-own-store x)))
                  (:forward-chaining :corollary (implies (fn-own-view x) (consp x))
@@ -811,12 +873,14 @@
                  (:forward-chaining :corollary (implies (fn-own-inflight x) (consp x))
                                     :trigger-terms ((fn-own-inflight x)))
                  (:forward-chaining :corollary (implies (fn-own-feeds x) (consp x))
-                                    :trigger-terms ((fn-own-feeds x)))))
+                                    :trigger-terms ((fn-own-feeds x)))
+                 (:forward-chaining :corollary (implies (fn-own-node-secret x) (consp x))
+                                    :trigger-terms ((fn-own-node-secret x)))))
 (in-theory (disable (:d fn-own-shapep) (:d fn-own-store) (:d fn-own-view) (:d fn-own-conns)
                     (:d fn-own-next-id) (:d fn-own-max-conns) (:d fn-own-pending)
                     (:d fn-own-ledger) (:d fn-own-clock) (:d fn-own-facts)
                     (:d fn-own-config) (:d fn-own-queue) (:d fn-own-inflight)
-                    (:d fn-own-feeds) (:d fn-own-make)))
+                    (:d fn-own-feeds) (:d fn-own-node-secret) (:d fn-own-make)))
 
 ; -----------------------------------------------------------------------------
 ; The group-configuration fact record: (:fn-own-group-fact name stamp).  The
@@ -1008,7 +1072,7 @@
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                      (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                     (fn-own-inflight o) (fn-own-feeds o)))
+                     (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
       o)))
 
 ; The owner of a store.  The host calls this once per process over the state
@@ -1030,7 +1094,7 @@
                    (fn-ctl-subseq-diff (fn-state-articles prefix)
                                        (fn-state-articles archive))
                    nil))
-                nil 0 max-conns nil nil nil nil nil nil nil nil)))
+                nil 0 max-conns nil nil nil nil nil nil nil nil nil)))
 
 ; -----------------------------------------------------------------------------
 ; Connections
@@ -1101,7 +1165,7 @@
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) conns (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
-               (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
 
 (defun fn-own-reader-context (o id cfg)
   "Retain ACL2 node/config facts while the connection's role remains reader."
@@ -1184,7 +1248,7 @@
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
-                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))
+                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))))
     (cons nil o)))
 
 ; The transit port.  A peer connection is accepted on the SAME listener as a
@@ -1249,7 +1313,7 @@
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
                            (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                           (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))
+                           (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))))
     (cons nil o)))
 
 ; The served port: one socket read of one connection is one fn-served-step
@@ -1274,7 +1338,7 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
 
 ; The local control channel is a submission port, not a second store writer.
 ; Its identifier is outside the natural-number connection namespace, so it
@@ -1479,6 +1543,14 @@
         (fn-auth-with-base as (fn-peer-with-node ps (fn-sn-node (fn-own-store o))))
       as)))
 
+; The login a served connection's session has authenticated as: the name
+; AUTHINFO USER cached once AUTHINFO PASS set the subject (RFC 4643 section
+; 2.3), nil before.  books/login-binding.lisp fn-lb-inflight-login reads the
+; same two fields.
+(defun fn-own-session-login (as)
+  (declare (xargs :guard t))
+  (if (fn-auth-session-subject as) (fn-auth-session-pending as) nil))
+
 (defun fn-own-finish-read (o conn result)
   (declare (xargs :guard t))
   (let* ((effects (fn-served-result-effects result))
@@ -1505,8 +1577,9 @@
                          o (fn-own-replace-conn next (fn-own-conns o)))))
                 (if decision
                     (fn-own-enqueue
-                     o2 (fn-own-sub-make id (fn-own-conn-version conn)
-                                         nil decision))
+                     o2 (fn-own-sub-make-login
+                         id (fn-own-conn-version conn) nil decision
+                         (fn-own-session-login (fn-own-conn-session conn))))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 
@@ -1647,7 +1720,7 @@
                (if (and (fn-own-inflight o)
                         (equal (fn-own-sub-id (fn-own-inflight o)) id))
                    nil
-                 (fn-own-inflight o)) (fn-own-feeds o)))
+                 (fn-own-inflight o)) (fn-own-feeds o) (fn-own-node-secret o)))
 
 ; -----------------------------------------------------------------------------
 ; Transactions: the fn-sn machine, owned by one connection at a time.
@@ -1659,7 +1732,7 @@
            (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) id
-                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))
+                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))
     o))
 
 ; Every kernel/node transition of the store, including the resolution
@@ -1672,7 +1745,7 @@
    (fn-own-make (fn-snrt-step (fn-own-store o) event) (fn-own-view o)
                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                 (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
-                (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))))
 
 ; Completion is the actual fn-sn-finish.  It is consumed exactly when the
 ; kernel is at :completing with a bound record; the consumed pair is the
@@ -1688,7 +1761,7 @@
                       (fn-ag-append (fn-own-ledger o)
                                     (list (fn-sf-completion (fn-sn-files s))))
                       (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                      (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+                      (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
       o)))
 
 ; A process restart.  The image (frontier records) is what the platform left
@@ -1713,7 +1786,7 @@
          (fn-own-make (fn-sn-open-state opened) (fn-own-view o) nil
                       (fn-own-next-id o) (fn-own-max-conns o) nil
                       (fn-own-ledger o) nil (fn-own-facts o) (fn-own-config o)
-                      nil nil (fn-own-feed-restart-all (fn-own-feeds o))))
+                      nil nil (fn-own-feed-restart-all (fn-own-feeds o)) (fn-own-node-secret o)))
       o)))
 
 ; -----------------------------------------------------------------------------
@@ -1772,7 +1845,7 @@
                    (fn-own-ledger o)
                    (if (equal outcome :observed) obs nil)
                    (fn-own-facts o) (fn-own-config o)
-                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))))
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))))
 
 ; No fact without a clock observation: creation is refused until the host
 ; has supplied one.
@@ -1786,7 +1859,7 @@
                    (fn-own-ledger o) (fn-own-clock o)
                    (fn-ag-append (fn-own-facts o)
                                  (list (fn-own-group-fact-make name (fn-own-clock o))))
-                   (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))
+                   (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))
     o))
 
 ; -----------------------------------------------------------------------------
@@ -1818,7 +1891,7 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-               (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) feeds))
+               (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) feeds node-secret))
 
 ; What a submission tells the feed.  Both kinds carry the Message-ID and the
 ; article as octets; only a transit submission has an origin peer.  The octets
@@ -2245,7 +2318,18 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) config (fn-own-queue o)
-               (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
+
+; The node secret the host read (STORE/keys/node-secret.key) and installs
+; after every open and recovery (host/owner-host.lisp
+; fn-owner-install-node-secret).  Nothing else writes the field: every other
+; owner step copies it.
+(defun fn-own-with-node-secret (o secret)
+  (declare (xargs :guard t))
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+               (fn-own-inflight o) (fn-own-feeds o) secret))
 
 ; The writer step takes the oldest queued submission into the durable path:
 ; only when nothing is in flight, no transaction is pending and the store is
@@ -2263,9 +2347,10 @@
                      (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
                      (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
                      (fn-own-config o) (cdr (fn-own-queue o))
-                     (fn-own-sub-make (fn-own-sub-id sub) (fn-own-sub-version sub)
-                                      (len (fn-own-ledger o))
-                                      (fn-own-sub-decision sub)) (fn-own-feeds o)))
+                     (fn-own-sub-make-login (fn-own-sub-id sub) (fn-own-sub-version sub)
+                                            (len (fn-own-ledger o))
+                                            (fn-own-sub-decision sub)
+                                            (fn-own-sub-login sub)) (fn-own-feeds o) (fn-own-node-secret o)))
     o))
 
 ; The Store refusal words the host may relay.  Each is the kind an ACL2
@@ -2394,7 +2479,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal completion :durable)
                                      (fn-own-feed-durable o sub)
-                                   (fn-own-feeds o)))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o))))
           (cons (fn-served-result-effects
                  (fn-served-post-outcome
                   (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
@@ -2444,7 +2529,7 @@
                      (fn-own-config o) (fn-own-queue o) nil
                      (if (equal completion :durable)
                          (fn-own-feed-durable o sub)
-                       (fn-own-feeds o)))))))
+                       (fn-own-feeds o)) (fn-own-node-secret o))))))
 
 (defun fn-own-control-outcome-records (o word)
   (declare (xargs :guard t))
@@ -2511,7 +2596,7 @@
                                   (fn-own-config o) (fn-own-queue o) nil
                                   (if (equal completion :durable)
                                       (fn-own-feed-durable o sub)
-                                    (fn-own-feeds o)))))
+                                    (fn-own-feeds o)) (fn-own-node-secret o))))
           (cons (fn-served-result-effects
                  (fn-served-transit-outcome
                   ; Six fields since the clock seam: the connection's

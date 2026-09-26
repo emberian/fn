@@ -9,12 +9,14 @@
 ; octets, as RFC 8315 section 3.1 lets an injecting agent do for a posting
 ; agent without Cancel-Lock support:
 ;
-;   K    = Base64(HMAC-SHA256(S, MSGID || LOGIN))      (RFC 8315 section 4)
+;   K    = Base64(HMAC-SHA256(S, "fn cancel-lock v1" || 0x00 || MSGID || LOGIN))
+;                                                       (RFC 8315 section 4;
+;                                                        books/node-secret.lisp)
 ;   lock = Base64(SHA-256(K))                           (section 2.1)
 ;
-; S is the node's 32-octet Cancel-Lock secret (host/native/owner.lisp creates
-; it beside the configuration at the first start and never serves it or
-; writes it into a record).  On a served POST from login L the owner puts
+; S is the node secret (books/node-secret.lisp: STORE/keys/node-secret.key,
+; written by init, carried by the owner as fn-own-node-secret, never served
+; and never written into a record).  On a served POST from login L the owner puts
 ; `Cancel-Lock: sha256:lock(S, MSGID, L)' in front of the injected octets;
 ; on a served cancel or Supersedes from L naming TARGET it also puts
 ; `Cancel-Key: sha256:K(S, TARGET, L)' (section 3.3's MUST for an agent
@@ -35,33 +37,8 @@
 ; Prefix `fn-cl-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "cancel-lock-lines")
+(include-book "node-secret")
 (include-book "control-authority")
-
-; -----------------------------------------------------------------------------
-; HMAC-SHA256 (RFC 2104, FIPS 198-1), block length 64, over `fn-sha256'.
-
-(defconst *fn-cl-ipad* 54)   ; 0x36
-(defconst *fn-cl-opad* 92)   ; 0x5c
-
-(defun fn-cl-octet (x)
-  (declare (xargs :guard t))
-  (if (and (natp x) (< x 256)) x 0))
-
-; KEY, zero-padded to 64 octets, each octet XOR PAD.
-(defun fn-cl-padded (key pad n)
-  (declare (xargs :guard (and (natp n) (natp pad)) :measure (nfix n)))
-  (if (zp n)
-      nil
-    (cons (logxor (fn-cl-octet (if (consp key) (car key) 0)) pad)
-          (fn-cl-padded (if (consp key) (cdr key) nil) pad (1- n)))))
-
-(defun fn-cl-hmac-sha256 (key msg)
-  (declare (xargs :guard t))
-  (let ((k (if (< 64 (len key)) (fn-sha256 key) key)))
-    (fn-sha256 (fn-cll-append (fn-cl-padded k *fn-cl-opad* 64)
-                              (fn-sha256 (fn-cll-append
-                                          (fn-cl-padded k *fn-cl-ipad* 64)
-                                          msg))))))
 
 ; -----------------------------------------------------------------------------
 ; The login's key and lock for one Message-ID.  MSGID and LOGIN are octets;
@@ -70,23 +47,26 @@
 
 (defun fn-cl-secretp (s)
   (declare (xargs :guard t))
-  (and (fn-cbor-octet-listp s) (equal (len s) 32)))
+  (fn-ns-secretp s))
 
+; The node secret's Cancel-Lock use (books/node-secret.lisp: HMAC-SHA256
+; under the label "fn cancel-lock v1", separated from every other use).
 (defun fn-cl-key (secret msgid login)
   (declare (xargs :guard t))
-  (fn-stx-b64-encode (fn-cl-hmac-sha256 secret (fn-cll-append msgid login))))
+  (fn-stx-b64-encode (fn-ns-cancel-lock-mac secret (fn-cll-append msgid login))))
 
 (defun fn-cl-lock (secret msgid login)
   (declare (xargs :guard t))
   (fn-ctl-lock-of-key (fn-cl-key secret msgid login)))
 
 ; -----------------------------------------------------------------------------
-; The served payload.  THE FUNCTION THE HOST CALLS (host/owner-host.lisp
-; fn-owner-cancel-lock-payload, from host/native/owner.lisp
-; fnn-owner-attempt-served before the login gate and the Store attempt):
-; SECRET the node's secret (nil when unreadable), LOGIN the in-flight
-; submission's login (`fn-lb-inflight-login', nil when none), MSGID the
-; injected Message-ID's octets, PAYLOAD the injected octets.
+; The served payload: the served arm of books/owner-served-invariants.lisp
+; fn-own-sub-stored-octets, which host/owner-host.lisp fn-owner-take stages
+; for the Store and fn-owner-finish-submission's completion gate compares
+; with the durable record.  SECRET the owner's fn-own-node-secret (nil
+; before the host installed one), LOGIN the submission's recorded login
+; (fn-own-sub-login, nil when none), MSGID the injected Message-ID's
+; octets, PAYLOAD the injected octets.
 
 (defun fn-cl-lock-wanted-p (secret login fields)
   (declare (xargs :guard t))
@@ -103,6 +83,16 @@
        (not (consp (fn-ctl-fields-named *fn-ctl-cancel-key-name* fields)))
        (fn-ctl-article-target fields)))
 
+; The Cancel-Key line for the target of a cancel or Supersedes (nil when
+; there is none, or the poster wrote their own Cancel-Key).
+(defun fn-cl-key-lines (secret login fields)
+  (declare (xargs :guard t))
+  (let ((target (fn-cl-key-target secret login fields)))
+    (if target
+        (fn-cll-line *fn-cll-key-head*
+                     (fn-cl-key secret (fn-record-string-octets target) login))
+      nil)))
+
 (defun fn-cl-served-payload (secret login msgid payload)
   (declare (xargs :guard t))
   (let* ((fields (fn-ctl-received-fields payload))
@@ -113,20 +103,9 @@
           (if (fn-cl-lock-wanted-p secret login fields)
               (fn-cll-line *fn-cll-lock-head* (fn-cl-lock secret msgid login))
             nil)
-          (if target
-              (fn-cll-line *fn-cll-key-head*
-                           (fn-cl-key secret (fn-record-string-octets target) login))
-            nil))
+          (fn-cl-key-lines secret login fields))
          payload)
       payload)))
-
-; The service-log line the host writes when it creates a new secret (host/
-; native/owner.lisp fnn-owner-load-cancel-lock-secret): a replaced secret is
-; stated, never silent.
-(defun fn-cl-secret-created-line ()
-  (declare (xargs :guard t))
-  (fn-record-string-octets
-   "cancel-lock secret created; locks written under an earlier secret no longer open by login"))
 
 ; -----------------------------------------------------------------------------
 ; Theorems.
@@ -186,3 +165,46 @@
             keys (append locks (list (fn-cl-lock secret target login)) more)))
   :hints (("Goal" :induct (len keys)
            :in-theory (disable fn-cl-key fn-ctl-lock-of-key))))
+
+; The lines a served POST under LOGIN gets, when the node holds a secret and
+; the poster wrote no Cancel-Lock of their own: exactly one Cancel-Lock line,
+; LOGIN's lock for this Message-ID, then the Cancel-Key line of a cancel, at
+; the end of the node's Injection-Info line; every other octet as injected.
+(defthm fn-cl-served-payload-writes-one-login-lock
+  (let ((fields (fn-ctl-received-fields payload))
+        (k (fn-cll-info-end payload 0 :start)))
+    (implies (and (fn-ns-secretp secret)
+                  (fn-cbor-octet-listp login) (consp login)
+                  (not (consp (fn-ctl-fields-named *fn-ctl-cancel-lock-name* fields))))
+             (equal (fn-cl-served-payload secret login msgid payload)
+                    (if k
+                        (append (fn-cll-take k payload)
+                                (fn-cll-line *fn-cll-lock-head*
+                                             (fn-cl-lock secret msgid login))
+                                (fn-cl-key-lines secret login fields)
+                                (fn-cll-drop k payload))
+                      payload))))
+  :hints (("Goal" :in-theory (e/d (fn-cl-secretp)
+                                  (fn-cl-lock fn-cl-key-lines fn-cl-key-target
+                                   fn-ctl-received-fields fn-cll-line
+                                   fn-cll-info-end fn-cll-take fn-cll-drop))
+           :use ((:instance fn-cll-insert-adds-only-the-lines
+                            (x payload)
+                            (lines (append (fn-cll-line *fn-cll-lock-head*
+                                                        (fn-cl-lock secret msgid login))
+                                           (fn-cl-key-lines secret login
+                                                            (fn-ctl-received-fields payload)))))))))
+
+; KEYSTONE (SEC-006, exactly the login's key opens the login's lock).  Over
+; the one lock the node writes for LOGIN: the key the node derives for a
+; login L2 opens it exactly when L2's lock for this Message-ID is LOGIN's.
+; So LOGIN's own key opens it (L2 = LOGIN), and another login's key opens it
+; only when SHA-256 of the two HMAC-SHA256 outputs collide under the node
+; secret: that is the cryptographic assumption no theorem states
+; (planning/evidence/newsreader-cancel-2026-09-26.md, the pessimistic
+; figure), and the teeth show a concrete other login refused.
+(defthm fn-cl-login-key-opens-exactly-its-lock
+  (iff (fn-ctl-some-key-opens-p (list (fn-cl-key secret msgid l2))
+                                (list (fn-cl-lock secret msgid login)))
+       (equal (fn-cl-lock secret msgid l2) (fn-cl-lock secret msgid login)))
+  :hints (("Goal" :in-theory (disable fn-cl-key fn-ctl-lock-of-key))))

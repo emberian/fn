@@ -47,7 +47,7 @@
 (assert-event (equal (len (fn-feed-queue (fn-own-feed-find "nodeB" *off-tbl*))) 1))
 (assert-event (equal (len (fn-feed-queue (fn-own-feed-find "nodeE" *off-tbl*))) 1))
 ; An owner whose only relevant slot is the feed table.
-(defconst *off-o* (fn-own-make nil nil nil 0 0 nil nil nil nil nil nil nil *off-tbl*))
+(defconst *off-o* (fn-own-make nil nil nil 0 0 nil nil nil nil nil nil nil *off-tbl* nil))
 
 (defun off-feed (o peer)
   (fn-own-feed-entry-feed (fn-own-feed-entry-of peer (fn-own-feeds o))))

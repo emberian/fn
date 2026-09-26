@@ -16,9 +16,18 @@ fn-ctl-withdrawal-authority-is-exactly-signer-or-poster).
   (cancels first): both end at 430 for T; A still serves T after T and bob's
   cancel alone.
 
-The node-written lock keyed by the login (books/cancel-lock.lisp, for
-Thunderbird, which writes no Cancel-Lock) is not wired into the owner yet:
-planning/evidence/newsreader-cancel-2026-09-26.md section 6.
+The node-written lines (Thunderbird's case: a client that writes no
+Cancel-Lock): alice posts T2 with none; the stored T2 carries exactly one
+`Cancel-Lock: sha256:...' the node wrote for her login under the node secret
+(books/owner-served-invariants.lisp fn-own-sub-stored-octets, keystone
+fn-own-stored-octets-carry-the-login-lock); bob's key-less cancel is filed
+and T2 stays; alice's key-less cancel gets the node's `Cancel-Key' for her
+login and T2 answers 430, is gone from OVER, stays gone after a restart, and
+a peer receiving T2 and her cancel decides the same.
+
+The node secret: init writes STORE/keys/node-secret.key (32 octets, 0600);
+start refuses by name when it is readable by others or missing, and
+`store ROOT node-secret' writes it once into a store without one.
 
 Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_own_cancel
 """
@@ -231,6 +240,115 @@ class NativeOwnCancelTests(unittest.TestCase):
             stream.write(stuffed(relayed) + b".\r\n")
             first += " / " + stream.readline().decode().strip()
         return first
+
+    def run_refused(self, node):
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=300, check=False)
+        return result.returncode, (result.stdout + result.stderr).decode("utf-8", "replace")
+
+    def test_node_secret_is_written_at_init_and_refused_by_name(self):
+        node = self.initialize("s", False)
+        key = node["store"] / "keys" / "node-secret.key"
+        seen = {"size": key.stat().st_size, "mode": oct(key.stat().st_mode & 0o777),
+                "dir mode": oct(key.parent.stat().st_mode & 0o777)}
+        original = key.read_bytes()
+        key.chmod(0o644)
+        seen["world-readable"] = self.run_refused(node)
+        key.chmod(0o600)
+        key.unlink()
+        seen["missing"] = self.run_refused(node)
+        seen["create"] = self.command([IMAGE, "--fn", "store", node["store"],
+                                       "node-secret"]).stdout.decode().strip()
+        seen["again"] = self.command([IMAGE, "--fn", "store", node["store"],
+                                      "node-secret"]).stdout.decode().strip()
+        seen["new size"] = key.stat().st_size
+        seen["new differs"] = key.read_bytes() != original
+        self.start(node)
+        print("NATIVE-NODE-SECRET-WITNESS " + json.dumps(seen, sort_keys=True))
+        self.assertEqual(seen["size"], 32, seen)
+        self.assertEqual(seen["mode"], "0o600", seen)
+        self.assertEqual(seen["dir mode"], "0o700", seen)
+        self.assertNotEqual(seen["world-readable"][0], 0, seen)
+        self.assertIn("readable or writable by group or others", seen["world-readable"][1], seen)
+        self.assertNotEqual(seen["missing"][0], 0, seen)
+        self.assertIn("node-secret.key is missing", seen["missing"][1], seen)
+        self.assertEqual(seen["create"], "node-secret created", seen)
+        self.assertEqual(seen["again"], "node-secret present", seen)
+        self.assertEqual(seen["new size"], 32, seen)
+        self.assertTrue(seen["new differs"], seen)
+
+    def test_the_node_writes_the_lock_and_key_for_a_login(self):
+        try:
+            self.node_written_scenario()
+        except BaseException:
+            for log in sorted(self.base.glob("*/node-*.log")):
+                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
+                    "utf-8", "replace")))
+            raise
+
+    def node_written_scenario(self):
+        h = self.initialize("h", True)
+        a = self.initialize("a", False)
+        for node in (h, a):
+            self.start(node)
+        target = "<own-target-2@example.invalid>"
+        seen = {}
+        # Thunderbird's form: no Cancel-Lock, no Cancel-Key.
+        seen["post T2"] = self.post(h, "alice", article(target))
+        stored = self.fetch(h, target)
+        header = stored.partition(b"\r\n\r\n")[0].split(b"\r\n")
+        info = [i for i, f in enumerate(header) if f.startswith(b"Injection-Info: ")]
+        locks = [i for i, f in enumerate(header) if f.lower().startswith(b"cancel-lock:")]
+        seen["T2 locks"] = [header[i].decode() for i in locks]
+        seen["lock follows Injection-Info"] = bool(info and locks and locks[0] == info[0] + 1)
+        bob_id = "<own-cancel-bob-2@example.invalid>"
+        alice_id = "<own-cancel-alice-2@example.invalid>"
+        plain = lambda mid: (("\r\n".join([
+            "From: friend <friend@example.invalid>", "Newsgroups: fn.own.t",
+            "Subject: cmsg cancel " + target, "Message-ID: " + mid,
+            "Control: cancel " + target]) + "\r\n\r\ncancel\r\n").encode("ascii"))
+        seen["post bob cancel"] = self.post(h, "bob", plain(bob_id))
+        seen["T2 after bob"] = self.answer(h, target)
+        seen["post alice cancel"] = self.post(h, "alice", plain(alice_id))
+        seen["T2 after alice"] = self.answer(h, target)
+        seen["over after alice"] = self.over_ids(h)
+        bob_cancel = self.fetch(h, bob_id)
+        alice_cancel = self.fetch(h, alice_id)
+        keys = lambda octets: [f.decode() for f in
+                               octets.partition(b"\r\n\r\n")[0].split(b"\r\n")
+                               if f.lower().startswith(b"cancel-key:")]
+        seen["alice cancel keys"] = keys(alice_cancel)
+        seen["bob cancel keys"] = keys(bob_cancel)
+        self.kill(h)
+        self.start(h)
+        seen["T2 after restart"] = self.answer(h, target)
+        seen["A relay T2"] = self.relay(stored, a, target)
+        seen["A relay bob"] = self.relay(bob_cancel, a, bob_id)
+        seen["A T2 after bob"] = self.answer(a, target)
+        seen["A relay alice"] = self.relay(alice_cancel, a, alice_id)
+        seen["A T2 after alice"] = self.answer(a, target)
+        print("NATIVE-OWN-CANCEL-NODE-WRITTEN-WITNESS " + json.dumps(seen, sort_keys=True))
+
+        self.assertTrue(seen["post T2"].startswith("240"), seen)
+        self.assertEqual(len(seen["T2 locks"]), 1, seen)
+        self.assertRegex(seen["T2 locks"][0], r"^Cancel-Lock: sha256:[A-Za-z0-9+/]{43}=$")
+        self.assertTrue(seen["lock follows Injection-Info"], seen)
+        self.assertTrue(seen["post bob cancel"].startswith("240"), seen)
+        self.assertTrue(seen["T2 after bob"].startswith("220"), seen)
+        self.assertEqual(len(seen["bob cancel keys"]), 1, seen)
+        self.assertEqual(len(seen["alice cancel keys"]), 1, seen)
+        self.assertNotEqual(seen["bob cancel keys"], seen["alice cancel keys"], seen)
+        # The key alice's cancel carries opens T2's lock (RFC 8315 2.1).
+        key = seen["alice cancel keys"][0].split("sha256:", 1)[1]
+        self.assertEqual(seen["T2 locks"][0], "Cancel-Lock: sha256:" + lock_of(key), seen)
+        self.assertTrue(seen["post alice cancel"].startswith("240"), seen)
+        self.assertTrue(seen["T2 after alice"].startswith("430"), seen)
+        self.assertNotIn(target, seen["over after alice"][1], seen)
+        self.assertTrue(seen["T2 after restart"].startswith("430"), seen)
+        self.assertTrue(seen["A T2 after bob"].startswith("220"), seen)
+        self.assertTrue(seen["A T2 after alice"].startswith("430"), seen)
 
     def test_a_login_cancels_its_own_post_here_and_on_peers(self):
         try:

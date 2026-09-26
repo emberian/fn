@@ -32,9 +32,6 @@
 (include-book "login-binding")
 (include-book "owner-config")
 (include-book "config-owner-publish")
-; SEC-006: the owner's Cancel-Lock and Cancel-Key lines, keyed by the
-; in-flight login (books/cancel-lock.lisp).
-(include-book "cancel-lock")
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
@@ -669,20 +666,3 @@
 
 (in-theory (disable fn-lb-ocfg-gate fn-lb-conn-bindings fn-lb-inflight-id
                     fn-lb-sync-plan fn-lb-value-bindings fn-lb-config-bindings))
-
-; ---------------------------------------------------------------------------
-; SEC-006 (PRF-210).  THE FUNCTION THE HOST CALLS (host/owner-host.lisp
-; fn-owner-cancel-lock-payload, from host/native/owner.lisp
-; fnn-owner-attempt-served, before the login gate and the Store attempt):
-; the served POST's octets with the lock (and, on a cancel or Supersedes,
-; the key) keyed by the in-flight submission's login, the same login the
-; posting-policy gate reads (`fn-lb-inflight-login').
-(defun fn-lb-ocfg-cancel-lock-payload (oc secret msgid payload)
-  (declare (xargs :guard t))
-  (fn-cl-served-payload secret (fn-lb-inflight-login (fn-ocfg-owner oc))
-                        msgid payload))
-
-(defthm fn-lb-ocfg-cancel-lock-payload-unfolds
-  (equal (fn-lb-ocfg-cancel-lock-payload oc secret msgid payload)
-         (fn-cl-served-payload secret (fn-lb-inflight-login (fn-ocfg-owner oc))
-                               msgid payload)))

@@ -2643,11 +2643,51 @@ in-process retry."
                       (t (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT action: ~a" action)))
                 "developer-only native recovery fault"))))))
 
+;;; SEC-006 (PRF-210): the node secret (books/node-secret.lisp), 32 octets
+;;; from the OS CSPRNG in STORE/keys/node-secret.key: the directory mode
+;;; 0700, the file 0600, staged, fsynced and linked once (link(2)'s EEXIST
+;;; keeps an existing secret: never overwritten).  `init' writes it after
+;;; the store is initialized; `store ROOT node-secret' writes it into a store
+;;; initialized before SEC-006 (the one upgrade step; the owner refuses to
+;;; start without it, by name).  The width is ACL2's.  Never printed.
+(defun fnn-node-secret-directory (store)
+  (fnn-join (fnn-store-root store) "keys"))
+
+(defun fnn-node-secret-path (store)
+  (fnn-join (fnn-node-secret-directory store) "node-secret.key"))
+
+(defun fnn-node-secret-create (store)
+  "Write STORE's node secret when absent; :published or :existing."
+  (let ((dir (fnn-node-secret-directory store)))
+    (let ((st (fnn-lstat dir)))
+      (cond ((null st)
+             (fnn-mkdir dir #o700)
+             (fnn-fsync-dir (fnn-store-root store)))
+            ((or (fnn-symlink-p st) (not (fnn-directory-p st)))
+             (fnn-fault "refusing non-directory key path: ~a" dir))))
+    (let ((answer (fnn-publish-initial-file
+                   store (fnn-node-secret-path store)
+                   (fnn-octets (fnn-csprng-octets
+                                (fnn-core 'fn-ns-secret-width) "node secret")))))
+      (fnn-fsync-dir dir)
+      answer)))
+
+(defun fnn-command-node-secret (root)
+  (let ((store (make-fnn-store root :writable t)))
+    (unwind-protect
+         (progn (fnn-acquire store)
+                (fnn-out "node-secret ~(~a~)"
+                         (if (eq (fnn-node-secret-create store) :published)
+                             :created :present)))
+      (fnn-store-close store))
+    +fnn-exit-ok+))
+
 (defun fnn-command-init (root groups &optional (profile :development))
   (let ((store (make-fnn-store root :writable t :fault (fnn-init-test-fault))))
     (unwind-protect
          (progn (fnn-initialize store (or groups +fnn-default-groups+) profile)
                 (fnn-acquire store)
+                (fnn-node-secret-create store)
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
     +fnn-exit-ok+))
@@ -3829,6 +3869,7 @@ serialized profile when the saved image later starts."
          (let ((root (second args)) (command (third args)) (rest (cdddr args)))
            (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
+                 ((string= command "node-secret") (fnn-command-node-secret root))
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))

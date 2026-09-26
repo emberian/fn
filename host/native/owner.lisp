@@ -511,6 +511,30 @@ checkpoint's S, or NIL."
       (fnn-fault "owner refused the durable checkpoint sequence"))
     s))
 
+;;; SEC-006 (PRF-210): read STORE/keys/node-secret.key (written by init,
+;;; or by `store ROOT node-secret' for a store initialized before) and hand
+;;; it to the owner, which carries it (books/owner.lisp fn-own-node-secret).
+;;; Refused by name, and the node does not start, when the file is missing,
+;;; not a regular file, readable or writable by group or others, or not the
+;;; width ACL2 names (fn-owner-install-node-secret answers :refused).
+(defun fnn-owner-load-node-secret (store)
+  (let* ((path (fnn-node-secret-path store))
+         (st (fnn-lstat path)))
+    (unless st
+      (fnn-refuse "node secret ~a is missing: run `store ~a node-secret' once"
+                  path (fnn-store-root store)))
+    (unless (fnn-regular-p st)
+      (fnn-refuse "node secret ~a is not a regular file" path))
+    (unless (zerop (logand (sb-posix:stat-mode st) #o077))
+      (fnn-refuse "node secret ~a is readable or writable by group or others (mode ~o)"
+                  path (logand (sb-posix:stat-mode st) #o777)))
+    (let ((octets (fnn-read-regular-bounded path 64)))
+      (unless (eq (fnn-owner-core 'fn-owner-install-node-secret
+                                  (fnn-octet-list octets))
+                  :installed)
+        (fnn-refuse "node secret ~a is not ~d octets" path
+                    (fnn-owner-core 'fn-owner-node-secret-width))))))
+
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
@@ -524,6 +548,9 @@ checkpoint's S, or NIL."
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
+            ;; SEC-006: the node secret, handed to the owner after the
+            ;; recovery that built it (fnn-owner-load-node-secret).
+            (fnn-owner-load-node-secret store)
             ;; Five fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier
