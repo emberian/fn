@@ -74,6 +74,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs
 from certify_books import BOOK_NAME
 import evidence_manifests
+import native_program_check
 
 HOSTS = {
     "persvati": {
@@ -426,6 +427,28 @@ def refuse_bad_book_names(root: Path, books: list[str], affected_by: list[str],
         raise FarmError("no farm run started: " + "; ".join(problems))
 
 
+def refuse_unbalanced_sources(root: Path) -> None:
+    """Refuse, before any rsync or ssh, a tree with an unbalanced form.
+
+    The review's local reader check (friction review section 2: three
+    "unbalanced close parenthesis" submits): native_program_check's balance
+    scan over every .lisp under books/, host/ and tests/acl2/ (about 1.6 s for
+    1,026 files), located as FILE:LINE.
+    """
+    problems = []
+    for directory in ("books", "host", "tests/acl2"):
+        base = root / directory
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.lisp")):
+            text = native_program_check.Text(
+                path.read_text(encoding="utf-8", errors="replace"),
+                [(0, str(path.relative_to(root)))])
+            problems += native_program_check.balance(text)
+    if problems:
+        raise FarmError("no farm run started: " + "; ".join(problems))
+
+
 def install_from_cache(host: str, remote: Path, books: list[str],
                        affected_by: list[str], closure: bool,
                        cache: str | None = None,
@@ -622,6 +645,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
                         "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
     refuse_bad_book_names(root, books, affected_by, list(recertify))
+    refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
