@@ -29,22 +29,19 @@
                    (equal (fn-outcome-code :bogus) (fn-outcome-code :fenced))))
 (must-fail
  (defthm oct-separates-without-c1
-   (implies (and (fn-outcome-classp c2) (not (equal c1 c2)))
-            (not (equal (fn-outcome-code c1) (fn-outcome-code c2))))
-   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+   (implies (and (fn-outcome-classp :fenced) (not (equal :bogus :fenced)))
+            (not (equal (fn-outcome-code :bogus) (fn-outcome-code :fenced))))))
 (must-fail
  (defthm oct-separates-without-c2
-   (implies (and (fn-outcome-classp c1) (not (equal c1 c2)))
-            (not (equal (fn-outcome-code c1) (fn-outcome-code c2))))
-   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+   (implies (and (fn-outcome-classp :fenced) (not (equal :fenced :bogus)))
+            (not (equal (fn-outcome-code :fenced) (fn-outcome-code :bogus))))))
 ;; Without (not (equal c1 c2)): one class, one code.
 (assert-event (and (fn-outcome-classp :usage)
                    (equal (fn-outcome-code :usage) (fn-outcome-code :usage))))
 (must-fail
  (defthm oct-separates-without-distinct
-   (implies (and (fn-outcome-classp c1) (fn-outcome-classp c2))
-            (not (equal (fn-outcome-code c1) (fn-outcome-code c2))))
-   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+   (implies (and (fn-outcome-classp :usage) (fn-outcome-classp :usage))
+            (not (equal (fn-outcome-code :usage) (fn-outcome-code :usage))))))
 
 ;; ---------------------------------------------------------------------------
 ;; fn-outcome-code-is-fenced-iff-fenced.  Witness: :fenced is 3, :refused not.
@@ -119,8 +116,7 @@
                                :refused))))
 (must-fail
  (defthm oct-completion-passes-without-word
-   (equal (fn-native-control-completion-status result word) result)
-   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+   (equal (fn-native-control-completion-status :refused :conflict) :refused)))
 
 ;; fn-nctrl-conflict-keeps-every-earlier-octet.  Witness: every earlier word.
 (assert-event

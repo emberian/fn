@@ -5684,6 +5684,59 @@
           "name": "fn-native-operator-inspect-report-is-the-lookup"
         }
       ]
+    },
+    {
+      "id": "PRF-143",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-outcome-code-separates-the-classes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-outcome-code-table-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-outcome-code-is-fenced-iff-fenced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-outcome-of-status-fences-iff-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-outcome-host-condition-fences-iff-indeterminate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-run-exit-code-is-fenced-iff-fenced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-decode-never-fences"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-exit-is-fenced-iff-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-absent-store-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-exit-is-fenced-iff-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-conflict-is-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-conflict-keeps-every-earlier-octet"
+        }
+      ]
     }
   ]
 }

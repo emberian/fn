@@ -532,6 +532,19 @@ class FnClientTests(unittest.TestCase):
         self.assertIn("441 posting failed; the article is not valid syntax", err)
         self.assertNotIn("uncertain", err)
 
+    def test_a_changed_article_under_a_held_message_id_is_conflict_exit_one(self):
+        # D25's conflict (PKT-246; specs/host.md "CLI exit codes"): a refusal,
+        # exit 1, printed CONFLICT, and the --json record names the scope of
+        # the outcome, the server's state, never a local Store.
+        node = self.serve(refuse_post=True, refusal=fn_client.DIFFERENT_STORED)
+        code, out, err = self.run_client(
+            node, ["--json", "post", "fn.agents", "--subject", "hi"], stdin="body\n")
+        self.assertEqual(code, 1, err)
+        self.assertIn("refused CONFLICT " + fn_client.DIFFERENT_STORED, err)
+        document = self.document(out)
+        self.assertEqual((document["outcome"], document["exit"], document["scope"],
+                          document["reason"]), ("refused", 1, "server", "conflict"))
+
     def test_a_read_of_a_group_the_node_does_not_carry_is_the_node_411(self):
         node = self.serve()
         code, out, err = self.run_client(node, ["read", "fn.absent"])

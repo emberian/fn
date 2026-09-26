@@ -203,7 +203,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1375,7 +1375,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1394,7 +1394,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -2638,7 +2638,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-130",
-        "PRF-141"
+        "PRF-141",
+        "PRF-143"
       ],
       "verification": [
         "proof",
@@ -2654,8 +2655,32 @@
         "planning/evidence/rollback-history-2026-09-26.md",
         "tests/test_native_rollback_history.py"
       ],
-      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 1 (HST-009, PRF-143; exit 6 until outcome-algebra) (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
+    },
+    {
+      "id": "HST-009",
+      "title": "Every native fn command exits with the code of its outcome class, one fn-wide table in which a code is a class and never a reason",
+      "specification": "specs/host.md#cli-exit-codes",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-143"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/outcome-class.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "docs/agents.md",
+        "tests/test_native_outcome_algebra.py",
+        "planning/evidence/outcome-algebra-2026-09-26.md"
+      ],
+      "implementation_note": "exit(f, x) = code(classify(f, x)): 0 accepted, 1 refused (NO-STORE, CONFLICT and every other reason printed as a word), 3 fenced (indeterminate local durable authority, nothing else), 4 fault, 5 usage, 6 interrupted, 7 not connected. The host's +fnn-exit-*+ constants are ACL2's fn-outcome-code. The table is the native executable's; tools/fn_client.py's --json record carries scope server. Outside it: health's verdict 0/19..27 (HST-007; PKT-329) and signal exits (128+N).",
+      "note": "An fn image from before :conflict answers a conflict uncertain (exit 3): clients are upgraded with the node (docs/agents.md)."
     },
     {
       "id": "STO-019",
