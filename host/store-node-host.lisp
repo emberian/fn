@@ -184,15 +184,16 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (equal records :bad) (equal config-records :bad) (null config-records)
             (equal names :bad) (not (fn-record-parse-okp parsed)))
         (fn-native-admin-publication-result :refused :decode nil nil nil)
-      (fn-native-admin-publication-authorize
+      ; D27: the operator's bounds, read from the profile the store runs
+      ; under (the host passes the decoded config.json, opaque): field 7
+      ; for a created group's name (PRF-171,
+      ; `fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound'),
+      ; then max-config-generations, one fewer for every record but the
+      ; retention rule (PRF-102, PRF-138,
+      ; `fn-cvec-config-publication-keeps-the-release-generation').
+      (fn-cvec-native-admin-authorize
        records frontier config-records (fn-record-parse-value parsed)
-       lock-owned names
-       ; D27, PRF-102: the operator's bound, read from the profile the store
-       ; runs under (the host passes the decoded config.json, opaque); PRF-138:
-       ; one fewer for every record but the retention rule, so the last
-       ; generation stays the release's
-       ; (`fn-cvec-config-publication-keeps-the-release-generation').
-       (fn-cvec-config-generations profile (fn-record-parse-value parsed))))))
+       lock-owned names profile))))
 
 ; The same authorization flattened for a caller that reads one form:
 ; (status reason generation name).  The generation and the filename are

@@ -46,6 +46,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-native-action result))
 
+(defun fn-native-operator-host-result-archive-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-archive-path-octets result))
+
+(defun fn-native-operator-host-result-import-request (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-import-request result))
+
 (defun fn-native-operator-host-result-store-root (result)
   (declare (xargs :mode :program))
   (fn-native-config-store (fn-native-operator-result-config result)))
@@ -179,14 +187,6 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-profile result))
 
-(defun fn-native-operator-host-result-rollback-path-octets (result)
-  (declare (xargs :mode :program))
-  (fn-native-operator-result-rollback-path-octets result))
-
-(defun fn-native-operator-host-result-upgrade-profile (result)
-  (declare (xargs :mode :program))
-  (fn-native-operator-result-upgrade-profile result))
-
 (defun fn-native-operator-host-result-init-group-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-group-octets result))
@@ -236,26 +236,6 @@
 (defun fn-native-operator-host-result-hint (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-hint result))
-
-(defun fn-native-operator-host-result-snapshot-path-octets (result)
-  (declare (xargs :mode :program))
-  (fn-native-operator-result-snapshot-path-octets result))
-
-(defun fn-native-operator-host-history-start ()
-  (declare (xargs :mode :program))
-  (fn-native-operator-history-start))
-
-(defun fn-native-operator-host-history-step (acc snap-event cur-present cur-event)
-  (declare (xargs :mode :program))
-  (fn-native-operator-history-step acc snap-event cur-present cur-event))
-
-(defun fn-native-operator-host-history-verdict (acc ncur)
-  (declare (xargs :mode :program))
-  (fn-native-operator-history-verdict acc ncur))
-
-(defun fn-native-operator-host-snapshot-loss-report (verdict nsnap ncur)
-  (declare (xargs :mode :program))
-  (fn-native-operator-snapshot-loss-report verdict nsnap ncur))
 
 (defun fn-native-operator-host-result-inspect-msgid-octets (result)
   (declare (xargs :mode :program))

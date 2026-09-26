@@ -388,6 +388,20 @@ and holds no wire state, so `fn-wire-drive` has one owner and it is the book.
 A submission is completed as refused while the reader holds only a shared
 lock, and ACL2 -- never the host -- writes the 240 or the 441.
 
+The reply octets are never built as a list on the served read (PRF-192,
+2026-09-26, lane egress-span; PKT-491). `fn-owner-chunk` installs the step's
+effects without rendering them; `fn-owner-reply-buffer` then calls
+`fn-served-reply-to-buffer` (books/served-reply-buffer.lisp), which writes
+each `(:reply octets)` effect into the octet buffer `fn-octets`, and the
+host copies the buffer's range [0, len) out once, under the service mutex,
+and writes that byte vector to the socket after the mutex is released. The
+keystone `fn-served-reply-to-buffer-is-the-reply` says the range is
+`fn-served-reply-octets` of the effects whenever every reply effect is
+octets (the answer `:ok`), and the host faults on `:malformed` as it did on
+a non-octet reply. The buffer is `fn-octets` because only the service
+mutex's holder touches it; the copy is needed because the send runs outside
+the mutex while the next locked step refills the buffer.
+
 ### The owner submission path
 
 Served POST, inbound transit and a running owner's control `POST` all enter
@@ -459,6 +473,18 @@ at every start (a missing library or function refuses the start by name):
 | TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
 | Ed25519, SHA-512 | libsodium | `crypto_sign_verify_detached`, `crypto_sign_detached`, `crypto_sign_keypair`, `crypto_hash_sha512`, width and init checks, in `host/native/crypto.lisp`, `signatures.lisp`, `peer-invite.lisp` | the system's (Linux, OpenBSD package, Homebrew) or the release's `lib/libsodium.so.23` |
 | ML-DSA-65 | `lib/libfn-mldsa65`: vendored PQClean ml-dsa-65 clean (`third_party/pqclean-ml-dsa-65`, upstream commit in `UPSTREAM.txt`) behind `host/native/fn-mldsa65.c`, built by `tools/build_mldsa65.sh` | `fn_mldsa65_public_from_pem_file`, `fn_mldsa65_sign_pem_file`, `fn_mldsa65_verify`, `fn_mldsa65_generate_pem`, `fn_mldsa65_widths`, in `host/native/signatures.lisp` and `peer-invite.lisp` | `lib/` beside the image's core (`FN_MLDSA_LIBRARY` overrides) |
+
+HST-015: No Python on the path a deployed node executes. A release runs
+`bin/fn` (`/bin/sh`), which execs the frozen launcher `libexec/fn/fn-host`
+(`/bin/sh`), which execs the bundled SBCL runtime on the saved core; the core
+loads the three libraries above and starts another program only at the one
+process site in `host/` (`fnn-workflow-ion-run-helper`: the absolute path of
+an operator-named pinned ION helper, `:search nil`, reachable only from
+`app-journal workflow-ion-submit`). The service files (systemd, launchd,
+OpenBSD rc.d) start `PREFIX/bin/fn`. `tools/runpath_check.py` checks this
+statically in `make check` and over every release before it is packed; it
+cannot judge an operator-supplied helper or what the loader resolves at run
+time. Python stays for clients and tests.
 
 SHA-256 is ACL2's (`books/sha256.lisp`); randomness is `/dev/urandom` in the
 host and `getentropy(2)` inside the ML-DSA-65 library; neither uses OpenSSL.
@@ -708,14 +734,53 @@ On a **recovered** store (after a process death) `recover` reports the
 replayed history (0) and `run` serves it. Usage errors print ACL2's accepted
 form before the tagged result line. An outbound peer that refuses `MODE
 STREAM` (RFC 4644 section 2.3) is stopped by name for the owner's run, never
-re-dialled with it. `store rollback-check --snapshot SNAPSHOT` states what
-restoring a pre-migration snapshot loses: under both stores' shared writer
-locks it reads each committed history as the open does (selected pack, then
-suffix files, marker checked), and ACL2 compares the records octet for octet;
-the snapshot is an earlier state only when its records are this store's first
-records, and the count is the records after them (PRF-141; PRF-130 counted
-file descriptors and is superseded for this verb). The operator guide's
+re-dialled with it. There is no store rollback (D34): a deploy is a reinstall with `store export`
+and `store import` (HST-014). The operator guide's
 [native component entry](../docs/operator.md#native-component-entry) and
-[upgrade section](../docs/operator.md#upgrade-and-what-a-rollback-loses)
+[deploy section](../docs/operator.md#deploy-a-new-release-d34-fresh-deploys-no-migrations)
 describe the verbs.
 
+## HST-014: the deploy is a reinstall
+
+HST-014: A deploy is a reinstall (D34): stop the node, `store export` when
+its data must survive, remove the store, install the release (one
+`libexec/fn/`, replaced whole), `init` or `store import`, start. There is no
+upgrade verb, no versioned release directory and no rollback of a store.
+
+
+## Process heap
+
+HST-013: The node's heap is its store profile's figure on this machine, and a
+profile the machine cannot hold is refused by name at start. SBCL fixes its
+dynamic space when the process starts, so the installed `bin/fn`
+(packaging/fn with `libexec/fn` beside it) first runs the same image as
+`heap -- ARGV` and then execs the command with `--dynamic-space-size MB`
+(through `SBCL_USER_ARGS`, which every image launcher splices after its own
+figure; SBCL takes the last). ACL2 decides the figure
+(books/heap-figure.lisp `fn-heap-decide`, host/native/heap.lisp
+`fnn-heap-decision`): the saved core's length, the host's 64 MiB collection
+nursery, sixteen bytes per octet (one cons per octet, the octet-list
+representation) for twice the history bound H plus one record bound R, doubled
+for the collector's copy, and the two checkpoint buffers at the profile's
+file bound (`fn-ock-capture-budget`, three times H plus one segment), in MiB
+rounded up. The profile is the one the command's store was saved with
+(`config.json`), or for `init` the profile it will write; a command that
+names no existing store is given the machine. The machine is the least of
+the host's observations: physical memory (`sysconf`), on Linux the cgroup's
+`memory.max` from the process's group up and `RLIMIT_AS`, and `RLIMIT_DATA`
+(which OpenBSD's login classes set). A figure above the machine is refused:
+exit 1 (outcome class `refused`), `refused machine-cannot-hold-profile
+heap=MB MB machine=M MB` on stderr, and the command does not run. An
+accepted figure holds every store the profile admits
+(`fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
+`health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with no
+preset word and no field flag, on a machine under 4 GiB, writes the small
+preset (T 16,384, H 8 MiB, R 196,608, A 32,768, G 16, K 128: 1,002 MB on a
+389 MB core; `fn-heap-small-profile-fits-a-small-machine` for any core up to
+512 MiB on 1,536 MiB). The probe itself runs in the core's size plus 128 MB,
+a bound on its work (it reads `fn.toml` and `config.json`, 16 KiB each). A
+checkout's `packaging/fn` passes `FN_TEST_HEAP_MB` when set and otherwise
+the image launcher's own figure; the installed launcher ignores both
+`FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
+(H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
+PRF-198; the native case is SCN-127.

@@ -236,7 +236,10 @@ class Acl2Owner(Acl2Store):
         outcome = self._symbol("(fn-owner-chunk {} '{} state)".format(cid, literal))
         if outcome != "ok":
             raise StoreError("owner does not know connection {}".format(cid))
-        reply = bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+        # PRF-192: fn-owner-chunk installs no reply list (the native host
+        # writes it from the octet buffer); the reply is ACL2's projection
+        # of the step's effects.
+        reply = bytes(acl2_octet_list(self.call("(fn-served-reply-octets (@ fn-owner-effects))")))
         closing = acl2_boolean(self.call("(@ fn-owner-closep)"))
         submitted = acl2_boolean(self.call("(@ fn-owner-submittedp)"))
         return reply, closing, submitted

@@ -214,6 +214,8 @@ def split_commands(line: str) -> list[str]:
     the small shipped scripts; quoted separators are not special)."""
     out = []
     line = re.sub(r"'[^']*'", "''", line)
+    # An arithmetic expansion runs no command: `$(( (n + 1) / 2 ))'.
+    line = re.sub(r"\$\(\((?:[^()]|\([^()]*\))*\)\)", "ARITH", line)
     # A double-quoted word is data unless it is one expansion ("$image") or
     # holds a command substitution, whose words are commands.
     line = re.sub(r'"([^"]*)"', lambda m: m.group(0) if "$(" in m.group(1) else (

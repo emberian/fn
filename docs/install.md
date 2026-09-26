@@ -181,7 +181,7 @@ installed:
 
 ```sh
 systemctl stop fn                                                    # OpenBSD: rcctl stop fn
-fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export   # docs-check: skip (the export verb lands with lane migration-removal)
+fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
 mv /var/lib/fn /var/lib/fn.old
 rm -rf /opt/fn
 sh fn/install.sh
@@ -192,7 +192,7 @@ configuration again (`mission`, the TLS pair; or copy `fn.toml` and `tls/`
 from the old directory) and import instead of `init`:
 
 ```sh
-fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export   # docs-check: skip (the import verb lands with lane migration-removal)
+fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
 ```
 
 and start the service. The imported store answers with the same articles,

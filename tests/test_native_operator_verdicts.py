@@ -103,42 +103,5 @@ class NativeOperatorVerdictTests(base.NativeControlFilingTests):
         return self.command([IMAGE, "--fn", "operator", node["config"], *words],
                             expected=expected)
 
-    def test_needs_upgrade_and_rollback_check(self):
-        """PKT-099: `store needs-upgrade' is the no-argument upgrade's own
-        verdict (fn-profile-needs-upgrade-verdict); `store rollback-check'
-        is fn-profile-rollback-verdict over the kept config.json and the
-        committed transaction lengths.  With FN_OLD_NATIVE_HOST (a format-7
-        image), the store starts at format 7."""
-        import os
-        import shutil
-        old_image = os.environ.get("FN_OLD_NATIVE_HOST")
-        node = self.initialize("upgrade", ["fn.test"])
-        if old_image:
-            shutil.rmtree(node["root"] / "store")
-            self.command([old_image, "--fn", "store", node["root"] / "store", "init",
-                          "fn.test"])
-        before = self.operator(node, "store", "needs-upgrade")
-        kept = node["root"] / "config.json.kept"
-        shutil.copy2(node["root"] / "store" / "config.json", kept)
-        self.start(node)
-        self.assertTrue(self.post(node, article("<ov-upgrade@example.invalid>", "u"))
-                        .startswith(b"240"))
-        self.stop(node)
-        upgraded = self.operator(node, "store", "upgrade-profile",
-                                 expected=0 if old_image else 1)
-        after = self.operator(node, "store", "needs-upgrade")
-        sound = self.operator(node, "store", "rollback-check", kept)
-        garbage = node["root"] / "garbage.json"
-        garbage.write_bytes(b"not a profile")
-        refused = self.operator(node, "store", "rollback-check", garbage, expected=1)
-        print("NATIVE-UPGRADE " + repr([x.stdout.decode().strip() for x in
-                                        (before, upgraded, after, sound, refused)]))
-        self.assertEqual(before.stdout.strip(),
-                         b"needs-upgrade" if old_image else b"current")
-        self.assertEqual(after.stdout.strip(), b"current")
-        self.assertTrue(sound.stdout.startswith(b"rollback sound transactions="), sound)
-        self.assertIn(b"rollback refused invalid-rollback-profile", refused.stdout)
-
-
 if __name__ == "__main__":
     unittest.main()

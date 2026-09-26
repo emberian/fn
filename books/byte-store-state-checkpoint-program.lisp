@@ -1,7 +1,7 @@
 ; fn: the publish program of the Store checkpoint (P3), one file in the
 ; store root, `store-checkpoint.fnsc', whose octets are the segment frames of
 ; books/store-checkpoint-codec.lisp.  Stage, write, fsync, rename, root fsync:
-; the shape of fn-bs-profile-program, with five cuts.  The crash keystone
+; the shape of the marker program (P-MARKER), with five cuts.  The crash keystone
 ; `fn-bs-scp-program-crash-is-old-or-new': at every cut, a crash leaves the
 ; checkpoint name bound to the old file with its old octets (or absent, when
 ; there was none) or to the new inode with exactly the new octets.  Open

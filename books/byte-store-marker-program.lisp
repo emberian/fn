@@ -7,8 +7,8 @@
 ; is staged in :staging under a `.stage-' name (the recovery sweep owns a
 ; stage a death leaves there, books/store-sweep.lisp), fenced, renamed onto
 ; committed-history.json in the root, and the root directory fenced.  It is
-; P-PROFILE's shape (books/byte-store-profile-program.lisp) onto another
-; root name, and like it has no kernel observation: the file kernel has no
+; the root-rename shape (stage, fence, rename onto one root name, fence the
+; root), with no kernel observation: the file kernel has no
 ; marker, so the program changes no fn-sf state.  A :cut follows every
 ; durable syscall; the cut names are fn-hm-marker-cut-names, each an
 ; `fnn-at' site of the developer image (tests/campaign/native_cuts.py

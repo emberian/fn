@@ -42,6 +42,13 @@ IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
          next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
                if p.is_file()), None))
 FRIEND_FN = os.environ.get("FN_FRIEND_FN")
+# An installed bin/fn runs under the heap figure of its store's profile
+# (PKT-016, books/heap-figure.lisp): the D27 default profile (H = 1 TiB) is
+# refused by name on every machine, so the friend's node takes the small
+# preset's fields (the preset has no --profile word yet, PKT-581).
+SMALL_PROFILE = ("--max-transactions", "16384", "--max-history-octets", "8388608",
+                 "--max-record-octets", "196608", "--max-article-octets", "32768",
+                 "--max-groups-per-article", "16", "--max-open-suffix", "128")
 OLD_IMAGE = os.environ.get("FN_OLD_IMAGE")
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 DEVELOPER = bool(IMAGE is not None and "developer" in IMAGE.name)
@@ -90,7 +97,8 @@ class NativeFriendsAccountsTests(unittest.TestCase):
                 self.store, self.port, self.tls_port, cert, key,
                 self.root / "control.sock"), encoding="ascii")
         self.process = None
-        self.ok(self.node, "init", "local.general")
+        small = SMALL_PROFILE if FRIEND_FN else ()
+        self.ok(self.node, "init", *small, "local.general")
 
     def operator(self, command, *words):
         result = subprocess.run([*command, "operator", str(self.config), *words],
@@ -242,7 +250,7 @@ class NativeFriendsAccountsTests(unittest.TestCase):
             fresh_config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
                                     'port = {}\n'.format(fresh, free_port()), encoding="ascii")
             made = subprocess.run([*self.node, "operator", str(fresh_config), "init",
-                                   "local.general"], cwd=ROOT, env=environment(self.node),
+                                   *(SMALL_PROFILE if FRIEND_FN else ()), "local.general"], cwd=ROOT, env=environment(self.node),
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   timeout=240, check=False)
             self.assertEqual(made.returncode, 0, text(made))

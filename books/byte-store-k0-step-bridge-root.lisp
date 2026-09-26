@@ -1,32 +1,27 @@
-;; fn: K0 at the cuts of the two root-rename programs (lane k0-rest, PKT-080).
+;; fn: K0 at the cuts of the root-rename program (lane k0-rest, PKT-080).
 ;;
-;; The state checkpoint (fn-bs-scp-program, store-checkpoint.fnsc) and the
-;; profile upgrade (fn-bs-profile-program, config.json) are create,
+;; The state checkpoint (fn-bs-scp-program, store-checkpoint.fnsc) is create,
 ;; write-all and fsync-file on a fresh staging name, a rename onto one :root
 ;; name, and the root barrier, with no kernel observation.  Keystone:
 ;; fn-bs-step-preserves-k0-coverage (byte-store-k0-step), whose coverage is
 ;; generic over the root name (fn-bs-k0s-root-rename-pendingp).  From a related
 ;; entry pair outside the recovery window with :root and :transactions quiet,
-;; a name for the stage that is absent, and typed octets (and, for
-;; config.json, octets that pass fn-bs-config-okp), fn-bs-k0r-pairs-by-step
+;; a name for the stage that is absent, and typed octets, fn-bs-k0r-pairs-by-step
 ;; derives by the keystone alone: the three stage cuts related, the replaced
 ;; cut covered (a pending root rename both of whose resolutions are related),
 ;; the durable cut related.  The kernel does not move.  Then:
 ;;   fn-bs-k0-state-checkpoint-cuts-relation-by-step
-;;   fn-bs-k0-profile-cuts-relation-by-step
-;; state it at each program's five cuts, and
+;; states it at the program's five cuts, and
 ;;   fn-bs-step-at-state-checkpoint-pairs-preserves-k0-coverage
-;;   fn-bs-step-at-profile-pairs-preserves-k0-coverage
-;; state that every step of the program, from the pair the successful run
+;; states that every step of the program, from the pair the successful run
 ;; reaches before it, with ANY outcome the environment chooses (the fsync of
 ;; the stage with :ok or a well-formed crash selection of its writes), leaves
 ;; a covered pair and the kernel unchanged: the host's error arms
-;; (fnn-upgrade-profile-write and the checkpoint publish report every error at
-;; or after the rename as uncertain) are covered by the same theorem.
+;; (the checkpoint publish reports every error at or after the rename as
+;; uncertain) are covered by the same theorem.
 (in-package "ACL2")
 (include-book "byte-store-k0-step-bridge-prefix")
 (include-book "byte-store-state-checkpoint-program")
-(include-book "byte-store-profile-program")
 
 (defun fn-bs-k0r-s4 (bs stage octets name)
   (declare (xargs :guard t :verify-guards nil))
@@ -116,16 +111,6 @@
                  (:instance fn-bs-k0r-root-steps (k ks) (name *fn-bs-state-checkpoint-name*)))
            :expand ((:free (b k s) (fn-bs-run b k s nil g c)))
            :in-theory (e/d (fn-bs-scp-program fn-bs-k0c-cut-step-is-identity)
-                           (fn-bs-step fn-bs-run fn-bs-lookup fn-bs-statep fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3
-                            fn-bs-k0r-s4 fn-bs-k0r-s5)))))
-(defthm fn-bs-k0r-profile-run-shape
-  (let ((name *fn-bs-config-name*)) (fn-bs-k0r-run-shape-body fn-bs-profile-program))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bs-k0p-stage-steps (k ks))
-                 (:instance fn-bs-k0r-root-steps (k ks) (name *fn-bs-config-name*)))
-           :expand ((:free (b k s) (fn-bs-run b k s nil g c)))
-           :in-theory (e/d (fn-bs-profile-program fn-bs-k0c-cut-step-is-identity)
                            (fn-bs-step fn-bs-run fn-bs-lookup fn-bs-statep fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3
                             fn-bs-k0r-s4 fn-bs-k0r-s5)))))
 (defthm fn-bs-k0r-no-root-rename-off-root
@@ -225,19 +210,7 @@
            :in-theory (e/d () (fn-bs-store-relation fn-bs-k0s-root-rename-pendingp fn-bs-run fn-bs-scp-program
                                fn-bs-lookup fn-bs-statep fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3
                                fn-bs-k0r-s4 fn-bs-k0r-s5 fn-bs-replay-visiblep)))))
-(defthm fn-bs-k0-profile-cuts-relation-by-step
-  (implies (and (fn-bs-k0p-stage-hyps) (fn-bs-config-okp octets))
-           (fn-bs-k0r-cuts-body fn-bs-profile-program))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bs-k0r-pairs-by-step (name *fn-bs-config-name*))
-                 (:instance fn-bs-k0r-profile-run-shape (g groups) (c capacity))
-                 (:instance fn-bs-store-relation-unfolds))
-           :in-theory (e/d () (fn-bs-store-relation fn-bs-k0s-root-rename-pendingp fn-bs-run fn-bs-profile-program
-                               fn-bs-lookup fn-bs-statep fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3
-                               fn-bs-k0r-s4 fn-bs-k0r-s5 fn-bs-replay-visiblep)))))
-
-; Every step of either program, from the pair the successful run reaches
+; Every step of the program, from the pair the successful run reaches
 ; before it, with any outcome (the stage fsync with :ok or a well-formed crash
 ; selection of its writes): the result is covered and the kernel unchanged.
 (defun fn-bs-k0r-step-coveredp (pre step outcome ks groups capacity)
@@ -283,19 +256,6 @@
                  (:instance fn-bs-k0r-state-checkpoint-run-shape (g groups) (c capacity))
                  (:instance fn-bs-store-relation-unfolds))
            :in-theory (e/d (fn-bs-scp-program)
-                           (fn-bs-k0r-step-coveredp fn-bs-store-relation fn-bs-run fn-bs-lookup fn-bs-statep
-                            fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-k0r-s4 fn-bs-k0r-s5
-                            fn-bs-k0r-fsync-outcomep fn-bs-replay-visiblep)))))
-(defthm fn-bs-step-at-profile-pairs-preserves-k0-coverage
-  (implies (and (fn-bs-k0p-stage-hyps) (fn-bs-config-okp octets)
-                (fn-bs-k0r-fsync-outcomep bs stage octets outcome))
-           (fn-bs-k0r-any-outcome-body fn-bs-profile-program))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bs-k0r-pair-steps-covered (name *fn-bs-config-name*))
-                 (:instance fn-bs-k0r-profile-run-shape (g groups) (c capacity))
-                 (:instance fn-bs-store-relation-unfolds))
-           :in-theory (e/d (fn-bs-profile-program)
                            (fn-bs-k0r-step-coveredp fn-bs-store-relation fn-bs-run fn-bs-lookup fn-bs-statep
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-k0r-s4 fn-bs-k0r-s5
                             fn-bs-k0r-fsync-outcomep fn-bs-replay-visiblep)))))

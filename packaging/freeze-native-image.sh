@@ -6,13 +6,16 @@
 # The directory carries the cores, the SBCL runtime, libsodium and the
 # ML-DSA-65 library (BUILD_DIR/lib/libfn-mldsa65.so, tools/build_mldsa65.sh)
 # in lib/.  It carries no TLS library: the system provides libssl (OpenSSL
-# 3.0+ or LibreSSL 3+), HST-016.  On OpenBSD, FN_FREEZE_SODIUM names the
-# libsodium to bundle (pkg_add libsodium: /usr/local/lib/libsodium.so.11.1)
-# and every other shared object the SBCL runtime needs outside the base
-# system (libzstd) is bundled beside it.  FN_FREEZE_DYNAMIC_SPACE_MB replaces
-# the heap the build inherited (--dynamic-space-size) in the frozen
-# launchers; SBCL_USER_ARGS at run time still overrides it (SBCL takes the
-# last such option).
+# 3.0+ or LibreSSL 3+), HST-016.
+#
+# On OpenBSD, FN_FREEZE_SODIUM names the libsodium to bundle (pkg_add
+# libsodium: /usr/local/lib/libsodium.so.11.1 on 7.9, kept under its own
+# name for ld.so), and every other shared object the SBCL runtime needs
+# outside the base system (libzstd) is bundled beside it; image.sha256 is in
+# sha256(1)'s BSD format there.  FN_FREEZE_DYNAMIC_SPACE_MB replaces the heap
+# the build inherited (--dynamic-space-size, 32000 MB from ACL2's save) in the
+# frozen launchers; SBCL_USER_ARGS at run time still overrides it (SBCL takes
+# the last such option).
 set -eu
 [ "$#" -eq 2 ] || { echo 'usage: freeze-native-image.sh BUILD_DIR OUTPUT_DIR' >&2; exit 2; }
 build=$1 out=$2
@@ -21,7 +24,7 @@ case $out in /*) ;; *) echo 'freeze-native-image: output must be absolute' >&2; 
 system=$(uname -s)
 case $system in Linux|OpenBSD) ;; *) echo "freeze-native-image: unsupported system $system" >&2; exit 4;; esac
 heap=${FN_FREEZE_DYNAMIC_SPACE_MB:-}
-case $heap in ''|*[!0-9]*) [ -z "$heap" ] || { echo 'freeze-native-image: FN_FREEZE_DYNAMIC_SPACE_MB must be a number of MB' >&2; exit 2; };; esac
+case $heap in *[!0-9]*) echo 'freeze-native-image: FN_FREEZE_DYNAMIC_SPACE_MB must be a number of MB' >&2; exit 2;; esac
 first=$build/fn-host
 [ -x "$first" ] && [ -s "$first.core" ] || { echo 'freeze-native-image: missing production build' >&2; exit 4; }
 runtime=$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' "$first")
@@ -45,7 +48,7 @@ else
   sodium_name=$(basename "$sodium")
   case $sodium_name in libsodium.so.[0-9]*.[0-9]*) ;; *)
     echo "freeze-native-image: OpenBSD libsodium must be libsodium.so.MAJOR.MINOR: $sodium" >&2; exit 4;; esac
-  hash_tool=sha256   # BSD-format lines; verified with sha256 -c
+  hash_tool=sha256   # BSD-format lines; checked with sha256 -c
 fi
 mkdir -p "$out/runtime/sbcl-home" "$out/lib"
 cp -p "$runtime" "$out/runtime/sbcl"

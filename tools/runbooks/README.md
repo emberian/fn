@@ -62,8 +62,12 @@ source tree and original `build/*.core` are not runtime inputs. The initial
 `hbox-node-deploy.sh` deploys only a release tarball (above).
 It still refuses an existing store.
 
-A node is never upgraded in place (D34): no versioned release directories,
-no `current` symlink. A redeploy is stop, `store export`, remove the
-installation, install the new release, `store import`, start
-(docs/install.md section 4).
+A deploy is a reinstall (D34): stop the node, `fn operator NODE/fn.toml store
+export DIR` if its data must survive, remove the installation, install the new
+release (its `install.sh`, which replaces one `libexec/fn/` whole), then `init`
+or `fn operator NODE/fn.toml store import DIR`, and start (docs/install.md
+section 4). There is no release switching, no versioned release directory, no
+`current` symlink and no rollback of a store: a store of another format is
+refused at open by name (`open refused reason=store-format: reinstall from the
+release and import`).
 

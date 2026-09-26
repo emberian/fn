@@ -112,7 +112,7 @@
                   (verdicts (fn-served-conn-verdicts
                              (fn-octl-served-conn
                               o (fn-own-find-conn id (fn-own-conns o)))))
-                  (env (fn-nntp-env
+                  (env (fn-nntp-env-listed
                         (fn-served-conn-observation
                          (fn-octl-served-conn
                           o (fn-own-find-conn id (fn-own-conns o))))
@@ -121,7 +121,11 @@
                               (fn-served-conn-config
                                (fn-octl-served-conn
                                 o (fn-own-find-conn id (fn-own-conns o)))))
-                             t)))
+                             t)
+                        (fn-inj-config-listing
+                         (fn-served-conn-config
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o)))))))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))
                  (:instance fn-auth-fold-enrollment-hdr-response-has-no-offer

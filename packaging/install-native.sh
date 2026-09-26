@@ -41,10 +41,16 @@ if grep -q '^# fn frozen image launcher v2$' "$image"; then
   [ -s "$image_dir/image.sha256" ] &&
     (cd "$image_dir" && $check_sums image.sha256 >/dev/null) || {
       echo "install-native: frozen image digest check failed" >&2; exit 4; }
-  set -- "$image_dir"/lib/libsodium.so.*
-  [ -s "$1" ] &&
-  [ -s "$image_dir/lib/libfn-mldsa65.so" ] || {
-    echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  if [ "$(uname -s)" = OpenBSD ]; then
+    # libsodium keeps its OpenBSD name (libsodium.so.MAJOR.MINOR).
+    set -- "$image_dir"/lib/libsodium.so.*
+    [ -s "$1" ] && [ -s "$image_dir/lib/libfn-mldsa65.so" ] || {
+      echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  else
+    [ -s "$image_dir/lib/libsodium.so.23" ] &&
+    [ -s "$image_dir/lib/libfn-mldsa65.so" ] || {
+      echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  fi
   frozen=yes
 else
   core_refs=$(grep -o -- '--core "[^"]*"' "$image" | wc -l | tr -d ' ')

@@ -7,8 +7,10 @@
 ; the existing frame grammar and its ACL2-owned trailer; the host only moves
 ; the resulting octets to and from regular files.
 ;
-; Older JSON metadata remains in place and is refused at normal open pending
-; an explicit offline migration.  This book never interprets or rewrites it.
+; A store has one format (D34, fresh deploys): older metadata (JSON, or a
+; profile frame of any format but fn-store-8) is refused at open by name
+; (books/store-profile-open.lisp, :store-format); an operator reinstalls from
+; the release and imports.  This book never interprets or rewrites it.
 
 (in-package "ACL2")
 (include-book "byte-store-scan")
@@ -66,42 +68,20 @@
 ;
 ; A store's profile is the operator's: every bound on the data a store holds
 ; (transactions, history octets, one record, one article, groups per article,
-; ...) is a field, set at `init' and raised offline by `store upgrade-profile'.
+; ...) is a field, set at `init' (or `store import') and never rewritten in
+; place (D34: a different profile is a reinstall and an import).
 ; What ACL2 fixes is not the values but the relations between them
 ; (`fn-bs-profile-validp') and the codec ceilings no field may pass, so that a
 ; profile the operator can write is one every codec can carry.
 ;
-; Format 8 (`fn-store-8') is the layout written from now on.  Format 7
-; (`fn-store-experiment-7', two fixed tuples) is still decoded, so an existing
-; store opens and is served under its translation (`fn-bs-profile-of'); the
-; upgrade verb rewrites it as format 8.  Format 6 is no longer decoded: its
-; per-record ceiling (65538) is below the ceiling of the largest Store event
-; kind, so no format-8 profile translates it.
-
-(defconst *fn-bs-meta-format-development*
-  '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
-    101 110 116 45 55)) ; fn-store-experiment-7
+; Format 8 (`fn-store-8') is the one layout (D34): it is the only one written
+; and the only one decoded.  A frame of any other format word is refused at
+; the open by name, never translated.
 (defconst *fn-bs-meta-format-8*
   '(102 110 45 115 116 111 114 101 45 56)) ; fn-store-8
 (defconst *fn-bs-meta-frontier-format*
   '(102 110 45 115 116 111 114 101 45 97 108 108 111 99 97 116 105
     111 110 45 102 114 111 110 116 105 101 114 45 50))
-
-; Format 7: format, capacity (never read; dropped in format 8), payload,
-; aggregate replay octets, transactions, frontier format.
-(defconst *fn-bs-meta-format-7-spec*
-  '(:text :nat :nat :nat :nat :text))
-(defconst *fn-bs-meta-format-7-development-values*
-  (list *fn-bs-meta-format-development* 1048576 32768 25165824 128
-        *fn-bs-meta-frontier-format*))
-(defconst *fn-bs-meta-format-7-scale-values*
-  (list *fn-bs-meta-format-development* 1048576 32768 805306368 4096
-        *fn-bs-meta-frontier-format*))
-
-(defun fn-bs-meta-format-7-valuesp (values)
-  (declare (xargs :guard t))
-  (or (equal values *fn-bs-meta-format-7-development-values*)
-      (equal values *fn-bs-meta-format-7-scale-values*)))
 
 (defun fn-bs-meta-nth (n values)
   (declare (xargs :guard (natp n) :measure (nfix n)))
@@ -129,7 +109,7 @@
 (defconst *fn-bs-pf-history-marker* 14)         ; 0 unmarked, 1 required
 
 ; The fields in order, with the operator's name for each (the `init' and
-; `store upgrade-profile' flag is `--' followed by the name).
+; `store import' flag is `--' followed by the name).
 (defconst *fn-bs-profile-field-names*
   '((2 . "max-transactions") (3 . "max-history-octets")
     (4 . "max-record-octets") (5 . "max-article-octets")
@@ -230,30 +210,25 @@
   (declare (xargs :guard t))
   (not (fn-bs-profile-invalid-reason values)))
 
-; The format-7 translation: T = transactions, H = aggregate replay octets,
-; A = payload, K = T, the namespace counts P1's defaults, G and the group name
-; the codec ceilings (a translated store gets the large bounds a fresh init
-; would; the coordinator's decision of 2026-09-25), and R the larger of H / T
-; (the ceiling format 7 derived) and the article record of (A, G), so the
-; translation meets the article relation: at A 32 768 and G 65 535 that record
-; is 17 138 486 octets, within either tuple's H (24 MiB, 768 MiB), and H / T
-; is 196 608.  R only grows, so every kind's budget is unchanged
-; (`fn-profile-upgrade-format-7-to-8').  Both format-7
-; tuples translate to the format-8 presets of the same name
-; (`fn-bs-profile-format-7-translates-to-the-presets', in the test book).
+; The two named presets, `development' and `scale': T transactions, H
+; aggregate history octets, A article octets, K = T, the namespace counts
+; P1's defaults, G and the group name the codec ceilings, and R the larger of
+; H / T and the article record of (A, G), so a preset meets the article
+; relation: at A 32 768 and G 65 535 that record is 17 138 486 octets, within
+; either preset's H (24 MiB, 768 MiB), and H / T is 196 608.  (These are the
+; values the presets have had since format 8; D34 keeps the values and drops
+; the older format they were once derived from.)
 (defconst *fn-bs-profile-default-namespace-count* 1048576)
 
-(defun fn-bs-profile-from-format-7 (values)
+(defun fn-bs-profile-preset (tx h a)
   (declare (xargs :guard t))
-  (let ((h (nfix (fn-bs-meta-nth 3 values)))
-        (tx (nfix (fn-bs-meta-nth 4 values))))
+  (let ((h (nfix h)) (tx (nfix tx)) (a (nfix a)))
     (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
           tx h
           (max (if (zp tx) 0 (floor h tx))
                (fn-record-encoded-octets-ceiling
-                (nfix (fn-bs-meta-nth 2 values))
-                *fn-bs-profile-groups-ceiling-codec*))
-          (nfix (fn-bs-meta-nth 2 values))
+                a *fn-bs-profile-groups-ceiling-codec*))
+          a
           *fn-bs-profile-groups-ceiling-codec*
           *fn-bs-profile-group-name-ceiling-codec*
           tx
@@ -264,22 +239,17 @@
           *fn-bs-profile-default-namespace-count*
           0)))
 
-; The profile a store is run under: a valid format-8 profile as it is, a
-; format-7 tuple as its translation, anything else NIL.
+; The profile a store is run under: a valid format-8 profile as it is,
+; anything else NIL (one format, D34: nothing is translated).
 (defun fn-bs-profile-of (values)
   (declare (xargs :guard t))
-  (cond ((fn-bs-profile-validp values) values)
-        ((and (fn-bs-meta-format-7-valuesp values)
-              (fn-bs-profile-validp (fn-bs-profile-from-format-7 values)))
-         (fn-bs-profile-from-format-7 values))
-        (t nil)))
+  (if (fn-bs-profile-validp values) values nil))
 
 (defthm fn-bs-profile-of-is-valid-or-nil
   (or (null (fn-bs-profile-of values))
       (fn-bs-profile-validp (fn-bs-profile-of values)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-bs-profile-validp
-                                      fn-bs-profile-from-format-7))))
+  :hints (("Goal" :in-theory (disable fn-bs-profile-validp))))
 
 (defun fn-bs-profile-admittedp (values)
   "VALUES is a profile a store may be opened and served under."
@@ -287,8 +257,7 @@
   (fn-bs-profile-validp (fn-bs-profile-of values)))
 
 ; The named accessors every consumer reads.  Each reads the profile the
-; store runs under, so a format-7 store and its format-8 translation give
-; the same answer, and a value that is neither gives 0.
+; store runs under, and a value that is not a valid profile gives 0.
 (defun fn-bs-profile-field (i values)
   (declare (xargs :guard (natp i)))
   (fn-bs-pf i (fn-bs-profile-of values)))
@@ -317,8 +286,7 @@
   (declare (xargs :guard t))
   (fn-bs-profile-field 8 values))
 ; D31: the committed-history requirement of the profile a store runs under.
-; T when absence of the marker is damage (`required'), NIL for `unmarked'
-; (every format-7 store, and a format-8 store not yet migrated).
+; T when absence of the marker is damage (`required'), NIL for `unmarked'.
 (defun fn-bs-profile-marker-requiredp (values)
   (declare (xargs :guard t))
   (equal (fn-bs-profile-field 14 values) 1))
@@ -866,10 +834,10 @@
                            (fn-bs-frontier-payload-seal-facts
                             fn-cbor-encode-uint-wide fn-frame-seal)))))
 
-; KEYSTONE (PRF-126: the upgrade relation from frontier format 2).  Every
-; frontier file the format-2 reader accepts, the format-3 reader the host now
-; calls reads to the same transaction ID.  So a store's saved frontier opens
-; under the new image unchanged, and no rewrite of it is needed.
+; KEYSTONE (PRF-126: the u64 frontier reader and the narrow frame).  Every
+; frontier frame within the format-2 payload bound, the reader the host calls
+; reads to the value the narrow reader gives: one decoder, and a frontier
+; below 2^32 is the same frame at either width.
 (defthm fn-bs-frontier-decode-extends-format-2
   (implies (fn-bs-frontier-v2-decode octets)
            (equal (fn-bs-frontier-decode-impl octets)
@@ -969,9 +937,8 @@
                             fn-bs-profile-validp)))))
 
 ; The decoder at every open.  A format-8 frame decodes to its values when
-; they are a valid profile; a format-7 frame to one of its two tuples (the
-; store then runs under the translation, `fn-bs-profile-of').  Anything else
-; is NIL, and the open refuses the store.
+; they are a valid profile.  Anything else is NIL, and the open refuses the
+; store (by name for another format: books/store-profile-open.lisp).
 (defun fn-bs-config-decode (octets)
   (declare (xargs :guard t))
   (if (not (fn-cbor-octet-listp octets))
@@ -987,13 +954,7 @@
           (if (and (fn-frame-parse-okp parsed)
                    (fn-bs-profile-validp (fn-frame-parse-value parsed)))
               (fn-frame-parse-value parsed)
-            (let ((old (fn-frame-fields-parse
-                        *fn-bs-meta-format-7-spec*
-                        (fn-frame-result-payload frame))))
-              (if (and (fn-frame-parse-okp old)
-                       (fn-bs-meta-format-7-valuesp (fn-frame-parse-value old)))
-                  (fn-frame-parse-value old)
-                nil))))))))
+            nil))))))
 
 (defun fn-bs-config-okp-impl (octets)
   (declare (xargs :guard t))
@@ -1011,8 +972,7 @@
 ; Presets, defaults and the operator's request
 
 ; `development' and `scale' stay names for two fixed profiles, so existing
-; stores and tests keep their witnesses; they are the format-7 tuples'
-; translations.  The defaults are what `init' writes with no flag: the D27
+; tests keep their witnesses (`fn-bs-profile-preset', above).  The defaults are what `init' writes with no flag: the D27
 ; figures (2^32-1 transactions, 1 TiB of history, 64 MiB records, 16 MiB
 ; articles, 4096 groups, 460-octet names, 65536 open suffix, 2^20 per
 ; namespace), each capped at the codec ceiling it must not pass.  With P2's
@@ -1021,9 +981,9 @@
 ; configuration label's width, `fn-cfg-labelp-of-record-group-name'); the
 ; article record for (A, G) is 17 847 355 octets, within R.
 (defconst *fn-bs-profile-development*
-  (fn-bs-profile-from-format-7 *fn-bs-meta-format-7-development-values*))
+  (fn-bs-profile-preset 128 25165824 32768))
 (defconst *fn-bs-profile-scale*
-  (fn-bs-profile-from-format-7 *fn-bs-meta-format-7-scale-values*))
+  (fn-bs-profile-preset 4096 805306368 32768))
 (defconst *fn-bs-profile-defaults*
   (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
         *fn-bs-profile-transaction-ceiling*
@@ -1048,8 +1008,8 @@
         (t nil)))
 
 ; An operator request: a base (`:default', `:development', `:scale', or
-; `:current' for the store's own profile) and an alist of field overrides
-; (field index . natural), as `init' and `store upgrade-profile' parse them.
+; `:current' for the profile an import archive carries) and an alist of field
+; overrides (field index . natural), as `init' and `store import' parse them.
 (defun fn-bs-profile-put (i v values)
   "VALUES with position I replaced by V (a total `update-nth')."
   (declare (xargs :guard (natp i) :measure (nfix i)))
@@ -1118,8 +1078,9 @@
     (cond ((and (consp values) (equal (car values) :invalid))
            (list :refused (if (consp (cdr values)) (cadr values) :request)))
           ; D31: the requirement becomes durable only over a covering
-          ; marker, so a store is born `unmarked' and migrates
-          ; (`store upgrade-profile --history-marker required').
+          ; marker, and `init' writes no marker, so a store is born
+          ; `unmarked'.  (D34 removed the verb that marked a store later;
+          ; how a store is born `required' is PKT-587.)
           ((equal (fn-bs-pf 14 values) 1)
            (list :refused :history-marker-required-before-a-marker))
           (t (list :init (fn-bs-config-encode values))))))
@@ -1131,7 +1092,7 @@
     (if (equal (car verdict) :init) (cadr verdict) nil)))
 
 ; The operator's view of the profile a store runs under: the format it is
-; persisted in (8, or 7 for a store not yet upgraded) and every field by its
+; persisted in (8, the one format) and every field by its
 ; operator name, read through `fn-bs-profile-of' (0 for a value that is not
 ; a profile).  `operator status' prints it; the host formats, never computes.
 (defun fn-bs-profile-report-value (i values)
@@ -1154,9 +1115,7 @@
 (defun fn-bs-profile-report (values)
   (declare (xargs :guard t))
   (cons (cons "format"
-              (cond ((fn-bs-profile-validp values) 8)
-                    ((fn-bs-meta-format-7-valuesp values) 7)
-                    (t 0)))
+              (if (fn-bs-profile-validp values) 8 0))
         (fn-bs-profile-report-fields *fn-bs-profile-field-names* values)))
 
 ; These stay functions rather than defconsts: ACL2 deliberately ignores a
