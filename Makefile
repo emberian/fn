@@ -438,6 +438,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-route-jobs-tests \
 	books/bp-node-contact-driver \
 	tests/acl2/bp-node-contact-driver-tests \
+	books/bp-node-job-offer \
+	books/bp-node-job-offer-progress \
+	tests/acl2/bp-node-job-offer-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
