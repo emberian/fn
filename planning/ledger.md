@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1000 |
-| Certification roots in the Makefile | 975 |
-| Books inside the root closure | 993 |
-| `defthm` and `defthmd` events | 14016 |
-| `defun` events | 9772 |
+| Books read | 1004 |
+| Certification roots in the Makefile | 979 |
+| Books inside the root closure | 997 |
+| `defthm` and `defthmd` events | 14053 |
+| `defun` events | 9786 |
 | Functions with verified guards | 2249 |
-| Functions declared `:verify-guards nil` and never verified | 769 |
-| Functions left at the default with an explicit guard | 5312 |
-| Functions left at the default with no guard | 1442 |
-| `assert-event` checks | 15043 |
-| `must-fail` checks | 1786 |
+| Functions declared `:verify-guards nil` and never verified | 770 |
+| Functions left at the default with an explicit guard | 5320 |
+| Functions left at the default with no guard | 1447 |
+| `assert-event` checks | 15046 |
+| `must-fail` checks | 1788 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 73 |
 | Theorems flagged SUSPECT by shape | 135 |
 | Export-hygiene warnings | 157 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 148 |
-| Include-hygiene warnings | 1009 |
-| Host-names warnings | 1148 |
+| Teeth-form warnings | 150 |
+| Include-hygiene warnings | 1011 |
+| Host-names warnings | 1154 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -516,6 +516,9 @@ that `make certify` requests.
 | `books/poster-bytes.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 0 |
+| `books/proto-catalog-arena.lisp` | root | 0 | 1 | 0/0/0/1 | 1 | 0 | 0 |
+| `books/proto-catalog-fold.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/proto-catalog.lisp` | root | 26 | 9 | 0/1/6/2 | 0 | 0 | 0 |
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
 | `books/provenance.lisp` | root | 68 | 35 | 12/0/23/0 | 0 | 0 | 1 |
 | `books/public-exposure-reply.lisp` | root | 17 | 7 | 1/0/6/0 | 0 | 0 | 4 |
@@ -977,6 +980,7 @@ that `make certify` requests.
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 62 | 12 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 21 | 0 | 0 |
+| `tests/acl2/proto-catalog-tests.lisp` | root | 5 | 2 | 0/0/0/2 | 2 | 2 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 70 | 7 | 0 |
