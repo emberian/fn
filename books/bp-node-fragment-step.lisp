@@ -419,7 +419,7 @@
     t))
 
 (local
- (defthm fn-bpnf-held-primary-blockp
+ (defthm fn-bpnf-heldp-row-shape
    (implies (fn-bpnf-heldp h)
             (and (true-listp h)
                  (fn-bpp-blockp (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))))
@@ -434,7 +434,7 @@
                                    fn-bpnf-fragment-candidatep)
                                   (fn-bpnf-heldp fn-bpp-blockp
                                    fn-bpp-fragmentp fn-bpnf-held-bundle))
-           :use ((:instance fn-bpnf-held-primary-blockp)))))
+           :use ((:instance fn-bpnf-heldp-row-shape)))))
 
 (defthm fn-bpnf-same-family-is-key-equality
   (equal (fn-bpnf-same-fragment-family-p a b)

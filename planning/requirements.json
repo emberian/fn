@@ -2381,7 +2381,8 @@
         "PRF-114",
         "PRF-121",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-136"
       ],
       "verification": [
         "proof",
@@ -2408,7 +2409,7 @@
         "fn-bpfw-reassemble-is-spec",
         "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings)."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment)."
     },
     {
       "id": "NNT-022",

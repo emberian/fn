@@ -930,6 +930,45 @@
 (verify-guards fn-bpnf-held-bundle)
 (verify-guards fn-bpnf-held-wire)
 (verify-guards fn-bpnf-heldp)
+
+; Served scans ask of every held row a question whose answer is no for most
+; rows because of a header field (a fragment is not a local delivery; only an
+; administrative bundle is a status report).  fn-bpnf-heldp's last test
+; re-encodes the row's bundle, so these header prefilters, read from the
+; primary block alone, run first in those scans' executable bodies (PRF-136);
+; fn-bpnf-heldp-primary-blockp is why they only ever say no to a row the
+; full test also refuses.
+(defun fn-bpnf-held-primary-blockp (held)
+  (declare (xargs :guard t))
+  (fn-bpp-blockp (fn-bpb-bundle-primary (fn-bpnf-held-bundle held))))
+
+(defthm fn-bpnf-heldp-primary-blockp
+  (implies (fn-bpnf-heldp held)
+           (fn-bpnf-held-primary-blockp held))
+  :hints (("Goal" :in-theory (e/d (fn-bpnf-heldp fn-bpb-bundlep)
+                                  (fn-bpp-blockp fn-bpb-encode))))
+  :rule-classes nil)
+
+(local
+ (defthm fn-bpnf-primary-blockp-flags-natp
+   (implies (fn-bpp-blockp primary)
+            (and (true-listp primary) (natp (fn-bpp-flags primary))))
+   :hints (("Goal" :in-theory (enable fn-bpp-blockp fn-bpp-flag-setp)))))
+
+(defun fn-bpnf-held-nonfragment-headerp (held)
+  (declare (xargs :guard t))
+  (let ((primary (fn-bpb-bundle-primary (fn-bpnf-held-bundle held))))
+    (and (fn-bpp-blockp primary)
+         (not (fn-bpp-fragmentp (fn-bpp-flags primary))))))
+
+(defun fn-bpnf-held-administrative-headerp (held)
+  (declare (xargs :guard t))
+  (let ((primary (fn-bpb-bundle-primary (fn-bpnf-held-bundle held))))
+    (and (fn-bpp-blockp primary)
+         (fn-bpp-administrativep (fn-bpp-flags primary)))))
+(verify-guards fn-bpnf-held-primary-blockp)
+(verify-guards fn-bpnf-held-nonfragment-headerp)
+(verify-guards fn-bpnf-held-administrative-headerp)
 (verify-guards fn-bpnf-find-held)
 (verify-guards fn-bpnf-held-octets)
 (verify-guards fn-bpnf-receive-decision)

@@ -77,7 +77,8 @@
 (verify-guards fn-bpn-report-correlate-job)
 (verify-guards fn-bpn-report-observe-held
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpn-report-held-bundle-for-guard)
+           :use ((:instance fn-bpnf-heldp-primary-blockp)
+                 (:instance fn-bpn-report-held-bundle-for-guard)
                  (:instance fn-bpn-report-primary-for-guard
                             (bundle (fn-bpnf-held-bundle held)))
                  (:instance fn-bpn-report-primary-flags-natural-for-guard
