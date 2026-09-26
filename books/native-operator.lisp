@@ -396,7 +396,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -412,6 +412,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status")
          "usage: fn operator CONFIG status [--watch SECONDS] (asks the running owner over its control socket; offline, reads the store)")
+        ((equal subject "health")
+         "usage: fn operator CONFIG health (eight states, one line each: fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt; exit 20 to 27 names the first held, 19 some unobserved, 0 all clear)")
         ((equal subject "pins")
          "usage: fn operator CONFIG pins (retention pins and each open connection's configuration pin)")
         ((equal subject "obligations")
@@ -541,6 +543,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                          (fn-nop-watch-seconds
                                           (fn-ncfg-second rest)))))
                    (t (fn-nop-usage :unexpected-arguments "status" config rest))))
+            ((equal command "health")
+             (if (null rest)
+                 (fn-nop-result :accepted :plan "health" config (list :health))
+               (fn-nop-usage :unexpected-arguments "health" config rest)))
             ((or (equal command "pins") (equal command "obligations"))
              (if (null rest)
                  (fn-nop-result :accepted :plan command config
@@ -1025,6 +1031,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "pins") :status)
+          ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((equal (fn-native-operator-result-command result) "store")
@@ -1385,7 +1392,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
   (declare (xargs :guard t))
   (and (equal (fn-native-operator-result-status result) :accepted)
        (member-equal (fn-native-operator-result-command result)
-                     '("status" "pins" "obligations"))
+                     '("status" "health" "pins" "obligations"))
        t))
 
 (defun fn-native-operator-result-status-kind (result)
@@ -1409,6 +1416,16 @@ when that store already exists is `fn-native-operator-init-outcome'."
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
+
+; PRF-112: the operator's [alerts] headroom_min_percent, the threshold of the
+; health verdict's space-pressure state (books/native-health.lisp).
+(defun fn-native-operator-result-health-min-percent (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (member-equal (fn-native-operator-result-command result) '("health" "run")))
+      (nfix (fn-native-config-alerts-headroom-min-percent
+             (fn-native-operator-result-config result)))
+    0))
 
 ; PKT-096/PKT-097 projections the raw host reads.
 (defun fn-native-operator-result-mission-octets (result)

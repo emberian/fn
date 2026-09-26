@@ -350,7 +350,7 @@ freed-octets=N'."
           *fn-nls-lf*
           (fn-nls-connection-lines pins)))
 
-(defconst *fn-nls-kinds* '(:status :pins :peers :obligations :control))
+(defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health)))
 
 (defun fn-nls-report (kind profile s bytes cfg pins obs)
   "The octets `operator CONFIG KIND' prints.
@@ -482,13 +482,13 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
   (declare (xargs :guard t))
   (cond ((equal kind :status) 1) ((equal kind :pins) 2)
         ((equal kind :peers) 3) ((equal kind :obligations) 4)
-        ((equal kind :control) 5) (t 0)))
+        ((equal kind :control) 5) ((equal kind :health) 6) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
         ((equal code 3) :peers) ((equal code 4) :obligations)
-        ((equal code 5) :control) (t nil)))
+        ((equal code 5) :control) ((equal code 6) :health) (t nil)))
 
 (defun fn-nls-seal (kind payload)
   (declare (xargs :guard t))
