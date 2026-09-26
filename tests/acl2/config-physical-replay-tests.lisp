@@ -218,9 +218,10 @@
                                                 (fn-cnode-line-ceiling))))
 (must-fail
  (defthm cpr-t-carried-check-without-cfgp
-   (equal (fn-cnode-record-acceptablep cn record ceiling)
-          (fn-cnode-carried-acceptablep cn record ceiling))
-   :hints (("Goal" :in-theory (enable fn-cfg-record-acceptablep)))))
+   (equal (fn-cnode-record-acceptablep *cpr-t-bad-cn* *cpr-t-next*
+                                       (fn-cnode-line-ceiling))
+          (fn-cnode-carried-acceptablep *cpr-t-bad-cn* *cpr-t-next*
+                                        (fn-cnode-line-ceiling)))))
 
 ; fn-cnode-advanced-node-is-configured: the reachable node advanced to txid 8
 ; is configured; its hypothesis: from the node with the malformed
@@ -237,5 +238,5 @@
 (must-fail
  (defthm cpr-t-advanced-node-without-configured-start
    (fn-cnode-statep
-    (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node cn) txid)
-                   (fn-cnode-config cn)))))
+    (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node *cpr-t-bad-cn*) 8)
+                   (fn-cnode-config *cpr-t-bad-cn*)))))
