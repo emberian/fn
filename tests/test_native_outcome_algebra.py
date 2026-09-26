@@ -49,6 +49,59 @@ def run(*argv, image=None, timeout=180):
                           stderr=subprocess.PIPE, timeout=timeout, check=False)
 
 
+def _cbor_head(major, n):
+    if n < 24:
+        return bytes([major << 5 | n])
+    for code, width in ((24, 1), (25, 2), (26, 4), (27, 8)):
+        if n < 1 << (8 * width):
+            return bytes([major << 5 | code]) + n.to_bytes(width, "big")
+    raise ValueError(n)
+
+
+def _uint(n):
+    return _cbor_head(0, n)
+
+
+def _text(t):
+    b = t.encode("ascii")
+    return _cbor_head(3, len(b)) + b
+
+
+def _bytes(b):
+    return _cbor_head(2, len(b)) + b
+
+
+def _array(items):
+    return _cbor_head(4, len(items)) + b"".join(items)
+
+
+def _crc16_x25(data):
+    crc = 0xFFFF
+    for octet in data:
+        crc ^= octet
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0x8408 if crc & 1 else crc >> 1
+    return (crc ^ 0xFFFF).to_bytes(2, "big")
+
+
+def _with_crc16(items):
+    """RFC 9171 4.2.1: the CRC is computed with its own field zeroed."""
+    zeroed = _array(items + [_bytes(b"\0\0")])
+    return _array(items + [_bytes(_crc16_x25(zeroed))])
+
+
+def bundle_without_age(creation_ms, lifetime_ms, adu=b"clockless"):
+    """A bundle with a DTN creation time and no Bundle Age block: without a
+    wall clock the receiver cannot decide its lifetime (books/clock.lisp
+    fn-clock-expiry-decision answers :uncertain)."""
+    eid = lambda node: _array([_uint(1), _text("//%s/" % node)])
+    primary = _with_crc16([_uint(7), _uint(0), _uint(1), eid("fn-b"), eid("fn-a"),
+                           eid("fn-a"), _array([_uint(creation_ms), _uint(0)]),
+                           _uint(lifetime_ms)])
+    payload = _with_crc16([_uint(1), _uint(1), _uint(0), _uint(1), _bytes(adu)])
+    return b"\x9f" + primary + payload + b"\xff"
+
+
 class OutcomeAlgebraSourceTests(unittest.TestCase):
     """The host writes no exit number of its own."""
 
@@ -150,6 +203,18 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
         else:
             self.assertEqual(decoded.returncode, REFUSED, text)
         print("bp decode without a clock: %s exit=%d" % (match.group(0), decoded.returncode))
+
+    def test_bp_decode_the_clock_cannot_decide_is_a_refusal_not_a_fence(self):
+        # specs/host.md "CLI exit codes": the clock-undecided verdict is the
+        # refused class, 1, with its reason printed; before PRF-143 it was 3.
+        path = self.root / "clockless.bundle"
+        created = int((time.time() - 946684800) * 1000)
+        path.write_bytes(bundle_without_age(created, 3600 * 1000))
+        decoded = run("bp", "decode", path)
+        text = decoded.stdout.decode("utf-8", "replace") + decoded.stderr.decode("utf-8", "replace")
+        self.assertIn("BP decode outcome=uncertain", text)
+        self.assertEqual(decoded.returncode, REFUSED, text)
+        print("clockless decode: %s exit=%d" % (text.strip().splitlines()[-1], decoded.returncode))
 
 
 if __name__ == "__main__":

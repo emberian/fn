@@ -5880,7 +5880,9 @@
         "tests/test_native_outcome_algebra.py",
         "tests/test_fn_client.py",
         "planning/evidence/outcome-algebra-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T092330Z-3847549.json"
+        "planning/evidence/manifests/certify-20260926T092330Z-3847549.json",
+        "planning/evidence/manifests/certify-20260926T092805Z-3892210.json",
+        "planning/evidence/manifests/certify-20260926T094832Z-4083496.json"
       ],
       "progress_note": "Lane outcome-algebra (2026-09-26, wave 3; gpt-6 answers section 5; PKT-295 and PKT-246 retired by fn-outcome-code-separates-the-classes, fn-native-operator-absent-store-is-refused and fn-native-control-conflict-is-a-refusal). Teeth: tests/acl2/outcome-class-tests.lisp. Open: health's verdict scale 19..27 (PKT-329).",
       "events": [

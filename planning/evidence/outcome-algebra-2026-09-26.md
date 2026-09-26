@@ -125,3 +125,52 @@ need, hence docs/agents.md: upgrade the client with the node.
 | --- | --- | --- | --- | --- |
 | run-20260926T091907Z-7369 | hbox | affected-by outcome-class at the first draft | failed: `fn-nctrl-reply-encode-with` guard (the enum spec's well-formedness); 17 dependents on it | `manifests/certify-20260926T091937Z-1092784.json` |
 | run-20260926T092306Z-21c3 | persvati | affected-by native-control, native-operator, outcome-class at cd64c1ea | passed, 86 books, none over 10 s: native-operator 7.70 s, outcome-class-tests 2.07 s, bp-run-class-tests 1.72 s, native-control 1.27 s, topic-history-local-control 1.17 s, bp-run-class 0.21 s, outcome-class 0.07 s | `manifests/certify-20260926T092330Z-3847549.json` |
+| run-20260926T092742Z-c432 | persvati | tests/acl2/outcome-class-tests after the must-fail forms were instantiated | passed, 1.98 s | `manifests/certify-20260926T092805Z-3892210.json` |
+| run-20260926T094810Z-6ab7 | persvati | tests/acl2/docs-operator-grammar-tests regenerated (docs/operator.md's lines moved) | passed, 1.92 s | `manifests/certify-20260926T094832Z-4083496.json` |
+
+The native-control changes were first admitted in an hbox `proof_repl`
+session (w28 toolchain, /tank/fn/gates/outcome-algebra-r1, FN_CERT_CACHE
+/tank/fn/certcache), and outcome-class-tests, native-control-tests,
+topic-history-local-control-tests and native-operator-tests were `ld`'d in
+it with no error before r2. native-operator went from 5.5 s (operator-walk)
+to 7.70 s at two jobs on persvati: under the 10 s rule, and worth watching.
+
+## Native (hbox, /tank/fn/scratch/outcome-algebra/, never /tank/fn/node)
+
+Images at cd64c1ea (the book and host changes; the later commits change
+tests, docs and registry only, plus the fixed test module shipped into the
+tree): fn-host b7e04b95..., fn-host.core 9a5d8df7..., fn-host-developer.core
+124ef006..., fn-host-dtn.core a581b31b... (full sums in each run's SHA256SUMS).
+
+| run | module | result | log SHA-256 (prefix) |
+| --- | --- | --- | --- |
+| native-r1 (tools/hbox_native.sh) | test_native_outcome_algebra | import error (the module imported its sibling by bare name; harness, fixed) | 5bfd6ff9 |
+| native-r1 | test_bp_app_native, test_bp_node_native | OK | 3c9b9cb9, 13ee3bc9 |
+| native-r1 | test_native_control | 13 of 14; `test_operator_post_is_injected_and_refuses_what_post_refuses` expects a supplied Path refused, which D32 (694935ab) accepts: a stale expectation on dev, not this lane's | 3549ae20 |
+| native-r1 | test_native_operator_verbs | 5 errors reading books/native-operator.lisp as ASCII (dev's file carries a `§` at byte 104,747, not this lane's) and `test_help_names_init` (the mission help line dev added): environment/stale, not this lane's | 39572db2 |
+| native-r2 (the r1 tree + the DTN production image) | test_native_outcome_algebra | OK 8 | 4dc9a0f5 |
+| native-r2 | test_bp_contact_native, test_bp_contact_relay_native, test_bp_app_native, test_bp_node_native | OK | 93d42249, e94487e0, 056cd7d9, 81213534 |
+| native-r2 | the operator walk (planning/evidence/outcome-algebra-2026-09-26/walk.sh, the operator-walk script with NO-STORE expecting 1) | 44 steps ok, 0 DIFFERS; `refused operator status/health/run NO-STORE`, exit 1 | b27a194e (walk-summary.txt) |
+| native-r3 (+ the DTN developer image) | test_native_outcome_algebra | OK 9 | see native-r3/SHA256SUMS |
+| native-r3 | test_bp_service_native | OK 17 | ibid. |
+| native-r3 | test_bp_receive_integrity_native | OK 4 | ibid. |
+| native-r1, r2, r3 | test_bp_fragment_node_native | the 10 MiB case times out at 120 s in `bp-node dispatch` (the recovered-held reopen) | 7ce98d4e, 2fd8d5a3 |
+
+The per-class native cases (tests/test_native_outcome_algebra.py), each
+against specs/host.md's table:
+- operator: a second `init` refused 1; `init` with no group usage 5;
+  `status` 0; `status` before init `refused operator status NO-STORE` with
+  the `run: fn operator` line, 1; a frontier file that is not JSON, fault 4;
+  the inherited lost durable outcome (developer `postpublish`), 3.
+- store (developer image): `status` 0, `inspect` of an absent article 1, an
+  unknown store command 5, a missing root 4, `post` with `postpublish` 3.
+- control: `operator post` accepted 0, the resend `DUPLICATE` 0, the changed
+  source under the held Message-ID `refused operator post CONFLICT`, 1.
+- old client: b6759850's fn-host (the deployable candidate before
+  `:conflict`) posting the changed source to this owner answers `uncertain
+  operator post`, 3.
+- bp: `bp send` to a port with no listener, 7; `bp decode` of that authored
+  bundle without a clock: accepted 0 (its Bundle Age block decides the
+  lifetime); `bp decode` of a hand-built bundle with a creation time and no
+  Bundle Age block, without a clock: `BP decode outcome=uncertain
+  reason=lifetime-uncertain`, exit 1 (was 3).
