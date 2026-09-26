@@ -6,7 +6,7 @@
 ; consuming the last resource its own promise needs.  This book states that
 ; vector over the values the owner carries and proves it is a maintained
 ; invariant: established at init, preserved by every admitted record of every
-; kind, and by reclaim and profile upgrade.
+; kind, and by reclaim (the profile is written once, at init: D34).
 ;
 ; The components, and where each is bounded:
 ;
@@ -459,19 +459,6 @@ vector holds after it at its worst case, its own promise included."
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-smr-admitted-profile-starts-reserved))
            :in-theory (disable fn-smr-roomp fn-sbud-verdict-at))))
-
-; A profile upgrade keeps the vector: T and H only grow.
-(defthm fn-cvec-profile-upgrade-keeps-the-vector
-  (implies (and (fn-profile-upgradep old new)
-                (fn-cvec-roomp old used bytes-used debt))
-           (fn-cvec-roomp new used bytes-used debt))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-smr-profile-upgrade-keeps-the-reserve
-                                   (used (+ (nfix used) (nfix debt)))
-                                   (bytes-used (+ (nfix bytes-used)
-                                                  (* (nfix debt)
-                                                     (fn-smr-reserve-octets))))))
-           :in-theory (disable fn-smr-roomp fn-profile-upgradep))))
 
 ; -----------------------------------------------------------------------------
 ; The composed statement

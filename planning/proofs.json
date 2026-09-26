@@ -3190,7 +3190,7 @@
     },
     {
       "id": "PRF-072",
-      "title": "Offline store-profile upgrade: the operator's fields (format 8), only non-shrinking upgrades, every gate monotone, old or new at every crash cut",
+      "title": "RETIRED (D34, lane migration-removal): Offline store-profile upgrade: the operator's fields (format 8), only non-shrinking upgrades, every gate monotone, old or new at every crash cut",
       "statement": "The store profile is the operator's (D27): format fn-store-8, twelve fields validated by fn-bs-profile-validp (1 <= T <= 2^32-1; R <= H; R at least every Store event kind's publication ceiling; R, A, G and the group-name bound within their codec ceilings; 1 <= K <= T; each namespace count in 1..2^32-1), with a format-7 tuple run under its translation fn-bs-profile-of. fn-bs-profile-validp-codecs-accept: every field of the profile a store runs under is within its codec, and when admitted R covers every kind. fn-profile-upgradep OLD NEW holds when OLD is admitted, NEW is a valid profile, NEW is not OLD, and none of the twelve fields is smaller; fn-profile-upgrade-format-7-to-8: a format-7 tuple upgrades to its translation with every kind's budget unchanged, and the verb with no field writes exactly that. Monotone gates, over the functions the host calls at open and publication: fn-profile-upgrade-keeps-txn-observation (fn-profile-txn-observation with the profile's max_transactions, host/native/io.lisp fnn-transaction-files), fn-profile-upgrade-keeps-replay-bound (fn-profile-replay-within-boundp with max_history_octets, per record from fnn-durable-records), fn-profile-upgrade-keeps-publication-admissibility (fn-bs-publication-admissiblep, fnn-publish) and fn-profile-upgrade-keeps-verdict (fn-sbud-verdict: the count gate and the history-octet gate, fn-sbud-verdict-is-the-count-and-history-admissibility). Replay takes no profile argument, so an admitted store replays to the same state. fn-profile-upgrade-verdict-writes-only-upgrades: an :upgrade verdict of the function fnn-command-upgrade-profile calls (through fn-store-profile-upgrade-verdict) carries octets that decode to the requested profile, an upgrade of the store's (under A-CRYPTO, fn-bs-config-decode-of-encode, now over every valid profile); fn-profile-upgrade-budget-after-reopen: the next open's budget is the requested profile's. fn-bs-profile-program-crash-is-old-or-new: for the byte program fnn-upgrade-profile-write runs, from a store with nothing pending, every crash image of every cut of the successful run names the old inode with its old content or the new inode with exactly the staged octets; -crash-budget-is-old-or-new gives the old or the new budget. Covered scope: the successful run and its crash images; syscall error arms are classified by the host and witnessed natively, not modelled. The owner's history gate uses a carried record-octet sum equal to the kernel's when the cache is a prefix sum (fn-sbud-bytes-used-is-kernel-sum); the host resets it at profile install and relies on committed records growing append-only within one owner process, which is stated, not proved.",
       "milestone": "M5",
       "requirements": [
@@ -3225,7 +3225,7 @@
         "tests/acl2/store-budget-tests.lisp",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Lane m5-profile-upgrade (2026-09-24). Teeth in tests/acl2/store-profile-upgrade-tests.lisp: the relation over the four named profiles (two pairs), the verdict's five answers, 129 and 200 transaction names, the 24 MiB replay bound, 128 and 200 used, a reachable byte run whose rename cut has both images, and one must-fail per keystone hypothesis at constants (including a store with a pending write to config.json's inode and a step list that renames an unfenced stage). Native, developer image of 05b96703 on hbox: three articles, upgrade, budget 4096 with 3 used, the fourth POST accepted; same profile and downgrade refused through both entries; a held writer lock refuses; the five PROFILE_CUTS cuts x kill/eio x operator/store entries (20 cases) reopen with the old or the new frame byte for byte, with the candidate column's budget. Open: the checkpoint pack coverage (fn-store-checkpoint-compaction-coverage with field 4) is not in the monotone set; fn-store-txn-prefix-reclaim-plan kept its own copy of the namespace bound (that function is no longer in the tree at 17ff24aa; PKT-120). Lane bounds-p1-profile (2026-09-25, D27): the profile became the operator's twelve fields in format fn-store-8 with relations, not tables; init and store upgrade-profile take --FIELD N over a preset or the current profile; the upgrade is any valid non-shrinking profile, including the format 7 to 8 step; status prints every field and bytes-used/history-bound. Every keystone above restated by name over every valid profile; new: fn-bs-profile-validp-codecs-accept, fn-sbud-bytes-used-is-kernel-sum, fn-sbud-verdict-is-the-count-and-history-admissibility, fn-profile-upgrade-format-7-to-8. Native on hbox, images of 73ccdaa7 (planning/evidence/bounds-p1-2026-09-25.md): init with custom fields; P-1/P/P+1 octets against A = 20000 (accepted, accepted, refused `payload exceeds the modelled bound`); raise and shrink-by-name; 7 to 8 on a fresh format-7 scale store written by the c3420013 image, and its 20 cut cases old-or-new byte for byte. Format 6 is no longer opened. Open: R has one valid value (196608) until P2 raises the FNST ceiling; the article-record relation uses the kind table's figure until P2's fn-record-encoded-octets-ceiling merges; under T > 4096 compaction's one-unit pack can refuse (fn-cverb-preset-count-within-pack-events, P5).",
+      "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject was removed with it (the offline upgrade relation fn-profile-upgradep, fn-profile-upgrade-verdict and P-PROFILE, books/store-profile-upgrade.lisp and books/byte-store-profile-program.lisp). What now covers the property: a deploy is a reinstall plus store import (PRF-205); the store has one format (books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept.",
       "events": [
         "fn-profile-upgrade-keeps-txn-observation",
         "fn-profile-upgrade-keeps-replay-bound",
@@ -5747,7 +5747,7 @@
     },
     {
       "id": "PRF-141",
-      "title": "store rollback-check --snapshot: an earlier state of this history exactly when the snapshot's committed records are this store's first records, compared octet for octet, and the count is the records after them",
+      "title": "RETIRED (D34, lane migration-removal): store rollback-check --snapshot: an earlier state of this history exactly when the snapshot's committed records are this store's first records, compared octet for octet, and the count is the records after them",
       "statement": "books/native-operator.lisp. host/native/io.lisp fnn-command-rollback-snapshot acquires both stores read-only under their shared writer locks (fnn-acquire; a store an owner holds is refused, never read unlocked) and holds both while it reads each committed history as the open reads it (fnn-rollback-history: fnn-durable-records from the selected pack's lower bound, the pack's records through *fnn-pack-recover-callback*, i.e. fn-store-checkpoint-compaction-observe, then the suffix files; fnn-check-history-marker over the count) and calls fn-native-operator-history-start, then fn-native-operator-history-step once per snapshot record with the store's record at the same position (CUR-PRESENT nil past the store's end), then fn-native-operator-history-verdict with the store's record count (through the fn-native-operator-host-history-* wrappers). Both theorems are stated over that composition, V = (fn-native-operator-history-verdict (fn-nop-history-run (fn-native-operator-history-start) snap cur) (len cur)), fn-nop-history-run being the host's loop. KEYSTONE fn-native-operator-history-loss-is-ancestry: (and (iff (equal (car V) :loses) (equal (append snap (nthcdr (len snap) cur)) cur)) (implies (equal (append snap (nthcdr (len snap) cur)) cur) (equal (cadr V) (len (nthcdr (len snap) cur))))): the verb answers :loses exactly when the store's history is the snapshot's records followed by more records, and the count is the number of those records; otherwise (:refused :snapshot-not-a-prefix). fn-native-operator-history-loss-is-snapshot-loss: V equals fn-native-operator-snapshot-loss (PRF-130's list-level function). Events are exact record octets: no sequence number, length or file size is compared, as a filter or as a count, and no collision assumption is used. Every executable function is guard-verified (guard t). What it does not say: that the host's loop makes exactly these calls (host code, source-checked by tests/test_native_rollback_history.py); anything about the configuration history, which a restore also replaces; that the snapshot is the newest earlier state; or freshness (a store-local comparison is not an anti-rollback witness, mandate 5.6).",
       "milestone": "M4",
       "requirements": [
@@ -5757,7 +5757,7 @@
         "PRF-130"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/native-operator.lisp",
         "tests/acl2/native-operator-tests.lisp",
@@ -5774,7 +5774,8 @@
       "events": [
         "fn-native-operator-history-loss-is-ancestry",
         "fn-native-operator-history-loss-is-snapshot-loss"
-      ]
+      ],
+      "progress_note": "Retired 2026-09-26 by D34 (fresh deploys, no migrations): its subject was removed with it (store rollback-check --snapshot, fn-native-operator-history-*, fn-native-operator-snapshot-loss). What now covers the property: a deploy is a reinstall plus store import (PRF-205); the store has one format (books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept."
     },
     {
       "id": "PRF-139",
@@ -6111,7 +6112,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-position.lisp",
         "books/consumer-owner-local.lisp",
@@ -7434,6 +7435,30 @@
         "fn-ncfg-listener-element-classifies-by-definition",
         "fn-native-config-ipv6-literal-shape",
         "fn-native-config-ipv4-address-shape"
+      ]
+    },
+    {
+      "id": "PRF-205",
+      "title": "store export and store import: the import of an export replays the same history under the same profile",
+      "statement": "books/store-export.lisp fn-sxp-import-of-export-replays-the-same-history: for a valid profile VALUES, records in strictly increasing sequence and configuration names in order, fn-sxp-import-plan over the archive fn-sxp-entries and fn-sxp-manifest render (the export's, host/native/io.lisp fnn-command-store-export) with no field raised is (:import VALUES FRONTIER CONFIGS RECORDS): the same profile, frontier, configuration records and records in the same order, which host/native/io.lisp fnn-command-store-import writes and admits through the ordinary open's full replay (fn-store-sn-recover). The MANIFEST is a transport check under the abstract digest seam, not an integrity proof.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/migration-removal-2026-09-26.md"
+      ],
+      "progress_note": "Lane migration-removal 2026-09-26: admitted in the persvati REPL (session mr1); certification is the batch's.",
+      "events": [
+        "fn-sxp-import-of-export-replays-the-same-history",
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     }
   ]

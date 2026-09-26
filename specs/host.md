@@ -669,14 +669,16 @@ On a **recovered** store (after a process death) `recover` reports the
 replayed history (0) and `run` serves it. Usage errors print ACL2's accepted
 form before the tagged result line. An outbound peer that refuses `MODE
 STREAM` (RFC 4644 section 2.3) is stopped by name for the owner's run, never
-re-dialled with it. `store rollback-check --snapshot SNAPSHOT` states what
-restoring a pre-migration snapshot loses: under both stores' shared writer
-locks it reads each committed history as the open does (selected pack, then
-suffix files, marker checked), and ACL2 compares the records octet for octet;
-the snapshot is an earlier state only when its records are this store's first
-records, and the count is the records after them (PRF-141; PRF-130 counted
-file descriptors and is superseded for this verb). The operator guide's
+re-dialled with it. There is no store rollback (D34): a deploy is a reinstall with `store export`
+and `store import` (HST-014). The operator guide's
 [native component entry](../docs/operator.md#native-component-entry) and
-[upgrade section](../docs/operator.md#upgrade-and-what-a-rollback-loses)
+[deploy section](../docs/operator.md#deploy-a-new-release-d34-fresh-deploys-no-migrations)
 describe the verbs.
+
+## HST-014: the deploy is a reinstall
+
+HST-014: A deploy is a reinstall (D34): stop the node, `store export` when
+its data must survive, remove the store, install the release (one
+`libexec/fn/`, replaced whole), `init` or `store import`, start. There is no
+upgrade verb, no versioned release directory and no rollback of a store.
 

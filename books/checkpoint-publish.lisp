@@ -326,7 +326,8 @@
 ; the transaction frontier's).  The names a store RETAINS are a capacity of
 ; the operator's profile: CAPACITY is the profile's max-transactions plus one
 ; (`fn-cpp-generation-capacity'; the host passes the opened profile's T), so
-; `store upgrade-profile' raises it with the transaction bound and a store
+; a reinstall with a larger T (`store import --max-transactions N') raises it
+; with the transaction bound, and a store
 ; that compacts for years never meets a hidden lifetime figure.  (Until
 ; PRF-171 a store got 4,096 publications in its lifetime: the old figure is
 ; the instance T = 4095.)

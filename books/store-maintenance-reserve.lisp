@@ -286,21 +286,5 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
                             fn-sbud-verdict-is-the-count-and-history-admissibility
                             fn-bs-profile-of)))))
 
-; An upgrade keeps the reservation: the budget and H only grow.
-(defthm fn-smr-profile-upgrade-keeps-the-reserve
-  (implies (and (fn-profile-upgradep old new)
-                (fn-smr-roomp old used bytes-used))
-           (fn-smr-roomp new used bytes-used))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-profile-upgrade-budget-grows (kind :release))
-                        (:instance fn-profile-upgrade-keeps-replay-bound
-                                   (aggregate (+ bytes-used
-                                                 (fn-store-publication-ceiling
-                                                  :release)))))
-           :in-theory (e/d (fn-sbud-verdict-at fn-sbud-admitp
-                            fn-bs-history-admissiblep
-                            fn-profile-replay-within-boundp)
-                           (fn-sbud-budget fn-profile-upgradep)))))
-
 (in-theory (disable fn-smr-roomp fn-smr-verdict-at fn-smr-article-verdict-at
                     fn-smr-article-budget fn-smr-article-budget-for fn-smr-report))

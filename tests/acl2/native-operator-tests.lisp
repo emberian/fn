@@ -309,87 +309,100 @@
                      (list (fn-record-string-octets "fn.letters")
                            (fn-record-string-octets "fn.test"))))
 
-; `store upgrade-profile [WORD] [--FIELD N ...]': an offline store action
-; whose plan names the profile request (base and overrides); the verdict
-; (upgrade or refusal) is the store's (books/store-profile-upgrade.lisp), so
-; every well-formed request is a plan here.
-(defconst *fn-nop-upgrade*
-  (fn-native-operator-run *fn-nop-minimal-config*
-                          (fn-nop-test-argv '("store" "upgrade-profile" "scale"))))
-(assert-event (equal (fn-native-operator-result-status *fn-nop-upgrade*) :accepted))
-(assert-event (equal (fn-native-operator-result-native-action *fn-nop-upgrade*)
-                     :upgrade-profile))
-(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-upgrade*)
-                     '(:scale nil)))
-(assert-event (equal (fn-native-operator-result-upgrade-profile
-                      (fn-native-operator-run
-                       *fn-nop-minimal-config*
-                       (fn-nop-test-argv '("store" "upgrade-profile" "development"))))
-                     '(:development nil)))
-; With no word the base is the store's current profile: alone, the format 7
-; to 8 step; with flags, the operator's raise of those fields.
-(assert-event (equal (fn-native-operator-result-upgrade-profile
-                      (fn-native-operator-run
-                       *fn-nop-minimal-config*
-                       (fn-nop-test-argv '("store" "upgrade-profile"))))
+;; `store export DIR' and `store import DIR [--FIELD N ...]' (D34): offline
+;; store actions; the archive and the import's plan are
+;; books/store-export.lisp's.  DIR is absolute; the import's flags are field
+;; overrides over the archive's profile (base :current, no --profile).
+(defmacro fn-nop-t-store (&rest words)
+  `(fn-native-operator-run *fn-nop-minimal-config*
+                           (fn-nop-test-argv '("store" ,@words))))
+(defconst *fn-nop-export* (fn-nop-t-store "export" "/tmp/a"))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-export*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-export*) :export))
+(assert-event (equal (fn-nop-store-plan-word *fn-nop-export*) :export))
+(assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-export*)
+                     (fn-record-string-octets "/tmp/a")))
+(assert-event (equal (fn-native-operator-result-import-request *fn-nop-export*) nil))
+; A relative directory, no directory, and a second word are usage.
+(assert-event (equal (fn-native-operator-result-status (fn-nop-t-store "export" "a"))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-reason (fn-nop-t-store "export" "a"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "export")) 5))
+(assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "export" "/tmp/a" "/tmp/b"))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "export" "/")) 5))
+
+(defconst *fn-nop-import*
+  (fn-nop-t-store "import" "/tmp/a" "--max-transactions" "1000"))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-import*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-import*) :import))
+(assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-import*)
+                     (fn-record-string-octets "/tmp/a")))
+(assert-event (equal (fn-native-operator-result-import-request *fn-nop-import*)
+                     '(:current ((2 . 1000)))))
+(assert-event (equal (fn-native-operator-result-import-request
+                      (fn-nop-t-store "import" "/tmp/a"))
                      '(:current nil)))
-(assert-event (equal (fn-native-operator-result-upgrade-profile
-                      (fn-native-operator-run
-                       *fn-nop-minimal-config*
-                       (fn-nop-test-argv '("store" "upgrade-profile"
-                                           "--max-transactions" "100000"
-                                           "--max-article-octets" "20000"))))
+(assert-event (equal (fn-native-operator-result-import-request
+                      (fn-nop-t-store "import" "/tmp/a" "--max-transactions" "100000"
+                                      "--max-article-octets" "20000"))
                      '(:current ((2 . 100000) (5 . 20000)))))
 ; D31: the history requirement takes a word, never a decimal.
-(assert-event (equal (fn-native-operator-result-upgrade-profile
-                      (fn-native-operator-run
-                       *fn-nop-minimal-config*
-                       (fn-nop-test-argv '("store" "upgrade-profile"
-                                           "--history-marker" "required"))))
+(assert-event (equal (fn-native-operator-result-import-request
+                      (fn-nop-t-store "import" "/tmp/a" "--history-marker" "required"))
                      '(:current ((14 . 1)))))
 (assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile"
-                                                                  "--history-marker" "1"))))
+                      (fn-nop-t-store "import" "/tmp/a" "--history-marker" "1"))
+                     5))
+; --profile is refused (the archive's profile is the base), and so are a
+; relative directory, a repeated field, a value that is not a decimal frame
+; natural, an unknown flag and a stray word.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-t-store "import" "/tmp/a" "--profile" "scale"))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-t-store "import" "/tmp/a" "--profile" "scale"))
+                     :invalid-store-profile))
+(assert-event (equal (fn-native-operator-result-reason (fn-nop-t-store "import" "a"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-nop-t-store "import" "/tmp/a" "--max-transactions" "5"
+                                      "--max-transactions" "6"))
                      5))
 (assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile"
-                                                                  "--max-transactions" "required"))))
-                     5))
-; A repeated field, a value that is not a decimal frame natural, and an
-; unknown flag are usage errors.
-(assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile"
-                                                                  "--max-transactions" "5"
-                                                                  "--max-transactions" "6"))))
+                      (fn-nop-t-store "import" "/tmp/a" "--max-transactions"
+                                      "18446744073709551616"))
                      5))
 (assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile"
-                                                                  "--max-transactions" "18446744073709551616"))))
+                      (fn-nop-t-store "import" "/tmp/a" "--max-capacity" "5"))
                      5))
-(assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile"
-                                                                  "--max-capacity" "5"))))
+(assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "import" "/tmp/a" "scale"))
                      5))
-; An init plan names no upgrade profile, and malformed store commands are
-; usage: an unknown word, a missing word, an extra word, another subcommand.
-(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-init*) nil))
-(assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile" "huge"))))
-                     5))
-(assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "upgrade-profile" "scale" "x"))))
-                     5))
-(assert-event (equal (fn-native-operator-exit-code
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "downgrade"))))
-                     5))
+; The retired verbs are unknown store words: usage, and no native action.
+(assert-event (equal (fn-native-operator-result-reason (fn-nop-t-store "upgrade-profile"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-t-store "upgrade-profile" "--max-transactions" "1000"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-result-reason (fn-nop-t-store "needs-upgrade"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-t-store "rollback-check" "/srv/fn.old"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-t-store "rollback-check" "--snapshot" "/srv/snap"))
+                     :invalid-store-command))
+(assert-event (equal (fn-native-operator-result-native-action (fn-nop-t-store "needs-upgrade"))
+                     :none))
+(assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "downgrade")) 5))
+; An init plan names no archive and no import request.
+(assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-init*) nil))
+(assert-event (equal (fn-native-operator-result-import-request *fn-nop-init*) nil))
+; The store help names the two verbs and none of the retired ones.
+(assert-event (search "export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...]"
+                      (fn-nop-help-text "store")))
+(assert-event (not (search "upgrade" (fn-nop-help-text "store"))))
 
 ;
 ; `store compact': an offline store action with no argument; what it does to
@@ -399,9 +412,7 @@
                           (fn-nop-test-argv '("store" "compact"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-compact*) :accepted))
 (assert-event (equal (fn-native-operator-result-native-action *fn-nop-compact*) :compact))
-(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-compact*) nil))
-(assert-event (equal (fn-native-operator-result-native-action *fn-nop-upgrade*)
-                     :upgrade-profile))
+(assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-compact*) nil))
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("store" "compact" "now"))))
@@ -410,7 +421,7 @@
 ; Without the argv hypothesis: an accepted store plan that is not compact.
 (local (must-fail
         (defthm fn-nop-compact-action-without-argv
-          (equal (fn-native-operator-result-native-action *fn-nop-upgrade*) :compact))))
+          (equal (fn-native-operator-result-native-action *fn-nop-export*) :compact))))
 ; Without acceptance: `store compact' under a configuration that does not
 ; load is usage, and its action is :none.
 (defconst *fn-nop-compact-bad-config*
@@ -426,7 +437,7 @@
 (local (must-fail
         (defthm fn-nop-compact-argv-without-action
           (equal (fn-nop-argument-texts
-                  (fn-nop-test-argv '("store" "upgrade-profile" "scale")))
+                  (fn-nop-test-argv '("store" "export" "/tmp/a")))
                  '("store" "compact")))))
 
 ;; `store reclaim [--dry-run]' (STO-017): offline store actions; what they
@@ -762,10 +773,10 @@
 ; Help names both new subjects, and only from the ACL2 subject table.
 (assert-event (fn-nop-help-subjectp "init"))
 (assert-event (equal (fn-nop-help-text "init")
-                     "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise it afterwards with store upgrade-profile)"))
+                     "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; a different one is a reinstall: store export, then store import --FIELD N)"))
 (assert-event (equal (fn-native-operator-result-arguments
                       (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
-                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise it afterwards with store upgrade-profile)")))
+                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; a different one is a reinstall: store export, then store import --FIELD N)")))
 (assert-event (not (fn-nop-help-subjectp "initialise")))
 
 ; The run refusal names the key, and an admitted log path reaches the run
@@ -1080,103 +1091,6 @@
 (assert-event (equal (fn-native-operator-result-hint
                       (fn-nop-usage :flag-word-as-group "init" nil nil))
                      (fn-nop-help-text "init")))
-
-;; The rollback verb's history claim (PRF-141,
-;; fn-native-operator-history-loss-is-ancestry).  Events are committed
-;; records' octets; *fn-nop-a* and *fn-nop-b* have the same length and the same
-;; leading sequence octet and differ in content.
-;; The composition the host runs and PRF-141 is stated over, spelled out.
-(defmacro fn-nop-t-loss (snap cur)
-  `(fn-native-operator-history-verdict
-    (fn-nop-history-run (fn-native-operator-history-start) ,snap ,cur)
-    (len ,cur)))
-(defconst *fn-nop-a* '(0 0 0 0 0 0 0 0 65 65 65 65))
-(defconst *fn-nop-b* '(0 0 0 0 0 0 0 0 66 66 66 66))
-(defconst *fn-nop-c* '(0 0 0 0 0 0 0 1 67 67 67 67 67))
-(defconst *fn-nop-d* '(0 0 0 0 0 0 0 2 68 68))
-
-; Reachable positive witness: the store's history is the snapshot's records
-; followed by two more; the antecedent and both conclusions hold.
-(assert-event
- (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
-   (and (equal (append snap (nthcdr (len snap) cur)) cur)
-        (equal (car (fn-nop-t-loss snap cur)) :loses)
-        (equal (cadr (fn-nop-t-loss snap cur))
-               (len (nthcdr (len snap) cur)))
-        (equal (fn-nop-t-loss snap cur) '(:loses 2)))))
-(assert-event (equal (fn-nop-t-loss (list *fn-nop-a* *fn-nop-c*)
-                                                      (list *fn-nop-a* *fn-nop-c*))
-                     '(:loses 0)))
-; The host's call sequence, as `fnn-command-rollback-snapshot' makes it.
-(assert-event
- (equal (fn-native-operator-history-verdict
-         (fn-native-operator-history-step
-          (fn-native-operator-history-start) *fn-nop-a* t *fn-nop-a*)
-         3)
-        '(:loses 2)))
-
-;; gpt-6's counterexample (§7), the removed hypothesis: the old observation's
-;; (SEQUENCE . LENGTH) descriptors agree as a prefix, and the old verdict over
-;; them said one transaction is lost; the histories differ in their first
-;; record, the ancestry premise is false, and the verb refuses.
-(defun fn-nop-test-descriptors (events sequence)
-  (if (consp events)
-      (cons (cons sequence (len (car events)))
-            (fn-nop-test-descriptors (cdr events) (+ 1 sequence)))
-    nil))
-(assert-event
- (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
-   (and (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
-                                (fn-nop-test-descriptors cur 0))
-        (equal (fn-native-operator-snapshot-loss (fn-nop-test-descriptors snap 0)
-                                                 (fn-nop-test-descriptors cur 0))
-               '(:loses 1))
-        (not (equal (append snap (nthcdr (len snap) cur)) cur))
-        (equal (fn-nop-t-loss snap cur)
-               '(:refused :snapshot-not-a-prefix)))))
-(must-fail
- (thm (implies (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
-                                       (fn-nop-test-descriptors cur 0))
-               (equal (car (fn-nop-t-loss snap cur)) :loses))
-      :hints (("Goal" :do-not-induct t))))
-; The count's premise removed: over the same pair the count is not the
-; suffix's length.
-(assert-event
- (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
-   (not (equal (cadr (fn-nop-t-loss snap cur))
-               (len (nthcdr (len snap) cur))))))
-(must-fail
- (thm (equal (cadr (fn-nop-t-loss snap cur))
-             (len (nthcdr (len snap) cur)))
-      :hints (("Goal" :do-not-induct t))))
-; The list-level lemma (fn-native-operator-snapshot-loss-counts-the-suffix)
-; without its prefix hypothesis.
-(must-fail
- (thm (equal (cadr (fn-native-operator-snapshot-loss snap cur))
-             (- (len cur) (len snap)))
-      :hints (("Goal" :do-not-induct t))))
-; A snapshot ahead of the store, and one that diverges later, are refused.
-(assert-event (equal (car (fn-nop-t-loss
-                           (list *fn-nop-a* *fn-nop-c*) (list *fn-nop-a*)))
-                     :refused))
-(assert-event (equal (car (fn-nop-t-loss
-                           (list *fn-nop-a* *fn-nop-d*)
-                           (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
-                     :refused))
-(assert-event (equal (fn-native-operator-snapshot-loss-report '(:loses 3) 2 5)
-                     (concatenate 'string
-                                  "rollback snapshot loses transactions=3 snapshot-transactions=2 store-transactions=5"
-                                  (coerce '(#\Newline) 'string)
-                                  "the snapshot's committed records are this store's first 2, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back")))
-; The parse: an absolute snapshot path, and nothing else.
-(assert-event (equal (fn-native-operator-result-native-action
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "rollback-check" "--snapshot" "/srv/snap"))))
-                     :rollback-snapshot))
-(assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("store" "rollback-check" "--snapshot" "snap"))))
-                     :usage))
 
 ; ---------------------------------------------------------------------------
 ; PRF-162: the implicit-TLS listener's port.

@@ -1499,8 +1499,7 @@
       "implementation": {
         "test": "tests.test_native_history_required",
         "cases": [
-          "RetryResolutionTests",
-          "MigrationTests"
+          "RetryResolutionTests"
         ],
         "native": true,
         "log": "planning/evidence/marker-required/native-required.log",
@@ -1621,9 +1620,9 @@
     },
     {
       "id": "SCN-052",
-      "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
+      "title": "RETIRED (D34): an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-015"
       ],
@@ -1648,7 +1647,8 @@
         "native": true,
         "log": "planning/evidence/bounds-profile/native-namespace.log",
         "record": "planning/evidence/bounds-profile-2026-09-25.md"
-      }
+      },
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
     },
     {
       "id": "SCN-054",
@@ -2236,7 +2236,7 @@
       "id": "SCN-076",
       "title": "The operator walk: one installed fn from nothing to a recovered node on two scratch nodes",
       "milestone": "M4",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-008",
         "HST-009"
@@ -2258,22 +2258,10 @@
         "planning/evidence/operator-walk-2026-09-26/walk.sh",
         "planning/evidence/operator-walk-2026-09-26.md",
         "tests/acl2/native-operator-tests.lisp",
-        "tests/test_native_rollback_history.py",
         "planning/evidence/rollback-history-2026-09-26.md",
         "planning/evidence/outcome-algebra-2026-09-26.md"
       ],
-      "implementation": {
-        "test": "tests.test_native_rollback_history",
-        "cases": [
-          "test_equal_counters_different_content_is_not_an_earlier_state",
-          "test_an_earlier_state_counts_what_the_restore_loses",
-          "test_a_compacted_history_is_read_through_its_pack",
-          "test_a_held_store_is_refused_not_read_unlocked"
-        ],
-        "native": true,
-        "log": "planning/evidence/rollback-history-2026-09-26/green2-test.log",
-        "record": "planning/evidence/rollback-history-2026-09-26.md"
-      }
+      "retirement_note": "D34 removed rollback-check --snapshot, the walk item its implementation evidenced (tests.test_native_rollback_history, deleted); the walk is re-evidenced by the batch."
     },
     {
       "id": "SCN-075",
@@ -2752,9 +2740,9 @@
     },
     {
       "id": "SCN-097",
-      "title": "an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
+      "title": "RETIRED (D34): an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-021"
       ],
@@ -2779,7 +2767,8 @@
         "native": true,
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
-      }
+      },
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
     },
     {
       "id": "SCN-100",
@@ -3098,7 +3087,7 @@
     },
     {
       "id": "SCN-107",
-      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init, at store upgrade-profile and at every open of a store saved with it; `store upgrade-profile --max-record-octets 4294966940` is that store's one repair; at the ceiling it is written and served",
+      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init and at every open of a store saved with it (D34: the refusal names a reinstall and import; the in-place repair is gone); at the ceiling it is written and served",
       "milestone": "M5",
       "status": "implemented",
       "requirements": [
@@ -3124,8 +3113,7 @@
         "test": "tests.test_native_control_reply_fit",
         "cases": [
           "test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling",
-          "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it",
-          "test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired"
+          "test_a_store_saved_in_the_window_is_refused_by_name_at_every_open"
         ],
         "native": true,
         "record": "planning/evidence/control-reply-fit-2026-09-26.md",
@@ -3774,6 +3762,38 @@
       "expected": [
         "Both implicit-TLS connections answer 200 or 201 and a CAPABILITIES list; the owner prints LISTENING and LISTENING-TLS once each and binds four sockets (ss -ltn shows [::1] and 127.0.0.1 on both ports).",
         "Each refused host is (:refused :listener-unspecified), (:refused :listener-mapped) and (:refused :listener-duplicate) at load; no store is opened."
+      ]
+    },
+    {
+      "id": "SCN-132",
+      "title": "A format-7 store is refused at open by name: open refused reason=store-format, exit 1, the store untouched",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "Open a copy of the format-7 fixture store (/tank/fn/scratch/fixtures/format-7-store) with status, recover and run."
+      ],
+      "expected": [
+        "Each exits 1 with the line open refused reason=store-format: reinstall from the release and import; no file of the store changes."
+      ]
+    },
+    {
+      "id": "SCN-133",
+      "title": "store export then store import on a fresh node serves the same history: Message-IDs, numbers, verdicts and consumer cursors equal",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "steps": [
+        "Build a store of 300 articles with a signed composite, a cancel, a retention event and a consumer registration; stop; store export DIR.",
+        "On a fresh node: store import DIR (and once with a raised field); start."
+      ],
+      "expected": [
+        "status and inspect observations and the article numbers are equal on both nodes; a tampered MANIFEST, a record out of sequence and a profile the codec cannot represent are refused by name, exit 1, nothing written."
       ]
     }
   ]

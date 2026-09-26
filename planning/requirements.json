@@ -297,7 +297,6 @@
         "books/records-canonicality.lisp",
         "books/acceptance-stamp-invariants.lisp",
         "tests/acl2/acceptance-stamp-tests.lisp",
-        "tests/test_native_stamp_migration.py",
         "planning/evidence/t2a-acceptance-stamp-4670cc35-2026-09-23.md"
       ],
       "note": "T2a implements schema-1 acceptance stamps with exact schema-0 decode/re-encode as :legacy; the codec and replay properties have lane certification. Native carried-over Store qualification on the combined image remains open. Unknown article headers and body bytes remain preserved, but opaque re-encoding of an unknown record schema is still unimplemented; this broader requirement is not complete."
@@ -626,7 +625,7 @@
     },
     {
       "id": "STO-009",
-      "title": "A lost committed suffix is detected at open, and after migration a missing marker is damage",
+      "title": "A lost committed suffix is detected at open, and under a required marker a missing marker is damage",
       "specification": "specs/storage.md#the-committed-history-boundary",
       "milestone": "M5",
       "status": "implemented",
@@ -2680,8 +2679,7 @@
         "host/native/operator.lisp",
         "docs/operator.md",
         "planning/evidence/operator-walk-2026-09-26.md",
-        "planning/evidence/rollback-history-2026-09-26.md",
-        "tests/test_native_rollback_history.py"
+        "planning/evidence/rollback-history-2026-09-26.md"
       ],
       "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 1 (HST-009, PRF-143; exit 6 until outcome-algebra) (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
@@ -3503,6 +3501,49 @@
         "planning/evidence/listener-v6-2026-09-26.md"
       ],
       "implementation_note": "RFC 4291 section 2.2 text forms and RFC 3986 section 3.2.2 brackets are RFC requirements; the wildcard and IPv4-mapped refusals and one socket per written address are local policy. The native two-family case (SCN-126) is named for the batch. Status and health do not yet list the bound addresses (PKT-577)."
+    },
+    {
+      "id": "STO-028",
+      "title": "A store has one format: another format is refused at open by name, and store export/import carry a store's history across a reinstall",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-205"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-profile-open.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_store_export.py"
+      ],
+      "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open."
+    },
+    {
+      "id": "HST-014",
+      "title": "A deploy is a reinstall: stop, remove, install the release, init or import, start; no upgrade verb, no versioned release directory, no store rollback",
+      "specification": "specs/host.md#hst-014-the-deploy-is-a-reinstall",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-205"
+      ],
+      "verification": [
+        "inspection",
+        "integration"
+      ],
+      "evidence": [
+        "docs/operator.md",
+        "packaging/install-native.sh",
+        "tools/runbooks/README.md",
+        "tests/test_native_store_export.py"
+      ],
+      "implementation_note": "D34. upgrade-profile, needs-upgrade, rollback-check, repair and packaging/upgrade-native.sh were removed."
     }
   ]
 }
