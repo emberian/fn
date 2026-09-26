@@ -1,0 +1,57 @@
+test_a_crash_between_consumption_and_enrolment_enrols_once (tests.test_native_peer_invite.NativePeerInviteTests.test_a_crash_between_consumption_and_enrolment_enrols_once) ... ok
+test_accept_configures_the_inviter_and_resumes_after_a_cut (tests.test_native_peer_invite.NativePeerInviteTests.test_accept_configures_the_inviter_and_resumes_after_a_cut)
+PRF-160: an invitation naming the inviter's address configures the ... ok
+test_an_acceptance_of_an_invitation_this_node_never_issued (tests.test_native_peer_invite.NativePeerInviteTests.test_an_acceptance_of_an_invitation_this_node_never_issued) ... ok
+test_invite_accept_confirm_and_the_refusals (tests.test_native_peer_invite.NativePeerInviteTests.test_invite_accept_confirm_and_the_refusals) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 19.976s
+
+OK
+NATIVE-PEER-INVITE genesis g 465485d71b1cf4ae997d0f2ec7a02a540f1aaeba8687735b8f08e38f6e3ce4ef
+NATIVE-PEER-INVITE genesis h 7b3e047bcf5dbc64adb15f9f6725f573dff2baee51989203681c9c1f45162a71
+NATIVE-PEER-INVITE A2 peer invite -> 0
+NATIVE-PEER-INVITE B2 peer accept -> 0
+NATIVE-PEER-INVITE A2 confirm with the stop -> 3
+NATIVE-PEER-INVITE A2 peer list after the stop: nodeB2 path-identity=b2.example address=127.0.0.1 port=41209 security=clear inbound=fn.* outbound=- auth=principal:7b3e047bcf5dbc64adb15f9f6725f573dff2baee51989203681c9c1f45162a71
+accepted operator peer
+NATIVE-PEER-INVITE A2 peer confirm -> 0
+NATIVE-PEER-INVITE A2 peer confirm -> 1 expected already-confirmed
+NATIVE-PEER-INVITE A2 key history: ['generation=1 state=active principal=7b3e047bcf5dbc64adb15f9f6725f573dff2baee51989203681c9c1f45162a71']
+NATIVE-PEER-INVITE genesis a3 41c672f5a8ed20d6fd8778985694cc6552f1cd665ddd00ee30cbc3655531dbc7
+NATIVE-PEER-INVITE genesis b3 d596f5ed10f516dc156163a0c04677a3f470293fd4bdbd466e9abf2605fa9b0b
+NATIVE-PEER-INVITE A3 peer invite -> 0
+NATIVE-PEER-INVITE B3 accept with the stop -> 3
+NATIVE-PEER-INVITE B3 peer list after the stop: a3.example path-identity=a3.example address=127.0.0.1 port=56393 security=clear inbound=fn.* outbound=- auth=principal:41c672f5a8ed20d6fd8778985694cc6552f1cd665ddd00ee30cbc3655531dbc7
+accepted operator peer
+NATIVE-PEER-INVITE B3 peer accept -> 0
+NATIVE-PEER-INVITE B3 peer accept -> 1 expected already-enrolled
+NATIVE-PEER-INVITE A3 peer confirm -> 0
+NATIVE-PEER-INVITE A3 peer list after confirm: nodeB3 path-identity=b3.example address=127.0.0.1 port=42121 security=clear inbound=fn.* outbound=- auth=principal:d596f5ed10f516dc156163a0c04677a3f470293fd4bdbd466e9abf2605fa9b0b
+accepted operator peer
+NATIVE-PEER-INVITE B3 key history: ['generation=1 state=active principal=41c672f5a8ed20d6fd8778985694cc6552f1cd665ddd00ee30cbc3655531dbc7']
+NATIVE-PEER-INVITE genesis a ad313a5b27783c936ba6638390b50360c1a83e64b3d1d54175e944015ba208f9
+NATIVE-PEER-INVITE genesis f 89dd23048a34856a822adf16555f0748d4c4b98ba2230390e38034f1ca22218c
+NATIVE-PEER-INVITE genesis e c920f460483d18a47bab506e73694e9caf7a2b9dcd30cd7c0e8ac579e5613c4b
+NATIVE-PEER-INVITE D peer invite -> 0
+NATIVE-PEER-INVITE E peer accept -> 0
+NATIVE-PEER-INVITE A peer confirm -> 1 expected no-such-invitation
+NATIVE-PEER-INVITE genesis a 235be2d749380b80f9cbaabc9479142c31f0fc597a143162ce34b565fbb2f44f
+NATIVE-PEER-INVITE genesis b fb92642bcb4c27d17047f305dc4e648ad1bebca1c1e0e2b298db6f2b4cc03ad2
+NATIVE-PEER-INVITE genesis c 6a5aa6754bedf7682f5c6e758c17f3e981e3d934da6bf48880d63017950cd765
+NATIVE-PEER-INVITE A peer invite -> 0
+NATIVE-PEER-INVITE B peer accept -> 0
+NATIVE-PEER-INVITE B peer accept -> 1 expected already-enrolled
+NATIVE-PEER-INVITE A peer confirm -> 1 expected unverified
+NATIVE-PEER-INVITE A peer invite -> 0
+NATIVE-PEER-INVITE A peer confirm -> 1 expected another-invitation
+NATIVE-PEER-INVITE A peer confirm -> 0
+NATIVE-PEER-INVITE A peer list after confirm: nodeB path-identity=b.example address=127.0.0.1 port=43285 security=clear inbound=fn.* outbound=- auth=principal:fb92642bcb4c27d17047f305dc4e648ad1bebca1c1e0e2b298db6f2b4cc03ad2
+accepted operator peer
+NATIVE-PEER-INVITE A peer confirm -> 1 expected already-confirmed
+NATIVE-PEER-INVITE C peer accept -> 0
+NATIVE-PEER-INVITE A peer confirm -> 1 expected invitation-consumed
+NATIVE-PEER-INVITE A peer confirm -> 1 expected document-kind
+NATIVE-PEER-INVITE A key history: ['generation=1 state=active principal=fb92642bcb4c27d17047f305dc4e648ad1bebca1c1e0e2b298db6f2b4cc03ad2']
+NATIVE-PEER-INVITE B key history: ['generation=1 state=active principal=235be2d749380b80f9cbaabc9479142c31f0fc597a143162ce34b565fbb2f44f']
+NATIVE-EXIT 0

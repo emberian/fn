@@ -160,7 +160,7 @@ class NativePeerInviteTests(unittest.TestCase):
             node.start()
         inv = self.root / "inv1"
         self.run_ok(a, "peer", "invite", "nodeB", "fn.*", "127.0.0.1", str(b.port),
-                    "a.example", str(keys_a), str(inv))
+                    "a.example", str(keys_a), str(inv), "-", "-")
         acc = self.root / "acc1"
         self.run_ok(b, "peer", "accept", str(inv), str(keys_b), "b.example", "-", str(acc))
         # The same invitation again at B: A is already B's current enrolment.
@@ -175,7 +175,7 @@ class NativePeerInviteTests(unittest.TestCase):
         # PRF-124: another invitation A issued, presented with this acceptance.
         inv_other = self.root / "inv-other"
         self.run_ok(a, "peer", "invite", "nodeX", "fn.*", "127.0.0.1", "11999",
-                    "a.example", str(keys_a), str(inv_other))
+                    "a.example", str(keys_a), str(inv_other), "-", "-")
         self.refused(a, ("peer", "confirm", str(acc), str(inv_other)), "another-invitation")
         self.assertNotIn("nodeB", out(a.operator("peer", "list")))
         self.run_ok(a, "peer", "confirm", str(acc), str(inv))
@@ -215,7 +215,7 @@ class NativePeerInviteTests(unittest.TestCase):
         # D invites under A's own keys; A never recorded that nonce.
         foreign = self.root / "inv-d"
         self.run_ok(d, "peer", "invite", "nodeE", "fn.*", "127.0.0.1", str(e.port),
-                    "d.example", str(keys_a), str(foreign))
+                    "d.example", str(keys_a), str(foreign), "-", "-")
         acc_e = self.root / "acc-e"
         self.run_ok(e, "peer", "accept", str(foreign), str(keys_e), "e.example", "-",
                     str(acc_e))
@@ -231,7 +231,7 @@ class NativePeerInviteTests(unittest.TestCase):
         b2.start()
         inv = self.root / "inv-crash"
         self.run_ok(a2, "peer", "invite", "nodeB2", "fn.*", "127.0.0.1", str(b2.port),
-                    "a2.example", str(keys_g), str(inv))
+                    "a2.example", str(keys_g), str(inv), "-", "-")
         acc = self.root / "acc-crash"
         self.run_ok(b2, "peer", "accept", str(inv), str(keys_h), "b2.example", "-", str(acc))
         died = a2.operator("peer", "confirm", str(acc), str(inv))
@@ -252,6 +252,54 @@ class NativePeerInviteTests(unittest.TestCase):
         history = a2.key_history()
         print("NATIVE-PEER-INVITE A2 key history:", history)
         self.assertEqual(len([line for line in history if ph in line]), 1)
+
+    def test_accept_configures_the_inviter_and_resumes_after_a_cut(self):
+        """PRF-160: an invitation naming the inviter's address configures the
+        inviter as a peer at the accepting node in one configuration record
+        before the enrolment; a death between the two leaves the peer and no
+        enrolment, and the next accept enrols once without a second record."""
+        a, b = Node(self, self.root, "A3"), Node(self, self.root, "B3")
+        keys_a, pa = self.keys("a3", a)
+        keys_b, pb = self.keys("b3", b)
+        a.start()
+        b.start(env={"FN_PEER_TEST_STOP_AFTER_CONFIGURE": "1"})
+        inv = self.root / "inv-addressed"
+        self.run_ok(a, "peer", "invite", "nodeB3", "fn.*", "127.0.0.1", str(b.port),
+                    "a3.example", str(keys_a), str(inv), "127.0.0.1", str(a.port))
+        body = inv.read_bytes()
+        self.assertIn("Inviter-Host: 127.0.0.1".encode(), body)
+        self.assertIn("Inviter-Port: {}".format(a.port).encode(), body)
+        acc = self.root / "acc-addressed"
+        died = b.operator("peer", "accept", str(inv), str(keys_b), "b3.example", "-",
+                          str(acc))
+        print("NATIVE-PEER-INVITE B3 accept with the stop ->", died.returncode)
+        self.assertNotEqual(died.returncode, EXIT_OK, out(died))
+        self.assertEqual(b.process.wait(timeout=60), 137)
+        b.reap()
+        self.assertFalse(acc.exists())
+        self.assertFalse([line for line in b.key_history() if pa in line])
+        b.start()
+        listed = out(b.operator("peer", "list"))
+        print("NATIVE-PEER-INVITE B3 peer list after the stop:", listed)
+        self.assertIn("a3.example path-identity=a3.example address=127.0.0.1 port={}"
+                      .format(a.port), listed)
+        self.assertIn(pa, listed)
+        self.run_ok(b, "peer", "accept", str(inv), str(keys_b), "b3.example", "-", str(acc))
+        again = out(b.operator("peer", "list"))
+        self.assertEqual(again, listed)
+        self.refused(b, ("peer", "accept", str(inv), str(keys_b), "b3.example", "-",
+                         str(self.root / "acc-again")), "already-enrolled")
+        self.run_ok(a, "peer", "confirm", str(acc), str(inv))
+        listed_a = out(a.operator("peer", "list"))
+        print("NATIVE-PEER-INVITE A3 peer list after confirm:", listed_a)
+        self.assertIn("nodeB3", listed_a)
+        self.assertIn(pb, listed_a)
+        a.stop()
+        b.stop()
+        history = b.key_history()
+        print("NATIVE-PEER-INVITE B3 key history:", history)
+        self.assertEqual([line for line in history if pa in line],
+                         ["generation=1 state=active principal={}".format(pa)])
 
 
 if __name__ == "__main__":
