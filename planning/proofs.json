@@ -3525,7 +3525,8 @@
         "planning/evidence/manifests/certify-20260925T185930Z-96439.json",
         "books/nntp-control.lisp",
         "books/owner-control-read.lisp",
-        "tests/acl2/nntp-control-tests.lisp"
+        "tests/acl2/nntp-control-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T004042Z-3226778.json"
       ],
       "progress_note": "Lane control-c2c3 (2026-09-25), packets C2 and C3 of planning/design-2026-09-25-control-messages.md under D29. Teeth in tests/acl2/control-authority-tests.lisp: per keystone a reachable witness asserting antecedent and conclusion, and per hypothesis a removal witness (the carried verdict; the cross-post outside the grant; the wrong principal; the revoke before the cancel; the view pinned before the cancel; the early cancel). The two reconfiguration headlines (fn-ocl-no-reader-observes-a-half-change, fn-ocl-crash-at-any-instant-recovers-the-live-generation) are universally quantified over delta lists and were recertified with the new slot and kinds. Open: the served view (K1 restated over fn-ctl-visible-articles at fn-own-refresh), signed control filing, the host's commit-time call, Supersedes. Lane control-c3 (2026-09-25): the signed record binding names the filing group (the :control-signed refusal is gone, signed cancels can be verified), and the visible list has an incremental form with its correspondence keystones. Still open: the owner wiring (fn-own-refresh carrying the visible list, K1 restated), the host's commit-time and recovery calls, 430/423, HDR :fn-control, Supersedes, fn_verify. Lane control-c3d (2026-09-25): records decided at each withdrawing article's own Store txid, live and at recovery (the journal keystones); Supersedes; the config-owner-live rules scoped (15.1 s to 7.6 s); the reader kernel for 423/430 withdrawn and HDR :fn-control with no caller yet; fn_verify's withdrawal report. Open: the served wiring of the reader kernel, the owner relation carrying the journal equality, the two-node native cases.",
       "events": [
@@ -4059,7 +4060,8 @@
         "tests/acl2/nntp-xpat-tests.lisp",
         "books/store-budget-naming.lisp",
         "tests/acl2/store-budget-naming-tests.lisp",
-        "planning/evidence/reader-surface-2026-09-25.md"
+        "planning/evidence/reader-surface-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T004042Z-3226778.json"
       ],
       "progress_note": "See planning/evidence/reader-surface-2026-09-25.md for the farm manifest and native logs.",
       "events": [
@@ -4583,7 +4585,8 @@
       "evidence": [
         "books/nntp-search-scope.lisp",
         "tests/acl2/nntp-search-scope-tests.lisp",
-        "planning/evidence/reader-daily-2026-09-25.md"
+        "planning/evidence/reader-daily-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T004042Z-3226778.json"
       ],
       "progress_note": "Certified on hbox (planning/evidence/reader-daily-2026-09-25.md names the manifest); the native walk and tin session are in the same record.",
       "events": [
