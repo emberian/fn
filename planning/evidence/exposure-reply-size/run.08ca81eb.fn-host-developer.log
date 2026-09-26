@@ -1,0 +1,6 @@
+== source commit 08ca81ebad0cbfc1b2462083ca9f09c55f51a375
+== test-tests.test_native_bounds_join 14:18:07Z
+   test-tests.test_native_bounds_join exit 0: OK (skipped=1) (/tank/fn/scratch/exposure-reply-size/native-fix/logs/test-tests.test_native_bounds_join.log)
+== test-tests.test_native_public_exposure 14:18:32Z
+   test-tests.test_native_public_exposure exit 0: OK (/tank/fn/scratch/exposure-reply-size/native-fix/logs/test-tests.test_native_public_exposure.log)
+== done status 0; /tank/fn/scratch/exposure-reply-size/native-fix/SHA256SUMS
