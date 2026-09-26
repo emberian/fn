@@ -8,13 +8,13 @@ Aim (ember, 2026-09-26): friends bring up their own instances and peer, some pee
 
 | Pile | Packets |
 | --- | ---: |
-| (a) WAVE 4 | 127 |
+| (a) WAVE 4 | 129 |
 | &nbsp;&nbsp;already owned by a lane running or queued now | 14 |
-| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 96 |
-| &nbsp;&nbsp;coordinator chores (not lanes) | 17 |
+| &nbsp;&nbsp;in the 17 wave-4 lane candidates | 97 |
+| &nbsp;&nbsp;coordinator chores (not lanes) | 18 |
 | (b) AFTER v1 | 125 |
 | (c) WON'T DO / SUPERSEDED | 21 |
-| **Total** | **273** |
+| **Total** | **275** |
 
 Sweep 10 (deputy 3, dev `88ec3ef0..804896a1`): 235 at the triage, 6 retired by merges in the window (PKT-002, 242, 249, 271, 319, 348; struck below with the hash), 38 added: sweep 10's 16 new packets (PKT-353 to 368), 13 reserved ids given their first backlog line (PKT-321, 323, 326, 330, 331, 401, 403 to 406, 409 to 411) and 9 open packets this pass had missed (PKT-168, 324, 332, 408, 412 to 416). Moved between piles: PKT-197 to (c); PKT-164 and PKT-263 to (b); PKT-252 to friend-session; PKT-300 to operator-daily; PKT-301 to served-path-scale. Running now (WAVE-STATE): outcome-algebra, pack-chain-open, signed-history-index-2, and the candidates peer-feeds, keys-and-accounts, community-bounds, reader-2 (their packets stay under their candidate headings).
 
@@ -31,6 +31,8 @@ Sweep 15 (deputy 3, dev `1770d687..92fe0753`): 272 after sweep 14, none retired 
 Sweep 16 (deputy 3, dev `92fe0753..05fbc962`): 273 in the table after sweep 15, less PKT-396 and PKT-398 (retired at c7072ddc and struck then, the table not updated: 271 by the script), less 2 retired in the window (ten-second-5 aeb29ca4: PKT-371, PKT-326; struck with the hash), plus 3 added: the lane's PKT-478 (first placed here, under tooling-velocity beside PKT-366, which it half closes) and sweep 16's PKT-483 and PKT-484 (coordinator chores, the deputy's). Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
 
 Sweep 17 (deputy 3, dev `05fbc962..bb7b2994`): 273 in the table after sweep 16, less PKT-484 (retired at 926cb6f2 and struck then, the table not updated: 271 by the script), less 5 retired in the window (keys-and-accounts-3 ac803643: PKT-463, 391; control-reply-fit d98094f8: PKT-467; operator-daily-2 b39f2363: PKT-453, 454; struck with the hash; PKT-485, added and retired at bb7b2994 within the window, was never placed), plus 7 added: the lanes' PKT-470, 471, 472, 473 (first placed here) and sweep 17's PKT-487, 488, 489 (coordinator chores). The merged keys-and-accounts-3 and control-reply-fit (a0) blocks gave their open packets to candidates: PKT-433, 211, 399 and 473 to keys-and-accounts (6), PKT-254 back to consumer-exchange (12), PKT-470 to hot-path-checker (15, its item (2) that lane's class); PKT-472 to operator-daily (5). New (a0) block: profile-open-refusal (running; PKT-486 its id) with PKT-471, decided by the coordinator. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
+
+Sweep 18 (deputy 3, dev `bb7b2994..b01eb9f0`): 273 after sweep 17, less 2 retired in the window (service-envelope b01eb9f0: PKT-335, 377; struck with the hash), plus 4 added: the lane's PKT-476 (candidate 10, its remainder) and PKT-477 (a chore, FOR EMBER), first placed here, and sweep 18's PKT-492 (candidate 10, beside PKT-191) and PKT-493 (candidate 14, tooling). PKT-483 and PKT-488 stay chores: the certifications are cited and both close with the T-X gate, red on post_owner_cpu_ms. Counted by script against the backlog's open lines: every open packet once (the alias rows PKT-129 to 138 as before).
 
 Every open packet appears exactly once below (struck lines are retired and not counted) (checked by script against the backlog's open lines).
 
@@ -309,7 +311,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - moved: PKT-079 to marker-sharing (running; narrowed at a320ee6a to PKT-441) (sweep 12)
 - ~~PKT-186 79 % of a stalled N=10,000 POST in `QUERY-FILE-SYSTEM` on the publish path~~ retired at a320ee6a (closed by measurement) (sweep 12)
 
-#### 10. service-envelope
+#### 10. service-envelope (merged b01eb9f0; PKT-476 the remainder, a continuation's; PKT-191 narrowed, the arena's (PKT-293/PKT-167))
 
 - **Packets:** PKT-335, PKT-191
 - **User-visible result:** docs/operator.md states a measured envelope for one named profile (greeting, OVER, unsigned and signed POST p95, sustained POST rate, reopen) at N=10,000 and 100,000, with the weaker tier published where storage cannot meet the targets.
@@ -317,10 +319,12 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - **Mandate:** §15 sustained scale, answers §3 (the envelope table), D26.
 - **Starts after:** throughput-gate's harness; after served-path-scale and publish-program for the after rows.
 
-- PKT-335 the measured v1 service envelope
+- ~~PKT-335 the measured v1 service envelope~~ retired at b01eb9f0 (sweep 18)
 - PKT-191 N=100k: 86 ms per POST, 3,870 s full replay, checkpoint capture exhausts 32 GB
-- PKT-377 the signed POST is not a gated throughput metric; the 24481dcc improvement unrecorded (sweep 12)
+- ~~PKT-377 the signed POST is not a gated throughput metric; the 24481dcc improvement unrecorded (sweep 12)~~ retired at b01eb9f0 (the baseline row to PKT-408) (sweep 18)
 - PKT-378 publish-program's 32 KiB N=10,000 curve and a second ZFS repetition (sweep 12)
+- PKT-476 what the envelope did not measure: the after rows (hot-path-scans-2, marker-sharing-2), 32 KiB, a quiet box, bytes consed, the mutex fraction, OVER at about 8 ms a row, memory growth, the collapse probe (sweep 18)
+- PKT-492 the profile admits what the heap cannot capture: the owner dies at N of about 33,000 x 2 KiB with no named refusal; refuse or defer by name until the arena (sweep 18)
 
 #### 11. control-across-peers (merged 76e7ad91; PKT-444 (1) is control-across-peers-2 in (a0))
 
@@ -404,6 +408,7 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - PKT-393 FN_CONSUMER_EXCHANGE_EVIDENCE is a directory in one module and a file in another (sweep 13)
 - PKT-394 reach_check does not expand fn-defrecord: three PRF-173 keystones sit in the reach baseline as HOST though executed at every open (PKT-376's class) (sweep 14)
 - PKT-397 a farm run with an explicit root and `--affected-by` selected no book and certified nothing: refuse the combination; a zero-book run exits non-zero (sweep 14)
+- PKT-493 docs_check cites docs/operator.md by line number in a generated book: an insertion above a quoted invocation changes a book; cite by anchor (sweep 18)
 
 #### 15. hot-path-checker (RUNNING since 10:05; PKT-447..448)
 
@@ -471,11 +476,12 @@ Ids for wave 4: wave 3's briefs took PRF-160 to 162, NNT-030 to 032, SCN-090 to 
 - ~~PKT-396~~ multi-peer-relay's (hbox, bp-node-progress's closure and the two new books) and served-path-scale's (acceptance, node, owner) merge certifications and batch R+S's gate owed at 1770d687, before the cut takes them (sweep 14) (sweep 15: its items landed at 01e1b3cb, 544c8b1e, 40a73bf0; not ticked) — retired at 40a73bf0
 - ~~PKT-398~~ PRF-028 uncertified at the current digest though PRF-175 and the accounts publication cite it: one certification rooted at config-owner-publish, riding PKT-396's run (sweep 14) (sweep 15: certified_claims --explain names certify-20260926T123813Z-1816946 as certifying the current bytes, not cited: a cite closes it) — retired at the cite
 - PKT-482 the next cut carries batches R and S (multi-peer-relay, served-path-scale; certified 01e1b3cb, 544c8b1e; gate 40a73bf0) and every lane merged after 17:00: one closure and a qualification reusing qual-dfa810fc's unchanged evidence (sweep 15)
-- PKT-483 ten-second-5's merge certification over native-admin's and native-operator's closures at the merged bytes (aeb29ca4), cited, and its gate before the next cut (sweep 16) (sweep 17: the cert half done at dfe2077b; the gate stays)
+- PKT-483 ten-second-5's merge certification over native-admin's and native-operator's closures at the merged bytes (aeb29ca4), cited, and its gate before the next cut (sweep 16) (sweep 17: the cert half done at dfe2077b; the gate stays) (sweep 18: the gate half RED at 75eb0dc2, post_owner_cpu_ms 1.6 -> 3.5 at busy 0.36; the deputy bisecting; PKT-477 (1))
 - ~~PKT-484~~ PRF-164, PRF-166 and PRF-175 still say PRF-028 is uncertified in their "Not covered" sentences; it is cited since c7072ddc: rewrite the three, regenerate (sweep 16) — retired (the deputy, after 7d5fad84)
 - PKT-487 DECISION (the coordinator's): a signer option naming the target node's article bound, refused by name; default none, the node refuses at the POST (sweep 17)
-- PKT-488 control-reply-fit's (byte-store-frame's closure, before caps-to-profile merges) and operator-daily-2's (native-health, native-control, native-control-reason) merge certifications at the merged bytes, cited, and their gate before the next cut (sweep 17)
+- PKT-488 control-reply-fit's (byte-store-frame's closure, before caps-to-profile merges) and operator-daily-2's (native-health, native-control, native-control-reason) merge certifications at the merged bytes, cited, and their gate before the next cut (sweep 17) (sweep 18: both certifications cited, 662108b2 and d7b997d6; closes with the T-X gate)
 - PKT-489 NIGHT.md's merge routine: after a conflict in a test file, grep every identifier the resolved hunks renamed through the whole file, run the module natively (1afc4e55's lesson) (sweep 17)
+- PKT-477 FOR EMBER: (1) how the gate compares CPU under load (a figure that moves 60 percent with load; the T-X red); (2) which storage tier v1 supports (tank as it is, about 2 POSTs a second, or an SLOG / dedicated pool: PKT-442) (sweep 18)
 
 ## (b) AFTER v1: matters, but not for friends peering
 
