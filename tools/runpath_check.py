@@ -339,6 +339,7 @@ def tree_check(top: Path) -> Findings:
     if not (top / "bin" / "fn").is_file():
         findings.fail(f"{top}: no bin/fn")
         return findings
+    fasls = 0
     for path in sorted(p for p in top.rglob("*") if p.is_file() or p.is_symlink()):
         rel = path.relative_to(top).as_posix()
         if path.is_symlink():
@@ -359,7 +360,12 @@ def tree_check(top: Path) -> Findings:
                 continue
             if rel.startswith("share/doc/"):
                 continue
-            check_shell_script(rel, path.read_text(encoding="utf-8", errors="replace"), findings)
+            if re.fullmatch(r"/bin/k?sh", interp):
+                check_shell_script(rel, path.read_text(encoding="utf-8", errors="replace"), findings)
+            elif path.suffix == ".fasl" and re.search(r"/sbcl --script$", interp):
+                fasls += 1  # SBCL's fasl header line: loaded by the runtime
+            else:
+                findings.fail(f"{rel}: interpreter {interp} is neither /bin/sh nor SBCL")
             continue
         if head[:4] == b"\x7fELF":
             needed = elf_needed(path.read_bytes())
@@ -373,6 +379,8 @@ def tree_check(top: Path) -> Findings:
             continue
         if executable and not rel.startswith("share/"):
             findings.fail(f"{rel}: executable that is neither a /bin/sh script nor ELF")
+    if fasls:
+        findings.note(f"{fasls} SBCL contrib fasls (#!.../sbcl --script headers, loaded by the runtime)")
     services = [p for p in top.rglob("*") if p.is_file() and (
         p.suffix in (".service", ".plist") or p.parent.name == "rc.d")]
     if not services:
