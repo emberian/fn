@@ -13,18 +13,18 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 966 |
 | Certification roots in the Makefile | 944 |
 | Books inside the root closure | 960 |
-| `defthm` and `defthmd` events | 13528 |
-| `defun` events | 9438 |
-| Functions with verified guards | 2199 |
+| `defthm` and `defthmd` events | 13570 |
+| `defun` events | 9471 |
+| Functions with verified guards | 2203 |
 | Functions declared `:verify-guards nil` and never verified | 762 |
-| Functions left at the default with an explicit guard | 5074 |
+| Functions left at the default with an explicit guard | 5103 |
 | Functions left at the default with no guard | 1403 |
-| `assert-event` checks | 14174 |
-| `must-fail` checks | 1643 |
+| `assert-event` checks | 14231 |
+| `must-fail` checks | 1658 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 65 |
-| Theorems flagged SUSPECT by shape | 121 |
-| Export-hygiene warnings | 153 |
+| Theorems flagged SUSPECT by shape | 123 |
+| Export-hygiene warnings | 152 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 138 |
 | Include-hygiene warnings | 975 |
@@ -398,7 +398,7 @@ that `make certify` requests.
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/msgid-index-concrete.lisp` | root | 13 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
-| `books/native-admin-peer.lisp` | root | 34 | 49 | 0/0/49/0 | 0 | 0 | 1 |
+| `books/native-admin-peer.lisp` | root | 34 | 50 | 0/0/50/0 | 0 | 0 | 1 |
 | `books/native-admin-shape.lisp` | root | 5 | 16 | 1/0/15/0 | 0 | 0 | 0 |
 | `books/native-admin.lisp` | root | 27 | 31 | 0/0/31/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 7 | 52 | 0/0/52/0 | 0 | 0 | 0 |
@@ -496,8 +496,8 @@ that `make certify` requests.
 | `books/peer-inbound.lisp` | root | 71 | 62 | 9/4/49/0 | 0 | 0 | 4 |
 | `books/peer-invite.lisp` | root | 39 | 70 | 0/0/70/0 | 0 | 0 | 1 |
 | `books/peer-offer-indexed.lisp` | root | 20 | 10 | 9/0/1/0 | 0 | 0 | 1 |
-| `books/peer-pull-session.lisp` | root | 28 | 38 | 0/0/38/0 | 0 | 0 | 0 |
-| `books/peer-pull.lisp` | root | 47 | 89 | 7/0/82/0 | 0 | 0 | 0 |
+| `books/peer-pull-session.lisp` | root | 32 | 38 | 0/0/38/0 | 0 | 0 | 0 |
+| `books/peer-pull.lisp` | root | 85 | 121 | 11/0/110/0 | 0 | 0 | 2 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/poster-bytes-buffer.lisp` | root | 55 | 21 | 0/0/20/1 | 0 | 0 | 0 |
@@ -942,8 +942,8 @@ that `make certify` requests.
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 219 | 5 | 0 |
 | `tests/acl2/peer-invite-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 83 | 16 | 0 |
 | `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 43 | 4 | 0 |
-| `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 35 | 7 | 0 |
-| `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 40 | 8 | 0 |
+| `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 48 | 10 | 0 |
+| `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 62 | 12 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
@@ -1150,6 +1150,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 239 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 563 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
+| `fn-pull-fixed-fold` | `books/peer-pull.lisp` | 1053 | definition-restated: the conclusion is the body of fn-pull-fixed |
+| `fn-pull-list-of-true-list` | `books/peer-pull.lisp` | 770 | branch-of-definition: the hypothesis is a branch test of fn-pull-list and the conclusion is that branch's value |
 | `fn-rca-result-okp-is-line-okp` | `books/reclaim-admission.lisp` | 76 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rcl-config-rule-without-a-row-keeps-forever` | `books/reclaim-rule.lisp` | 155 | branch-of-definition: the hypothesis is a branch test of fn-rcl-config-rule and the conclusion is that branch's value |
 | `fn-rclp-event-of-an-unrewritten-event-by-definition` | `books/store-reclaim-pack.lisp` | 128 | branch-of-definition: the hypothesis negates a branch test of fn-rclp-event and the conclusion is that branch's value |
@@ -1181,5 +1183,5 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-th-topic-decode-refuses-oversize` | `books/topic-history-store-events.lisp` | 200 | branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 1071 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
 | `least-of-atom` | `books/bp-route.lisp` | 265 | branch-of-definition: the hypothesis is a branch test of fn-bprt-least and the conclusion is that branch's value |
-| `list-octets-of-atom` | `books/native-admin-peer.lisp` | 804 | branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value |
+| `list-octets-of-atom` | `books/native-admin-peer.lisp` | 832 | branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value |
 | `store-event-decode-of-a-record-octets` | `books/store-reclaim-pack.lisp` | 176 | branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value |
