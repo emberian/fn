@@ -55,7 +55,7 @@ class ProfileUpgradeSourceTests(unittest.TestCase):
         self.assertIn('(equal (fn-native-operator-result-command result) "store")', action)
         self.assertIn(":upgrade-profile))", action)
         self.assertIn("(fn-profile-upgrade-verdict current target)", store_host)
-        command = native_cuts.host_function(host, "fnn-command-upgrade-profile")
+        command = native_cuts.host_reach(host, "fnn-command-upgrade-profile")
         self.assertIn("(fnn-open-live-store root t (fnn-profile-test-fault))", command)
         # D31: the verdict gates the history requirement over the marker.
         self.assertIn("'fn-hmr-upgrade-verdict", command)

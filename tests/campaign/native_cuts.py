@@ -405,6 +405,45 @@ def host_function(source: str, name: str) -> str:
     return source[start:following if following >= 0 else len(source)]
 
 
+def book_function(name: str) -> tuple:
+    """The one book under books/ that defines NAME, and the definition.
+
+    A source test that follows a host call into ACL2 by the callee's name,
+    so a renamed or re-homed definition does not need a new literal line.
+    """
+    found = [(path, host_function(path.read_text(encoding="utf-8"), name))
+             for path in sorted((ROOT / "books").glob("*.lisp"))
+             if "(defun {} ".format(name) in path.read_text(encoding="utf-8")]
+    if len(found) != 1:
+        raise AssertionError("{} is defined in {} books, not one".format(name, len(found)))
+    return found[0]
+
+
+def calls_through_book(body: str, callee: str, arguments: str) -> list:
+    """The functions BODY calls over ARGUMENTS that are CALLEE or reach it.
+
+    CALLEE counts when BODY calls it over ARGUMENTS itself, or calls over
+    ARGUMENTS the one book function whose definition calls CALLEE: a host
+    line that routes the same open through an ACL2 wrapper keeps the check.
+    """
+    heads = re.findall(r"\((fn-[a-z0-9-]+) {}\)".format(re.escape(arguments)), body)
+    return [head for head in heads
+            if head == callee
+            or "({} ".format(callee) in book_function(head)[1]]
+
+
+def host_reach(source: str, name: str) -> str:
+    """NAME's definition and those of the functions in SOURCE it calls.
+
+    One level: a verb split into a handler and its body keeps the calls its
+    source tests look for, while a call moved out of the verb's reach fails.
+    """
+    body = host_function(source, name)
+    callees = sorted(set(re.findall(r"\((fnn?-[a-z0-9-]+)[\s)]", body)) - {name})
+    return body + "".join(host_function(source, callee) for callee in callees
+                          if "(defun {} ".format(callee) in source)
+
+
 def verify_recovery_order() -> None:
     """The host reaches the recovery cuts in the order the coordinates say.
 

@@ -50,7 +50,7 @@ class HistoryRequiredSourceTests(unittest.TestCase):
         check = native_cuts.host_function(io, "fnn-check-history-marker")
         self.assertIn("'fn-hmr-open-verdict", check)
         self.assertIn("'fn-hmr-catch-up", check)
-        upgrade = native_cuts.host_function(io, "fnn-command-upgrade-profile")
+        upgrade = native_cuts.host_reach(io, "fnn-command-upgrade-profile")
         self.assertIn("'fn-hmr-upgrade-verdict", upgrade)
         native_cuts.verify_recovery_order()
 

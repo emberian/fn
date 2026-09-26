@@ -17,6 +17,7 @@ rather than a source inspection being reported as runtime evidence.
 """
 import fcntl
 import os
+import re
 from pathlib import Path
 import select
 import signal
@@ -25,6 +26,7 @@ import subprocess
 import tempfile
 import unittest
 
+from tests.campaign import native_cuts
 from tests.native_process import next_log_number, start_filed
 
 
@@ -91,9 +93,18 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
         admin_peer = (ROOT / "books" / "native-admin-peer.lisp").read_text(encoding="ascii")
         self.assertIn("(defun fn-native-admin-peer-report (peers)", admin_peer)
         self.assertIn('(include-book "native-admin-peer")', self.admin)
+        # The query report renders the peers through an ACL2 peer report
+        # over (fn-cfg-peers value), defined in a native-admin-peer* book
+        # native-admin includes; by name, not by line (since a50312ef it is
+        # fn-native-admin-peer-budget-report, books/native-admin-peer-budget.lisp).
         report = self.admin.index("(defun fn-native-admin-query-report (plan value)")
-        self.assertIn("(fn-native-admin-peer-report (fn-cfg-peers value))",
-                      self.admin[report:self.admin.index("\n(", report)])
+        called = re.findall(r"\((fn-native-admin-peer[a-z-]*-report) \(fn-cfg-peers value\)\)",
+                            self.admin[report:self.admin.index("\n(", report)])
+        self.assertEqual(len(called), 1, called)
+        book, peer_report = native_cuts.book_function(called[0])
+        self.assertTrue(book.stem.startswith("native-admin-peer"), book)
+        self.assertIn('(include-book "{}")'.format(book.stem), self.admin)
+        self.assertTrue(peer_report.startswith("(defun {} (peers)".format(called[0])), peer_report[:80])
         self.assertIn("'fn-native-admin-host-queryp plan", self.host)
         self.assertIn("(queryp (fnn-admin-query root plan))", self.host)
         # The read-only executor opens the store non-writable and publishes
