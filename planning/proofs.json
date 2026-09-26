@@ -4747,6 +4747,46 @@
         "fn-bpnf-family-apply-conserves-jobs",
         "fn-bpnp-step-family-events-keep-jobs-agreeing"
       ]
+    },
+    {
+      "id": "PRF-119",
+      "title": "The reclaiming pack `store reclaim` publishes rewrites only unheld legacy article records to their tombstones, stays a pack, converges, and frees exactly the octets admission counts",
+      "statement": "Subject: fn-rclp-decide (host/checkpoint-host.lisp fn-store-reclaim-decide, called by host/native/checkpoint.lisp fnn-reclaim-observe). fn-rclp-decide-publishes-the-rewrite: when the answer is :reclaim, its steps are *fn-rclp-steps*, dry is nil, the history is one selected pack (lower = len records), some record is rewritten, and the published summary octets are fn-cc-encode of the fn-cc-capture of fn-rclp-events of the committed records. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal and the payload fn-rcl-tombstone-of the old payload. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever, the I-th event is byte-identical. fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. fn-rclp-keep-forever-writes-nothing: under keep-forever the answer is never :reclaim. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-088"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-reclaim-pack.lisp",
+        "tests/acl2/store-reclaim-pack-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "planning/evidence/reclaim-lifecycle-2026-09-25.md"
+      ],
+      "progress_note": "Open: the replay correspondence of the reclaimed record (the open of the reclaiming pack equals fn-rcl-reclaim-state of the open of the history: PRF-088's own open step); guard verification of books/store-reclaim-pack (all :verify-guards nil, called through a :program host wrapper); the maintenance reservation as an admission invariant (PKT-169); the retention charge (the archive pin is kept); holders from feed state, FNBS rows and BP obligations are not read (the BP journal is a separate namespace; the offline verb reads the Store's consumer projection only); chained packs for N above one pack (4,096 events, 4 MiB).",
+      "events": [
+        "fn-rclp-event-decodes-to-the-tombstoned-record",
+        "fn-rclp-events-keep-the-summary-shape",
+        "fn-rclp-a-reclaimed-event-stays-reclaimed",
+        "fn-rclp-events-idempotent",
+        "fn-rclp-events-never-touch-a-held-article",
+        "fn-rclp-events-keep-every-other-kind",
+        "fn-rclp-freed-octets-account",
+        "fn-rclp-freed-is-the-admission-count",
+        "fn-rclp-decide-publishes-the-rewrite",
+        "fn-rclp-keep-forever-writes-nothing",
+        "fn-native-operator-run-store-reclaim-is-the-reclaim-action",
+        "fn-native-operator-run-reclaim-action-is-only-store-reclaim",
+        "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action",
+        "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
+      ]
     }
   ]
 }

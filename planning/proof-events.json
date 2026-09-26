@@ -4933,6 +4933,67 @@
           "name": "fn-pull-session-obs-is-the-machine-over-its-trace"
         }
       ]
+    },
+    {
+      "id": "PRF-119",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-decodes-to-the-tombstoned-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-keep-the-summary-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-a-reclaimed-event-stays-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-idempotent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-never-touch-a-held-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-events-keep-every-other-kind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-freed-octets-account"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-freed-is-the-admission-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-decide-publishes-the-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-keep-forever-writes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-reclaim-is-the-reclaim-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-reclaim-action-is-only-store-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-reclaim-dry-run-action-is-only-store-reclaim-dry-run"
+        }
+      ]
     }
   ]
 }
