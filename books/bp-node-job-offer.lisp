@@ -106,6 +106,40 @@
           job
         (fn-bpnj-held (cdr rest) jobs peer routing offered)))))
 
+; A job is its own entry when fn-bpn-find-job reads it back for its key: the
+; job the lower machine's start (fn-bpnj-start-job) will look up.  Under the
+; machine's key-uniqueness invariant (fn-bpn-job-listp, the recognizer of
+; the jobs field fn-bpn-machine-statep carries) every job in the list is its
+; own entry (fn-bpnj-unique-keys-make-every-job-its-own-entry).
+(defun fn-bpnj-own-entryp (job jobs)
+  (declare (xargs :guard t))
+  (equal (fn-bpn-find-job (fn-bpn-job-key job) jobs) job))
+
+; One traversal of the job list: each job is examined once, where it stands;
+; the first ready job that is its own entry ends the scan, and the first held
+; candidate that is its own entry is remembered on the way.  Answer
+; (READY . HELD).  The own-entry check reads the list from its head, but only
+; for a job that would otherwise be answered: under unique keys it succeeds
+; the first time, so a selection is one traversal plus the one lookup the
+; start performs anyway.  Equal to the two lookup scans fn-bpnj-select and
+; fn-bpnj-held with no hypothesis (fn-bpnj-contact-next-is-the-two-scan-
+; selection): the check is what makes a list with a repeated key (which no
+; machine state holds) answer as the lookup scans do.
+(defun fn-bpnj-scan (rest jobs peer routing offered held)
+  (declare (xargs :guard t))
+  (if (atom rest)
+      (cons nil held)
+    (let ((job (car rest)))
+      (cond ((fn-bpnj-readyp job peer routing offered)
+             (if (fn-bpnj-own-entryp job jobs)
+                 (cons job held)
+               (fn-bpnj-scan (cdr rest) jobs peer routing offered held)))
+            ((and (not held)
+                  (fn-bpnj-candidatep job peer offered)
+                  (fn-bpnj-own-entryp job jobs))
+             (fn-bpnj-scan (cdr rest) jobs peer routing offered job))
+            (t (fn-bpnj-scan (cdr rest) jobs peer routing offered held))))))
+
 ; The one question the host's contact loop asks before each offer
 ; (host/native/bp-service.lisp fnn-bpc-drive-contact, and
 ; host/native/bp-node.lisp fnn-bpnode-send-receipts).  Its answers:
@@ -116,19 +150,25 @@
 ;   (:close)  nothing more to offer on this contact.
 ; A held or already offered job never stops the contact while a younger job
 ; for the peer is ready (fn-bpnj-contact-offers-while-a-ready-job-remains).
+; The gate is read first and the job list is traversed once (fn-bpnj-scan);
+; the answer is the first-ready / first-held selection of fn-bpnj-select and
+; fn-bpnj-held (fn-bpnj-contact-next-is-the-two-scan-selection), which the
+; theorems below are stated over.
 (defun fn-bpnj-contact-next (st peer routing offered)
   (declare (xargs :guard t))
-  (let* ((jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
-         (job (fn-bpnj-select jobs jobs peer routing offered))
-         (held (fn-bpnj-held jobs jobs peer routing offered)))
-    (cond ((not (fn-bpnp-receipt-contact-event st peer)) (list :close))
-          (job (list :offer
-                     (list :contact-job peer (fn-bpn-job-key job))
-                     (cons (fn-bpn-job-key job) offered)
-                     (fn-bpn-nth 1 (fn-bpnj-offerable job peer routing))))
-          (held (list :held (fn-bpn-job-key held)
-                      (fn-bpn-nth 1 (fn-bpnj-offerable held peer routing))))
-          (t (list :close)))))
+  (if (not (fn-bpnp-receipt-contact-event st peer))
+      (list :close)
+    (let* ((jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+           (found (fn-bpnj-scan jobs jobs peer routing offered nil))
+           (job (car found))
+           (held (cdr found)))
+      (cond (job (list :offer
+                       (list :contact-job peer (fn-bpn-job-key job))
+                       (cons (fn-bpn-job-key job) offered)
+                       (fn-bpn-nth 1 (fn-bpnj-offerable job peer routing))))
+            (held (list :held (fn-bpn-job-key held)
+                        (fn-bpn-nth 1 (fn-bpnj-offerable held peer routing))))
+            (t (list :close))))))
 
 (defun fn-bpnj-transfer-outcomep (x)
   (declare (xargs :guard t))
@@ -254,6 +294,167 @@
           ("Subgoal *1/2" :use ((:instance fn-bpnj-ready-job-is-a-queued-job-for-the-peer
                                  (job (fn-bpn-find-job (fn-bpn-job-key (car rest)) jobs)))))))
 
+; -----------------------------------------------------------------------------
+; The single traversal is the two lookup scans (PRF-139 part 2)
+;
+; fn-bpnj-select and fn-bpnj-held read each position through fn-bpn-find-job
+; from the head of the list: a lookup per candidate, quadratic in the job
+; list.  fn-bpnj-scan examines each job where it stands.  The two agree on
+; every list: a job that is not its own entry has its key earlier in the
+; list, where the lookup scans already examined (and passed over) that same
+; entry.  The proof walks the list with the examined prefix PRE carried.
+
+(defun fn-bpnj-scan-keyp (key jobs)
+  (declare (xargs :guard t))
+  (if (atom jobs) nil
+    (or (equal key (fn-bpn-job-key (car jobs)))
+        (fn-bpnj-scan-keyp key (cdr jobs)))))
+
+(defthm fn-bpnj-nothing-is-a-candidate-without-a-job
+  (not (fn-bpnj-candidatep nil peer offered))
+  :hints (("Goal" :in-theory (enable fn-bpnj-candidatep fn-bpn-job-status))))
+
+(local (defthm fn-bpnj-scan-append-assoc
+         (equal (append (append a b) c) (append a (append b c)))))
+(local (defthm fn-bpnj-select-of-append
+         (equal (fn-bpnj-select (append a b) jobs peer routing offered)
+                (or (fn-bpnj-select a jobs peer routing offered)
+                    (fn-bpnj-select b jobs peer routing offered)))))
+(local (defthm fn-bpnj-held-of-append
+         (equal (fn-bpnj-held (append a b) jobs peer routing offered)
+                (or (fn-bpnj-held a jobs peer routing offered)
+                    (fn-bpnj-held b jobs peer routing offered)))))
+(local (defthm fn-bpnj-unselected-prefix-key-is-not-ready
+         (implies (and (not (fn-bpnj-select pre jobs peer routing offered))
+                       (fn-bpnj-scan-keyp key pre))
+                  (not (fn-bpnj-readyp (fn-bpn-find-job key jobs) peer routing offered)))))
+(local (defthm fn-bpnj-unheld-prefix-key-is-not-held
+         (implies (and (not (fn-bpnj-held pre jobs peer routing offered))
+                       (fn-bpnj-scan-keyp key pre)
+                       (fn-bpnj-candidatep (fn-bpn-find-job key jobs) peer offered))
+                  (fn-bpnj-readyp (fn-bpn-find-job key jobs) peer routing offered))))
+(local (defthm fn-bpnj-find-job-past-a-keyless-prefix
+         (implies (not (fn-bpnj-scan-keyp (fn-bpn-job-key job) pre))
+                  (equal (fn-bpn-find-job (fn-bpn-job-key job) (append pre (cons job rest)))
+                         job))
+         :hints (("Goal" :in-theory (enable fn-bpn-find-job)))))
+(local (defthm fn-bpnj-shadowed-entry-is-not-own-and-ready
+         (implies (and (fn-bpnj-scan-keyp (fn-bpn-job-key job) pre)
+                       (not (fn-bpnj-select pre jobs peer routing offered))
+                       (equal (fn-bpn-find-job (fn-bpn-job-key job) jobs) job))
+                  (not (fn-bpnj-readyp job peer routing offered)))
+         :hints (("Goal" :use ((:instance fn-bpnj-unselected-prefix-key-is-not-ready
+                                (key (fn-bpn-job-key job))))
+                  :in-theory (disable fn-bpn-job-key fn-bpnj-unselected-prefix-key-is-not-ready)))))
+(local (defthm fn-bpnj-shadowed-entry-is-not-own-and-held
+         (implies (and (fn-bpnj-scan-keyp (fn-bpn-job-key job) pre)
+                       (not (fn-bpnj-held pre jobs peer routing offered))
+                       (equal (fn-bpn-find-job (fn-bpn-job-key job) jobs) job)
+                       (fn-bpnj-candidatep job peer offered))
+                  (fn-bpnj-readyp job peer routing offered))
+         :hints (("Goal" :use ((:instance fn-bpnj-unheld-prefix-key-is-not-held
+                                (key (fn-bpn-job-key job))))
+                  :in-theory (disable fn-bpn-job-key fn-bpnj-unheld-prefix-key-is-not-held)))))
+(local (defthm fn-bpnj-scan-ready-ignores-held
+         (implies (syntaxp (not (equal held ''nil)))
+                  (equal (car (fn-bpnj-scan rest jobs peer routing offered held))
+                         (car (fn-bpnj-scan rest jobs peer routing offered nil))))))
+(local
+ (defun fn-bpnj-scan-induct (pre rest peer routing offered held)
+   (declare (xargs :guard t :verify-guards nil :measure (acl2-count rest)))
+   (if (atom rest)
+       (list pre held)
+     (let ((job (car rest)))
+       (if (fn-bpnj-scan-keyp (fn-bpn-job-key job) pre)
+           (fn-bpnj-scan-induct (append pre (list job)) (cdr rest) peer routing offered held)
+         (cond ((fn-bpnj-readyp job peer routing offered)
+                (fn-bpnj-scan-induct (append pre (list job)) (cdr rest) peer routing offered held))
+               ((and (not held) (fn-bpnj-candidatep job peer offered))
+                (fn-bpnj-scan-induct (append pre (list job)) (cdr rest) peer routing offered job))
+               (t (fn-bpnj-scan-induct (append pre (list job)) (cdr rest) peer routing offered held))))))))
+
+; From an examined prefix PRE with no ready entry, the scan's ready job over
+; the rest is the lookup scan's.
+(defthm fn-bpnj-scan-finds-the-selected-job
+  (implies (and (equal jobs (append pre rest))
+                (not (fn-bpnj-select pre jobs peer routing offered)))
+           (equal (car (fn-bpnj-scan rest jobs peer routing offered held))
+                  (fn-bpnj-select rest jobs peer routing offered)))
+  :hints (("Goal" :induct (fn-bpnj-scan-induct pre rest peer routing offered held)
+           :do-not-induct t
+           :in-theory (disable fn-bpn-job-key))))
+
+(local
+ (defthm fn-bpnj-scan-finds-the-held-job-split
+   (implies (and (equal jobs (append pre rest))
+                 (not (fn-bpnj-select pre jobs peer routing offered))
+                 (not (fn-bpnj-select rest jobs peer routing offered))
+                 (equal held (fn-bpnj-held pre jobs peer routing offered)))
+            (equal (cdr (fn-bpnj-scan rest jobs peer routing offered held))
+                   (or held (fn-bpnj-held rest jobs peer routing offered))))
+   :hints (("Goal" :induct (fn-bpnj-scan-induct pre rest peer routing offered held)
+            :do-not-induct t
+            :in-theory (disable fn-bpn-job-key)))))
+
+; With no ready entry in the list and HELD the prefix's first held entry,
+; the scan's held job is the lookup scan's.
+(defthm fn-bpnj-scan-finds-the-held-job
+  (implies (and (equal jobs (append pre rest))
+                (not (fn-bpnj-select jobs jobs peer routing offered))
+                (equal held (fn-bpnj-held pre jobs peer routing offered)))
+           (equal (cdr (fn-bpnj-scan rest jobs peer routing offered held))
+                  (or held (fn-bpnj-held rest jobs peer routing offered))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnj-scan-finds-the-held-job-split)
+                 (:instance fn-bpnj-select-of-append (a pre) (b rest)))
+           :in-theory (theory 'minimal-theory))))
+
+(defthm fn-bpnj-nothing-is-selected-from-nothing
+  (and (not (fn-bpnj-select nil jobs peer routing offered))
+       (not (fn-bpnj-held nil jobs peer routing offered))))
+
+;; KEYSTONE (one traversal, the same answer).  The selection the host calls
+;; before every offer (fn-bpnj-contact-next, called by
+;; host/native/bp-service.lisp fnn-bpc-drive-contact and
+;; host/native/bp-node.lisp fnn-bpnode-send-receipts) equals the two lookup
+;; scans' answer on every state, so every theorem below, stated over
+;; fn-bpnj-select, is a theorem about the single traversal.
+(defthm fn-bpnj-contact-next-is-the-two-scan-selection
+  (equal (fn-bpnj-contact-next st peer routing offered)
+         (let* ((jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                (job (fn-bpnj-select jobs jobs peer routing offered))
+                (held (fn-bpnj-held jobs jobs peer routing offered)))
+           (cond ((not (fn-bpnp-receipt-contact-event st peer)) (list :close))
+                 (job (list :offer
+                            (list :contact-job peer (fn-bpn-job-key job))
+                            (cons (fn-bpn-job-key job) offered)
+                            (fn-bpn-nth 1 (fn-bpnj-offerable job peer routing))))
+                 (held (list :held (fn-bpn-job-key held)
+                             (fn-bpn-nth 1 (fn-bpnj-offerable held peer routing))))
+                 (t (list :close)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnj-scan-finds-the-selected-job
+                  (pre nil) (rest (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                  (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st))) (held nil))
+                 (:instance fn-bpnj-scan-finds-the-held-job
+                  (pre nil) (rest (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                  (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st))) (held nil)))
+           :in-theory (union-theories '(fn-bpnj-contact-next append
+                                        fn-bpnj-nothing-is-selected-from-nothing)
+                                      (theory 'minimal-theory)))))
+(in-theory (disable fn-bpnj-contact-next))
+
+; Why the traversal is one pass on a machine state: its jobs satisfy
+; fn-bpn-job-listp (no key repeats), so every job is its own entry and the
+; first ready (or held) job the scan meets passes the check at once.
+(defthm fn-bpnj-unique-keys-make-every-job-its-own-entry
+  (implies (and (fn-bpn-job-listp jobs)
+                (member-equal job jobs))
+           (fn-bpnj-own-entryp job jobs))
+  :hints (("Goal" :induct (member-equal job jobs)
+           :in-theory (e/d (fn-bpn-job-listp fn-bpn-job-key-memberp fn-bpn-find-job)
+                           (fn-bpn-jobp fn-bpn-job-key)))))
+
 (defthm fn-bpnj-open-contact-is-open
   (fn-bpn-contact-openp peer (fn-bpn-open-contact peer contacts))
   :hints (("Goal" :in-theory (enable fn-bpn-contact-openp fn-bpn-open-contact))))
@@ -300,7 +501,7 @@
                                        peer routing offered)))
                  (:instance fn-bpnp-receipt-contact-event-needs-a-queued-job))
            :in-theory (union-theories
-                       '(fn-bpnj-contact-next fn-bpnj-step fn-bpnj-contact-job-step
+                       '(fn-bpnj-contact-next-is-the-two-scan-selection fn-bpnj-step fn-bpnj-contact-job-step
                          fn-bpnj-start-job fn-bpnj-open-base fn-bpn-propose
                          fn-bpnj-open-contact-is-open fn-bpnj-with-base-fields
                          fn-bpn-state-with-accessors fn-bpn-answer-constructor-accessors
@@ -715,7 +916,7 @@
                           (fn-bpn-nth 1 (fn-bpnj-offerable
                                          (fn-bpnj-select jobs jobs peer routing offered)
                                          peer routing))))))
-  :hints (("Goal" :in-theory (union-theories '(fn-bpnj-contact-next) (theory 'minimal-theory)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpnj-contact-next-is-the-two-scan-selection) (theory 'minimal-theory)))))
 (defthm fn-bpnj-ready-key-is-selected
   (implies (and (member-equal key (fn-bpnj-job-keys rest))
                 (fn-bpnj-readyp (fn-bpn-find-job key jobs) peer routing offered))
@@ -822,6 +1023,6 @@
                   (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st))))
                  (:instance fn-bpnj-ready-job-exists
                   (job (fn-bpn-find-job key (fn-bpn-machine-state-jobs (fn-bpnf-base st))))))
-           :in-theory (union-theories '(fn-bpnj-contact-next car-cons)
+           :in-theory (union-theories '(fn-bpnj-contact-next-is-the-two-scan-selection car-cons)
                                       (theory 'minimal-theory))))
   :rule-classes nil)
