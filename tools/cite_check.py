@@ -295,6 +295,11 @@ def disclosed(lines: list[str], number: int) -> bool:
 def scan(present: set[str], history: set[str],
          files: list[str] | None = None) -> list[Finding]:
     findings: list[Finding] = []
+    # One answer per distinct token: the same citations recur across the
+    # tree, and each miss in `present` was a run of filesystem probes --
+    # 1.7 million `resolves` calls and 2.5 million `stat`s in one `make
+    # check` (harness-repair).  The tree does not change during a scan.
+    answered: dict[str, bool] = {}
     for citer in (tracked() if files is None else files):
         if re.match(r"^rfc\d+\.txt$", citer):
             continue          # the supplied RFCs are not ours to cite-check
@@ -310,7 +315,10 @@ def scan(present: set[str], history: set[str],
             comment = line.lstrip().startswith("#")
             for match in TOKEN.finditer(line):
                 token = match.group(1).rstrip(".,;:)\"'`]")
-                if resolves(token, present):
+                hit = answered.get(token)
+                if hit is None:
+                    hit = answered[token] = resolves(token, present)
+                if hit:
                     continue
                 klass = benign(token, citer, line, match.start(1))
                 if klass is None:
