@@ -8,53 +8,53 @@
     "quiet": false
   },
   "dev": {
-    "revision": "0d21164752bb0083b91ab76835eee49c8a8fefaa",
-    "run": "0d21164752bb-dev-head-20260926T080533Z.json",
-    "core_sha256": "25913fc3ae2730a980a130505a0cb2b52889b27b89e5fcd26ace8a8affbfd820",
+    "revision": "f370581bf9f365d210bb869f2f08e543d1ce0724",
+    "run": "f370581bf9f3-batch-under-load-20260926T100659Z.json",
+    "core_sha256": "65fe9d655ba706eeda59d8f84666ea298376209cef41af8f4f6327eb9a49384b",
     "quiet": false
   },
   "metrics": {
     "probe_wall_s": {
-      "value": 68.714,
+      "value": 1.634,
       "floor": 0.5,
       "release": 68.714,
-      "dev": 71.717
+      "dev": 1.634
     },
     "probe_cpu_s": {
-      "value": 68.675,
+      "value": 1.63,
       "floor": 0.5,
       "release": 68.675,
-      "dev": 71.65
+      "dev": 1.63
     },
     "probe_commit_ms": {
-      "value": 67.671,
+      "value": 0.536,
       "floor": 0.5,
       "release": 67.671,
-      "dev": 70.668
+      "dev": 0.536
     },
     "probe_reopen_s": {
       "value": 0.892,
       "floor": 0.5,
       "release": 0.892,
-      "dev": 0.964
+      "dev": 1.03
     },
     "probe_bytes_consed_per_commit": {
-      "value": 103341504,
+      "value": 1651892,
       "floor": 262144,
       "release": 103341504,
-      "dev": 103341507
+      "dev": 1651892
     },
     "post_median_ms": {
       "value": 1.545,
       "floor": 1.0,
       "release": 1.545,
-      "dev": 1.72
+      "dev": 1.724
     },
     "post_p95_ms": {
       "value": 2.061,
       "floor": 2.0,
       "release": 2.061,
-      "dev": 2.492
+      "dev": 2.385
     },
     "post_owner_cpu_ms": {
       "value": 1.6,
@@ -66,25 +66,25 @@
       "value": 2.609,
       "floor": 1.0,
       "release": 2.609,
-      "dev": 2.939
+      "dev": 2.631
     },
     "article_p95_ms": {
       "value": 2.725,
       "floor": 2.0,
       "release": 2.725,
-      "dev": 4.092
+      "dev": 3.069
     },
     "reopen_s": {
       "value": 0.145,
       "floor": 0.5,
       "release": 0.145,
-      "dev": 0.155
+      "dev": 0.153
     },
     "checkpoint_publish_ms": {
       "value": 350,
       "floor": 50.0,
       "release": 350,
-      "dev": 414
+      "dev": 405
     }
   }
 }
