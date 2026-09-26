@@ -189,11 +189,11 @@
 ; which is what this witness evaluated to over *olt-transit*.
 (defconst *olt-refused-transit-line*
   (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :refused
-                        :local-enrollment))
+                        :local-enrollment nil))
 (assert-event
  (equal (fn-olog-line-word
          (fn-olog-transit-line *olt-transit* 7 :want nil :refused
-                               :local-enrollment))
+                               :local-enrollment nil))
         (olt-text "uncertain")))
 (assert-event
  (equal *olt-refused-transit-line*
@@ -202,29 +202,29 @@
 ; the record is durable, so fn-own-outcome-completion calls it uncertain
 ; (campaign W2) and the peer is sent 436, not 439.
 (assert-event
- (equal (fn-olog-transit-line *olt-transit* 7 :want nil :refused :local-enrollment)
+ (equal (fn-olog-transit-line *olt-transit* 7 :want nil :refused :local-enrollment nil)
         (olt-text "uncertain transit connection=7 message-id=<relay@example.invalid> code=436 decision=want reason=none detail=local-enrollment time=2026-09-18T00:00:00Z")))
 (assert-event
  (equal (fn-olog-line-word
-         (fn-olog-transit-line *olt-transit* 7 :want nil :durable nil))
+         (fn-olog-transit-line *olt-transit* 7 :want nil :durable nil nil))
         (olt-text "accepted")))
 ; Uncertain stays uncertain (436 and a close), not a deferral, not refused.
 (assert-event
  (equal (fn-olog-line-word
-         (fn-olog-transit-line *olt-transit* 7 :want nil :uncertain nil))
+         (fn-olog-transit-line *olt-transit* 7 :want nil :uncertain nil nil))
         (olt-text "uncertain")))
 ; A durable host word with nothing consumed after the take is uncertain too.
 (assert-event
  (equal (fn-olog-line-word
-         (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :durable nil))
+         (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :durable nil nil))
         (olt-text "uncertain")))
 ; Decisions that never reached the Store: a deferral and a history refusal.
 (assert-event
  (equal (fn-olog-line-word
-         (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil))
+         (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil nil))
         (olt-text "deferred")))
 (assert-event
- (equal (fn-olog-transit-line *olt-transit* 7 :reject :loop :refused nil)
+ (equal (fn-olog-transit-line *olt-transit* 7 :reject :loop :refused nil nil)
         (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=reject reason=loop detail=none time=2026-09-18T00:00:00Z")))
 (assert-event (fn-olog-no-breakp *olt-refused-transit-line*))
 
@@ -235,12 +235,12 @@
 ; :refused but whose line says deferred.
 (assert-event
  (not (equal (fn-olog-line-word
-              (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil))
+              (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil nil))
              (olt-text "refused"))))
 (must-fail
  (defthm olt-transit-line-echoes-the-host-word
    (equal (equal (fn-olog-line-word
-                  (fn-olog-transit-line o id kind reason word detail))
+                  (fn-olog-transit-line o id kind reason word detail verdict))
                  (fn-olog-text "refused"))
           (equal word :refused))
    :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word
@@ -253,7 +253,7 @@
 (must-fail
  (defthm olt-transit-line-refused-unless-accepted
    (equal (equal (fn-olog-line-word
-                  (fn-olog-transit-line o id kind reason word detail))
+                  (fn-olog-transit-line o id kind reason word detail verdict))
                  (fn-olog-text "refused"))
           (not (equal (fn-olog-transit-completion o kind word) :durable)))
    :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word
@@ -468,10 +468,48 @@
 ; detail prints as before.
 (assert-event
  (equal (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :refused
-                              '(:signature-failed :cryptographically-invalid))
+                              '(:signature-failed :cryptographically-invalid) nil)
         (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=want reason=none detail=signature-failed verdict=cryptographically-invalid time=2026-09-18T00:00:00Z")))
 (assert-event (fn-olog-verdict-detailp '(:no-local-binding :unenrolled)))
 (assert-event (not (fn-olog-verdict-detailp :local-enrollment)))
 (assert-event
- (equal (fn-olog-detail-fields '(:no-local-binding :unenrolled))
+ (equal (fn-olog-detail-fields '(:no-local-binding :unenrolled) nil)
         (olt-text "detail=no-local-binding verdict=unenrolled")))
+; A refusal's own verdict wins over a relayed accepted-arm verdict.
+(assert-event
+ (equal (fn-olog-detail-fields '(:no-local-binding :unenrolled) :verified)
+        (olt-text "detail=no-local-binding verdict=unenrolled")))
+
+; PKT-473 (PRF-184): the verdict field on the ACCEPTED arms.  The accepted
+; line names its verdict after its detail (fn-pcb-transit-verdict relayed):
+; verified with no detail, carried, revoked, unsigned, and a verified
+; composite whose key change was refused.
+(assert-event
+ (equal (fn-olog-transit-line *olt-transit* 7 :want nil :durable nil :verified)
+        (olt-text "accepted transit connection=7 message-id=<relay@example.invalid> code=235 decision=want reason=none detail=none verdict=verified time=2026-09-18T00:00:00Z")))
+(assert-event
+ (equal (fn-olog-detail-fields :carried :carried)
+        (olt-text "detail=carried verdict=carried")))
+(assert-event
+ (equal (fn-olog-detail-fields :revoked :revoked)
+        (olt-text "detail=revoked verdict=revoked")))
+(assert-event
+ (equal (fn-olog-detail-fields nil :unsigned)
+        (olt-text "detail=none verdict=unsigned")))
+(assert-event
+ (equal (fn-olog-detail-fields :key-change-refused :verified)
+        (olt-text "detail=key-change-refused verdict=verified")))
+; Teeth for fn-olog-detail-fields-print-an-accepted-arms-verdict: a pair
+; detail (the first hypothesis dropped) prints its own verdict, not VERDICT;
+; a nil verdict (the second) prints no verdict field.
+(must-fail
+ (assert-event
+  (equal (fn-olog-detail-fields '(:no-local-binding :unenrolled) :verified)
+         (append (fn-olog-field "detail" (fn-olog-symbol-text '(:no-local-binding :unenrolled)))
+                 (cons 32 (fn-olog-field "verdict" (fn-olog-symbol-text :verified)))))))
+(must-fail
+ (assert-event
+  (equal (fn-olog-detail-fields :carried nil)
+         (append (fn-olog-field "detail" (fn-olog-symbol-text :carried))
+                 (cons 32 (fn-olog-field "verdict" (fn-olog-symbol-text nil)))))))
+(assert-event (equal (fn-olog-detail-fields :carried nil) (olt-text "detail=carried")))

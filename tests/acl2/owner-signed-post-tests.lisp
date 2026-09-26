@@ -528,3 +528,57 @@
 (assert-event (equal (car (fn-pa-carrier-form *ospt-staged*)) :ok))
 (assert-event (not (ospt-event *ospt-staged* nil)))
 (must-fail (assert-event (ospt-keeps-conclusion *ospt-staged* nil)))
+
+; ---------------------------------------------------------------------------
+; PKT-473 (PRF-184): fn-osp-served-post-names-a-refused-key-change and its
+; converse, on the signed POST whose kind-4 finish was consumed
+; (*ospt-finished*, the poster's connection in flight).
+(defun ospt-kc-conclusion (o id attempt detail)
+  (let* ((word (fn-pa-served-post-word attempt detail))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (r (fn-own-outcome o id word)))
+    (and (equal word :durable-key-change-refused)
+         (equal (fn-own-outcome-completion o word) :durable)
+         (equal (car r)
+                (fn-post-result-effects
+                 (fn-nntp-post-outcome
+                  (fn-auth-post-session (fn-own-conn-session conn))
+                  :durable-key-change-refused)))
+         (equal (cdr r) (cdr (fn-own-outcome o id :durable))))))
+(assert-event (fn-own-completion-consumedp *ospt-finished*))
+(assert-event (fn-own-find-conn *ospt-poster* (fn-own-conns *ospt-finished*)))
+(assert-event (equal (fn-own-sub-id (fn-own-inflight *ospt-finished*)) *ospt-poster*))
+(assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :durable :key-change-refused))
+(assert-event
+ (equal (fn-served-reply-octets
+         (car (fn-own-outcome *ospt-finished* *ospt-poster*
+                              (fn-pa-served-post-word :durable :key-change-refused))))
+        (append (fn-nntp-string-octets
+                 "240 article received OK; the key change it carries was refused (key-change-refused)")
+                '(13 10))))
+; Each hypothesis dropped: the completion not consumed (*ospt-taken*), the
+; attempt not durable, the detail not the executor's refusal, another
+; connection's id.
+(assert-event (not (fn-own-completion-consumedp *ospt-taken*)))
+(must-fail (assert-event (ospt-kc-conclusion *ospt-taken* *ospt-poster* :durable :key-change-refused)))
+(must-fail (assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :refused :key-change-refused)))
+(must-fail (assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :durable :carried)))
+(must-fail (assert-event (ospt-kc-conclusion *ospt-finished* 0 :durable :key-change-refused)))
+; The converse's antecedent on the witness, and its conclusion.
+(defun ospt-kc-reply-p (o id attempt detail)
+  (let ((conn (fn-own-find-conn id (fn-own-conns o))))
+    (equal (car (fn-own-outcome o id (fn-pa-served-post-word attempt detail)))
+           (fn-post-result-effects
+            (fn-nntp-post-outcome
+             (fn-auth-post-session (fn-own-conn-session conn))
+             :durable-key-change-refused)))))
+(assert-event (fn-post-sessionp (fn-auth-post-session
+                                 (fn-own-conn-session
+                                  (fn-own-find-conn *ospt-poster*
+                                                    (fn-own-conns *ospt-finished*))))))
+(assert-event (ospt-kc-reply-p *ospt-finished* *ospt-poster* :durable :key-change-refused))
+(assert-event (not (ospt-kc-reply-p *ospt-finished* *ospt-poster* :durable nil)))
+(assert-event (not (ospt-kc-reply-p *ospt-taken* *ospt-poster* :durable :key-change-refused)))
+; The converse's hypothesis ATTEMPT /= the new word: dropped, the attempt
+; :durable-key-change-refused itself with no detail gets the reply.
+(assert-event (ospt-kc-reply-p *ospt-finished* *ospt-poster* :durable-key-change-refused nil))

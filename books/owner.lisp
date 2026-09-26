@@ -2208,9 +2208,19 @@
 ; :uncertain (campaign W2, 2026-09-24: an OS error raised after publication
 ; was reported as `441 ... refused' for a durable article).  :clock-unusable
 ; remains a distinct owner-clock refusal, and all other words are :uncertain.
+; The durable words: :durable, and :durable-key-change-refused, the served
+; POST's word for a durable kind-4 composite whose kind-3 key change the
+; Store refused (books/peer-authored-accept.lisp fn-pa-served-post-word;
+; PKT-473, PRF-184).  Both are one outcome, durable; only the POST reply's
+; text tells them apart (fn-own-post-rendering).
+(defun fn-own-durable-wordp (word)
+  (declare (xargs :guard t))
+  (or (equal word :durable)
+      (equal word :durable-key-change-refused)))
+
 (defun fn-own-outcome-completion (o word)
   (declare (xargs :guard t))
-  (cond ((and (equal word :durable)
+  (cond ((and (fn-own-durable-wordp word)
               (fn-own-completion-consumedp o))
          :durable)
         ((fn-own-completion-consumedp o) :uncertain)
@@ -2228,6 +2238,18 @@
     (if (equal completion :refused)
         word
       completion)))
+
+; The served POST reply's rendering: fn-own-outcome-rendering, except that a
+; durable completion reached by :durable-key-change-refused keeps that word,
+; so fn-nntp-post-outcome's 240 names the refused key change.  Which outcome
+; it is stays the completion's; transit renders fn-own-outcome-rendering.
+(defun fn-own-post-rendering (o word)
+  (declare (xargs :guard t))
+  (let ((rendering (fn-own-outcome-rendering o word)))
+    (if (and (equal rendering :durable)
+             (equal word :durable-key-change-refused))
+        word
+      rendering)))
 
 ; Resolution repeats the complete intent identity.  Durable is projected from
 ; the consumed owner completion, never from the host word alone.  A known
@@ -2293,7 +2315,7 @@
                                        (fn-own-conn-verdicts conn)
                                        (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
-                  (fn-own-outcome-rendering o word)))
+                  (fn-own-post-rendering o word)))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
                   next)))

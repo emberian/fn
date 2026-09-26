@@ -911,6 +911,17 @@ class NativeHybridAuthorTest(unittest.TestCase):
             carried = [line for line in relay["log"].read_text().splitlines()
                        if " message-id=" + msgid + " " in line and " detail=carried " in line]
             self.assertEqual(len(carried), 1, relay["log"].read_text())
+            # PKT-473 (PRF-184): the accepted arms name their verdict
+            # (fn-pcb-transit-verdict): carried at the relay, verified at
+            # the enrolled sink.
+            self.assertIn(" detail=carried verdict=carried ", carried[0])
+            self.assertTrue(carried[0].startswith("accepted transit "), carried[0])
+            verified = [line for line in sink["log"].read_text().splitlines()
+                        if line.startswith("accepted transit ")
+                        and " message-id=" + msgid + " " in line]
+            self.assertEqual(len(verified), 1, sink["log"].read_text())
+            self.assertIn(" detail=none verdict=verified ", verified[0])
+            print("NATIVE-TRANSIT-VERDICT", carried[0], "|", verified[0], flush=True)
             if os.environ.get("FN_D23_VERIFY") == "1":
                 self.assertEqual(self._verify(sink["port"], msgid)[0], 0)
                 code, out = self._verify(relay["port"], msgid)

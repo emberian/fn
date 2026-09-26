@@ -387,6 +387,53 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertIn("generation=2 state=active principal={}".format(pb), after)
         self.assertEqual(len(after), 2)
 
+    def test_a_succeeded_inviter_known_here_is_accepted_by_name(self):
+        """PKT-473 (PRF-184, SCN-113): A enrolled at B under its genesis keys
+        and then succeeded (generation 2 at B and on A's own node).  A invites
+        B with its CURRENT keys and its address; B already holds A current at
+        those keys, so B's accept configures A as a peer and enrols nothing
+        (`peer accept: the inviter's current keys; nothing to enrol`), and
+        B's keyring-less CLI still writes the acceptance (it reads the words
+        the owner's plan verified, never a `genesis` check of its own).  A
+        confirms it.  The same invitation again at B is refused
+        `already-enrolled` (a replay: the peer is configured, nothing to do)."""
+        a, b = (Node(self, self.root, n) for n in ("A5", "B5"))
+        keys_a, pa = self.keys("a5", a)
+        keys_b, pb = self.keys("b5", b)
+        keys_a2 = keygen(self.root / "keys-a5-next")
+        for name in ("principal.bin", "token.bin"):
+            shutil.copy(keys_a / name, keys_a2 / name)
+        for node in (a, b):
+            node.start()
+        for node in (a, b):
+            for keys in (keys_a, keys_a2):
+                self.hybrid("hybrid-enroll-next", str(node.control),
+                            str(keys_a / "principal.bin"),
+                            str(keys / "ed-public.bin"), str(keys / "ml-public.pem"))
+        inv = self.root / "inv-a5"
+        self.run_ok(a, "peer", "invite", "nodeB5", "fn.*", "127.0.0.1", str(b.port),
+                    "a5.example", str(keys_a2), str(inv), "127.0.0.1", str(a.port))
+        acc = self.root / "acc-a5"
+        self.run_ok(b, "peer", "accept", str(inv), str(keys_b), "b5.example", "-", str(acc))
+        self.assertTrue(acc.is_file())
+        listed_b = out(b.operator("peer", "list"))
+        print("NATIVE-PEER-INVITE B5 peer list after accept:", listed_b)
+        self.assertIn("a5.example path-identity=a5.example address=127.0.0.1 port={}"
+                      .format(a.port), listed_b)
+        self.assertIn(pa, listed_b)
+        self.refused(b, ("peer", "accept", str(inv), str(keys_b), "b5.example", "-",
+                         str(self.root / "acc-a5-again")), "already-enrolled")
+        self.run_ok(a, "peer", "confirm", str(acc), str(inv))
+        self.assertIn("nodeB5", out(a.operator("peer", "list")))
+        log_b = self.stop_with_log(b)
+        a.stop()
+        self.assertIn("peer accept: the inviter's current keys; nothing to enrol", log_b)
+        self.assertIn("peer accept refused: already-enrolled", log_b)
+        history = [line for line in b.key_history() if pa in line]
+        print("NATIVE-PEER-INVITE B5 key history for A:", history)
+        self.assertEqual(history, ["generation=2 state=active principal={}".format(pa),
+                                   "generation=1 state=retired principal={}".format(pa)])
+
 
 if __name__ == "__main__":
     unittest.main()

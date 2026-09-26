@@ -629,40 +629,9 @@
            (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
               (fn-acct-invite-expiry seconds stamp))))
 
-; `account list': one line per row, never a digest or a verifier.
-;   pending LOGIN-FREE expires EXPIRY
-;   redeemed LOGIN PRINCIPAL-HEX
-(defun fn-acct-list-lines (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (let ((row (car rows)))
-        (cons (if (equal (fn-cfg-row-n row) 1)
-                  (concatenate 'string "redeemed "
-                               (if (stringp (fn-cfg-row-b row))
-                                   (fn-cfg-row-b row) "")
-                               " "
-                               (fn-acct-hex-text
-                                (fn-acct-local-principal
-                                 (fn-record-string-octets (fn-cfg-row-b row))))
-                               (string #\Newline))
-                (concatenate 'string "pending expires "
-                             (if (stringp (fn-cfg-row-c row))
-                                 (fn-cfg-row-c row) "")
-                             (string #\Newline)))
-              (fn-acct-list-lines (cdr rows))))
-    nil))
-
-(defun fn-acct-string-join (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (concatenate 'string (if (stringp (car xs)) (car xs) "")
-                   (fn-acct-string-join (cdr xs)))
-    ""))
-
-(defun fn-acct-list-report (v)
-  (declare (xargs :guard t))
-  (fn-record-string-octets (fn-acct-string-join
-                            (fn-acct-list-lines (fn-cfg-accounts v)))))
+; `account list' is books/account-list.lisp's report (PKT-391); the older
+; fn-acct-list-report, which listed a binding row as pending, was removed
+; with its last caller (PKT-473).
 
 ; The pending row an accepted `account invite DIGEST SECONDS' plan stages at
 ; STAMP (the live owner's clock, or the offline record's), or nil.

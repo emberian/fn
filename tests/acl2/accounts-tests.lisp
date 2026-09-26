@@ -341,9 +341,5 @@
                    (not (< (+ (fn-clock-wall *at-stamp-no-wall*)
                               (fn-clock-wall-error *at-stamp-no-wall*))
                            (fn-acct-invite-expiry 60 *at-stamp-no-wall*)))))
-; `account list' names logins and principals, never a digest.
-(assert-event
- (let ((text (fn-record-octets-string (fn-acct-list-report (at-v2)))))
-   (and (stringp text)
-        (equal (subseq text 0 15) "redeemed robin ")
-        (not (search (at-digest) text)))))
+; `account list' (books/account-list.lisp, tests/acl2/account-list-tests.lisp)
+; names logins and principals, never a digest.
