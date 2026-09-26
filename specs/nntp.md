@@ -1118,6 +1118,47 @@ the portable form). The node is public when any listener is
 rebind listeners (PKT-464 (a)); a changed `host` takes effect at restart.
 What remains: PKT-577.
 
+## Transit streaming (NNT-042)
+
+NNT-042: A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not
+
+A peer connection (a configured peer with an inbound half) accepts MODE
+STREAM with 203 (RFC 4644 §2.3; stateless: IHAVE stays available), CHECK
+(§2.4) and TAKETHIS (§2.5). The three forms are answered from two ACL2
+decisions of books/peer-inbound.lisp: `fn-peer-decide-offer` before the
+article (IHAVE's first reply, CHECK's only reply) and
+`fn-peer-decide-transfer` after it (IHAVE's second reply, TAKETHIS's only
+reply; it has no command formal). PRF-207 states the correspondence on the
+codes a peer reads off the socket:
+
+| decision | IHAVE (RFC 3977 §6.3.2) | streaming (RFC 4644) |
+| --- | --- | --- |
+| offer wanted / held / deferred or refused | 335 / 435 / 436, 435 | CHECK 238 / 438 / 431, 438 |
+| transfer durable / refused or held / deferred or uncertain | 235 / 437 / 436 | TAKETHIS 239 / 439 / 436 |
+
+RFC requirements: the codes and the Message-ID echoed by every CHECK and
+TAKETHIS reply. fn guarantee: one admission decision for all three forms,
+so no article is admitted under one form that another would refuse, and a
+duplicate is refused under every form. Local policy: 436 after TAKETHIS
+(RFC 4644 §2.5 names 400; innfeed retries 436 and a 400 closes the
+connection with every pipelined article behind it), and the pipeline
+bound: each 238 is a promise counted on the connection, a TAKETHIS retires
+one, and a CHECK with the peer record's inbound max-inflight outstanding
+(16 from `peer add`) answers 431, so a peer may pipeline without limit and
+fn's work per connection stays bounded (D27; the unbounded part is the
+peer's queue, not fn's).
+
+Outbound, fn sends MODE STREAM after the greeting when the peer record
+says streaming. 203: the feed offers with CHECK and transfers with
+TAKETHIS. 500 or 501 (RFC 3977 §3.2.1: the command or its argument is
+unknown, which is what a server without RFC 4644 answers): the same
+connection goes on with IHAVE, the owner logs one line
+(`fn-fc-fallback-log-line`) and records no stop; the next connection asks
+again. Any other answer is a refusal and stops the dial for the owner
+process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
+it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
+asks MODE STREAM, which every legacy server answers (PKT-599).
+
 ## Scope
 
 No moderation, automated control-message execution, private-mail confidentiality,

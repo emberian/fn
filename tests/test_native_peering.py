@@ -13,6 +13,7 @@ import socket
 import struct
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 
@@ -50,6 +51,98 @@ def free_port():
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         return probe.getsockname()[1]
+
+
+class ScriptedTransitPeer:
+    """A minimal INN-shaped transit server for fn's outbound feed.
+
+    It greets with 200, answers MODE STREAM with MODE_REPLY (203 streams;
+    501 is what a server without RFC 4644 answers, RFC 3977 section 3.2.1),
+    and then takes IHAVE (335 / 235) or CHECK / TAKETHIS (238 / 239) the way
+    INN's innd does.  Every command line it reads is recorded with its
+    connection number, so a test can say which form carried each article.
+    """
+
+    def __init__(self, mode_reply):
+        self.mode_reply = mode_reply
+        self.listener = socket.socket()
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(8)
+        self.port = self.listener.getsockname()[1]
+        self.commands = []
+        self.articles = {}
+        self.lock = threading.Lock()
+        self.connections = 0
+        self.closed = False
+        threading.Thread(target=self.serve, daemon=True).start()
+
+    def close(self):
+        self.closed = True
+        self.listener.close()
+
+    def serve(self):
+        while not self.closed:
+            try:
+                client, _ = self.listener.accept()
+            except OSError:
+                return
+            with self.lock:
+                self.connections += 1
+                number = self.connections
+            threading.Thread(target=self.session, args=(client, number),
+                             daemon=True).start()
+
+    def read_article(self, stream):
+        body = bytearray()
+        while True:
+            line = stream.readline()
+            if not line or line == b".\r\n":
+                return bytes(body)
+            body.extend(line[1:] if line.startswith(b"..") else line)
+
+    def session(self, client, number):
+        with client:
+            stream = client.makefile("rwb", buffering=0)
+            stream.write(b"200 scripted transit peer\r\n")
+            while True:
+                line = stream.readline()
+                if not line:
+                    return
+                text = line.rstrip(b"\r\n").decode("ascii", "replace")
+                with self.lock:
+                    self.commands.append((number, text))
+                words = text.split()
+                verb = words[0].upper() if words else ""
+                if verb == "MODE":
+                    stream.write(self.mode_reply.encode("ascii") + b"\r\n")
+                elif verb == "IHAVE":
+                    stream.write(b"335 send it\r\n")
+                    article = self.read_article(stream)
+                    with self.lock:
+                        self.articles[words[1]] = ("IHAVE", article)
+                    stream.write(b"235 article transferred OK\r\n")
+                elif verb == "CHECK":
+                    stream.write(b"238 " + words[1].encode("ascii") + b"\r\n")
+                elif verb == "TAKETHIS":
+                    article = self.read_article(stream)
+                    with self.lock:
+                        self.articles[words[1]] = ("TAKETHIS", article)
+                    stream.write(b"239 " + words[1].encode("ascii") + b"\r\n")
+                elif verb == "QUIT":
+                    stream.write(b"205 bye\r\n")
+                    return
+                else:
+                    stream.write(b"500 unknown command\r\n")
+
+    def await_article(self, message_id, timeout=60):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self.lock:
+                if message_id in self.articles:
+                    return self.articles[message_id]
+            time.sleep(0.1)
+        return None
 
 
 @unittest.skipUnless(
@@ -430,4 +523,217 @@ class NativePeeringTests(unittest.TestCase):
             "served_path": served.split(b"\r\n", 1)[0].decode("ascii", "replace"),
             "owner_alive": target["process"].poll() is None,
             "identity": self.verify_process_identity(target),
+        }, sort_keys=True))
+
+    # -------------------------------------------------------------------
+    # Streaming (RFC 4644), PRF-207 / NNT-042 / SCN-138
+
+    def test_inn_shaped_streaming_driver_gets_the_ihave_verdicts(self):
+        """An INN-shaped peer streams into fn: MODE STREAM, then CHECKs
+        pipelined before their TAKETHISes, as innfeed sends them.  Every
+        streamed answer is the RFC 4644 image of the IHAVE answer for the
+        same case (one decision, three wire forms), and the pipeline past
+        the peer's max-inflight (16, `peer add`'s inbound bound) is 431."""
+        source = self.initialize("stream-source", free_port())
+        target = self.initialize("stream-target", free_port())
+        self.configure_peer(target, source, outbound="-")
+        self.start(target)
+
+        def outscope(message_id, marker):
+            return self.article(message_id, marker).replace(
+                b"Newsgroups: fn.test", b"Newsgroups: alt.elsewhere")
+
+        fresh = ["<stream-{}@example.invalid>".format(n) for n in range(20)]
+        held = "<stream-held@example.invalid>"
+        refused_ihave = "<stream-refused-ihave@example.invalid>"
+        refused_takethis = "<stream-refused-takethis@example.invalid>"
+        replies = {}
+        with socket.create_connection(("127.0.0.1", target["port"]), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"MODE STREAM\r\n")
+            replies["mode"] = stream.readline()
+            # IHAVE first, on the same connection: the held article, and an
+            # out-of-scope one the transfer decision refuses.
+            stream.write(b"IHAVE " + held.encode() + b"\r\n")
+            replies["ihave-offer"] = stream.readline()
+            stream.write(self.article(held, "held") + b".\r\n")
+            replies["ihave-transfer"] = stream.readline()
+            stream.write(b"IHAVE " + held.encode() + b"\r\n")
+            replies["ihave-duplicate"] = stream.readline()
+            stream.write(b"IHAVE " + refused_ihave.encode() + b"\r\n")
+            self.assertTrue(stream.readline().startswith(b"335 "))
+            stream.write(outscope(refused_ihave, "refused-ihave") + b".\r\n")
+            replies["ihave-refused"] = stream.readline()
+            # The pipeline: 20 fresh CHECKs and the held one, written at once.
+            stream.write(b"".join(b"CHECK " + m.encode() + b"\r\n"
+                                  for m in fresh + [held]))
+            checks = [stream.readline() for _ in range(len(fresh) + 1)]
+            # TAKETHIS for every 238, one at a time: two TAKETHIS articles
+            # in one socket read lose the second (PKT-600, the pipelined
+            # test below), so this driver waits for each 239 as innfeed
+            # does with a window of one.
+            wanted = [m for m, r in zip(fresh, checks) if r.startswith(b"238 ")]
+            takes = []
+            for m in wanted:
+                stream.write(b"TAKETHIS " + m.encode() + b"\r\n"
+                             + self.article(m, m[1:-1]) + b".\r\n")
+                takes.append(stream.readline())
+            stream.write(b"TAKETHIS " + refused_takethis.encode() + b"\r\n"
+                         + outscope(refused_takethis, "refused-takethis") + b".\r\n")
+            replies["takethis-refused"] = stream.readline()
+            # The deferred ones again, now that the promises are retired.
+            deferred = [m for m, r in zip(fresh, checks) if r.startswith(b"431 ")]
+            stream.write(b"".join(b"CHECK " + m.encode() + b"\r\n" for m in deferred))
+            rechecks = [stream.readline() for _ in deferred]
+            retakes = []
+            for m in deferred:
+                stream.write(b"TAKETHIS " + m.encode() + b"\r\n"
+                             + self.article(m, m[1:-1]) + b".\r\n")
+                retakes.append(stream.readline())
+            # A TAKETHIS of an article already held: 439, and IHAVE says 435.
+            stream.write(b"TAKETHIS " + fresh[0].encode() + b"\r\n"
+                         + self.article(fresh[0], fresh[0][1:-1]) + b".\r\n")
+            replies["takethis-duplicate"] = stream.readline()
+            stream.write(b"CHECK " + fresh[0].encode() + b"\r\n")
+            replies["check-duplicate"] = stream.readline()
+            stream.write(b"QUIT\r\n")
+            replies["quit"] = stream.readline()
+
+        codes = {k: v[:3].decode() for k, v in replies.items()}
+        self.assertEqual(codes["mode"], "203", replies)
+        self.assertEqual((codes["ihave-offer"], codes["ihave-transfer"]), ("335", "235"), replies)
+        self.assertEqual(codes["ihave-duplicate"], "435", replies)
+        self.assertEqual(codes["ihave-refused"], "437", replies)
+        check_codes = [c[:3].decode() for c in checks]
+        # The bound: sixteen promises, then 431 (retry later), and the held
+        # article 438 -- the images of 335, 436 and 435.
+        self.assertEqual(check_codes[:16], ["238"] * 16, checks)
+        self.assertEqual(check_codes[16:20], ["431"] * 4, checks)
+        self.assertEqual(check_codes[20], "438", checks)
+        for message_id, reply in zip(fresh, checks):
+            self.assertTrue(reply.rstrip(b"\r\n").endswith(message_id.encode()), reply)
+        self.assertEqual([t[:3] for t in takes], [b"239"] * 16, takes)
+        self.assertEqual(codes["takethis-refused"], "439", replies)
+        self.assertEqual([r[:3] for r in rechecks], [b"238"] * 4, rechecks)
+        self.assertEqual([r[:3] for r in retakes], [b"239"] * 4, retakes)
+        self.assertEqual(codes["takethis-duplicate"], "439", replies)
+        self.assertEqual(codes["check-duplicate"], "438", replies)
+        self.assertEqual(codes["quit"], "205", replies)
+        for message_id in fresh:
+            self.assertEqual(self.await_article(target, message_id),
+                             self.article(message_id, message_id[1:-1]))
+        self.assertIsNone(self.article_from(target, refused_takethis))
+        self.assertIsNone(self.article_from(target, refused_ihave))
+        self.assertIsNone(target["process"].poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "inn-shaped-streaming",
+            "ihave": {"offer": codes["ihave-offer"], "transfer": codes["ihave-transfer"],
+                      "duplicate": codes["ihave-duplicate"], "refused": codes["ihave-refused"]},
+            "stream": {"mode": codes["mode"], "check": check_codes,
+                       "takethis": [t[:3].decode() for t in takes],
+                       "refused": codes["takethis-refused"],
+                       "recheck": [r[:3].decode() for r in rechecks],
+                       "retake": [r[:3].decode() for r in retakes],
+                       "duplicate": codes["takethis-duplicate"],
+                       "check_duplicate": codes["check-duplicate"]},
+            "stored": len(fresh),
+            "identity": self.verify_process_identity(target),
+        }, sort_keys=True))
+
+    @unittest.expectedFailure
+    def test_pipelined_takethis_in_one_read_answers_every_article(self):
+        """PKT-600, an open IMPLEMENTATION defect, recorded as an expected
+        failure so the module stays a regression gate for everything else:
+        the served fold consumes a whole socket read, and the owner takes
+        only the first submission of a read (books/served.lisp
+        `fn-served-submission'; `fn-own-finish-read'), so the second of two
+        TAKETHIS articles that arrive in one read is never admitted and
+        never answered.  innfeed pipelines TAKETHIS.  When PKT-600 is
+        repaired this test passes and unittest reports an unexpected
+        success: remove the decorator then."""
+        source = self.initialize("pipe-source", free_port())
+        target = self.initialize("pipe-target", free_port())
+        self.configure_peer(target, source, outbound="-")
+        self.start(target)
+        ids = ["<pipe-{}@example.invalid>".format(n) for n in range(8)]
+        with socket.create_connection(("127.0.0.1", target["port"]), timeout=15) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"".join(b"TAKETHIS " + m.encode() + b"\r\n"
+                                  + self.article(m, m[1:-1]) + b".\r\n"
+                                  for m in ids))
+            replies = []
+            for _ in ids:
+                try:
+                    replies.append(stream.readline())
+                except socket.timeout:
+                    replies.append(b"")
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "pipelined-takethis-pkt-600",
+            "replies": [r.decode("ascii", "replace") for r in replies]}))
+        self.assertEqual([r[:3] for r in replies], [b"239"] * len(ids), replies)
+
+    def feed_to_scripted_peer(self, mode_reply, marker):
+        peer = ScriptedTransitPeer(mode_reply)
+        self.addCleanup(peer.close)
+        source = self.initialize(marker + "-source", free_port())
+        target = {"name": marker + "-peer", "port": peer.port}
+        self.configure_peer(source, target)
+        self.start(source)
+        message_id = "<{}@example.invalid>".format(marker)
+        self.post(source, message_id, marker)
+        served = self.await_article(source, message_id)
+        got = peer.await_article(message_id)
+        self.assertIsNotNone(got, "the scripted peer never received the article; "
+                             "commands={}".format(peer.commands))
+        return peer, source, message_id, served, got
+
+    def test_feed_to_a_peer_without_streaming_falls_back_to_ihave(self):
+        """PRF-207: a peer that answers MODE STREAM with 501 (RFC 3977
+        section 3.2.1) is fed with IHAVE on the SAME connection; no CHECK or
+        TAKETHIS is ever sent to it, and the owner keeps dialling it."""
+        peer, source, message_id, served, got = self.feed_to_scripted_peer(
+            "501 unknown MODE variant", "fallback")
+        form, article = got
+        self.assertEqual(form, "IHAVE")
+        self.assertEqual(article, served)
+        with peer.lock:
+            commands = list(peer.commands)
+        verbs = [(n, c.split()[0].upper()) for n, c in commands]
+        mode_conn = [n for n, v in verbs if v == "MODE"][0]
+        ihave_conn = [n for n, c in commands if c == "IHAVE " + message_id][0]
+        self.assertEqual(mode_conn, ihave_conn, commands)
+        self.assertNotIn("CHECK", [v for _, v in verbs], commands)
+        self.assertNotIn("TAKETHIS", [v for _, v in verbs], commands)
+        # A second article reaches the same peer: the dial was not stopped.
+        second = "<fallback-2@example.invalid>"
+        self.post(source, second, "fallback-2")
+        again = peer.await_article(second)
+        self.assertIsNotNone(again, commands)
+        self.assertEqual(again[0], "IHAVE")
+        self.assertIsNone(source["process"].poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "mode-stream-501-ihave-fallback",
+            "commands": commands, "identical": article == served,
+            "second": again[0], "identity": self.verify_process_identity(source),
+        }, sort_keys=True))
+
+    def test_feed_to_a_streaming_peer_uses_check_and_takethis(self):
+        """A peer that answers 203 is fed with CHECK then TAKETHIS (RFC 4644
+        sections 2.4, 2.5), never IHAVE."""
+        peer, source, message_id, served, got = self.feed_to_scripted_peer(
+            "203 streaming permitted", "streamed")
+        form, article = got
+        self.assertEqual(form, "TAKETHIS")
+        self.assertEqual(article, served)
+        with peer.lock:
+            commands = list(peer.commands)
+        verbs = [c.split()[0].upper() for _, c in commands]
+        self.assertIn("CHECK", verbs, commands)
+        self.assertNotIn("IHAVE", verbs, commands)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "mode-stream-203-streaming", "commands": commands,
+            "identical": article == served,
+            "identity": self.verify_process_identity(source),
         }, sort_keys=True))

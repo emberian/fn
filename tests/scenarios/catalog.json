@@ -3860,6 +3860,41 @@
         "log": "planning/evidence/heap-from-profile-2026-09-26/native-heap.log",
         "record": "planning/evidence/heap-from-profile-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-138",
+      "title": "An INN-shaped peer streams into fn (MODE STREAM, pipelined CHECKs, then TAKETHISes) and gets the IHAVE verdicts in streaming form; fn feeds a 203 peer with CHECK and TAKETHIS and a 501 peer with IHAVE on the same connection",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_inn_shaped_streaming_driver_gets_the_ihave_verdicts",
+          "test_feed_to_a_peer_without_streaming_falls_back_to_ihave",
+          "test_feed_to_a_streaming_peer_uses_check_and_takethis"
+        ],
+        "native": true,
+        "log": "planning/evidence/transit-streaming-2026-09-26/native-peering.log",
+        "record": "planning/evidence/transit-streaming-2026-09-26.md"
+      },
+      "requirements": [
+        "NNT-042"
+      ],
+      "steps": [
+        "Node T with peer S (inbound fn.*, max-inflight 16). On one connection: MODE STREAM; IHAVE an article (335, 235), IHAVE it again (435), IHAVE an out-of-scope article (335, 437).",
+        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238, each 239 awaited (two TAKETHIS articles in one socket read lose the second: PKT-600, test_pipelined_takethis_in_one_read_answers_every_article, an expected failure); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them; TAKETHIS a held article; CHECK it.",
+        "Node A with a streaming peer record to a scripted peer answering MODE STREAM 501: post an article; then to one answering 203."
+      ],
+      "evidence": [
+        "tests/acl2/peer-transit-forms-tests.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/acl2/owner-feed-form-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "203; sixteen 238 then four 431 and 438 for the held one, each echoing its Message-ID; sixteen 239; 439 for the out-of-scope TAKETHIS where IHAVE gave 437; the four deferred now 238 and 239; 439 and 438 for the held article where IHAVE gave 435; every stored article served byte-identical.",
+        "The 501 peer receives MODE STREAM then IHAVE on the same connection and never CHECK or TAKETHIS, and a second article reaches it (no stop); the 203 peer receives CHECK then TAKETHIS and never IHAVE."
+      ]
     }
   ]
 }
