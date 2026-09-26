@@ -1,4 +1,4 @@
-; Teeth for PRF-173 (served-path-scale): the one-pass :exec paths the
+; Teeth for PRF-173 (served-path-scale).  Part 1: the one-pass :exec paths the
 ; whole-node recognizer runs at every Store open, `fn-articles-freshp'
 ; (books/acceptance.lisp, exec `fn-fr-freshp') and
 ; `fn-node-articles-have-archive-bindingsp' (books/node.lisp, exec
@@ -14,7 +14,8 @@
 ; it did not write).  Last, the executed functions are shown not to reach the
 ; quadratic walks: the statement about the executed function.
 (in-package "ACL2")
-(include-book "../../books/node")
+(include-book "../../books/owner")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; References: the :logic bodies, copied.
@@ -237,3 +238,40 @@
                                   *opt-quadratic*)))
 (assert-event (not (intersectp-eq (opt-callees '(fn-nab-articles-boundp) (w state) nil)
                                   *opt-quadratic*)))
+
+; -----------------------------------------------------------------------------
+; Part 2: the group index extended at refresh, fn-gidx-refresh-is-build
+; (books/owner.lisp; fn-own-refresh passes the old view's group index, the old
+; visible articles and the new ones).  One hypothesis: the old index is the
+; build of the old articles, or there is none.
+
+(defconst *opt-old* (cdr *opt-articles*))
+(defconst *opt-old-index* (fn-gidx-build *opt-old*))
+
+; Reachable witness: one acceptance grew the visible list by one article at
+; its head; the hypothesis holds; the extension branch runs (the put of the
+; new article's two entries onto the old index) and equals the rebuild.
+(assert-event (equal (cdr *opt-articles*) *opt-old*))
+(assert-event (consp *opt-old-index*))
+(assert-event (equal *opt-old-index* (fn-gidx-build *opt-old*)))
+(assert-event (equal (fn-gidx-refresh *opt-old-index* *opt-old* *opt-articles*)
+                     (fn-gidx-put-all (fn-index-article-entries (car *opt-articles*))
+                                      *opt-old-index*)))
+(assert-event (equal (len (fn-index-article-entries (car *opt-articles*))) 2))
+(assert-event (equal (fn-gidx-refresh *opt-old-index* *opt-old* *opt-articles*)
+                     (fn-gidx-build *opt-articles*)))
+; No change, and no index: the other two branches keep the conclusion.
+(assert-event (equal (fn-gidx-refresh *opt-old-index* *opt-old* *opt-old*)
+                     (fn-gidx-build *opt-old*)))
+(assert-event (equal (fn-gidx-refresh nil *opt-old* *opt-articles*)
+                     (fn-gidx-build *opt-articles*)))
+
+; Hypothesis removed: a stale index (the build of a shorter prefix, not of the
+; old articles) extended by one article is not the build of the new list.
+(defconst *opt-stale-index* (fn-gidx-build (cddr *opt-articles*)))
+(assert-event (not (equal *opt-stale-index* (fn-gidx-build *opt-old*))))
+(assert-event (not (equal (fn-gidx-refresh *opt-stale-index* *opt-old* *opt-articles*)
+                          (fn-gidx-build *opt-articles*))))
+(must-fail
+ (thm (equal (fn-gidx-refresh buckets old-articles new-articles)
+             (fn-gidx-build new-articles))))
