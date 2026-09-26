@@ -1,0 +1,98 @@
+[
+ {
+  "side": "before",
+  "round": 1,
+  "image": "/tank/fn/scratch/throughput-gate/native-img-f314a5a3/tree/build/fn-host-developer",
+  "posts": 120,
+  "article_octets": 32768,
+  "owner_cpu_ms_per_post": 37.083,
+  "post_median_ms": 38.931,
+  "post_p95_ms": 46.088,
+  "load_s": 4.48,
+  "loadavg": [
+   "15.59",
+   "12.05",
+   "12.57"
+  ]
+ },
+ {
+  "side": "after",
+  "round": 1,
+  "image": "/tank/fn/scratch/ingress-span-2/native-after/tree/build/fn-host-developer",
+  "posts": 120,
+  "article_octets": 32768,
+  "owner_cpu_ms_per_post": 30.833,
+  "post_median_ms": 28.283,
+  "post_p95_ms": 44.918,
+  "load_s": 3.726,
+  "loadavg": [
+   "15.70",
+   "12.14",
+   "12.59"
+  ]
+ },
+ {
+  "side": "before",
+  "round": 2,
+  "image": "/tank/fn/scratch/throughput-gate/native-img-f314a5a3/tree/build/fn-host-developer",
+  "posts": 120,
+  "article_octets": 32768,
+  "owner_cpu_ms_per_post": 35.75,
+  "post_median_ms": 37.351,
+  "post_p95_ms": 45.877,
+  "load_s": 4.326,
+  "loadavg": [
+   "15.40",
+   "12.13",
+   "12.59"
+  ]
+ },
+ {
+  "side": "after",
+  "round": 2,
+  "image": "/tank/fn/scratch/ingress-span-2/native-after/tree/build/fn-host-developer",
+  "posts": 120,
+  "article_octets": 32768,
+  "owner_cpu_ms_per_post": 34.75,
+  "post_median_ms": 37.71,
+  "post_p95_ms": 47.271,
+  "load_s": 4.201,
+  "loadavg": [
+   "15.37",
+   "12.18",
+   "12.60"
+  ]
+ },
+ {
+  "side": "before",
+  "round": 3,
+  "image": "/tank/fn/scratch/throughput-gate/native-img-f314a5a3/tree/build/fn-host-developer",
+  "posts": 120,
+  "article_octets": 32768,
+  "owner_cpu_ms_per_post": 30.0,
+  "post_median_ms": 28.756,
+  "post_p95_ms": 38.877,
+  "load_s": 3.634,
+  "loadavg": [
+   "15.18",
+   "12.20",
+   "12.60"
+  ]
+ },
+ {
+  "side": "after",
+  "round": 3,
+  "image": "/tank/fn/scratch/ingress-span-2/native-after/tree/build/fn-host-developer",
+  "posts": 120,
+  "article_octets": 32768,
+  "owner_cpu_ms_per_post": 29.5,
+  "post_median_ms": 28.244,
+  "post_p95_ms": 40.289,
+  "load_s": 3.557,
+  "loadavg": [
+   "14.93",
+   "12.19",
+   "12.60"
+  ]
+ }
+]
