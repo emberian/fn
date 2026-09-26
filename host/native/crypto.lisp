@@ -40,8 +40,9 @@
        "/usr/local/opt/libsodium/lib/libsodium.dylib"
        "libsodium.dylib"))
     ((member :linux *features*) '("libsodium.so.23" "libsodium.so"))
-    ;; The libsodium package; ld.so resolves the unversioned name to the
-    ;; installed major (HST-016).
+    ;; OpenBSD's ld.so resolves an unversioned name to the newest
+    ;; libsodium.so.MAJOR.MINOR on LD_LIBRARY_PATH, then /usr/local/lib
+    ;; (7.9: libsodium.so.11.1 from pkg_add libsodium).
     ((member :openbsd *features*) '("libsodium.so"))
     (t nil)))
 
