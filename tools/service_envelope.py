@@ -147,6 +147,13 @@ def filesystem(d):
     return row
 
 
+def open_mode(stderr):
+    """The owner's own account of how it opened the Store (its OWNER-OPEN
+    line: `open=checkpoint:S suffix=K` or `open=full-replay reason=R`)."""
+    lines = [l for l in stderr.decode("ascii", "replace").splitlines() if l.startswith("OWNER-OPEN ")]
+    return lines[-1][len("OWNER-OPEN "):] if lines else None
+
+
 def is_signed(i, every):
     return every > 0 and i % every == every // 2
 
@@ -155,8 +162,9 @@ class Owner:
     def __init__(self, image, d, env, label, timeout):
         self.port = m.free_port()
         self.config = write_config(d, self.port)
-        self.proc, self.open_s, self.err = r.start_owner(image, self.config, env, d / ("owner-%s.stderr" % label),
-                                                         timeout=timeout)
+        stderr = d / ("owner-%s.stderr" % label)
+        self.proc, self.open_s, self.err = r.start_owner(image, self.config, env, stderr, timeout=timeout)
+        self.mode = open_mode(stderr.read_bytes())
 
     def cpu(self):
         return owner_cpu(self.proc.pid)
@@ -238,12 +246,20 @@ def clone(a):
         raise SystemExit("%s exists" % dst)
     t0 = time.perf_counter()
     shutil.copytree(src, dst, symlinks=True)
-    for stale in ("c.sock", "fn.toml"):
+    for stale in ("c.sock", "c.sock.lock", "fn.toml"):
         (dst / stale).unlink(missing_ok=True)
+    dropped = None
+    if a.drop_checkpoint:
+        # The state checkpoint is derived (the full replay is authoritative
+        # and decides): without it the next open is the full replay, which
+        # is the row being measured.  Only ever on a copy.
+        ck = dst / "store" / "store-checkpoint.fnsc"
+        dropped = ck.stat().st_size if ck.exists() else 0
+        ck.unlink(missing_ok=True)
     subprocess.run(["sync", "-f", str(dst)], check=False)
     state = load_state(dst)
     state["cloned_from"] = {"dir": str(src), "utc": now(), "seconds": round(time.perf_counter() - t0, 3),
-                            "filesystem": filesystem(dst)}
+                            "filesystem": filesystem(dst), "dropped_checkpoint_octets": dropped}
     save_state(dst, state)
     print(json.dumps(state["cloned_from"]))
     return 0
@@ -303,10 +319,15 @@ def rate_phase(owner, state, lock, connections, seconds, readers, octets):
         threads.append(t)
     done, lat = [], []
     deadline = [None]
+    # Every connection is open before the window starts: the rate is of
+    # POSTs, and the cost of opening a connection is the greeting row's.
+    opened, go = threading.Barrier(connections + 1), threading.Event()
 
     def poster():
         try:
             c = m.Conn(owner.port)
+            opened.wait()
+            go.wait()
             while time.perf_counter() < deadline[0]:
                 with lock:
                     i = state["count"]
@@ -319,13 +340,19 @@ def rate_phase(owner, state, lock, connections, seconds, readers, octets):
         except BaseException as e:  # noqa: BLE001 - reported (SystemExit included)
             errors.append(repr(e))
 
-    time.sleep(1.0)
+    posters = [threading.Thread(target=poster, daemon=True) for _ in range(connections)]
+    c_open = time.perf_counter()
+    for t in posters:
+        t.start()
+    try:
+        opened.wait(timeout=1800)
+    except threading.BrokenBarrierError:
+        errors.append("the posters' connections did not all open within 1800 s")
+    connect_s = time.perf_counter() - c_open
     c0 = owner.cpu()
     t0 = time.perf_counter()
     deadline[0] = t0 + seconds
-    posters = [threading.Thread(target=poster, daemon=True) for _ in range(connections)]
-    for t in posters:
-        t.start()
+    go.set()
     for t in posters:
         t.join(timeout=seconds + 300)
     wall = time.perf_counter() - t0
@@ -335,7 +362,8 @@ def rate_phase(owner, state, lock, connections, seconds, readers, octets):
     windows = [0] * max(1, int(-(-seconds // 10)))
     for t in done:
         windows[min(len(windows) - 1, int((t - t0) // 10))] += 1
-    row = {"connections": connections, "readers": readers, "seconds": round(wall, 3), "posts": len(done),
+    row = {"connections": connections, "readers": readers, "connect_s": round(connect_s, 3),
+           "seconds": round(wall, 3), "posts": len(done),
            "post_per_s": round(len(done) / wall, 3), "window_posts_per_10s": windows,
            "latency": m.summary(lat) if lat else None, "reader_articles": rcount[0],
            "owner_cpu_s": round(owner.cpu() - c0, 3), "n_before": n0, "n_after": state["count"],
@@ -481,7 +509,8 @@ def measure(a):
                                          "why": "no LISTENING within %d s: %s" % (a.open_timeout, str(e)[:300])})
                     code = 4
                     break
-                out["opens"].append({"n": n_open, "after": after, "seconds": round(owner.open_s, 3),
+                out["opens"].append({"n": n_open, "after": after, "mode": owner.mode,
+                                     "seconds": round(owner.open_s, 3),
                                      "owner_cpu_s": round(owner.cpu(), 3), "memory": owner.memory()})
                 write()
             if step == "load":
@@ -524,7 +553,7 @@ def summary_rows(out):
     hwm += [(rows.get(k) or {}).get("hwm_kib") or 0 for k in ("memory_after_latency_rows", "memory_after_rate")]
     return {"n_at_start": out.get("n_at_start"), "n": out.get("n"),
             "filesystem": out.get("filesystem", {}).get("type"),
-            "opens": [(o.get("n"), o.get("after"), o.get("seconds")) for o in out.get("opens", [])],
+            "opens": [(o.get("n"), o.get("after"), o.get("mode"), o.get("seconds")) for o in out.get("opens", [])],
             "greeting_p95_ms": p95(rows.get("greeting")), "over40_p95_ms": p95(rows.get("over40")),
             "over100_p95_ms": p95(rows.get("over100")),
             "post_p95_ms": p95(rows.get("post"), "terminator_to_reply"),
@@ -548,6 +577,8 @@ def main(argv=None):
     cl = sub.add_parser("clone")
     cl.add_argument("--dir", required=True)
     cl.add_argument("--to-dir", required=True)
+    cl.add_argument("--drop-checkpoint", action="store_true",
+                    help="remove the copy's derived state checkpoint, so its first open is the full replay")
     me = sub.add_parser("measure")
     me.add_argument("--image", required=True)
     me.add_argument("--dir", required=True)

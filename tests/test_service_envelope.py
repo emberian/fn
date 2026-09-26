@@ -45,7 +45,14 @@ class ServiceEnvelopeTests(unittest.TestCase):
         self.assertEqual((s["post_p95_ms"], s["signed_p95_ms"]), (160.0, 300.0))
         self.assertEqual(s["rates_post_per_s"], {"rate1": 6.0, "rate8": 7.5})
         self.assertEqual(s["peak_rss_kib"], 9)
-        self.assertEqual(s["opens"], [(10000, "stop", 5.0)])
+        self.assertEqual(s["opens"], [(10000, "stop", None, 5.0)])
+
+    def test_the_open_mode_is_the_owners_own_line(self):
+        err = b"CONTROL x\nOWNER-OPEN open=checkpoint:8650 suffix=1351\naccepted reader connection=0\n"
+        self.assertEqual(se.open_mode(err), "open=checkpoint:8650 suffix=1351")
+        self.assertEqual(se.open_mode(b"OWNER-OPEN open=full-replay reason=absent\n"),
+                         "open=full-replay reason=absent")
+        self.assertIsNone(se.open_mode(b"LISTENING 127.0.0.1 1\n"))
 
 
 if __name__ == "__main__":
