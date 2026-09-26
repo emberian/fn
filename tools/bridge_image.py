@@ -73,6 +73,9 @@ STORE_FORMS = (
     # takes the buffer stobj and calls fn-sccb-plan.
     '(include-book "books/octets-stobj")',
     '(include-book "books/store-checkpoint-buffer")',
+    # The state checkpoint read from the octet buffer (rep-wave-d-3):
+    # fn-store-sco-decode calls fn-sccr-decode-plan.
+    '(include-book "books/store-checkpoint-reader")',
     '(ld "host/store-node-host.lisp"' + LD,
     '(ld "host/checkpoint-host.lisp"' + LD,
     '(ld "host/anchor-host.lisp"' + LD,
