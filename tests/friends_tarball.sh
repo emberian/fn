@@ -10,20 +10,19 @@
 # TREE is a tree whose build/ holds fn-host (production) and
 # fn-host-developer (tools/hbox_native.sh --images developer,production);
 # REV its 40-digit source revision; SCRATCH an absolute, absent directory
-# (never /tank/fn/node).  Needs FN_OPENSSL_PREFIX (the OpenSSL 3.5 pair the
-# freeze copies).  Prints the tarball's SHA-256 and the module's result;
-# exit is the module's.
+# (never /tank/fn/node).  The system provides libssl (OpenSSL 3.0+); the
+# tarball bundles no TLS library (HST-016).  Prints the tarball's SHA-256
+# and the module's result; exit is the module's.
 set -eu
 [ "$#" -eq 3 ] || { echo 'usage: friends_tarball.sh TREE REV SCRATCH' >&2; exit 2; }
 tree=$1 rev=$2 scratch=$3
 case $scratch in /tank/fn/node*) echo 'friends_tarball: never the live node' >&2; exit 2;; /*) ;; *) echo 'friends_tarball: SCRATCH must be absolute' >&2; exit 2;; esac
 [ ! -e "$scratch" ] || { echo "friends_tarball: exists: $scratch" >&2; exit 4; }
-: "${FN_OPENSSL_PREFIX:?set FN_OPENSSL_PREFIX to the OpenSSL 3.5 prefix}"
 short=$(printf '%s' "$rev" | cut -c1-12)
 mkdir -p "$scratch"
 cd "$tree"
 FN_FREEZE_VARIANTS='fn-host fn-host-developer' \
-  sh packaging/freeze-native-image.sh "$tree/build" "$scratch/frozen" "$FN_OPENSSL_PREFIX"
+  sh packaging/freeze-native-image.sh "$tree/build" "$scratch/frozen"
 sh packaging/release-tarball.sh "$scratch/frozen" "$rev" "$scratch/release"
 # The friend's side: no checkout, only the tarball and its sum.
 mkdir -p "$scratch/friend"

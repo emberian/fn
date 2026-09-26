@@ -285,8 +285,9 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
       +fnn-exit-ok+)))
 
 ;;; `peer keygen KEYDIR' (PKT-402): the key directory the runbook needs,
-;;; drawn through the image's own libsodium and OpenSSL 3.5, so a friend
-;;; whose system has no `openssl' 3.5 command can make an ML-DSA-65 key.
+;;; drawn through the image's own libsodium and ML-DSA-65 library (HST-016),
+;;; so a friend needs no `openssl' command at all.  The ML-DSA-65 pair is
+;;; written as the PKCS#8 and SubjectPublicKeyInfo PEMs OpenSSL 3.5 writes.
 ;;; KEYDIR must not exist; it is made mode 0700 and every file 0600, each
 ;;; created O_EXCL.  No key is ever an argument, an environment value or a
 ;;; URL: the secret halves exist only in this process and in their files.
@@ -295,66 +296,40 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
 (sb-alien:define-alien-routine ("crypto_sign_keypair" fnn-%pinv-ed-keypair)
     sb-alien:int
   (public-key (* sb-alien:unsigned-char)) (secret-key (* sb-alien:unsigned-char)))
-(sb-alien:define-alien-routine
-    ("EVP_PKEY_CTX_new_from_name" fnn-%pinv-context-new-from-name) (* t)
-  (library-context (* t)) (name sb-alien:c-string) (properties (* t)))
-(sb-alien:define-alien-routine ("EVP_PKEY_keygen_init" fnn-%pinv-keygen-init)
-    sb-alien:int (context (* t)))
-(sb-alien:define-alien-routine ("EVP_PKEY_generate" fnn-%pinv-generate)
-    sb-alien:int (context (* t)) (key (* (* t))))
-(sb-alien:define-alien-routine ("BIO_s_mem" fnn-%pinv-bio-s-mem) (* t))
-(sb-alien:define-alien-routine ("BIO_new" fnn-%pinv-bio-new) (* t) (method (* t)))
-(sb-alien:define-alien-routine ("BIO_ctrl" fnn-%pinv-bio-ctrl) sb-alien:long
-  (bio (* t)) (command sb-alien:int) (larg sb-alien:long)
-  (parg (* (* sb-alien:unsigned-char))))
-(sb-alien:define-alien-routine
-    ("PEM_write_bio_PrivateKey" fnn-%pinv-write-private-key) sb-alien:int
-  (bio (* t)) (key (* t)) (cipher (* t)) (password (* t))
-  (password-length sb-alien:int) (callback (* t)) (userdata (* t)))
-(sb-alien:define-alien-routine ("PEM_write_bio_PUBKEY" fnn-%pinv-write-public-key)
-    sb-alien:int (bio (* t)) (key (* t)))
+(sb-alien:define-alien-routine ("fn_mldsa65_generate_pem" fnn-%pinv-ml-generate)
+    sb-alien:int
+  (private-pem (* sb-alien:unsigned-char)) (private-capacity sb-alien:unsigned-long)
+  (private-length (* sb-alien:unsigned-long))
+  (public-pem (* sb-alien:unsigned-char)) (public-capacity sb-alien:unsigned-long)
+  (public-length (* sb-alien:unsigned-long)))
 
-(defconstant +fnn-pinv-bio-ctrl-info+ 3)
-
-(defun fnn-pinv-pem-of (key privatep)
-  "KEY's PKCS#8 (private) or SubjectPublicKeyInfo (public) PEM, unencrypted."
-  (let ((bio (fnn-%pinv-bio-new (fnn-%pinv-bio-s-mem))))
-    (when (fnn-hsig-null-p bio)
-      (error 'fnn-hsig-fault :detail "cannot allocate a memory BIO"))
-    (unwind-protect
-         (progn
-           (unless (= 1 (if privatep
-                            (fnn-%pinv-write-private-key
-                             bio key (fnn-hsig-null) (fnn-hsig-null) 0
-                             (fnn-hsig-null) (fnn-hsig-null))
-                          (fnn-%pinv-write-public-key bio key)))
-             (error 'fnn-hsig-fault :detail "ML-DSA-65 PEM encoding failed"))
-           (sb-alien:with-alien ((data (* sb-alien:unsigned-char)))
-             (let ((n (fnn-%pinv-bio-ctrl bio +fnn-pinv-bio-ctrl-info+ 0
-                                          (sb-alien:addr data))))
-               (unless (and (plusp n) (< n 65536))
-                 (error 'fnn-hsig-fault :detail "ML-DSA-65 PEM has no octets"))
-               (let ((out (make-array n :element-type '(unsigned-byte 8))))
-                 (dotimes (i n out) (setf (aref out i) (sb-alien:deref data i)))))))
-      (fnn-%hsig-bio-free bio))))
+(defconstant +fnn-pinv-pem-capacity+ 8192)
 
 (defun fnn-pinv-ml-dsa-65-keypair ()
-  "A fresh ML-DSA-65 pair from the image's OpenSSL: (private-pem . public-pem)."
+  "A fresh ML-DSA-65 pair from the image's library: (private-pem . public-pem)."
   (fnn-hsig-initialize)
-  (let ((context (fnn-%pinv-context-new-from-name (fnn-hsig-null) "ML-DSA-65"
-                                                  (fnn-hsig-null))))
-    (when (fnn-hsig-null-p context)
-      (error 'fnn-hsig-unsupported :detail "ML-DSA-65 key generation unavailable"))
-    (unwind-protect
-         (sb-alien:with-alien ((key (* t) (fnn-hsig-null)))
-           (unless (and (= 1 (fnn-%pinv-keygen-init context))
-                        (= 1 (fnn-%pinv-generate context (sb-alien:addr key)))
-                        (not (fnn-hsig-null-p key)))
-             (error 'fnn-hsig-fault :detail "ML-DSA-65 key generation failed"))
-           (unwind-protect
-                (cons (fnn-pinv-pem-of key t) (fnn-pinv-pem-of key nil))
-             (fnn-%hsig-pkey-free key)))
-      (fnn-%hsig-context-free context))))
+  (let ((private (make-array +fnn-pinv-pem-capacity+
+                             :element-type '(unsigned-byte 8)))
+        (public (make-array +fnn-pinv-pem-capacity+
+                            :element-type '(unsigned-byte 8))))
+    (sb-alien:with-alien ((private-length sb-alien:unsigned-long 0)
+                          (public-length sb-alien:unsigned-long 0))
+      (sb-sys:with-pinned-objects (private public)
+        (let ((code (fnn-%pinv-ml-generate
+                     (fnn-hsig-pointer private) (length private)
+                     (sb-alien:addr private-length)
+                     (fnn-hsig-pointer public) (length public)
+                     (sb-alien:addr public-length))))
+          (unless (zerop code)
+            (fill private 0)
+            (fnn-hsig-ml-fault code "ML-DSA-65 key generation"))))
+      (unless (and (< 0 private-length +fnn-pinv-pem-capacity+)
+                   (< 0 public-length +fnn-pinv-pem-capacity+))
+        (fill private 0)
+        (error 'fnn-hsig-fault :detail "ML-DSA-65 PEM has no octets"))
+      (let ((private-pem (subseq private 0 private-length)))
+        (fill private 0)
+        (cons private-pem (subseq public 0 public-length))))))
 
 (defun fnn-pinv-ed25519-keypair ()
   "A fresh Ed25519 pair from libsodium: (public . seed||public)."

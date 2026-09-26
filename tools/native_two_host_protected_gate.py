@@ -11,12 +11,11 @@ from pathlib import Path
 
 MAX_LAUNCHER_BYTES = 16 * 1024
 SAFE_ABSOLUTE = re.compile(r"/[A-Za-z0-9_./+@%:=-]+")
-FROZEN_MARKER = "# fn frozen image launcher v1"
+FROZEN_MARKER = "# fn frozen image launcher v2"
 FROZEN_PREAMBLE = [
     'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
     'export SBCL_HOME="$here/runtime/sbcl-home/"',
-    'export FN_OPENSSL_PREFIX="$here/openssl"',
-    'export LD_LIBRARY_PATH="$here/lib:$here/openssl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"',
+    'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"',
 ]
 RUNTIME_FLAGS = {
     "--disable-ldb", "--noinform", "--end-runtime-options",

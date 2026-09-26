@@ -1230,7 +1230,8 @@
       "milestone": "M3",
       "status": "specified",
       "requirements": [
-        "OBJ-007"
+        "OBJ-007",
+        "HST-016"
       ],
       "steps": [
         "Enroll A at generation 1 and B at generation 2; authorize fresh signed sources from both after B is enrolled.",
@@ -2593,7 +2594,8 @@
       "milestone": "M6",
       "status": "implemented",
       "requirements": [
-        "NNT-032"
+        "NNT-032",
+        "HST-016"
       ],
       "steps": [
         "On a scratch developer-image node with tls_cert, tls_key and tls_port, [auth] required and protected_only, run the owner; connect over TLS on tls_port with a verified certificate; ask CAPABILITIES, AUTHINFO USER, STARTTLS, DATE; connect to the plaintext port and STARTTLS.",
