@@ -4050,6 +4050,41 @@
         "203; sixteen 238 then four 431 and 438 for the held one, each echoing its Message-ID; sixteen 239; 439 for the out-of-scope TAKETHIS where IHAVE gave 437; the four deferred now 238 and 239; 439 and 438 for the held article where IHAVE gave 435; every stored article served byte-identical.",
         "The 501 peer receives MODE STREAM then IHAVE on the same connection and never CHECK or TAKETHIS, and a second article reaches it (no stop); the 203 peer receives CHECK then TAKETHIS and never IHAVE."
       ]
+    },
+    {
+      "id": "SCN-148",
+      "title": "A friend's authenticated post carries Injection-Info with the login's posting-account pseudonym and the node's complaints address; the operator reproduces the value; a relayed article keeps its peer's line",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-004"
+      ],
+      "steps": [
+        "Init H (auth required; logins alice, bob) and A (peer-fed, no auth); start both.",
+        "On the running H: policy set complaints-to not-an-address (refused), then policy set complaints-to abuse@example.org.",
+        "alice and bob each POST an unsigned article on H; fetch each with ARTICLE.",
+        "operator account hash alice; operator account hash bob.",
+        "POST an article on A without a login; IHAVE to A an article carrying a peer's Injection-Info with parameters; fetch both."
+      ],
+      "expected": [
+        "The non-address is refused; the address is accepted live.",
+        "Each stored article on H has exactly one Injection-Info: AGENT; posting-account=\"HEX\"; mail-complaints-to=\"abuse@example.org\", HEX 64 lowercase hex digits, no octet of the login in the line.",
+        "account hash prints each login's HEX exactly; alice's and bob's differ.",
+        "A's anonymous post has an Injection-Info without posting-account; the relayed article's Injection-Info is the peer's line octet for octet."
+      ],
+      "evidence": [
+        "tests/test_native_injection_info.py",
+        "tests/acl2/injection-info-params-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_injection_info",
+        "cases": [
+          "test_injection_info_names_the_account_and_the_complaints_address"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-3-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-3-2026-09-26.md"
+      }
     }
   ]
 }

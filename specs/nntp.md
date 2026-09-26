@@ -766,6 +766,100 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
   the gate refuses exactly when the article names a group whose listed
   status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
 
+### Injection-Info parameters: posting-account and mail-complaints-to (PKT-597, 2026-09-26)
+
+RFC requirement (RFC 5536 section 3.2.8): Injection-Info is the injecting
+agent's <path-identity> followed by optional parameters, each at most once;
+"posting-account" names the source "in a form that cannot be interpreted by
+other sites", and two posts from one source SHOULD carry the same value;
+"mail-complaints-to" is an <address-list> for complaints about the poster.
+RFC 5537 section 3.5 item 10 asks the injecting agent for the field; relaying
+agents never add or change it (section 3.6).
+
+What the node writes (fn guarantee). For a served POST decided under an
+authenticated login L, with the node secret installed, the one Injection-Info
+line of the stored article is
+
+    Injection-Info: AGENT; posting-account="HEX"[; mail-complaints-to="ADDR"]
+
+where AGENT is the node's path-identity (the agent of the plain line, which
+the injection decision writes), HEX the 64 lowercase hexadecimal digits of
+HMAC-SHA256 of L's octets under the node secret's posting-account use
+(books/posting-account.lisp fn-pa-account-value over fn-pa-mac, the node
+secret's `fn posting-account v1` label, books/node-secret.lisp), and ADDR the
+`complaints-to` policy of the live configuration when set. Without a login
+(an anonymous POST where the configuration allows one, a control or BP
+submission) there is no posting-account parameter; without a login and
+without an address the line is the plain `Injection-Info: AGENT`. The line
+is rewritten in place in the injected block (books/injection-info-params.lisp
+fn-ipp-injected-octets, called by books/owner-served-invariants.lisp
+fn-own-sub-stored-octets for every local submission the owner stages, before
+the Cancel-Lock insertion, which then follows this line); nothing else in
+the article moves. Keystones (books/injection-info-params-invariants.lisp):
+`fn-ipp-injected-octets-carry-the-parameters` (the stored octets are the
+injected block with its one Injection-Info line carrying the parameters,
+then the source; the proto-article check refuses a source with its own
+Injection-Info, so the line is the article's only one),
+`fn-ipp-params-of-a-login` (under a login the parameters open with that
+login's value), `fn-ipp-params-without-a-login`,
+`fn-ipp-injected-octets-without-parameters`. The login is the one the
+`:submit` effect carries: the AUTHINFO USER name of the session at the event
+that delivered the article body (books/served.lisp fn-served-login, recorded
+by fn-own-finish-read as fn-own-sub-login); an authenticated session refuses
+a further AUTHINFO with 502 (RFC 4643 section 2.3.1), so the login in force
+for a POST never changes before its article arrives, and an AUTHINFO later in
+the same read never claims an earlier anonymous article.
+
+D25 is unchanged. Generated Injection-Info is injecting-node metadata, not
+authored source: the injection inverse reads the line with or without
+parameters (books/injection.lisp fn-inj-strip-info), so a stored article
+with parameters gives back the same poster's source
+(`fn-ipp-with-params-keeps-the-source`), a same-source retry under the same
+Message-ID resolves as already stored whatever the new header says
+(books/poster-bytes.lisp fn-pb-subject; the buffer twin
+fn-pbb-strip-info-at), and the operator's retry test is unchanged. No stored
+record is rewritten and no migration exists: a record written before this
+change has the plain line and reads back as before.
+
+Transit (fn guarantee): an article accepted from a peer keeps the peer's
+Injection-Info octet for octet; the transit arm of fn-own-sub-stored-octets
+is fn-peer-relayed-octets (Path prepended, Xref removed), which never reads
+or writes Injection-Info.
+
+Privacy (local policy, authorized disclosure). The posting-account value is
+a LINKABLE PSEUDONYM, not anonymity. What it discloses to every reader of
+every copy of the article, here and on every peer: that two articles
+carrying one value were posted by one login on this node (RFC 5536 asks for
+exactly that, for rate limiting and abuse handling). What it does not
+disclose: the login, its length, or any octet of it (the value is 64 hex
+digits whatever the login, `fn-pa-account-value-is-hex`, and depends on the
+login only through the MAC, `fn-pa-account-value-depends-only-on-the-mac`);
+testing a guessed login needs the node secret. The operator authorizes this
+by running a node that accepts authenticated posting; docs/operator.md says
+so where logins are issued. Not claimed: that one value means one login
+(HMAC-SHA256 collision resistance, an assumption about the real function:
+for n logins under one secret a shared value has probability at most
+n(n-1)/2^257), and not unlinkability across a secret change (a new secret
+gives every login a new value). A login name reused for another person
+carries the old pseudonym (the value is keyed by the login spelling, not an
+internal account id).
+
+Operator surface. `fn operator CONFIG policy set complaints-to ADDR` sets the
+address: a durable `:set-policy` row like path-identity, applied live, no
+configuration delta code of its own; ADDR must be an <addr-spec> of two
+dot-atoms (books/injection-info-policy.lisp fn-ipp-addr-specp), so it has no
+DQUOTE, backslash, ";", CR or LF and stands in the quoted-string as it is
+(`fn-ipp-addr-spec-has-no-quote-or-line-break`); anything else is refused.
+`fn operator CONFIG account hash LOGIN` prints the value an article posted
+under LOGIN carries (the host reads STORE/keys/node-secret.key with the
+owner's permission checks; ACL2 computes the value,
+fn-ipp-account-hash), which is how an operator answers a complaint that
+quotes a posting-account. Known limit: the parameters are computed from the
+live configuration when the writer stages the article and again when the
+completion is checked, so a `complaints-to` change between the two answers
+that one POST with the uncertain 441 (the article is durable; a same-source
+retry is a duplicate), as a path-identity change already does for transit.
+
 ### Own-post cancel and Cancel-Lock (SEC-006)
 
 SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
@@ -795,10 +889,11 @@ Injection-Info line it inserts
 with `K = Base64(HMAC-SHA256(S, "fn cancel-lock v1" || 0x00 || MSGID || L))`
 (RFC 8315 section 4; books/node-secret.lisp, the node secret's labelled
 use), `K'` the same for the cancel's target. L is the AUTHINFO USER name the
-connection had authenticated as before the read that completed the article
-(`fn-own-sub-login`, recorded on the submission, so the lock does not depend
-on the connection still being open when the writer takes it; an AUTHINFO
-later in the same read never claims the article).
+session had authenticated as at the event that delivered the article body
+(`fn-own-sub-login`, recorded on the submission from the `:submit` effect,
+books/served.lisp fn-served-login, so the lock does not depend on the
+connection still being open when the writer takes it; an AUTHINFO later in
+the same read never claims the article).
 
 The node secret S: 32 octets from the OS CSPRNG, written by `init` into
 `STORE/keys/node-secret.key` (directory 0700, file 0600, linked once, never

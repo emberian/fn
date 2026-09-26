@@ -7095,6 +7095,50 @@
         {
           "kind": "theorem",
           "name": "fn-oag-listing-server-is-the-path-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-injected-octets-carry-the-parameters"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-with-params-of-an-injection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-with-params-keeps-the-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-params-of-a-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-params-without-a-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-params-are-a-parameter-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-injected-octets-without-parameters"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-addr-spec-has-no-quote-or-line-break"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-account-value-is-hex"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-account-value-depends-only-on-the-mac"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-account-value-determines-the-mac"
         }
       ]
     },

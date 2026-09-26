@@ -1281,6 +1281,45 @@ credential file: both are read once at start-up. A login's `signing` binding
 is the exception (next section): `principal bind` and `unbind` apply to the
 running node at once.
 
+### What a login's post discloses: Injection-Info's posting-account
+
+Every article a login posts is stored with one line
+
+```
+Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
+```
+
+(RFC 5536 §3.2.8). The `posting-account` value is 64 hex digits derived
+from the login under the node secret (`STORE/keys/node-secret.key`). It is
+a **linkable pseudonym**, not anonymity, and it travels with the article to
+every peer and reader: anyone can see that two articles with one value came
+from one login on this node. Nobody without the node secret can read the
+login out of it, or its length, or test a guessed login. By enabling
+authenticated posting the operator authorizes that disclosure; tell the
+people you give logins to. An anonymous post (where the node allows one)
+carries no `posting-account`. A new node secret gives every login a new
+value; a login name you reuse for another person carries the old value.
+
+The complaints address is a policy, set live:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml policy set complaints-to abuse@example.org
+```
+
+It must be a plain `local@domain` address (dot-atoms, no quotes); anything
+else is refused. To answer a complaint that quotes a `posting-account`,
+compute the value for a login and compare:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml account hash alice
+```
+
+It prints the value `alice`'s posts carry (it reads the node secret, with
+the same permission checks as the owner; the secret itself is never
+printed). Articles relayed from peers keep the peer's own `Injection-Info`
+untouched. The decision is ACL2's (`books/injection-info-params.lisp`,
+`specs/nntp.md` "Injection-Info parameters").
+
 ### Bind a login to its signing principal
 
 A signed POST is `verified` for whichever principal signed it, whatever
