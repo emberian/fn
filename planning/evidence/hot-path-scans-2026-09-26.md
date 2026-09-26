@@ -267,6 +267,75 @@ the instantiated claim:
 - Without validity, the witness is a CORRUPTED cache, labelled as such.
 - The count's witness is a corrupted index: a second put at sequence 2.
 
+### Measured (SCN-108; hbox, ZFS, default profile, 2 KiB articles)
+
+**Setup.** Both images are developer profiling images built by the same
+scripts (`hot-path-scans-2026-09-26/part1-all.sh`, which uses §1's `run.sh`,
+`alloc.lisp` and `allocprof.py`):
+- *before*: dev `5c6825b2`.
+- *after*: lane `ff2eacb3`. Its host code is the same as at `695e7823`.
+
+The box's load average was 6 to 10 throughout, so the times here are
+indicative only. The allocation figures are counts and do not depend on load.
+
+**rep_measure** (K=32, R=3, checkpoint skipped):
+
+| point | POST bytes consed / op | STAT | ARTICLE | load |
+| --- | ---: | ---: | ---: | ---: |
+| N=1,000 before | 2,485,094 | 51,382 | 499,384 | 171.0 s |
+| N=1,000 after | 2,484,820 | 50,314 | 500,415 | 193.3 s |
+| N=10,000 before | N10K-BEFORE-ALLOC | | | N10K-BEFORE-LOAD |
+| N=10,000 after | N10K-AFTER-ALLOC | | | N10K-AFTER-LOAD |
+
+**Allocation profile.** An sb-sprof `:alloc` profile covered 200 POSTs after
+the owner was reopened on the loaded store. Samples are about 32 KB each; the
+table gives each function's total from the graph report:
+
+| term | N=1,000 before | N=1,000 after | N=10,000 before | N=10,000 after |
+| --- | ---: | ---: | ---: | ---: |
+| `FN-SBUD-RECORD-OCTETS` (the byte-count fold) | 2,555 | 0 | N10K-B-RO | N10K-A-RO |
+| `FN-SBUD-OCTETS-ADVANCE` (the index advance) | — | 401 | — | N10K-A-ADV |
+| `FN-OWNER-RECORD-DEBT` | 660 | 673 | N10K-B-DEBT | N10K-A-DEBT |
+
+**Reading.**
+- *Before*, the byte-count term is dominated by the first verdict after the
+  open, which re-encodes the whole history. Hot-path-scans measured 2,555
+  samples at N=1,000 and 20,754 at N=10,000 (§1).
+- *After*, the history is folded once, inside `fn-owner-install-profile`
+  before the owner serves. The 200 POSTs then cost about 2 samples each:
+  one record's encoding, about 64 KB for a 2 KiB article.
+- The steady-state POST allocation does not change. The walks the lane
+  removed (`len` and `nthcdr` of the history, three caches per POST) are
+  pointer walks that allocate nothing, so their cost was CPU and not
+  allocation. What each POST still pays is the new record's encoding for its
+  length, and its kind for the debt (about 3.4 samples, through
+  `fn-record-p`), both constant in N. That is PKT-474 (d).
+
+**Visits per POST**, from the definitions:
+
+| | per query of the three caches | first query after open |
+| --- | --- | --- |
+| before | `len` of the history plus `nthcdr` K, three times (3 x 2N cons steps), plus one record's fold step each | an N-record encode |
+| after | one `fn-cei-get` per new record (a fixed 4-level radix path) and one fold step each | 0 (the fold is at install) |
+
+**Native gate on hbox** (`hbox_native.sh`, commit `695e7823`,
+`native-gate2`; FN_NATIVE_HOST set; production image built):
+
+| module | result | log SHA-256 |
+| --- | --- | --- |
+| test_native_operator_verdicts | OK (1 skipped) | bc8bdf6c… |
+| test_native_capacity_vector | OK | b3ab30b6… |
+| test_native_profile_upgrade | OK (4 skipped) | 3e0fb3e9… |
+| test_native_hybrid_author | OK (11 skipped) | 5790bb8e… |
+| test_native_operator_verbs | OK, 22 tests, FN_NATIVE_HOST = the production image | 12536d18… |
+
+Image SHA-256s: developer `232b9cd9…` and production `78e9a14a…`.
+
+An earlier run (`native-695e78235712`) had no FN_NATIVE_HOST set and no
+production image. Its test_native_profile_upgrade errors were missing images
+(`build/fn-host`), and `test_native_peer_carriage` was a module name that
+does not exist. Both are harness errors, not behaviour.
+
 ### Not done (PKT-474)
 
 - **The prepare's candidate test.** It still takes `len` and the last cons of
@@ -287,3 +356,8 @@ the instantiated claim:
   publication, not per POST.
 - **The offline store host** (host/store-node-host.lisp) keeps the folds. It
   runs once per command.
+- **(d) One record's encoding and kind per POST.** The octet advance
+  encodes each new record for its length, about 64 KB for a 2 KiB article.
+  The debt step takes its kind through `fn-record-p`. A length-only twin of
+  the encoder, and the concrete-twin kind, would remove both. Both are
+  constant in N.
