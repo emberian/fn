@@ -1398,9 +1398,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :compact))
             (equal w '("compact")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
                                       fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)))))
+                                      fn-native-operator-result-arguments)
+                                   (fn-nop-parse-profile-flags))))))
 
 (local
  (defthm fn-nop-parse-command-compact-words
@@ -1424,7 +1425,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                     fn-nop-parse-principal
                                     fn-nop-parse-administration
                                     fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp))
+                                    fn-nop-help-text fn-nop-help-subjectp
+                                    fn-nop-profile-decimal))
             :use ((:instance fn-nop-parse-store-compact-words
                              (w (cdr words)) (c config)))))))
 
@@ -1476,7 +1478,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-nop-parse-command fn-nop-argument-texts
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep))
+                                   fn-native-config-operator-availablep
+                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
+                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
+                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
            :use ((:instance fn-nop-parse-command-compact-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -1522,9 +1527,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :checkpoint))
             (equal w '("checkpoint")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
                                       fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)))))
+                                      fn-native-operator-result-arguments)
+                                   (fn-nop-parse-profile-flags))))))
 
 (local
  (defthm fn-nop-parse-command-checkpoint-words
@@ -1548,7 +1554,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                     fn-nop-parse-principal
                                     fn-nop-parse-administration
                                     fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp))
+                                    fn-nop-help-text fn-nop-help-subjectp
+                                    fn-nop-profile-decimal))
             :use ((:instance fn-nop-parse-store-checkpoint-words
                              (w (cdr words)) (c config)))))))
 
@@ -1594,7 +1601,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-nop-parse-command fn-nop-argument-texts
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep))
+                                   fn-native-config-operator-availablep
+                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
+                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
+                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
            :use ((:instance fn-nop-parse-command-checkpoint-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -1640,9 +1650,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim))
             (equal w '("reclaim")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
                                       fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)))))
+                                      fn-native-operator-result-arguments)
+                                   (fn-nop-parse-profile-flags))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-words
@@ -1666,7 +1677,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                     fn-nop-parse-principal
                                     fn-nop-parse-administration
                                     fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp))
+                                    fn-nop-help-text fn-nop-help-subjectp
+                                    fn-nop-profile-decimal))
             :use ((:instance fn-nop-parse-store-reclaim-words
                              (w (cdr words)) (c config)))))))
 
@@ -1712,7 +1724,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-nop-parse-command fn-nop-argument-texts
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep))
+                                   fn-native-config-operator-availablep
+                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
+                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
+                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
            :use ((:instance fn-nop-parse-command-reclaim-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -1758,9 +1773,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim-dry-run))
             (equal w '("reclaim" "--dry-run")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
                                       fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)))))
+                                      fn-native-operator-result-arguments)
+                                   (fn-nop-parse-profile-flags))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-dry-run-words
@@ -1784,7 +1800,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                     fn-nop-parse-principal
                                     fn-nop-parse-administration
                                     fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp))
+                                    fn-nop-help-text fn-nop-help-subjectp
+                                    fn-nop-profile-decimal))
             :use ((:instance fn-nop-parse-store-reclaim-dry-run-words
                              (w (cdr words)) (c config)))))))
 
@@ -1830,7 +1847,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-nop-parse-command fn-nop-argument-texts
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep))
+                                   fn-native-config-operator-availablep
+                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
+                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
+                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
            :use ((:instance fn-nop-parse-command-reclaim-dry-run-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
