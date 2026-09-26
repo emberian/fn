@@ -247,6 +247,15 @@ inside a fault result are absent from the abstraction. A replay fault may carry
 a valid invariant-preserving prefix for reporting; it does not satisfy the
 relation and cannot authorize reads advertised as recovered or any mutation.
 
+REP-010: The retained payload has a concrete home: the payload arena, an abstract stobj whose sealed handles are immutable and never reused, with the same relation to the history after a commit and after an open.
+The arena `fn-arena` (books/payload-arena.lisp) holds every retained
+payload as bytes; its logical value is the list of payloads oldest first,
+so that `fn-arn-store-corr` (the arena is `records(P)`'s payloads in
+sequence order) is the representation clause the record's payload handle
+will be checked against: kept by a commit's seal and established by an
+open's seals from the empty arena (PRF-118). Until the record holds the
+handle, the served path still holds the list.
+
 ## First proof obligations
 
 Implement these as general theorems over lists and natural numbers, not only as
