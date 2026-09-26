@@ -6111,7 +6111,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
@@ -6123,7 +6123,9 @@
         "host/native-live-status-host.lisp",
         "host/native-control-host.lisp",
         "tests/test_native_control.py",
-        "planning/evidence/operator-daily-2026-09-26.md"
+        "planning/evidence/operator-daily-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T105358Z-645186.json",
+        "planning/evidence/manifests/certify-20260926T105642Z-673835.json"
       ],
       "progress_note": "Lane operator-daily (2026-09-26, wave 4 lane 5): PKT-329 (1), PKT-283, PKT-344. Teeth in the two test books. Open: PKT-453.",
       "events": [
