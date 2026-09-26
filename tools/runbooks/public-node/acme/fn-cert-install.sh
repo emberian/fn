@@ -18,6 +18,11 @@ install -m 0644 "$LEGO_CERT_PATH" "$TLS/.cert.pem.new"
 install -m 0600 "$LEGO_CERT_KEY_PATH" "$TLS/.key.pem.new"
 mv "$TLS/.key.pem.new" "$TLS/key.pem"
 mv "$TLS/.cert.pem.new" "$TLS/cert.pem"
+# The same pair under the names deploy-fresh's --cert-dir reads.
+LIVE=/srv/fn-public/acme/live
+install -d -m 0700 "$LIVE"
+install -m 0644 "$TLS/cert.pem" "$LIVE/.fullchain.pem.new" && mv "$LIVE/.fullchain.pem.new" "$LIVE/fullchain.pem"
+install -m 0600 "$TLS/key.pem" "$LIVE/.privkey.pem.new" && mv "$LIVE/.privkey.pem.new" "$LIVE/privkey.pem"
 openssl x509 -noout -subject -issuer -enddate -in "$TLS/cert.pem"
 if systemctl --user is-active --quiet fn-node.service; then
   systemctl --user restart fn-node.service

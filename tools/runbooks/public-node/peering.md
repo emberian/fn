@@ -207,9 +207,11 @@ certificate file.
 
 ## 4. Feed policy (ember decides)
 
-The prepared default is `local.*` in both directions for both peers, which
-is the hierarchy the small-community mission creates (`local.general`,
-`local.test`). Cancels travel with the groups they name (PRF-163), so
+The wildmat must name the hierarchy the public node's `init` created.
+deploy-fresh's fresh init creates `fn.agents` and `fn.test` by default, so
+that hierarchy is `fn.*`. The small-community mission creates
+`local.general` and `local.test`, so that hierarchy is `local.*`. The
+commands above write `local.*`: replace it with whichever the deploy used. Cancels travel with the groups they name (PRF-163), so
 `local.*` also carries an author's signed cancel of a `local.*` article.
 A shared hierarchy with a more distinctive name (for example `goose.*`)
 needs `group create` on every node before the first article. Ember names
