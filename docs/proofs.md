@@ -458,6 +458,13 @@ the session; `status`, `stop`, `list`. It is the loop the freeze lanes did not
 have (the review's F5): seconds per attempt against cached certificates,
 instead of a closure run per attempt on the farm. A form ACL2 admits there is
 not a certificate; the event goes into the book and the book certifies.
+A session holds a pool slot for its life, so it belongs to a lane and ends
+with it: `start` records the lane (`--lane`, `$FN_LANE`, or the tree's name:
+`build/lanes/NAME`, persvati's `~/fn-gates/NAME-repl`) and stops itself after
+`--idle-seconds` (default 7200) without a `send`; `list` shows each session's
+lane, age, idle time and deadline, and `reap [--lane NAME | --older-than S]
+[--root TREE ...]` stops dead, overdue or a merged lane's sessions, signalling
+only the PIDs its state names (PKT-346).
 
 **And when the closure is red, one run tells you every reason.**
 [`tools/triage.py`](../tools/triage.py) answers the question an ordinary
@@ -533,9 +540,12 @@ certificate on file`. `--dry-run` prints the final ordered list, and the
 manifest's `requested_books` is that same list, so the evidence names what was
 certified rather than what was asked for. Every ACL2 this project starts
 first takes a slot from a machine-wide pool of `flock` files
-([`tools/acl2_slots.py`](../tools/acl2_slots.py), `FN_ACL2_SLOTS`, default 4 on
+([`tools/acl2_slots.py`](../tools/acl2_slots.py), `FN_ACL2_SLOTS`, default 6 on
 darwin and 16 on linux), waits rather than starting when the pool is full,
-reports the wait once a minute, and records each wait in the run manifest. The
+reports the wait once a minute naming the holders (each slot file's `PID
+LABEL`), and records each wait in the run manifest. `FN_ACL2_SLOT_WAIT`
+(`tools/acl2 --wait-seconds`, exit 75) bounds the wait: past it the
+acquisition refuses and names every holder; unset, it waits. The
 lock lives on the open file description, so a killed run leaks no slot.
 Iterative `ld` work is the other way ACL2 starts here, and it does not go
 through the runner: on 2026-09-19 six ACL2 processes were live on a laptop
@@ -550,6 +560,14 @@ child at that many seconds and exits 124, which makes the brief's
 three-minute rule mechanical rather than a PID a lane has to remember to kill.
 The slot is released when ACL2 exits, when it is killed by the timeout, and
 when the wrapper itself dies.
+Before a submit, `python3 tools/native_program_check.py --balance FILE...`
+reports each unbalanced form as `unbalanced: FILE:LINE, form starting at
+FILE:LINE` (with the first column-0 form inside it, where a missing close
+usually shows); `farm.py submit` runs the same scan over `books/`, `host/` and
+`tests/acl2/` and refuses before any rsync. Native images and tests on hbox
+go through `tools/hbox_native.sh REV MODULE...`, whose `--images` takes
+`developer`, `production`, `dtn` and `dtn-developer` (the DTN pair built from
+`host/native/build-dtn.lisp` as the image runbook builds them).
 [`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
 `submit` mirrors the worktree and starts the runner detached with its own log
 and status file, `wait` blocks with a bounded sleep-and-report loop and then
