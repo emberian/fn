@@ -5898,7 +5898,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -5939,7 +5939,10 @@
         "fn-exp-observe-keeps-the-connection-ids",
         "fn-exp-limits-never-drop-a-connection",
         "fn-exp-observe-closes-only-on-a-failed-login",
-        "fn-exp-idle-closes-only-silence"
+        "fn-exp-idle-closes-only-silence",
+        "fn-exp-481-scan-counts-the-481-replies",
+        "fn-exp-effects-scan-is-the-reply-scan",
+        "fn-exp-observe-effects-is-the-observation-of-the-reply"
       ]
     },
     {
