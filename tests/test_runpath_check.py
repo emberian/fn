@@ -54,7 +54,8 @@ class RunpathCheckTests(unittest.TestCase):
         (top / "libexec/fn/lib/libzstd.so.7.0").write_bytes(elf_with_needed(["libc.so.103.0"]))
         (top / "libexec/fn/lib/libsodium.so.11.1").write_bytes(elf_with_needed(["libc.so.103.0"]))
         (top / "libexec/fn/fn-host.core").write_bytes(
-            b"\0" * 64 + b"libsodium.so\0libssl.so\0libcrypto.so.3\0libfn-mldsa65.so\0")
+            b"\0" * 64 + b"libsodium.so\0libssl.so\0libfn-mldsa65.so\0"
+            + "libcrypto.so.3".encode("utf-32-le") + b"\0" * 8)
         (top / "libexec/fn/lib/libfn-mldsa65.so").write_bytes(elf_with_needed(["libc.so.103.0"]))
         shutil.copy(ROOT / "packaging/fn", top / "bin/fn")
         os.chmod(top / "bin/fn", 0o755)
@@ -109,7 +110,7 @@ class RunpathCheckTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.release(Path(tmp))
             with open(top / "libexec/fn/fn-host.core", "ab") as core:
-                core.write(b"libpython3.12.so.1.0\0")
+                core.write("libpython3.12.so.1.0".encode("utf-32-le") + b"\0" * 4)
             self.assert_finding(top, "may dlopen libpython3.12.so.1.0")
 
     def test_absolute_command_outside_the_release_fails(self):

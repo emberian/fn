@@ -43,6 +43,35 @@ Raw Lisp I/O, FFI, TLS/crypto libraries, runtime/compiler and filesystem/hardwar
 assumptions remain explicit trust boundaries. A Python-free process is a
 deployment property, not a theorem of functional correctness or durability.
 
+### The release
+
+HST-017: The release is one tarball per platform (`fn-REV12-linux-x86_64.tar.gz`,
+`fn-REV12-openbsd-amd64.tar.gz`) built by `packaging/release-tarball.sh` on
+that platform from a `git archive` of REV, never a worktree. It is built only
+when every book of the default image profile's include closure is green at
+its digest (`tools/green_check.py --profile default --strict`, its line in
+`share/fn/release-gate.txt`), from certificates acquired and load-checked
+from the cache, and it carries the production image only. It holds one
+directory `fn/`: `install.sh`, `bin/fn`, `libexec/fn/` (the frozen launcher,
+the core, `source-revision`, the SBCL runtime and the libraries the image
+loads that the platform lacks), `share/fn/` (the service template, the
+example configuration, `docs/install.md`) and `SHA256SUMS`. `bin/fn
+--version` prints REV. An installation is one directory: `install-native.sh`
+and `install.sh` refuse a prefix that exists, and a reinstall is stop,
+export, remove, install, import, start (D34); `install.sh` asks the new
+release's own `status` about an existing node and stops at a store-format
+refusal.
+
+HST-018: No Python is on the path a deployed node or its operator verbs
+execute. `tools/runpath_check.py` checks the tree (`make check`: every
+process site in `host/`, the dlopen candidates, the shipped scripts and
+service files) and every release before it is packed (`--tree`: no Python
+file, interpreter or link; every executable a `/bin/sh` script or ELF; no
+link or command outside the release; each ELF object's interpreter the C
+library's loader, no RPATH outside, every DT_NEEDED carried or the C
+library; every shared-object name in the saved core carried, the C library,
+or the system TLS library HST-016 names).
+
 ## Core interface
 
 Conceptual events include connection-opened, input-octets, connection-closed,

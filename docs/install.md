@@ -86,7 +86,7 @@ password is read twice, from the terminal or from two lines of standard
 input):
 
 ```sh
-fn operator /var/lib/fn/fn.toml init
+fn operator /var/lib/fn/fn.toml init   # docs-check: skip (init under the mission fn.toml above; the grammar book configuration names no mission)
 fn operator /var/lib/fn/fn.toml policy set path-identity news.example.org
 fn operator /var/lib/fn/fn.toml principal set-password alice --posting
 ```

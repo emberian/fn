@@ -108,6 +108,7 @@ LIBC_LOADERS = {"/lib64/ld-linux-x86-64.so.2", "/usr/libexec/ld.so"}
 SYSTEM_TLS = re.compile(r"^lib(?:ssl|crypto)\.so(?:\.[\d.]+)?$")
 # Absolute paths a shipped script may run: the shell and OpenBSD's rc.subr.
 SYSTEM_SCRIPTS = {"/bin/sh", "/bin/ksh", "/etc/rc.d/rc.subr"}
+CORE_WIDE_RE = re.compile(rb"(?:[A-Za-z0-9_+./-]\x00\x00\x00){6,256}")
 CORE_LIB_RE = re.compile(rb"lib[A-Za-z0-9_+-][A-Za-z0-9_+.-]*?\.so(?:\.\d+)*")
 
 
@@ -389,7 +390,11 @@ def core_dlopen_names(path: Path) -> set[str]:
                 break
             block = tail + chunk
             names.update(m.group(0).decode("latin-1") for m in CORE_LIB_RE.finditer(block))
-            tail = block[-128:]
+            # SBCL keeps a (simple-array character) as UTF-32: 4 octets a character.
+            for run in CORE_WIDE_RE.finditer(block):
+                text = run.group(0).decode("utf-32-le").encode("latin-1")
+                names.update(m.group(0).decode("latin-1") for m in CORE_LIB_RE.finditer(text))
+            tail = block[-512:]
     return names
 
 
