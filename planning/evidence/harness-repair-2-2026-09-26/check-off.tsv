@@ -1,0 +1,22 @@
+10.6	0	python3 tools/check_scaffold.py
+8.2	0	python3 tools/certified_claims.py
+8.3	0	python3 tools/current_view.py --check
+4.8	0	python3 tools/proof_cost.py
+0.1	0	python3 tools/host_check.py
+0.1	0	python3 tools/transcribe_check.py
+0.1	0	python3 tools/native_program_check.py
+8.1	0	python3 tools/session_depth.py
+0.3	0	python3 tools/evidence_manifests.py check
+11.6	0	python3 tools/teeth_check.py --summary
+11.4	0	python3 tools/harness_check.py
+2.9	0	python3 tools/host_shape_check.py
+0.6	0	python3 tools/build_lists_check.py
+4.4	0	python3 -m unittest -q tests.test_build_lists_check
+1.1	0	python3 -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
+0.6	0	python3 -m unittest -q tests.test_fn_verify.SpecBookTieTests
+5.9	0	python3 tools/cite_check.py --summary --strict
+3.0	0	python3 tools/reach_check.py --summary --strict
+5.6	0	python3 tools/green_check.py --summary
+1.5	0	python3 tools/theory_check.py --summary
+0.2	0	python3 tools/theory_check.py --strict --books books/store-events books/re
+total 90.5
