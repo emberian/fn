@@ -28,7 +28,28 @@
   (routing nil) (expected nil)
   ;; ACL2's reading of the generation selection file, and the recovery
   ;; event built from it (spec bp-node-machine 3.6; N16).
-  (plan (list :none)) (recovery-event nil))
+  (plan (list :none)) (recovery-event nil)
+  ;; ACL2's reading of the node's profile, (ROWS OCTETS): the held rows and
+  ;; held octets the machine may hold (fn-bpnpf-read, books/bp-node-profile).
+  (profile nil))
+
+(defun fnn-bps-max-rows (service) (first (fnn-bps-profile service)))
+(defun fnn-bps-max-octets (service) (second (fnn-bps-profile service)))
+
+(defun fnn-bps-read-profile (root)
+  "ACL2's reading of ROOT's `bp-node-profile' (fn-bpnpf-read): the default
+when the file is absent, the operator's (ROWS OCTETS) when it is one valid
+profile frame; anything else is refused before the journal is opened."
+  (let* ((path (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
+         (present (fnn-check-regular path))
+         (profile (fnn-core 'fn-bpnpf-read (and present t)
+                            (and present
+                                 (fnn-octet-list
+                                  (fnn-read-regular-bounded
+                                   path (fnn-core 'fn-bpnpf-read-bound)))))))
+    (unless profile
+      (fnn-refuse "bp: ACL2 refused the node profile ~a" path))
+    profile))
 
 (defun fnn-bps-note (service word)
   "Record WORD, an evidence word ACL2 named, for SERVICE's run."
@@ -39,7 +60,7 @@
   "ACL2's class of SERVICE's run so far (fn-bprc-class): :accepted, :refused,
 :uncertain (a connection lost after it existed), :not-connected or :fenced (a
 publication whose outcome is unknown; recovery required)."
-  (fnn-core 'fn-bprc-class (fnn-bp-tally-evidence (fnn-bps-tally service))))
+  (fnn-core 'fn-bprc-class (fnn-bp-run-evidence (fnn-bps-tally service))))
 
 ; Bound only during a negotiated outbound TCPCL contact.  The ACL2 effect
 ; supplies the exact image after immutable kind-8 publication.
@@ -891,7 +912,7 @@ the generation directory and its barriers, then the staged selection file and
 its barrier, the rename over the final name, and the root barrier.  Every
 octet is ACL2's."
   (let* ((root (fnn-bps-root service))
-         (jobs (fnn-core 'fn-bpn-host-machine-max-jobs))
+         (jobs (fnn-bps-max-rows service))
          (octet-list (fnn-core 'fn-bpnr-checkpoint-octets
                                ck (fnn-core 'fn-bpnr-depth-budget jobs)))
          (octets (and octet-list (fnn-octets octet-list)))
@@ -1016,12 +1037,12 @@ which runs no FNBS machine."
                (second answer)))
     (third answer)))
 
-(defun fnn-bps-selection-plan (root)
+(defun fnn-bps-selection-plan (root profile)
   "ACL2's reading of the generation selection file: (:none), (:selected CK)
 or (:damaged).  The read bound and decode budget are the profile's."
   (let* ((path (fnn-join root (fnn-core 'fn-bpnr-selection-name)))
-         (jobs (fnn-core 'fn-bpn-host-machine-max-jobs))
-         (octets-bound (fnn-core 'fn-bpn-host-machine-max-octets))
+         (jobs (first profile))
+         (octets-bound (second profile))
          (present (fnn-check-regular path))
          (octets (and present
                       (fnn-octet-list
@@ -1037,7 +1058,11 @@ or (:damaged).  The read bound and decode budget are the profile's."
          (spool-lock (fnn-tcl-spool-acquire root))
          ;; The selected generation names the lifecycle namespace this
          ;; process reads and publishes into; generation 0 is "lifecycle".
-         (plan (handler-case (fnn-bps-selection-plan root)
+         (profile (handler-case (fnn-bps-read-profile root)
+                    (error (e)
+                      (fnn-tcl-spool-release spool-lock)
+                      (error e))))
+         (plan (handler-case (fnn-bps-selection-plan root profile)
                  (error (e)
                    (fnn-tcl-spool-release spool-lock)
                    (error e))))
@@ -1065,11 +1090,9 @@ or (:damaged).  The read bound and decode budget are the profile's."
                 (make-fnn-bps
                  :root root :lifecycle life :tally tally
                  :spool-lock spool-lock :lock-fd (fnn-bps-lock root)
-                 :plan plan
+                 :plan plan :profile profile
                  :state (fnn-core 'fn-bpnf-initial-state
-                                  config
-                                  (fnn-core 'fn-bpn-host-machine-max-jobs)
-                                  (fnn-core 'fn-bpn-host-machine-max-octets))))
+                                  config (first profile) (second profile))))
           (unless (eq (fnn-core 'fn-bpn-machine-invariantp
                                 (fnn-bps-base service)) t)
             (fnn-indeterminate "bp-service: invalid initial machine state"))
@@ -1187,7 +1210,7 @@ answers, first first."
   (setf (fnn-bps-transfer service) nil)
   (let ((peer (second event)) (offered nil) (answers nil))
     (when (third event)
-      (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+      (loop repeat (fnn-bps-max-rows service)
             for answer = (fnn-core 'fn-bpnj-contact-next (fnn-bps-state service)
                                    peer (fnn-bps-routing service) offered)
             do (push answer answers)
@@ -1216,7 +1239,7 @@ answers, first first."
   (let ((obs (fnn-bp-observation (fnn-bp-tally-wall (fnn-bps-tally service))
                                  (fnn-bp-tally-wall-error
                                   (fnn-bps-tally service)))))
-    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+    (loop repeat (fnn-bps-max-rows service)
           for effects = (fnn-bps-step service (list :clock obs))
           while effects do (fnn-bps-drive-effects service effects)))
   (dolist (peer (fnn-core 'fn-bpn-host-ready-peers (fnn-bps-base service)))
@@ -1225,7 +1248,7 @@ answers, first first."
 
 (defun fnn-bps-exit-code (service)
   "ACL2's code for the run's evidence (fn-bprc-run-exit-code)."
-  (fnn-core 'fn-bprc-run-exit-code (fnn-bp-tally-evidence (fnn-bps-tally service))))
+  (fnn-core 'fn-bprc-run-exit-code (fnn-bp-run-evidence (fnn-bps-tally service))))
 
 (defun fnn-command-bp-service-run (host port adu-path journal node-id peer-id
                                    work attempt generation lifetime crc-type

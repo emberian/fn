@@ -131,6 +131,16 @@
   (declare (xargs :guard t))
   (if (eq outcome :uncertain) :fenced nil))
 
+; The article verdicts a verb's tally counted (host/native/bp.lisp and
+; bp-app.lisp count them as ACL2 answers each transfer): a refused article
+; is a refusal; an article whose verdict or publication is uncertain is a
+; fence (its delivery callback withholds the ACK and the owner stops).
+(defun fn-bprc-with-articles (c refused uncertain)
+  (declare (xargs :guard t))
+  (if (not (and (fn-bprc-countsp c) (natp refused) (natp uncertain)))
+      (list 0 0 0 1)
+    (list (+ refused (nth 0 c)) (nth 1 c) (nth 2 c) (+ uncertain (nth 3 c)))))
+
 ; -----------------------------------------------------------------------------
 ; Theorems.
 
@@ -213,3 +223,9 @@
     (:refused :refused)
     (:uncertain :interrupted)
     (otherwise :not-connected)))
+
+; An uncertain article is never masked either.
+(defthm fn-bprc-uncertain-article-fences
+  (implies (and (natp uncertain) (< 0 uncertain))
+           (equal (fn-bprc-class (fn-bprc-with-articles c refused uncertain))
+                  :fenced)))
