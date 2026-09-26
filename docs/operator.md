@@ -1463,6 +1463,19 @@ bind|unbind` applied live through the running node since 2026-09-26): a store
 that ever published a binding is refused by releases before it; roll back only
 from the pre-upgrade snapshot.
 
+The published checkpoint names its event index only by its shape, and the
+shape changed at dev a249a699 (a Message-ID trie beside the sequence trie)
+and again at d0df09ed (the record count). A checkpoint published by an image
+from a249a699 up to d0df09ed is refused by name by every later image with
+this check: `status` and `store recover` say `open=full-replay
+reason=checkpoint-index-shape`, and the first open after the upgrade is a
+full replay of the history (at 20,000 articles about 170 s on hbox under
+load). Never deploy an image from d0df09ed up to this check over such a
+node: it opens that checkpoint as `open=checkpoint:S` with a record count of
+0 and a Message-ID index that misses committed articles (PKT-395). A
+checkpoint published before a249a699 is refused too, today as
+`reason=checkpoint-open-refused`.
+
 There are two rollbacks, and they are not the same:
 
 - **Restoring the kept `config.json`** (the old release reads the new

@@ -1,0 +1,17 @@
+greeting             median 0.451 ms  p95 0.840 ms  max 5.851 ms
+post_first_quarter   median 3.700 ms  p95 4.557 ms  max 10.604 ms
+post_last_quarter    median 6.023 ms  p95 7.778 ms  max 15.995 ms
+stat_present         median 0.250 ms  p95 0.265 ms  max 0.270 ms
+article_present      median 6.271 ms  p95 6.398 ms  max 6.437 ms
+over_present         median 6.242 ms  p95 11.253 ms  max 13.264 ms
+residency_after_load             rss 853688 KiB  hwm 961220 KiB  live 648666624
+residency_after_reopen           rss 1520324 KiB  hwm 1520324 KiB  live 649987136
+first_open_seconds               0.119 s
+load_seconds                     49.452 s
+reopen_seconds                   28.028 s
+rep rc=0
+ 11:02:02 up 72 days, 16:46, 61 users,  load average: 14.16, 13.82, 12.08
+posts 200 median_ms 11.088337749242783
+alloc rc=0
+ 11:02:25 up 72 days, 16:46, 61 users,  load average: 15.94, 14.27, 12.28
+rc=done

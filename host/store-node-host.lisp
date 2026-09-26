@@ -25,6 +25,7 @@
 (include-book "../books/store-profile-namespace")
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
+(include-book "../books/store-checkpoint-shape")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
 ; fn-store-sn-prepare and fn-store-sn-finish call the owner's carried twins
@@ -310,17 +311,24 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sco-decode (plan fn-octets state)
   (declare (xargs :stobjs (fn-octets state) :mode :program))
   (let ((decoded (fn-sccr-decode-plan plan fn-octets)))
-    (if (and (consp decoded) (eq (car decoded) :ok) (consp (cdr decoded)))
+    (if (and (consp decoded) (eq (car decoded) :ok) (consp (cdr decoded))
+             ; An index of an older shape is refused by name
+             ; (books/store-checkpoint-shape.lisp, PKT-395): its thawed
+             ; records may be right while its derived index is not.
+             (eq (car (fn-sco-thaw-checked (cadr decoded))) :ok))
         ; The file carries the count; the record list is read back out of
         ; the event index (fn-sco-thaw, fn-sco-thaw-of-freeze).
-        (let* ((checkpoint (fn-sco-thaw (cadr decoded)))
+        (let* ((checkpoint (cadr (fn-sco-thaw-checked (cadr decoded))))
                (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
       (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
         (mv nil
-            (list :refused (if (and (consp decoded) (consp (cdr decoded)))
-                               (cadr decoded)
-                             :malformed))
+            (list :refused (cond ((and (consp decoded) (eq (car decoded) :ok)
+                                       (consp (cdr decoded)))
+                                  (cadr (fn-sco-thaw-checked (cadr decoded))))
+                                 ((and (consp decoded) (consp (cdr decoded)))
+                                  (cadr decoded))
+                                 (t :malformed)))
             state fn-octets)))))
 
 ; The checkpoint's file name: the rename target of the byte program
@@ -373,7 +381,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; The open's choice (fn-sco-select) under the profile's K.
 (defun fn-store-sco-select (status sequence count profile)
   (declare (xargs :mode :program))
-  (fn-sco-select status sequence count (fn-bs-profile-max-open-suffix profile)))
+  (fn-sco-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
 
 ; How many of the ACL2-bound transaction sequences (ascending, from
 ; fn-store-txn-observation-selected) lie below S: the host drops exactly

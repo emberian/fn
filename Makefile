@@ -203,6 +203,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
+	books/store-checkpoint-shape \
+	tests/acl2/store-checkpoint-shape-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	books/owner-checkpoint-stream \
@@ -903,6 +905,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \
 	tests/acl2/public-exposure-reply-tests \
+	books/owner-open-carried \
+	tests/acl2/owner-open-carried-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
