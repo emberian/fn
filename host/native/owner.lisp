@@ -1578,7 +1578,7 @@ Every other caller submits exact authored octets and names them."
                   (fnn-owner-action 'fn-owner-submission-intent
                                     (fnn-octet-list evidence) generation txid)))
             (unless (eq intent :ready)
-              (setq *fnn-owner-transit-detail* :intent)
+              (setq *fnn-owner-transit-detail* :submission-intent)
               (return-from fnn-owner-complete-bp-transit-submission
                 (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
             (fnn-owner-feed-flush service)

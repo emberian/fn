@@ -313,7 +313,15 @@
          (cond ((not request) :request)
                ((equal (car plan) :refused)
                 (or (fn-bpaj-nth 1 plan) (car plan)))
-               ((not (or freshp retryp)) :intent)
+               ; Neither fresh nor a retry: which half failed is the
+               ; reason (no durable intent could be formed from the plan,
+               ; or the Store already holds a record for the Message-ID
+               ; that is not this intent's binding).
+               ((not (or freshp retryp))
+                (cond ((and (equal status :new) (not new-intent))
+                       :intent-unformed)
+                      ((equal (car lookup) :conflict) :intent-store-conflict)
+                      (t :intent)))
                ((not (equal (fn-bpa-request-source-eid request)
                             (f-get-global 'fn-owner-app-bundle-source state)))
                 :bundle-source)
