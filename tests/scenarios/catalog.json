@@ -2017,6 +2017,31 @@
         "planning/evidence/operator-walk-2026-09-26.md",
         "tests/acl2/native-operator-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-075",
+      "title": "A store filled to its history bound keeps the room for a release, compacts and reclaims on the disk's free space, refuses a pack the disk cannot hold by name, and admits again after the reclaim",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-019"
+      ],
+      "steps": [
+        "Init a store with max_history_octets 300,000 and POST 1 KiB articles until the first refusal; `retention set released-by-all-holders`; read `status`.",
+        "On a copy, with the developer image's observed free space capped at 1,000 octets (FN_NATIVE_DISK_FREE), run `store compact`.",
+        "Run `store compact` on the store; on a copy, with the same cap, run `store reclaim`.",
+        "Run `store reclaim`; read `status`; POST another article."
+      ],
+      "expected": [
+        "The refused POST is 441 (no capacity); `status` shows `maintenance-reserve octets=4096 transactions=1 held` at the bound.",
+        "`compaction refused: temporary-space`, exit 1, the copy's files unchanged.",
+        "`store compact` exits 0 on the full store; the capped `store reclaim` is refused temporary-space, exit 1, unchanged.",
+        "`store reclaim` exits 0 and frees octets on disk and in bytes-used; the reservation is held; the next POST is 240."
+      ],
+      "evidence": [
+        "tests/reclaim_lifecycle_native.py",
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
+      ]
     }
   ]
 }

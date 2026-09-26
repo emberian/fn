@@ -586,18 +586,40 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 ;;; a refusal before any durable change exits 1, an uncertain publication,
 ;;; selection, reclaim or retirement exits 3, a fault 4.
 
-(defun fnn-compact-footprint (store names generations)
-  "lstat sizes of every transaction file and pack generation present."
-  (flet ((size (path)
-           (let ((st (fnn-lstat path)))
-             (unless (and st (fnn-regular-p st) (not (fnn-symlink-p st)))
-               (fnn-fault "compaction footprint: ~a is not a regular file" path))
-             (sb-posix:stat-size st))))
-    (append (mapcar (lambda (name) (size (fnn-join (fnn-transactions store) name)))
-                    names)
-            (mapcar (lambda (generation)
-                      (size (fnn-pack-generation-path store generation)))
-                    generations))))
+;; PKT-169: the compaction's temporary space is checked against the disk.
+;; The host observes the free octets of the store's filesystem (statvfs:
+;; f_bavail blocks of f_frsize octets, what an unprivileged writer may use)
+;; and ACL2 decides (books/store-compact-verb.lisp `fn-cverb-disk-admitsp').
+;; NIL when the call fails or the platform's layout is not known here; ACL2
+;; then refuses :temporary-space by name.  A developer image honours
+;; FN_NATIVE_DISK_FREE=N, which caps the observation at N octets (a small
+;; disk for the native case; the production image refuses to start with it).
+(sb-alien:define-alien-routine ("statvfs" fnn-%statvfs) sb-alien:int
+  (path sb-alien:c-string) (buffer (* (sb-alien:unsigned 8))))
+
+(defun fnn-statvfs-free-octets (path)
+  (let ((buffer (sb-alien:make-alien (sb-alien:unsigned 8) 256)))
+    (unwind-protect
+         (when (zerop (fnn-%statvfs path buffer))
+           (let ((sap (sb-alien:alien-sap buffer)))
+             (declare (ignorable sap))
+             #+(and linux x86-64)
+             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-64 sap 32))
+             #+darwin
+             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-32 sap 24))
+             #-(or (and linux x86-64) darwin)
+             nil))
+      (sb-alien:free-alien buffer))))
+
+(defun fnn-disk-free-octets (store)
+  (let ((free (fnn-statvfs-free-octets (fnn-store-root store)))
+        (cap (fnn-developer-selector "FN_NATIVE_DISK_FREE")))
+    (if (and free cap)
+        (let ((n (ignore-errors (parse-integer cap))))
+          (unless (and (integerp n) (>= n 0))
+            (fnn-fault "invalid FN_NATIVE_DISK_FREE (expected octets)"))
+          (min free n))
+        free)))
 
 (defun fnn-compact-steps (store records)
   "Observe, ask ACL2, and carry out its steps.  Returns the report line."
@@ -615,7 +637,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                                (fnn-store-config store)
                                (mapcar #'fnn-octet-list records)
                                lower names generations selected
-                               (fnn-compact-footprint store names generations))))
+                               (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
       (when (eq (first decision) :refused)
@@ -720,7 +742,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                                      (mapcar #'fnn-octet-list records)
                                      (fnn-store-frontier store)
                                      lower names generations selected
-                                     (fnn-compact-footprint store names generations)
+                                     (fnn-disk-free-octets store)
                                      (if dry t nil))))
       (unless (and (listp decision)
                    (member (first decision)
