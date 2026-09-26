@@ -128,6 +128,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-operator \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
+	tests/acl2/docs-operator-grammar-tests \
 	books/native-mission \
 	tests/acl2/native-mission-tests \
 	books/native-control \
@@ -659,6 +660,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-auth-tests \
 	books/served \
 	books/served-tls-prefix \
+	books/served-implicit-tls \
+	tests/acl2/served-implicit-tls-tests \
 	books/owner-tls-prefix \
 	books/owner-config-observe \
 	books/peer-offer-indexed \
