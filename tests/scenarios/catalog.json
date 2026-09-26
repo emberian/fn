@@ -2556,7 +2556,8 @@
       "milestone": "M3",
       "status": "specified",
       "requirements": [
-        "NNT-030"
+        "NNT-030",
+        "HST-015"
       ],
       "steps": [
         "On the friend's machine: unpack the release tarball, `sha256sum -c SHA256SUMS`, `fn operator NODE/fn.toml mission small-community --host IP --port P`, make a TLS pair, `init`, `policy set path-identity`, `principal set-password`, start `run`.",

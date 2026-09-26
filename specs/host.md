@@ -431,6 +431,18 @@ at every start (a missing library or function refuses the start by name):
 | Ed25519, SHA-512 | libsodium | `crypto_sign_verify_detached`, `crypto_sign_detached`, `crypto_sign_keypair`, `crypto_hash_sha512`, width and init checks, in `host/native/crypto.lisp`, `signatures.lisp`, `peer-invite.lisp` | the system's (Linux, OpenBSD package, Homebrew) or the release's `lib/libsodium.so.23` |
 | ML-DSA-65 | `lib/libfn-mldsa65`: vendored PQClean ml-dsa-65 clean (`third_party/pqclean-ml-dsa-65`, upstream commit in `UPSTREAM.txt`) behind `host/native/fn-mldsa65.c`, built by `tools/build_mldsa65.sh` | `fn_mldsa65_public_from_pem_file`, `fn_mldsa65_sign_pem_file`, `fn_mldsa65_verify`, `fn_mldsa65_generate_pem`, `fn_mldsa65_widths`, in `host/native/signatures.lisp` and `peer-invite.lisp` | `lib/` beside the image's core (`FN_MLDSA_LIBRARY` overrides) |
 
+HST-015: No Python on the path a deployed node executes. A release runs
+`bin/fn` (`/bin/sh`), which execs the frozen launcher `libexec/fn/fn-host`
+(`/bin/sh`), which execs the bundled SBCL runtime on the saved core; the core
+loads the three libraries above and starts another program only at the one
+process site in `host/` (`fnn-workflow-ion-run-helper`: the absolute path of
+an operator-named pinned ION helper, `:search nil`, reachable only from
+`app-journal workflow-ion-submit`). The service files (systemd, launchd,
+OpenBSD rc.d) start `PREFIX/bin/fn`. `tools/runpath_check.py` checks this
+statically in `make check` and over every release before it is packed; it
+cannot judge an operator-supplied helper or what the loader resolves at run
+time. Python stays for clients and tests.
+
 SHA-256 is ACL2's (`books/sha256.lisp`); randomness is `/dev/urandom` in the
 host and `getentropy(2)` inside the ML-DSA-65 library; neither uses OpenSSL.
 ML-DSA-65 is FIPS 204 final, pure, with the empty context and hedged

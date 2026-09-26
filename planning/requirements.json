@@ -3328,6 +3328,27 @@
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
     },
     {
+      "id": "HST-015",
+      "title": "No Python on the path a deployed node executes: the release's launcher, image, libraries and service files start and load no Python program or library",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "inspection"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/release-tarball.sh",
+        "packaging/fn.rc.in",
+        "Makefile",
+        "planning/evidence/release-openbsd-2026-09-26.md"
+      ],
+      "implementation_note": "tools/runpath_check.py lists every program and library on the deployed path and fails on Python: statically (make check) every process-starting form in host/ (one, the operator-named pinned ION helper of app-journal workflow-ion-submit), the libraries the image dlopens, the shipped launcher, frozen launcher and service files; over a release (release-tarball.sh runs it before packing) every file: no .py, no Python shebang, every executable a /bin/sh script or ELF whose DT_NEEDED names no libpython, every service starting PREFIX/bin/fn. It cannot see what an operator-supplied helper is or what the loader resolves at run time. Python remains for clients and tests."
+    },
+    {
       "id": "HST-016",
       "title": "The native host needs only the system's TLS library (OpenSSL 3.0+ or LibreSSL 3+), libsodium and the release's vendored ML-DSA-65; no specific OpenSSL build",
       "specification": "specs/host.md#trust-boundary-of-the-native-host",

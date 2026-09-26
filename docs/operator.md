@@ -553,7 +553,7 @@ the image records none).
 
 ### On OpenBSD (amd64, 7.9)
 
-`fn-REV12-openbsd-amd64.tar.gz` is the same layout built on OpenBSD 7.9
+The OpenBSD tarball, fn-REV12-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
 (`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
 run in the build VM). It carries the SBCL runtime with its one non-base
 library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
@@ -607,11 +607,17 @@ the SBCL process by its `--fn operator /var/fn/fn.toml run` arguments. A link
 to `bin/fn` (say `/usr/local/bin/fn`) works: the launcher follows it back
 into the release.
 
-Measured on a QEMU guest with 1 CPU and 2 GB of memory (the record is
-planning/evidence/release-openbsd-2026-09-26.md): the node starts, answers
-STARTTLS over LibreSSL (TLS 1.3), logs in, accepts a post and serves it on a
-fresh connection to a Linux client; the list of its measured heap floor and
-resident size is in the record.
+Measured on a QEMU guest with 1 CPU and 2 GB of memory, 7.9 with no
+packages (planning/evidence/release-openbsd-2026-09-26.md): the node starts
+under rc.d, answers STARTTLS over LibreSSL (TLS 1.3), logs in, accepts a
+post and serves it on a fresh connection to a Linux client; `peer keygen`,
+`peer accept` of a Linux node's invitation and the Linux node's `peer
+confirm` of the acceptance succeed. Resident size 37 MB at start and 90 MB
+after 100 posts, with the 1,024 MB reservation. The smallest heap that
+served a post and a read on a fresh development-profile node was 288 MB;
+256 MB refuses at start (`dynamic space too small for core: 272320KiB
+required`) and 280 MB started but died in the first session, so the
+default keeps 1,024.
 
 ### Install the native production entry
 
