@@ -83,6 +83,20 @@ fn-ocl-publish (fn-ocl-no-reader-observes-a-half-change, PRF-028, which planning
 as uncertified-at-current-digest: cited, not claimed); the host-to-model link of
 fnn-keys-owner-redecide is by construction, as PRF-098.
 
+## PKT-240: the transit refusal class through the seven-class verdict
+
+`fn-pcb-admission-verdict` had no host caller. books/peer-carriage.lisp now has
+`fn-pcb-verdict-refusal-class` (the verdict's four refusal names mapped to the class words:
+:malformed, :cryptographically-invalid -> :signature-failed, :unenrolled -> :no-local-binding,
+:unsupported-profile) and the keystone `fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class`
+(no hypotheses): that map of the verdict equals `fn-pcb-refusal-class` on every input. The two
+agree, so there is no finding to record and no reach_check baseline entry. host/owner-host.lisp
+`fn-owner-transit-refusal-class` (called by host/native/owner.lisp `fnn-owner-transit-class`
+inside `fnn-owner-attempt-transit`) computes the class through the verdict, so the verdict is on
+the served path and the reply and log words are unchanged. Witnesses: all seven verdicts reached
+in tests/acl2/peer-carriage-tests.lisp, and the equality on three of them. The log still prints
+the four class words, not the seven verdict names (PKT-433 (d)).
+
 ## Assurance chain
 
 native entry (`fn operator CONFIG keys redecide MSGID`, host/native/operator.lisp
@@ -116,7 +130,22 @@ verify-t1.log af454b03e35cab5d83df721db3f853bfbf4780f1826f8735abcf300a3eefd037.
 
 ## Certification
 
-(filled in below after the farm run)
+Every changed form ran first in the REPL on persvati (/home/ember/fn-gates/keys-and-accounts-repl:
+key-statements 99 forms and its test book's 175 forms with the must-fails checked to fail for the
+stated reason; native-operator 184 forms and its test book; peer-invite with the request-12 round
+trip; peer-carriage 67 forms and its test book).
+
+- r1: persvati run-20260926T100602Z-3152 (`--affected-by books/key-statements.lisp
+  books/native-operator.lisp books/peer-invite.lisp tests/acl2/docs-operator-grammar-tests.lisp`,
+  2 jobs, 300 s, w25 toolchain), at cd282ce8's books: passed 11, failed 0, 152 from the cache;
+  manifest planning/evidence/manifests/certify-20260926T100646Z-90653.json. key-statements 4.5 s,
+  key-statements-tests 1.6 s, native-operator 9.4 s, native-operator-tests 3.7 s, peer-invite 2.7 s,
+  peer-invite-tests 3.9 s, docs-operator-grammar-tests 2.3 s, native-mission(-tests),
+  native-operator-host(-tests). None over 10 s.
+- r2: persvati run-20260926T100847Z-9938 (`--affected-by books/peer-carriage.lisp`) at 6f426a66:
+  peer-carriage 5.1 s, peer-carriage-tests 1.7 s, passed 2; manifest
+  planning/evidence/manifests/certify-20260926T100935Z-127907.json.
+- `make check-lane` green (ledger.* and current.md regenerated in the temp dir only).
 
 ## Not done (PKT-433)
 
