@@ -167,3 +167,75 @@
  (defthm cpr-t-loop-statep-without-configured-start
    (fn-cnode-statep
     (fn-replay-result-node (fn-cpr-loop nil nil nil 0 0)))))
+
+; -----------------------------------------------------------------------------
+; PRF-186 (PKT-501): the configuration arm carries the invariant.  The folds
+; run `fn-cnode-carried-acceptablep' under :exec
+; (fn-cnode-record-acceptablep-is-the-carried-check) and do not test the
+; advanced node (fn-cnode-advanced-node-is-configured).
+
+; A reachable node: the replayed history above, and the next record (a
+; capacity change at generation 4, config sequence 3, txid 8).
+(defconst *cpr-t-at* (fn-replay-result-node *cpr-t-open*))
+(defconst *cpr-t-next*
+  (fn-cfg-record-make 3 8 4 (list (fn-cfg-set-capacity 30)) *cpr-t-stamp*))
+; Witness, admitted: the antecedent holds and both sides are T.
+(assert-event (fn-cfgp (fn-cnode-config *cpr-t-at*)))
+(assert-event (equal (fn-cnode-record-acceptablep *cpr-t-at* *cpr-t-next*
+                                                  (fn-cnode-line-ceiling))
+                     t))
+(assert-event (equal (fn-cnode-carried-acceptablep *cpr-t-at* *cpr-t-next*
+                                                   (fn-cnode-line-ceiling))
+                     t))
+; Witness, refused: the same record one generation late is refused by both.
+(defconst *cpr-t-late*
+  (fn-cfg-record-make 3 8 5 (list (fn-cfg-set-capacity 30)) *cpr-t-stamp*))
+(assert-event (not (fn-cnode-record-acceptablep *cpr-t-at* *cpr-t-late*
+                                                (fn-cnode-line-ceiling))))
+(assert-event (not (fn-cnode-carried-acceptablep *cpr-t-at* *cpr-t-late*
+                                                 (fn-cnode-line-ceiling))))
+; The replay the host runs gives the node the one-record step gives.
+(assert-event
+ (equal (fn-replay-result-node
+         (fn-cpr-replay (append *cpr-t-configs* (list *cpr-t-next*))
+                        *cpr-t-events*))
+        (fn-cnode-apply-config
+         (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node *cpr-t-at*) 8)
+                        (fn-cnode-config *cpr-t-at*))
+         *cpr-t-next* (fn-cnode-line-ceiling))))
+; The hypothesis: a configuration whose quota slot is not a row list fails
+; `fn-cfgp' (the omitted hypothesis fails), the carried check admits the
+; record, and the node's check refuses it (the conclusion fails).
+(defconst *cpr-t-bad-cn*
+  (fn-cnode-make (fn-cnode-node *cpr-t-at*)
+                 (fn-cfg-make 3 (fn-cfg-value-make
+                                 (fn-cfg-groups (fn-cfg-value (fn-cnode-config *cpr-t-at*)))
+                                 20 '(junk) nil nil nil nil nil nil nil))))
+(assert-event (not (fn-cfgp (fn-cnode-config *cpr-t-bad-cn*))))
+(assert-event (fn-cnode-carried-acceptablep *cpr-t-bad-cn* *cpr-t-next*
+                                            (fn-cnode-line-ceiling)))
+(assert-event (not (fn-cnode-record-acceptablep *cpr-t-bad-cn* *cpr-t-next*
+                                                (fn-cnode-line-ceiling))))
+(must-fail
+ (defthm cpr-t-carried-check-without-cfgp
+   (equal (fn-cnode-record-acceptablep cn record ceiling)
+          (fn-cnode-carried-acceptablep cn record ceiling))
+   :hints (("Goal" :in-theory (enable fn-cfg-record-acceptablep)))))
+
+; fn-cnode-advanced-node-is-configured: the reachable node advanced to txid 8
+; is configured; its hypothesis: from the node with the malformed
+; configuration above (not configured) the advanced node is not configured.
+(assert-event (fn-cnode-statep *cpr-t-at*))
+(assert-event (fn-cnode-statep
+               (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node *cpr-t-at*) 8)
+                              (fn-cnode-config *cpr-t-at*))))
+(assert-event (not (fn-cnode-statep *cpr-t-bad-cn*)))
+(assert-event (not (fn-cnode-statep
+                    (fn-cnode-make
+                     (fn-replay-advance-txid (fn-cnode-node *cpr-t-bad-cn*) 8)
+                     (fn-cnode-config *cpr-t-bad-cn*)))))
+(must-fail
+ (defthm cpr-t-advanced-node-without-configured-start
+   (fn-cnode-statep
+    (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node cn) txid)
+                   (fn-cnode-config cn)))))
