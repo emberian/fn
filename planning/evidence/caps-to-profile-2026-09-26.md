@@ -197,5 +197,46 @@ recertified as config's dependents at unchanged bytes.
   planning/evidence/caps-to-profile/native-checkpoint-generations.log
   (sha256 90d8f09a...), sums native-a1-SHA256SUMS (developer image
   33ac181a...).
-- (B) `tests.test_native_peer_rows_growth` on 9755f664 (native-b1): see
-  planning/evidence/caps-to-profile/native-peer-rows-growth.log.
+- (B) `tests.test_native_peer_rows_growth` on 9755f664 (native-b1,
+  /tank/fn/scratch/caps-to-profile/native-b1): OK. 1,100 separate
+  `peer carries far HEX` requests, each exit 0, in 8,335.9 s (the O(N^2)
+  offline replay of section 7 item 2); `peer list` after a fresh open lists
+  all 1,100 principals in request order (past the old 1,024); two
+  `peer budget` requests over the grown group keep every principal; a
+  repeated principal adds no row. Log
+  planning/evidence/caps-to-profile/native-peer-rows-growth.log (sha256
+  ed83cdb4...), sums native-b1-SHA256SUMS (developer image 038accbb...).
+  `NativeOperatorPeerListTests` ran with all 4 cases SKIPPED (they need the
+  production image, which this run did not build): no evidence from it.
+
+## 7. Not done (PKT-451)
+
+1. (C) the group-name width: field 7 read by `group create`
+   (`:max-group-name-octets`), the ceiling `(+ 5 n)` per group, widths to
+   460, the format-7 translation keeping 256, the preset reopen witnesses.
+   records-shape and byte-store-frame were never edited here: a freeze the
+   deputy schedules.
+2. Found by SCN-101 (measured, not profiled): every offline `operator` request
+   replays the whole configuration log at open, so one `peer carries` costs
+   about 2.4 s at 100 records and about 9 to 10 s at 700 to 800 on hbox, and
+   N requests cost O(N^2). This is not a cap and not new (the whole-group
+   `:set-peer` path replayed the same log, with larger records), but it is
+   work that grows with data per request on the offline path; a configuration
+   checkpoint or the live owner's arm is the remedy.
+3. The pack path past 4,096 natively (`store compact` with retirement over
+   more than 4,096 publications) is covered by the ACL2 teeth only; the
+   native case exercised the ordinary checkpoint allocator.
+4. The live owner's `peer carries` arm
+   (`fn-native-admin-host-owner-reconfigure`) runs the same
+   `fn-native-admin-plan-deltas-over`, but only the offline arm ran natively.
+5. The rollback consequence (an older image refusing codes 17 and 18, or a
+   generation name at or above 4096) is stated, not rehearsed on a copy.
+6. native-admin at 11.2 s in r1 (its variance today is 8.9 to 15.0 s): a D26
+   debt this lane did not create.
+7. `make check-lane` is RED on the D26 timing ratchet only, from r1's
+   measurements of books this lane did not edit but recertified as config's
+   dependents: owner-invariants 16.3 s (baseline 10.3 s; 12.7 s after
+   friends-accounts), config-owner-live 11.9 s, native-operator 11.3 s. The
+   two new `fn-cfg-apply-delta` arms may add case splits where those books
+   open it; not yet examined (accumulated-persistence in the REPL on
+   owner-invariants is the next action). No baseline was edited.
