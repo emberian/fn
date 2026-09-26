@@ -209,10 +209,14 @@ class NativePackChainTests(unittest.TestCase):
         shutil.rmtree(reference)
         compact = lambda config: ("operator", config, "store", "compact")
         # 1. Reclaim of the covered prefix of the whole chain, cut after the
-        #    first, second and last covered unlink and at the directory barrier.
+        #    first, second and a late covered unlink (the last one the
+        #    developer stop selector can name: it takes occurrences up to 4096,
+        #    host/native/checkpoint.lisp fnn-checkpoint-test-stop-after) and at
+        #    the directory barrier, where no covered file is left.
+        late = min(CUT_N, 4096)
         for point, occurrence, left in (("pack-reclaim-unlink", 1, CUT_N - 1),
                                         ("pack-reclaim-unlink", 2, CUT_N - 2),
-                                        ("pack-reclaim-unlink", CUT_N, 0),
+                                        ("pack-reclaim-unlink", late, CUT_N - late),
                                         ("pack-reclaim-directory", 1, 0)):
             with self.subTest(point=point, occurrence=occurrence):
                 name = "life-reclaim-{}-{}".format(point, occurrence)

@@ -1754,12 +1754,12 @@
       ],
       "steps": [
         "Init a scale-profile store (max-transactions 1048576, max-article-octets 2048) and commit N = 4,500 well-formed 2 KiB articles (store probe N article); an uncut `checkpoint pack STORE select` of a copy gives the chain's length L (at least 2).",
-        "On copies, stop and kill `operator store compact` after the first, second and last covered unlink (pack-reclaim-unlink 1, 2, N) and at the reclaim directory barrier; status; count the transaction files; recover; `checkpoint pack-reclaim`; recover; compact again.",
+        "On copies, stop and kill `operator store compact` after the first, second and 4096th covered unlink (pack-reclaim-unlink 1, 2, 4096: the developer stop selector names occurrences up to 4096) and at the reclaim directory barrier; status; count the transaction files; recover; `checkpoint pack-reclaim`; recover; compact again.",
         "Compact the store, post one article (the uncovered suffix), recover; twice stop and kill `operator store compact` at selection-file, leaving two complete candidates that were never selected; recover after each.",
         "On copies, stop and kill the next `operator store compact` after the first and second retirement unlink (pack-retire-unlink 1, 2) and at the retirement directory barrier; status; recover; `checkpoint pack-retire`; recover; compact again."
       ],
       "expected": [
-        "After each reclaim cut the chain is whole (links=L boundary=N), exactly N-k transaction files remain after the k-th unlink (none after the last or the barrier), and recover reads all N records from the chain and the remaining files; pack-reclaim reports exactly the remaining files and leaves none; the verb then refuses as already-compact (exit 1) with the chain unchanged.",
+        "After each reclaim cut the chain is whole (links=L boundary=N), exactly N-k transaction files remain after the k-th unlink (404 after the 4096th, none after the barrier), and recover reads all N records from the chain and the remaining files; pack-reclaim reports exactly the remaining files and leaves none; the verb then refuses as already-compact (exit 1) with the chain unchanged.",
         "With a suffix and two unselected candidates the chain stays links=L boundary=N and recover reads N+1 records.",
         "After each retirement cut the chain has the new link (links=L+1 boundary=N+1), no transaction file remains, and recover reads N+1 records; pack-retire retires exactly the orphans left (1 after the first unlink, 0 after the second or the barrier) and never a chain link; the verb then refuses as already-compact."
       ],
