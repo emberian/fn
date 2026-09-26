@@ -447,10 +447,9 @@ transition."
                         '(:topic-reply :consumer-reply :consumer-poll-reply
                           :consumer-status-reply)))
            (second status) status)))
-      (fnn-control-send-reply socket
-                              (if (and reasoned (keywordp status))
-                                  (list :reasoned-reply status reason)
-                                status)))))
+      (when (and reasoned (keywordp status))
+        (setq status (list :reasoned-reply status reason)))
+      (fnn-control-send-reply socket status))))
 
 (defun fnn-control-client-done (control socket)
   (fnn-with-control (control)
