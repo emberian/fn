@@ -5746,6 +5746,23 @@
           "name": "fn-own-sub-feed-groups-of-an-ordinary-article"
         }
       ]
+    },
+    {
+      "id": "PRF-169",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-deferred-commit-leaves-the-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-deferred-commit-admits-a-lost-answered-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmr-deferred-commit-is-not-caught-up"
+        }
+      ]
     }
   ]
 }

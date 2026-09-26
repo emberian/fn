@@ -66,9 +66,10 @@ barriers), identical on both file systems; the same figures commit-regression
 took on four images. The seven are the frontier's stage and root
 (`fnn-advance-frontier`), the record's stage, transactions directory and
 staging directory (`fnn-publish`; the last best effort), the marker's stage
-and root (`fnn-mark-committed`). On ZFS the 720 fsyncs took 27.8 s of the
-31.5 s (`strace -c`: 38 us of syscall time each as counted by strace, the
-wait is in the ZIL commit); on tmpfs 0.4 ms in all.
+and root (`fnn-mark-committed`). `strace -c` counts 27.8 ms of syscall
+time for the 720 fsyncs on ZFS (38 us a call) against a commit loop of
+31.5 s: the wait is in the ZIL commit, which `-c` does not count; on tmpfs
+0.4 ms in all.
 
 ### 1.2 Per-commit wall (`measure.sh`: `store probe N`, scale profile, 2 KiB x payloads)
 
@@ -123,8 +124,8 @@ semaphore; nothing in the image touches the file system until the report.
 | 8,000 to 8,999 | 11.28 | 18.37 | 29.1 |
 | 9,000 to 9,999 | 13.47 | 22.61 | 120.0 |
 
-All 10,000 completed in 63.7 s (`post-n10000-p2048.json`; every time in
-`.times`), owner CPU 62.0 s (6.2 ms per POST on average, growing), RSS after
+All 10,000 completed in 63.7 s (`post-n10000-p2048.json`, the driver's
+progress in `post-n10000-p2048.log`, every time in `.times`), owner CPU 62.0 s (6.2 ms per POST on average, growing), RSS after
 the load 790 MiB, no stall (the largest POST 135 ms at index 5,245). The
 profile (`prof-post-n10000-p2048.txt`, 29,180 samples over 58.4 s of CPU,
 seven threads sampled, the profiler's own thread at 0 samples):
