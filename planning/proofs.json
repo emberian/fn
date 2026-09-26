@@ -5164,7 +5164,9 @@
         "fn-bpa-read-encoded-fields-wide",
         "fn-bpa-round-trip",
         "fn-bpa-encoding-bound",
-        "fn-bpnpf-restart-names-held-beyond-profile"
+        "fn-bpnpf-restart-names-held-beyond-profile",
+        "fn-bpnf-family-without-offset-zero-is-not-ready",
+        "fn-bpnf-family-next-memo-is-aux"
       ]
     }
   ]
