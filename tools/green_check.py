@@ -13,6 +13,11 @@ nobody asked it.
     python3 tools/green_check.py --table     # every book, red first, then never
     python3 tools/green_check.py --json      # the same records, machine-readable
     python3 tools/green_check.py --strict    # exit 1 on a book red at its digest
+    python3 tools/green_check.py --profile default --strict
+                                             # the release gate: every book in
+                                             # the native image profile's
+                                             # include closure, exit 1 unless
+                                             # all are green at their digest
     python3 tools/green_check.py --changed-since dev --strict
                                              # the merge gate: the books this
                                              # branch changed, every book that
@@ -403,6 +408,30 @@ def gate_lines(answer: dict) -> list[str]:
     return lines
 
 
+def profile_gate(report: dict, profile: str) -> dict:
+    """The release gate: the verdict of every book in the include closure of
+    a native image profile's roots (tools/proof_artifacts.py's roots, the same
+    closure its acquire loads)."""
+    import proof_artifacts  # noqa: E402  (same directory)
+    roots = proof_artifacts.profile_roots(ROOT, profile)
+    closure = sorted(name.removesuffix(".lisp")
+                     for name in certs.required_closure(ROOT, roots))
+    by = report["books_by_verdict"]
+    rows = [{"book": book, "verdict": by.get(book, {}).get("verdict", "absent")}
+            for book in closure]
+    not_green = [row["book"] for row in rows if row["verdict"] != "green"]
+    return {"schema": "fn-green-profile-v1", "profile": profile, "roots": len(roots),
+            "books": len(rows), "not_green": not_green, "rows": rows}
+
+
+def profile_lines(answer: dict) -> list[str]:
+    shown = " ".join(answer["not_green"][:8]) or "none"
+    return [f"green-check profile={answer['profile']}: {answer['books']} books in the "
+            f"closure of {answer['roots']} roots, "
+            f"{answer['books'] - len(answer['not_green'])} green at their current "
+            f"digest; not green: {shown}"]
+
+
 def worklist(report: dict) -> list[str]:
     """The books the certification lanes owe a run, red first."""
     return [book for book, entry in report["books_by_verdict"].items()
@@ -460,6 +489,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="the merge gate: the books this tree changed since "
                              "its merge base with REV, the books that include "
                              "them, and each one's verdict")
+    parser.add_argument("--profile", metavar="NAME", default=None,
+                        help="the release gate: every book in the include closure "
+                             "of this native image profile (default, dtn); with "
+                             "--strict, exit 1 unless every one is green")
     args = parser.parse_args(argv)
 
     try:
@@ -467,6 +500,12 @@ def main(argv: list[str] | None = None) -> int:
     except (certs.UnreadableBook, ValueError, OSError) as error:
         print(f"green-check: cannot read this tree: {error}", file=sys.stderr)
         return 2
+
+    if args.profile:
+        answer = profile_gate(report, args.profile)
+        print(json.dumps(answer, indent=1, sort_keys=True) if args.json
+              else "\n".join(profile_lines(answer)))
+        return 1 if args.strict and answer["not_green"] else 0
 
     if args.changed_since:
         try:

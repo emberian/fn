@@ -3421,6 +3421,37 @@
       }
     },
     {
+      "id": "SCN-134",
+      "title": "A stranger installs the release tarball, starts a node under the service manager, posts and reads over TLS from another machine, and reinstalls it",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-017",
+        "HST-018"
+      ],
+      "steps": [
+        "Build fn-REV12-linux-x86_64.tar.gz on hbox with packaging/release-tarball.sh from a git archive of REV (FN_CERT_CACHE, FN_ACL2 set).",
+        "tools/runpath_check.py --tarball over it; plant a python3 symlink in a scratch copy and run it again.",
+        "On hbox under /tank/fn/scratch/release-product: verify SHA256SUMS, unpack, sh fn/install.sh --prefix P --node N --no-service; mission small-community, a self-signed pair, init, policy set path-identity, principal set-password; run under systemd-run --user.",
+        "From persvati: STARTTLS, AUTHINFO, POST an article, read it back on a fresh connection.",
+        "Stop; remove P; install again from the tarball; start; read the same article from persvati."
+      ],
+      "expected": [
+        "The build prints the green-check line, the acquire/validate lines, `version fn REV`, and the runpath check's pass line; the planted copy fails naming bin/python3.",
+        "install.sh refuses an existing prefix; the reinstalled node serves the article posted before the reinstall."
+      ],
+      "evidence": [
+        "planning/evidence/release-product-2026-09-26.md",
+        "planning/evidence/release-product-2026-09-26/build-c755569badf5.log"
+      ],
+      "implementation": {
+        "test": "tests/test_release_tarball.py",
+        "native": true,
+        "record": "planning/evidence/release-product-2026-09-26.md",
+        "log": "planning/evidence/release-product-2026-09-26/test_release_tarball.log"
+      }
+    },
+    {
       "id": "SCN-122",
       "title": "A signed POST's owner CPU does not grow with the retained history: at N = 1,000 and N = 10,000 (32 hybrid-signed carriers in each history) the lane's image spends about the same owner CPU per signed POST, where its base grows about linearly with N",
       "milestone": "M4",
