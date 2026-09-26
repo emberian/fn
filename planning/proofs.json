@@ -4455,6 +4455,42 @@
         "fn-ks-recorded-recovery-completes-the-cut",
         "fn-pcb-admission-verdict-names-its-class"
       ]
+    },
+    {
+      "id": "PRF-125",
+      "title": "Pull over TLS as the node's own principal: the feed's protected preamble gates the pull round, a clear credential without the loopback-lab exception is refused before any dial, and the cursor's cut theorem transfers",
+      "statement": "Over the functions host/native/pull-service.lisp fnn-pull-round calls (fn-pull-plan-profile-path, fn-pull-session-begin through fn-pull-session-begin-pair, fn-pull-session-step through fn-pull-session-step-pair, fn-pull-session-close-effects, fn-pull-session-close; books/peer-pull-session.lisp) and the plans host/owner-host.lisp fn-owner-pull-plans reads (fn-pull-plans, now carrying the transport security and the outbound credential policy). fn-pull-session-credentials-wait-for-tls-and-login: for a plan whose fn-pull-plan-verdict is :tls, the feed-connection observations of the session driven by ANY host events (fn-pull-session-obs, which is fn-fc-drive of the session's initial machine over the events it fed: fn-pull-session-obs-is-the-machine-over-its-trace) satisfy fn-fc-gate-okp from the start stage -- PRF-051's fn-fc-offers-and-credentials-wait-for-tls-and-login instantiated, not restated: no AUTHINFO before a 382 and the host's verified-TLS report, no :ready (the only transition that sends DATE and lets the round step) before a 281 when a credential is carried. fn-pull-session-refuses-a-clear-credential-without-the-lab-exception: a clear transport with a credential, without both the profile's explicit clear-text permission and a loopback host literal, has verdict :refused-clear-credential, no profile path (the secret is not read), begin effects exactly the cursor's journal record and (:close) (no :dial), a session that answers every later event with nothing, and a close equal to the cursor fn-pull-begin asks with. fn-pull-begin-ready-is-the-round-after-the-greeting: the round a session enters at :ready is the round fn-pull-begin reaches on a 200/201 greeting, sending the same DATE; fn-pull-begin-ready-cursor-fields. fn-pull-session-journal-is-the-cursor-at-every-cut: PRF-100's fn-pull-journal-is-the-cursor-at-every-cut (statement unchanged) transferred to the session: after the begin, after any events (the TLS preamble included) and after the close records, the FNPL journal replays to that cut's cursor. Trusted, not proved (A-HOST, as PRF-051): the host reports (:tls-up) only after fnn-tls-connect verified the chain against the plan's trust anchor and the plan's server name; the loopback-lab exception is a local policy for the lab, never a general secure-peering claim.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-023"
+      ],
+      "depends_on": [
+        "PRF-051",
+        "PRF-100"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-pull-session.lisp",
+        "books/peer-pull.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "host/native/pull-service.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-tls-pull-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T003614Z-4146295.json"
+      ],
+      "events": [
+        "fn-pull-session-credentials-wait-for-tls-and-login",
+        "fn-pull-session-refuses-a-clear-credential-without-the-lab-exception",
+        "fn-pull-session-journal-is-the-cursor-at-every-cut",
+        "fn-pull-begin-ready-is-the-round-after-the-greeting",
+        "fn-pull-begin-ready-cursor-fields",
+        "fn-pull-session-obs-is-the-machine-over-its-trace"
+      ]
     }
   ]
 }

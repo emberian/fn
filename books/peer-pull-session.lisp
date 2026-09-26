@@ -566,6 +566,19 @@
   (declare (xargs :guard t))
   (mv-let (s2 effects) (fn-pull-session-step s event) (list s2 effects)))
 
+; What the host calls is the pair; the pair is the session's two values.
+(defthm fn-pull-session-begin-pair-by-definition
+  (equal (fn-pull-session-begin-pair plan cursor now credential)
+         (list (car (fn-pull-session-begin plan cursor now credential))
+               (mv-nth 1 (fn-pull-session-begin plan cursor now credential))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-begin-pair) (fn-pull-session-begin)))))
+
+(defthm fn-pull-session-step-pair-by-definition
+  (equal (fn-pull-session-step-pair s event)
+         (list (car (fn-pull-session-step s event))
+               (mv-nth 1 (fn-pull-session-step s event))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-step-pair) (fn-pull-session-step)))))
+
 (defun fn-pull-session-done-p (s)
   (declare (xargs :guard t))
   (fn-pull-done-p (fn-pull-s-round s)))
