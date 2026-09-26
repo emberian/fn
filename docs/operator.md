@@ -793,6 +793,24 @@ configuration records inside the store, which ACL2 replays at every open;
 `--group` seeds them once, and `fn group` changes them afterwards. The
 configuration file holds only what the host needs in order to start.
 
+A peer this node pulls by NEWNEWS (RFC 3977 section 7.4) gets an interval,
+and optionally how many consecutive complete rounds an article the peer
+lists but cannot produce holds the pull cursor:
+
+```text
+fn-native --fn operator /etc/fn/fn.toml peer pull peer1 60 5
+```
+
+The words are NAME, SECONDS and, optionally, ROUNDS. `SECONDS` 0 stops pulling. `ROUNDS` (positive; 5 when left out) is PRF-165's
+bound: a 430 to `ARTICLE` is an answer, the round goes on with the other
+articles, and the owner log line of each round says what happened:
+`pull peer=NAME round=done cursor=held unavailable=1` while the peer's
+missing article holds the instant, then `cursor=advanced unavailable=1
+dropped=<id>` in the round its count reaches `ROUNDS`. A round that failed
+(`round=failed`) changes no count. The counts live in the store's `pull/`
+journal (FNPL); an image older than PRF-165 refuses a journal that holds one
+(PKT-432).
+
 Native peer records use the same offline durable administration path:
 
 ```text

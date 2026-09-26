@@ -1,0 +1,8 @@
+test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies) ... ok
+test_d23_unlisted_relay_refuses_439_and_logs_it (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_d23_unlisted_relay_refuses_439_and_logs_it) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 7.629s
+
+OK
+exit 0

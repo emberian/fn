@@ -197,3 +197,14 @@ there: the other node verifies the cancel under the author's enrolled keys
 - Key generation needs an `openssl` 3.5 command; a `peer keygen` verb using
   the tarball's own OpenSSL is not built (PKT-402).
 - `peer add` rewrites a peer offline; the node must be stopped for it.
+- A friend whose server keeps listing an article it cannot produce (it
+  answers `ARTICLE` with 430) no longer stalls your pull: the other articles
+  arrive in the same round, the pull asks from the same instant for a few
+  rounds (`peer pull NAME SECONDS ROUNDS`; 5 when ROUNDS is left out)
+  and then moves on, logging `dropped=<id>` once. What is not here yet: a
+  friend's server that refuses `MODE STREAM` is still stopped per process
+  (a restart spends one `MODE STREAM` again) and is not fed with IHAVE on
+  the same connection; set its peer record's streaming word to `false`
+  (PKT-431).
+- One credential slot per peer serves both directions, so a credentialed
+  pull needs outbound groups too (PKT-431).

@@ -2902,6 +2902,32 @@
         "planning/evidence/bounds-p5-2026-09-25.md"
       ],
       "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
+    },
+    {
+      "id": "NNT-035",
+      "title": "A pull and a feed survive a peer's partial and refusing behaviour: a peer that keeps listing an article it cannot produce no longer stalls the pull",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-165"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull.lisp",
+        "books/peer-pull-session.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peer-feeds-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T102136Z-292994.json",
+        "planning/evidence/manifests/certify-20260926T102946Z-380804.json"
+      ],
+      "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431."
     }
   ]
 }
