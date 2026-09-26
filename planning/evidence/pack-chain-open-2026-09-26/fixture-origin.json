@@ -1,0 +1,25 @@
+{
+ "n": 20000,
+ "profile_flags": [
+  "--profile",
+  "scale",
+  "--max-transactions",
+  "1048576",
+  "--max-article-octets",
+  "2048"
+ ],
+ "image": "/tank/fn/scratch/pack-chain-open/native-img1/tree/build/fn-host-developer",
+ "image_core_sha256": "375855af5a41eb13718ea95cfb677adbcfd9e336fde87d0970f0e026ca8d7ff0",
+ "source_rev": "8cc3cd4cf97273aed286267fc0f427c431a249f9",
+ "built_in": "/dev/shm/pack-chain-open-work",
+ "timings": {
+  "probe_s": 198.8,
+  "before_view_s": 430.5,
+  "before_owner": {
+   "listening_s": 154.4,
+   "vmhwm_kib": 3638204
+  },
+  "compact_s": 523.2
+ },
+ "built_utc": "2026-09-26T09:40:16Z"
+}

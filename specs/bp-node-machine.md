@@ -1592,13 +1592,15 @@ Over `fn-bpnp-step`, in `books/bp-route-step.lisp`:
 The teeth are in `tests/acl2/bp-route-tests.lisp`.
 
 **Covered scope, stated.**
-- The dispatch key is still `fn-bpnp-single-peer-routes PEER-ID`. The routed
-  scan reads each row's own destination, so the theorems hold for any key
-  (`fn-bpnp-routed-rows-skip-an-unrouted-row`; the teeth witness two rows of
-  different destinations under one key).
-- LIVE is (HOP): the host holds one outbound session at a time. Priority
-  therefore chooses among boundaries with a contact
-  (`fn-bprt-outbound-choice`), not among concurrent sessions.
+- The dispatch key is the route table (`(:table TABLE)`, §9.5, 2026-09-26):
+  each held row's next hop is the boundary its own destination routes to.
+  `fn-bpnp-single-peer-routes PEER-ID` remains the one-row instance for a
+  node with no route rows. The routed scan reads each row's own destination
+  (`fn-bpnp-routed-rows-skip-an-unrouted-row`).
+- LIVE is (HOP): the host holds one outbound session at a time, and a pass
+  opens one per next hop in turn (`fn-bpnp-forward-plan`). Priority chooses
+  among boundaries with a contact (`fn-bprt-outbound-choice`), not among
+  concurrent sessions.
 - Queued FNBS base jobs are routed by §4.8.
 - Inbound admission is unchanged (`fn-bpaj-session-principal`).
 
@@ -1657,6 +1659,9 @@ contact; an accepted one is `:forwarded`, which no record returns to
   `:forwarded` job to `:queued`.
 
 **Covered scope, stated.**
+- Held transit is routed the same way since 2026-09-26: per destination, by
+  the table, at dispatch (§9.5), so one relay serves every neighbour at once;
+  base jobs keep their durable queued route.
 - A table change after queueing holds the job (`:route-changed`) until the
   table routes it back; a durable re-route record is open. The lower machine
   offers the first queued job for a peer, so such a held job also holds the
@@ -1799,6 +1804,20 @@ same article records; the replay loop installs a composite's record
 (`fn-bprv-apply-composite-installs-record`). Cost: a lookup decodes every
 composite of the history before its end once (the article record's
 octets); a Message-ID index over events is owed (PKT-291).
+
+Since PRF-144 the lookups read the Store's derived Message-ID index instead
+(`fn-cei-msgid-records`; the walk is the refinement,
+`fn-bpaj-indexed-records-are-the-walk`), and both statements above are about
+the Store the host dispatches over: `fnn-bpapp-accept-locked` binds the
+installed owner's Store before every action, and that Store is
+`fn-osi-live-store` of the open `fn-owner-recover-extended` runs and the
+owner transitions the host has installed since
+(`books/owner-store-indexed.lisp`). The index relation `fn-ceis-indexedp`
+(the index is the index of the committed history) is a theorem of that
+Store (`fn-osi-live-owner-store-is-indexed`: established at every open path,
+preserved by every installed owner transition; the kernel crash, which the
+host never issues, is the one Store event that breaks it until recovery
+rebuilds it), not a hypothesis of the keystones.
 
 ## 5. The theorems
 
@@ -2623,6 +2642,47 @@ admitted under the announced identity.
 
 `books/bp-native-app` is red at its digest and opens the record codec
 book-wide; the K6 edit waits for T1's BP-receiver cluster (slice A3's gate).
+
+**K6 answered: one admission, two carriers, two principal decisions
+(PKT-202, 2026-09-26, lane multi-peer-relay).** The question was whether
+NNTP transit and BP transit are one transit decision or two.
+
+- *The Store admission is one decision with two carriers.* Both reach
+  `fnn-owner-attempt-transit` (host/native/owner.lisp): NNTP transit from the
+  owner's peer ingress (owner.lisp, `transitp` true), BP transit from
+  `fnn-owner-complete-bp-transit-submission` after the BP plan says
+  `:submit`. That one function asks ACL2's control filing
+  (`fn-owner-control-filing`), the carrier form (`fn-pa-carrier-form`), the
+  current plan over this Store's enrolment (`fn-pa-current-plan`), the
+  primitive observation and the kind-4 event; the seven verdict classes of
+  `fn-pcb-admission-verdict` are the classes of that plan. The transfer
+  decision before it is also shared: BP's `fn-bpaj-transit-plan`
+  (books/bp-transit-join.lisp) calls `fn-peer-decide-transfer`, the NNTP
+  peer's inbound decision (books/peer-inbound.lisp), with the same
+  `:want`/`:have`/`:defer`/`:refuse` answer.
+- *The principal is decided twice, by carrier, and that is the exact
+  difference.* NNTP transit names the delivering peer by its authenticated
+  session and consults the boundary's D23 carried list inside the verdict
+  (`fn-owner-transit-carried-list`, the `:carried` class). BP transit names
+  the principal at the bundle, before any article is read:
+  `fn-bpaj-ingress-peer` takes the carried author (D23,
+  `fn-bpaj-carried-source-decision`) or refuses `:no-principal`, and calls
+  the Store admission with `transitp` nil, so the carried list is not
+  consulted a second time and a refused present carrier reports the plan's
+  reason rather than the `fn-pcb` class (`fnn-owner-transit-class` applies
+  to NNTP transit only). The equating keystone (on the same authored source,
+  both answer the same admission class) is not proved; it would equate
+  `fn-pcb-verdict-refusal-class` under the NNTP carried list with the BP
+  plan's reason under `fn-bpaj-carried-source-decision`, and PKT-202 is
+  narrowed to that statement.
+- *The two writer locks stay.* `bp-node serve` (`fnn-owner-install`,
+  bp-node.lisp) and `operator run` (owner.lisp) each take the Store's writer
+  lock, because each is that Store's one owner process. A relay carrying an
+  NNTP Store and a BP node over one Store runs them one at a time; a relay
+  that serves both at once carries two Stores, which is the design, bridged
+  by the verbs that read one and post to the other. So the mission's step 5
+  stop of B's node (B's owner serves the consumer) and its step 6 restart
+  (to hear A's receipt) are required by K6; no other stop in the mission is.
 
 ### 6.1 D23: four questions, not one
 
@@ -3508,6 +3568,25 @@ operation executor. The current `fn-bpn-contact-step` drops events while a
 proposal is pending (`bp-node-machine.lisp:473-475`, D10); the inbox is its
 repair.
 
+**Several listeners, one loop (PRF-176, 2026-09-26, lane
+multi-peer-relay).** `bp-node serve -` binds ACL2's listener set,
+`fn-bpaj-listener-ports` (books/bp-listener-set.lisp, through
+`fn-owner-bp-listener-ports`): one port per transport-bp boundary listener
+row of the live configuration that admits exactly one boundary. A numeric
+PORT binds that port alone (the one-row case). The host waits on every bound
+listener with poll(2) (`fnn-accept-any-loop`, host/native/io.lisp), accepts
+from the first ready one and runs that session to its end before it waits
+again: still one session at a time, no threads. The theorems:
+`fn-bpaj-listener-session-is-admitted-under-its-row` (a session on a bound
+port is admitted by `fn-bpaj-session-principal` as that port's boundary, or
+refused `:eid-mismatch`; never `:ambiguous-peer` or `:no-trust-profile`, so
+two boundaries on distinct ports never make each other ambiguous),
+`fn-bpaj-admitted-session-arrives-on-a-bound-listener` (the converse: every
+admissible session's port is bound) and `fn-bpaj-listener-ports-are-distinct`.
+A port two boundaries share admits nobody and is not bound. The set is read
+once at start; a reconfiguration that adds or removes a boundary takes effect
+at the next start (PKT-464).
+
 ### 9.2 Reception and the ACK (F-D, §12 D-5)
 
 - `*fnn-tcl-deliver*` is bound to a callback that submits
@@ -3672,6 +3751,23 @@ true again, N01).
   offer outstanding answers `:uncertain`.
 - After each result, while `s` is established, the loop issues `(:resume
   peer s obs)` subject to the yield rule.
+
+- **Per destination (PKT-261, 2026-09-26, lane multi-peer-relay).** The
+  host's :progress event carries `(:table TABLE)` when the configuration has
+  a route table (`fn-bpnp-host-routes`; with none, the node's PEER-ID routes
+  itself, the old one-row instance). `fn-bpnp-route-peer` then names the EID
+  of the boundary `fn-bprt-outbound-choice` selects for each held row's own
+  destination, and the kind-6 record writes it into the row's next hop:
+  `fn-bpnp-progress-dispatch-names-the-routed-hop`
+  (books/bp-node-forward-plan.lisp). After each pass the host asks
+  `fn-bpnp-forward-plan`: one `(PEER BOUNDARY EID PORT)` per next hop with
+  forward-pending transit, oldest row first, and opens those sessions one at
+  a time (`fn-bpnp-forward-plan-has-one-session-per-peer`). A session to
+  PEER offers only rows whose next hop is PEER, so a pass offers each held
+  row on at most one session
+  (`fn-bpnp-forward-plan-offers-a-row-on-one-session`); each session sends at
+  most one bundle. A row whose next hop was fixed before a route change is
+  offered only to that hop (the durable re-route is PKT-148).
 
 ### 9.6 The receipt-loss retry policy (F-B)
 

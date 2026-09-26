@@ -58,9 +58,16 @@
           ((< 1 (fn-bs-pf 14 values)) :history-marker-not-a-word)
           (t nil))))
 
-;  The relation's half: the old relation's acceptance is the new one's.
+;  The relation's half: the old relation's acceptance is the new one's, for
+; every R within the kind-6 poll reply's report ceiling.  PKT-467 (the
+; coordinator's ruling, D27: profile validation and representation agree)
+; refuses the 355 octets of R above *fn-stxa-max-octets*, which the old
+; relation admitted and no poll reply can carry; that window is refused BY
+; NAME (`fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name'), so
+; the two theorems together say exactly which saved profiles still open.
 (defthm fn-bs-profile-v1-valid-is-valid
-  (implies (not (fn-bs-profile-v1-invalid-reason values))
+  (implies (and (not (fn-bs-profile-v1-invalid-reason values))
+                (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*))
            (fn-bs-profile-validp values))
   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp
                                    fn-bs-profile-invalid-reason
@@ -71,10 +78,28 @@
 ; before P6 admitted is admitted by this one and is, unchanged, the profile
 ; the store runs under, so a store saved under it opens with the same bounds.
 (defthm fn-bs-profile-v1-valid-stays-valid
-  (implies (not (fn-bs-profile-v1-invalid-reason values))
+  (implies (and (not (fn-bs-profile-v1-invalid-reason values))
+                (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*))
            (and (fn-bs-profile-admittedp values)
                 (equal (fn-bs-profile-of values) values)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-bs-profile-admittedp)
-                                  (fn-bs-profile-v1-invalid-reason
-                                   fn-bs-profile-validp fn-bs-profile-of)))))
+  :hints (("Goal" :use fn-bs-profile-v1-valid-is-valid
+           :in-theory (e/d (fn-bs-profile-admittedp)
+                           (fn-bs-profile-v1-invalid-reason fn-bs-pf
+                            fn-bs-profile-v1-valid-is-valid
+                            fn-bs-profile-validp fn-bs-profile-of)))))
+
+;  The window PKT-467 closes: a profile the old relation admitted whose R lies
+; above the poll reply's report ceiling fails the new relation by its own
+; name for it, which `init' and `store upgrade-profile' print.  An open of a
+; store saved in that window is refused by the host's generic configuration
+; fault, not by this name (PKT-471: no such store is known).
+(defthm fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name
+  (implies (and (not (fn-bs-profile-v1-invalid-reason values))
+                (< *fn-stxa-max-octets* (fn-bs-pf 4 values)))
+           (equal (fn-bs-profile-invalid-reason values)
+                  :max-record-octets-above-the-poll-reply))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-profile-invalid-reason)
+                                  (fn-bs-pf fn-frame-values-okp
+                                   fn-record-encoded-octets-ceiling)))))

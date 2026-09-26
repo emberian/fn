@@ -107,5 +107,61 @@ class NativeProgramCheckTests(unittest.TestCase):
         self.assert_fails(host, "fn-bs-recover-program", "sequel")
 
 
+class UnbalancedFormTests(unittest.TestCase):
+    """PKT-345: an unbalanced form is located, never a bare StopIteration."""
+
+    def test_parse_at_names_the_file_and_the_forms_first_line(self):
+        text = npc.Text('(defun ok (x) x)\n\n(defun broken (x)\n  (let ((y x))\n    y)\n', [(0, "host/x.lisp")])
+        offset = text.index("(defun broken")
+        with self.assertRaises(npc.Unbalanced) as raised:
+            npc.parse_at(text, offset)
+        self.assertEqual(str(raised.exception),
+                         "unbalanced: host/x.lisp:6, form starting at host/x.lisp:3 never closes")
+        self.assertEqual(npc.parse_at(text, 0), ["defun", "ok", ["x"], "x"])
+        self.assertEqual(npc.parse_at(npc.Text('(f ")" "(")', []), 0), ["f", ")", "("])
+
+    def test_a_joined_text_reports_the_book_the_form_is_in(self):
+        joined = npc.Text("(a)\n(b)\n" + "\n" + "(c\n(d)\n", [(0, "books/one.lisp"), (9, "books/two.lisp")])
+        with self.assertRaises(npc.Unbalanced) as raised:
+            npc.parse_at(joined, joined.index("(c"))
+        self.assertIn("form starting at books/two.lisp:1", str(raised.exception))
+
+    def test_a_stray_close_is_located(self):
+        with self.assertRaises(npc.Unbalanced) as raised:
+            npc.parse_at(npc.Text("\n) x", [(0, "f.lisp")]), 0)
+        self.assertIn("f.lisp:1: a close parenthesis with no open form", str(raised.exception))
+
+    def test_check_reports_an_unbalanced_host_defun(self):
+        host = (ROOT / npc.HOST).read_text()
+        # rep-wave-d-3's case: the defun loses its last close parenthesis.
+        start = host.index("\n(defun fnn-state-checkpoint-plan ") + 1
+        end = host.index("\n(defun ", start)
+        body = host[start:end].rstrip()
+        self.assertTrue(body.endswith(")"))
+        broken = npc.Text(host[:start] + body[:-1] + "\n" + host[end:], [(0, npc.HOST)])
+        self.assertEqual(npc.balance(npc.Text(host, [(0, npc.HOST)])), [])
+        problems = npc.balance(broken)
+        self.assertEqual(len(problems), 1, problems)
+        line = host.count("\n", 0, start) + 1
+        self.assertIn("form starting at {}:{} never closes".format(npc.HOST, line), problems[0])
+        self.assertIn("a form opens at column 0 inside it at {}:".format(npc.HOST), problems[0])
+
+    def test_balance_mode_exit_codes(self):
+        import subprocess, sys, tempfile
+        with tempfile.TemporaryDirectory() as temporary:
+            good = Path(temporary) / "good.lisp"
+            bad = Path(temporary) / "bad.lisp"
+            good.write_text('(defun a (x) "(" x) ; )\n#| ( |#\n(b #\\( |c(| ")")\n')
+            bad.write_text("(defun a (x)\n  x\n(defun b (y) y)\n")
+            ok = subprocess.run([sys.executable, str(ROOT / "tools" / "native_program_check.py"),
+                                 "--balance", str(good)], capture_output=True, text=True, timeout=60)
+            self.assertEqual(ok.returncode, 0, ok.stdout)
+            no = subprocess.run([sys.executable, str(ROOT / "tools" / "native_program_check.py"),
+                                 "--balance", str(good), str(bad)], capture_output=True, text=True, timeout=60)
+            self.assertEqual(no.returncode, 1)
+            self.assertIn("form starting at {}:1 never closes".format(bad), no.stdout)
+            self.assertIn("column 0 inside it at {}:3".format(bad), no.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

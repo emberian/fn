@@ -134,54 +134,93 @@ of asking for the flush rather than assuming it.
 
 ## CLI exit codes
 
-Uncertain, refused and accepted stay distinct all the way out (HST-003). The
-store and BP-ingress CLIs map one host outcome to one code through
-`run_store.exit_code_for`; the reader returns the same codes directly.
-`tools/run_simulator.py` and `tools/certify_books.py` are evidence runners with
-their own conventions and are outside this table.
+HST-009: Every native fn command exits with the code of its outcome class,
+one fn-wide table: exit(f, x) = code(classify(f, x)). Each verb family
+classifies its own outcome into one of seven classes, and one ACL2 map gives
+the code (`*fn-outcome-codes*`, `fn-outcome-code`, books/outcome-class.lisp;
+PRF-143). A code is a class, never a reason: many refusals share 1 and every
+acceptance shares 0; the reason is the word the command prints. A wrapper
+script reads the number, not the verb family.
 
-| Code | Meaning | Source |
+| Code | Class | Meaning, and the question to ask next |
 | --- | --- | --- |
-| 0 | Accepted, or the query answered. A durable acceptance whose BPA delete has not completed also exits 0 and names the pending obligation on stdout (`bpa-delete=pending`). | normal return |
-| 1 | Refused: known nonacceptance of this request, such as a Message-ID conflict, contended lock, configured bound, or absent article on `inspect`. A refusal after reservation may consume a durable allocator number; it does not imply byte-for-byte unchanged storage. | `StoreError`, native `fnn-store-error` |
-| 3 | Uncertain: the outcome of a publication is unknown and recovery is required before further mutation. | `StoreIndeterminate` |
-| 4 | Fault: invalid durable state or an I/O fault. Corrupt or ungapped committed history, a store whose core cannot replay it, a barrier or descriptor failure, a poisoned ACL2 bridge. | `StoreFault`, `OSError` |
-| 5 | Usage: the invocation itself is wrong. | `UsageParser`, `UnicodeError` on arguments |
-| 6 | BP verbs only: a connection lost after it existed. The peer may or may not hold the bundle; the job stays durable and is re-offered under its own identity. No recovery is required. | ACL2 `fn-bprc-exit-code` (:interrupted) |
-| 7 | BP verbs only: no connection existed. Nothing left the node; the job stays queued. | ACL2 `fn-bprc-exit-code` (:not-connected) |
+| 0 | `:accepted` | Success, or already satisfied (a query answered, a duplicate of a held article, a replayed admission). An acceptance whose BPA delete has not completed also exits 0 and names the pending obligation on stdout (`bpa-delete=pending`). |
+| 1 | `:refused` | A known refusal with a stable reason, printed as a word: a Message-ID conflict (`CONFLICT`), no store at the configured path (`NO-STORE`, with the `run init` line), a contended lock, a configured bound, an absent article on `inspect`, a BP refusal, a `bp decode` verdict the clock cannot decide. A refusal after reservation may consume a durable allocator number; it does not imply byte-for-byte unchanged storage. |
+| 3 | `:fenced` | Indeterminate local durable authority: the outcome of a publication is unknown and recovery is required before further mutation. Nothing else is 3. |
+| 4 | `:fault` | The host could not carry out the operation: invalid durable state, an I/O fault, a poisoned ACL2 bridge. |
+| 5 | `:usage` | The invocation itself is wrong or unsupported in this image. |
+| 6 | `:interrupted` | A connection lost after it existed. The peer may or may not hold the bundle; the local durable work is retained and re-offered under its own identity. No recovery is required. |
+| 7 | `:not-connected` | No connection was established. Nothing left the node; the job stays queued. |
+
+The families and their classify functions: the operator verbs
+(`fn-native-operator-outcome-class`), the store verbs and every host
+condition (`fn-outcome-of-host-condition`, which `fnn-exit-code-for` in
+host/native/io.lisp calls), the control clients (`fn-native-control-outcome-class`;
+`fn-thlc-outcome-class` for topic control), and the BP verbs
+(`fn-bprc-class`; `fn-bprc-decode-class` for `bp decode`). The host's
+`+fnn-exit-*+` constants are `fn-outcome-code` of their classes, read when
+the image is built. The classes' codes are disjoint and fixed
+(`fn-outcome-code-separates-the-classes`, `fn-outcome-code-table-by-definition`);
+in every family the code is 3 exactly when the family's evidence is a fence
+(`fn-outcome-code-is-fenced-iff-fenced`,
+`fn-native-operator-exit-is-fenced-iff-uncertain`,
+`fn-native-control-exit-is-fenced-iff-uncertain`,
+`fn-outcome-host-condition-fences-iff-indeterminate`,
+`fn-bprc-run-exit-code-is-fenced-iff-fenced`), so a fence is never masked
+and a refusal is never reported as one (`fn-bprc-decode-never-fences`;
+NO-STORE, `fn-native-operator-absent-store-is-refused`).
+
+Outside the seven, and never an outcome class: `operator CONFIG health`
+exits with its verdict (0 all clear, 19 unobserved, 20 to 27 the first held
+state; HST-007). It is the one exception to the table, and it never
+overlaps it: for every verdict the code is 0 or at least 19, and it is an
+outcome code exactly when it is 0, the code of `:accepted`
+(`fn-nh-exit-code-is-zero-or-past-the-outcome-codes`, books/native-health.lisp,
+PRF-172, which reads `*fn-outcome-codes*` through `fn-outcome-codep`, so the
+two tables cannot drift apart; PKT-329). A process ended by
+a signal exits 128 plus the signal (143 on SIGTERM before an owner runs).
+`tools/run_simulator.py` and `tools/certify_books.py` are evidence runners
+with their own conventions.
+
+Scope: the table is the native executable's, and its 3 is about this
+node's own Store. An external client that lost a reply (tools/fn_client.py,
+any NNTP client) is uncertain about the server's state, not about a local
+Store, and must not run Store recovery; fn_client's outcome record carries
+`"scope": "server"` and its own exit table (docs/agents.md).
+
+The `CONFLICT` word is appended to the FNCT reply enumeration
+(`*fn-nctrl-statuses*`), so every earlier status keeps its octet
+(`fn-nctrl-conflict-keeps-every-earlier-octet`). An image from before it
+decodes the new word as `:bad`; its control client then answers the
+transport outcome after submission, uncertain (exit 3), not 4
+(an executed witness in tests/acl2/outcome-class-tests.lisp). Clients are upgraded
+with the node.
 
 A reader whose ACL2 bridge is poisoned exits 4 rather than answering the next
 client from a pipe whose replies can no longer be matched to its commands.
-Native conditions use the same outcome distinctions through `fnn-exit-code-for`;
-the operator plan's code projection is ACL2-owned. Successful queries and an
-article accepted with a retention obligation both use code 0, so callers must
-also interpret the named operation and its result.
+Successful queries and an article accepted with a retention obligation both
+use code 0, so callers must also interpret the named operation and its result.
 
 ### BP run classes
 
 The BP verbs (`bp`, `bp-service`, `bp-contact`, `bp-node`, `bp-app`,
-`bp-obligation`) answer one of five classes, which ACL2 computes from the
-evidence the host records (books/bp-run-class.lisp, PRF-131): the reason of
-each `:forward-refused` effect (the durable `:requeued` record's), each TCPCL
-session's outcome and whether a publication in its delivery callback was
-uncertain, each article verdict, and each publication program's
-classification. A fence dominates everything, then a connection lost after
-it existed, then a refusal, then a connection that never existed:
-
-| Class | Code | The question to ask |
-| --- | --- | --- |
-| `:accepted` | 0 | none |
-| `:fenced` | 3 | a publication's outcome is unknown: stop and recover, as for every fn command |
-| `:refused` | 1 | why the request was refused (named on stdout) |
-| `:interrupted` | 6 | when the contact returns; the job is re-offered with its identity |
-| `:not-connected` | 7 | whether the peer or route is reachable; nothing was sent |
+`bp-obligation`, `tcpcl`) classify their run into five of the classes
+above, which ACL2 computes from the evidence the host records
+(books/bp-run-class.lisp, PRF-131): the reason of each `:forward-refused`
+effect (the durable `:requeued` record's), each TCPCL session's outcome and
+whether a publication in its delivery callback was uncertain, each article
+verdict, and each publication program's classification. A fence dominates
+everything, then a connection lost after it existed, then a refusal, then a
+connection that never existed; the code is the table's
+(`fn-bprc-exit-code` is `fn-outcome-code`).
 
 The codes separate the classes (`fn-bprc-exit-code-separates-the-classes`);
 no later or earlier evidence masks a fence (`fn-bprc-fence-is-never-masked`);
 connection-local evidence never fences (`fn-bprc-connection-local-never-fences`).
 Every `fnn-store-indeterminate` a BP verb raises is rendered as the fenced
-code (`fnn-bp-verb`). `bp decode` answers an article verdict, not a run: 0,
-1 or 3.
+code (`fnn-bp-verb`). `bp decode` answers an article verdict, not a run, and
+publishes nothing: 0 accepted, 1 refused, and 1 for the verdict the clock
+cannot decide, whose reason it prints (`fn-bprc-decode-never-fences`).
 
 ## ACL2 bridge correlation
 
@@ -512,11 +551,42 @@ line from the sources the status report reads: the headroom and profile the
 configuration's BP route table, the running owner's outbound feed table, and
 the host's observation of a fence (a clone fence file, a writer lock held by
 a process the configured socket does not reach, or a socket that accepted and
-did not answer). The running owner renders the same verdict over the state it
+did not answer). A writer lock held where an owner would listen and nothing
+answering yet is the fence reason `starting`, and the report's first line
+says so (`health exit=20 state=fenced reason=starting`); a lock with no
+configured socket, or one the probe could not read, is `store-held`
+(`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
 [health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
 describes the verb.
+
+HST-010: The operator's daily verbs distinguish an owner starting, a fenced
+store, a stale control socket and a refusal by name, and ACL2 decides each
+from the host's observations. `health` with the writer lock held where an
+owner would listen, and nothing answering, says `starting`, not `store-held`
+(`fn-nh-fence-of`, PKT-283). An offline `control` or `peer` verb decides its
+path from two observations, the socket node at the configured control path
+and the writer lock (`fn-native-control-liveness`, books/native-control.lisp;
+PKT-344): a socket node with the lock free or absent was left by an owner
+that died, and the verb removes it under the control-path lease, says `stale
+control socket removed` and runs offline; the offline executor starts
+exactly when the lock was seen free or absent
+(`fn-native-control-liveness-decides`), and no socket with a held lock is
+refused `store-held` without opening the store. A refusal names its reason:
+`operator CONFIG post` and a live `control`, `peer` or other administrative
+verb print ACL2's word for the decision's reason after the status
+(`refused operator post REFUSED unknown-group`, `refused operator control
+REFUSED no-such-grant`): the client asks with the reasoned FNCT request
+(kind 13 for a post, 17 for an administrative vector, the payloads of kinds 1
+and 3 unchanged) and the owner answers it, and only it, with reply kind 18,
+the status and then the reason word (`fn-nctrl-reason-word`,
+books/native-control-reason.lisp); the printed word is the reason the owner's
+decision named (`fn-native-control-printed-reason-is-the-decisions`). The
+kind-2 reply is unchanged, so a client that sends the plain request reads
+what it always read; a new client that meets an owner predating kind 13 gets
+that owner's refusal of a frame it could not decode and resends the plain
+request once. PRF-172; the native cases are SCN-102.
 
 ## Operator walk
 

@@ -76,8 +76,15 @@ def selection_name(bridge):
     return _name(bridge, "fn-store-checkpoint-selection-name-octets")
 
 
-def namespace_observation_limit(bridge):
-    value = _call(bridge, "(fn-store-checkpoint-namespace-observation-limit)")
+def _profile_literal(store):
+    # D27, PRF-171: the retained-generation capacity is the opened profile's
+    # (max-transactions + 1); ACL2 reads it from the decoded profile, opaque.
+    return "'" + frame_bridge._lisp_literal(store.config["profile"])
+
+
+def namespace_observation_limit(bridge, store):
+    value = _call(bridge, "(fn-store-checkpoint-namespace-observation-limit {})".format(
+        _profile_literal(store)))
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise StoreFault("ACL2 returned an invalid checkpoint namespace bound")
     return value
@@ -95,7 +102,7 @@ def generations(store, bridge):
     directory = checkpoints_dir(store)
     if not directory.is_dir():
         return []
-    limit = namespace_observation_limit(bridge)
+    limit = namespace_observation_limit(bridge, store)
     names = []
     with os.scandir(directory) as entries:
         for entry in entries:
@@ -103,7 +110,8 @@ def generations(store, bridge):
                 raise StoreFault("checkpoint namespace exceeds ACL2 observation bound")
             names.append(entry.name.encode("utf-8", "surrogateescape"))
     literal = "(" + " ".join(bridge.literal(name) for name in names) + ")"
-    plan = _call(bridge, "(fn-store-checkpoint-namespace-plan '{})".format(literal))
+    plan = _call(bridge, "(fn-store-checkpoint-namespace-plan '{} {})".format(
+        literal, _profile_literal(store)))
     if (not isinstance(plan, list) or len(plan) != 2 or plan[0] != "ok"
             or not isinstance(plan[1], list)
             or any(not isinstance(value, int) or isinstance(value, bool) or value < 0
@@ -157,12 +165,12 @@ def publish(store, bridge, records, faults=NO_FAULTS):
     framed = frame_bridge.session().seal(protected)
     existing = generations(store, bridge)
     generation = _call(
-        bridge, "(fn-store-checkpoint-next-generation '{})".format(
-            "(" + " ".join(map(str, existing)) + ")"))
+        bridge, "(fn-store-checkpoint-next-generation '{} {})".format(
+            "(" + " ".join(map(str, existing)) + ")", _profile_literal(store)))
     if generation == "bad":
         raise StoreFault("checkpoint generation namespace is not gap-free")
     if generation == "exhausted":
-        raise StoreError("checkpoint generation domain exhausted")
+        raise StoreError("checkpoint generations at the profile's capacity")
     if not isinstance(generation, int) or isinstance(generation, bool) or generation < 0:
         raise StoreFault("ACL2 returned an invalid checkpoint generation")
     stage = store.staging / ".checkpoint-{}-{}".format(os.getpid(), os.urandom(12).hex())

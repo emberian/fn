@@ -1,0 +1,6 @@
+probe label=base fs=tmpfs rep=1 n=1000 rc=0 wall=2.35 user=2.12 sys=0.21 maxrss_kib=558296 {"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":0.7650,"reopen_seconds":1.4910,"status":"passed"} pool=2.48T/157G load=9.82 7.52 6.17 2026-09-26T10:21:45Z
+probe label=base fs=zfs rep=1 n=1000 rc=0 wall=428.44 user=2.57 sys=1.52 maxrss_kib=556360 {"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":417.5815,"reopen_seconds":10.7302,"status":"passed"} pool=2.48T/155G load=11.27 10.80 8.41 2026-09-26T10:28:56Z
+done 2026-09-26T10:29:25Z
+probe label=base fs=tmpfs rep=1 n=10000 rc=0 wall=70.49 user=68.40 sys=2.05 maxrss_kib=1933876 {"host":"native","transactions":10000,"payload_bytes":2048,"commit_seconds":17.7053,"reopen_seconds":52.6088,"status":"passed"} pool=2.48T/155G load=10.32 10.81 8.68 2026-09-26T10:30:36Z
+probe label=base fs=zfs rep=1 n=10000 rc=0 wall=1742.33 user=64.32 sys=7.45 maxrss_kib=1934832 {"host":"native","transactions":10000,"payload_bytes":2048,"commit_seconds":1694.3369,"reopen_seconds":47.8337,"status":"passed"} pool=2.49T/153G load=6.58 5.66 5.81 2026-09-26T10:59:40Z
+done 2026-09-26T10:59:53Z

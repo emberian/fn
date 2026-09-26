@@ -82,6 +82,9 @@ class FakeNode(threading.Thread):
         self.articles = {}
         # Optional literal HDR :fn-verified values used by reader-client tests.
         self.verdicts = {}
+        # Optional literal HDR :fn-enrollment items by Message-ID; a held
+        # article without one answers 503, as a node without the item would.
+        self.enrollments = {}
         self.numbers = {name: {} for name in groups}
         self.summary_overrides = {}
         self.host = host
@@ -309,6 +312,15 @@ class FakeNode(threading.Thread):
                         continue
                     send("224 overview information follows")
                     block([self.over_line(selected, number) for number in wanted])
+                elif verb == "HDR" and len(words) == 3 and words[1].lower() == ":fn-enrollment":
+                    msgid = words[2]
+                    if msgid in self.enrollments:
+                        send("225 headers follow")
+                        block(["0 " + self.enrollments[msgid]])
+                    elif msgid in self.articles and msgid not in self.withdrawn:
+                        send("503 no such metadata item")
+                    else:
+                        send("430 no article with that message-id")
                 elif verb == "HDR" and len(words) == 3 and words[1].lower() == ":fn-verified":
                     if not words[2].isascii() or not words[2].isdecimal() or selected is None:
                         send("501 syntax")

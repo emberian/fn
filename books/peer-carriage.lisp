@@ -641,6 +641,77 @@
                  fn-pa-absent-is-only-parser-confirmed-absence
                  fn-pcb-absent-carrier-plan-is-absent))))
 
+;; PKT-240 (keys-and-accounts): the host's transit refusal class IS the
+;; seven-class verdict's refusal arm.  host/owner-host.lisp
+;; fn-owner-transit-refusal-class (called by host/native/owner.lisp
+;; fnn-owner-transit-class inside fnn-owner-attempt-transit) now computes
+;; fn-pcb-verdict-refusal-class of fn-pcb-admission-verdict, and the keystone
+;; below says that is fn-pcb-refusal-class on every input, so the reply and
+;; log words are unchanged and the verdict is on the served path.
+(defun fn-pcb-verdict-refusal-class (verdict)
+  (declare (xargs :guard t))
+  (cond ((eq verdict :malformed) :malformed)
+        ((eq verdict :cryptographically-invalid) :signature-failed)
+        ((eq verdict :unenrolled) :no-local-binding)
+        ((eq verdict :unsupported-profile) :unsupported-profile)
+        (t nil)))
+
+; KEYSTONE (PKT-240; no hypotheses).  Subject: fn-pcb-admission-verdict
+; through fn-owner-transit-refusal-class.
+(defthm fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class
+  (equal (fn-pcb-verdict-refusal-class
+          (fn-pcb-admission-verdict received snapshots carried ed ml))
+         (fn-pcb-refusal-class received snapshots carried ed ml))
+  :hints (("Goal" :in-theory (e/d (fn-pcb-refusal-class fn-pcb-admission-verdict)
+                                  (fn-pa-current-plan fn-pa-carrier-kind
+                                   fn-pcb-unsupported-profilep))
+           :use ((:instance fn-pa-current-plan-outcomes (transitp nil))
+                 fn-pa-current-plan-off-transit-never-revoked))))
+
+; PKT-433 (d), PRF-179: what an NNTP transit refusal of a present carrier
+; relays to its log line: (CLASS VERDICT), the class word
+; (fn-pcb-verdict-refusal-class, the four words the log always printed) and
+; the seven-class verdict's name, or nil when the verdict is no refusal.
+; host/owner-host.lisp fn-owner-transit-refusal-class returns it (called by
+; host/native/owner.lisp fnn-owner-transit-class); books/owner-log.lisp
+; fn-olog-detail-fields prints `detail=CLASS verdict=VERDICT'.
+(defthm fn-pcb-verdict-refusal-class-names-a-refusal
+  (implies (fn-pcb-verdict-refusal-class v)
+           (member-equal v '(:malformed :cryptographically-invalid
+                             :unenrolled :unsupported-profile)))
+  :rule-classes nil)
+
+(defun fn-pcb-transit-refusal-detail (received snapshots carried ed ml)
+  (declare (xargs :guard t))
+  (let* ((verdict (fn-pcb-admission-verdict received snapshots carried ed ml))
+         (class (fn-pcb-verdict-refusal-class verdict)))
+    (if class (list class verdict) nil)))
+
+; KEYSTONE (no hypotheses).  The relayed pair is the decisions': its first
+; word is fn-pcb-refusal-class of the same inputs, its second the
+; admission verdict, and it exists exactly when the class does.
+(defthm fn-pcb-transit-refusal-detail-is-the-class-and-the-verdict
+  (let ((detail (fn-pcb-transit-refusal-detail received snapshots carried ed ml)))
+    (and (iff detail (fn-pcb-refusal-class received snapshots carried ed ml))
+         (implies detail
+                  (and (equal (car detail)
+                              (fn-pcb-refusal-class received snapshots carried
+                                                    ed ml))
+                       (equal (cadr detail)
+                              (fn-pcb-admission-verdict received snapshots
+                                                        carried ed ml))
+                       (member-equal (cadr detail)
+                                     '(:malformed :cryptographically-invalid
+                                       :unenrolled :unsupported-profile))))))
+  :hints (("Goal" :in-theory (disable fn-pcb-admission-verdict
+                                      fn-pcb-refusal-class
+                                      fn-pcb-verdict-refusal-class
+                                      fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class)
+           :use (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class
+                 (:instance fn-pcb-verdict-refusal-class-names-a-refusal
+                            (v (fn-pcb-admission-verdict received snapshots
+                                                         carried ed ml)))))))
+
 (in-theory (disable fn-pcb-usage fn-pcb-tally-records
                     fn-pcb-usage-extend fn-pcb-cache-validp fn-pcb-admission
                     fn-pcb-carried-event fn-pcb-admitted-from

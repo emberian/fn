@@ -1809,7 +1809,12 @@
     (s2 . (fn-auth-session-handshakingp
            (fn-post-result-session
             (fn-auth-step as archive config observation injection
-                          wire-event))))))
+                          wire-event))))
+    ; PRF-164: the TLS handshake, not the XREDEEM redemption hold.
+    (s3 . (not (fn-auth-redeem-waitp
+                (fn-post-result-session
+                 (fn-auth-step as archive config observation injection
+                               wire-event)))))))
 (defconst *aut-k10-conclusion*
   '(and (null (fn-auth-session-subject
                (fn-post-result-session
@@ -1834,7 +1839,12 @@
   `(aut-tooth ,name ,keys ,*aut-k10-hyps* ,*aut-k10-conclusion*
               fn-auth-step-starttls-clears-a-principal-role))
 
-(aut-k10 aut-k10-full (s1 s2))
+(aut-k10 aut-k10-full (s1 s2 s3))
+; S3 dropped: the XREDEEM hold is handshaking with a pending redemption
+; state, so `no cached name' fails for it (books/nntp-auth.lisp
+; fn-auth-step-pinned-xredeem-pass-holds-for-the-owner; the evaluated
+; witness is tests/acl2/accounts-wire-tests.lisp's *awt-wait*).
+(local (must-fail (aut-k10 aut-k10-without-s3 (s1 s2))))
 
 ; The witness: the bound connection sends STARTTLS.  382, handshaking, and
 ; the role, the subject and the cached name are gone.

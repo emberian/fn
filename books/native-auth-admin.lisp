@@ -11,8 +11,10 @@
 (include-book "anchor-replace")
 
 (defconst *fn-native-auth-admin-max-secret-octets* 256)
+; The local principal is books/accounts.lisp's (one function for a login
+; enrolled here and a login redeemed by XREDEEM).
 (defconst *fn-native-auth-admin-local-principal-tag*
-  (fn-record-string-octets "fn-principal-local-v1"))
+  *fn-acct-local-principal-tag*)
 (defconst *fn-native-auth-admin-header*
   (append
    (fn-record-string-octets
@@ -189,8 +191,7 @@
                (fn-id-hex-listp text))
           (fn-id-unhex text)
         :bad)
-    (fn-digest-tagged *fn-native-auth-admin-local-principal-tag*
-                      (fn-authsec-octets name))))
+    (fn-acct-local-principal name)))
 
 (defun fn-native-auth-admin-upsert (name credential credentials)
   (declare (xargs :guard t))
@@ -665,30 +666,48 @@
            fn-native-auth-admin-recovery-trace-introduces-final-recovery
            (phase (fn-native-auth-admin-recovery-start t final-presentp)))))))
 
-;; When a durable credential change reaches service (PKT-102).  An owner
-;; reads the credential file once, at start (host/native/auth.lisp
-;; fnn-native-auth-startup-hook), so a change is served only after a
-;; (re)start.  OBSERVATION is what the host saw of the configured store's
-;; writer lock AFTER the change was durable (host/native/io.lisp
+;; When a durable credential change reaches service (PKT-102, PKT-221).  An
+;; owner reads the credential file's passwords once, at start
+;; (host/native/auth.lisp fnn-native-auth-startup-hook), so a password change
+;; is served only after a (re)start.  A login BINDING (`principal bind' /
+;; `unbind') is different since PKT-221: the owner publishes the file's
+;; bindings into its configuration (books/login-binding-live.lisp), at start
+;; and whenever the verb asks it to, so a binding change is served at once.
+;;
+;; OBSERVATION is what the host saw of the configured store's writer lock
+;; AFTER the file change was durable (host/native/io.lisp
 ;; fnn-store-owner-observation): :held (another process holds it: an owner
-;; runs and still serves the old credentials), :free, :absent (no store), or
-;; anything else when the probe failed.  Only a lock seen free or absent says
-;; the change takes effect at the next start with nothing to restart; an
-;; owner starting after the probe reads the durable file.  An unknown
-;; observation is answered as a running owner.
-(defun fn-native-auth-admin-effect-word (observation)
+;; runs), :free, :absent (no store), or anything else when the probe failed.
+;; LIVE is the owner's answer to the binding reload the host sent after a
+;; bind or unbind (host/native/auth-admin.lisp): :accepted (the owner
+;; published the file's bindings), :uncertain, or anything else (refused, not
+;; asked).  Only a lock seen free or absent says the change takes effect at
+;; the next start with nothing to restart; only the owner's :accepted says
+;; `applied'; an uncertain reload stays uncertain; an unknown observation is
+;; answered as a running owner that still serves the old file.
+(defun fn-native-auth-admin-effect-word (observation live)
   (declare (xargs :guard t))
-  (if (member-equal observation '(:free :absent))
-      :effective-at-next-start
-    :restart-required))
+  (cond ((member-equal observation '(:free :absent)) :effective-at-next-start)
+        ((equal live :accepted) :applied)
+        ((equal live :uncertain) :uncertain)
+        (t :restart-required)))
 
 ; KEYSTONE.  The answer never says `effective-at-next-start' while an owner
-; may hold the store: only a probe that saw the lock free or the store absent
-; gives it.
+; may hold the store, and says `restart-required' exactly when an owner may
+; hold it and did not publish the change (nor answer uncertainly).
 (defthm fn-native-auth-admin-effect-word-restart-unless-no-owner
-  (equal (equal (fn-native-auth-admin-effect-word observation)
+  (equal (equal (fn-native-auth-admin-effect-word observation live)
                 :restart-required)
-         (not (member-equal observation '(:free :absent)))))
+         (and (not (member-equal observation '(:free :absent)))
+              (not (member-equal live '(:accepted :uncertain))))))
+
+; KEYSTONE.  `applied' is said only after the running owner published the
+; change: the lock was not seen free or absent and the owner answered
+; :accepted.
+(defthm fn-native-auth-admin-effect-word-applied-only-when-published
+  (equal (equal (fn-native-auth-admin-effect-word observation live) :applied)
+         (and (not (member-equal observation '(:free :absent)))
+              (equal live :accepted))))
 
 (in-theory
  (disable (:d fn-native-auth-admin-plan-result)

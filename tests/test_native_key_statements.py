@@ -361,6 +361,67 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.assertEqual(again[2:], [lines[1]])
             self.assertEqual(self.history(d), history)
 
+    def keys_redecide(self, node, msgid, expected):
+        result = self.fn("operator", node["config"], "keys", "redecide", msgid,
+                         expected=expected)
+        return result.returncode
+
+    def test_redecide_a_declined_statement_after_its_grant(self):
+        """PKT-325, PRF-166, SCN-096: a statement declined for want of a
+        `keys' grant; the grant published live; `operator CONFIG keys
+        redecide MSGID' over the control socket enrols the successor the
+        grant now permits (books/key-statements.lisp fn-ks-redecide-plan at
+        the redecide's own txid).  A second redecide of the acted statement
+        and a redecide of a Message-ID that names no statement are refused by
+        name, changing nothing.  Offline it is refused (no owner).  A restart
+        repeats nothing: the newest record is the kind-3 change
+        (fn-ks-reopen-after-a-redecide)."""
+        e = self.node("e")
+        msgid = "<redecide@keys.invalid>"
+        self.start(e)
+        try:
+            old = self.keys["old"]
+            self.fn("hybrid-enroll", e["control"], "1", self.principal_file,
+                    old["ed_public"], old["ml_public"])
+            new = self.keys["new"]
+            statement = self.carrier(self.principal_file, old,
+                                     self.succession(msgid, P, old, new),
+                                     "redecide")
+            reply = self.post(e, statement)
+            witness("statement POST without a grant", reply.strip())
+            self.assertTrue(reply.startswith(b"240 "), reply)
+            self.fn("operator", e["config"], "control", "grant", P.hex(), "keys", "fn.keys")
+            self.keys_redecide(e, msgid, 0)
+            self.keys_redecide(e, msgid, 1)
+            self.keys_redecide(e, "<absent@keys.invalid>", 1)
+            lines = [line for line in self.log(e).splitlines() if "key-statement" in line]
+            witness("log after the redecides", lines)
+            self.assertEqual(len(lines), 4, lines)
+            self.assertTrue(lines[0].startswith("key-statement declined no-grant"), lines)
+            self.assertEqual(lines[1:], [
+                "key-statement redecide enrol-successor committed",
+                "key-statement redecide refused already-acted",
+                "key-statement redecide refused not-a-key-statement"])
+        finally:
+            self.stop(e)
+        history = self.history(e)
+        witness("history after the redecide", history)
+        self.assertEqual(history, ["generation=2 state=active principal=" + P.hex(),
+                                   "generation=1 state=retired principal=" + P.hex()])
+        offline = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(e["config"]), "keys", "redecide", msgid],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=180, check=False)
+        witness("offline redecide", offline.returncode,
+                offline.stderr.decode("utf-8", "replace").strip())
+        self.assertNotEqual(offline.returncode, 0)
+        self.start(e)
+        self.stop(e)
+        after = [line for line in self.log(e).splitlines() if "key-statement" in line]
+        witness("log after a restart", after)
+        self.assertEqual(len(after), 4, after)
+        self.assertEqual(self.history(e), history)
+
     def test_an_accepted_statement_cut_then_its_grant_revoked(self):
         """PRF-140 (books/key-statements.lisp
         fn-ks-accepted-statement-finishes-under-its-admission-context): a

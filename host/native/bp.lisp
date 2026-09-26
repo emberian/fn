@@ -800,10 +800,10 @@ admitted and ACL2 refuses every inbound bundle at the receive boundary."
              outcome reason (length adu))
     (when (and adu-out (eq outcome :accepted))
       (fnn-write-staged adu-out (fnn-octets adu)))
-    (ecase outcome
-      (:accepted +fnn-exit-ok+)
-      (:refused +fnn-exit-refused+)
-      (:uncertain +fnn-exit-uncertain+))))
+    ;; A decode publishes nothing, so no verdict is a fence: the verdict
+    ;; the clock cannot decide is a refusal with its printed reason, exit 1
+    ;; (books/bp-run-class.lisp fn-bprc-decode-never-fences, PRF-143).
+    (fnn-core 'fn-bprc-decode-exit-code outcome)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The positional protocol behind `--fn bp'.  `-' selects the default.

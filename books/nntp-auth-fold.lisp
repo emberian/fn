@@ -188,6 +188,19 @@
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp)))))
 
+(defthm fn-auth-fold-enrollment-hdr-response-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-nntp-enrollment-hdr-response session archive index verdicts args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-enrollment-hdr-response fn-post-offeredp
+                                   fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi
+                                   fn-enr-item fn-stx-reader-lookup fn-midx-lookup
+                                   fn-nntp-hdr-line
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-nntp-token-string fn-octet-listp)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
@@ -449,6 +462,15 @@
   (declare (xargs :guard t))
   (fn-post-session-awaiting
    (fn-peer-session-base (fn-auth-session-base as))))
+
+; PRF-164: XREDEEM keeps the base session (fn-auth-xredeem-keeps-the-config-
+; base-and-subject), hence the POST state under it.
+(local
+ (defthm fn-auth-fold-xredeem-keeps-post-awaiting
+   (equal (fn-auth-fold-post-awaiting
+           (fn-post-result-session (fn-auth-xredeem as args)))
+          (fn-auth-fold-post-awaiting as))
+   :hints (("Goal" :in-theory (enable fn-auth-fold-post-awaiting)))))
 
 (local
  (defthm fn-auth-fold-authinfo-keeps-post-awaiting

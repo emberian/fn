@@ -260,8 +260,14 @@ observations back.  Nil when there is nothing to observe."
     (let ((effects
             (fnn-bps-foundation-step
              bp (fnn-bpnode-budgeted
+                 ;; PKT-261: each held row routes to the neighbour
+                 ;; fn-bprt-outbound-choice names for its own destination
+                 ;; (the (:table TABLE) form; fn-bpnp-progress-dispatch-
+                 ;; names-the-routed-hop).  With no route rows, the node's
+                 ;; PEER-ID is the one-row instance.
                  (list :progress node observation
-                       (fnn-core 'fn-bpnp-single-peer-routes
+                       (fnn-core 'fn-bpnp-host-routes
+                                 (fnn-owner-core 'fn-owner-bp-route-table)
                                  (fnn-bp-eid configured-peer))
                        0)))))
       (unless effects (return-from fnn-bpnode-dispatch-one nil))
@@ -337,27 +343,28 @@ observations back.  Nil when there is nothing to observe."
                node-id configured-peer))
   bp)
 
-;;; Routing (spec bp-node-machine 4.6).  ACL2 decides the outbound
-;;; neighbour: `fn-bprt-outbound-choice' over the configuration's route table
-;;; (`fn-owner-bp-route-table') names the boundary, the node ID its contact
-;;; must announce and its contact port (the boundary's own `contact' row).
-;;; CONTACT-HOST:PORT on the command line no longer chooses the next hop; a
-;;; destination with no route opens no session and its rows stay held.
+;;; Routing (spec bp-node-machine 4.6, 9.5).  ACL2 decides every outbound
+;;; neighbour: `fn-bpnp-forward-plan' over the held rows and the
+;;; configuration's route table (`fn-owner-bp-route-table') names one session
+;;; per next hop with forward-pending transit -- its boundary, the node ID
+;;; the contact must announce and its contact port -- and the pass opens each
+;;; in turn, one at a time (fn-bpnp-forward-plan-has-one-session-per-peer;
+;;; a held row is offered on at most one of them,
+;;; fn-bpnp-forward-plan-offers-a-row-on-one-session).  CONTACT-HOST:PORT on
+;;; the command line chooses no next hop; a destination with no route opens
+;;; no session and its rows stay held with their obligations.
 (defun fnn-bpnode-forward-contact (bp node-id peer-id transfer-mru wall wall-error)
-  "Drive one ACL2-selected held forwarding attempt on one routed session."
-  (let ((peer (fnn-bp-eid peer-id)))
-    (unless (eq (fnn-core 'fn-bpnp-has-forward-pendingp
-                           (fnn-core 'fn-bpnf-held-list (fnn-bps-state bp)) peer) t)
-      (return-from fnn-bpnode-forward-contact nil))
-    (let* ((table (fnn-owner-core 'fn-owner-bp-route-table))
-           (choice (fnn-core 'fn-bprt-outbound-choice
-                             (fnn-core 'fn-bpaj-eid-text peer) table)))
-      (unless (eq (first choice) :hop)
-        (fnn-out "BP forwarding no-route destination=~a decision=~(~a~) (held; the obligation stays)"
-                 peer-id (first choice))
-        (return-from fnn-bpnode-forward-contact nil))
-      (fnn-bpnode-forward-session bp node-id peer transfer-mru wall wall-error
-                                  (second choice) (third choice) (fourth choice)
+  "Drive one ACL2-selected held forwarding attempt per planned next hop."
+  (declare (ignore peer-id))
+  (let* ((table (fnn-owner-core 'fn-owner-bp-route-table))
+         (held (fnn-core 'fn-bpnf-held-list (fnn-bps-state bp))))
+    (dolist (row (fnn-core 'fn-bpnp-forward-unrouted held table))
+      (fnn-out "BP forwarding no-route destination=~a decision=~(~a~) (held; the obligation stays)"
+               (first row) (second row)))
+    (dolist (entry (fnn-core 'fn-bpnp-forward-plan held table))
+      (fnn-bpnode-forward-session bp node-id (first entry) transfer-mru
+                                  wall wall-error
+                                  (second entry) (third entry) (fourth entry)
                                   table))))
 
 (defun fnn-bpnode-forward-session
@@ -880,11 +887,25 @@ uncertain, as it does everywhere else."
              ;; receive evidence (fnn-bp-deliver-node); recover that ACL2
              ;; namespace before the first transfer, as bp receive does.
              (fnn-bp-evidence-open (fnn-bps-tally bp))
-             (multiple-value-bind (bound bound-port)
-                 (fnn-tcl-listen listen-port)
-               (setq listener bound)
-               (fnn-out "BP NODE LISTENING ~d" bound-port))
-             (fnn-accept-loop
+             ;; PRF-176: with `-' for PORT the node binds ACL2's listener
+             ;; set, one listener per transport-bp boundary row of the live
+             ;; configuration that admits a session
+             ;; (fn-bpaj-listener-session-is-admitted-under-its-row), and
+             ;; no other; a numeric PORT is the one-row case.  The loop
+             ;; stays serialized: poll(2) picks the next ready listener and
+             ;; that session runs to its end before the next (spec 9.1).
+             (let ((ports (if (eq listen-port :boundaries)
+                              (fnn-owner-core 'fn-owner-bp-listener-ports)
+                            (list listen-port))))
+               (unless ports
+                 (fnn-refuse "bp-node serve: the configuration admits no transport-bp boundary listener"))
+               (dolist (port ports)
+                 (multiple-value-bind (bound bound-port)
+                     (fnn-tcl-listen port)
+                   (push bound listener)
+                   (fnn-out "BP NODE LISTENING ~d" bound-port)))
+               (setq listener (nreverse listener)))
+             (fnn-accept-any-loop
               listener
               (lambda (socket &aux (profile-started (get-internal-real-time)))
                 (let* ((session-counter
@@ -947,7 +968,7 @@ uncertain, as it does everywhere else."
                      (fnn-core 'fn-bprc-note
                                (fnn-bp-run-evidence (fnn-bps-tally bp))
                                session-word)))
-      (when listener (fnn-socket-shut listener))
+      (dolist (bound listener) (fnn-socket-shut bound))
       (when owner
         (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
         (fnn-owner-feed-close-all owner)
@@ -993,7 +1014,7 @@ uncertain, as it does everywhere else."
     (when (< (length args) (+ offset 11))
       (error 'fnn-usage-error
              :message
-             "bp-node: [PORT] JOURNAL STORE RECEIPTS WORKFLOW NODE PEER DEST POLICY ISSUER CONTACT-HOST CONTACT-PORT"))
+             "bp-node: [PORT|-] JOURNAL STORE RECEIPTS WORKFLOW NODE PEER DEST POLICY ISSUER CONTACT-HOST CONTACT-PORT"))
     (flet ((arg (n &optional default) (or (nth (+ offset n) args) default))
            (number (n default)
              (parse-integer (or (nth (+ offset n) args)
@@ -1002,7 +1023,10 @@ uncertain, as it does everywhere else."
              (and (nth (+ offset n) args)
                   (parse-integer (nth (+ offset n) args)))))
       (fnn-command-bp-node
-       (and (= offset 1) (parse-integer (first args)))
+       ;; `-': the configuration's listener set (PRF-176).
+       (and (= offset 1)
+            (if (string= (first args) "-") :boundaries
+              (parse-integer (first args))))
        (string= (arg 11 "1") "1")
        (arg 0) (arg 1) (arg 2) (arg 3) (arg 4) (arg 5) (arg 6)
        (arg 7) (arg 8) (arg 9) (number 10 4556)

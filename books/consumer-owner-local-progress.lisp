@@ -18,6 +18,8 @@
 ; 4. Ack writes exactly the declared cursor, only forward, only within the
 ;    committed frontier, only in the recorded scope; an equal position is an
 ;    idempotent no-op, and after the committed ack the same ack is a no-op.
+; 5. The host serves `fn-col-poll-report': the page's exact report, or a
+;    named refusal (:oversize) for a report the poll reply cannot carry.
 (in-package "ACL2")
 (include-book "consumer-owner-local")
 
@@ -183,6 +185,77 @@
                                   (fn-col-poll-scan fn-col-scope-entry
                                    fn-col-poll-index-window fn-cp-cursor-encode
                                    fn-cp-scope-cursor colp-closed)))))
+
+;; PKT-254 (PRF-177 (c)).  What the host serves for a page
+;; (host/owner-host.lisp fn-owner-consumer-local-poll calls fn-col-poll-report):
+;; a refusal or empty page exactly as fn-col-poll answered; a page whose
+;; report is the selected event's exact encoding when the kind-6 reply can
+;; carry it; and, when that encoding is octets above the reply's report
+;; ceiling, the named refusal :oversize (the position unchanged: poll never
+;; writes).  Never a truncated report, never a page that omits the event.
+(defthm fn-col-poll-report-fits-or-refuses-by-name
+  (let ((r (fn-col-poll-report o consumer))
+        (d (fn-col-poll o consumer)))
+    (and (implies (not (equal (car d) :poll)) (equal r d))
+         (implies (and (equal (car d) :poll) (not (caddr d))) (equal r d))
+         (implies (and (equal (car d) :poll) (caddr d)
+                       (fn-ncl-poll-event-bytesp
+                        (fn-col-poll-report-octets (caddr d))))
+                  (equal r (list :poll (cadr d)
+                                 (fn-col-poll-report-octets (caddr d)))))
+         (implies (and (equal (car d) :poll) (caddr d)
+                       (consp (fn-col-poll-report-octets (caddr d)))
+                       (fn-cbor-octet-listp (fn-col-poll-report-octets (caddr d)))
+                       (< *fn-stxa-max-octets*
+                          (len (fn-col-poll-report-octets (caddr d)))))
+                  (equal r '(:refused :oversize)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-col-poll-report fn-ncl-poll-event-bytesp)
+                                  (fn-col-poll fn-col-poll-report-octets
+                                   fn-cbor-octet-listp)))))
+
+;; PKT-467 (control-reply-fit, PRF-178; the coordinator's ruling: profile
+;; validation refuses a record bound the poll reply cannot carry).  A page
+;; whose event's exact encoding is a Store payload the publication gate
+;; admits under ANY profile (`fn-bs-publication-admissiblep', the gate
+;; host/store-host.lisp `fn-store-publication-admissibility' asserts on the
+;; actual bytes for host/native/io.lisp `fnn-publish') is served as that
+;; page: the kind-6 reply carries it (`fn-bs-profile-valid-record-fits-a-
+;; poll-reply', books/byte-store-frame), so `:oversize' is not answered.
+;; What stays reachable: an event whose encoding exceeds its store's own R
+;; (the open's read bound, host/store-host.lisp `fn-store-profile-read-bound',
+;; refuses a transaction FILE above R, but that the served event re-encodes
+;; to its file's octets is not stated here: PKT-470), so the arm stays as the
+;; named refusal for that corrupted state, not unreachable-in-composition.
+(defthm fn-col-poll-report-of-an-admitted-payload-fits
+  (let ((d (fn-col-poll o consumer)))
+    (implies (and (equal (car d) :poll)
+                  (caddr d)
+                  (consp (fn-col-poll-report-octets (caddr d)))
+                  (fn-cbor-octet-listp (fn-col-poll-report-octets (caddr d)))
+                  (fn-bs-publication-admissiblep
+                   profile committed-count
+                   (len (fn-col-poll-report-octets (caddr d)))))
+             (equal (fn-col-poll-report o consumer)
+                    (list :poll (cadr d)
+                          (fn-col-poll-report-octets (caddr d))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-col-poll-report-fits-or-refuses-by-name)
+                        (:instance fn-bs-profile-valid-record-fits-a-poll-reply
+                                   (values profile)
+                                   (octets (len (fn-col-poll-report-octets
+                                                 (caddr (fn-col-poll o consumer)))))))
+           :in-theory (e/d (fn-ncl-poll-event-bytesp)
+                           (fn-col-poll fn-col-poll-report fn-col-poll-report-octets
+                            fn-bs-publication-admissiblep fn-cbor-octet-listp)))))
+
+(defthm fn-col-poll-report-is-a-page-or-a-refusal
+  (member-equal (car (fn-col-poll-report o consumer)) '(:poll :refused))
+  :hints (("Goal" :use fn-col-poll-is-a-page-or-a-refusal
+           :cases ((equal (car (fn-col-poll o consumer)) :poll))
+           :in-theory (e/d (fn-col-poll-report)
+                           (fn-col-poll fn-col-poll-report-octets
+                            fn-ncl-poll-event-bytesp)))))
 
 (defthm fn-col-poll-is-the-index-window-scan-unfolds
   (implies (equal (car (fn-col-poll o consumer)) :poll)

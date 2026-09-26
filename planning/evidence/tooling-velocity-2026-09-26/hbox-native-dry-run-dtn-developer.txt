@@ -1,0 +1,57 @@
+#!/bin/sh
+set -u
+S=/tank/fn/scratch/tooling-velocity/native-wt-20260926T100632Z
+T=$S/tree
+L=$S/logs
+ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+CACHE=/tank/fn/certcache
+export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+export LD_LIBRARY_PATH=$FN_OPENSSL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export FN_ACL2=$ACL2 FN_CERT_CACHE=$CACHE FN_CERT_ORIGIN_KIND=run
+mkdir -p $L
+rm -f $S/status
+cd $T || { echo 9 > $S/status; exit 9; }
+step() {
+    name=$1; shift
+    echo "== $name $(date -u +%H:%M:%SZ)"
+    "$@" > $L/$name.log 2>&1
+    rc=$?
+    echo "   $name exit $rc ($L/$name.log)"
+    if [ $rc -ne 0 ]; then
+        tail -n 15 $L/$name.log | sed 's/^/   | /'
+        finish $rc
+    fi
+}
+# A test module runs to the end whatever the others did; its unittest summary
+# line (with any skips: a skipped witness is not evidence) goes in run.log.
+failed=0
+tstep() {
+    name=$1; shift
+    echo "== $name $(date -u +%H:%M:%SZ)"
+    "$@" > $L/$name.log 2>&1
+    rc=$?
+    echo "   $name exit $rc: $(grep -E '^(OK|FAILED)' $L/$name.log | tail -n 1) ($L/$name.log)"
+    [ $rc -eq 0 ] || [ $failed -ne 0 ] || failed=$rc
+}
+finish() {
+    (cd $S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > $S/SHA256SUMS 2>/dev/null
+    echo $1 > $S/status
+    echo "== done status $1; $S/SHA256SUMS"
+    exit $1
+}
+echo "== source worktree 17ff24aab9db+dirty"
+python3 tools/proof_artifacts.py roots --profile default > $L/roots.txt || finish 13
+python3 tools/proof_artifacts.py roots --profile dtn >> $L/roots.txt || finish 13
+sort -u -o $L/roots.txt $L/roots.txt
+toolchain=$(python3 tools/acl2_toolchain.py identity "$ACL2") || finish 14
+step install python3 tools/certs.py --cache $CACHE --toolchain-identity "$toolchain" --acl2 "$ACL2" install-partial $(cat $L/roots.txt)
+step certify swarm-build python3 tools/certify_books.py --incremental --jobs 8 --timeout-seconds 900 $(cat $L/roots.txt)
+step acquire python3 tools/proof_artifacts.py acquire --profile default --root $T --cache $CACHE --acl2 "$ACL2"
+step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "$ACL2"
+step acquire-dtn python3 tools/proof_artifacts.py acquire --profile dtn --root $T --cache $CACHE --acl2 "$ACL2"
+step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "$ACL2"
+step image-dtn-developer env FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn-developer FN_NATIVE_LOG=$L/native-build-dtn-developer.log swarm-build sh tools/build_native_host.sh
+export FN_NATIVE_BP_HOST=$T/build/fn-host-dtn-developer
+tstep test-tests.test_bp_service_native systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=24G -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 -m unittest -v tests.test_bp_service_native'
+tstep test-tests.test_bp_contact_native systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=24G -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 -m unittest -v tests.test_bp_contact_native'
+finish $failed

@@ -1,0 +1,2 @@
+Running as unit: run-r8b34fa610b954909be2a58b994afd868.scope; invocation ID: 384f72b92a574ce88e10cba9c5492eec
+{"fixture": "/tank/fn/scratch/fixtures/chain-20000-8cc3cd4c", "recover_s": 311.9, "recover_exit": 0, "recover_stdout": "recovered transactions=20000 articles=20000 staging-orphans=0 anchor=none checkpoint=none\nopen=full-replay reason=checkpoint-open-refused\n", "recover_peak_kib": 5569316, "listening_s": 280.7, "listening_vmhwm_kib": 5791084, "stop_s": 1.1}

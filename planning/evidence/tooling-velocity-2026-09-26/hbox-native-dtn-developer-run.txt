@@ -1,0 +1,36 @@
+hbox_native: commit c085b45a66d01ff9d77662fb6fbb44b839bf84ea -> hbox:/tank/fn/scratch/tooling-velocity/native-c085b45a66d0
+hbox_native: started; progress in hbox:/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/run.log
+== source commit c085b45a66d01ff9d77662fb6fbb44b839bf84ea
+== install 10:07:44Z
+   install exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/install.log)
+== certify 10:08:27Z
+   certify exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/certify.log)
+== acquire 10:08:40Z
+   acquire exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/acquire.log)
+== validate 10:09:08Z
+   validate exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/validate.log)
+== acquire-dtn 10:09:29Z
+   acquire-dtn exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/acquire-dtn.log)
+== validate-dtn 10:09:56Z
+   validate-dtn exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/validate-dtn.log)
+== image-dtn-developer 10:10:18Z
+   image-dtn-developer exit 0 (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/image-dtn-developer.log)
+== test-tests.test_bp_service_native 10:11:16Z
+   test-tests.test_bp_service_native exit 0: OK (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/test-tests.test_bp_service_native.log)
+== test-tests.test_bp_contact_native 10:11:34Z
+   test-tests.test_bp_contact_native exit 0: OK (/tank/fn/scratch/tooling-velocity/native-c085b45a66d0/logs/test-tests.test_bp_contact_native.log)
+== done status 0; /tank/fn/scratch/tooling-velocity/native-c085b45a66d0/SHA256SUMS
+== SHA256SUMS
+70bbd4b605c11b114408e8588d09e1e2a3afbb49ffeefa3aee7c4581eb0fe306  tree/build/fn-host-dtn-developer.core
+46fffc840b984c86f88b81d043b95a07c04ad6c3adea41c9cc166b92c16a6879  tree/build/fn-host-dtn-developer
+9a1fabf868395aeb7e3f32330641d94c18086f0b5a91e58564df4a899151bb2a  logs/acquire-dtn.log
+290afcb3c28e6987c6b651f5a120abada2f172105845959fe67d48fcb7eebeea  logs/acquire.log
+da87391ec084b0e7ae7fe9a030d34de4188dd189a77fdeaa04ea57865f50e5d6  logs/certify.log
+f6479a2b16201a768dff2599349b88753b7a3728d83fd2848e2d31653610d995  logs/image-dtn-developer.log
+02c82de39ed2d732949fcd7252fae3cbc4f521348e8ce45bda6139554eb9a27a  logs/install.log
+93ae7958add1d0d10170a70c53be134c40e7f10ee9a1129b05578c22ff845ad2  logs/native-build-dtn-developer.log
+e75c52d9b1cf3fb04cfc118eba6c3988d0b17870786685a5ee1a5b938f0d2c95  logs/test-tests.test_bp_contact_native.log
+e4063a9c80f208562c5856b67a6a8683cbee78f315eb30fc1962bf22837cbc68  logs/test-tests.test_bp_service_native.log
+f81cd39c9998452dc046f9c6bfbae8c70b9fe53fe4f995d3154e269d1c6b67b8  logs/validate-dtn.log
+6b1b4649fc9e85f1a7bd83b7c0077d31fbc6bc6207ddff1630209f582621d256  logs/validate.log
+hbox_native: status 0 (hbox:/tank/fn/scratch/tooling-velocity/native-c085b45a66d0)

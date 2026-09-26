@@ -166,6 +166,11 @@ uses ACL2's received-source projection, checks the Ed25519 and ML-DSA-65
 signatures with native libraries, and asks ACL2 for the final conjunction.
 ACL2's `fn-hc-render-at-most` refuses output when carrier expansion pushes the
 complete received article over the same article cap the verifier reads.
+That cap is the record codec's ceiling (`*fn-article-max-octets*`, D27),
+not an operator's: the operator's article bound is the Store profile's
+`max-article-octets`, decided when a node injects the article, so a carrier
+within the codec but over a node's profile is signed and then refused by
+that node (`441 posting failed; the article exceeds the configured size`).
 It reports `verified PRINCIPAL-HEX` (exit 0) or `unverified REASON` (exit 1).
 The caller-supplied ML public key must match the carrier's key set. This is an
 independent portable artifact check, not Store acceptance or a historical
@@ -470,6 +475,16 @@ signature. It says that this node holds the article for a neighbour whose
 boundary lists that principal and that the node verified nothing.
 `tools/fn_verify.py` exits 3 (cannot decide) on it and reports its own
 check beside it. To get a decision, ask a node that enrolled the author.
+
+A fifth form, `revoked <principal-hex> keyring <G>`, is the record of a
+signed article that reached this node by transit after this node revoked
+its principal, under keys the node had enrolled for it, both primitive
+observations verified (books/stx-verify.lisp `fn-stx-verified-item`; G is
+the revocation tombstone's generation). It vouches for nothing and never
+reads `verified`. `tools/fn_verify.py` renders it: when the independent check
+finds the signature to be that principal's, or does not verify it, the two
+agree on "not verified" (exit 1); when the signature is another principal's,
+the line is a disagreement (exit 2).
 
 The line also does not show whether the node should have accepted, that is,
 whether enrollment was current or group policy allowed the post. Those

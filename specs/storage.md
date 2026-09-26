@@ -65,8 +65,46 @@ The credential file's octet and line bounds follow its count: 512 octets and
 8 lines per credential, plus one unit for the header, a work bound per
 credential. fn.toml's size bounds stay constants. They bound the work of
 reading a fixed-schema file that names the store, and the file holds no
-collection. Consumers and policy members are not yet read from the
-profile (planning/evidence/bounds-profile-2026-09-25.md).
+collection. Consumers are read since STO-021; policy members are not
+(planning/evidence/bounds-profile-2026-09-25.md).
+
+STO-021: no hidden constant caps a community count (D27). Every constant
+that bounds stored data is one of three things: governed by a profile field,
+a work bound of one fixed-shape record, or a codec width that admits every
+valid profile (`fn-bs-profile-validp-codecs-accept`); the classification is
+planning/evidence/community-bounds-2026-09-26.md. The consumer count is the
+profile's `max-consumers` (field 9): the owner's registration
+(`fn-cp-register-within`, books/consumer-position.lisp) refuses
+`:max-consumers` exactly when the table already holds that many, and a raised
+field takes effect at the next open with no migration; replay re-runs the
+registration's validity, not the admission bound, because the profile only
+rises. Open: the group-name bound (field 7) is not yet read on the served
+path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
+peer's configuration rows are now data (STO-023).
+
+STO-023: stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant.
+Two constants that capped data are gone (D27;
+planning/evidence/caps-to-profile-2026-09-26.md). A peer's row group grows
+by requests: `peer carries` and `peer budget` publish only the rows they
+change, `(:add-peer-rows NAME ROWS)` and `(:remove-peer-rows NAME ROWS)`
+(configuration delta codes 18 and 19, books/config.lisp), and
+`*fn-cfg-max-rows*` (1,024) bounds the work of one delta, not the rows one
+peer holds (`fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound`,
+`fn-cfg-apply-delta-adds-at-most-the-work-bound`); the published deltas
+apply as the whole-group extension did
+(`fn-pcb-extend-deltas-apply-as-the-extend-delta`), and the record count is
+the profile's `max-config-generations`. A checkpoint or pack generation
+number is a uint32, the width of its name and selection codec, and the
+generations a store retains are the profile's capacity, `max-transactions`
+plus one: the allocator refuses exactly at that capacity
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`,
+`fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), so
+`store upgrade-profile` raises it and a store no longer meets a lifetime
+figure of 4,096 publications. No store format changed: an older image
+refuses a configuration log holding codes 18 or 19 and a checkpoint
+directory holding more than 4,096 names or a name at or above 4096, the
+rollback consequence of these two steps. Open: the group-name width and
+field 7's reader (PKT-451).
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store
@@ -456,6 +494,22 @@ STO-009: a committed-history boundary is written after each commit and before
 its acknowledgement, and every open refuses, by name, a record history
 shorter than it; a burned allocation never trips it.
 
+STO-022: The durable reply's barrier cost is the publication program's and
+nothing less: every fence of a served commit fences an object A <= M <= D
+reads, and a cheaper program is admitted only through the byte model's
+discipline and crash theorems and the history model's invariant. A served
+commit makes seven fsyncs (the frontier's stage and root, the record's stage,
+transactions directory and staging directory, the marker's stage and root);
+the marker's two fence different objects, its stage inode and the root entry,
+and neither can move before the record's barrier or after the
+acknowledgement. The three cheaper programs PKT-079 and PKT-143 allowed are
+stated and refused in `books/byte-store-marker-candidates.lisp` (PRF-169):
+the deferred marker leaves A <= M, an unfenced stage is refused by discipline
+D1 and its garbled crash image, an in-place overwrite by D2 and the same
+image. The one sound sharing, the next reservation's frontier renamed under
+the marker's root barrier before the acknowledgement, is a file-kernel and
+K0 change (PKT-441). Measured: `planning/evidence/publish-program-2026-09-26.md`.
+
 The namespace gate admits a history and every proper prefix of it
 (`fn-cverb-open-history-gate-admits-a-lost-suffix`). The allocation frontier
 cannot tell a lost newest record from a burned reservation, because the
@@ -819,7 +873,15 @@ the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
    program (immutable generation, then the selection marker); at every cut
    the walk from the image's marker reads the old chain or the new link
    followed by the old chain (`fn-ccc-publication-crash-walks-old-or-new-chain`,
-   stated under the two facts the pack program's keystones give).
+   stated under the two facts the pack program's keystones give). Between
+   two links the host has one more process-death cut, `pack-chain-link`
+   (after the link's selection returned durable, before the next link's
+   admit, with no syscall between): it is the chain program's cut
+   (`fn-ccc-chain-program`), where the state is exactly the selection's
+   (`fn-ccc-chain-cut-state-is-previous-state`), the marker names link N and
+   the walk reads links N..1 on the chain selected before
+   (`fn-ccc-chain-link-cut-walks-the-extended-chain`), and the reopen answers
+   the history (`fn-ccc-chain-link-cut-reopens-to-the-history`).
 6. `store compact` extends the chain one link at a time until it covers
    every committed record (`fnn-pack-extend-chain`); it never repacks what
    earlier links cover, and it no longer refuses a history above 4096

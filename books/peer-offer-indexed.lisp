@@ -405,6 +405,10 @@
          (consp args)
          (fn-nntp-keywordp (car args) ":FN-CONTROL"))
     (fn-nntp-control-hdr-response session archive index verdicts args))
+   ((and (fn-nntp-keywordp keyword "HDR")
+         (consp args)
+         (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
+    (fn-nntp-enrollment-hdr-response session archive index verdicts args))
    (t (fn-nntp-archive-command session archive env keyword args))))
 
 (defthm fn-pix-archive-command-pinned-is-archive-command-pinned

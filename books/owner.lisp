@@ -438,7 +438,8 @@
 
 ; -----------------------------------------------------------------------------
 ; The committed view record:
-;   (version frontier archive verdicts trie buckets withdrawals raw withdrawn)
+;   (version frontier archive verdicts trie buckets withdrawals raw withdrawn
+;    keyring)
 ; ARCHIVE is the state the view serves: the acceptance state of its prefix
 ; with the withdrawn targets out of its article list (C3, D29,
 ; `fn-ctl-visible-state').  WITHDRAWALS are the records decided for the
@@ -452,7 +453,7 @@
 ; walking RAW (control-c3e).
 (defun fn-own-view-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 9)))
+  (and (true-listp x) (equal (len x) 10)))
 (defun fn-own-view-version (v)
   (declare (xargs :guard t))
   (mbe :logic (car v) :exec (fn-ag-car v)))
@@ -485,23 +486,45 @@
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))))))
+; KEYRING is the Store's keyring snapshots (`fn-sn-keyring-snapshots') at
+; the refresh that committed the view: the node's keyring view a reader of
+; this view is told the current enrollment against (HDR :fn-enrollment,
+; books/nntp-enrollment.lisp).  Pinned with the view, like the verdicts.
+(defun fn-own-view-keyring (v)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))))))
 (defun fn-own-view-make-visible
-    (version frontier archive verdicts index buckets withdrawals raw withdrawn)
+    (version frontier archive verdicts index buckets withdrawals raw withdrawn
+             keyring)
   (declare (xargs :guard t))
   (list version frontier archive verdicts index buckets withdrawals raw
-        withdrawn))
+        withdrawn keyring))
 (defun fn-own-view-make-group-indexed
     (version frontier archive verdicts index buckets)
   (declare (xargs :guard t))
-  (list version frontier archive verdicts index buckets nil nil nil))
-; The control pin a connection opened or advanced on this view carries.
+  (list version frontier archive verdicts index buckets nil nil nil nil))
+; The control pin a connection opened or advanced on this view carries: the
+; withdrawn list, the withdrawal records and the keyring view.
 (defun fn-own-view-control (v)
   (declare (xargs :guard t))
-  (fn-ctl-pin (fn-own-view-withdrawn v) (fn-own-view-withdrawals v)))
+  (fn-enr-pin (fn-own-view-withdrawn v) (fn-own-view-withdrawals v)
+              (fn-own-view-keyring v)))
 (defthm fn-own-view-control-fields
   (and (equal (fn-ctl-pin-withdrawn (fn-own-view-control v)) (fn-own-view-withdrawn v))
        (equal (fn-ctl-pin-ws (fn-own-view-control v)) (fn-own-view-withdrawals v))
-       (fn-own-view-control v)))
+       (fn-enr-pin-has-keyring-p (fn-own-view-control v))
+       (equal (fn-enr-pin-keyring (fn-own-view-control v)) (fn-own-view-keyring v))
+       (fn-own-view-control v))
+  :hints (("Goal" :use ((:instance fn-enr-pin-fields
+                         (withdrawn (fn-own-view-withdrawn v))
+                         (ws (fn-own-view-withdrawals v))
+                         (keyring (fn-own-view-keyring v))))
+           :in-theory (e/d (fn-own-view-control)
+                           (fn-enr-pin-fields fn-enr-pin fn-ctl-pin-withdrawn
+                            fn-ctl-pin-ws fn-enr-pin-has-keyring-p fn-enr-pin-keyring
+                            fn-own-view-withdrawn fn-own-view-withdrawals
+                            fn-own-view-keyring)))))
 (in-theory (disable fn-own-view-control))
 (defun fn-own-view-make-indexed (version frontier archive verdicts index)
   (declare (xargs :guard t))
@@ -513,7 +536,8 @@
          buckets))
 (defthm fn-own-view-fields-of-make-visible
   (let ((v (fn-own-view-make-visible version frontier archive verdicts index
-                                     buckets withdrawals raw withdrawn)))
+                                     buckets withdrawals raw withdrawn
+                                     keyring)))
     (and (fn-own-view-shapep v)
          (equal (fn-own-view-version v) version)
          (equal (fn-own-view-frontier v) frontier)
@@ -523,7 +547,8 @@
          (equal (fn-own-view-group-index v) buckets)
          (equal (fn-own-view-withdrawals v) withdrawals)
          (equal (fn-own-view-raw v) raw)
-         (equal (fn-own-view-withdrawn v) withdrawn))))
+         (equal (fn-own-view-withdrawn v) withdrawn)
+         (equal (fn-own-view-keyring v) keyring))))
 (defthm fn-own-view-shapep-of-group-indexed
   (fn-own-view-shapep
    (fn-own-view-make-group-indexed
@@ -640,7 +665,7 @@
                     (:d fn-own-view-make-indexed) (:d fn-own-view-make-pinned)
                     (:d fn-own-view-make) (:d fn-own-view-make-visible)
                     (:d fn-own-view-withdrawals) (:d fn-own-view-raw)
-                    (:d fn-own-view-withdrawn)))
+                    (:d fn-own-view-withdrawn) (:d fn-own-view-keyring)))
 
 ; -----------------------------------------------------------------------------
 ; The owner record
@@ -879,6 +904,54 @@
   (declare (xargs :guard t))
   (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s))))
 
+;; ---------------------------------------------------------------------------
+;; The group index, extended instead of rebuilt (served-path-scale, PRF-173;
+;; hot-path-scans section 4 item 1).  A refresh after one acceptance sees the
+;; visible list grown by one article at its head; the index of the grown list
+;; is the old index with that article's entries put in (`fn-gidx-build-of-
+;; cons'), work in the article's memberships and the group count, not in N.
+;; Any other change (a withdrawal, a verdict, a recovery view) rebuilds, as
+;; `fn-midx-refresh' does for the Message-ID index.  The keystone
+;; `fn-gidx-refresh-is-build': from an index that is the build of the old
+;; list (or no index), the refreshed index IS the build of the new list, so
+;; every served read over it answers as before.
+
+(defun fn-gidx-put-all (entries buckets)
+  (declare (xargs :guard t))
+  (if (consp entries)
+      (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
+    buckets))
+
+(defthm fn-gidx-build-entries-of-append
+  (equal (fn-gidx-build-entries (append a b))
+         (fn-gidx-put-all a (fn-gidx-build-entries b))))
+
+(defthm fn-gidx-build-of-cons
+  (equal (fn-gidx-build (cons article articles))
+         (fn-gidx-put-all (fn-index-article-entries article)
+                          (fn-gidx-build articles)))
+  :hints (("Goal" :in-theory (enable fn-gidx-build fn-index-build))))
+
+(defun fn-gidx-refresh (buckets old-articles new-articles)
+  (declare (xargs :guard t))
+  (cond ((null buckets) (fn-gidx-build new-articles))
+        ((equal new-articles old-articles) buckets)
+        ((and (consp new-articles)
+              (equal (fn-ag-cdr new-articles) old-articles))
+         (fn-gidx-put-all (fn-index-article-entries (fn-ag-car new-articles))
+                          buckets))
+        (t (fn-gidx-build new-articles))))
+
+(defthm fn-gidx-refresh-is-build
+  (implies (implies buckets
+                    (equal buckets (fn-gidx-build old-articles)))
+           (equal (fn-gidx-refresh buckets old-articles new-articles)
+                  (fn-gidx-build new-articles)))
+  :hints (("Goal" :in-theory (disable fn-gidx-build fn-gidx-put-all)
+           :use ((:instance fn-gidx-build-of-cons
+                            (article (car new-articles))
+                            (articles (cdr new-articles)))))))
+
 ; The records a withdrawing article causes are decided by the refresh that
 ; first publishes it, under the configuration in force at that article's own
 ; Store txid (`fn-ctl-article-withdrawals': the txid of its acceptance record
@@ -913,8 +986,10 @@
                       (len (fn-sf-records (fn-sn-files s)))
                       (fn-sf-frontier (fn-sn-files s))
                       archive verdicts index
-                      (fn-gidx-build visible)
-                      withdrawals raw withdrawn)
+                      (fn-gidx-refresh (fn-own-view-group-index old-view)
+                                       old-visible visible)
+                      withdrawals raw withdrawn
+                      (fn-sn-keyring-snapshots s))
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                      (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
@@ -938,7 +1013,8 @@
                    (fn-gidx-build (fn-state-articles archive))
                    nil (fn-state-articles prefix)
                    (fn-ctl-subseq-diff (fn-state-articles prefix)
-                                       (fn-state-articles archive))))
+                                       (fn-state-articles archive))
+                   nil))
                 nil 0 max-conns nil nil nil nil nil nil nil nil)))
 
 ; -----------------------------------------------------------------------------

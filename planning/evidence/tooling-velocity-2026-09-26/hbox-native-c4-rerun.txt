@@ -1,0 +1,19 @@
+hbox_native: worktree fcb1e0ee5073+dirty -> hbox:/tank/fn/scratch/tooling-velocity/native-c3c4
+hbox_native: started; progress in hbox:/tank/fn/scratch/tooling-velocity/native-c3c4/run.log
+== source worktree fcb1e0ee5073+dirty
+== test-tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses 10:32:54Z
+   test-tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses exit 0: OK (/tank/fn/scratch/tooling-velocity/native-c3c4/logs/test-tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses.log)
+== done status 0; /tank/fn/scratch/tooling-velocity/native-c3c4/SHA256SUMS
+== SHA256SUMS
+35c680c8bd6ab92f34df2ba8693c6f28dca3f9358e6ae56bd8032afba7d13c48  tree/build/fn-host
+90902320a521066a15f3d318a4201f63c83dcdcbc43766eceacbf622ab3f92ab  tree/build/fn-host.core
+290afcb3c28e6987c6b651f5a120abada2f172105845959fe67d48fcb7eebeea  logs/acquire.log
+bde7fbd4693e93e03b2188bda1c317b5251d7a30412caed53faefb716586783c  logs/certify.log
+638e8a1eb25d87b481aa36696f9d941bbc671c536dffaad64b2aeef4a27663e5  logs/image-production.log
+33837b61487884a12491c0eb4790afc14d1e101a099aa9b8ac0575c1de29b322  logs/install.log
+19f94911798931e5ef46ef76b6901d7a3d6402a9586cec3161f6384957ef0ce8  logs/native-build-production.log
+46b8677493fd546722db7e329389dc4a19bc6ef55d2fca3eba47eb59ceed1ba4  logs/test-tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses.log
+fc4a1c8a0d221268dbb525c94c11c6503d90b6112b96e9502798719c7f3ac14d  logs/test-tests.test_native_control.log
+ec4d63560eca1593531a62ad733f8c73f3da27e9605afb125c97c9039cffd886  logs/test-tests.test_native_live_reconfiguration.log
+6b1b4649fc9e85f1a7bd83b7c0077d31fbc6bc6207ddff1630209f582621d256  logs/validate.log
+hbox_native: status 0 (hbox:/tank/fn/scratch/tooling-velocity/native-c3c4)

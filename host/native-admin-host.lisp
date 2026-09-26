@@ -1,6 +1,7 @@
 ; Program bridge for the native administrative plan.
 (in-package "ACL2")
 (include-book "../books/native-admin")
+(include-book "../books/accounts")
 (ld "store-node-host.lisp" :ld-error-action :error)
 (ld "owner-host.lisp" :ld-error-action :error)
 
@@ -21,7 +22,7 @@
   ; orders nothing, and renders no field: books/native-admin.lisp does all
   ; three and raw Lisp only writes the octets out.
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-native-admin-peer-report
+  (value (fn-native-admin-peer-budget-report
           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 (defun fn-native-admin-host-query-report (plan state)
   ; `peer list' or `control list' over the configuration the store just
@@ -36,11 +37,19 @@
   (declare (xargs :stobjs state :mode :program))
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
-  (let ((deltas (fn-native-admin-plan-deltas-over
-                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
+  ;; PRF-164: an `account invite' plan's pending row expires from the live
+  ;; owner's clock (fn-acct-admin-deltas).
+  (let ((deltas (if (equal (fn-native-admin-result-kind plan) :account-invite)
+                    (fn-acct-admin-deltas
+                     plan (fn-own-clock (fn-owner-core state)))
+                  (fn-native-admin-plan-deltas-over
+                   plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (if deltas
         (fn-owner-reconfigure-deltas id deltas state)
-      (value :refused))))
+      ;; No delta for this plan over the live owner's tables: the reason
+      ;; slot says so, never a previous request's reason (PKT-453 (a)).
+      (let ((state (f-put-global 'fn-owner-config-reason :no-delta state)))
+        (value :refused)))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
@@ -58,6 +67,17 @@
              (if deltas
                  (fn-store-cfg-peer-delta-record deltas monotonic wall state)
                (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer
+                                          state)))
+                 (value :refused)))))
+          ;; PRF-164: offline, the pending row expires from the record's
+          ;; own stamp (the one fn-store-cfg-peer-delta-record builds).
+          ((equal kind :account-invite)
+           (let ((deltas (fn-acct-admin-deltas
+                          plan (fn-clock-observation (nfix monotonic) (nfix wall)
+                                                     0 t))))
+             (if deltas
+                 (fn-store-cfg-peer-delta-record deltas monotonic wall state)
+               (let ((state (f-put-global 'fn-store-cfg-last-reason :no-clock
                                           state)))
                  (value :refused)))))
           ((equal kind :set-peer)
@@ -97,3 +117,91 @@
   (fn-native-admin-publication-name result))
 (defun fn-native-admin-host-publication-jpub (result)
   (fn-native-admin-publication-jpub result))
+
+;;; ---------------------------------------------------------------------
+;;; Invitation-code accounts (PRF-164, PKT-439).  Every decision is
+;;; books/accounts.lisp's and books/nntp-auth.lisp's; these name them.
+
+;; The operator's side: the code's text from the host's CSPRNG octets, its
+;; digest, and the digest-only admin argv.  The code is never an argument.
+(defun fn-acct-host-entropy-octets () *fn-acct-code-entropy-octets*)
+(defun fn-acct-host-salt-octets () *fn-authsec-salt-octets*)
+(defun fn-acct-host-code-text (entropy) (fn-acct-code-text entropy))
+(defun fn-acct-host-code-digest-text (code-octets)
+  (fn-acct-code-digest-text code-octets))
+(defun fn-acct-host-invite-argv (digest seconds)
+  (list (fn-record-string-octets "account")
+        (fn-record-string-octets "invite")
+        (fn-record-string-octets digest)
+        (fn-record-string-octets (fn-acct-decimal-text seconds))))
+
+;; The owner's side.  Whether connection ID holds for an XREDEEM
+;; (books/nntp-auth.lisp fn-auth-redeem-waitp).
+(defun fn-acct-host-owner-redeem-waitingp (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
+    (value (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn)) t))))
+
+;; The stage fnn-owner-live-reconfigure-locked runs under the owner mutex:
+;; the bounded plan over the LIVE configuration value, at the owner's clock,
+;; with the request the holding session keeps, the host's salt, the
+;; connection-independent credential table (auth.toml's rows, then the
+;; redeemed rows: fn-auth-config-with-accounts) and the profile's
+;; max-credentials BOUND.  Only a :redeem plan stages its one delta.
+(defun fn-acct-host-owner-redeem-stage (pcid id salt bound state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
+         (req (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn))
+                   (fn-auth-redeem-request (fn-own-conn-session conn))))
+         (v (fn-cfg-value (fn-owner-config state)))
+         (creds (fn-auth-config-creds
+                 (fn-auth-config-with-accounts (fn-owner-auth state) v)))
+         (plan (if (and (true-listp req) (equal (len req) 3))
+                   (fn-acct-redeem-bounded-plan
+                    v (fn-own-clock (fn-owner-core state))
+                    (first req) (second req) (third req) salt
+                    (and (fn-auth-find-cred (second req) creds) t)
+                    (len creds) bound)
+                 (list :refused :account-no-request)))
+         (state (f-put-global 'fn-acct-redeem-plan plan state)))
+    (if (equal (car plan) :redeem)
+        (fn-owner-reconfigure-deltas pcid (list (fn-acct-plan-delta plan))
+                                     state)
+      (value :refused))))
+
+(defun fn-acct-host-owner-redeem-word (published state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-acct-redeem-word (f-get-global 'fn-acct-redeem-plan state)
+                              published)))
+
+;; The one service-log line: the outcome and the reason class, never the
+;; code, its digest, the login's password or the verifier.
+(defun fn-acct-host-owner-redeem-log-line (published state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((plan (f-get-global 'fn-acct-redeem-plan state))
+         (word (fn-acct-redeem-word plan published))
+         (reason (if (and (consp plan) (equal (car plan) :refused)
+                          (consp (cdr plan)) (symbolp (cadr plan)))
+                     (symbol-name (cadr plan))
+                   (if (and (consp plan) (symbolp (car plan)))
+                       (symbol-name (car plan)) "UNKNOWN"))))
+    (value (fn-record-string-octets
+            (concatenate 'string "account redeem "
+                         (if (equal word :bound) "bound" "refused")
+                         " " (string-downcase reason)
+                         (if (and (equal (car plan) :redeem)
+                                  (not (equal published :accepted)))
+                             " publication-refused" ""))))))
+
+;; The host's re-entry after the publication: the (:account-outcome WORD)
+;; event through the same owner step (:tls-established) takes.
+(defun fn-owner-account-outcome (id word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+                                        id (list :account-outcome word)))
+             (state (fn-owner-install-ocfg (cdr result) state))
+             (state (fn-owner-install-effects (car result) state)))
+        (value :ok)))))

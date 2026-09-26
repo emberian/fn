@@ -243,10 +243,14 @@
   :hints
   (("Goal"
     :use ((:instance fn-own-open-preserves-relation
-                     (o (fn-ocfg-owner oc)) (acfg (cadr event)))
+                     (o (fn-ocfg-owner oc))
+                     (acfg (fn-auth-config-with-accounts
+                            (cadr event) (fn-cfg-value (fn-ocfg-config oc)))))
           (:instance fn-own-open-peer-preserves-relation
                      (o (fn-ocfg-owner oc)) (peer (cadr event))
-                     (cfg (fn-ocfg-config oc)) (acfg (cadddr event)))
+                     (cfg (fn-ocfg-config oc))
+                     (acfg (fn-auth-config-with-accounts
+                            (cadddr event) (fn-cfg-value (fn-ocfg-config oc)))))
           (:instance fn-own-read-preserves-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event))
                      (octets (caddr event)))
@@ -264,7 +268,10 @@
           ; the configured open re-derives a new reader's session from
           ; the live node and configuration (`64a80197')
           (:instance fn-opc-reader-context-preserves-relation
-                     (o (cdr (fn-own-open (fn-ocfg-owner oc) (cadr event))))
+                     (o (cdr (fn-own-open (fn-ocfg-owner oc)
+                                          (fn-auth-config-with-accounts
+                                           (cadr event)
+                                           (fn-cfg-value (fn-ocfg-config oc))))))
                      (id (fn-own-next-id (fn-ocfg-owner oc)))
                      (cfg (fn-ocfg-config oc))))
     :in-theory
@@ -308,10 +315,14 @@
   :hints
   (("Goal"
     :use ((:instance fn-own-open-preserves-relation
-                     (o (fn-ocfg-owner oc)))
+                     (o (fn-ocfg-owner oc))
+                     (acfg (fn-auth-config-with-accounts
+                            acfg (fn-cfg-value (fn-ocfg-config oc)))))
           (:instance fn-own-open-peer-preserves-relation
                      (o (fn-ocfg-owner oc))
-                     (cfg (fn-ocfg-config oc)))
+                     (cfg (fn-ocfg-config oc))
+                     (acfg (fn-auth-config-with-accounts
+                            acfg (fn-cfg-value (fn-ocfg-config oc)))))
           (:instance fn-own-read-preserves-relation
                      (o (fn-ocfg-owner oc)))
           (:instance fn-own-read-step-preserves-relation

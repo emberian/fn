@@ -56,13 +56,17 @@
 
 ;;; ---------------------------------------------------------------------------
 ;;; Outcomes.  Uncertain, refused, accepted and fault stay distinct to the exit
-;;; code (specs/host.md "CLI exit codes").
+;;; code (specs/host.md "CLI exit codes", HST-009).  The numbers are ACL2's:
+;;; each constant is the fn-wide map's code for its class
+;;; (books/outcome-class.lisp fn-outcome-code, PRF-143), read once when the
+;;; image is built, which is after every book is included (host/native/
+;;; build.lisp).  The host writes no exit number of its own.
 
-(defconstant +fnn-exit-ok+ 0)
-(defconstant +fnn-exit-refused+ 1)
-(defconstant +fnn-exit-uncertain+ 3)
-(defconstant +fnn-exit-fault+ 4)
-(defconstant +fnn-exit-usage+ 5)
+(defconstant +fnn-exit-ok+ (fn-outcome-code :accepted))
+(defconstant +fnn-exit-refused+ (fn-outcome-code :refused))
+(defconstant +fnn-exit-uncertain+ (fn-outcome-code :fenced))
+(defconstant +fnn-exit-fault+ (fn-outcome-code :fault))
+(defconstant +fnn-exit-usage+ (fn-outcome-code :usage))
 
 (define-condition fnn-store-error (error)
   ((message :initarg :message :reader fnn-message))
@@ -76,6 +80,14 @@
 ;; the wire names the reason (books/nntp-post.lisp fn-post-store-refusal-line).
 (define-condition fnn-store-io-refusal (fnn-store-error) ())
 (define-condition fnn-usage-error (fnn-store-error) ())
+;; A Store open ACL2 refused by name (books/store-open-pre-c1.lisp): a
+;; refusal (exit 1) that recovery passes through unchanged, never the
+;; generic "cannot reconstruct committed history" fault.
+(define-condition fnn-store-open-refusal (fnn-store-error) ())
+;; The open's named refusal of a saved profile (PKT-471,
+;; books/store-profile-open.lisp): `store upgrade-profile' answers it with
+;; the repair (fnn-command-repair-profile).
+(define-condition fnn-store-profile-refusal (fnn-store-open-refusal) ())
 
 ;; One POSIX failure, reported the way Python's OSError prints itself.
 (define-condition fnn-os-error (error)
@@ -100,13 +112,19 @@
   (error 'fnn-os-error :errno errno :path path))
 
 (defun fnn-exit-code-for (condition)
-  (typecase condition
-    (fnn-store-indeterminate +fnn-exit-uncertain+)
-    (fnn-store-fault +fnn-exit-fault+)
-    (fnn-usage-error +fnn-exit-usage+)
-    (fnn-store-error +fnn-exit-refused+)
-    (fnn-os-error +fnn-exit-fault+)
-    (t +fnn-exit-fault+)))
+  "ACL2's code for the condition that ended a command: the host names the
+condition's type (an observation) and books/outcome-class.lisp
+fn-outcome-host-condition-exit-code classifies it (PRF-143,
+fn-outcome-host-condition-fences-iff-indeterminate).  It runs in handlers,
+so it calls the guard-t function directly rather than through fnn-core,
+whose own failure would raise a new condition here."
+  (fn-outcome-host-condition-exit-code
+   (typecase condition
+     (fnn-store-indeterminate :indeterminate)
+     (fnn-store-fault :fault)
+     (fnn-usage-error :usage)
+     (fnn-store-error :refusal)
+     (t :fault))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Octets, text, hex.
@@ -569,6 +587,26 @@ label; it does not select a policy."
 (defvar *fnn-sighup-count* 0)
 (defvar *fnn-owner-log-mutex* (sb-thread:make-mutex :name "fn service log"))
 
+(defun fnn-csprng-octets (width what)
+  "Exactly WIDTH octets from the OS CSPRNG as an octet list; short or failed
+entropy is a host fault.  WIDTH is ACL2's."
+  (unless (and (integerp width) (< 0 width))
+    (fnn-fault "ACL2 returned an invalid ~a width" what))
+  (let ((fd (fnn-open "/dev/urandom" sb-posix:o-rdonly))
+        (answer (fnn-make-octets width))
+        (offset 0))
+    (unwind-protect
+         (progn
+           (loop while (< offset width) do
+             (let* ((chunk (fnn-make-octets (- width offset)))
+                    (count (fnn-read-fd fd chunk)))
+               (when (zerop count)
+                 (fnn-fault "OS CSPRNG ended before one ~a" what))
+               (replace answer chunk :start1 offset :end2 count)
+               (incf offset count)))
+           (fnn-octet-list answer))
+      (fnn-close fd))))
+
 (defun fnn-log-line (line)
   "Write the ACL2-rendered octet list LINE and one LF to the service log."
   (unless (fnn-octet-list-p line)
@@ -671,12 +709,46 @@ execution-boundary fault, never a claim that the core refused an input."
 (defun fnn-metadata-config-decode (octets)
   "ACL2's decoded store profile: a format-8 profile, or a format-7 tuple the
 store runs under by its translation.  The host keeps the value opaque and
-reads every field through an ACL2 accessor."
-  (let ((value (fnn-core 'fn-store-metadata-config-decode
-                         (fnn-octet-list octets))))
-    (unless (and value (fnn-core 'fn-store-profile-admittedp value))
-      (fnn-fault "ACL2 rejected durable configuration frame"))
-    value))
+reads every field through an ACL2 accessor.  The verdict is ACL2's open
+(books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
+record bound the poll reply cannot carry is refused by name, exit 1, with
+ACL2's line (PKT-471); a frame that is no saved profile stays a fault."
+  (let ((verdict (fnn-core 'fn-store-metadata-config-open
+                           (fnn-octet-list octets))))
+    (cond ((and (consp verdict) (eq (first verdict) :opened)
+                (fnn-core 'fn-store-profile-admittedp (second verdict)))
+           (second verdict))
+          ((and (consp verdict) (eq (first verdict) :refused))
+           (let ((text (fnn-core 'fn-store-metadata-config-refusal-text verdict)))
+             (unless (stringp text)
+               (fnn-fault "ACL2 refused the store profile without naming a reason"))
+             (error 'fnn-store-profile-refusal :message text)))
+          ((equal verdict '(:rejected))
+           (fnn-fault "ACL2 rejected durable configuration frame"))
+          (t (fnn-fault "ACL2 returned a malformed profile open verdict")))))
+
+;; `store upgrade-profile' over a store whose open refused its profile by
+;; name (PKT-471): while it is bound, the open under the writer lock reads
+;; config.json through ACL2's repair verdict instead, and keeps the frame to
+;; write in *fnn-profile-repair-octets*.
+(defvar *fnn-profile-repair-target* nil)
+(defvar *fnn-profile-repair-octets* nil)
+
+(defun fnn-metadata-config-repair (octets target)
+  "The profile the repair verb opens the store under: the one it will write,
+decoded through the ordinary open (fn-spo-repair-verdict: the saved profile
+with R lowered to the poll reply's width, admitted only for that target)."
+  (let ((verdict (fnn-core 'fn-store-profile-repair-verdict
+                           (fnn-octet-list octets) target)))
+    (unless (and (consp verdict) (member (first verdict) '(:repair :refused)))
+      (fnn-fault "ACL2 returned a malformed profile repair verdict"))
+    (when (eq (first verdict) :refused)
+      (fnn-refuse "store profile upgrade refused: ~(~a~)" (second verdict)))
+    (unless (and (fnn-octet-list-p (second verdict)) (second verdict))
+      (fnn-fault "ACL2 returned a malformed profile frame"))
+    (let ((frame (fnn-octets (second verdict))))
+      (prog1 (fnn-metadata-config-decode frame)
+        (setf *fnn-profile-repair-octets* frame)))))
 
 (defun fnn-metadata-frontier-frame (frontier)
   (let ((value (fnn-core 'fn-store-metadata-frontier-frame frontier)))
@@ -1407,7 +1479,10 @@ after the syscall."
     ;; format-6 FNSM frame; migration is a separate offline operation.
     (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
       (fnn-fault "legacy JSON metadata is retained in place; explicit offline migration is required"))
-    (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
+    (setf (fnn-store-config store)
+          (if *fnn-profile-repair-target*
+              (fnn-metadata-config-repair raw *fnn-profile-repair-target*)
+              (fnn-metadata-config-decode raw)))))
 
 (defun fnn-load-frontier (store)
   (fnn-check-regular (fnn-frontier-path store))
@@ -1736,9 +1811,16 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                              store physical-records physical-sequences
                              actual-lower)))
     (fnn-check-history-marker store (length records))
-    (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
-                :recovering)
-      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history"))
+    (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+      ;; A named refusal of the open (books/store-open-pre-c1.lisp
+      ;; fn-sopc-classified-open): ACL2 renders the line.
+      (when (eq action :refused)
+        (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
+          (unless (stringp text)
+            (fnn-fault "ACL2 refused the open without naming a reason"))
+          (error 'fnn-store-open-refusal :message text)))
+      (unless (eq action :recovering)
+        (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
     (when reason
       (setf (fnn-store-open-mode store) (list :full-replay reason)))
     records))
@@ -1946,7 +2028,7 @@ died by heap exhaustion at N = 10,000 x 32 KiB."
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
-      ((or fnn-store-fault fnn-store-indeterminate) (e)
+      ((or fnn-store-fault fnn-store-indeterminate fnn-store-open-refusal) (e)
         (setf (fnn-store-fenced store) t)
         (error e))
       (fnn-store-error (e)
@@ -2535,7 +2617,27 @@ reads whichever frame the directory holds, old or new, never a torn one
             (fnn-indeterminate "store profile replacement is indeterminate: ~a" e)
             (fnn-refuse-io "known failure before the profile replacement: ~a" e))))))
 
-(defun fnn-command-upgrade-profile (root profile)
+(defun fnn-command-repair-profile (root profile)
+  "Offline: the one lowering, over a store whose open refused its saved
+profile by name (PKT-471).  The store is opened as the upgrade opens it, under
+the profile ACL2's repair verdict would write; the verdict decides, the host
+writes its frame with the upgrade's byte program.  Any other target is
+refused by name (exit 1) and nothing is written."
+  (let ((*fnn-profile-repair-target* profile)
+        (*fnn-profile-repair-octets* nil))
+    (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
+      (unwind-protect
+           (let ((octets *fnn-profile-repair-octets*))
+             (unless octets
+               (fnn-fault "the profile repair opened without a verdict"))
+             (fnn-upgrade-profile-write store octets)
+             (fnn-out "repaired profile=max-record-octets transactions-used=~d"
+                      (length records))
+             (fnn-out-profile (fnn-metadata-config-decode octets))
+             +fnn-exit-ok+)
+        (fnn-store-close store)))))
+
+(defun fnn-command-upgrade-profile-open (root profile)
   "Offline: replace the store's profile by PROFILE when ACL2 calls it an upgrade.
 
 The store is opened as `recover' opens it: the exclusive writer lock (so a
@@ -2569,6 +2671,14 @@ write nothing."
                  (fnn-out-profile (fnn-metadata-config-decode octets))
                  +fnn-exit-ok+)))
       (fnn-store-close store))))
+
+(defun fnn-command-upgrade-profile (root profile)
+  "Offline: replace the store's profile by PROFILE when ACL2 calls it an
+upgrade; over a store whose open refuses its profile by name, the repair
+(fnn-command-repair-profile)."
+  (handler-case (fnn-command-upgrade-profile-open root profile)
+    (fnn-store-profile-refusal ()
+      (fnn-command-repair-profile root profile))))
 
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
@@ -3234,6 +3344,52 @@ the caller to classify against its own stop and fault state."
     (funcall handler (sb-bsd-sockets:socket-accept listener))
     (when once (return))))
 
+;;; Several listeners, one serialized loop (specs/bp-node-machine.md 9.1).
+;;; poll(2) says which listeners have a connection waiting; the first ready
+;;; one in LISTENERS order is accepted and its HANDLER runs to completion
+;;; before the next poll.  No threads.  struct pollfd is {int fd; short
+;;; events; short revents} (POSIX; 8 octets), written little-endian: the
+;;; supported hosts (x86-64 and arm64) are little-endian, and the build
+;;; refuses otherwise.
+(defconstant +fnn-pollin+ 1)
+(defconstant +fnn-poll-ready+ (logior 1 8 16)) ; POLLIN | POLLERR | POLLHUP
+
+(defun fnn-poll-readable (fds timeout-ms)
+  "The index in FDS of the first descriptor poll(2) reports ready, or nil
+after TIMEOUT-MS milliseconds or an interrupted wait."
+  (unless (member :little-endian *features*)
+    (fnn-fault "fnn-poll-readable: struct pollfd is written little-endian"))
+  (let* ((n (length fds))
+         (buf (make-array (* 8 n) :element-type '(unsigned-byte 8)
+                                  :initial-element 0)))
+    (loop for fd in fds for i from 0
+          do (loop for k from 0 below 4
+                   do (setf (aref buf (+ (* 8 i) k)) (ldb (byte 8 (* 8 k)) fd)))
+             (setf (aref buf (+ (* 8 i) 4)) +fnn-pollin+))
+    (let ((ready
+            (sb-sys:with-pinned-objects (buf)
+              (sb-alien:alien-funcall
+               (sb-alien:extern-alien
+                "poll" (function sb-alien:int sb-sys:system-area-pointer
+                                 sb-alien:unsigned-long sb-alien:int))
+               (sb-sys:vector-sap buf) n timeout-ms))))
+      (when (and (integerp ready) (> ready 0))
+        (loop for i from 0 below n
+              when (logtest +fnn-poll-ready+
+                            (logior (aref buf (+ (* 8 i) 6))
+                                    (ash (aref buf (+ (* 8 i) 7)) 8)))
+                return i)))))
+
+(defun fnn-accept-any-loop (listeners handler &optional once)
+  "Run HANDLER on each connection accepted from any of LISTENERS, one at a
+time; HANDLER owns and closes its socket.  With ONCE, return after one."
+  (let ((fds (mapcar #'fnn-socket-fd listeners)))
+    (loop
+      (let ((index (fnn-poll-readable fds 1000)))
+        (when index
+          (funcall handler (sb-bsd-sockets:socket-accept (nth index listeners)))
+          (when once (return)))))))
+
 (defun fnn-serve-client (socket)
   "Serve one connection; a broken peer cannot end the listener.  A core
 failure that leaves the reader unable to correlate replies is a bridge fault."
@@ -3430,6 +3586,7 @@ serialized profile when the saved image later starts."
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
+    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
     "FN_BP_TEST_PROFILE"
@@ -3456,7 +3613,8 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
     "FN_PULL_TEST_KILL"
-    "FN_NATIVE_RECLAIM_FAULT"))
+    "FN_NATIVE_RECLAIM_FAULT"
+    "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -3548,6 +3706,11 @@ serialized profile when the saved image later starts."
                                   (fnn-octet-list (fnn-string-octets (first rest))))))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "retention") (fnn-command-retention root))
+                 ;; PKT-444: the repair of a pre-C1 control record.  Its
+                 ;; semantics wait on ember; until then it refuses by name
+                 ;; and touches nothing.
+                 ((string= command "repair-control")
+                  (fnn-refuse "~a" (fnn-core 'fn-store-repair-control-text)))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
                  ((string= command "probe")

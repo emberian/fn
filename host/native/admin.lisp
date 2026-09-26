@@ -165,7 +165,13 @@ Answers :accepted once the record is durable and the owner installed it, or
          (staged (and (integerp cid) (funcall stage cid))))
     (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
     (unless (eq staged :staged)
-      (return-from fnn-owner-live-reconfigure-locked :refused)))
+      ;; The second value is the staging step's reason, which ACL2 left in
+      ;; its reason slot (fn-owner-reconfigure-reason: fn-cfg-delta-reason's
+      ;; word, :no-such-grant and the rest), or NIL when nothing was staged.
+      (return-from fnn-owner-live-reconfigure-locked
+        (values :refused
+                (and (integerp cid) (eq staged :refused)
+                     (fnn-owner-core 'fn-owner-reconfigure-reason))))))
   (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
          (record (progn
                    (unless (fnn-octet-list-p record-list)
@@ -190,18 +196,61 @@ Answers :accepted once the record is durable and the owner installed it, or
       (fnn-owner-feed-refresh-configuration service)
       :accepted)))
 
+;;; PRF-164 (PKT-439): the owner's side of XREDEEM.  The connection CID
+;;; holds (books/nntp-auth.lisp fn-auth-redeem-waitp) after its read; the
+;;; caller, fnn-owner-handle-chunk, holds the owner mutex.  The NNTP session
+;;; reaches the publication in-process, the way peer accept does
+;;; (host/native/peer-invite.lisp), not over the control socket: no control
+;;; request kind is used.
+(defun fnn-owner-account-redeem (service cid)
+  "Plan, publish, then answer: 281 only after the redeem record is durable.
+
+Returns the ACL2-rendered reply octets for CID."
+  (let* ((salt (fnn-csprng-octets (fnn-core 'fn-acct-host-salt-octets)
+                                  "credential salt"))
+         (bound (fnn-profile-nat 'fn-store-profile-max-credentials
+                                 (fnn-owner-service-store service)))
+         (published
+           (fnn-owner-live-reconfigure-locked
+            service
+            (lambda (pcid)
+              (fnn-owner-action 'fn-acct-host-owner-redeem-stage
+                                pcid cid salt bound)))))
+    (unless (member published '(:accepted :refused))
+      (fnn-fault "owner returned a malformed publication word"))
+    ;; The model's crash cut after fn-ocl-publish's root barrier and before
+    ;; the reply (books/accounts.lisp
+    ;; fn-acct-redeem-bounded-plan-after-its-redeem-is-bound); a developer
+    ;; image dies here on request.
+    (when (and (eq published :accepted)
+               (fnn-developer-selector "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
+      (fnn-err "account redeem: developer stop after the publication")
+      (sb-ext:exit :code 137 :abort t))
+    (fnn-log-line (fnn-owner-core 'fn-acct-host-owner-redeem-log-line published))
+    (let ((word (fnn-owner-core 'fn-acct-host-owner-redeem-word published)))
+      (unless (member word '(:bound :refused))
+        (fnn-fault "owner returned a malformed redeem word"))
+      (unless (eq (fnn-owner-action 'fn-owner-account-outcome cid word) :ok)
+        (fnn-fault "owner rejected the redeem outcome"))
+      (fnn-owner-octets-global 'fn-owner-output))))
+
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner."
   (fnn-owner-serialized
    service nil
    (lambda ()
+     ;; PKT-453 (a): a refusal answers (:reason :refused REASON), the
+     ;; plan's reason or the staging step's, both ACL2's.
      (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
        (unless (fnn-admin-plan-acceptedp plan)
-         (return-from fnn-owner-live-admin-serialized :refused))
-       (fnn-owner-live-reconfigure-locked
-        service
-        (lambda (cid)
-          (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))))))
+         (return-from fnn-owner-live-admin-serialized
+           (list :reason :refused (fnn-admin-plan-reason plan))))
+       (multiple-value-bind (word reason)
+           (fnn-owner-live-reconfigure-locked
+            service
+            (lambda (cid)
+              (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))
+         (if (eq word :refused) (list :reason :refused reason) word))))))
 
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.

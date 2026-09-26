@@ -967,7 +967,10 @@ class NativeCheckpointTests(unittest.TestCase):
             [str(self.image), "--fn", "operator", str(config), "run"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
-        wait_for_announcement(process, b"LISTENING ")
+        # A class that serves a scale store names its startup deadline
+        # (served_timeout); the helper's 180 s default otherwise.
+        wait_for_announcement(process, b"LISTENING ",
+                              timeout=getattr(self, "served_timeout", 180))
         return process
 
     def stop_owner(self, process):

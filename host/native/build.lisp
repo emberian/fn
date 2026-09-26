@@ -9,6 +9,8 @@
 ; tools/run_reader.py ld today.  The one trust tag names the raw-Lisp adapter,
 ; host/native/io.lisp, and is retired before the image is saved.
 
+; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
+(include-book "books/outcome-class")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes
@@ -25,6 +27,7 @@
 (include-book "books/login-binding")
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
+(include-book "books/public-exposure-reply")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -84,6 +87,7 @@
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
 (include-book "books/native-control")
+(include-book "books/native-control-reason")
 (include-book "books/native-hybrid-control")
 (include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")
@@ -140,6 +144,9 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+;; PKT-261: per-destination dispatch and the forward plan
+;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
+(include-book "books/bp-node-forward-plan")
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
@@ -278,6 +285,10 @@
         ; Peering invitations (PRF-097): after the hybrid control handler it
         ; wraps, the signing commands it reuses and the admin publisher.
         (load "host/native/peer-invite.lisp")
+        ; `keys redecide' (PRF-166): request 12, wrapping the peering handler.
+        (load "host/native/keys.lisp")
+        ; `principal bind|unbind' live (PKT-221): request 14, wrapping keys.
+        (load "host/native/login-bindings.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.

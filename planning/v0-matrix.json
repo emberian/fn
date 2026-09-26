@@ -29,9 +29,9 @@
     "accepted": 142,
     "refused": 44,
     "uncertain": 2,
-    "not-exercised": 31,
+    "not-exercised": 36,
     "not-built": 1,
-    "total": 220,
+    "total": 225,
     "disagreed": 0,
     "faulted": 0,
     "independent": 12,
@@ -465,13 +465,14 @@
         "V0-INN-LOOP-FN",
         "V0-INN-RESTART",
         "V0-INN-SERVING-AGENT",
-        "V0-INN-OPERATOR-POST"
+        "V0-INN-OPERATOR-POST",
+        "V0-INN-SUPPLIED-PATH"
       ],
       "counts": {
         "accepted": 6,
         "refused": 4,
         "uncertain": 0,
-        "not-exercised": 0,
+        "not-exercised": 1,
         "not-built": 0
       },
       "disagreed": 0
@@ -482,13 +483,17 @@
       "rows": [
         "V0-CLIENT-NNTPLIB-A",
         "V0-CLIENT-NNTPLIB-B",
-        "V0-CLIENT-SLRN"
+        "V0-CLIENT-SLRN",
+        "V0-CLIENT-TIN-READ",
+        "V0-CLIENT-TIN-REPLY",
+        "V0-CLIENT-TIN-POST",
+        "V0-CLIENT-TIN-CANCEL"
       ],
       "counts": {
         "accepted": 2,
         "refused": 0,
         "uncertain": 0,
-        "not-exercised": 1,
+        "not-exercised": 5,
         "not-built": 0
       },
       "disagreed": 0
@@ -7250,6 +7255,37 @@
       "owner": null
     },
     {
+      "id": "V0-INN-SUPPLIED-PATH",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "a POST to fn that supplies `Path: not-for-mail`, as tin sends, draws 240 and reads back (D32: the injecting agent prefixes its identity, RFC 5537 3.4.1 and 3.2.1)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-012"
+      ],
+      "scenarios": [
+        "SCN-050"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "read from inn_lab's fn-post-supplied-path-240, which checks the 240 and the ARTICLE 220 of the read-back; the Path prefix itself is the post book's",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
       "id": "V0-CLIENT-NNTPLIB-A",
       "feature": "F-CLIENT",
       "feature_title": "independent newsreader clients",
@@ -7342,6 +7378,137 @@
       "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
       "limit": "",
       "blocker": "slrn is not installed on hbox (nor on hbox, measured 2026-09-20); tests/interop_slrn.py has never run against an fn node",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-TIN-READ",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "tin opens a group and reads an article",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-003"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "tin's own OVER, HDR and ARTICLE use; one node, one group",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-TIN-REPLY",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "tin posts a followup (References set by tin)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "tin always sends Path: not-for-mail; D32 accepts a supplied Path",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-TIN-POST",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "tin posts a new article",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-CLIENT-TIN-CANCEL",
+      "feature": "F-CLIENT",
+      "feature_title": "independent newsreader clients",
+      "title": "the node accepts tin's cancel of its own article (cmsg cancel)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "NNT-002",
+        "NNT-012"
+      ],
+      "scenarios": [
+        "SCN-014",
+        "SCN-050"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "expected_usage": null,
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "b675985",
+      "backend": "native-operator",
+      "source": "b675985",
+      "image": "launcher sha256=61f6f46445717262df794a786e9d8a705e547e6fb8f0b3e8bbbba5872298a8cd; image sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505; declared runtime=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5; sidecar core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38 (static only before a live-owner witness); source correspondence unestablished; live owners observed via /proc runtime sha256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5 and core sha256=eb52d71d670b1e169993838d037272d7d440e2c2c294f7ebfa67b2153fa6dc38",
+      "log": "planning/evidence/v0-runs/20260926T075354.475539Z-b675985-b05678de7f39/report.md",
+      "limit": "the 240 is the node filing the control article; whether it withdraws the target is the control work's (PKT-109), not this row's",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
       "owner": null
     }
   ],
@@ -7443,13 +7610,18 @@
       "V0-READ-UNKNOWN-B",
       "V0-CLIENT-NNTPLIB-A",
       "V0-CLIENT-NNTPLIB-B",
-      "V0-CLIENT-SLRN"
+      "V0-CLIENT-SLRN",
+      "V0-CLIENT-TIN-READ",
+      "V0-CLIENT-TIN-REPLY",
+      "V0-CLIENT-TIN-POST",
+      "V0-CLIENT-TIN-CANCEL"
     ],
     "NNT-003": [
       "V0-READ-FRAMING-A",
       "V0-READ-FRAMING-B",
       "V0-CLIENT-NNTPLIB-A",
-      "V0-CLIENT-NNTPLIB-B"
+      "V0-CLIENT-NNTPLIB-B",
+      "V0-CLIENT-TIN-READ"
     ],
     "NNT-004": [
       "V0-AUTH-POST-A",
@@ -7513,6 +7685,12 @@
       "V0-READ-NEWNEWS-FUTURE-B",
       "V0-READ-NEWNEWS-SYNTAX-A",
       "V0-READ-NEWNEWS-SYNTAX-B"
+    ],
+    "NNT-012": [
+      "V0-INN-SUPPLIED-PATH",
+      "V0-CLIENT-TIN-REPLY",
+      "V0-CLIENT-TIN-POST",
+      "V0-CLIENT-TIN-CANCEL"
     ],
     "OBJ-001": [
       "V0-TRANSIT-IDENTICAL-AB",
@@ -7784,7 +7962,11 @@
       "V0-PIN-ADVERTISED-B",
       "V0-CLIENT-NNTPLIB-A",
       "V0-CLIENT-NNTPLIB-B",
-      "V0-CLIENT-SLRN"
+      "V0-CLIENT-SLRN",
+      "V0-CLIENT-TIN-READ",
+      "V0-CLIENT-TIN-REPLY",
+      "V0-CLIENT-TIN-POST",
+      "V0-CLIENT-TIN-CANCEL"
     ],
     "SCN-015": [
       "V0-POST-CONCURRENT",
@@ -7916,7 +8098,13 @@
       "V0-BP-CRASH",
       "V0-BP-PROFILE",
       "V0-BP-REPLAY"
+    ],
+    "SCN-050": [
+      "V0-INN-SUPPLIED-PATH",
+      "V0-CLIENT-TIN-REPLY",
+      "V0-CLIENT-TIN-POST",
+      "V0-CLIENT-TIN-CANCEL"
     ]
   },
-  "rows_digest": "297113f2dba4a6bbdb839a95c2566440d9719ca97300e0454223fe2008843701"
+  "rows_digest": "a834bb53e2f8962b235dfe80f5faf608cee1dc8c362ab0834637232bc383d53d"
 }

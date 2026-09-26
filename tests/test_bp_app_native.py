@@ -281,6 +281,144 @@ class NativeBpApplicationTests(unittest.TestCase):
                 process.stderr.close()
         self.assertEqual(self.recovered_counts()[1], 0)
 
+    def request_for(self, article, msgid):
+        """The BP application request carrying ARTICLE (setUp's encoding)."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-adu")')
+            _archive, subject, _provenance = run_store.metadata(msgid, article)
+
+            def text(value):
+                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
+
+            fields = [
+                b"work-native-bp-" + msgid.strip(b"<>").split(b"@")[0], subject,
+                b"dtn://sender/", b"dtn://receiver/", b"native-policy",
+                b"origin-native", b"wire-auth", b"terms-native",
+            ]
+            form = (
+                "(fn-bpa-encode (fn-bpa-make-request "
+                + " ".join(text(value) for value in fields)
+                + " '" + bridge.literal(article) + "))"
+            )
+            return run_store.acl2_octets(bridge.call(form))
+        finally:
+            bridge.close()
+
+    def exchange(self):
+        receiver, port = self.start_receiver()
+        sender = self.start_sender(port)
+        try:
+            sender_out, sender_err = sender.communicate(timeout=180)
+            receiver_out, receiver_err = receiver.communicate(timeout=180)
+        finally:
+            for process in (receiver, sender):
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=10)
+                process.stdout.close()
+                process.stderr.close()
+        return (sender.returncode, receiver.returncode, sender_out, receiver_out,
+                receiver_err)
+
+    def test_control_article_over_bp_is_filed_in_its_control_group(self):
+        """PKT-154 (control-across-peers): the BP application ingress files a
+        control article as every ingress does (C1, books/peer-authored-
+        accept.lisp fn-pa-filing-plan, reached here through
+        host/bp-native-app-host.lisp fn-owner-app-plan-install ->
+        books/bp-transit-join.lisp fn-bpaj-transit-plan ->
+        host/native/owner.lisp fnn-owner-attempt-transit).  The legacy arm
+        (fn-owner-app-plan-install-legacy) is reached only for a pre-v3
+        request intent recovered from an older store, which no fresh node
+        writes, so this is the v3 path.  Without control.cancel the request
+        is refused control-not-filed; with it the article is stored in
+        control.cancel only, never in fn.test, which its Newsgroups names."""
+        cancel_id = b"<native-bp-cancel@example.invalid>"
+
+        def control_article(msgid):
+            return (b"From: sender@example.invalid\r\n"
+                    b"Newsgroups: fn.test\r\n"
+                    b"Subject: cancel over BP\r\n"
+                    b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
+                    b"Message-ID: " + msgid + b"\r\n"
+                    b"Control: cancel <native-bp-absent@example.invalid>\r\n"
+                    b"\r\nbody over BP\r\n")
+
+        self.request_path.write_bytes(self.request_for(control_article(cancel_id),
+                                                       cancel_id))
+        refused = self.exchange()
+        config = self.temp / "receiver-fn.toml"
+        created = self.invoke("operator", config, "group", "create", "control.cancel")
+        self.assertEqual(created.returncode, 0, created.stderr.decode())
+        filed_id = b"<native-bp-cancel-2@example.invalid>"
+        self.request_path.write_bytes(self.request_for(control_article(filed_id),
+                                                       filed_id))
+        self.sender_spool = self.temp / "sender-spool-2"
+        filed = self.exchange()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            reader_port = reservation.getsockname()[1]
+        reader_config = self.temp / "reader-fn.toml"
+        reader_config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, reader_port,
+                                              self.temp / "reader-control.sock"),
+            encoding="ascii")
+        reader = subprocess.Popen([str(IMAGE), "--fn", "operator", str(reader_config),
+                                   "run"], cwd=ROOT, env=self.env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            wait_for_announcement(reader, b"LISTENING ")
+            with socket.create_connection(("127.0.0.1", reader_port), timeout=30) as c:
+                stream = c.makefile("rwb", buffering=0)
+                stream.readline()
+                answers = {}
+                for group in (b"control.cancel", b"fn.test"):
+                    stream.write(b"GROUP " + group + b"\r\n")
+                    answers[group.decode()] = stream.readline().decode().strip()
+                for msgid in (cancel_id, filed_id):
+                    stream.write(b"STAT " + msgid + b"\r\n")
+                    answers[msgid.decode()] = stream.readline().decode().strip()
+        finally:
+            stop_and_diagnostics(reader)
+        witness = {"refused": [refused[0], refused[1],
+                               refused[4].decode("utf-8", "replace")[-400:]],
+                   "filed": [filed[0], filed[1],
+                             filed[3].decode("utf-8", "replace")[-300:]],
+                   "answers": answers}
+        print("NATIVE-BP-CONTROL-WITNESS " + repr(witness))
+        # Refused, and nothing stored (the STAT below).  The receiver's
+        # refusal line does not yet carry the filing plan's reason (it reads
+        # reason=none): test_bp_filing_refusal_names_its_reason, PKT-443.
+        self.assertEqual((refused[0], refused[1]), (1, 1), witness)
+        self.assertIn(b"refused bp-application", refused[4], witness)
+        self.assertEqual((filed[0], filed[1]), (0, 0), witness)
+        self.assertIn(b"BP application accepted", filed[3], witness)
+        self.assertTrue(answers["control.cancel"].startswith("211 1 "), witness)
+        self.assertTrue(answers["fn.test"].startswith("211 0 "), witness)
+        self.assertTrue(answers[filed_id.decode()].startswith("223 "), witness)
+        self.assertTrue(answers[cancel_id.decode()].startswith("430"), witness)
+
+    @unittest.expectedFailure
+    def test_bp_filing_refusal_names_its_reason(self):
+        """PKT-443 (control-across-peers): the BP receiver refuses a control
+        article whose control group is not configured, but its refusal line
+        reads `reason=none` (host/bp-native-app-host.lisp keeps
+        fn-owner-app-refusal-reason only for the planner's refusals; the
+        filing refusal happens later, in fnn-owner-attempt-transit).  The
+        line should name `control-not-filed`, as NNTP's 437 does."""
+        msgid = b"<native-bp-cancel-reason@example.invalid>"
+        article = (b"From: sender@example.invalid\r\nNewsgroups: fn.test\r\n"
+                   b"Subject: cancel over BP\r\n"
+                   b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
+                   b"Message-ID: " + msgid + b"\r\n"
+                   b"Control: cancel <native-bp-absent@example.invalid>\r\n"
+                   b"\r\nbody over BP\r\n")
+        self.request_path.write_bytes(self.request_for(article, msgid))
+        refused = self.exchange()
+        self.assertEqual(refused[1], 1)
+        self.assertIn(b"reason=control-not-filed", refused[4])
+
     def test_unsupported_receipt_profile_refuses_before_file_read(self):
         sender_store, workflow = self.prepare_sender_obligation()
         missing_receipt = self.temp / "missing-untrusted-receipt.adu"

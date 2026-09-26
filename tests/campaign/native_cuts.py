@@ -112,6 +112,9 @@ STATE_CHECKPOINT_CUTS = tuple(
                             ("state-checkpoint-replaced", "either"),
                             ("state-checkpoint-durable", "new")))
 
+# The chained-packs program (lane pack-chain-cut, PKT-459).
+CHAIN_BOOK = "checkpoint-pack-chain.lisp"
+
 # Checkpoint publication and selection are driven by their ACL2 phase machines.
 # Reclamation has one repeated unlink boundary per covered name and a final
 # transaction-directory barrier.  Runtime tests select repeated unlink cuts by
@@ -123,6 +126,14 @@ CHECKPOINT_CUTS = (
     NativeCut("selection-file", "fn-cpp-marker-step", "absent"),
     NativeCut("selection-replace", "fn-cpp-marker-step", "present"),
     NativeCut("selection-directory", "fn-cpp-marker-step", "present"),
+    # Between two links of a chain (fnn-pack-extend-chain): after the link's
+    # selection returned :durable, before the next link's admit.  The chain
+    # program's cut (books/checkpoint-pack-chain.lisp fn-ccc-chain-program;
+    # fn-ccc-chain-link-cut-walks-the-extended-chain and
+    # fn-ccc-chain-link-cut-reopens-to-the-history): links 1..N published
+    # and selected, the marker naming link N.
+    NativeCut("pack-chain-link", "fn-ccc-chain-program", "present",
+              book=CHAIN_BOOK),
     NativeCut("pack-reclaim-unlink", "fn-bs-pack-reclaim-program", "either"),
     NativeCut("pack-reclaim-directory", "fn-bs-pack-reclaim-program", "n/a"),
     NativeCut("pack-retire-unlink", "fn-cprt-retire-program", "either",
@@ -134,13 +145,22 @@ CHECKPOINT_CUTS = (
 # developer `checkpoint' verb (`pack ROOT select', then `pack-reclaim ROOT',
 # then `pack-retire ROOT') and the public `operator CONFIG store compact'
 # (host/native/checkpoint.lisp `fnn-compact-steps', which carries out
-# books/store-compact-verb.lisp `*fn-cverb-pack-steps*').
+# books/store-compact-verb.lisp `*fn-cverb-pack-steps*').  Since the
+# chained-packs join (735614d6) the :pack arm extends the chain
+# (`fnn-pack-extend-chain'), which publishes and selects each link, so the
+# :select arm calls nothing: its function is called inside the pack arm's.
 COMPACT_ENTRY_STEPS = (
-    ("pack", "fnn-pack-publish-generation"),
-    ("select", "fnn-pack-select"),
+    ("pack", "fnn-pack-extend-chain"),
+    ("select", None),
     ("reclaim", "fnn-pack-prefix-reclaim"),
     ("retire", "fnn-pack-retire-older-generations"),
 )
+# The one link of a chain, in fn-ccc-chain-program order (:publish, :select,
+# then the pack-chain-link cut): the candidate's publication
+# (fn-cpp-publication-step), the selection of it (fn-cpp-marker-step), then
+# the between-links stop hook.
+COMPACT_CHAIN_LINK = ("fnn-pack-publish-generation", "fnn-pack-select",
+                      '(fnn-checkpoint-test-stop "pack-chain-link")')
 
 
 def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
@@ -452,14 +472,35 @@ def verify_checkpoint_cut_map() -> None:
             raise AssertionError("{} does not call {}".format(wrapper, subject))
 
 
+def native_reachable_functions(native: str, root: str) -> tuple[str, ...]:
+    """The host/native/checkpoint.lisp functions ROOT reaches by a call or a
+    `#'' reference, ROOT first (functions of other files are not followed)."""
+    defined = set(re.findall(r"^\(defun (fnn-[a-z0-9-]+) ", native, re.M))
+    seen, queue = [root], [root]
+    while queue:
+        body = host_function(native, queue.pop(0))
+        for name in re.findall(r"(?:\(|#')(fnn-[a-z0-9-]+)[\s)]", body):
+            if name in defined and name not in seen:
+                seen.append(name)
+                queue.append(name)
+    return tuple(seen)
+
+
 def verify_compact_entries(native: str) -> None:
     """Both compaction entries reach the checkpoint cuts through one code path.
 
-    The pack publication passes the checkpoint candidate observer (the
+    `fnn-compact-steps' asks exactly one decision, host/checkpoint-host.lisp
+    `fn-store-compact-decide' (books/store-compact-verb.lisp
+    `fn-cverb-decide', whose steps are `*fn-cverb-pack-steps*'), through
+    `fnn-compact-decide': once, and again before every further chain link
+    (the :admit of `fnn-pack-extend-chain'), and it asks nothing else.  The
+    pack publication passes the checkpoint candidate observer (the
     candidate-* cuts), the pack and checkpoint selections share
     `fnn-marker-replace' (the selection-* cuts), the operator verb's step
-    arms call the same four functions the developer verb calls, and ACL2's
-    step list names exactly those arms in that order.
+    arms call the same functions the developer verb calls, ACL2's step list
+    names exactly those arms in that order, and every process-death cut the
+    compaction path can take is a CHECKPOINT_CUTS model program cut: a native
+    compaction cut with no model crash point fails here.
     """
     publish = host_function(native, "fnn-pack-publish-generation")
     if ":observer #'fnn-checkpoint-candidate-observer" not in publish:
@@ -467,22 +508,66 @@ def verify_compact_entries(native: str) -> None:
     for caller in ("fnn-pack-select", "fnn-checkpoint-select"):
         if "(fnn-marker-replace " not in host_function(native, caller):
             raise AssertionError("{} does not share the marker loop".format(caller))
+    decide = host_function(native, "fnn-compact-decide")
+    if re.findall(r"\(fnn-core '([a-z0-9-]+)", decide) != ["fn-store-compact-decide"]:
+        raise AssertionError("fnn-compact-decide does not ask exactly fn-store-compact-decide")
     steps = host_function(native, "fnn-compact-steps")
-    if "(fnn-core 'fn-store-compact-decide" not in steps:
-        raise AssertionError("fnn-compact-steps does not ask fn-store-compact-decide")
+    if "(fnn-core " in steps:
+        raise AssertionError("fnn-compact-steps asks a decision other than fnn-compact-decide")
+    asks = [m.start() for m in re.finditer(r"\(fnn-compact-decide store records\)", steps)]
+    pack_arm = re.search(r"\(:pack\s", steps)
+    admit = steps.find(":admit ")
+    if (len(asks) != 2 or not pack_arm or admit < pack_arm.start()
+            or not asks[0] < pack_arm.start() < admit < asks[1]):
+        raise AssertionError("fnn-compact-steps does not ask fn-store-compact-decide first "
+                             "and again in the pack arm's :admit")
     positions = []
     for keyword, function in COMPACT_ENTRY_STEPS:
         arm = re.search(r"\(:{}\s".format(keyword), steps)
-        if not arm or "({} ".format(function) not in steps:
+        if not arm or (function is not None
+                       and not re.search(r"\({}\s".format(function), steps)):
             raise AssertionError("compact step {} does not call {}".format(keyword, function))
         positions.append(arm.start())
     if positions != sorted(positions):
         raise AssertionError("fnn-compact-steps arms are out of step order")
+    chain = host_function(native, "fnn-pack-extend-chain")
+    found = [re.search(r"\(funcall admit\s", chain)] + [
+        re.search(re.escape(f) if f.startswith("(") else r"\({}\s".format(f), chain)
+        for f in COMPACT_CHAIN_LINK]
+    order = [m.start() if m else -1 for m in found]
+    if min(order) < 0 or order != sorted(order):
+        raise AssertionError("fnn-pack-extend-chain does not admit, publish, select and "
+                             "stop at pack-chain-link for each link in that order")
+    # The model's link is :publish, :select, then its one cut, and nothing the
+    # host does between the selection and the hook touches the disk.
+    if model_cut_names("fn-ccc-chain-program", CHAIN_BOOK) != ("pack-chain-link",):
+        raise AssertionError("fn-ccc-chain-program's cuts are not (pack-chain-link)")
+    program = host_function((ROOT / "books" / CHAIN_BOOK).read_text(), "fn-ccc-chain-program")
+    kinds = [program.index(k) for k in ("(list :publish ", "(list :select ",
+                                         '(list :cut "pack-chain-link")')]
+    if kinds != sorted(kinds):
+        raise AssertionError("fn-ccc-chain-program is not :publish, :select, then the cut")
+    between = chain[found[2].end():found[3].start()]
+    if re.search(r"\(fnn-(?!pack-select\b)[a-z0-9-]+", between):
+        raise AssertionError("fnn-pack-extend-chain calls the host between the selection "
+                             "and pack-chain-link: the cut is not the selection's state")
     book = (ROOT / "books/store-compact-verb.lisp").read_text()
     match = re.search(r"\(defconst \*fn-cverb-pack-steps\* '\(([^)]*)\)\)", book)
     if not match or tuple(re.findall(r":([a-z]+)", match.group(1))) != tuple(
             k for k, _ in COMPACT_ENTRY_STEPS):
         raise AssertionError("*fn-cverb-pack-steps* is not the host's step order")
+    model = {cut.name for cut in CHECKPOINT_CUTS}
+    taken = []
+    for function in native_reachable_functions(native, "fnn-compact-steps"):
+        taken += re.findall(r'\(fnn-checkpoint-test-stop "([a-z0-9-]+)"\)',
+                            host_function(native, function))
+    unmodelled = sorted(set(taken) - model)
+    if unmodelled:
+        raise AssertionError("native compaction cuts with no model program cut: {}".format(
+            ", ".join(unmodelled)))
+    if set(taken) != model:
+        raise AssertionError("model compaction cuts the native path does not take: {}".format(
+            ", ".join(sorted(model - set(taken)))))
     command = host_function(native, "fnn-checkpoint-command")
     for word, function in (('"pack"', "fnn-checkpoint-command-pack"),
                            ('"pack-reclaim"', "fnn-checkpoint-command-pack-reclaim"),

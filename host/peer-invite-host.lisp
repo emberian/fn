@@ -7,9 +7,10 @@
   (declare (xargs :mode :program))
   (fn-pinv-observation-subject received))
 
-(defun fn-pinv-host-issue-plan (received observed-ml ed ml invitations)
+(defun fn-pinv-host-issue-plan (received observed-ml ed ml invitations
+                                         snapshots)
   (declare (xargs :mode :program))
-  (fn-pinv-issue-plan received observed-ml ed ml invitations))
+  (fn-pinv-issue-plan received observed-ml ed ml invitations snapshots))
 
 (defun fn-pinv-host-accept-step (sequence txid generation received observed-ml
                                           ed ml snapshots)
@@ -17,9 +18,9 @@
   (fn-pinv-accept-step sequence txid generation received observed-ml ed ml
                        snapshots))
 
-(defun fn-pinv-host-accept-plan (received observed-ml ed ml)
+(defun fn-pinv-host-accept-plan (received observed-ml ed ml snapshots)
   (declare (xargs :mode :program))
-  (fn-pinv-accept-plan received observed-ml ed ml))
+  (fn-pinv-accept-plan received observed-ml ed ml snapshots))
 
 (defun fn-pinv-host-confirm-plan (received observed-ml ed ml invitations
                                            snapshots)
@@ -112,3 +113,29 @@
 (defun fn-native-operator-host-result-peering-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-peering-control-path-octets result))
+
+;; PKT-221: the login-binding reload (kind 14).
+(defun fn-pinv-host-bindings-request-encode ()
+  (declare (xargs :mode :program))
+  (fn-pinv-bindings-request-encode))
+
+(defun fn-pinv-host-bindings-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-pinv-bindings-request-decode octets))
+
+;; PRF-166 (PKT-325): `keys redecide MSGID' (kind 12) and its operator words.
+(defun fn-pinv-host-redecide-request-encode (msgid)
+  (declare (xargs :mode :program))
+  (fn-pinv-redecide-request-encode msgid))
+
+(defun fn-pinv-host-redecide-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-pinv-redecide-request-decode octets))
+
+(defun fn-native-operator-host-result-keys-msgid-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-keys-msgid-octets result))
+
+(defun fn-native-operator-host-result-keys-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-keys-control-path-octets result))

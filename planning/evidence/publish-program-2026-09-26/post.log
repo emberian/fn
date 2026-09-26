@@ -1,0 +1,4 @@
+post label=base fs=tmpfs rep=1 {"n": 100, "octets": 2048, "median_ms": 3.55, "p95_ms": 4.51, "max_ms": 6.99, "load_s": 0.382, "owner_cpu_s": 0.35, "owner_cpu_ms_per_post": 3.5} load=9.82 7.52 6.17 2026-09-26T10:21:46Z
+post label=base fs=zfs rep=1 {"n": 100, "octets": 2048, "median_ms": 159.97, "p95_ms": 431.87, "max_ms": 704.99, "load_s": 21.882, "owner_cpu_s": 0.53, "owner_cpu_ms_per_post": 5.3} load=11.75 11.00 8.56 2026-09-26T10:29:25Z
+post label=base fs=tmpfs rep=1 {"n": 100, "octets": 2048, "median_ms": 2.64, "p95_ms": 4.6, "max_ms": 6.64, "load_s": 0.288, "owner_cpu_s": 0.26, "owner_cpu_ms_per_post": 2.6} load=10.32 10.81 8.68 2026-09-26T10:30:37Z
+post label=base fs=zfs rep=1 {"n": 100, "octets": 2048, "median_ms": 58.6, "p95_ms": 325.04, "max_ms": 376.15, "load_s": 11.742, "owner_cpu_s": 0.38, "owner_cpu_ms_per_post": 3.8} load=7.75 5.94 5.90 2026-09-26T10:59:53Z

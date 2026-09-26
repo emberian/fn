@@ -1,9 +1,11 @@
 """Public native operator submission through the serialized local owner."""
+import hashlib
 import os
 from pathlib import Path
 import re
 import select
 import signal
+import stat
 import socket
 import subprocess
 import tempfile
@@ -49,6 +51,44 @@ def environment():
     for name in SELECTORS:
         env.pop(name, None)
     return env
+
+
+def cbor_head(major, n):
+    """RFC 8949 section 3: the head of one item (the record codec's CBOR)."""
+    if n < 24:
+        return bytes([(major << 5) | n])
+    if n < 256:
+        return bytes([(major << 5) | 24, n])
+    return bytes([(major << 5) | 25]) + n.to_bytes(2, "big")
+
+
+def admin_payload(words):
+    """An FNCT admin argv (books/native-control.lisp fn-nctrl-admin-argv-encode):
+    a CBOR count, then each word as a CBOR byte string."""
+    return cbor_head(0, len(words)) + b"".join(cbor_head(2, len(w)) + w for w in words)
+
+
+def fnct_seal(kind, payload):
+    """An FNCT frame: magic, version 1, KIND, u32 length, payload, then the
+    SHA-256 of all of that (books/frame-trailer.lisp)."""
+    protected = b"FNCT" + bytes([1, kind]) + len(payload).to_bytes(4, "big") + payload
+    return protected + hashlib.sha256(protected).digest()
+
+
+def control_exchange(path, frame):
+    """One control connection as every client makes it: send, half-close,
+    read to EOF."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(60)
+        client.connect(str(path))
+        client.sendall(frame)
+        client.shutdown(socket.SHUT_WR)
+        chunks = []
+        while True:
+            chunk = client.recv(65536)
+            if not chunk:
+                return b"".join(chunks)
+            chunks.append(chunk)
 
 
 def free_port():
@@ -225,6 +265,67 @@ class NativeControlTests(unittest.TestCase):
             [str(IMAGE), "--fn", "store", str(store), "inspect", message_id],
             cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=180, check=False)
+
+    def operator(self, *words, image=None, timeout=120):
+        return subprocess.run(
+            [str(image or IMAGE), "--fn", "operator", str(self.config)] + list(words),
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=timeout, check=False)
+
+    def test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline(self):
+        # PKT-344: an owner killed without cleanup leaves its socket node; the
+        # lock is free, so ACL2 decides :stale (fn-native-control-liveness):
+        # the offline verb removes the node and answers, never refused.
+        owner = self.start_owner()
+        owner.kill()
+        owner.wait(timeout=30)
+        owner.stdout.close()
+        owner.stderr.close()
+        self.assertTrue(stat.S_ISSOCK(os.lstat(self.control).st_mode))
+        listed = self.operator("control", "list")
+        self.assertEqual(listed.returncode, 0, listed.stderr.decode())
+        self.assertIn(b"stale control socket removed", listed.stderr)
+        self.assertFalse(os.path.lexists(self.control))
+        # A restarted owner binds its socket as before.
+        restarted = self.start_owner()
+        restarted.send_signal(signal.SIGTERM)
+        self.assertEqual(restarted.wait(timeout=30), 0,
+                         restarted.stderr.read().decode("utf-8", "replace"))
+        restarted.stdout.close()
+        restarted.stderr.close()
+
+    def test_health_during_a_slow_start_says_starting(self):
+        # PKT-283: the owner holds the recovered Store's lock and its control
+        # socket is not listening yet: `health' says starting (exit 20, the
+        # fenced state, reason starting), not store-held.
+        if not executable(DEVELOPER):
+            raise unittest.SkipTest(
+                DEVELOPER_REASON.format("FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"))
+        env = environment()
+        env["FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"] = "1"
+        process = subprocess.Popen(
+            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        try:
+            ready = select.select([process.stdout], [], [], 180)[0]
+            self.assertTrue(ready, "the paused owner printed nothing")
+            self.assertEqual(process.stdout.readline(),
+                             b"OWNER-PAUSED-BEFORE-LISTEN\n")
+            self.assertFalse(os.path.lexists(self.control))
+            health = self.operator("health")
+            self.assertEqual(health.returncode, 20, health.stderr.decode())
+            self.assertTrue(health.stdout.startswith(
+                b"health exit=20 state=fenced reason=starting"), health.stdout)
+            process.send_signal(signal.SIGTERM)
+            self.assertEqual(process.wait(timeout=60), 0,
+                             process.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
 
     def test_shared_control_path_is_not_stolen_by_another_store(self):
         owner = self.start_owner()
@@ -456,6 +557,13 @@ class NativeControlTests(unittest.TestCase):
         # One gate, before any store is opened: exit 5 naming the variable,
         # no control socket, no listener, the store's bytes unchanged.  This
         # replaces the mid-request refusals of campaign dabebb84 F4 to F6.
+        # Every selector is refused on `operator run'; `store recover' is
+        # asked with one selector, because the gate is one call in main on
+        # the whole argv before any verb is dispatched
+        # (fnn-developer-selector-gate; test_the_gate_runs_before_dispatch pins its place
+        # and test_every_selector_is_read_only_through_the_accessor that every
+        # selector goes through it).  PKT-445 (b): 96 image
+        # starts at about 1.3 s each were this module's over-budget test.
         before = self.store_digest()
         for name in SELECTORS:
             with self.subTest(selector=name):
@@ -470,6 +578,8 @@ class NativeControlTests(unittest.TestCase):
                 self.assertIn(name.encode("ascii"), started.stderr)
                 self.assertEqual(started.stdout, b"")
                 self.assertFalse(self.control.exists())
+                if name != SELECTORS[0]:
+                    continue
                 recovered = subprocess.run(
                     [str(IMAGE), "--fn", "store", str(self.store), "recover"],
                     cwd=ROOT, env=env, stdout=subprocess.PIPE,
@@ -493,7 +603,10 @@ class NativeControlTests(unittest.TestCase):
         """`operator post` injects as the served POST does (INN lab of
         2026-09-22, finding 1), and refuses what injection refuses: a From
         with no address (RFC 5536 3.1.2; the agents run's `From: yue`), a
-        supplied Path, and a Message-ID the article does not carry."""
+        Path that is not a path, a supplied Xref (the server's field), and a
+        Message-ID the article does not carry.  A well-formed supplied Path is
+        accepted (D32, RFC 5537 3.4): the node prepends its own identity and
+        keeps the supplied tail verbatim."""
         owner = self.start_owner()
         try:
             message_id = "<native-control-injected@example.invalid>"
@@ -507,10 +620,20 @@ class NativeControlTests(unittest.TestCase):
             refused = self.post(yue_id, yue)
             self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
-            path_id = "<native-control-path@example.invalid>"
-            refused_path = self.post(path_id, b"Path: elsewhere!not-for-mail\r\n"
+            supplied_id = "<native-control-path@example.invalid>"
+            supplied = self.post(supplied_id, b"Path: elsewhere!not-for-mail\r\n"
+                                 + self.article(supplied_id))
+            self.assertEqual(supplied.returncode, 0, supplied.stderr.decode())
+
+            path_id = "<native-control-bad-path@example.invalid>"
+            refused_path = self.post(path_id, b"Path: not a path\r\n"
                                      + self.article(path_id))
             self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
+
+            xref_id = "<native-control-xref@example.invalid>"
+            refused_xref = self.post(xref_id, b"Xref: elsewhere fn.test:1\r\n"
+                                     + self.article(xref_id))
+            self.assertEqual(refused_xref.returncode, 1, refused_xref.stderr.decode())
 
             other = self.post("<native-control-other@example.invalid>",
                               self.article("<native-control-named@example.invalid>"))
@@ -527,8 +650,88 @@ class NativeControlTests(unittest.TestCase):
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
         self.assert_injected(observed.stdout, payload)
-        for absent in (yue_id, path_id, "<native-control-other@example.invalid>"):
+        kept = self.inspect(supplied_id)
+        self.assertEqual(kept.returncode, 0, kept.stderr.decode())
+        header = kept.stdout.split(b"\r\n\r\n", 1)[0].split(b"\r\n")
+        path_lines = [line for line in header if line.startswith(b"Path: ")]
+        # One Path: the node's identity prepended to the supplied tail.
+        self.assertEqual(path_lines, [b"Path: fn.example.invalid!elsewhere!not-for-mail"],
+                         header[:6])
+        for absent in (yue_id, path_id, xref_id, "<native-control-other@example.invalid>"):
             self.assertNotEqual(self.inspect(absent).returncode, 0, absent)
+        pathed = self.inspect(supplied_id)
+        self.assertEqual(pathed.returncode, 0, pathed.stderr.decode())
+        head = pathed.stdout.split(b"\r\n\r\n", 1)[0].split(b"\r\n")
+        self.assertEqual([line for line in head if line.startswith(b"Path: ")],
+                         [b"Path: fn.example.invalid!elsewhere!not-for-mail"])
+        self.assertTrue(pathed.stdout.endswith(self.article(supplied_id)), pathed.stdout)
+
+    def test_every_refusal_names_its_reason_on_the_wire(self):
+        # PKT-453 (a), SCN-102: the owner's refusal carries ACL2's reason word
+        # (books/native-control-reason.lisp fn-nctrl-reason-word) in the
+        # reasoned reply, and the operator's line prints it after the status:
+        # the injection decision's word for a post, fn-cfg-delta-reason's
+        # word for a live reconfiguration.  Exit codes are unchanged (1).
+        owner = self.start_owner()
+        try:
+            yue_id = "<native-control-reason-yue@example.invalid>"
+            yue = self.article(yue_id).replace(b"From: author@example.invalid",
+                                              b"From: yue")
+            refused = self.post(yue_id, yue)
+            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+            self.assertIn(b"refused operator post REFUSED from-invalid", refused.stderr)
+
+            nowhere_id = "<native-control-reason-nowhere@example.invalid>"
+            nowhere = self.article(nowhere_id).replace(b"Newsgroups: fn.test",
+                                                       b"Newsgroups: fn.nowhere")
+            unknown = self.post(nowhere_id, nowhere)
+            self.assertEqual(unknown.returncode, 1, unknown.stderr.decode())
+            self.assertIn(b"refused operator post REFUSED unknown-group", unknown.stderr)
+
+            accepted_id = "<native-control-reason-ok@example.invalid>"
+            accepted = self.post(accepted_id, self.article(accepted_id))
+            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+            self.assertIn(b"accepted operator post ACCEPTED", accepted.stderr)
+
+            revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
+            self.assertEqual(revoked.returncode, 1, revoked.stderr.decode())
+            self.assertIn(b"refused operator control REFUSED no-such-grant", revoked.stderr)
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+                owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
+
+    def test_an_old_clients_plain_request_gets_the_plain_reply(self):
+        # PKT-453 (a): a client that sends the plain kind-3 request (every
+        # image before the reasoned kinds 13 and 17) reads the one-field reply
+        # it always read (kind 2, the status's enumeration octet); only a
+        # reasoned frame is answered with the reasoned reply (kind 18).
+        owner = self.start_owner()
+        try:
+            words = [b"control", b"grant", b"ab" * 32, b"keys", b"fn.keys"]
+            reply = control_exchange(self.control, fnct_seal(3, admin_payload(words)))
+            self.assertEqual(reply[:4], b"FNCT")
+            self.assertEqual((reply[4], reply[5]), (1, 2), reply[:10])
+            self.assertEqual(reply[6:10], (1).to_bytes(4, "big"), reply[:10])
+            self.assertEqual(reply[10:11], b"\x01", reply)          # :accepted
+            self.assertEqual(reply[11:], hashlib.sha256(reply[:11]).digest())
+            # The grant is durable: the revoke the new client sends succeeds.
+            revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
+            self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+                owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:

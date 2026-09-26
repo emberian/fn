@@ -136,6 +136,40 @@ class EventTests(unittest.TestCase):
         self.assertEqual(tree.suspects, {})
 
 
+class ProverRefusalTests(unittest.TestCase):
+    """PKT-341: a must-fail labelled `; teeth: prover-refusal REASON' is counted apart."""
+
+    BOOK = """(in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
+; Without the width hypothesis the counter-witness is 2^64 octets.
+; teeth: prover-refusal the counter-witness is 2^64 octets
+(must-fail (defthm a-without-width (equal (f x) x)))
+
+; teeth: prover-refusal not adjacent: a form separates it from the next must-fail
+(defun g (x) x)
+; An ordinary tooth, with its counterexample above.
+(must-fail (defthm b-without-h (equal (g x) 1)))
+(must-fail (defthm c-without-k (equal (g x) 2)))
+"""
+
+    def test_the_label_directly_above_a_must_fail_counts_it_as_a_refusal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "t-tests.lisp"
+            path.write_text(self.BOOK)
+            book = ledger.analyze_book(path, "tests/acl2/t-tests.lisp")
+        self.assertEqual(book.must_fails, 3)
+        self.assertEqual(book.prover_refusals, [(5, "the counter-witness is 2^64 octets")])
+
+    def test_the_tree_labels_rep_wave_d_3s_width_refusals(self):
+        tree = ledger.load_tree()
+        labelled = tree.books["tests/acl2/store-checkpoint-reader-tests.lisp"].prover_refusals
+        self.assertEqual(len(labelled), 2)
+        self.assertIn("2^64", labelled[0][1])
+        totals = ledger.build_ledger(tree)["totals"]
+        self.assertEqual(totals["prover_refusals"],
+                         sum(len(b.prover_refusals) for b in tree.books.values()))
+
+
 class SuspectTests(unittest.TestCase):
     def flags(self, source: str) -> dict[str, list[str]]:
         return tree_from({"books/a.lisp": '(in-package "ACL2")\n' + source}).suspects

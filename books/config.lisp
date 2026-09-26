@@ -234,6 +234,25 @@
            (fn-cfg-rows-keyed-p (cdr rows) a))
     t))
 
+; The rows of ROWS that are not rows of DROP (exact equality).  The row
+; arithmetic of the incremental peer deltas, :add-peer-rows and
+; :remove-peer-rows (D27, PRF-171).
+(defun fn-cfg-rows-without-members (rows drop)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (member-equal (car rows) (if (true-listp drop) drop nil))
+          (fn-cfg-rows-without-members (cdr rows) drop)
+        (cons (car rows) (fn-cfg-rows-without-members (cdr rows) drop)))
+    nil))
+
+; Every row of XS is a row of YS.
+(defun fn-cfg-rows-within (xs ys)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (member-equal (car xs) (if (true-listp ys) ys nil))
+           (fn-cfg-rows-within (cdr xs) ys))
+    t))
+
 ; -----------------------------------------------------------------------------
 ; A group-table entry: a history entry, not a membership flag.
 
@@ -369,7 +388,7 @@
 
 (defun fn-cfg-value-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 9)))
+  (and (true-listp x) (equal (len x) 10)))
 
 (defun fn-cfg-groups (v)
   (declare (xargs :guard t))
@@ -425,68 +444,94 @@
                                                    (fn-cfg-ag-cdr
                                                     (fn-cfg-ag-cdr v))))))))))
 
+; The tenth slot (PRF-164, invitation-code accounts): one row per account
+; code this node issued, keyed on the SHA-256 digest of the code (64
+; lowercase hexadecimal characters; the code itself is never stored),
+; written only by :account-invite and :account-redeem (specs/nntp.md,
+; "Invitation-code accounts").  A pending row is
+; (DIGEST-HEX ISSUER EXPIRY-DECIMAL 0); a redeemed row is
+; (DIGEST-HEX LOGIN VERIFIER-HEX 1), VERIFIER-HEX the 96 hexadecimal
+; characters of the books/auth-secret.lisp verifier's salt and digest.  A row
+; is never removed, so a code is issued once and redeemed at most once, and
+; the redeemed rows are the second producer of the reader's credential table
+; (books/accounts.lisp).
+(defun fn-cfg-accounts (v)
+  (declare (xargs :guard t))
+  (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                                (fn-cfg-ag-cdr
+                                                 (fn-cfg-ag-cdr
+                                                  (fn-cfg-ag-cdr
+                                                   (fn-cfg-ag-cdr
+                                                    (fn-cfg-ag-cdr
+                                                     (fn-cfg-ag-cdr v)))))))))))
+
 (defun fn-cfg-value-make (groups capacity quotas policies listeners peers
-                                 limits authorities invitations)
+                                 limits authorities invitations accounts)
   (declare (xargs :guard t))
   (list groups capacity quotas policies listeners peers limits authorities
-        invitations))
+        invitations accounts))
 
 (defthm fn-cfg-value-shapep-of-value-make
   (fn-cfg-value-shapep
    (fn-cfg-value-make groups capacity quotas policies listeners peers limits authorities
-                      invitations)))
+                      invitations accounts)))
 (defthm fn-cfg-groups-of-value-make
   (equal (fn-cfg-groups
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          groups))
 (defthm fn-cfg-capacity-of-value-make
   (equal (fn-cfg-capacity
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          capacity))
 (defthm fn-cfg-quotas-of-value-make
   (equal (fn-cfg-quotas
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          quotas))
 (defthm fn-cfg-policies-of-value-make
   (equal (fn-cfg-policies
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          policies))
 (defthm fn-cfg-listeners-of-value-make
   (equal (fn-cfg-listeners
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          listeners))
 (defthm fn-cfg-peers-of-value-make
   (equal (fn-cfg-peers
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          peers))
 (defthm fn-cfg-limits-of-value-make
   (equal (fn-cfg-limits
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          limits))
 (defthm fn-cfg-authorities-of-value-make
   (equal (fn-cfg-authorities
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          authorities))
 (defthm fn-cfg-invitations-of-value-make
   (equal (fn-cfg-invitations
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities invitations))
+                             limits authorities invitations accounts))
          invitations))
+(defthm fn-cfg-accounts-of-value-make
+  (equal (fn-cfg-accounts
+          (fn-cfg-value-make groups capacity quotas policies listeners peers
+                             limits authorities invitations accounts))
+         accounts))
 
 (in-theory (disable (:d fn-cfg-value-shapep) (:d fn-cfg-value-make)
                     (:d fn-cfg-groups) (:d fn-cfg-capacity)
                     (:d fn-cfg-quotas) (:d fn-cfg-policies)
                     (:d fn-cfg-listeners) (:d fn-cfg-peers)
                     (:d fn-cfg-limits) (:d fn-cfg-authorities)
-                    (:d fn-cfg-invitations)))
+                    (:d fn-cfg-invitations) (:d fn-cfg-accounts)))
 
 (defun fn-cfg-member-namep (name names)
   (declare (xargs :guard t))
@@ -530,12 +575,13 @@
        (fn-cfg-row-listp (fn-cfg-limits v))
        (fn-cfg-limits-withinp (fn-cfg-limits v))
        (fn-cfg-row-listp (fn-cfg-authorities v))
-       (fn-cfg-row-listp (fn-cfg-invitations v))))
+       (fn-cfg-row-listp (fn-cfg-invitations v))
+       (fn-cfg-row-listp (fn-cfg-accounts v))))
 
 (defun fn-cfg-empty-value ()
   ; The fail-closed floor: no groups and zero capacity accepts nothing.
   (declare (xargs :guard t))
-  (fn-cfg-value-make nil 0 nil nil nil nil nil nil nil))
+  (fn-cfg-value-make nil 0 nil nil nil nil nil nil nil nil))
 
 (defun fn-cfg-limit (v slot)
   (declare (xargs :guard t))
@@ -643,7 +689,9 @@
 (defconst *fn-cfg-delta-kinds*
   '(:create-group :remove-group :set-capacity :set-quota :set-policy
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
-    :grant-control :revoke-control :issue-invitation :consume-invitation))
+    :grant-control :revoke-control :issue-invitation :consume-invitation
+    :account-invite :account-redeem :login-binding
+    :add-peer-rows :remove-peer-rows))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -661,6 +709,11 @@
         ((equal kind :revoke-control) 12)
         ((equal kind :issue-invitation) 13)
         ((equal kind :consume-invitation) 14)
+        ((equal kind :account-invite) 15)
+        ((equal kind :account-redeem) 16)
+        ((equal kind :login-binding) 17)
+        ((equal kind :add-peer-rows) 18)
+        ((equal kind :remove-peer-rows) 19)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -679,6 +732,11 @@
         ((equal code 12) :revoke-control)
         ((equal code 13) :issue-invitation)
         ((equal code 14) :consume-invitation)
+        ((equal code 15) :account-invite)
+        ((equal code 16) :account-redeem)
+        ((equal code 17) :login-binding)
+        ((equal code 18) :add-peer-rows)
+        ((equal code 19) :remove-peer-rows)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -730,6 +788,20 @@
 (defun fn-cfg-remove-peer (name)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :remove-peer name "" 0 nil))
+
+; The incremental peer deltas (D27, PRF-171; PKT-436's default).  A peer's
+; row group is data that grows by request: (:add-peer-rows name rows) adds
+; ROWS to the existing group (a row already there is not doubled) and
+; (:remove-peer-rows name rows) removes exactly the listed rows.  A record
+; carries only the rows it changes, so `*fn-cfg-max-rows*' bounds the work
+; of one delta, never the rows one peer holds.  (:set-peer name rows) keeps
+; its meaning: the whole group, written at `peer add'.
+(defun fn-cfg-add-peer-rows (name rows)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :add-peer-rows name "" 0 rows))
+(defun fn-cfg-remove-peer-rows (name rows)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :remove-peer-rows name "" 0 rows))
 
 ;; Control authority (D29, packet C2; specs/peering.md section 8).  A grant
 ;; is one authorities row (NAMESPACE PRINCIPAL-HEX VERB 0), keyed on the pair
@@ -869,6 +941,185 @@
                                  (fn-cfg-row-c (fn-cfg-ag-car rows)) mark))
          (fn-cfg-source-id-hexp (fn-cfg-row-c (fn-cfg-ag-car rows))))))
 
+;; Invitation-code accounts (PRF-164; specs/nntp.md, "Invitation-code
+;; accounts").  The tenth slot's rows are written only by these two kinds,
+;; and never removed:
+;;
+;;   (:account-invite DIGEST ISSUER 0 ((DIGEST ISSUER EXPIRY 0)))     code 15
+;;   (:account-redeem DIGEST LOGIN 0 ((DIGEST LOGIN VERIFIER 1)))     code 16
+;;
+;; DIGEST is the 64 lowercase hexadecimal characters of the crypto seam's
+;; tagged SHA-256 digest of the code (books/accounts.lisp
+;; `fn-acct-code-digest'); EXPIRY the decimal wall-clock second from which
+;; the code is refused; VERIFIER the 96 hexadecimal characters of a
+;; books/auth-secret.lisp verifier's salt and digest.  The plans that build
+;; these deltas are books/accounts.lisp's.
+(defun fn-cfg-decimal-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (integerp (car xs)) (<= 48 (car xs)) (<= (car xs) 57)
+           (fn-cfg-decimal-octetsp (cdr xs)))
+    (null xs)))
+
+(defun fn-cfg-decimal-value (xs acc)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (fn-cfg-decimal-value (cdr xs)
+                            (+ (* 10 (nfix acc))
+                               (- (nfix (car xs)) 48)))
+    (nfix acc)))
+
+; An expiry: one to twenty decimal digits, the width of a 64-bit second.
+(defun fn-cfg-account-expiryp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (<= (len (fn-record-string-octets text)) 20)
+       (fn-cfg-decimal-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-account-expiry (text)
+  (declare (xargs :guard t))
+  (if (stringp text)
+      (fn-cfg-decimal-value (fn-record-string-octets text) 0)
+    0))
+
+(defun fn-cfg-graphic-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (integerp (car xs)) (<= 33 (car xs)) (<= (car xs) 126)
+           (fn-cfg-graphic-octetsp (cdr xs)))
+    (null xs)))
+
+; A login as the configuration spells it: a non-empty run of graphic ASCII.
+; The login policy proper (books/native-auth-profile.lisp
+; `fn-native-auth-login-namep') is applied by the redeem plan before a delta
+; is built; this is the representation the slot admits.
+(defun fn-cfg-account-loginp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (fn-cfg-graphic-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-account-digestp (text)
+  (declare (xargs :guard t))
+  (fn-cfg-hex-textp text 64))
+
+(defun fn-cfg-account-verifier-hexp (text)
+  (declare (xargs :guard t))
+  (fn-cfg-hex-textp text 96))
+
+(defun fn-cfg-account-invite (digest issuer expiry)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :account-invite digest issuer 0
+                     (list (fn-cfg-row-make digest issuer expiry 0))))
+
+(defun fn-cfg-account-redeem (digest login verifier)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :account-redeem digest login 0
+                     (list (fn-cfg-row-make digest login verifier 1))))
+
+;; Login bindings (PKT-221; books/login-binding.lisp).  The same slot holds
+;; the posting policy's login-to-signing-principal table: one row
+;; (LOGIN PRINCIPAL-HEX "" 2) per bound login, mark 2 beside the account
+;; rows' marks 0 and 1, written only by
+;;
+;;   (:login-binding LOGIN PRINCIPAL-HEX 0 ((LOGIN PRINCIPAL-HEX "" 2)))  code 17
+;;   (:login-binding LOGIN "" 0 ())                            (the unbind)
+;;
+;; which replaces every mark-2 row whose login spells the same octets and
+;; leaves every account row where it was.  PRINCIPAL-HEX is the 64 lowercase
+;; hexadecimal characters of a hybrid principal.  One delta per login, so a
+;; table of any size is published in records of at most *fn-cfg-max-deltas*
+;; changes (the owner's start publishes the credential file's `signing'
+;; fields this way).
+(defun fn-cfg-binding-rows (login principal-hex)
+  (declare (xargs :guard t))
+  (if (equal principal-hex "")
+      nil
+    (list (fn-cfg-row-make login principal-hex "" 2))))
+
+(defun fn-cfg-login-binding (login principal-hex)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :login-binding login principal-hex 0
+                     (fn-cfg-binding-rows login principal-hex)))
+
+(defun fn-cfg-binding-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 2))
+
+(defun fn-cfg-rows-without-binding (rows login)
+  ; ROWS less every binding row whose login spells LOGIN's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-binding-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets login)))
+          (fn-cfg-rows-without-binding (cdr rows) login)
+        (cons (car rows) (fn-cfg-rows-without-binding (cdr rows) login)))
+    nil))
+
+(defun fn-cfg-login-binding-reason (d)
+  (declare (xargs :guard t))
+  (let ((login (fn-cfg-delta-a d)) (hex (fn-cfg-delta-b d)))
+    (cond ((not (fn-cfg-account-loginp login)) :binding-login)
+          ((not (or (equal hex "") (fn-cfg-hex-textp hex 64)))
+           :binding-principal)
+          ((not (equal (fn-cfg-delta-rows d) (fn-cfg-binding-rows login hex)))
+           :binding-row)
+          (t nil))))
+
+; The row a code's digest keys, or nil.
+(defun fn-cfg-account-row (rows digest)
+  (declare (xargs :guard t))
+  (fn-cfg-ag-car (fn-cfg-rows-with-key rows digest)))
+
+(defun fn-cfg-account-pendingp (rows digest)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-account-row rows digest)))
+    (and (consp row) (equal (fn-cfg-row-n row) 0))))
+
+(defun fn-cfg-account-redeemedp (rows digest)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-account-row rows digest)))
+    (and (consp row) (equal (fn-cfg-row-n row) 1))))
+
+; Whether a redeemed row already holds LOGIN.
+(defun fn-cfg-account-login-takenp (rows login)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (equal (fn-cfg-row-n (car rows)) 1)
+               (equal (fn-cfg-row-b (car rows)) login))
+          (fn-cfg-account-login-takenp (cdr rows) login))
+    nil))
+
+; A pending row is live at a stamp only when the stamp carries a wall clock
+; whose whole error interval lies before the expiry: an unknown or uncertain
+; clock refuses (fail closed).
+(defun fn-cfg-account-livep (row stamp)
+  (declare (xargs :guard t))
+  (and (fn-clock-has-wall stamp)
+       (natp (fn-clock-wall stamp))
+       (natp (fn-clock-wall-error stamp))
+       (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
+          (fn-cfg-account-expiry (fn-cfg-row-c row)))))
+
+; The one row an account delta carries has the delta's key pair and the
+; state its kind names.
+(defun fn-cfg-account-delta-rowp (d mark)
+  (declare (xargs :guard t))
+  (let ((rows (fn-cfg-delta-rows d)))
+    (and (consp rows)
+         (null (fn-cfg-ag-cdr rows))
+         (equal (fn-cfg-ag-car rows)
+                (fn-cfg-row-make (fn-cfg-delta-a d) (fn-cfg-delta-b d)
+                                 (fn-cfg-row-c (fn-cfg-ag-car rows)) mark))
+         (if (equal mark 0)
+             (fn-cfg-account-expiryp (fn-cfg-row-c (fn-cfg-ag-car rows)))
+           (fn-cfg-account-verifier-hexp
+            (fn-cfg-row-c (fn-cfg-ag-car rows)))))))
+
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
 
@@ -902,7 +1153,7 @@
                      (fn-cfg-policies v) (fn-cfg-listeners v)
                      (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
 
 (defun fn-cfg-apply-delta (v gen stamp d)
   (declare (xargs :guard t))
@@ -922,7 +1173,7 @@
                          (fn-cfg-policies v) (fn-cfg-listeners v)
                          (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :set-quota)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-row-upsert (fn-cfg-quotas v)
@@ -930,7 +1181,7 @@
                          (fn-cfg-policies v) (fn-cfg-listeners v)
                          (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :set-policy)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v)
@@ -938,19 +1189,19 @@
                                                  (fn-cfg-row-make a b "" 0))
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :set-listeners)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v) rows
                          (fn-cfg-peers v) (fn-cfg-limits v)
                      (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :set-peers)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) rows (fn-cfg-limits v)
                          (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :set-limit)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -958,7 +1209,7 @@
                          (fn-cfg-row-upsert (fn-cfg-limits v)
                                             (fn-cfg-row-make a "" "" n))
                          (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :set-peer)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -966,14 +1217,36 @@
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                                  rows)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :remove-peer)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                          (fn-cfg-limits v) (fn-cfg-authorities v)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+     ((equal kind :add-peer-rows)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v)
+                         (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
+                                 (append (fn-cfg-rows-without-members
+                                          (fn-cfg-rows-with-key
+                                           (fn-cfg-peers v) a)
+                                          rows)
+                                         rows))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
+     ((equal kind :remove-peer-rows)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v)
+                         (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
+                                 (fn-cfg-rows-without-members
+                                  (fn-cfg-rows-with-key (fn-cfg-peers v) a)
+                                  rows))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :grant-control)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -982,7 +1255,7 @@
                          (fn-cfg-row-upsert (fn-cfg-authorities v)
                                             (fn-cfg-row-make
                                              a b (fn-cfg-grant-verb rows) 0))
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((equal kind :revoke-control)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -990,7 +1263,7 @@
                          (fn-cfg-limits v)
                          (fn-cfg-rows-without-pair (fn-cfg-authorities v)
                                                    a b)
-                         (fn-cfg-invitations v)))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)))
      ((or (equal kind :issue-invitation) (equal kind :consume-invitation))
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -998,6 +1271,29 @@
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (append (fn-cfg-rows-without-key
                                   (fn-cfg-invitations v) a)
+                                 rows)
+                         (fn-cfg-accounts v)))
+     ; An account row replaces the row its digest keys (PRF-164): a pending
+     ; row is written by :account-invite, and :account-redeem turns it into
+     ; the redeemed row, or rewrites an identical redeemed row (the resume).
+     ((or (equal kind :account-invite) (equal kind :account-redeem))
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-key
+                                  (fn-cfg-accounts v) a)
+                                 rows)))
+     ; A login binding replaces that login's binding row (PKT-221).
+     ((equal kind :login-binding)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-binding
+                                  (fn-cfg-accounts v) a)
                                  rows)))
      (t v))))
 
@@ -1027,7 +1323,6 @@
 
 (defun fn-cfg-delta-reason (v gen stamp reserved ceiling d)
   (declare (xargs :guard t))
-  (declare (ignorable stamp))
   (let ((kind (fn-cfg-delta-kind d))
         (a (fn-cfg-delta-a d))
         (n (fn-cfg-delta-n d)))
@@ -1061,6 +1356,28 @@
      ((equal kind :remove-peer)
       (if (consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)) nil
         :no-such-peer))
+     ; The incremental peer deltas extend or trim a peer that exists; every
+     ; row is keyed on it.  A removal names only rows the group holds and
+     ; leaves at least one (removing a peer is :remove-peer).
+     ((equal kind :add-peer-rows)
+      (cond ((not (consp (fn-cfg-delta-rows d))) :peer-rows-empty)
+            ((not (fn-cfg-rows-keyed-p (fn-cfg-delta-rows d) a))
+             :peer-rows-unkeyed)
+            ((not (consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)))
+             :no-such-peer)
+            (t nil)))
+     ((equal kind :remove-peer-rows)
+      (let ((existing (fn-cfg-rows-with-key (fn-cfg-peers v) a)))
+        (cond ((not (consp (fn-cfg-delta-rows d))) :peer-rows-empty)
+              ((not (fn-cfg-rows-keyed-p (fn-cfg-delta-rows d) a))
+               :peer-rows-unkeyed)
+              ((not (consp existing)) :no-such-peer)
+              ((not (fn-cfg-rows-within (fn-cfg-delta-rows d) existing))
+               :peer-row-absent)
+              ((not (consp (fn-cfg-rows-without-members
+                            existing (fn-cfg-delta-rows d))))
+               :peer-rows-emptied)
+              (t nil))))
      ; A grant names its namespace pattern and principal in a and b and
      ; carries exactly the one row (a b VERB 0); VERB is a grantable verb.
      ; Reserved names (RFC 5536 section 3.1.4) are refused at the operator
@@ -1098,6 +1415,36 @@
             ((not (fn-cfg-invitation-pendingp (fn-cfg-invitations v) a))
              :invitation-not-pending)
             (t nil)))
+     ; An account code is issued once: its digest keys no row yet.  It is
+     ; redeemed only while pending and live at the record's stamp, under a
+     ; login no redeemed row holds; a redeemed row admits only the identical
+     ; redeem again (the resume after a crash), so a code binds at most one
+     ; login and one verifier (PRF-164).
+     ((equal kind :account-invite)
+      (cond ((not (fn-cfg-account-digestp a)) :account-digest)
+            ((not (consp (fn-record-string-octets (fn-cfg-delta-b d))))
+             :account-issuer)
+            ((not (fn-cfg-account-delta-rowp d 0)) :account-row)
+            ((consp (fn-cfg-rows-with-key (fn-cfg-accounts v) a))
+             :account-digest-reused)
+            (t nil)))
+     ((equal kind :account-redeem)
+      (let ((row (fn-cfg-account-row (fn-cfg-accounts v) a)))
+        (cond ((not (fn-cfg-account-digestp a)) :account-digest)
+              ((not (fn-cfg-account-loginp (fn-cfg-delta-b d))) :account-login)
+              ((not (fn-cfg-account-delta-rowp d 1)) :account-row)
+              ((not (consp row)) :account-unknown)
+              ((equal (fn-cfg-row-n row) 1)
+               (if (equal (list row) (fn-cfg-delta-rows d))
+                   nil
+                 :account-redeemed))
+              ((not (equal (fn-cfg-row-n row) 0)) :account-row)
+              ((not (fn-cfg-account-livep row stamp)) :account-expired)
+              ((fn-cfg-account-login-takenp (fn-cfg-accounts v)
+                                            (fn-cfg-delta-b d))
+               :account-login-taken)
+              (t nil))))
+     ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)
@@ -1641,6 +1988,8 @@
     (:d fn-cfg-limit-slot) (:d fn-cfg-limit-value) (:d fn-cfg-row-lookup)
     (:d fn-cfg-row-upsert) (:d fn-cfg-row-replace-key) (:d fn-cfg-rows-with-key)
     (:d fn-cfg-rows-without-key) (:d fn-cfg-rows-keyed-p)
+    (:d fn-cfg-rows-without-members) (:d fn-cfg-rows-within)
+    (:d fn-cfg-add-peer-rows) (:d fn-cfg-remove-peer-rows)
     (:d fn-cfg-group-entryp) (:d fn-cfg-group-listp)
     (:d fn-cfg-group-all-names) (:d fn-cfg-group-find) (:d fn-cfg-entry-livep)
     (:d fn-cfg-live-names) (:d fn-cfg-member-namep)

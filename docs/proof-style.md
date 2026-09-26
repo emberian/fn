@@ -329,7 +329,12 @@ delete it from the theorem and say so (`fn-retain-known-obligation-id-is-
 not-reused` lost its `fn-retain-statep` hypothesis this way), or record it
 open with the reason (`fn-allocate-at-watermark`, whose first two hypotheses
 need a watermark lemma without the membership-list hypothesis before they
-can be dropped).
+can be dropped). Where a violating value exists but cannot be evaluated (a
+program of 2^64 octets; a stobj recogniser false of no executable value), a
+`must-fail` of the weakened statement is only the prover's refusal: label it
+in the comment block directly above it, `; teeth: prover-refusal REASON`,
+and `tools/ledger.py` and `tools/teeth_check.py` count it apart from the
+teeth (PKT-341).
 
 ## 6. Book layering
 

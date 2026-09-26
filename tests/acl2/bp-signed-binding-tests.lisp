@@ -1,5 +1,8 @@
 ; Witnesses and teeth for books/bp-signed-binding.lisp (PRF-132).
 ;
+; The refinement lemmas (-under-index) over Stores built by the Store's own
+; transitions; the keystones themselves are stated over the live owner's
+; Store and toothed in tests/acl2/owner-store-indexed-tests.lisp.
 ; The subject is fn-bpaj-dispatch-fast, which host/bp-receipt-journal-host.lisp
 ; fn-bprj-request-action calls for host/native/bp-app.lisp fnn-bpapp-action.
 ; The Store below is built by the Store's own transitions: a hybrid author is
@@ -130,9 +133,18 @@
  (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-store* *bsb-request-octets* 1)
         (list :bind *bsb-record*)))
 
-; fn-bpaj-dispatch-never-resubmits-a-stored-article
+; The index premise (PRF-144) holds of both Stores: built by the Store's own
+; transitions from the initial state, whose index is the empty build.
+(assert-event (fn-ceis-indexedp *bsb-enrolled*))
+(assert-event (fn-ceis-indexedp *bsb-store*))
+(assert-event (equal (fn-cei-msgid-records *bsb-msgid*
+                                           (fn-sn-event-index *bsb-store*))
+                     (list *bsb-record*)))
+
+; fn-bpaj-dispatch-never-resubmits-under-index
 (assert-event
- (and (member-equal *bsb-record*
+ (and (fn-ceis-indexedp *bsb-store*)
+      (member-equal *bsb-record*
                     (fn-bpr-article-records (fn-sf-records (fn-sn-files *bsb-store*))))
       (fn-record-p *bsb-record*)
       (equal (fn-record-msgid *bsb-record*)
@@ -141,7 +153,7 @@
                                          *bsb-request-octets* 1)
                   (list :submit)))))
 
-; fn-bpaj-dispatch-binds-the-stores-own-record
+; fn-bpaj-dispatch-binds-the-stores-own-record-under-index
 (defun bsb-binds-own-record-conclusion (joined store octets generation)
   (let* ((record (cadr (fn-bpaj-dispatch-fast joined store octets generation)))
          (events (fn-sf-records (fn-sn-files store)))
@@ -209,7 +221,7 @@
         (list *bsb-record*)))
 
 ; -----------------------------------------------------------------------------
-; Hypothesis removal, fn-bpaj-dispatch-never-resubmits-a-stored-article.
+; Hypothesis removal, fn-bpaj-dispatch-never-resubmits-under-index.
 ;
 ; (1) Without the Store holding the record: the enrolled Store before the
 ; commit.  The record is an article record with the dispatcher's
@@ -234,11 +246,15 @@
 ; is not an article record, and the dispatcher submits.
 (defconst *bsb-non-record* (list 0 0 0 *bsb-msgid*))
 (defconst *bsb-forged-store*
-  (fn-sn-update *bsb-store0*
-                (update-nth 4 (list *bsb-non-record*) (fn-sn-files *bsb-store0*))
-                (fn-sn-node *bsb-store0*)))
+  (let ((forged (fn-sn-update *bsb-store0*
+                              (update-nth 4 (list *bsb-non-record*)
+                                          (fn-sn-files *bsb-store0*))
+                              (fn-sn-node *bsb-store0*))))
+    (fn-sn-with-event-index forged
+                            (fn-cei-build (fn-sf-records (fn-sn-files forged))))))
 (assert-event
- (and (member-equal *bsb-non-record*
+ (and (fn-ceis-indexedp *bsb-forged-store*)
+      (member-equal *bsb-non-record*
                     (fn-bpr-article-records
                      (fn-sf-records (fn-sn-files *bsb-forged-store*))))
       (equal (fn-record-msgid *bsb-non-record*)
@@ -249,6 +265,25 @@
   (not (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-forged-store*
                                      *bsb-request-octets* 1)
               (list :submit)))))
+
+; (2b) Without the index premise (PRF-144): a CORRUPTED Store, the committed
+; Store with the index it carried before the commit.  The record is in the
+; history, is an article record, carries the dispatcher's Message-ID; the
+; index no longer corresponds to the history, and the dispatcher submits
+; again.  So the premise is doing the work.
+(defconst *bsb-stale-index-store*
+  (fn-sn-with-event-index *bsb-store* (fn-sn-event-index *bsb-enrolled*)))
+(assert-event
+ (and (not (fn-ceis-indexedp *bsb-stale-index-store*))
+      (member-equal *bsb-record*
+                    (fn-bpr-article-records
+                     (fn-sf-records (fn-sn-files *bsb-stale-index-store*))))
+      (fn-record-p *bsb-record*)
+      (equal (fn-record-msgid *bsb-record*)
+             (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
+      (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-stale-index-store*
+                                    *bsb-request-octets* 1)
+             '(:submit))))
 
 ; (3) Without the Message-ID agreement: a second signed request (another
 ; Message-ID) over the same Store.  The signed record is in the Store's
@@ -294,7 +329,7 @@
                                      *bsb-other-request-octets* 1)
               (list :submit)))))
 
-; Hypothesis removal, fn-bpaj-dispatch-binds-the-stores-own-record: without
+; Hypothesis removal, fn-bpaj-dispatch-binds-the-stores-own-record-under-index: without
 ; a :bind answer (the Store before the commit, where the dispatcher submits)
 ; the conclusion fails: nothing bound is an article record.
 (assert-event

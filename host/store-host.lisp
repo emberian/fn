@@ -21,6 +21,7 @@
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-upgrade")
+(include-book "../books/store-profile-open")
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
@@ -375,6 +376,21 @@
 (defun fn-store-metadata-config-decode (octets)
   (fn-bs-config-decode octets))
 
+;; The open of config.json every open path reads (PKT-471,
+;; books/store-profile-open.lisp): (:opened VALUES), (:refused REASON) for a
+;; saved profile whose record bound the poll reply cannot carry, or
+;; (:rejected) for a frame that is no saved profile.  The refusal's line is
+;; ACL2's; `store upgrade-profile --max-record-octets W' repairs it through
+;; `fn-store-profile-repair-verdict'.
+(defun fn-store-metadata-config-open (octets)
+  (fn-spo-config-open octets))
+
+(defun fn-store-metadata-config-refusal-text (verdict)
+  (fn-spo-refusal-text verdict))
+
+(defun fn-store-profile-repair-verdict (octets target)
+  (fn-spo-repair-verdict octets target))
+
 ;; The Python `init --profile WORD': WORD's octets are read by the native
 ;; operator's own preset parser (`fn-nop-profile-preset-word',
 ;; development|scale|default) and the frame is the one `init' writes for that
@@ -408,7 +424,12 @@
 ;; The operator's namespace counts (D27, PRF-102).  The host reads each once
 ;; from the profile it opened and hands the natural to the ACL2 subject that
 ;; refuses at it (fn-nco-observe, fn-native-admin-publication-authorize,
-;; fn-native-auth-load, fn-native-auth-admin-set-password).
+;; fn-native-auth-load, fn-native-auth-admin-set-password, and for the
+;; consumer count fn-cp-register-within through fn-col-register, called from
+;; host/owner-host.lisp fn-owner-consumer-local-register).
+(defun fn-store-profile-max-consumers (values)
+  (fn-bs-profile-max-consumers values))
+
 (defun fn-store-profile-max-config-generations (values)
   (fn-bs-profile-max-config-generations values))
 

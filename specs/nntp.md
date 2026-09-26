@@ -337,8 +337,9 @@ three parts have three different owners of the *reply*, all of them ACL2.
    [peering §8](peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred)):
    `:control-not-filed` "control message not filed: its control group is not
    configured here", `:control-malformed` "the Control header field is
-   malformed" (`:control-signed` is no longer produced: a signed control
-   article is filed like an unsigned one), and
+   malformed" (a signed control article is filed like an unsigned one, so
+   the former `:control-signed` word was removed from both tables, PKT-208),
+   and
    `:refused` "the article was refused" for a refusal no kind names. RFC 3977
    §6.3.1 permits `441` for all of them; the distinct text is a stronger fn
    guarantee and its exact words are a local policy choice (P2; the
@@ -779,6 +780,110 @@ ownership and stable `MSG_PEEK`/consume behavior are explicit scheduling and
 platform premises; a short, changed or failed consume closes the connection
 without replaying the logical transition.
 
+### Invitation-code accounts (NNT-034)
+
+NNT-034: An operator's one-use invitation code lets a friend make their own AUTHINFO account over TLS, bound once and only once across a crash, without the operator editing auth.toml or restarting
+
+An account for a friend is made by the friend, from a code the operator hands
+them, and lands in the configuration the owner publishes live. None of this is
+an RFC requirement: `XREDEEM` is **an fn extension**, not RFC 4643's AUTHINFO
+(section 2.3 defines USER/PASS and nothing here overloads it); the reply codes
+reuse RFC 4643's 381, 281, 482 and 483 in the classes RFC 3977 section 3.2
+gives them.
+
+- **The code.** `operator CONFIG account invite [--expires SECONDS]` prints one
+  code, once, and stages the pending row. The code is never stored: the row is
+  keyed on the crypto seam's tagged SHA-256 digest of it
+  (`fn-acct-code-digest`, tag `"fn-account-code-v1"`). That a code the
+  operator did not print finds no row is the seam's preimage resistance
+  (A-CRYPTO), not a theorem here.
+- **The slot.** The configuration's tenth slot `accounts` (books/config.lisp
+  `fn-cfg-accounts`) holds `(DIGEST ISSUER EXPIRY 0)` pending and
+  `(DIGEST LOGIN VERIFIER 1)` redeemed; VERIFIER is the text of the
+  books/auth-secret.lisp verifier (salt and digest, 96 hexadecimal
+  characters; `fn-acct-text-verifier-of-verifier-text` is the round trip). The
+  kinds are `:account-invite` (code 15) and `:account-redeem` (code 16). A
+  row is never removed.
+- **Admission** (`fn-cfg-delta-reason`): an invite of a digest that keys a row
+  is `:account-digest-reused`; a redeem of no row is `:account-unknown`, of a
+  pending row whose expiry the record's stamp does not lie wholly before (or
+  a stamp without a wall clock) `:account-expired`, under a login a redeemed
+  row holds `:account-login-taken`, and of a redeemed row
+  `:account-redeemed` unless it is the identical row.
+- **Once only** (PRF-164): a redeemed row is the same row after every later
+  acceptable record the owner replays (`fn-acct-redeemed-row-stays-across-replay`);
+  the redeem plan (`fn-acct-redeem-plan`, a pure function of the
+  configuration value and the request) plans a redeem only of a delta the
+  configuration admits (`fn-acct-redeem-plan-is-admitted-and-redeems`), and
+  after that delta is published the same request plans "already redeemed by
+  this login" and stages nothing
+  (`fn-acct-redeem-plan-after-its-redeem-is-already-redeemed`: the crash cut
+  after `fn-ocl-publish`'s root barrier and before the reply). Another login
+  is refused (`fn-acct-redeem-plan-refuses-another-login`); an unknown code
+  stages nothing (`fn-acct-redeem-plan-of-an-unknown-code-stages-nothing`).
+- **The credential table.** One table, two producers: auth.toml's credentials
+  read at start, then one credential per redeemed row of the configuration a
+  connection pins at open (books/nntp-auth.lisp
+  `fn-auth-config-with-accounts`, called by books/owner-config.lisp
+  `fn-ocfg-open`). auth.toml wins a login both name. A redeemed account's
+  credential is its login, the login's local principal
+  (`fn-acct-local-principal`, the principal `fn principal set-password`
+  gives a login without `--principal`), the row's verifier and the posting
+  allowance; its AUTHINFO USER/PASS then binds exactly that principal
+  (`fn-auth-config-with-accounts-finds-the-redeemed-credential` with
+  `fn-auth-step-principal-login-binds-exactly-the-unique-match`). The
+  login-to-signing-key binding is not this section's (specs/identity.md).
+- **The wire** (fn extension; RFC 4643 section 2.3 is AUTHINFO's and is not
+  overloaded; the codes keep RFC 3977 section 3.2's classes):
+
+      XREDEEM CODE NAME        -> 381 send the password with XREDEEM PASS
+      XREDEEM PASS PASSWORD    -> (held) then 281 or 482
+
+  `XREDEEM CODE NAME` caches the code and the login in the connection's memory
+  and answers `381`. `XREDEEM PASS PASSWORD` (one token, like AUTHINFO PASS;
+  the password is never a bare line, so a client that loses its place cannot
+  send it as a command) answers nothing at once: the session holds, the served
+  fold stops at the end of that line, and the owner, under its mutex, reads a
+  16-octet salt from the OS CSPRNG, runs `fn-acct-redeem-bounded-plan` over
+  the live configuration, and publishes a `:redeem` plan's delta through
+  `fnn-owner-live-reconfigure-locked`. Only then does it feed the connection
+  `(:account-outcome WORD)`: `281 account bound; authenticate with AUTHINFO on
+  a new connection` when WORD is `:bound` (the record is durable, or was
+  already durable for this login and password), otherwise `482 invitation
+  code refused`, with the reason class in the service log (`account redeem
+  refused account-unknown`) and never the code, its digest or the password.
+  A crash between the publication and the reply loses the 281; the same
+  exchange again answers 281 and binds nothing new. Before a TLS layer on a
+  listener that requires one both lines are `483` (AUTHINFO's rule above); on
+  an authenticated connection `502`; `XREDEEM PASS` with nothing cached is
+  `482`. The snapshot a connection pinned at open does not change, so the
+  friend logs in with AUTHINFO USER/PASS on a new connection. A code is the
+  operator's 32 hexadecimal characters and is never the word PASS. Theorems:
+  `fn-auth-step-pinned-xredeem-before-tls-is-483`,
+  `fn-auth-step-pinned-xredeem-pass-holds-for-the-owner`,
+  `fn-auth-step-pinned-redeem-outcome-answers-the-word`,
+  `fn-acct-redeem-word-is-bound-only-after-a-durable-redeem`.
+- **The admission limit** (D27: a profile limit, not a code ceiling): a
+  redeem is refused `:account-credential-bound` once auth.toml's credentials
+  plus the redeemed rows reach the store profile's `max-credentials`, the
+  bound auth.toml is loaded under
+  (`fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound`); a
+  resume adds no row and is never refused by it. Pending rows are bounded by
+  their expiry, in the record clock's unit (books/clock.lisp: wall
+  milliseconds since 2000-01-01).
+- **The operator.** `operator CONFIG account invite [--expires SECONDS]`
+  (default 604800): the host reads 16 CSPRNG octets, ACL2 renders the code
+  (`fn-acct-code-text`) and its digest, and only the digest is sent (to the
+  running owner over the control socket, or offline into the configuration
+  when no owner runs, as `peer add` is); the code is printed once, to stdout,
+  after the pending row is durable. `account list` prints `redeemed LOGIN
+  PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a digest or a
+  verifier.
+- **Rollback (PKT-440, decided).** Once an account code is redeemed on a
+  release with accounts, releases before it cannot open the store (an older
+  image refuses delta kinds 15 and 16 at decode); roll back only from the
+  pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
+
 ### The posting allowance
 
 Posting is the AUTHENTICATED PRINCIPAL's, not the connection's.
@@ -872,7 +977,14 @@ and sends, waits or closes as the answer says.
 Progress that resets the timers is an answered command or 512 octets
 consumed since the last progress (§3.1's "significant amount of data"), so a
 client trickling one octet at a time is closed by the first-command or idle
-timer. `anonymous open` never weakens `[auth] required`. A row that is absent
+timer. After every served step the observation reads two facts of the
+step's reply and nothing else: whether it sent any octet, and how many of its
+replies begin `481 ` at a line start. It reads them by one scan of the step's
+effects, never by building a copy of the reply, so a step whose reply is
+several MiB (the ARTICLE of an article at the operator's bound, an OVER over
+a large group) is observed in constant stack; its decisions are those over
+the reply octets (SCN-111, PKT-481). `anonymous open` never weakens `[auth]
+required`. A row that is absent
 takes the listener's default: loopback keeps the behaviour every store had
 before this section; a listener outside 127.0.0.0/8 and `::1` takes the
 public column. What the proof covers, what the host adds and what is not

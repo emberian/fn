@@ -459,6 +459,52 @@ The handoff state for the coordinator is `build/coordinator/NIGHT-STATE.md`.
 The deputy's working state, with agent ids and queued briefs, is local in
 `build/coordinator/NIGHT-STATE.md` and `build/coordinator/queue/`.
 
+## Wave 2 and 3 under the Fable mandate (2026-09-25 23:48 UTC to 2026-09-26 14:20 UTC)
+
+The mission is `handoff-2026-09-25-fable-mandate.md` (gpt-6's brief, adopted
+by ember). Fifty-seven lane merges in fifteen hours, every batch certified at
+its merged bytes and every host/books batch through the new throughput gate;
+the coordinator's decisions are in `decisions-2026-09-26-coordinator-statement.md`
+(sent to gpt-6 for review), the wave-4 plan in `backlog-triage-2026-09-26.md`
+(three piles), the friction review in `review-2026-09-26-lane-friction.md`.
+
+**Deployable, waiting on ember's go:** candidate `b6759850` (qualified;
+verdict amended after the served-crash class was rerun for real on the frozen
+bytes: no defect). The node still runs `bbf52159`. The next cut waits on
+`pack-chain-cut` (the chain's native publication cut had no model crash
+point, PKT-459) and carries: accounts (PKT-440's rollback sentence), the pull
+journal (PKT-432's), the TLS-only listener, the release tarball, docs_check.
+
+**What a person or agent can now do that they could not:** settle a lost
+POST reply by re-sending the same bytes (visibility-join); run two sleeping
+consumers exchanging a signed report and reply across every ownership cut
+(consumer-e2, -2); read threads across withdrawn messages, search a proved
+scope, see five authorship facts, use tin over TLS (reader-daily, sanding,
+reader-2); bring up a node on a second machine from a release tarball and
+peer it over TLS with one invitation each way, cancels included
+(friends-peer, -2; accounts next); face the internet within limits the node
+decides (public-exposure); reclaim released articles to real freed bytes with
+cuts (reclaim-lifecycle); compact 20,000 articles into a chain and serve them
+identically (pack-chain-serve, -open); read eight distinct health states and
+"starting" (operator-health, operator-daily); sign a POST at 10,000 articles
+in a quarter second (signed-history-index, -2); every command family exits
+by one ACL2 table (outcome-algebra).
+
+**Open for ember:** PKT-442 (the marker program: every cheaper variant
+refused by theorem; the cost is the 90%-full pool without a log device:
+an SLOG or a pool for the node, or group commit); PKT-444 (2) (how a
+pre-C1 store holding a signed cancel is repaired; recommendation: replay as
+filed when written, as an explicit migration on a snapshot); PKT-175 (the
+`:fn-enrollment` HDR item, recommendation yes); the packets in
+`decisions-packets-2026-09-25.md` (restore, policy members); PKT-164,
+PKT-165; the triage's four questions.
+
+**Still lacking:** the payload arena on the record (rep-wave-d-4 waits on
+PKT-293/167), the quadratic open at 20,000 articles (served-path-scale),
+BP fragmentation without caps and the signed four-node mission, ION, a
+real friend's session on their own machine, a human usability session,
+power loss, a hostile network.
+
 ## Where to read next
 
 - [Current view](current.md): per capability, the four evidence

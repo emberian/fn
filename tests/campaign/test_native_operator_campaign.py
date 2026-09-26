@@ -56,10 +56,16 @@ class NativeCutTableTests(unittest.TestCase):
             "FN_NATIVE_INIT_FAULT", "FN_NATIVE_RECOVERY_FAULT",
             "FN_NATIVE_POST_FAULT", "FN_NATIVE_PROFILE_FAULT",
             "FN_NATIVE_STATE_CHECKPOINT_FAULT",
+            # reclaim-lifecycle 1 and 2: the disk-free observation and the
+            # reclaim fault.  Each is refused at start by the production
+            # image like the rest (test_served_owner_cuts_stop_and_production_
+            # refusals iterates this table).
+            "FN_NATIVE_DISK_FREE", "FN_NATIVE_RECLAIM_FAULT",
             "FN_NATIVE_CONTROL_FAULT",
             "FN_NATIVE_CONTROL_TEST_STOP", "FN_NATIVE_AUTH_ADMIN_FAULT",
             "FN_NATIVE_KEY_STATEMENT_FAULT",
             "FN_NATIVE_OWNER_TEST_SIGTERM", "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",
+            "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN",
             "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"})
 
 

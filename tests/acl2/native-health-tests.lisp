@@ -235,14 +235,108 @@
 ; ---------------------------------------------------------------------------
 ; fn-nh-fence-of-route: an answered owner is never fenced by its route; the
 ; hypothesis matters (an uncertain route is fenced whatever the lock says).
-(assert-event (equal (fn-nh-fence-of :offline :free nil) nil))
-(assert-event (equal (fn-nh-fence-of :offline :held nil) :store-held))
-(assert-event (equal (fn-nh-fence-of :offline :free t) :clone-fence))
-(assert-event (equal (fn-nh-fence-of :uncertain :free nil) :owner-unanswering))
+(assert-event (equal (fn-nh-fence-of :offline :free nil t) nil))
+(assert-event (equal (fn-nh-fence-of :offline :held nil nil) :store-held))
+(assert-event (equal (fn-nh-fence-of :offline :unknown nil t) :store-held))
+(assert-event (equal (fn-nh-fence-of :offline :free t t) :clone-fence))
+(assert-event (equal (fn-nh-fence-of :uncertain :free nil t) :owner-unanswering))
 (must-fail
  (defthm nht-fence-without-route
-   (equal (fn-nh-fence-of route lock clone)
+   (equal (fn-nh-fence-of route lock clone listener)
           (cond (clone :clone-fence)
+                ((and (equal lock :held) listener) :starting)
                 ((member-equal lock '(:held :unknown)) :store-held)
                 (t nil)))
+   :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; fn-nh-fence-of-starting-iff (PKT-283).  Positive: a held lock where an owner
+; would listen, nothing answering and no clone fence: :starting, and the
+; report's first line says so with the fenced code.
+(assert-event (equal (fn-nh-fence-of :offline :held nil t) :starting))
+(assert-event (fn-nh-fence-reasonp :starting))
+(defconst *nht-starting* (fn-nh-fenced-report :starting))
+(assert-event (equal (fn-nh-report-exit *nht-starting*) 20))
+(assert-event
+ (equal (take (len (fn-record-string-octets "health exit=20 state=fenced reason=starting"))
+              *nht-starting*)
+        (fn-record-string-octets "health exit=20 state=fenced reason=starting")))
+; The free and absent arms: never fenced.
+(assert-event (null (fn-nh-fence-of :offline :absent nil t)))
+; Without no-clone: a clone fence wins over a held lock.
+(assert-event (equal (fn-nh-fence-of :offline :held t t) :clone-fence))
+(must-fail
+ (defthm nht-starting-without-no-clone
+   (implies (not (equal route :uncertain))
+            (iff (equal (fn-nh-fence-of route lock clone listener) :starting)
+                 (and (equal lock :held) listener)))
+   :rule-classes nil))
+; Without a route that missed the owner: an uncertain route is unanswering.
+(assert-event (equal (fn-nh-fence-of :uncertain :held nil t) :owner-unanswering))
+(must-fail
+ (defthm nht-starting-without-route
+   (implies (not clone)
+            (iff (equal (fn-nh-fence-of route lock clone listener) :starting)
+                 (and (equal lock :held) listener)))
+   :rule-classes nil))
+; The conclusion fails for a held lock with no listener to expect.
+(assert-event (not (equal (fn-nh-fence-of :offline :held nil nil) :starting)))
+
+; ---------------------------------------------------------------------------
+; fn-nh-starting-clears-on-listening (PKT-454).  Positive, the whole antecedent
+; of the iff: no clone fence, the lock held, a listener expected, the socket
+; node present and the connect failing before submission (route :offline):
+; fenced :starting.  The same lock, fence and listener with the owner
+; answering: its octets, no fence.
+(assert-event (equal (fn-nls-route t :before-submission) :offline))
+(assert-event (equal (fn-nh-health-step t :before-submission :held nil t)
+                     '(:fenced :starting)))
+(assert-event (equal (fn-nh-health-step nil :none :held nil t) '(:fenced :starting)))
+(assert-event (equal (fn-nh-health-step t '(:done (104 101)) :held nil t)
+                     '(:answered (104 101))))
+; Each conjunct of the iff's right side, failed alone, loses :starting.
+(assert-event (equal (fn-nh-health-step t :before-submission :held t t) '(:fenced :clone-fence)))
+(assert-event (equal (fn-nh-health-step t :before-submission :free nil t) '(:offline)))
+(assert-event (equal (fn-nh-health-step t :before-submission :held nil nil) '(:fenced :store-held)))
+(assert-event (equal (fn-nh-health-step t :after-submission :held nil t) '(:fenced :owner-unanswering)))
+(assert-event (equal (fn-nh-health-step t :refused :held nil t) '(:refused)))
+; The second conjunct's hypothesis: with no socket node a (:done ...) outcome
+; is not an answer (the host never produces one; ACL2 does not trust it).
+(assert-event (equal (fn-nh-health-step nil '(:done (104 101)) :held nil t)
+                     '(:fenced :starting)))
+(must-fail
+ (defthm nht-clears-without-socket-present
+   (equal (fn-nh-health-step sp (list :done octets) lock clone listener)
+          (list :answered octets))
+   :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                      fn-nh-fence-of fn-nls-route)))
+   :rule-classes nil))
+; The iff without its route conjunct fails (an uncertain route is unanswering).
+(must-fail
+ (defthm nht-starting-step-without-route
+   (iff (equal (fn-nh-health-step sp outcome lock clone listener) '(:fenced :starting))
+        (and (not clone) (equal lock :held) listener))
+   :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                      fn-nh-fence-of fn-nls-route)))
+   :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; fn-nh-exit-code-is-zero-or-past-the-outcome-codes (PKT-329): no hypothesis;
+; the witnesses: a held verdict (a nonzero code that is no outcome code), an
+; all-clear one (0, the code of :accepted), one unobserved (19).
+(defconst *nht-held-3* '((:clear) (:clear) (:clear) (:held) (:clear) (:clear) (:clear) (:clear)))
+(assert-event (equal (fn-nh-exit-code *nht-held-3*) 23))
+(assert-event (not (fn-outcome-codep 23)))
+(assert-event (equal (fn-nh-exit-code (make-list 8 :initial-element '(:clear))) 0))
+(assert-event (fn-outcome-codep 0))
+(assert-event (equal (fn-nh-exit-code '((:clear) (:unobserved))) 19))
+(assert-event (not (fn-outcome-codep 19)))
+; The conclusion's teeth: the seven outcome codes are 0..7 less 2, so a
+; scale starting below 8 would overlap (the keystone reads the table).
+(assert-event (fn-outcome-codep 7))
+(assert-event (equal (fn-outcome-code :accepted) 0))
+; fn-nh-exit-code-cases without (<= (len v) 8): *nht-long* above has code 100.
+(must-fail
+ (defthm nht-exit-code-cases-without-len
+   (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27))
    :rule-classes nil))
