@@ -3,7 +3,7 @@
 Lane `lane/rollback-history` from dev 8f5f9d0b, 2026-09-26. Brief:
 `build/coordinator/queue/w3-rollback-history.txt`, on gpt-6's answers §7
 ("the rollback checker proves the wrong abstraction") and the mandate's §5.6.
-Commits: 85f35331 (book, host, tests), 94579ffc (registry, docs, record, native evidence), b131fd0f (theorems over the host-called composition), and the manifest commit.
+Commits: 85f35331 (book, host, tests), 94579ffc (registry, docs, record, native evidence), b131fd0f (theorems over the host-called composition), 49df0c21 (manifest), and the final evidence commit. `make check-lane` green at 49df0c21 (green_check: 942 of 942 books green at their current digest).
 
 ## The misstep, reproduced natively first
 
@@ -146,6 +146,15 @@ SHA-256 `53f4a11ce9f209336cb34eedaf9ec27dfed004a83db16ad8bd52d0412e50b51c`
 | a true earlier copy, two posts later | `loses transactions=2 snapshot-transactions=1 store-transactions=3`, exit 0; the store against itself `loses transactions=0`; the reverse direction refused |
 | compacted after the snapshot (all 4 files reclaimed into the pack) | `loses transactions=1 snapshot-transactions=3 store-transactions=4`, exit 0, counted through the pack; a same-shape other store (same message-ids, same lengths, different body) refused |
 | the store's writer lock held exclusively | refused `store is already locked`, exit 1 |
+
+Rerun at 49df0c21 (after b131fd0f changed the book's bytes: one uncalled
+defun removed, the theorems restated; host code unchanged), so the green is
+not transferred across changed bytes: /tank/fn/scratch/rollback-history/native-green2,
+developer image `3a2cd363672d2aad20251a82ed051c0cc0e437eaafdefa266b6fac569043c332`,
+core `031408b6ded340c93cb0b7de9668615e18f00e7b771aac561ff006f251907781`, 5
+tests OK in 2.4 s, log [`green2-test.log`](rollback-history-2026-09-26/green2-test.log)
+SHA-256 `2926fb6649276679a16587ef5d821ed35e860c756638e9dd38fd04cccc514fb8`
+([`green2-SHA256SUMS`](rollback-history-2026-09-26/green2-SHA256SUMS)).
 
 The expected answer of the red case changed from the old verb's `loses 1` to
 the refusal because the old answer was the defect (gpt-6 §7); no behavioural
