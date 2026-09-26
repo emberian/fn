@@ -195,10 +195,15 @@ class NativeCapacityVectorTests(_Bp):
             reopened = self.status(ccfg)
             rerun = self.verb(ccfg, "store", verb)
             converged = selected_pack(copy) == reference
+            # A stop point the verb never reaches (a first compaction retires
+            # no older generation) is an unexercised cut, not a pass: the
+            # verb completed, and its rerun is the rerun of a finished verb.
+            reached = not (action == "stop" and first == "exit-0")
             self.out(tag="cut", verb=verb, action=action, point=point, first=first,
-                     reopen_status=reopened["exit"], rerun_exit=rerun[0],
-                     rerun_head=rerun[1][:120], converged=converged)
-            if reopened["exit"] != 0 or rerun[0] != 0 or not converged:
+                     reached=reached, reopen_status=reopened["exit"],
+                     rerun_exit=rerun[0], rerun_head=rerun[1][:120],
+                     rerun_stderr=rerun[2][-160:], converged=converged)
+            if reopened["exit"] != 0 or not converged or (reached and rerun[0] != 0):
                 bad.append((verb, action, point))
             shutil.rmtree(copy, ignore_errors=True)
         return bad
