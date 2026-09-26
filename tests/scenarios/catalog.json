@@ -2885,7 +2885,8 @@
         "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged."
       ],
       "evidence": [
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/caps-to-profile/native-checkpoint-generations.log"
       ],
       "implementation": {
         "test": "tests.test_native_peer_rows_growth",
@@ -2893,7 +2894,7 @@
           "test_a_peer_carries_more_than_the_old_row_cap"
         ],
         "native": true,
-        "log": "planning/evidence/caps-to-profile/native.log",
+        "log": "planning/evidence/caps-to-profile/native-checkpoint-generations.log",
         "record": "planning/evidence/caps-to-profile-2026-09-26.md"
       }
     }

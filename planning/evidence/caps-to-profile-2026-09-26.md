@@ -159,3 +159,43 @@ name at or above 4096 (its generations-after-p / next-from) or more than
 This lane did not edit books/records-shape.lisp or books/byte-store-frame.lisp.
 The design stands as community-bounds section 3 wrote it and is PKT-451, a
 freeze batch the deputy schedules.
+
+## 5. Certification
+
+Every changed book and its test book ran first in the REPL on persvati
+(/home/ember/fn-gates/caps-to-profile-repl: books/config 247 forms,
+config-invariants, peer-carriage-rows and the PRF-171 teeth in session
+`ctp-cfg`; checkpoint-publish 102 forms, checkpoint-pack-retire and both test
+books in `ctp-cpp`). One REPL-invisible failure reached the farm: the
+checkpoint-publish test book did not include must-fail (the session had it
+loaded by hand), r2.
+
+| Run | Box, toolchain | Rev | Scope | Result | Manifest |
+| --- | --- | --- | --- | --- | --- |
+| run-20260926T112246Z-06cd | persvati, w25, 2 jobs, 300 s | 9755f664 | `--affected-by` config, peer-carriage-rows, native-admin, config-invariants (config's closure) | 399 passed, 0 failed | `certify-20260926T112332Z-985333.json` |
+| run-20260926T113419Z-7e19 | persvati, w25 | e10e4530 | `--affected-by` checkpoint-publish, checkpoint-pack-retire | 7 passed, 1 failed (the test book's missing include) | `certify-20260926T113443Z-1122513.json` |
+| run-20260926T113603Z-8408 | persvati, w25 | a8e9914f | the same | 1 passed (the repaired test book), 176 from the cache | `certify-20260926T113632Z-1144441.json` |
+
+Books over 10 s in r1, none of them changed here except native-admin (one
+arm of `fn-native-admin-plan-deltas-over` now calls `fn-pcb-extend-deltas`):
+native-admin 11.2 s; today's manifests measure it between 8.9 s and 15.0 s
+(095234Z 13.1, 102123Z 15.0, 105643Z 9.3), so this is its variance under
+contention, not a change of this lane; it is still a D26 debt (PKT-451 names
+it). The others over 10 s (owner-invariants 16.3, config-owner-live 11.9,
+native-operator 11.3, public-exposure 10.8, source-routes-tests 10.0) were
+recertified as config's dependents at unchanged bytes.
+
+## 6. Native (SCN-101), hbox, tools/hbox_native.sh
+
+- (A) `tests.test_native_checkpoint_generations` on a8e9914f (native-a1,
+  /tank/fn/scratch/caps-to-profile/native-a1): both cases OK in 2.0 s:
+  4,097 retained generations under `--max-transactions 8191` and the next
+  publication prints `generation=4097`; under 4095 the 4,097th is refused
+  exit 1 naming the profile's capacity with the directory unchanged.
+  `tests.test_native_checkpoint` OK (4 skipped, as on dev: production-image
+  and Python-host cases). Log
+  planning/evidence/caps-to-profile/native-checkpoint-generations.log
+  (sha256 90d8f09a...), sums native-a1-SHA256SUMS (developer image
+  33ac181a...).
+- (B) `tests.test_native_peer_rows_growth` on 9755f664 (native-b1): see
+  planning/evidence/caps-to-profile/native-peer-rows-growth.log.
