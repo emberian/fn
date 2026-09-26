@@ -21,11 +21,22 @@
 # tests that need those build the explicit `developer` image profile.
 set -eu
 
+# Which image runs is decided by where this file is, never by the caller's
+# environment when it is installed (PKT-481 (a)):
+#   installed  -- PREFIX/bin/fn beside PREFIX/libexec/fn/: always the image of
+#                 its own release, PREFIX/libexec/fn/fn-host.  FN_NATIVE_HOST
+#                 and every other harness variable are ignored, so a shell
+#                 that exported one for the tests cannot turn an old release's
+#                 bin/fn into the candidate's image.  A missing installed
+#                 image is exit 4 naming that path, not a fallback.
+#   developer  -- packaging/fn in a checkout (no libexec/fn beside it):
+#                 FN_NATIVE_HOST when set (the tests' named override), else
+#                 the tree's build/fn-host.
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-if [ -n "${FN_NATIVE_HOST:-}" ]; then
+if [ -d "$here/../libexec/fn" ]; then
+    image=$(CDPATH= cd -- "$here/../libexec/fn" && pwd)/fn-host
+elif [ -n "${FN_NATIVE_HOST:-}" ]; then
     image=$FN_NATIVE_HOST
-elif [ -x "$here/../libexec/fn/fn-host" ]; then
-    image=$here/../libexec/fn/fn-host
 else
     root=$(CDPATH= cd -- "$here/.." && pwd)
     image=$root/build/fn-host
