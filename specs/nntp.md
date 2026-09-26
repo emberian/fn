@@ -977,7 +977,14 @@ and sends, waits or closes as the answer says.
 Progress that resets the timers is an answered command or 512 octets
 consumed since the last progress (§3.1's "significant amount of data"), so a
 client trickling one octet at a time is closed by the first-command or idle
-timer. `anonymous open` never weakens `[auth] required`. A row that is absent
+timer. After every served step the observation reads two facts of the
+step's reply and nothing else: whether it sent any octet, and how many of its
+replies begin `481 ` at a line start. It reads them by one scan of the step's
+effects, never by building a copy of the reply, so a step whose reply is
+several MiB (the ARTICLE of an article at the operator's bound, an OVER over
+a large group) is observed in constant stack; its decisions are those over
+the reply octets (SCN-111, PKT-481). `anonymous open` never weakens `[auth]
+required`. A row that is absent
 takes the listener's default: loopback keeps the behaviour every store had
 before this section; a listener outside 127.0.0.0/8 and `::1` takes the
 public column. What the proof covers, what the host adds and what is not
