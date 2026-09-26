@@ -30,6 +30,10 @@
 (include-book "../books/owner-config")
 ; P3 owner open and publication (fn-ock-).
 (include-book "../books/owner-checkpoint-open")
+; The publication through the octet buffer, decided before it is encoded
+; (fn-ock-publication-stream, fn-ock-capture-budget, fn-ock-publication-blockedp;
+; PKT-492, PKT-315).
+(include-book "../books/owner-checkpoint-stream")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/config-owner-live")
@@ -219,7 +223,9 @@
              ; fn-owner-sco-note-durable), and the count of the last attempt.
              (state (f-put-global 'fn-owner-sco-base extended state))
              (state (f-put-global 'fn-owner-sco-durable nil state))
-             (state (f-put-global 'fn-owner-sco-attempted nil state)))
+             (state (f-put-global 'fn-owner-sco-attempted nil state))
+             ; PKT-492: the publication the owner deferred by name, or nil.
+             (state (f-put-global 'fn-owner-sco-deferred nil state)))
         (value :recovering))))
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns state)
@@ -342,8 +348,28 @@
                              state)))
     (value :noted)))
 
-; :due or :idle, by fn-ock-publication-duep under the profile's K.
-(defun fn-owner-sco-due (state)
+; The publication the owner deferred by name, (:deferred REASON ESTIMATE
+; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
+; report carries it (host/native-live-status-host.lisp).
+(defun fn-owner-sco-deferred (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-owner-sco-global 'fn-owner-sco-deferred state))
+
+; The checkpoint budget the publication is decided against: the profile's
+; (fn-ock-capture-budget, books/owner-checkpoint-stream.lisp), or, on a
+; developer image only, the natural the host read from
+; FN_NATIVE_CHECKPOINT_BUDGET_TEST (host/native/io.lisp
+; fnn-checkpoint-budget-test-override; nil otherwise), so the due path and
+; the publication see one budget.
+(defun fn-owner-sco-budget (override profile)
+  (declare (xargs :mode :program))
+  (if (natp override) override (fn-ock-capture-budget profile)))
+
+; :due or :idle, by fn-ock-publication-duep under the profile's K, and never
+; while a deferred publication is blocked (fn-ock-publication-blockedp,
+; books/owner-checkpoint-stream.lisp: the checkpoint budget is still below
+; the estimate the deferral named; PKT-492).
+(defun fn-owner-sco-due (override state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (value (if (and profile
@@ -351,46 +377,63 @@
                      (fn-owner-sco-global 'fn-owner-sco-durable state)
                      (fn-owner-sco-count state)
                      (fn-bs-profile-max-open-suffix profile)
-                     (fn-owner-sco-global 'fn-owner-sco-attempted state)))
+                     (fn-owner-sco-global 'fn-owner-sco-attempted state))
+                    (not (fn-ock-publication-blockedp
+                          (fn-owner-sco-deferred state)
+                          (fn-owner-sco-budget override profile))))
                :due :idle))))
 
 ; The publication in three steps (checkpoint-cost): the capture under the
 ; owner mutex, the encoding outside it, the result back under it.
 ;
 ; fn-owner-sco-capture (under the mutex): the values the publication reads,
-; (BASE CONFIGS RECORDS SEGMENT COUNT SUFFIX), and the attempt is recorded at
-; COUNT.  They are ACL2 values; a later commit makes new ones and changes none
-; of these.
-(defun fn-owner-sco-capture (state)
+; (BASE CONFIGS RECORDS SEGMENT COUNT SUFFIX BUDGET), and the attempt is
+; recorded at COUNT.  They are ACL2 values; a later commit makes new ones and
+; changes none of these.  BUDGET is the checkpoint budget (fn-owner-sco-budget:
+; the profile's, the file bound the open refuses a checkpoint past).
+(defun fn-owner-sco-capture (override state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
          (count (len records))
          (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
+         (profile (fn-owner-store-profile state))
          (state (f-put-global 'fn-owner-sco-attempted count state)))
     (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
                  (fn-sn-config-history st)
                  records
-                 (fn-bs-profile-max-record-octets (fn-owner-store-profile state))
+                 (fn-bs-profile-max-record-octets profile)
                  count
-                 (- count (if (natp durable) durable 0))))))
+                 (- count (if (natp durable) durable 0))
+                 (fn-owner-sco-budget override profile)))))
 
-; Outside the mutex, the host calls `fn-ock-publication' (a state-free ACL2
-; function, books/owner-checkpoint-open.lisp) on the captured values:
-; (NEXT OCTETS), NEXT the capture of the captured history
-; (fn-ock-publication-is-the-capture-at-the-capture-point) and OCTETS its
-; frozen file.  It reads no global and writes none.
+; Outside the mutex, the host calls `fn-ock-publication-stream' (a
+; state-free ACL2 function over the publication buffer,
+; books/owner-checkpoint-stream.lisp) on the captured values: (NEXT VERDICT),
+; NEXT the capture of the captured history
+; (fn-ock-publication-stream-next-is-the-capture) and VERDICT :unencodable,
+; the deferral (:deferred REASON ESTIMATE BUDGET), or (:plan PLAN ESTIMATE)
+; with the frozen file's program in that buffer
+; (fn-ock-publication-stream-writes-the-file).  It reads no global and
+; writes none.
 
 ; fn-owner-sco-publication-done (under the mutex): NEXT becomes the base,
 ; whether or not the write succeeded (it is the capture of a prefix of the
-; owner's history either way), and on a durable write its S is the newest
-; durable checkpoint.  Answers S, or :none.
-(defun fn-owner-sco-publication-done (next durablep state)
+; owner's history either way), on a durable write its S is the newest
+; durable checkpoint, and a deferred VERDICT is carried (for the due path
+; and the status report) until a later verdict replaces it.  Answers S, or
+; :none.
+(defun fn-owner-sco-publication-done (next durablep verdict state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-sco-base next state))
          (state (if durablep
                     (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
-                  state)))
+                  state))
+         (state (f-put-global 'fn-owner-sco-deferred
+                              (if (and (consp verdict) (eq (car verdict) :deferred))
+                                  verdict
+                                nil)
+                              state)))
     (value (if durablep (fn-sco-sequence next) :none))))
 
 ; The served POST bound (D27): the carried Store profile's payload bound

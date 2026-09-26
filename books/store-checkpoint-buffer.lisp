@@ -130,31 +130,27 @@
   :hints (("Goal" :in-theory (enable fn-scc-octetp fn-cbor-octetp))))
 
 ; -----------------------------------------------------------------------------
-; Writing a list of octets at the end of the buffer: one export call per
-; octet, the buffer's logical value growing by `append'.
+; Writing a list of octets at the end of the buffer: ONE export call for the
+; whole list (`fn-octets-append-list', PKT-315; before it, one :protect'ed
+; export call per octet at about 0.12 us each), the buffer's logical value
+; growing by `append'.
 
 (defun fn-sccb-append-list (xs fn-octets)
   (declare (xargs :stobjs fn-octets :guard (fn-scc-octet-listp xs)
                   :guard-hints (("Goal" :in-theory (enable fn-cbor-octetp)))))
-  (if (atom xs)
-      fn-octets
-    (let ((fn-octets (fn-octets-append-octet (car xs) fn-octets)))
-      (fn-sccb-append-list (cdr xs) fn-octets))))
+  (fn-octets-append-list xs fn-octets))
 
-; On a true-list buffer value (every buffer is one; the hypothesis is real:
-; an empty write leaves an improper value as it is, `append' of nil does
-; not), and on any value once the write is nonempty (the first octet lands
-; by `fn-oct-snoc', which fixes the value), which is what the encoder needs
-; to hold without a hypothesis.
+; The export's logical value is `append' on ANY buffer value and any XS
+; (`fn-oct-append-list-is-append', octets-stobj): the two hypotheses the
+; per-octet writer needed (a true-list buffer for an empty write; a
+; true-list XS) are gone, the weakened theorem proved before they were
+; dropped (checkpoint-capture-stream, 2026-09-26).
 (defthm fn-sccb-append-list-is-append
-  (implies (and (true-listp fn-octets) (true-listp xs))
-           (equal (fn-sccb-append-list xs fn-octets) (append fn-octets xs)))
-  :hints (("Goal" :induct (fn-sccb-append-list xs fn-octets))))
+  (equal (fn-sccb-append-list xs fn-octets) (append fn-octets xs)))
 
 (defthm fn-sccb-append-list-nonempty-is-append
   (implies (and (true-listp xs) (consp xs))
-           (equal (fn-sccb-append-list xs fn-octets) (append fn-octets xs)))
-  :hints (("Goal" :expand ((fn-sccb-append-list xs fn-octets)))))
+           (equal (fn-sccb-append-list xs fn-octets) (append fn-octets xs))))
 
 (defun fn-sccb-cons-ops (n fn-octets)
   (declare (xargs :stobjs fn-octets :guard (natp n)))

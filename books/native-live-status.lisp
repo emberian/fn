@@ -219,18 +219,52 @@
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr obs))))))
 
+(defun fn-nls-reason-words (reason)
+  (declare (xargs :guard t))
+  (if (and (symbolp reason)
+           (standard-char-listp (coerce (symbol-name reason) 'list)))
+      (fn-nls-text (string-downcase (symbol-name reason)))
+    (fn-nls-text "unknown")))
+
+; The sixth element: the owner's deferred automatic publication,
+; (:deferred REASON ESTIMATE BUDGET) as books/owner-checkpoint-stream.lisp
+; `fn-ock-publication-stream' answered it and host/owner-host.lisp
+; `fn-owner-sco-publication-done' recorded it (host/native-live-status-host.lisp
+; appends it to the host's observation); nil when nothing is deferred, and
+; always nil offline (no owner, no publisher).
+(defun fn-nls-obs-checkpoint-deferred (obs)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr obs)))))))
+
+(defun fn-nls-checkpoint-deferred-words (obs)
+  "` deferred=REASON estimate=E budget=B' while the owner's automatic
+publication is deferred (PKT-492: the file it would write, E octets, is past
+the profile's checkpoint budget B, so nothing was encoded and the owner keeps
+serving; the publication is retried when the budget covers E); nothing
+otherwise, so every other report is byte-identical."
+  (declare (xargs :guard t))
+  (let ((d (fn-nls-obs-checkpoint-deferred obs)))
+    (if (and (consp d) (equal (fn-ag-car d) :deferred))
+        (append (fn-nls-text " deferred=")
+                (fn-nls-reason-words (fn-ag-car (fn-ag-cdr d)))
+                (fn-nls-field "estimate" (fn-ag-car (fn-ag-cdr (fn-ag-cdr d))))
+                (fn-nls-field "budget" (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr d))))))
+      nil)))
+
 (defun fn-nls-checkpoint-file-words (obs)
-  "`checkpoint-file octets=N modified=T', or `checkpoint-file=absent'.  While
-an owner runs it is the only publisher (the verb needs the Store lock), so
-after a run this is the owner's last automatic publication; the `open=' line
-says whether a checkpoint served this process's open."
+  "`checkpoint-file octets=N modified=T', or `checkpoint-file=absent', then
+the deferred words when the owner deferred its publication.  While an owner
+runs it is the only publisher (the verb needs the Store lock), so after a
+run this is the owner's last automatic publication; the `open=' line says
+whether a checkpoint served this process's open."
   (declare (xargs :guard t))
   (let ((file (fn-nls-obs-checkpoint-file obs)))
-    (if (consp file)
-        (append (fn-nls-text "checkpoint-file")
-                (fn-nls-field "octets" (fn-ag-car file))
-                (fn-nls-field "modified" (fn-ag-car (fn-ag-cdr file))))
-      (fn-nls-text "checkpoint-file=absent"))))
+    (append (if (consp file)
+                (append (fn-nls-text "checkpoint-file")
+                        (fn-nls-field "octets" (fn-ag-car file))
+                        (fn-nls-field "modified" (fn-ag-car (fn-ag-cdr file))))
+              (fn-nls-text "checkpoint-file=absent"))
+            (fn-nls-checkpoint-deferred-words obs))))
 
 (defun fn-nls-orphan-words (obs)
   "`staging-orphans=N[+] [NAME ...]', or `staging-orphans=0'."
@@ -241,13 +275,6 @@ says whether a checkpoint served this process's open."
                 (if (fn-nls-obs-morep obs) (fn-nls-text "+") nil)
                 (fn-nls-text " [") (fn-nls-names names) (fn-nls-text "]"))
       (fn-nls-text "staging-orphans=0"))))
-
-(defun fn-nls-reason-words (reason)
-  (declare (xargs :guard t))
-  (if (and (symbolp reason)
-           (standard-char-listp (coerce (symbol-name reason) 'list)))
-      (fn-nls-text (string-downcase (symbol-name reason)))
-    (fn-nls-text "unknown")))
 
 (defun fn-nls-open-words (obs)
   "`open=checkpoint:G suffix=S' or `open=full-replay reason=R'."

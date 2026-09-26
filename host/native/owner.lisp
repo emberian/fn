@@ -2144,48 +2144,65 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       (dolist (worker workers) (sb-thread:join-thread worker)))))
 
 (defun fnn-owner-publish-captured (service captured)
-  "The publication's thread: ACL2's fn-ock-publication over the values captured
-under the owner mutex (the next checkpoint and its file octets), the write
-through fn-bs-scp-program (fnn-state-checkpoint-write), both outside the
-mutex, then fn-owner-sco-publication-done under it.  Served commands run
-meanwhile; the file is the capture of the history at the capture point
-(fn-ock-publication-is-the-capture-at-the-capture-point).  A failed write
-leaves the old checkpoint (or, at and after the rename, the old or the new
-one: the crash keystone) and serving continues."
-  (destructuring-bind (base configs records segment count suffix) captured
+  "The publication's thread: ACL2's fn-ock-publication-stream over the values
+captured under the owner mutex and the PUBLICATION buffer (fnn-live-octets-pub,
+its own stobj: the served attempt's buffer is never touched off the mutex),
+the write through fn-bs-scp-program (fnn-state-checkpoint-write, the plan's
+octets straight from that buffer), both outside the mutex, then
+fn-owner-sco-publication-done under it.  Served commands run meanwhile; the
+file is the capture of the history at the capture point
+(fn-ock-publication-stream-next-is-the-capture) and its bytes are the list
+codec's (fn-ock-publication-stream-writes-the-file).  Before any encode ACL2
+decides by name whether the file fits the profile's checkpoint budget
+(PKT-492): a deferral is logged with the file's length and the budget,
+nothing is written, and serving continues.  A failed write leaves the old
+checkpoint (or, at and after the rename, the old or the new one: the crash
+keystone) and serving continues."
+  (destructuring-bind (base configs records segment count suffix budget) captured
     (declare (ignore count))
-    (let ((started (get-internal-real-time)) (next nil) (durablep nil))
-      (handler-case
-          (let ((answer (fnn-core 'fn-ock-publication base configs records segment)))
-            (unless (and (consp answer) (consp (cdr answer)))
-              (fnn-fault "owner returned a malformed checkpoint publication"))
-            (setq next (first answer))
-            (let ((file (second answer))
-                  (sequence (length records)))
-              (cond
-                ((eq file :unencodable)
-                 (fnn-err "CHECKPOINT auto refused=unencodable"))
-                ((and (fnn-octet-list-p file) file)
-                 (let ((octets (fnn-octets file)))
-                   (handler-case
-                       (progn
-                         (fnn-state-checkpoint-write (fnn-owner-service-store service) octets)
-                         (setq durablep t)
-                         (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d ms=~d"
-                                  sequence suffix (length octets)
-                                  (round (* 1000 (- (get-internal-real-time) started))
-                                         internal-time-units-per-second)))
-                     ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
-                       (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
-                (t (fnn-fault "owner returned a malformed checkpoint file")))))
-        (serious-condition (e)
-          (fnn-err "CHECKPOINT auto failed: ~a" e)))
+    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
+      (flet ((elapsed ()
+               (round (* 1000 (- (get-internal-real-time) started))
+                      internal-time-units-per-second)))
+        (handler-case
+            (let ((answer (fnn-call 'fn-ock-publication-stream base configs records
+                                    segment budget (fnn-live-octets-pub))))
+              (unless (and (consp answer) (consp (cdr answer)))
+                (fnn-fault "owner returned a malformed checkpoint publication"))
+              (setq next (first answer) verdict (second answer))
+              (let ((sequence (length records)))
+                (cond
+                  ((eq verdict :unencodable)
+                   (fnn-err "CHECKPOINT auto refused=unencodable sequence=~d" sequence))
+                  ((and (consp verdict) (eq (first verdict) :deferred)
+                        (= (length verdict) 4) (keywordp (second verdict))
+                        (integerp (third verdict)) (integerp (fourth verdict)))
+                   (fnn-err "CHECKPOINT deferred reason=~(~a~) estimate=~d budget=~d sequence=~d ms=~d"
+                            (second verdict) (third verdict) (fourth verdict) sequence
+                            (elapsed)))
+                  ((and (consp verdict) (eq (first verdict) :plan) (= (length verdict) 3)
+                        (fnn-plan-p (second verdict) (fnn-live-octets-pub))
+                        (integerp (third verdict)))
+                   (let ((plan (second verdict)) (octets (third verdict)))
+                     (handler-case
+                         (progn
+                           (fnn-state-checkpoint-write
+                            (fnn-owner-service-store service)
+                            (lambda (fd) (fnn-plan-write-all fd plan (fnn-live-octets-pub))))
+                           (setq durablep t)
+                           (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d ms=~d"
+                                    sequence suffix octets (elapsed)))
+                       ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
+                         (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
+                  (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
+          (serious-condition (e)
+            (fnn-err "CHECKPOINT auto failed: ~a" e))))
       (unwind-protect
            (handler-case
                (fnn-with-owner (service)
                  (when next
                    (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
-                                               next durablep)))
+                                               next durablep verdict)))
                      (when (and durablep (not (integerp done)))
                        (fnn-err "CHECKPOINT auto: owner refused the durable sequence")))))
              (serious-condition (e)
@@ -2199,7 +2216,8 @@ one: the crash keystone) and serving continues."
 (defun fnn-owner-maybe-publish (service)
   "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
 never inside a command: when fn-ock-publication-duep says the suffix since
-the newest durable checkpoint reached half the profile's K, ACL2 records the
+the newest durable checkpoint reached half the profile's K (and no deferred
+publication is blocked on the profile's budget, PKT-492), ACL2 records the
 attempt and hands back the values the publication reads (fn-owner-sco-capture)
 under the owner mutex.  The extension, the encoding and the write run on
 their own thread, outside the mutex (fnn-owner-publish-captured), so served
@@ -2209,9 +2227,16 @@ here, and written only through fn-owner-sco-publication-done."
   (fnn-with-owner (service)
     (unless (or (fnn-owner-service-stopping service)
                 (fnn-owner-service-publisher service))
-      (when (eq (fnn-owner-core 'fn-owner-sco-due) :due)
-        (let ((captured (fnn-owner-core 'fn-owner-sco-capture)))
-          (unless (and (true-listp captured) (= (length captured) 6))
+      ;; The budget override is nil but on a developer image with
+      ;; FN_NATIVE_CHECKPOINT_BUDGET_TEST set; ACL2 chooses between it and
+      ;; the profile's (fn-owner-sco-budget) on the due path and at the
+      ;; capture, so both see one budget.
+      (when (eq (fnn-owner-core 'fn-owner-sco-due
+                                (fnn-checkpoint-budget-test-override nil))
+                :due)
+        (let ((captured (fnn-owner-core 'fn-owner-sco-capture
+                                        (fnn-checkpoint-budget-test-override nil))))
+          (unless (and (true-listp captured) (= (length captured) 7))
             (fnn-fault "owner returned a malformed checkpoint capture"))
           (let ((thread (sb-thread:make-thread
                          (lambda () (fnn-owner-publish-captured service captured))

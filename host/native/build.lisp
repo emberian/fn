@@ -59,6 +59,12 @@
 ;; fn-owner-existing-action-buffer and fn-owner-prepare-buffer
 ;; (host/owner-host.lisp) call fn-pbb-existing-action.
 (include-book "books/octets-stobj")
+;; The owner's automatic checkpoint publication over the PUBLICATION buffer
+;; fn-octets-pub (a second stobj congruent to fn-octets): host/native/owner.lisp
+;; fnn-owner-publish-captured calls fn-ock-publication-stream; host/owner-host.lisp
+;; fn-owner-sco-due and fn-owner-sco-capture call fn-ock-publication-blockedp
+;; and fn-ock-capture-budget (PKT-492, PKT-315).
+(include-book "books/owner-checkpoint-stream")
 (include-book "books/poster-bytes-buffer")
 ;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call

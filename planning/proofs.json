@@ -4396,7 +4396,7 @@
         "A-HOST",
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-sha256-of-prefixed-buffer-is-sha256",
         "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
@@ -5365,7 +5365,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -5530,7 +5530,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-sccb-plan-is-file-octets",
         "fn-sccb-renc-is-program",
@@ -5623,7 +5623,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-sccr-decode-of-plan",
         "fn-sccr-decode-plan-is-decode-segments",
@@ -6697,6 +6697,43 @@
         "fn-col-poll-report-of-an-admitted-payload-fits",
         "fn-nls-page-refuses-exactly-past-the-total-width"
       ]
+    },
+    {
+      "id": "PRF-183",
+      "title": "The owner's automatic checkpoint publication through the octet buffer writes the list codec's file, refuses where the codec refuses, and is deferred by name before any encode when the file's length exceeds the profile's checkpoint budget",
+      "statement": "books/owner-checkpoint-stream.lisp. fn-ock-publication-stream (base configs records seg budget fn-octets) -> (mv NEXT VERDICT fn-octets) is the host-called entry: host/native/owner.lisp fnn-owner-publish-captured calls it on the publication thread, off the service mutex, with the PUBLICATION buffer fn-octets-pub (a second abstract stobj congruent to fn-octets, defined in this book with the same :logic/:exec pairs and its own live object; the served attempt's buffer is never touched off the mutex). NEXT is fn-ock-next-checkpoint's value, so fn-ock-publication-stream-next-is-the-capture: (implies (fn-sn-observed-historyp frontier records) (equal (mv-nth 0 (fn-ock-publication-stream (fn-sco-capture configs prefix) configs records seg budget st)) (fn-sco-capture configs records))) by fn-ock-next-checkpoint-is-the-capture (PRF-104, cited). KEYSTONE fn-ock-publication-stream-writes-the-file: (implies (equal (car (mv-nth 1 (fn-ock-publication-stream base configs records seg budget st))) :plan) (equal (fn-sccb-plan-octets (cadr (mv-nth 1 ...)) (mv-nth 2 ...)) (cadr (fn-ock-publication base configs records seg)))): when the verdict is a plan, the plan's octets over the buffer it leaves (fn-sccb-plan-octets, what host/native/io.lisp fnn-plan-write-all writes straight from the buffer's array through fnn-state-checkpoint-write, fn-bs-scp-program's unchanged cuts) are fn-scc-file-octets (fn-sco-freeze next) seg, the list entry's file, by fn-sccb-plan-is-file-octets (PRF-133, cited). fn-ock-publication-stream-refuses-what-the-codec-refuses: where fn-scc-treep fails of the frozen next, the verdict is :unencodable and so is fn-ock-publication's second value. The refusal theorem of PKT-492, fn-ock-publication-stream-defers-by-the-estimate: for an encodable frozen next (fn-sccb-treep), the verdict is (:deferred :exceeds-budget ESTIMATE BUDGET) exactly when budget < (len (fn-scc-file-octets frozen seg)), ESTIMATE that length, and otherwise a :plan. The estimate is exact, not a bound: fn-ockb-file-len-is-len-file-octets: (implies (fn-sccb-treep c) (equal (len (fn-scc-file-octets c seg)) (fn-ockb-file-len c seg))), computed before any encode by a walk that allocates nothing (fn-ockb-len-acc, the cdr in tail position with the count of owed CONS ops; fn-ockb-len-acc-is-len-program with no hypothesis beyond fn-scc-treep). The budget is the profile's: fn-ock-capture-budget = fn-sccr-file-read-bound of max-history-octets and max-record-octets (three times H plus one segment's framing), the file bound the open refuses a checkpoint past (PRF-135); host/owner-host.lisp fn-owner-sco-capture hands it over and fn-owner-sco-due answers :idle while fn-ock-publication-blockedp holds of a recorded deferral (fn-ock-publication-blockedp-by-definition: a deferred verdict blocks a later budget exactly while it is below the file's length). Every executable function is guard-verified. What it does not say: that the reader admits every file within the budget segment by segment (the budget equals the reader's file bound by construction; the segment bound is the same seg both write and read); anything about the live heap the frozen checkpoint value itself occupies (the records twice, PKT-314; the arena, PKT-293); that the host writes the plan's octets (A-HOST, as for every buffer boundary).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-024",
+        "STO-016"
+      ],
+      "depends_on": [
+        "PRF-133",
+        "PRF-104",
+        "PRF-087"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-ock-publication-stream-writes-the-file",
+        "fn-ock-publication-stream-refuses-what-the-codec-refuses",
+        "fn-ock-publication-stream-defers-by-the-estimate",
+        "fn-ockb-file-len-is-len-file-octets",
+        "fn-ock-publication-blockedp-by-definition",
+        "fn-ock-publication-stream-next-is-the-capture"
+      ],
+      "evidence": [
+        "books/owner-checkpoint-stream.lisp",
+        "tests/acl2/owner-checkpoint-stream-tests.lisp",
+        "books/octets-stobj.lisp",
+        "books/store-checkpoint-buffer.lisp",
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T143919Z-2974417.json"
+      ],
+      "progress_note": "Lane checkpoint-capture-stream (2026-09-26): certified on persvati (run-20260926T143854Z-252a, ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s: 21 books passed, none over 10 s) after every book and test book was certified locally in the lane's REPL tree; PKT-315 landed with it (fn-octets-append-list, one export call per payload, fn-oct-write-list as :exec)."
     }
   ]
 }

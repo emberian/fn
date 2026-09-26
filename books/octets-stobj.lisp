@@ -27,6 +27,8 @@
 ;   fn-octets-reserve n      st                      / grow the array to n
 ;   fn-octets-list           st                      / the list, consed once
 ;   fn-octets-from-list xs   xs                      / clear, then write xs
+;   fn-octets-append-list xs (append st xs)         / one write per octet, in
+;                                                     one export call (PKT-315)
 ;
 ; The host fills the array from a byte vector in raw Lisp (`fnn-octets-fill',
 ; host/native/io.lisp): `fn-octets-reserve', one `replace', then the fill
@@ -342,6 +344,27 @@
   (declare (xargs :guard (fn-cbor-octet-listp xs)) (ignore fn-octets$a))
   xs)
 
+; The bulk append (PKT-315): one export call writes a whole octet list at
+; the fill point.  Its logical value is `append' on the list, written over
+; the guard-free `fn-oct-cat' as the other :logic functions are; the
+; executable is `fn-oct-write-list' above, whose lemma
+; `fn-oct-write-list-steps' is the correspondence.  Before this export a
+; codec twin made one :protect'ed `fn-octets-append-octet' call per octet.
+(defun fn-oct-cat (xs ys)
+  (declare (xargs :guard t))
+  (if (consp xs) (cons (car xs) (fn-oct-cat (cdr xs) ys)) ys))
+
+(defthm fn-oct-cat-is-append
+  (equal (fn-oct-cat xs ys) (append xs ys)))
+
+(defthm fn-oct-octet-listp-of-append
+  (implies (and (fn-cbor-octet-listp xs) (fn-cbor-octet-listp ys))
+           (fn-cbor-octet-listp (append xs ys))))
+
+(defun fn-octets$a-append-list (xs fn-octets$a)
+  (declare (xargs :guard (fn-cbor-octet-listp xs)))
+  (fn-oct-cat fn-octets$a xs))
+
 ; -----------------------------------------------------------------------------
 ; The abstraction relation.
 
@@ -540,6 +563,22 @@
            (fn-octets$ap (fn-octets$a-from-list xs fn-octets)))
   :rule-classes nil)
 
+(defthm fn-octets-append-list{correspondence}
+  (implies (and (fn-octets$corr fn-octets$c fn-octets) (fn-cbor-octet-listp xs))
+           (fn-octets$corr (fn-oct-write-list xs fn-octets$c)
+                           (fn-octets$a-append-list xs fn-octets)))
+  :rule-classes nil)
+
+(defthm fn-octets-append-list{guard-thm}
+  (implies (and (fn-octets$corr fn-octets$c fn-octets) (fn-cbor-octet-listp xs))
+           (and (fn-cbor-octet-listp xs) (fn-octets$c-wfp fn-octets$c)))
+  :rule-classes nil)
+
+(defthm fn-octets-append-list{preserved}
+  (implies (and (fn-octets$ap fn-octets) (fn-cbor-octet-listp xs))
+           (fn-octets$ap (fn-octets$a-append-list xs fn-octets)))
+  :rule-classes nil)
+
 (defabsstobj fn-octets
   :foundation fn-octets$c
   :recognizer (fn-octets-p :logic fn-octets$ap :exec fn-octets$cp)
@@ -555,7 +594,9 @@
                                :protect t)
             (fn-octets-list :logic fn-octets$a-list :exec fn-octets$c-list)
             (fn-octets-from-list :logic fn-octets$a-from-list
-                                 :exec fn-octets$c-from-list :protect t)))
+                                 :exec fn-octets$c-from-list :protect t)
+            (fn-octets-append-list :logic fn-octets$a-append-list
+                                   :exec fn-oct-write-list :protect t)))
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: the stobj's value is the list, its length is
@@ -572,6 +613,9 @@
 
 (defthm fn-oct-list-is-identity
   (equal (fn-octets-list fn-octets) fn-octets))
+
+(defthm fn-oct-append-list-is-append
+  (equal (fn-octets-append-list xs fn-octets) (append fn-octets xs)))
 
 (defthm fn-oct-nth-of-octet-listp-is-octet
   (implies (and (fn-cbor-octet-listp xs) (natp k) (< k (len xs)))
@@ -593,7 +637,7 @@
   :rule-classes :forward-chaining)
 
 (in-theory (disable fn-octets-p fn-octets-len fn-octets-get fn-octets-list
-                    fn-oct-octets-p-is-octet-listp))
+                    fn-octets-append-list fn-oct-octets-p-is-octet-listp))
 
 ; -----------------------------------------------------------------------------
 ; Derived readers over the abstract stobj: the vocabulary a codec twin reads

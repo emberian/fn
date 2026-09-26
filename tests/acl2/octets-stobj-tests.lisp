@@ -33,6 +33,9 @@
       (eq (symbol-class 'fn-octets$c-reserve (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-list (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-from-list (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-oct-write-list (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-oct-cat (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-octets$a-append-list (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-slice-list (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-prefix-equalp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-suffix-equalp (w state)) :common-lisp-compliant)
@@ -294,6 +297,74 @@
    (implies (fn-octets$corr *ost-c* *ost-a*)
             (fn-octets$corr (fn-octets$c-from-list '(1 300) *ost-c*)
                             (fn-octets$a-from-list '(1 300) *ost-a*)))))
+
+; fn-octets-append-list{correspondence} (PKT-315: one export call for a
+; whole list, `fn-oct-write-list' as its executable): (corr c a),
+; (octet-listp xs).  The write lands at the fill point, so unlike from-list
+; the correspondence hypothesis carries: the old cells stay.
+(defthm ost-w-18 ; a ground witness, proved by evaluation
+ (and (fn-octets$corr *ost-c* *ost-a*) (fn-cbor-octet-listp '(1))
+      (equal (fn-oct-write-list '(1) *ost-c*) '((5 6 7 1) 4))
+      (equal (fn-octets$a-append-list '(1) *ost-a*) '(5 6 7 1))
+      (fn-octets$corr (fn-oct-write-list '(1) *ost-c*)
+                      (fn-octets$a-append-list '(1) *ost-a*)))
+ :rule-classes nil)
+; Without corr: a concrete buffer whose cells are not the abstraction's
+; (the fill count past the array against the three-cell list) keeps that
+; difference after the write.
+(defthm ost-w-19 ; a ground witness, proved by evaluation
+ (and (not (fn-octets$corr *ost-c-over* *ost-a*)) (fn-cbor-octet-listp '(1))
+      (not (fn-octets$corr (fn-oct-write-list '(1) *ost-c-over*)
+                           (fn-octets$a-append-list '(1) *ost-a*))))
+ :rule-classes nil)
+(must-fail
+ (defthm ost-t-append-list-without-corr
+   (implies (fn-cbor-octet-listp '(1))
+            (fn-octets$corr (fn-oct-write-list '(1) *ost-c-over*)
+                            (fn-octets$a-append-list '(1) *ost-a*)))))
+; Without (octet-listp xs): a 300 lands in the byte array, which the
+; concrete recognizer refuses.
+(defthm ost-w-20 ; a ground witness, proved by evaluation
+ (and (fn-octets$corr *ost-c* *ost-a*) (not (fn-cbor-octet-listp '(300)))
+      (not (fn-octets$corr (fn-oct-write-list '(300) *ost-c*)
+                           (fn-octets$a-append-list '(300) *ost-a*))))
+ :rule-classes nil)
+(must-fail
+ (defthm ost-t-append-list-without-octets
+   (implies (fn-octets$corr *ost-c* *ost-a*)
+            (fn-octets$corr (fn-oct-write-list '(300) *ost-c*)
+                            (fn-octets$a-append-list '(300) *ost-a*)))))
+; The opened view, fn-oct-append-list-is-append, has no hypothesis: a
+; ground instance on an improper buffer value and an improper list.
+(defthm ost-w-21 ; a ground witness, proved by evaluation
+ (and (equal (fn-octets-append-list '(3) '(1 . 2)) (append '(1 . 2) '(3)))
+      (equal (fn-octets-append-list '(3 . 4) '(1)) (append '(1) '(3 . 4)))
+      (equal (fn-octets-append-list nil '(1 . 2)) (append '(1 . 2) nil)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-octets-append-list))))
+
+; The bulk export on a live local buffer: the write lands after the fill,
+; an empty write changes nothing, and a 3,000-octet write resizes past the
+; first 1024 cells (the export the checkpoint writer makes per payload).
+(defun ost-exec-append-list (fn-octets)
+  (declare (xargs :stobjs fn-octets))
+  (let* ((fn-octets (fn-octets-from-list '(5 6) fn-octets))
+         (fn-octets (fn-octets-append-list '(7 8 9) fn-octets))
+         (a (list (fn-octets-len fn-octets) (fn-octets-list fn-octets)))
+         (fn-octets (fn-octets-append-list nil fn-octets))
+         (b (list (fn-octets-len fn-octets) (fn-octets-list fn-octets)))
+         (fn-octets (fn-octets-append-list *ost-big* fn-octets))
+         (c (list (fn-octets-len fn-octets) (fn-octets-get 5 fn-octets)
+                  (fn-octets-get 3004 fn-octets))))
+    (mv (list a b c) fn-octets)))
+
+(defun ost-exec-append-list-value ()
+  (with-local-stobj fn-octets
+    (mv-let (v fn-octets) (ost-exec-append-list fn-octets) v)))
+
+(assert-event
+ (equal (ost-exec-append-list-value)
+        (list (list 5 '(5 6 7 8 9)) (list 5 '(5 6 7 8 9)) (list 3005 1 (mod 3000 256)))))
 
 ; -----------------------------------------------------------------------------
 ; The derived readers' correspondences on ground values, with the

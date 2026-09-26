@@ -350,13 +350,17 @@ connection id=3 config-generation=4
 
 Every value prints in full decimal, and `history-marker` prints its word
 (`required` or `unmarked`). `open-cost` is the profile's pessimistic open
-figure, not a measurement: the worst open is a full replay of up to
-`max-transactions` records (a checkpoint may be absent or refused), holding
-the record payloads as octet lists, two copies at 16 octets of cons per
-payload octet, so 32 × `max-history-octets`. `open=` says how this answering
-process opened the store; `checkpoint-file` is the newest published state
-checkpoint's size and modification time when the report was asked for
-(`checkpoint-file=absent` when there is none). The owner renders a report
+figure (a full replay of up to `max-transactions` records holding the
+payloads as octet lists, 32 × `max-history-octets`), not a measurement.
+`open=` says how this answering process opened the store; `checkpoint-file`
+is the newest published state checkpoint's size and modification time when
+the report was asked for (`checkpoint-file=absent` when there is none), and
+while the owner has deferred its automatic publication the same line ends
+` deferred=exceeds-budget estimate=E budget=B`: the file it would write (E
+octets) is past the profile's checkpoint budget B (three times
+`max-history-octets` plus one segment's framing, the bound an open refuses a
+checkpoint past), nothing was written, serving continues, and the
+publication is retried once the budget covers E. The owner renders a report
 once per request and answers its later pages from that rendering.
 
 `pins` is the retention ledger's count and reserved charge, then each open

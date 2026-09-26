@@ -383,6 +383,36 @@ and a publication does not hold served commands.
   mutex again. What it writes is the capture of the history at the capture
   point (`fn-ock-publication-is-the-capture-at-the-capture-point`).
 
+STO-024: The owner's automatic publication is decided by name before it is
+encoded and encodes through the octet buffer, never as octet lists.
+
+- **The estimate and the budget.** Before any encode ACL2 computes the
+  encoded file's length by a walk that allocates nothing
+  (`fn-ockb-file-len`, books/owner-checkpoint-stream.lisp; equal to the
+  list codec's file length, `fn-ockb-file-len-is-len-file-octets`) and
+  compares it with the profile's checkpoint budget, the file bound an open
+  refuses a checkpoint past (`fn-ock-capture-budget` =
+  `fn-sccr-file-read-bound`: three times `max-history-octets` plus one
+  segment's framing). Past the budget the publication is deferred by name
+  (`CHECKPOINT deferred reason=exceeds-budget estimate=E budget=B`, and
+  `status` carries ` deferred=... estimate=E budget=B` on its
+  `checkpoint-file` line), nothing is written, serving continues, and the
+  attempt is not repeated until the budget covers E
+  (`fn-ock-publication-stream-defers-by-the-estimate`,
+  `fn-ock-publication-blockedp-by-definition`). The budget bounds one
+  publication's work by the operator's declared history (D27), not the
+  data a store holds.
+- **The stream.** The publication thread encodes the frozen checkpoint once
+  into its own octet buffer (the abstract stobj fn-octets-pub of
+  books/owner-checkpoint-stream.lisp, a second stobj congruent to the served
+  attempt's `fn-octets`, so nothing is shared off the mutex) and
+  writes the plan's octets straight from that buffer through the unchanged
+  byte program (`fn-bs-scp-program`, the same five cuts). What it writes is
+  byte for byte the list codec's file of the same frozen checkpoint
+  (`fn-ock-publication-stream-writes-the-file`, PRF-183, by
+  `fn-sccb-plan-is-file-octets`), and it refuses exactly where the codec
+  refuses (`fn-ock-publication-stream-refuses-what-the-codec-refuses`).
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
