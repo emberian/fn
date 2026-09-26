@@ -5936,6 +5936,35 @@
           "name": "fn-enr-item-of-an-enrolled-principal"
         }
       ]
+    },
+    {
+      "id": "PRF-173",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-articles-freshp-is-one-pass"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-articles-have-archive-bindingsp-is-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-known-id-scanp-is-known-idp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-refresh-is-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fr-disjointp-commutes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-build-of-cons"
+        }
+      ]
     }
   ]
 }

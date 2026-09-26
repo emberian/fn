@@ -148,7 +148,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-duplicate-accepted-prepare-is-no-op",
         "fn-complete-preserves-existing-message-id-binding",
@@ -550,7 +550,7 @@
         "PRF-001"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-index-build-correspondence",
         "fn-index-range-query-correct"
@@ -584,7 +584,7 @@
         "A-CRYPTO",
         "A-POLICY"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-exchange-merge-idempotent",
         "fn-exchange-merge-commutative-member",
@@ -1200,7 +1200,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -1526,7 +1526,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. Before the ION extension, the native workflow host called fn-bprl-replay-journal, which also interprets :undertake and :release; fn-bprl-replay-work-status-is-durable-status-restarted certifies that successful predecessor path, with an extended reachable journal and a malformed-suffix must-fail tooth in tests/acl2/bp-release-tests.lisp (persvati manifests certify-20260923T173933Z-2312844.json and certify-20260923T174038Z-2322911.json). The earlier fn-bp replay theorem remains scoped to its original record language. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none. Current scope correction (2026-09-24): host/workflow-host.lisp fn-workflow-install-replay now calls fn-bpiw-replay-journal, whose mixed FNWF stream includes :ion-route and :ion-observed. The two certified single-record structural projections in books/bp-ion-workflow.lisp do not yet lift the work-status theorem through that complete replay. A named actual-caller correspondence with a reachable mixed-history witness remains open; predecessor certificates do not discharge it. Hence the target is in-progress, while its existing component theorems remain intact. Replay fence (lane ion-replay-fence, 2026-09-24): fn-bpiw-replay-records now reconstructs the unrecorded reopen fence before a :recovery outcome (fn-bpiw-replay-fence, books/bp-ion-workflow.lisp), as fn-bp-replay-records does; before it, a journal holding a recovery outcome could not be reopened and the history preflight refused every recovery outcome (planning/evidence/m4-app-receipt-2026-09-24.md finding 4). The keystone's subject is fn-bpiw-replay-journal, called by host/workflow-host.lisp:13 (fn-workflow-install-replay) and :107 (fn-workflow-preflight-history), against fn-bpiw-apply as host/workflow-host.lisp:112 (fn-workflow-apply-record) calls it; book books/bp-ion-workflow-replay.lisp, teeth in tests/acl2/bp-ion-workflow-replay-tests.lisp (reachable enqueue, attempt and ION-carrying cuts; must-fail without the recovery-outcome and live-acceptance hypotheses; the open-success hypothesis has no separating witness because a failed open's image holds no fence, and the test book shows that refusal). Scope: one recovery outcome applied right after an open; the general live-suffix correspondence across later records is not claimed, and a live re-attempt of a :restart-observed attempt without a journaled retry request is refused by the history (the must-fail witness), which is the host's intended gate. Evidence: planning/evidence/ion-replay-fence-2026-09-24.md.",
       "evidence": [
         "books/bp-workflow-replay-status.lisp",
@@ -2764,7 +2764,7 @@
         "PRF-053"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/hybrid-store.lisp",
         "books/hybrid-store-invariants.lisp",
@@ -2798,7 +2798,7 @@
         "PRF-048"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/topic-history-metadata.lisp",
         "tests/acl2/topic-history-metadata-tests.lisp",
@@ -2865,7 +2865,7 @@
         "PRF-063"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-th-selected-root-matches-verified-context",
         "fn-th-selected-report-author-is-verified-context",
@@ -3451,7 +3451,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -3476,7 +3476,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/control-classify.lisp",
         "books/peer-authored-accept.lisp",
@@ -6271,6 +6271,40 @@
         "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment",
         "fn-own-reader-opened-after-completion-pins-the-finished-keyring",
         "fn-enr-item-of-an-enrolled-principal"
+      ]
+    },
+    {
+      "id": "PRF-173",
+      "title": "The open's freshness and archive-binding checks, the admission's identity test and the refresh's group index run in one pass, each equal to its unchanged logical definition",
+      "statement": "Four linear executions of whole-state checks, each equal to the unchanged :logic definition. fn-articles-freshp-is-one-pass (books/acceptance.lisp, no hypothesis): (fn-fr-freshp articles) = (fn-articles-freshp articles); fn-fr-freshp folds the articles once with a hash set of the memberships seen, checking each article against the earlier ones (disjointness is symmetric: fn-fr-disjointp-commutes), and is the :exec branch of fn-articles-freshp. fn-node-articles-have-archive-bindingsp-is-indexed (books/node.lisp, no hypothesis): (fn-nab-articles-boundp a b p) = (fn-node-articles-have-archive-bindingsp a b p); the bindings and pins are indexed once in two hash tables, the first element with a key kept (the linear searches' answer), and it is the :exec branch. Both run inside fn-statep and fn-node-statep, which the host reaches at every Store open through fn-sco-store-open's fn-sco-finalize-from test (host/store-node-host.lisp fn-store-sn-open-extended; fn-sn-open-observed's tests are carried), at every reader open through fn-nntp-projectionp and fn-own-reader-context's fn-peer-open-session (host/owner-host.lisp fn-owner-open -> fn-ocfg-open -> fn-own-open), and at each BP acceptance check (fn-bpi-node-record-committedp). fn-retain-known-id-scanp-is-known-idp (books/retention.lisp, no hypothesis, iff): fn-retain-admissiblep's :exec walks the pins and releases for the identity instead of consing their identity lists; reached from fn-node-prepare on every POST and every replayed acceptance. fn-gidx-refresh-is-build (books/owner.lisp; hypothesis: the old index is (fn-gidx-build old-articles) or NIL, which fn-own-view-okp carries): (fn-gidx-refresh buckets old new) = (fn-gidx-build new); fn-own-refresh installs it, so a refresh after one acceptance puts the new article's entries into the old index instead of rebuilding it; fn-own-refresh-preserves-relation (books/owner-invariants.lisp) holds unchanged. The executed functions reach none of fn-all-article-memberships, fn-memberships-conflictsp, fn-pair-memberp, fn-node-find-binding, fn-retain-find-id, fn-retain-obligation-ids or member-equal (asserted over the callee closure in the test book).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-016"
+      ],
+      "depends_on": [
+        "PRF-104"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/acceptance.lisp",
+        "books/node.lisp",
+        "books/retention.lisp",
+        "books/owner.lisp",
+        "tests/acl2/open-one-pass-tests.lisp",
+        "planning/evidence/served-path-scale-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T111625Z-902587.json",
+        "planning/evidence/manifests/certify-20260926T114213Z-1217897.json",
+        "planning/evidence/manifests/certify-20260926T115813Z-1406816.json"
+      ],
+      "progress_note": "Lane served-path-scale (2026-09-26). Teeth in tests/acl2/open-one-pass-tests.lisp: a reachable twelve-article node (fn-node-prepare/fn-node-complete) on which each executed check and its quadratic reference agree; CORRUPTED states (a membership shared eleven and six articles apart, a released pin, a dropped binding, a wrong-subject binding or pin placed before and after the good one) on which both refuse or both accept; the group-index keystone's reachable extension witness, a stale-index counterexample and a must-fail without its hypothesis; the admission's known and fresh identities.",
+      "events": [
+        "fn-articles-freshp-is-one-pass",
+        "fn-node-articles-have-archive-bindingsp-is-indexed",
+        "fn-retain-known-id-scanp-is-known-idp",
+        "fn-gidx-refresh-is-build",
+        "fn-fr-disjointp-commutes",
+        "fn-gidx-build-of-cons"
       ]
     }
   ]
