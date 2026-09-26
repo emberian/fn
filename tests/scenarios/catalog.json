@@ -4024,6 +4024,40 @@
     "log": "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
     "record": "planning/evidence/hostile-input-2026-09-26.md"
    }
+  },
+  {
+   "id": "SCN-147",
+   "title": "The TLS surface of a running node is thrown hostile traffic on 563 (implicit TLS) and 119 (STARTTLS): garbage before and mid handshake, a hello with no cipher, TLS 1.0/1.1 only, an oversized record, plain NNTP on the TLS port, STARTTLS-then-plain-then-STARTTLS, an unsolicited client cert, an unserved SNI, alert and close_notify floods, a TLS-layer slowloris, and a full-handshake burst; the node refuses each by a named TLS alert or 502, serves a clean session throughout, and holds memory bounded",
+   "milestone": "M5",
+   "status": "validated",
+   "requirements": [
+    "NNT-031",
+    "NNT-032",
+    "HST-013"
+   ],
+   "steps": [
+    "Start a scratch loopback owner under systemd-run (MemoryMax=8G) on the dev-HEAD developer image, configured with a self-signed [listener] tls_cert/tls_key pair and a tls_port; never the live node.",
+    "Against the implicit-TLS port and the STARTTLS path, send the tls family: garbage before/mid handshake, a ClientHello with no cipher and a NULL cipher, TLS 1.0 and 1.1 only offers, a 16 KiB+1 record, plain NNTP on the TLS port, STARTTLS then plain then STARTTLS again, STARTTLS then garbage, an unsolicited client certificate, SNI for an unserved name, an alert flood, a close_notify storm, and a 200-way TLS slowloris.",
+    "Measure the handshake CPU cost: 300 sequential handshakes and a 30 s 48-way full-handshake burst, reading the owner's /proc CPU and thread count.",
+    "Run the oracle: a clean plaintext session answers, the owner is alive with RSS under the heap figure, no served request exceeded the wall bound, the service log holds no fault, the second STARTTLS is 502, a reader is served during the flood, and the implicit-TLS listener still answers afterward."
+   ],
+   "expected": [
+    "Every hostile handshake is refused by a named TLS alert (record_overflow, illegal_parameter, handshake_failure, protocol_version, unexpected_message) or held to the 10 s deadline and closed; plain NNTP on the TLS port leaks no reply; the second STARTTLS is 502; unsolicited client certs and unserved SNI complete and are ignored (single cert served).",
+    "The node never crashes, hangs, or grows memory without bound; RSS stayed 585 MB under a 2,819 MB heap figure; steady-state node CPU 2.467 ms per handshake. Two host-level gaps are filed as packets: TLS handshakes are not metered by the exposure kernel (PKT-631) and TLS refusals are logged only to stderr, not the service log (PKT-632)."
+   ],
+   "evidence": [
+    "planning/evidence/hostile-input-2-2026-09-26.md",
+    "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
+    "planning/evidence/hostile-input-2-2026-09-26/openbsd-libressl-note.md"
+   ],
+   "execution_scope": "Executed on hbox against the dev-HEAD developer image 6701d5753 (system libssl OpenSSL 3.3.1) and probed against a LibreSSL node on the OpenBSD VM, both loopback under systemd-run MemoryMax=8G; never the live node. TLS family green, no crash/hang/leak/fault; two host-level packets filed (PKT-631 unmetered handshakes, PKT-632 refusals not in service log). Not exercised: a real TLS 1.3 KeyUpdate flood (an encrypted post-handshake record, not forgeable with the standard library); the OpenBSD implicit-TLS (563) port (the VM node ran STARTTLS only).",
+   "implementation": {
+    "test": "tools/hostile_campaign.py",
+    "cases": [],
+    "native": true,
+    "log": "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
+    "record": "planning/evidence/hostile-input-2-2026-09-26.md"
+   }
   }
  ]
 }
