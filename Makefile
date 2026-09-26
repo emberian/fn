@@ -748,6 +748,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-recover-ocl \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
+	tests/acl2/served-pipelining-tests \
 	books/nntp-auth-invariants \
 	books/nntp-help \
 	tests/acl2/nntp-help-tests \

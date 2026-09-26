@@ -569,16 +569,14 @@ class NativePeeringTests(unittest.TestCase):
             stream.write(b"".join(b"CHECK " + m.encode() + b"\r\n"
                                   for m in fresh + [held]))
             checks = [stream.readline() for _ in range(len(fresh) + 1)]
-            # TAKETHIS for every 238, one at a time: two TAKETHIS articles
-            # in one socket read lose the second (PKT-600, the pipelined
-            # test below), so this driver waits for each 239 as innfeed
-            # does with a window of one.
+            # TAKETHIS for every 238, pipelined in one write as innfeed
+            # sends them (PKT-600 repaired, PRF-213: each article is its own
+            # step, committed and answered before the next is framed).
             wanted = [m for m, r in zip(fresh, checks) if r.startswith(b"238 ")]
-            takes = []
-            for m in wanted:
-                stream.write(b"TAKETHIS " + m.encode() + b"\r\n"
-                             + self.article(m, m[1:-1]) + b".\r\n")
-                takes.append(stream.readline())
+            stream.write(b"".join(b"TAKETHIS " + m.encode() + b"\r\n"
+                                  + self.article(m, m[1:-1]) + b".\r\n"
+                                  for m in wanted))
+            takes = [stream.readline() for _ in wanted]
             stream.write(b"TAKETHIS " + refused_takethis.encode() + b"\r\n"
                          + outscope(refused_takethis, "refused-takethis") + b".\r\n")
             replies["takethis-refused"] = stream.readline()
@@ -586,11 +584,10 @@ class NativePeeringTests(unittest.TestCase):
             deferred = [m for m, r in zip(fresh, checks) if r.startswith(b"431 ")]
             stream.write(b"".join(b"CHECK " + m.encode() + b"\r\n" for m in deferred))
             rechecks = [stream.readline() for _ in deferred]
-            retakes = []
-            for m in deferred:
-                stream.write(b"TAKETHIS " + m.encode() + b"\r\n"
-                             + self.article(m, m[1:-1]) + b".\r\n")
-                retakes.append(stream.readline())
+            stream.write(b"".join(b"TAKETHIS " + m.encode() + b"\r\n"
+                                  + self.article(m, m[1:-1]) + b".\r\n"
+                                  for m in deferred))
+            retakes = [stream.readline() for _ in deferred]
             # A TAKETHIS of an article already held: 439, and IHAVE says 435.
             stream.write(b"TAKETHIS " + fresh[0].encode() + b"\r\n"
                          + self.article(fresh[0], fresh[0][1:-1]) + b".\r\n")
@@ -614,6 +611,8 @@ class NativePeeringTests(unittest.TestCase):
         for message_id, reply in zip(fresh, checks):
             self.assertTrue(reply.rstrip(b"\r\n").endswith(message_id.encode()), reply)
         self.assertEqual([t[:3] for t in takes], [b"239"] * 16, takes)
+        for message_id, reply in zip(wanted, takes):
+            self.assertTrue(reply.rstrip(b"\r\n").endswith(message_id.encode()), reply)
         self.assertEqual(codes["takethis-refused"], "439", replies)
         self.assertEqual([r[:3] for r in rechecks], [b"238"] * 4, rechecks)
         self.assertEqual([r[:3] for r in retakes], [b"239"] * 4, retakes)
@@ -641,17 +640,16 @@ class NativePeeringTests(unittest.TestCase):
             "identity": self.verify_process_identity(target),
         }, sort_keys=True))
 
-    @unittest.expectedFailure
     def test_pipelined_takethis_in_one_read_answers_every_article(self):
-        """PKT-600, an open IMPLEMENTATION defect, recorded as an expected
-        failure so the module stays a regression gate for everything else:
-        the served fold consumes a whole socket read, and the owner takes
-        only the first submission of a read (books/served.lisp
-        `fn-served-submission'; `fn-own-finish-read'), so the second of two
-        TAKETHIS articles that arrive in one read is never admitted and
-        never answered.  innfeed pipelines TAKETHIS.  When PKT-600 is
-        repaired this test passes and unittest reports an unexpected
-        success: remove the decorator then."""
+        """PKT-600, repaired (PRF-213, NNT-044, SCN-144): eight TAKETHIS
+        articles in one write, as innfeed pipelines them.  The served read
+        yields after each article's submission
+        (books/served-tls-prefix.lisp fn-served-feed-counted, the span fold
+        books/served-span.lisp fn-scar-feed-span), the owner commits and
+        answers it, and host/native/owner.lisp feeds the rest of the read
+        back; every article is answered 239 in order and stored.  Until the
+        repair the second of two articles in one read was never admitted
+        and never answered, and this case was an expected failure."""
         source = self.initialize("pipe-source", free_port())
         target = self.initialize("pipe-target", free_port())
         self.configure_peer(target, source, outbound="-")
@@ -669,10 +667,58 @@ class NativePeeringTests(unittest.TestCase):
                     replies.append(stream.readline())
                 except socket.timeout:
                     replies.append(b"")
+            stream.write(b"QUIT\r\n")
+            quit_reply = stream.readline()
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "pipelined-takethis-pkt-600",
-            "replies": [r.decode("ascii", "replace") for r in replies]}))
+            "replies": [r.decode("ascii", "replace") for r in replies],
+            "quit": quit_reply.decode("ascii", "replace")}))
         self.assertEqual([r[:3] for r in replies], [b"239"] * len(ids), replies)
+        for message_id, reply in zip(ids, replies):
+            self.assertTrue(reply.rstrip(b"\r\n").endswith(message_id.encode()), reply)
+        self.assertTrue(quit_reply.startswith(b"205 "), quit_reply)
+        for message_id in ids:
+            self.assertEqual(self.await_article(target, message_id),
+                             self.article(message_id, message_id[1:-1]))
+        self.assertIsNone(target["process"].poll())
+
+    def test_pipelined_post_in_one_read_answers_every_article(self):
+        """PKT-600 for POST (PRF-213, NNT-044, SCN-144): two POST blocks in
+        one write, and then an article followed by the next command in one
+        write.  Each article is its own step: the reply stream is 340 240
+        340 240 in order, the 340 for the next POST never precedes the 240
+        for the article before it, and every article is stored."""
+        node = self.initialize("pipe-post", free_port())
+        self.start(node)
+        ids = ["<pipe-post-{}@example.invalid>".format(n) for n in range(4)]
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            # Two whole POST blocks in one write.
+            stream.write(b"".join(b"POST\r\n" + self.article(m, m[1:-1]) + b".\r\n"
+                                  for m in ids[:2]))
+            greedy = [stream.readline() for _ in range(4)]
+            # RFC 3977 section 3.5's pipelined shape: after the 340, the
+            # article and the next POST in one write, then the last article
+            # and QUIT in one write.
+            stream.write(b"POST\r\n")
+            offer = stream.readline()
+            stream.write(self.article(ids[2], ids[2][1:-1]) + b".\r\nPOST\r\n")
+            pipelined = [stream.readline() for _ in range(2)]
+            stream.write(self.article(ids[3], ids[3][1:-1]) + b".\r\nQUIT\r\n")
+            last = [stream.readline() for _ in range(2)]
+        codes = [r[:3] for r in greedy + [offer] + pipelined + last]
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "pipelined-post-pkt-600",
+            "codes": [c.decode("ascii", "replace") for c in codes]}))
+        self.assertEqual(codes, [b"340", b"240", b"340", b"240",
+                                 b"340", b"240", b"340", b"240", b"205"],
+                         greedy + [offer] + pipelined + last)
+        for message_id in ids:
+            got = self.await_article(node, message_id)
+            self.assertIsNotNone(got, message_id)
+            self.assertIn(("Message-ID: " + message_id).encode("ascii"), got)
+        self.assertIsNone(node["process"].poll())
 
     def feed_to_scripted_peer(self, mode_reply, marker):
         peer = ScriptedTransitPeer(mode_reply)
