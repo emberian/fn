@@ -190,13 +190,20 @@ change acceptance authority or add disk index files. LISTGROUP range reads
 select from immutable per-group buckets pinned with that archive, and the
 owner/served invariant maintains exact bucket-to-archive correspondence.
 OVER and XOVER numeric ranges select numbers from that bucket and resolve each
-entry through the same pinned Message-ID trie. The carried bucket/trie relation
-proves their complete replies equal the archive fold; XOVER retains its 420
-empty-range code and OVER its 423. For G bucket headers, M selected-group
-memberships, S output numbers and maximum Message-ID length L, the structural
-work is O(G + M + S·M + S·L + S²), plus article rendering. This replaces the
-former O(A + S·A + S²) archive search for A retained articles; neither bound
-claims elapsed-time performance. HDR/XHDR, GROUP, NEXT, LAST and NEWNEWS still
+number through the bucket's number index (a trie keyed by local number, at most
+31 levels for numbers up to 2^31 - 1; each entry's number and Message-ID are
+decided once, when the entry is added) and then the same pinned Message-ID
+trie. The group index carries the relation that every bucket's number index is
+its entries' (`fn-gidx-numbers-okp`, established by every build and preserved
+by every put and refresh); under it the served lookup equals the bucket walk
+(`fn-gidx-nidx-number-article-is-walk`, PRF-189), and the carried bucket/trie
+relation proves their complete replies equal the archive fold; XOVER retains
+its 420 empty-range code and OVER its 423. For G bucket headers, M
+selected-group memberships, S output numbers and maximum Message-ID length L,
+the structural work is O(G + M + S·31 + S·L + S²), plus article rendering.
+This replaces the former O(G + M + S·M + S·L + S²) bucket walk per row
+(over-number-index) and before it the O(A + S·A + S²) archive search for A
+retained articles; neither bound claims elapsed-time performance. HDR/XHDR, GROUP, NEXT, LAST and NEWNEWS still
 use their current archive folds. The
 LISTGROUP selection cost is at most G + S inspected headers and selected
 entries, for G retained groups and S entries in the chosen group; this excludes
