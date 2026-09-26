@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 952 |
-| Certification roots in the Makefile | 933 |
-| Books inside the root closure | 948 |
-| `defthm` and `defthmd` events | 13291 |
-| `defun` events | 9272 |
+| Books read | 954 |
+| Certification roots in the Makefile | 935 |
+| Books inside the root closure | 950 |
+| `defthm` and `defthmd` events | 13356 |
+| `defun` events | 9316 |
 | Functions with verified guards | 2198 |
-| Functions declared `:verify-guards nil` and never verified | 730 |
-| Functions left at the default with an explicit guard | 4967 |
+| Functions declared `:verify-guards nil` and never verified | 753 |
+| Functions left at the default with an explicit guard | 4988 |
 | Functions left at the default with no guard | 1377 |
-| `assert-event` checks | 13797 |
-| `must-fail` checks | 1559 |
+| `assert-event` checks | 13855 |
+| `must-fail` checks | 1576 |
 | `encapsulate` events | 65 |
-| Theorems flagged SUSPECT by shape | 119 |
+| Theorems flagged SUSPECT by shape | 120 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 137 |
-| Include-hygiene warnings | 959 |
-| Host-names warnings | 1075 |
+| Teeth-form warnings | 138 |
+| Include-hygiene warnings | 960 |
+| Host-names warnings | 1077 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -301,6 +301,7 @@ that `make certify` requests.
 | `books/checkpoint-codec.lisp` | root | 110 | 36 | 13/1/21/1 | 0 | 0 | 1 |
 | `books/checkpoint-compaction-preservation.lisp` | root | 35 | 13 | 0/5/7/1 | 0 | 0 | 0 |
 | `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/15/4/0 | 0 | 0 | 0 |
+| `books/checkpoint-pack-chain.lisp` | root | 55 | 43 | 0/22/21/0 | 0 | 0 | 1 |
 | `books/checkpoint-pack-retire.lisp` | root | 10 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
@@ -553,7 +554,7 @@ that `make certify` requests.
 | `books/store-checkpoint-codec.lisp` | root | 67 | 46 | 14/2/30/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-open.lisp` | root | 42 | 34 | 11/0/23/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-reader.lisp` | root | 75 | 17 | 0/2/15/0 | 0 | 0 | 1 |
-| `books/store-compact-verb.lisp` | root | 17 | 5 | 0/2/3/0 | 0 | 0 | 0 |
+| `books/store-compact-verb.lisp` | root | 24 | 6 | 0/3/3/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-events-carried.lisp` | root | 21 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/store-events.lisp` | root | 2 | 21 | 10/9/2/0 | 0 | 0 | 0 |
@@ -580,7 +581,7 @@ that `make certify` requests.
 | `books/store-profile-upgrade.lisp` | root | 25 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/store-reclaim-buffer.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim-holders.lisp` | root | 4 | 6 | 0/2/4/0 | 0 | 0 | 0 |
-| `books/store-reclaim-pack.lisp` | root | 28 | 13 | 0/12/1/0 | 0 | 0 | 2 |
+| `books/store-reclaim-pack.lisp` | root | 30 | 13 | 0/12/1/0 | 0 | 0 | 2 |
 | `books/store-reclaim.lisp` | root | 38 | 39 | 1/5/33/0 | 0 | 0 | 0 |
 | `books/store-retention-codec-invariants.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/store-sweep.lisp` | root | 36 | 16 | 0/0/15/1 | 0 | 0 | 0 |
@@ -784,6 +785,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 80 | 1 | 0 |
 | `tests/acl2/checkpoint-compaction-preservation-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 26 | 15 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
+| `tests/acl2/checkpoint-pack-chain-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 34 | 14 | 0 |
 | `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 8 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
@@ -967,7 +969,7 @@ that `make certify` requests.
 | `tests/acl2/store-checkpoint-buffer-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 10 | 5 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-reader-tests.lisp` | root | 1 | 8 | 0/0/8/0 | 17 | 5 | 0 |
-| `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 29 | 6 | 0 |
+| `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 49 | 8 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 35 | 10 | 0 |
 | `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -1000,7 +1002,7 @@ that `make certify` requests.
 | `tests/acl2/store-profile-upgrade-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 72 | 18 | 0 |
 | `tests/acl2/store-reclaim-buffer-tests.lisp` | root | 1 | 3 | 0/3/0/0 | 8 | 1 | 0 |
 | `tests/acl2/store-reclaim-holders-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
-| `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 25 | 7 | 0 |
+| `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 29 | 8 | 0 |
 | `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 20 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
@@ -1085,6 +1087,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bs-k0s-root-rename-landed-preserves-relation` | `books/byte-store-k0-step-lemmas.lisp` | 327 | preserves-no-subject-call: the statement never calls fn-bs-k0s-root-rename-landed or a fn-bs-k0s-root-rename-landed- transition |
 | `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 311 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
 | `fn-bs-profile-validp-of-profile-of` | `books/byte-store-frame.lisp` | 378 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp |
+| `fn-ccc-nth-0-of-cons` | `books/checkpoint-pack-chain.lisp` | 118 | branch-of-definition: the hypothesis is a branch test of fn-cc-nth and the conclusion is that branch's value |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 424 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
 | `fn-col-poll-index-get-non-uint-is-nil-by-definition` | `books/consumer-poll-index.lisp` | 113 | branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |

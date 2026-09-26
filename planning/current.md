@@ -28,7 +28,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260926T064807Z-632722` | no: source changed since c3420013 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260926T063856Z-608753` | no: source changed since c3420013 | no: profile not deployed |
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260926T061654Z-546487` | no: source changed since c3420013 | no: profile not deployed |
-| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-disk` | yes | yes: `certify-20260926T021052Z-4035158` | lab only: `5181e0ea` | no: dev source not on the node |
+| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-disk` | yes | yes: `certify-20260926T065950Z-667448` | lab only: `5181e0ea` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260926T010233Z-3422722` | lab only: `lane/m6-list-counts` | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260926T010233Z-3422722` | no: source changed since c3420013 | no: dev source not on the node |
 
@@ -182,8 +182,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **maintenance: operator compaction.** `operator CONFIG store compact` is decided in ACL2: the pack it writes fits the free space the host observes on the store's filesystem (PKT-169), and a reclaim keeps the reconstructed history.
 
-- Host-called subject: `fn-cverb-decide` at host/checkpoint-host.lisp:188.
-- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:193; PRF-073 (certified), PRF-129 (certified)); certified at the current source and closure by `certify-20260926T021052Z-4035158` (earliest archived).
+- Host-called subject: `fn-cverb-decide` at host/checkpoint-host.lisp:189.
+- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:281; PRF-073 (uncertified-at-current-digest), PRF-129 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260926T065950Z-667448` (earliest archived).
 - Tested: lane image of `5181e0ea` ([m5-compact-verb-2026-09-24](evidence/m5-compact-verb-2026-09-24.md)), profile developer image, checkpoint cuts through both entries; not a shared qualification.
 - Deployed: no: node image `bbf52159`; changed since it: `books/store-compact-verb.lisp`, `host/checkpoint-host.lisp`.
 - Latest positive result: 10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).

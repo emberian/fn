@@ -3197,7 +3197,7 @@
         "A-DURABILITY",
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/checkpoint-compaction-preservation.lisp",
         "tests/acl2/checkpoint-compaction-preservation-tests.lisp",
@@ -5005,7 +5005,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-reclaim-pack.lisp",
         "tests/acl2/store-reclaim-pack-tests.lisp",
@@ -5178,7 +5178,7 @@
         "PRF-073"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-maintenance-reserve.lisp",
         "tests/acl2/store-maintenance-reserve-tests.lisp",
@@ -5865,7 +5865,7 @@
         "A-DURABILITY",
         "A-CRYPTO"
       ],
-      "status": "in-progress",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/checkpoint-pack-chain.lisp",
         "tests/acl2/checkpoint-pack-chain-tests.lisp",
