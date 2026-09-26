@@ -95,13 +95,17 @@
  (equal (fn-cpp-namespace-name-decode *fn-cpp-selection-name*)
         '(:selection)))
 (assert-event (equal *fn-cpp-selection-read-bound* 47))
-(assert-event (equal *fn-cpp-namespace-observation-limit* 4097))
+;; PRF-171: the old figures are the instance T = 4095 (capacity 4096).
+(defconst *cpp-cap* (fn-cpp-generation-capacity 4095))
+(assert-event (equal *cpp-cap* 4096))
+(assert-event (equal (fn-cpp-namespace-observation-limit *cpp-cap*) 4097))
 (assert-event
  (equal (fn-cpp-namespace-plan
          (list (coerce "generation-2.fncp" 'list)
                *fn-cpp-selection-name*
                (coerce "generation-0.fncp" 'list)
-               (coerce "generation-1.fncp" 'list)))
+               (coerce "generation-1.fncp" 'list))
+         *cpp-cap*)
         '(:ok (0 1 2))))
 ; Canonicality, numeric domain and observation bound are independent teeth.
 (assert-event
@@ -115,28 +119,52 @@
          (coerce "generation--1.fncp" 'list)) '(:error :name)))
 (assert-event
  (equal (fn-cpp-namespace-plan
-         (make-list 4098 :initial-element *fn-cpp-selection-name*))
+         (make-list 4098 :initial-element *fn-cpp-selection-name*)
+         *cpp-cap*)
         '(:error :bound)))
-(assert-event (equal (fn-cpp-next-generation nil) 0))
-(assert-event (equal (fn-cpp-next-generation '(0 1 2)) 3))
-(assert-event (equal (fn-cpp-next-generation '(0 2)) :bad))
-(assert-event (equal (fn-cpp-next-generation-from nil 4096) :exhausted))
-(assert-event (equal (fn-cpp-next-generation-from nil 4294967296) :exhausted))
+(assert-event (equal (fn-cpp-next-generation nil *cpp-cap*) 0))
+(assert-event (equal (fn-cpp-next-generation '(0 1 2) *cpp-cap*) 3))
+(assert-event (equal (fn-cpp-next-generation '(0 2) *cpp-cap*) :bad))
+(assert-event (equal (fn-cpp-next-generation-from nil 4096 *cpp-cap*) :exhausted))
+(assert-event (equal (fn-cpp-next-generation-from nil 4294967296 (expt 2 40))
+                     :exhausted))
+
+;; fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity: past the
+;; old 4,096 under a larger T; at the capacity, exhausted; one below, the next.
+(defun cpp-gens (n) (if (zp n) nil (append (cpp-gens (1- n)) (list (1- n)))))
+(defconst *cpp-4097* (cpp-gens 4097))
+(assert-event (equal (fn-cpp-next-generation *cpp-4097* (fn-cpp-generation-capacity 8191))
+                     4097))
+(assert-event (equal (fn-cpp-next-generation *cpp-4097* (fn-cpp-generation-capacity 4096))
+                     :exhausted))
+(assert-event (equal (fn-cpp-next-generation (cpp-gens 4096) *cpp-cap*) :exhausted))
+(assert-event (equal (fn-cpp-next-generation (cpp-gens 4095) *cpp-cap*) 4095))
+;; Tooth (not :bad): a gapped namespace below the capacity is :bad, not the
+;; count.
+(assert-event (equal (fn-cpp-next-generation '(0 2) 10) :bad))
+(must-fail
+ (assert-event (equal (fn-cpp-next-generation '(0 2) 10) (len '(0 2)))))
+;; Tooth (capacity within the uint32 width): past it the codec, not the
+;; profile, exhausts the numbering.
+(assert-event (not (<= (expt 2 40) (+ 1 *fn-cbor-max-uint*))))
+(must-fail
+ (assert-event (equal (fn-cpp-next-generation-from nil 4294967296 (expt 2 40))
+                      (if (<= (expt 2 40) 4294967296) :exhausted 4294967296))))
 
 ; The immutable executor receives authority only through this ACL2 gate.
-(defconst *cpp-publication* (fn-cpp-publication-initial '(0 1) 2 t t))
+(defconst *cpp-publication* (fn-cpp-publication-initial '(0 1) 2 t t *cpp-cap*))
 (assert-event (equal (car *cpp-publication*) :ok))
 (assert-event (fn-jpub-statep (car (cdr (cdr *cpp-publication*)))))
 (assert-event (fn-jpub-authorityp (car (cdr (cdr *cpp-publication*)))))
 ; Every premise is a tooth: no exclusive owner, occupied exact name, proposed
 ; generation mismatch, and a gapped namespace all refuse authorization.
-(assert-event (equal (fn-cpp-publication-initial '(0 1) 2 nil t)
+(assert-event (equal (fn-cpp-publication-initial '(0 1) 2 nil t *cpp-cap*)
                      '(:error :authority)))
-(assert-event (equal (fn-cpp-publication-initial '(0 1) 2 t nil)
+(assert-event (equal (fn-cpp-publication-initial '(0 1) 2 t nil *cpp-cap*)
                      '(:error :occupied)))
-(assert-event (equal (fn-cpp-publication-initial '(0 1) 3 t t)
+(assert-event (equal (fn-cpp-publication-initial '(0 1) 3 t t *cpp-cap*)
                      '(:error :generation)))
-(assert-event (equal (fn-cpp-publication-initial '(0 2) 3 t t)
+(assert-event (equal (fn-cpp-publication-initial '(0 2) 3 t t *cpp-cap*)
                      '(:error :namespace)))
 
 ; A second generation over the longer prefix, selected over the first.
