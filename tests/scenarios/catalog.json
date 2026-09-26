@@ -2197,7 +2197,8 @@
         "tests/test_native_consumer_exchange.py",
         "tests/test_fn_consumer_journal.py",
         "tools/fn_consumer.py",
-        "planning/evidence/consumer-e2-2-2026-09-26.md"
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
       ]
     }
   ]

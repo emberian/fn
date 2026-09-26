@@ -5422,7 +5422,8 @@
         "books/consumer-artifact-retry.lisp",
         "tests/acl2/consumer-artifact-retry-tests.lisp",
         "books/source-routes.lisp",
-        "planning/evidence/consumer-e2-2-2026-09-26.md"
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T062056Z-559151.json"
       ],
       "progress_note": "Lane consumer-e2-2 (2026-09-26), gpt-6's review of wave 2 section 2.",
       "events": [
