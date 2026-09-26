@@ -91,7 +91,7 @@ references evaluated in the logic:
 
 planning/evidence/served-path-scale-2026-09-26/fixture_open.py over a copy
 of hbox:/tank/fn/scratch/fixtures/chain-20000-8cc3cd4c (pack-chain-open's,
-SCN-064); K = 16. Every open in this table is a FULL REPLAY: the current
+SCN-064); K = 16 unless noted. Every FIRST open below is a full replay (the REOPEN rows open from the checkpoint the first run published): the current
 format refuses the fixture's checkpoint (written by the 8cc3cd4c image;
 `open=full-replay reason=checkpoint-open-refused` on every image here, the
 base included), so the fixture no longer measures pack-chain-open's
@@ -99,7 +99,9 @@ checkpoint path (196 s there, on bf5b2471).
 
 | Image | recover | LISTENING | greeting median (min) | GROUP | log sha256 |
 | --- | --- | --- | --- | --- | --- |
-| base 273cd980 (core 6cb25213) | 311.9 s, 5.57 GB | 280.7 s | see below | | time-base-273cd980.log 8240e6ce... |
+| base 273cd980 (core 6cb25213) | 311.9 s, 5.57 GB | 280.7 s | | | time-base-273cd980.log 8240e6ce... |
+| base 273cd980, K = 1, run beside the scale test | 378.1 s | 367.5 s | 116,539 ms (one) | 0.10 s | open-base-273cd980.log |
+| base 273cd980 REOPEN from its published checkpoint, same run | 251.2 s | 260.4 s | 95,302 ms (one) | 0.06 s | same |
 | 7f822c7d (core 7ad17b92) | 103.0 s, 5.64 GB | 115.0 s | 1,183 ms (378) | 4.71 s | open-img1-7f822c7d.log a160c6f0... |
 | 5e15ad4c (core bacf7937) | 110.0 s, 5.64 GB | 119.3 s | 1,039 ms (591) | 3.97 s | open-img2-5e15ad4c.log 632da4de... |
 | 5e15ad4c REOPEN from the checkpoint its first run published | 51.4 s, 5.66 GB | 43.1 s | 369 ms (355; p95 378) | 0.07 s | same |
@@ -122,8 +124,10 @@ pack-chain-open's profile had 54.8 + 22.1 percent in the freshness walk and
 13.9 + 5.9 in the binding searches; none of the four appears in either
 profile here.
 
-The greeting at N = 20,000 is 369 ms on the reopened owner: no longer the
-quadratic (at N = 4,096 it was 1.4 s, checkpoint-cost), but still three
+The greeting at N = 20,000 is 369 ms on the reopened owner against 95.3 s on
+the base image's reopened owner (one sample, run beside the scale test; the
+base's first-run greeting 116.5 s): no longer the quadratic (at N = 4,096 it
+was 1.4 s, checkpoint-cost). The checkpoint reopen: 43.1 s against 260.4 s. but still three
 LINEAR whole-state recognizers per connection under the owner mutex:
 `fn-statep` of the view's archive twice (`fn-nntp-projectionp` in
 `fn-own-open`'s session, and again in `fn-own-reader-context`) and
@@ -160,8 +164,14 @@ not done, PKT-455 (4).
   test_native_checkpoint OK (skipped 3: the combined E2 developer image
   cases), test_native_reader_index OK (all run), test_native_state_checkpoint
   OK (all run). Logs 073f97c1..., f17abdaf..., f76ebb79....
-- test_scale_store_compacts_into_a_chain from the fixture on 5e15ad4c:
-  see "Scale test" below.
+- test_scale_store_compacts_into_a_chain from the fixture on 5e15ad4c
+  (FN_P5_FIXTURE, --mem 40G; SCN-064's 20,000-article served-identical
+  claim over the compacted chain): OK in 1,249.9 s, against 2,564.2 s on
+  089f932b (pack-chain-open); log
+  native-img2-5e15ad4c/logs/test-tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain.log,
+  sha256 6d7c95970ed709b12bffca78833362deee74fa6575cad2ecfb77bc99a9870189.
+  The served view after compaction still equals the pre-compaction view
+  byte for byte: the served bytes are unchanged by this lane.
 
 ## What is not done (PKT-455)
 
