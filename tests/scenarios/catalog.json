@@ -2609,6 +2609,34 @@
         "log": "planning/evidence/sanding-2026-09-26/tin-walk/owner.log",
         "record": "planning/evidence/sanding-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-093",
+      "title": "A friend's node receives the author's signed cancel through a local.* feed and withdraws the target",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-033"
+      ],
+      "steps": [
+        "Two nodes A and F, each `init local.general control.cancel`; each `peer keygen KEYDIR`.",
+        "A invites F with its own address; F accepts; A confirms; while both owners run, A `peer add`s F with outbound local.* and F `peer add`s A with inbound local.*.",
+        "A authors a signed article T in local.general, then its signed cancel C (Newsgroups local.general, Control: cancel T)."
+      ],
+      "expected": [
+        "F serves T (223) after the push.",
+        "A answers 430 for T after C; F answers 430 for T and 223 for C, although neither wildmat names control.cancel."
+      ],
+      "implementation": {
+        "test": "tests.test_native_friends_feed",
+        "cases": [
+          "NativeFriendsFeedTests.test_a_cancel_reaches_the_friend_through_the_ordinary_feed",
+          "NativeFriendsFeedTests.test_bare_fn_and_version"
+        ],
+        "native": true,
+        "log": "planning/evidence/friends-peer-2-2026-09-26/native-n1-run.log",
+        "record": "planning/evidence/friends-peer-2-2026-09-26.md"
+      }
     }
   ]
 }

@@ -21,10 +21,11 @@ addresses, ports and path identities with yours:
 
 ## 1. Bring a node up from the tarball (both of you)
 
-You need Linux on x86-64 and an `openssl` command of version 3.5 or later
-(for ML-DSA-65; the tarball carries the OpenSSL 3.5 *libraries* the node
-loads, but not the command). Nothing else: the tarball carries its Lisp
+You need Linux on x86-64 and, for the TLS pair below, an `openssl` command
+(any version with EC keys). Nothing else: the tarball carries its Lisp
 runtime, OpenSSL 3.5 and libsodium, and runs from wherever it is unpacked.
+`$F` alone prints the operator's usage; `$F --version` prints the source
+revision the tarball was built from.
 
 ```sh
 cd $N
@@ -56,21 +57,18 @@ printf 'PASSWORD\nPASSWORD\n' | $F operator $C principal set-password ember --po
 
 `set-password` reads the password twice, from the terminal or from two lines
 of standard input. Then the node's own keys, the principal that signs its
-invitation or acceptance:
+invitation or acceptance. `peer keygen` draws both pairs through the
+tarball's own libsodium and OpenSSL 3.5, so no `openssl` command is needed:
 
 ```sh
-mkdir -m 700 keys
-openssl genpkey -algorithm ED25519 -outform DER -out keys/ed-private.der
-openssl pkey -inform DER -in keys/ed-private.der -pubout -outform DER -out keys/ed-public.der
-tail -c 32 keys/ed-public.der > keys/ed-public.bin
-{ tail -c 32 keys/ed-private.der; cat keys/ed-public.bin; } > keys/ed-secret.bin
-rm keys/ed-private.der keys/ed-public.der
-openssl genpkey -algorithm ML-DSA-65 -out keys/ml-private.pem
-openssl pkey -in keys/ml-private.pem -pubout -out keys/ml-public.pem
-chmod 600 keys/*
-$F operator $C peer genesis $N/keys           # prints: principal HEX
+$F operator $C peer keygen $N/keys            # prints: principal HEX
 systemd-run --user --unit fn-friends -p MemoryMax=8G $F operator $C run
 ```
+
+`keygen` refuses a directory that exists (it never overwrites keys), makes
+it mode 0700 with every file 0600, and runs `peer genesis` over it. A key
+directory made by hand (the `openssl genpkey` commands for Ed25519 and
+ML-DSA-65, then `peer genesis KEYDIR`) works the same.
 
 The key directory layout (`ed-public.bin` 32 octets, `ed-secret.bin` the
 32-octet seed then the public key, the two ML-DSA-65 PEM files) is what
@@ -134,7 +132,7 @@ printf 'PW-FOR-FRIEND\nPW-FOR-FRIEND\n' | $F operator $C principal set-password 
 umask 077; printf 'FNAUTH1\nhbox-node\nPW-FOR-ME\n' > $N/exchange/persvati.fnauth
 systemctl --user stop fn-friends                # peer add is offline
 $F operator $C peer add persvati persvati.friends.fn.invalid 192.168.50.120 11990 \
-    'local.*,control.cancel' 'local.*,control.cancel' \
+    'local.*' 'local.*' \
     principal 607792851af81f99899a21cb728087edcb137e42883e11d83e9fc458d4d33033 \
     $N/exchange/persvati.fnauth false true starttls 192.168.50.120 $N/exchange/persvati-cert.pem
 $F operator $C peer pull persvati 20
@@ -152,10 +150,13 @@ credential in the clear), `true` (stream with `MODE STREAM`), then `starttls
 SERVER-NAME ANCHOR-PEM` (the name the peer's certificate must carry, and its
 certificate as the only anchor).
 
-**Put `control.cancel` in both wildmats.** A cancel is filed under
-`control.cancel`, not under the target's group; with `local.*` alone the
-cancel never travels, and an article withdrawn on one node stays visible on
-the other (observed: `<friends-t1@persvati.invalid>`).
+**A cancel travels with the groups it names.** A control article is filed
+under `control.cancel`, and it is offered to a peer whose outbound wildmat
+matches its Newsgroups names *or* its filing group (RFC 5537 sections 3.6
+and 5.3; PRF-163). With `local.*` alone, the author's signed cancel of a
+`local.general` article reaches the friend and withdraws the target there.
+Before PRF-163 it was offered under `control.cancel` alone and never left
+the origin (observed: `<friends-t1@persvati.invalid>`).
 
 What you should then see in each `node/log/fn.log`:
 
@@ -194,6 +195,4 @@ there: the other node verifies the cancel under the author's enrolled keys
   (`principal set-password`) and tell them the password. An invitation-code
   flow (the operator issues a code, the stranger redeems it over the reader
   port) is specified, not built (PKT-401).
-- Key generation needs an `openssl` 3.5 command; a `peer keygen` verb using
-  the tarball's own OpenSSL is not built (PKT-402).
 - `peer add` rewrites a peer offline; the node must be stopped for it.

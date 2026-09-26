@@ -487,14 +487,21 @@ exact words and what it answers are in
    `policy set path-identity NAME`, `principal set-password LOGIN
    --posting` (the password twice, from the terminal or two lines of stdin;
    it applies at the next start).
-4. For peering, the node's keys: an Ed25519 pair and an ML-DSA-65 pair made
-   with an `openssl` 3.5 command into a key directory, then `peer genesis
-   KEYDIR`.
+4. For peering, the node's keys: `peer keygen KEYDIR` (an absolute path
+   that does not exist yet) makes the directory mode 0700 with an Ed25519
+   pair from the tarball's libsodium and an ML-DSA-65 pair from its OpenSSL
+   3.5, every file 0600, and runs `peer genesis KEYDIR`, printing the
+   principal. It refuses an existing directory. A directory made by hand
+   with an `openssl` 3.5 command, then `peer genesis KEYDIR`, is the same.
 5. `fn operator NODE/fn.toml run` under a service manager
    (`systemd-run --user --unit NAME -p MemoryMax=8G ...` on a box without
    root).
 
-`fn operator CONFIG help VERB` prints each verb's grammar.
+`fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
+words prints the operator's usage (it is `fn operator - help`), and `fn
+--version` prints the 40-digit source revision recorded beside the image's
+core (`libexec/fn/source-revision`, written by the installer; exit 1 when
+the image records none).
 
 ### Install the native production entry
 
