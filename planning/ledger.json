@@ -888,6 +888,8 @@
     "tests/acl2/account-list-tests",
     "books/public-exposure",
     "tests/acl2/public-exposure-tests",
+    "books/public-exposure-reply",
+    "tests/acl2/public-exposure-reply-tests",
     "books/topic-history-metadata",
     "books/topic-history-metadata-invariants",
     "books/topic-history-authorship",
@@ -963,26 +965,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 984,
-    "books_in_root_closure": 977,
-    "roots": 959,
-    "theorems": 13862,
-    "functions": 9668,
-    "assert_events": 14727,
-    "must_fails": 1735,
+    "books": 986,
+    "books_in_root_closure": 979,
+    "roots": 961,
+    "theorems": 13879,
+    "functions": 9677,
+    "assert_events": 14740,
+    "must_fails": 1737,
     "prover_refusals": 2,
     "encapsulates": 69,
     "guards": {
-      "verified": 2225,
+      "verified": 2226,
       "declared-off": 779,
-      "default-guarded": 5233,
+      "default-guarded": 5241,
       "default-unguarded": 1431
     },
-    "suspect_theorems": 128,
+    "suspect_theorems": 132,
     "export_hygiene_warnings": 154,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 148,
-    "include_hygiene_warnings": 998,
+    "include_hygiene_warnings": 999,
     "host_names_warnings": 1139,
     "hand_written_record_warnings": 18
   },
@@ -12834,6 +12836,37 @@
       "read_error": null
     },
     {
+      "book": "books/public-exposure-reply.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 7,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "public-exposure"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-exp-481-count-of-atom",
+        "fn-exp-481-scan-of-atom",
+        "fn-exp-observe-effects-unfolds",
+        "fn-served-reply-octets-of-atom"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/public-exposure-rows.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -12864,11 +12897,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 25,
-      "functions": 69,
+      "functions": 70,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 69,
+        "default-guarded": 70,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -25604,6 +25637,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/public-exposure-reply-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/public-exposure-reply"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/public-exposure-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29023,6 +29084,30 @@
       ]
     },
     {
+      "theorem": "fn-exp-481-count-of-atom",
+      "book": "books/public-exposure-reply.lisp",
+      "line": 86,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-exp-481-count and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-exp-481-scan-of-atom",
+      "book": "books/public-exposure-reply.lisp",
+      "line": 115,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-exp-481-scan and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-exp-observe-effects-unfolds",
+      "book": "books/public-exposure-reply.lisp",
+      "line": 216,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-exp-observe-effects"
+      ]
+    },
+    {
       "theorem": "fn-fc-wire-next-unconsumed-is-bounded-linear",
       "book": "books/feed-connection-invariants.lisp",
       "line": 26,
@@ -29409,6 +29494,14 @@
       "line": 846,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sccr-decode-plan and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-served-reply-octets-of-atom",
+      "book": "books/public-exposure-reply.lisp",
+      "line": 143,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-served-reply-octets and the conclusion is that branch's value"
       ]
     },
     {
@@ -34338,6 +34431,13 @@
         "line": 41,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/public-exposure-reply.lisp",
+        "line": 35,
+        "include": "public-exposure",
+        "included": "books/public-exposure.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46713,42 +46813,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 239,
+        "line": 241,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 239,
+        "line": 241,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 427,
+        "line": 429,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 665,
+        "line": 667,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 665,
+        "line": 667,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2324,
+        "line": 2330,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
