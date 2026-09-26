@@ -2703,7 +2703,7 @@
                                  (fn-auth-session-base
                                   (fn-own-conn-session
                                    (fn-own-find-conn id (fn-own-conns o))))))
-                            (completion (fn-own-outcome-rendering o word)))
+                            (completion (fn-own-post-rendering o word)))
                  (:instance fn-own-ledger-durablep-member
                             (ledger (fn-own-ledger o))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))

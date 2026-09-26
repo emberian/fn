@@ -430,6 +430,13 @@
                            (fn-nntp-post-outcome fn-own-completion-consumedp
                             fn-own-feed-durable fn-own-advance)))))
 
+(local
+ (defthm fn-osp-post-outcome-answers
+   (implies (fn-post-sessionp ps)
+            (consp (fn-post-result-effects (fn-nntp-post-outcome ps completion))))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-post-outcome fn-post-single fn-nntp-single)
+                                   (fn-post-sessionp))))))
+
 ; KEYSTONE (PKT-473, PRF-184), the converse: the POST reply names a refused
 ; key change ONLY for a durable attempt whose detail is the executor's
 ; refusal, and only once the completion is consumed.  No other word the host
@@ -456,7 +463,11 @@
                             (completion (fn-own-post-rendering
                                          o (fn-pa-served-post-word attempt detail))))
                  (:instance fn-pa-served-post-word-names-a-refused-key-change-only-when-durable
-                            (word attempt)))
+                            (word attempt))
+                 (:instance fn-osp-post-outcome-answers
+                            (ps (fn-auth-post-session (fn-own-conn-session
+                                                       (fn-own-find-conn id (fn-own-conns o)))))
+                            (completion :durable-key-change-refused)))
            :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
                             fn-own-outcome-rendering fn-own-post-rendering
                             fn-own-durable-wordp fn-served-post-outcome)

@@ -486,7 +486,7 @@
 ; composite whose key change was refused.
 (assert-event
  (equal (fn-olog-transit-line *olt-transit* 7 :want nil :durable nil :verified)
-        (olt-text "accepted transit connection=7 message-id=<relay@example.invalid> code=235 decision=want reason=none detail=none verdict=verified time=2026-09-18T00:00:00Z")))
+        (olt-text "accepted transit connection=7 message-id=<relay@example.invalid> code=239 decision=want reason=none detail=none verdict=verified time=2026-09-18T00:00:00Z")))
 (assert-event
  (equal (fn-olog-detail-fields :carried :carried)
         (olt-text "detail=carried verdict=carried")))
