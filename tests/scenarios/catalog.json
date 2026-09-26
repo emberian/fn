@@ -2597,7 +2597,16 @@
       "evidence": [
         "tests/test_native_implicit_tls.py",
         "planning/evidence/sanding-2026-09-26.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests/test_native_implicit_tls.py",
+        "cases": [
+          "tests/test_native_implicit_tls.py"
+        ],
+        "native": false,
+        "log": "planning/evidence/sanding-2026-09-26.md",
+        "record": "planning/evidence/sanding-2026-09-26.md"
+      }
     }
   ]
 }
