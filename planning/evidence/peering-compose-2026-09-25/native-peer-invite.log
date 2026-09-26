@@ -1,0 +1,42 @@
+test_a_crash_between_consumption_and_enrolment_enrols_once (tests.test_native_peer_invite.NativePeerInviteTests.test_a_crash_between_consumption_and_enrolment_enrols_once) ... ok
+test_an_acceptance_of_an_invitation_this_node_never_issued (tests.test_native_peer_invite.NativePeerInviteTests.test_an_acceptance_of_an_invitation_this_node_never_issued) ... ok
+test_invite_accept_confirm_and_the_refusals (tests.test_native_peer_invite.NativePeerInviteTests.test_invite_accept_confirm_and_the_refusals) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 7.981s
+
+OK
+NATIVE-PEER-INVITE genesis g a446223e6b723c31f1a902c7d57e8c70f775f6f03aebf8c1a3a40911223ff9e1
+NATIVE-PEER-INVITE genesis h b4ae697c4d9dcc1e59bada39581371c9ceae3ad0319fe797cec9975b72fe175e
+NATIVE-PEER-INVITE A2 peer invite -> 0
+NATIVE-PEER-INVITE B2 peer accept -> 0
+NATIVE-PEER-INVITE A2 confirm with the stop -> 3
+NATIVE-PEER-INVITE A2 peer list after the stop: nodeB2 path-identity=b2.example address=127.0.0.1 port=44589 security=clear inbound=fn.* outbound=- auth=principal:b4ae697c4d9dcc1e59bada39581371c9ceae3ad0319fe797cec9975b72fe175e
+accepted operator peer
+NATIVE-PEER-INVITE A2 peer confirm -> 0
+NATIVE-PEER-INVITE A2 peer confirm -> 1 expected already-confirmed
+NATIVE-PEER-INVITE A2 key history: ['generation=1 state=active principal=b4ae697c4d9dcc1e59bada39581371c9ceae3ad0319fe797cec9975b72fe175e']
+NATIVE-PEER-INVITE genesis a 750c7190457ec060e888bda6f8b000f0b41664e2ead296cdd1b40ee1e81d994b
+NATIVE-PEER-INVITE genesis f 545e27ec80636b377661536b7c6f9e4a2ac2951a2bb4ecf88f2c0289e35b5faf
+NATIVE-PEER-INVITE genesis e 1462e9787a125eca89b549eea940e3a96ea151def2dbe322253991a3394078b3
+NATIVE-PEER-INVITE D peer invite -> 0
+NATIVE-PEER-INVITE E peer accept -> 0
+NATIVE-PEER-INVITE A peer confirm -> 1 expected no-such-invitation
+NATIVE-PEER-INVITE genesis a b7a9af85ea519091ace5bb1d95a160665fcf9f6de9f628733ba7a51196991d5c
+NATIVE-PEER-INVITE genesis b 4647cf26fed642793d1a60183c1b1f268afe54fe01d1044deb2c9d1e11ec41d6
+NATIVE-PEER-INVITE genesis c c30ab705ab2c915c73d98ce0a0bb88e680a09eecbe4b04d6eea8c8649b402150
+NATIVE-PEER-INVITE A peer invite -> 0
+NATIVE-PEER-INVITE B peer accept -> 0
+NATIVE-PEER-INVITE B peer accept -> 1 expected already-enrolled
+NATIVE-PEER-INVITE A peer confirm -> 1 expected unverified
+NATIVE-PEER-INVITE A peer invite -> 0
+NATIVE-PEER-INVITE A peer confirm -> 1 expected another-invitation
+NATIVE-PEER-INVITE A peer confirm -> 0
+NATIVE-PEER-INVITE A peer list after confirm: nodeB path-identity=b.example address=127.0.0.1 port=43839 security=clear inbound=fn.* outbound=- auth=principal:4647cf26fed642793d1a60183c1b1f268afe54fe01d1044deb2c9d1e11ec41d6
+accepted operator peer
+NATIVE-PEER-INVITE A peer confirm -> 1 expected already-confirmed
+NATIVE-PEER-INVITE C peer accept -> 0
+NATIVE-PEER-INVITE A peer confirm -> 1 expected invitation-consumed
+NATIVE-PEER-INVITE A peer confirm -> 1 expected document-kind
+NATIVE-PEER-INVITE A key history: ['generation=1 state=active principal=4647cf26fed642793d1a60183c1b1f268afe54fe01d1044deb2c9d1e11ec41d6']
+NATIVE-PEER-INVITE B key history: ['generation=1 state=active principal=b7a9af85ea519091ace5bb1d95a160665fcf9f6de9f628733ba7a51196991d5c']
