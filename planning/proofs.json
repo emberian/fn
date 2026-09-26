@@ -4570,7 +4570,7 @@
     {
       "id": "PRF-124",
       "title": "Peering composed: the confirm's one configuration record consumes the invitation and configures the peer; a declined key statement is decided at reopen under the configuration in force at its txid; the admission verdict names its class",
-      "statement": "fn-pinv-confirm-record-configures-the-issued-invitations-peer: a (:configure DELTAS) from fn-pinv-confirm-record-plan RECEIVED INVITATION OBS ED ML INVITATIONS SNAPSHOTS PEERS (books/peer-invite.lisp; host/native/peer-invite.lisp fnn-pinv-owner-confirm calls it through fn-pinv-host-confirm-record-plan) has fn-pinv-confirm-plan :consume, the row pending, the invitation of kind invitation whose authored-source identity is the row's, the confirmed peer fn-cfg-peerp with auth (:principal ACCEPTOR) and a name no peer of PEERS has, and DELTAS = (consume-delta, fn-cfg-set-peer-delta peer). fn-pinv-confirm-record-fold-consumes-and-configures: over fn-cfg-apply V GEN STAMP DELTAS (the fold fn-cfg-apply-record runs when the owner completes the publication) the invitation row is consumed by exactly this acceptor and acceptance source identity, the peers table holds exactly the peer's rows under its name, and (not enrolled) the next confirm plan is :enrol. fn-ks-reopen-is-blind-to-later-configuration and fn-ks-a-decline-replays-as-a-decline: fn-ks-recover-recorded (the open's recovery; host/native/owner.lisp fnn-owner-key-statement-recover with AT-OPEN, rows from host/owner-host.lisp fn-owner-key-statement-rows under *fn-ks-reopen-policy* :recorded) decides the pending statement under fn-ctl-config-at its own txid, so configuration records later than the statement change nothing, and a statement whose plan declined is left as the acceptance left it. fn-ks-recorded-recovery-completes-the-cut: when every configuration record precedes the txid and the journal replays, the recorded recovery of the cut is the uninterrupted acceptance under the live grants. fn-pcb-admission-verdict-names-its-class: the verdict is one of :unsigned :carried :malformed :cryptographically-invalid :unenrolled :unsupported-profile :verified; :verified iff the plan is :ok under both verified observations; :carried iff the D23 arm; a present carrier is never :unsigned. Not covered: pull over TLS (packet 8), the observation determinism the decline theorem assumes (A-CRYPTO), fn-pcb-admission-verdict has no host caller yet (its classes are the transit refusal detail's plus :carried/:verified).",
+      "statement": "fn-pinv-confirm-record-configures-the-issued-invitations-peer: a (:configure DELTAS) from fn-pinv-confirm-record-plan RECEIVED INVITATION OBS ED ML INVITATIONS SNAPSHOTS PEERS (books/peer-invite.lisp; host/native/peer-invite.lisp fnn-pinv-owner-confirm calls it through fn-pinv-host-confirm-record-plan) has fn-pinv-confirm-plan :consume, the row pending, the invitation of kind invitation whose authored-source identity is the row's, the confirmed peer fn-cfg-peerp with auth (:principal ACCEPTOR) and a name no peer of PEERS has, and DELTAS = (consume-delta, fn-cfg-set-peer-delta peer). fn-pinv-confirm-record-fold-consumes-and-configures: over fn-cfg-apply V GEN STAMP DELTAS (the fold fn-cfg-apply-record runs when the owner completes the publication) the invitation row is consumed by exactly this acceptor and acceptance source identity, the peers table holds exactly the peer's rows under its name, and (not enrolled) the next confirm plan is :enrol. fn-ks-reopen-is-blind-to-later-configuration and fn-ks-a-decline-replays-as-a-decline: fn-ks-recover-recorded (the open's recovery; host/native/owner.lisp fnn-owner-key-statement-recover with AT-OPEN, rows from host/owner-host.lisp fn-owner-key-statement-rows = fn-ks-statement-rows with AT-OPEN; no policy switch) decides the pending statement under fn-ctl-config-at its own txid, so configuration records later than the statement change nothing, and a statement whose plan declined is left as the acceptance left it. fn-ks-recorded-recovery-completes-the-cut: when every configuration record precedes the txid and the journal replays, the recorded recovery of the cut is the uninterrupted acceptance under the live grants. fn-pcb-admission-verdict-names-its-class: the verdict is one of :unsigned :carried :malformed :cryptographically-invalid :unenrolled :unsupported-profile :verified; :verified iff the plan is :ok under both verified observations; :carried iff the D23 arm; a present carrier is never :unsigned. Not covered: pull over TLS (packet 8), the observation determinism the decline theorem assumes (A-CRYPTO), fn-pcb-admission-verdict has no host caller yet (its classes are the transit refusal detail's plus :carried/:verified).",
       "milestone": "M3",
       "requirements": [
         "NNT-022"
@@ -4816,7 +4816,8 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ],
       "events": [
         "fn-bpnj-step-delegates-every-other-event",
@@ -5052,7 +5053,7 @@
     {
       "id": "PRF-130",
       "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
-      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss, which host/native/io.lisp fnn-command-rollback-snapshot calls: fn-native-operator-snapshot-loss-counts-the-suffix, the verb answers :loses exactly when the snapshot's committed (sequence . length) history is a prefix of the store's, and the count is the number of committed transactions after it.",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -5226,7 +5227,8 @@
         "planning/evidence/manifests/certify-20260926T023725Z-174351.json",
         "planning/evidence/manifests/certify-20260926T034016Z-257596.json",
         "planning/evidence/manifests/certify-20260926T044558Z-333541.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ],
       "progress_note": "Lane bp-lifecycle-3 (2026-09-26, wave 2), PKT-276. Teeth: tests/acl2/bp-run-class-tests (the five codes; a must-fail per hypothesis of the separation; the fence among mixed evidence; the class of each outcome over the reachable attempting state of PRF-120's teeth, the stale attempt and the pending state as hypothesis removals), tests/acl2/bp-node-host-tests (the mixed article/session cases), tests/acl2/bp-node-profile-tests (the 128-row profile round trip, a zero-row and a 2^24+1-row profile, a configuration-less open, a lowering write refused, replay of two durable kind-5 rows under one row of profile answering :held-beyond-profile and under two :ready). Native: the six BP modules' expectations and SCN-067 under a 128-row profile; see the record.",
       "events": [
@@ -5451,6 +5453,190 @@
         "fn-cvec-release-forward-removes-one-debt",
         "fn-cvec-release-never-raises-the-charge",
         "fn-cvec-config-publication-keeps-the-release-generation"
+      ]
+    },
+    {
+      "id": "PRF-135",
+      "title": "The state checkpoint read from the octet buffer decodes to the value the list decoder gives: the buffer decode of the writer's plan is the value, and on any plan it is the list decode of the frames' octets",
+      "statement": "books/store-checkpoint-reader.lisp. fn-sccr-decode-plan (the host-called entry: host/store-node-host.lisp fn-store-sco-decode, called by host/native/io.lisp fnn-state-checkpoint-load at the store's open after fnn-state-checkpoint-plan has read the file's chunks into the octet buffer) reads a plan of (HEADER A B TRAILER) per FNSC segment, the chunk as the buffer's cells A..B, and decodes the postfix program by index (fn-sccr-run, the stack machine reading the buffer; a payload leaf is fn-sccb-slice-acc of its range, the record's own octet list, built once). KEYSTONE fn-sccr-decode-of-plan: (implies (and (fn-sccb-treep c) (< (+ 1 (len (fn-scc-encode c))) *fn-scc-u64-bound*) (< (fn-scc-value-sequence c) *fn-scc-u64-bound*)) (equal (fn-sccr-decode-plan (mv-nth 0 (fn-sccb-plan c seg st)) (mv-nth 1 (fn-sccb-plan c seg st))) (list :ok c))): the buffer decode of the writer's plan over the buffer it leaves is the value, the inverse of fn-sccb-plan-is-file-octets (PRF-133). The twin fn-sccr-decode-plan-is-decode-segments: for a well-shaped plan (fn-sccr-planp: 37-octet headers, 32-octet trailers, ranges within the buffer, contiguous) and any buffer contents, corrupt ones included, (equal (fn-sccr-decode-plan plan st) (fn-scc-decode-segments (fn-sccr-plan-segments plan st))), the frames' octets being fn-sccb-frame-octets, what the host's file bytes are; the verdicts (:header, :segment, :truncated, :tree, :value) agree, and a mis-shaped plan is (:refused :layout), a verdict the list decoder never gives (fn-sccr-decode-plan-refuses-layout-by-definition, the branch by definition). fn-sccr-run-is-run: the index machine over the cells [i, end) is fn-scc-run over that slice. fn-sccr-admitted-within-bounds: a segment ACL2 admits (fn-sccr-admit-segment, called per segment before the host reads it, host/store-node-host.lisp fn-store-sco-segment-admit) has the extent the codec sizes it, within the profile's segment bound and, with the running total, within the file bound fn-sccr-file-read-bound (three times max-history-octets plus one segment's framing); a refusal is named :exceeds-bound, which fn-sco-select maps to (:full-replay :checkpoint-exceeds-bound). Every executable function is guard-verified. What it does not say: that the host's plan holds the file's bytes (A-HOST, as for every buffer fill); anything about the seal's digest beyond fn-frame-trailer being closed (the seal reads each chunk once as a transient list of at most one segment, as the writer does); or that the file bound admits every checkpoint of an admitted history (it is a policy from the profile: past it the journal replays).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-133"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-sccr-decode-of-plan",
+        "fn-sccr-decode-plan-is-decode-segments",
+        "fn-sccr-run-is-run",
+        "fn-sccr-admitted-within-bounds"
+      ],
+      "evidence": [
+        "books/store-checkpoint-reader.lisp",
+        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T051745Z-1490116.json"
+      ],
+      "progress_note": "Lane rep-wave-d-3 (2026-09-26): certified on persvati (run-20260926T051724Z-bab6, ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s: passed 6, failed 0, no book over 10 s) after every form was admitted in the REPL; the twin fn-sccr-decode-plan-is-decode-segments is the book's one costly proof. The native checkpoint module and the reopen rows are in the record."
+    },
+    {
+      "id": "PRF-137",
+      "title": "A re-signed carrier of an accepted signed source is a D25 conflict at the signed control route; only the saved artifact is already stored",
+      "statement": "The subject is fn-rcl-existing-action (books/store-reclaim.lisp), which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action on the octets fn-hsig-injected-carrier-octets computes, before it commits. fn-sr-a-re-signed-carrier-is-a-conflict (books/consumer-artifact-retry): the held payload under Message-ID M is fn-hsig-injected-carrier-octets of source S, principal P, keys K and signatures S1 at clock A; the same S, P and K with signatures S2 different from S1, at any clock B and for any groups, both plans naming M, is :conflict. It instantiates fn-sr-a-changed-source-is-a-conflict (PRF-117) through fn-cra-a-re-signed-carrier-is-other-octets: two rendered carriers (fn-hc-render-at-most) of one source, principal and key set with different signatures are different octets (folding inserts only octets outside the base64 alphabet, base64 round-trips, and the canonical carrier decodes to exactly its signatures, fn-hc-decode-at-of-encode-at). The same artifact resent is :duplicate by fn-sr-a-signed-retry-is-already-stored (PRF-117, cited, not restated). Together they are the fn side of CNS-003: a client that resends its saved artifact gets D25's duplicate; one that re-signs gets a conflict. Not claimed: that the two Message-ID and the two nonempty-octet hypotheses are necessary (they are the instantiated keystone's; no conclusion-failing witness exists at the fixture and the weakened theorem is not proved), anything about the Python consumer (an external client), or that a revoked author's resend reaches D25 (the enrolment check refuses it first; PKT-322).",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-003"
+      ],
+      "depends_on": [
+        "PRF-117"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/consumer-artifact-retry.lisp",
+        "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "books/source-routes.lisp",
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T062056Z-559151.json"
+      ],
+      "progress_note": "Lane consumer-e2-2 (2026-09-26), gpt-6's review of wave 2 section 2.",
+      "events": [
+        "fn-sr-a-re-signed-carrier-is-a-conflict",
+        "fn-cra-a-re-signed-carrier-is-other-octets"
+      ]
+    },
+    {
+      "id": "PRF-140",
+      "title": "An accepted key statement whose key change a crash cut finishes at the restart under its own admission context, never under today's configuration",
+      "statement": "fn-ks-accepted-statement-finishes-under-its-admission-context: when every record of the admission journal CONFIGS is at or before the statement EVENT's txid, CONFIGS replays (fn-config-replay RESERVED CEILING CONFIGS is not :fault), and every record of MORE is later than the txid, fn-ks-recover-recorded (fn-ks-cut RECORDS SNAPSHOTS EVENT) (append CONFIGS MORE) OBSERVED ED ML SEQUENCE TXID STORE-GENERATION equals fn-ks-accept RECORDS SNAPSHOTS EVENT under the authorities of CONFIGS' replay (the live grants the acceptance read). Subject fn-ks-recover-recorded, the open's recovery: host/native/owner.lisp fnn-owner-key-statement-recover -> fnn-owner-key-statement with AT-OPEN, rows host/owner-host.lisp fn-owner-key-statement-rows = fn-ks-statement-rows (books/key-statements.lisp). Built on fn-ks-recorded-recovery-completes-the-cut and fn-ks-reopen-is-blind-to-later-configuration (PRF-124). No true-listp hypothesis (a replaying journal is a true list, fn-ks-config-replay-needs-a-true-list). Teeth: tests/acl2/key-statements-tests.lisp (grant at the txid, cut, revoke one txid later: recovery enrols; one must-fail per hypothesis). Not covered: a journal missing records through the txid is unreachable, not refused by a theorem here (the open faults :config-sequence; no transition removes a configuration record); the host-to-model correspondence of fnn-owner-key-statement is by construction (it calls fn-ks-plan/fn-ks-execute over the same rows), not a theorem.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-022"
+      ],
+      "depends_on": [
+        "PRF-098",
+        "PRF-124"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/key-statements.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_key_statements.py",
+        "planning/evidence/key-replay-fixture-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T060726Z-524058.json",
+        "planning/evidence/manifests/certify-20260926T063151Z-588946.json"
+      ],
+      "events": [
+        "fn-ks-accepted-statement-finishes-under-its-admission-context"
+      ]
+    },
+    {
+      "id": "PRF-136",
+      "title": "One BP arrival's fragment selection reads the held rows' primary blocks and re-encodes and plans only rows whose family holds its offset-zero fragment, answering what the reference selector answers",
+      "statement": "books/bp-node-fragment-step.lisp: host/native/bp-service.lisp fnn-bps-fragment-progress (called after every accepted arrival by fnn-bps-receive and at open by fnn-bps-open) calls fn-bpnf-family-next, whose :exec (guard verified in books/bp-node-fragment-guards.lisp) is (fn-bpnf-family-select st (fn-bpnf-held-list st) observation nil (fn-bpnf-zero-family-keys (fn-bpnf-held-list st))). fn-bpnf-zero-family-keys collects, from each row's primary block alone, the family key (principal, ADU key, coherence key) of every candidate row (fn-bpnf-fragment-candidatep: primary block, fragment flag, not deleted, not consumed; fn-bpnf-active-fragment-is-candidate) at offset zero. fn-bpnf-family-select-is-aux: for HELD a subset of the held list, TRIED a list of family keys every active held row of which has a plan that is not ready (fn-bpnf-family-keys-not-readyp, true of nil), and ZERO those offset-zero keys, the select equals fn-bpnf-family-next-aux, the reference selector (the anchor included); with fn-bpnf-family-next-memo-is-aux both equal the memo it replaces. fn-bpnf-family-without-zero-key-is-not-ready: a held active row whose family key has no offset-zero candidate has a plan that is not ready (from fn-bpnf-family-without-offset-zero-is-not-ready, PRF-134). Work, counted over the select's own control flow: fn-bpnf-family-select-plans-bound: the rows the select re-encodes (fn-bpnf-active-fragmentp, whose fn-bpnf-heldp re-encodes the bundle) and plans (fn-bpnf-family-plan-at, whose reassembly is linear in the family's octets, PRF-121) are at most the candidate rows whose family key is in ZERO; fn-bpnf-family-select-steps-bound: a call that plans no row makes at most |held| * (1 + |zero| + |tried|) header steps (one visit and the key comparisons of its two membership tests per row). So an arrival into a family whose offset-zero fragment is not held re-encodes no held row. Scope: the maintained relation is the call's own (TRIED, established empty at each host call and preserved by each step of the walk); nothing is carried across calls. A family whose offset-zero fragment is held is planned on every call until it is complete (its plan is linear in its octets): a family arriving in offset order costs its octets per arrival (PKT-308). The session's post-arrival scans ask every held row the same kind of question: books/bp-app-handoff.lisp fn-bpah-local-pendingp (per row in fn-bpah-select-oldest-at and -uncertain-at, host fnn-bpnode-dispatch-pending) and books/bp-report-observe.lisp fn-bpn-report-observe-held (per row in fn-bpn-report-observe-next, host fnn-bpnode-observe-reports) now have an :exec (mbe, guard verified; their :logic bodies and every statement about them unchanged) that reads the row's primary block first: fn-bpnf-held-nonfragment-headerp and fn-bpnf-held-administrative-headerp (books/bp-node-foundation.lisp). fn-bpah-local-pendingp-has-a-nonfragment-header and fn-bpn-report-observe-held-needs-an-administrative-header state why the prefilter refuses only rows the definition refuses (with fn-bpnf-heldp-primary-blockp: a held row's primary block is a block), so a fragment row costs those scans its header, not a re-encoding. The expiry scan books/bp-report-deletion.lisp fn-bpn-report-find-expired-held (host fnn-bpnode-delete-expired, after every session) asked fn-bpnf-heldp twice per row (fn-bpn-report-held-delete-pendingp and fn-bpah-held-expiry); its :exec asks first fn-bpah-held-expiry-header (books/bp-app-handoff-time.lisp: the same clock decision read from the primary block and the anchor), and fn-bpah-held-expiry-header-of-held equates it with fn-bpah-held-expiry on every held row, so a live row costs the scan its header. The receive step's own per-row work (fn-bpnf-held-octets walks each held wire's length, fn-bpnf-find-held compares keys) is outside these theorems.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-121",
+        "PRF-134"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "books/bp-node-fragment-guards.lisp",
+        "tests/acl2/bp-node-fragment-step-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp.lisp",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md",
+        "books/bp-node-foundation.lisp",
+        "books/bp-app-handoff.lisp",
+        "books/bp-report-observe.lisp",
+        "books/bp-report-guards.lisp",
+        "tests/acl2/bp-app-handoff-tests.lisp",
+        "tests/acl2/bp-report-observe-tests.lisp",
+        "host/native/bp-node.lisp",
+        "books/bp-app-handoff-time.lisp",
+        "books/bp-report-deletion.lisp",
+        "tests/acl2/bp-app-handoff-time-tests.lisp"
+      ],
+      "progress_note": "Lane bp-lifecycle-5 (2026-09-26, wave 2), PKT-294 item 1, PKT-308. See the record.",
+      "events": [
+        "fn-bpnf-family-select-is-aux",
+        "fn-bpnf-family-select-plans-bound",
+        "fn-bpnf-family-select-steps-bound",
+        "fn-bpnf-family-without-zero-key-is-not-ready",
+        "fn-bpnf-active-fragment-is-candidate",
+        "fn-bpnf-zero-family-keys-bound",
+        "fn-bpnf-heldp-primary-blockp",
+        "fn-bpah-local-pendingp-has-a-nonfragment-header",
+        "fn-bpn-report-observe-held-needs-an-administrative-header",
+        "fn-bpah-held-expiry-header-of-held"
+      ]
+    },
+    {
+      "id": "PRF-141",
+      "title": "store rollback-check --snapshot: an earlier state of this history exactly when the snapshot's committed records are this store's first records, compared octet for octet, and the count is the records after them",
+      "statement": "books/native-operator.lisp. host/native/io.lisp fnn-command-rollback-snapshot acquires both stores read-only under their shared writer locks (fnn-acquire; a store an owner holds is refused, never read unlocked) and holds both while it reads each committed history as the open reads it (fnn-rollback-history: fnn-durable-records from the selected pack's lower bound, the pack's records through *fnn-pack-recover-callback*, i.e. fn-store-checkpoint-compaction-observe, then the suffix files; fnn-check-history-marker over the count) and calls fn-native-operator-history-start, then fn-native-operator-history-step once per snapshot record with the store's record at the same position (CUR-PRESENT nil past the store's end), then fn-native-operator-history-verdict with the store's record count (through the fn-native-operator-host-history-* wrappers). Both theorems are stated over that composition, V = (fn-native-operator-history-verdict (fn-nop-history-run (fn-native-operator-history-start) snap cur) (len cur)), fn-nop-history-run being the host's loop. KEYSTONE fn-native-operator-history-loss-is-ancestry: (and (iff (equal (car V) :loses) (equal (append snap (nthcdr (len snap) cur)) cur)) (implies (equal (append snap (nthcdr (len snap) cur)) cur) (equal (cadr V) (len (nthcdr (len snap) cur))))): the verb answers :loses exactly when the store's history is the snapshot's records followed by more records, and the count is the number of those records; otherwise (:refused :snapshot-not-a-prefix). fn-native-operator-history-loss-is-snapshot-loss: V equals fn-native-operator-snapshot-loss (PRF-130's list-level function). Events are exact record octets: no sequence number, length or file size is compared, as a filter or as a count, and no collision assumption is used. Every executable function is guard-verified (guard t). What it does not say: that the host's loop makes exactly these calls (host code, source-checked by tests/test_native_rollback_history.py); anything about the configuration history, which a restore also replaces; that the snapshot is the newest earlier state; or freshness (a store-local comparison is not an anti-rollback witness, mandate 5.6).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-008"
+      ],
+      "depends_on": [
+        "PRF-130"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/native/io.lisp",
+        "host/native-operator-host.lisp",
+        "tests/test_native_rollback_history.py",
+        "planning/evidence/rollback-history-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T065706Z-2375300.json"
+      ],
+      "events": [
+        "fn-native-operator-history-loss-is-ancestry",
+        "fn-native-operator-history-loss-is-snapshot-loss"
+      ]
+    },
+    {
+      "id": "PRF-139",
+      "title": "The owner's admission and a BP contact's job selection cost what the request costs: the contact's selection is one traversal of the job list, equal to the two lookup scans (part 2, certified); the Store's maintained record count and octets (part 1) are held for a continuation",
+      "statement": "Part 2. fn-bpnj-contact-next (books/bp-node-job-offer.lisp; host/native/bp-service.lisp fnn-bpc-drive-contact and host/native/bp-node.lisp fnn-bpnode-send-receipts call it before every offer) reads the gate, then traverses the job list once (fn-bpnj-scan), and equals the former two-scan answer over fn-bpnj-select and fn-bpnj-held on every state (fn-bpnj-contact-next-is-the-two-scan-selection), so PRF-120's theorems keep their statements; the scan's ready and held components are the lookup scans' from any examined prefix (fn-bpnj-scan-finds-the-selected-job, fn-bpnj-scan-finds-the-held-job), and under the machine's key uniqueness (fn-bpn-job-listp, the jobs field of fn-bpn-machine-statep) every job is its own entry, so the one confirming lookup succeeds at once (fn-bpnj-unique-keys-make-every-job-its-own-entry). Part 1 (the owner's committed record count and octets as maintained Store state, equal to the fold) is not delivered: the attempt at 7f615571 extended the octets inside fn-sn-io through the constrained record encoder, which defconst evaluation cannot run; the continuation carries the count in the Store and advances the octet cache through the event index (planning/evidence/hot-path-scans-2026-09-26.md). Not covered: the per-contact drain still re-scans from the head per offer (PKT-324).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-120"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "events": [
+        "fn-bpnj-contact-next-is-the-two-scan-selection",
+        "fn-bpnj-scan-finds-the-selected-job",
+        "fn-bpnj-scan-finds-the-held-job",
+        "fn-bpnj-unique-keys-make-every-job-its-own-entry"
+      ],
+      "evidence": [
+        "books/bp-node-job-offer.lisp",
+        "tests/acl2/bp-node-job-offer-tests.lisp",
+        "planning/evidence/hot-path-scans-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T070754Z-693820.json",
+        "planning/evidence/manifests/certify-20260926T071648Z-728863.json"
       ]
     }
   ]

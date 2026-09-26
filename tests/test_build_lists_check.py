@@ -41,7 +41,13 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
 CHECKPOINT_BUFFER_INCLUDES = (
     ';; The state checkpoint\'s file octets over the octet buffer (rep-wave-d-2):\n'
     ';; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.\n'
-    '(include-book "books/store-checkpoint-buffer")\n')
+    '(include-book "books/store-checkpoint-buffer")\n'
+    # rep-wave-d-3: the reader over the buffer includes the writer's book, so
+    # the fixture omits both or the buffer is served transitively.
+    ';; The state checkpoint read from the octet buffer (rep-wave-d-3):\n'
+    ';; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and\n'
+    ';; fn-store-sco-segment-admit calls fn-sccr-admit-segment.\n'
+    '(include-book "books/store-checkpoint-reader")\n')
 BUFFER_FINDINGS = [
     "included: host/owner-host.lisp uses fn-octets, defined in "
     "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
@@ -55,7 +61,12 @@ STORE_NODE_HOST_FINDINGS = [
     "included when it loads host/store-node-host.lisp",
     "included: host/store-node-host.lisp uses fn-sccb-plan, defined in "
     "books/store-checkpoint-buffer.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/store-node-host.lisp"]
+    "included when it loads host/store-node-host.lisp"] + [
+    # rep-wave-d-3: the reader's three entries the store-node host calls.
+    f"included: host/store-node-host.lisp uses {name}, defined in "
+    "books/store-checkpoint-reader.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/store-node-host.lisp"
+    for name in ("fn-sccr-admit-segment", "fn-sccr-decode-plan", "fn-sccr-file-read-bound")]
 # fn-rcl-existing-action is no longer a finding: host/store-node-host.lisp
 # includes books/store-reclaim itself since test-latency (the Python bridge
 # loads that host file alone).

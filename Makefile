@@ -681,9 +681,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-arena \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
+	books/store-checkpoint-reader \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/store-checkpoint-buffer-tests \
+	tests/acl2/store-checkpoint-reader-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -798,6 +800,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
 	tests/acl2/source-routes-tests \
+	books/consumer-artifact-retry \
+	tests/acl2/consumer-artifact-retry-tests \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \

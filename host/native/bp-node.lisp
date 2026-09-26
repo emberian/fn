@@ -886,7 +886,7 @@ uncertain, as it does everywhere else."
                (fnn-out "BP NODE LISTENING ~d" bound-port))
              (fnn-accept-loop
               listener
-              (lambda (socket)
+              (lambda (socket &aux (profile-started (get-internal-real-time)))
                 (let* ((session-counter
                          (incf (fnn-bps-next-session bp)))
                        (observed-channel
@@ -938,7 +938,8 @@ uncertain, as it does everywhere else."
                 (fnn-bpnode-send-receipts bp peer-id)
                 (fnn-bpnode-queue-reports
                  bp peer-id node-id contact-host contact-port transfer-mru
-                 wall wall-error))
+                 wall wall-error)
+                (fnn-bp-profile-session bp profile-started))
               once))
            ;; ACL2's code for the node's evidence with the last session's
            ;; (fn-bprc-run-exit-code; specs/host.md "BP run classes").

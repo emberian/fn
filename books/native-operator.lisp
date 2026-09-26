@@ -1839,11 +1839,19 @@ OBSERVED (the markers found beside the store root) is empty."
 ; -----------------------------------------------------------------------------
 ; What restoring a snapshot loses (mandate 5.6: "Restoring a pre-migration
 ; snapshot can lose later accepted articles; operational instructions must say
-; so plainly").  The host observes each store's committed transaction files as
-; (SEQUENCE . OCTET-LENGTH) pairs in sequence order (host/native/io.lisp
-; `fnn-command-rollback-snapshot'); ACL2 decides.  The snapshot is a rollback
-; point for this store only when its history is a prefix of the store's; the
-; loss is then every committed transaction after that prefix.
+; so plainly").  The host (host/native/io.lisp `fnn-command-rollback-snapshot')
+; acquires both stores under their shared writer locks, reads each one's
+; committed history as the open reads it (`fnn-rollback-history': the selected
+; pack's records, then the suffix files, the committed-history marker checked),
+; and hands ACL2 the records one pair at a time.  An event is a committed
+; record's exact octets.  The snapshot is an earlier state of this store only
+; when its records are this store's first records; the loss is then every
+; committed record after them.
+;
+; Until 2026-09-26 the host handed (SEQUENCE . FILE-LENGTH) pairs instead, and
+; two histories whose records agree in number and length but not in content
+; passed as one history (gpt-6's answers §7).  Counters and lengths are not
+; compared here at all: not as a filter, not as a count.
 
 (defun fn-nop-history-prefixp (snap cur)
   (declare (xargs :guard t))
@@ -1860,8 +1868,8 @@ OBSERVED (the markers found beside the store root) is empty."
     cur))
 
 (defun fn-native-operator-snapshot-loss (snap cur)
-  "(:loses N) when SNAP's history is a prefix of CUR's, N the transactions
-committed after it; else (:refused :snapshot-not-a-prefix)."
+  "(:loses N) when SNAP's events are a prefix of CUR's, N the events committed
+after it; else (:refused :snapshot-not-a-prefix)."
   (declare (xargs :guard t))
   (if (fn-nop-history-prefixp snap cur)
       (list :loses (len (fn-nop-history-suffix snap cur)))
@@ -1872,19 +1880,111 @@ committed after it; else (:refused :snapshot-not-a-prefix)."
            (equal (len (fn-nop-history-suffix snap cur))
                   (- (len cur) (len snap)))))
 
-; KEYSTONE (the rollback sentence's count).  The subject is
-; `fn-native-operator-snapshot-loss', which `fnn-command-rollback-snapshot'
-; (host/native/io.lisp) calls through `fn-native-operator-host-snapshot-loss'.
-; The verb answers :loses exactly when the snapshot's committed history is a
-; prefix of the store's, and the count it prints is the number of committed
-; transactions the store holds beyond the snapshot: the ones restoring the
-; snapshot throws away.
 (defthm fn-native-operator-snapshot-loss-counts-the-suffix
   (and (iff (equal (car (fn-native-operator-snapshot-loss snap cur)) :loses)
             (fn-nop-history-prefixp snap cur))
        (implies (fn-nop-history-prefixp snap cur)
                 (equal (cadr (fn-native-operator-snapshot-loss snap cur))
                        (- (len cur) (len snap))))))
+
+; The comparison the host drives: one call per snapshot record, with the
+; store's record at the same position (CUR-PRESENT nil when the store has no
+; record there), then the verdict over the store's record count.
+(defun fn-native-operator-history-start ()
+  (declare (xargs :guard t))
+  (list :matching 0))
+
+(defun fn-native-operator-history-step (acc snap-event cur-present cur-event)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-ncfg-first acc) :matching)
+           cur-present
+           (equal snap-event cur-event))
+      (list :matching (+ 1 (nfix (fn-ncfg-second acc))))
+    (list :diverged)))
+
+(defun fn-native-operator-history-verdict (acc ncur)
+  (declare (xargs :guard t))
+  (if (equal (fn-ncfg-first acc) :matching)
+      (list :loses (nfix (- (nfix ncur) (nfix (fn-ncfg-second acc)))))
+    (list :refused :snapshot-not-a-prefix)))
+
+; The host's loop, as a function: `fnn-command-rollback-snapshot' calls
+; `fn-native-operator-history-step' once per snapshot record in order, with
+; the store's records consumed alongside, from
+; `fn-native-operator-history-start', and then
+; `fn-native-operator-history-verdict' with the store's record count: the
+; composition the two theorems below are stated over.
+(defun fn-nop-history-run (acc snap cur)
+  (declare (xargs :guard t))
+  (if (consp snap)
+      (fn-nop-history-run (fn-native-operator-history-step
+                           acc (car snap) (consp cur) (fn-ncfg-first cur))
+                          (cdr snap) (fn-ncfg-rest cur))
+    acc))
+
+(local
+ (defthm fn-nop-history-run-diverged
+   (equal (fn-nop-history-run '(:diverged) snap cur)
+          '(:diverged))))
+
+(local
+ (defun fn-nop-history-run-ind (k snap cur)
+   (if (consp snap)
+       (fn-nop-history-run-ind (+ 1 k) (cdr snap) (fn-ncfg-rest cur))
+     (list k cur))))
+
+(local
+ (defthm fn-nop-history-run-matching
+   (implies (natp k)
+            (equal (fn-nop-history-run (list :matching k) snap cur)
+                   (if (fn-nop-history-prefixp snap cur)
+                       (list :matching (+ k (len snap)))
+                     '(:diverged))))
+   :hints (("Goal" :induct (fn-nop-history-run-ind k snap cur)
+            :in-theory (enable fn-ncfg-rest)))))
+
+(local
+ (defthm fn-nop-history-prefixp-len
+   (implies (fn-nop-history-prefixp snap cur)
+            (<= (len snap) (len cur)))
+   :rule-classes :linear))
+
+; The streamed comparison is the list-level one: the host's calls compute
+; `fn-native-operator-snapshot-loss' of the two record lists.
+(defthm fn-native-operator-history-loss-is-snapshot-loss
+  (equal (fn-native-operator-history-verdict
+          (fn-nop-history-run (fn-native-operator-history-start) snap cur)
+          (len cur))
+         (fn-native-operator-snapshot-loss snap cur)))
+
+(local
+ (defthm fn-nop-history-prefixp-is-append
+   (iff (fn-nop-history-prefixp snap cur)
+        (equal (append snap (nthcdr (len snap) cur)) cur))))
+
+(local
+ (defthm fn-nop-history-suffix-is-nthcdr
+   (implies (fn-nop-history-prefixp snap cur)
+            (equal (fn-nop-history-suffix snap cur)
+                   (nthcdr (len snap) cur)))))
+
+; KEYSTONE (PRF-141, the rollback verb's history claim).  The subject is the
+; composition `fnn-command-rollback-snapshot' (host/native/io.lisp) runs
+; through `fn-native-operator-host-history-start', `-step' and `-verdict'
+; over the two stores' committed records.  The verb answers :loses exactly when the store's history is the
+; snapshot's records followed by more records, and the count it prints is the
+; number of those later records: the ones restoring the snapshot throws away.
+; Two histories that agree in record counts and lengths but differ in any
+; record's octets are refused.
+(defthm fn-native-operator-history-loss-is-ancestry
+  (let ((verdict (fn-native-operator-history-verdict
+                  (fn-nop-history-run (fn-native-operator-history-start) snap cur)
+                  (len cur))))
+    (and (iff (equal (car verdict) :loses)
+              (equal (append snap (nthcdr (len snap) cur)) cur))
+         (implies (equal (append snap (nthcdr (len snap) cur)) cur)
+                  (equal (cadr verdict)
+                         (len (nthcdr (len snap) cur)))))))
 
 (defun fn-nop-nat-text (n)
   (declare (xargs :guard t))
@@ -1901,7 +2001,16 @@ committed after it; else (:refused :snapshot-not-a-prefix)."
                      " snapshot-transactions=" (fn-nop-nat-text nsnap)
                      " store-transactions=" (fn-nop-nat-text ncur)
                      (coerce '(#\Newline) 'string)
+                     "the snapshot's committed records are this store's first "
+                     (fn-nop-nat-text nsnap)
+                     ", compared record by record (packed records included); "
                      "restoring this snapshot loses every transaction committed after it: "
                      n
                      ", the articles accepted since it among them; the snapshot cannot give them back"))
-    "rollback snapshot refused snapshot-not-a-prefix (this snapshot is not an earlier state of this store)"))
+    (concatenate 'string
+                 "rollback snapshot refused snapshot-not-a-prefix"
+                 (coerce '(#\Newline) 'string)
+                 "this snapshot is not an earlier state of this store's history: "
+                 "its committed records, compared record by record, are not this store's first records "
+                 "(equal transaction counts or file sizes do not make them so); "
+                 "restoring it would replace this history, not shorten it")))
