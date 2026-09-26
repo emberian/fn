@@ -68,6 +68,11 @@ STORE_FORMS = (
     # The store bridge's record dispatchers call the concrete twins.
     '(include-book "books/records-concrete")',
     '(ld "host/store-host.lisp"' + LD,
+    # The state checkpoint's publication over the octet buffer
+    # (rep-wave-d-2): host/store-node-host.lisp fn-store-sco-publish-plan
+    # takes the buffer stobj and calls fn-sccb-plan.
+    '(include-book "books/octets-stobj")',
+    '(include-book "books/store-checkpoint-buffer")',
     '(ld "host/store-node-host.lisp"' + LD,
     '(ld "host/checkpoint-host.lisp"' + LD,
     '(ld "host/anchor-host.lisp"' + LD,

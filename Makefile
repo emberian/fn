@@ -666,8 +666,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/payload-arena \
 	books/poster-bytes-buffer \
+	books/store-checkpoint-buffer \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
+	tests/acl2/store-checkpoint-buffer-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \

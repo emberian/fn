@@ -368,6 +368,33 @@ reopen predicate, writer-lock observation and observed final namespace."
         (value :unencodable)
       (value (list octets (fn-sco-sequence next))))))
 
+; The same publication as a PLAN over the octet buffer
+; (books/store-checkpoint-buffer.lisp `fn-sccb-plan'): the checkpoint's
+; postfix program is written into the buffer once, and the host writes, per
+; segment, the header, the buffer's cells A..B and the trailer
+; (`fn-sccb-plan-octets', which is `fn-scc-file-octets' of the same value
+; and segment size by `fn-sccb-plan-is-file-octets').  No octet list of the
+; file is built.  The answer is (PLAN S) or :unencodable; the buffer is
+; returned holding the encoding.  This is what `store checkpoint' calls
+; (host/native/io.lisp `fnn-command-state-checkpoint'); the list entry
+; above stays for the callers that take octets.
+(defun fn-store-sco-publish-plan (segment-octets fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((st (f-get-global 'fn-store-sn state))
+         (records (fn-sf-records (fn-sn-files st)))
+         (configs (fn-sn-config-history st))
+         (opened (and (boundp-global 'fn-store-sco-open state)
+                      (f-get-global 'fn-store-sco-open state)))
+         (e (car opened))
+         (next (if (and opened (equal (fn-sco-records e) records))
+                   e
+                 (fn-sco-capture configs records))))
+    (mv-let (plan fn-octets)
+      (fn-sccb-plan (fn-sco-freeze next) segment-octets fn-octets)
+      (if (equal plan :unencodable)
+          (mv nil :unencodable state fn-octets)
+        (mv nil (list plan (fn-sco-sequence next)) state fn-octets)))))
+
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.
   (declare (xargs :stobjs state :mode :program))
