@@ -3244,6 +3244,52 @@ the caller to classify against its own stop and fault state."
     (funcall handler (sb-bsd-sockets:socket-accept listener))
     (when once (return))))
 
+;;; Several listeners, one serialized loop (specs/bp-node-machine.md 9.1).
+;;; poll(2) says which listeners have a connection waiting; the first ready
+;;; one in LISTENERS order is accepted and its HANDLER runs to completion
+;;; before the next poll.  No threads.  struct pollfd is {int fd; short
+;;; events; short revents} (POSIX; 8 octets), written little-endian: the
+;;; supported hosts (x86-64 and arm64) are little-endian, and the build
+;;; refuses otherwise.
+(defconstant +fnn-pollin+ 1)
+(defconstant +fnn-poll-ready+ (logior 1 8 16)) ; POLLIN | POLLERR | POLLHUP
+
+(defun fnn-poll-readable (fds timeout-ms)
+  "The index in FDS of the first descriptor poll(2) reports ready, or nil
+after TIMEOUT-MS milliseconds or an interrupted wait."
+  (unless (member :little-endian *features*)
+    (fnn-fault "fnn-poll-readable: struct pollfd is written little-endian"))
+  (let* ((n (length fds))
+         (buf (make-array (* 8 n) :element-type '(unsigned-byte 8)
+                                  :initial-element 0)))
+    (loop for fd in fds for i from 0
+          do (loop for k from 0 below 4
+                   do (setf (aref buf (+ (* 8 i) k)) (ldb (byte 8 (* 8 k)) fd)))
+             (setf (aref buf (+ (* 8 i) 4)) +fnn-pollin+))
+    (let ((ready
+            (sb-sys:with-pinned-objects (buf)
+              (sb-alien:alien-funcall
+               (sb-alien:extern-alien
+                "poll" (function sb-alien:int sb-sys:system-area-pointer
+                                 sb-alien:unsigned-long sb-alien:int))
+               (sb-sys:vector-sap buf) n timeout-ms))))
+      (when (and (integerp ready) (> ready 0))
+        (loop for i from 0 below n
+              when (logtest +fnn-poll-ready+
+                            (logior (aref buf (+ (* 8 i) 6))
+                                    (ash (aref buf (+ (* 8 i) 7)) 8)))
+                return i)))))
+
+(defun fnn-accept-any-loop (listeners handler &optional once)
+  "Run HANDLER on each connection accepted from any of LISTENERS, one at a
+time; HANDLER owns and closes its socket.  With ONCE, return after one."
+  (let ((fds (mapcar #'fnn-socket-fd listeners)))
+    (loop
+      (let ((index (fnn-poll-readable fds 1000)))
+        (when index
+          (funcall handler (sb-bsd-sockets:socket-accept (nth index listeners)))
+          (when once (return)))))))
+
 (defun fnn-serve-client (socket)
   "Serve one connection; a broken peer cannot end the listener.  A core
 failure that leaves the reader unable to correlate replies is a bridge fault."

@@ -17,6 +17,11 @@
 
 (verify-guards fn-bpnp-routep)
 (verify-guards fn-bpnp-single-peer-routes)
+(verify-guards fn-bpnp-route-listp)
+(verify-guards fn-bpnp-route-list-peer)
+(verify-guards fn-bpnp-table-routingp)
+(verify-guards fn-bpnp-text-eid)
+(verify-guards fn-bpnp-table-peer)
 (verify-guards fn-bpnp-routesp)
 (verify-guards fn-bpnp-route-peer)
 (verify-guards fn-bpnp-waits)
