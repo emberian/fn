@@ -555,7 +555,7 @@ did not answer). A writer lock held where an owner would listen and nothing
 answering yet is the fence reason `starting`, and the report's first line
 says so (`health exit=20 state=fenced reason=starting`); a lock with no
 configured socket, or one the probe could not read, is `store-held`
-(`fn-nh-fence-of-starting-iff`). The running owner renders the same verdict over the state it
+(`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
 [health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
@@ -573,8 +573,20 @@ that died, and the verb removes it under the control-path lease, says `stale
 control socket removed` and runs offline; the offline executor starts
 exactly when the lock was seen free or absent
 (`fn-native-control-liveness-decides`), and no socket with a held lock is
-refused `store-held` without opening the store. PRF-172; the native cases
-are SCN-102.
+refused `store-held` without opening the store. A refusal names its reason:
+`operator CONFIG post` and a live `control`, `peer` or other administrative
+verb print ACL2's word for the decision's reason after the status
+(`refused operator post REFUSED unknown-group`, `refused operator control
+REFUSED no-such-grant`): the client asks with the reasoned FNCT request
+(kind 13 for a post, 17 for an administrative vector, the payloads of kinds 1
+and 3 unchanged) and the owner answers it, and only it, with reply kind 18,
+the status and then the reason word (`fn-nctrl-reason-word`,
+books/native-control-reason.lisp); the printed word is the reason the owner's
+decision named (`fn-native-control-printed-reason-is-the-decisions`). The
+kind-2 reply is unchanged, so a client that sends the plain request reads
+what it always read; a new client that meets an owner predating kind 13 gets
+that owner's refusal of a frame it could not decode and resends the plain
+request once. PRF-172; the native cases are SCN-102.
 
 ## Operator walk
 

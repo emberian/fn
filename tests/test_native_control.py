@@ -1,4 +1,5 @@
 """Public native operator submission through the serialized local owner."""
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -50,6 +51,44 @@ def environment():
     for name in SELECTORS:
         env.pop(name, None)
     return env
+
+
+def cbor_head(major, n):
+    """RFC 8949 section 3: the head of one item (the record codec's CBOR)."""
+    if n < 24:
+        return bytes([(major << 5) | n])
+    if n < 256:
+        return bytes([(major << 5) | 24, n])
+    return bytes([(major << 5) | 25]) + n.to_bytes(2, "big")
+
+
+def admin_payload(words):
+    """An FNCT admin argv (books/native-control.lisp fn-nctrl-admin-argv-encode):
+    a CBOR count, then each word as a CBOR byte string."""
+    return cbor_head(0, len(words)) + b"".join(cbor_head(2, len(w)) + w for w in words)
+
+
+def fnct_seal(kind, payload):
+    """An FNCT frame: magic, version 1, KIND, u32 length, payload, then the
+    SHA-256 of all of that (books/frame-trailer.lisp)."""
+    protected = b"FNCT" + bytes([1, kind]) + len(payload).to_bytes(4, "big") + payload
+    return protected + hashlib.sha256(protected).digest()
+
+
+def control_exchange(path, frame):
+    """One control connection as every client makes it: send, half-close,
+    read to EOF."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(60)
+        client.connect(str(path))
+        client.sendall(frame)
+        client.shutdown(socket.SHUT_WR)
+        chunks = []
+        while True:
+            chunk = client.recv(65536)
+            if not chunk:
+                return b"".join(chunks)
+            chunks.append(chunk)
 
 
 def free_port():
@@ -617,6 +656,73 @@ class NativeControlTests(unittest.TestCase):
         self.assertEqual([line for line in head if line.startswith(b"Path: ")],
                          [b"Path: fn.example.invalid!elsewhere!not-for-mail"])
         self.assertTrue(pathed.stdout.endswith(self.article(supplied_id)), pathed.stdout)
+
+    def test_every_refusal_names_its_reason_on_the_wire(self):
+        # PKT-453 (a), SCN-102: the owner's refusal carries ACL2's reason word
+        # (books/native-control-reason.lisp fn-nctrl-reason-word) in the
+        # reasoned reply, and the operator's line prints it after the status:
+        # the injection decision's word for a post, fn-cfg-delta-reason's
+        # word for a live reconfiguration.  Exit codes are unchanged (1).
+        owner = self.start_owner()
+        try:
+            yue_id = "<native-control-reason-yue@example.invalid>"
+            yue = self.article(yue_id).replace(b"From: author@example.invalid",
+                                              b"From: yue")
+            refused = self.post(yue_id, yue)
+            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+            self.assertIn(b"refused operator post REFUSED from-invalid", refused.stderr)
+
+            nowhere_id = "<native-control-reason-nowhere@example.invalid>"
+            nowhere = self.article(nowhere_id).replace(b"Newsgroups: fn.test",
+                                                       b"Newsgroups: fn.nowhere")
+            unknown = self.post(nowhere_id, nowhere)
+            self.assertEqual(unknown.returncode, 1, unknown.stderr.decode())
+            self.assertIn(b"refused operator post REFUSED unknown-group", unknown.stderr)
+
+            accepted_id = "<native-control-reason-ok@example.invalid>"
+            accepted = self.post(accepted_id, self.article(accepted_id))
+            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+            self.assertIn(b"accepted operator post ACCEPTED", accepted.stderr)
+
+            revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
+            self.assertEqual(revoked.returncode, 1, revoked.stderr.decode())
+            self.assertIn(b"refused operator control REFUSED no-such-grant", revoked.stderr)
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+                owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
+
+    def test_an_old_clients_plain_request_gets_the_plain_reply(self):
+        # PKT-453 (a): a client that sends the plain kind-3 request (every
+        # image before the reasoned kinds 13 and 17) reads the one-field reply
+        # it always read (kind 2, the status's enumeration octet); only a
+        # reasoned frame is answered with the reasoned reply (kind 18).
+        owner = self.start_owner()
+        try:
+            words = [b"control", b"grant", b"ab" * 32, b"keys", b"fn.keys"]
+            reply = control_exchange(self.control, fnct_seal(3, admin_payload(words)))
+            self.assertEqual(reply[:4], b"FNCT")
+            self.assertEqual((reply[4], reply[5]), (1, 2), reply[:10])
+            self.assertEqual(reply[6:10], (1).to_bytes(4, "big"), reply[:10])
+            self.assertEqual(reply[10:11], b"\x01", reply)          # :accepted
+            self.assertEqual(reply[11:], hashlib.sha256(reply[:11]).digest())
+            # The grant is durable: the revoke the new client sends succeeds.
+            revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
+            self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+                owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:

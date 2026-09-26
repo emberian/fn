@@ -469,6 +469,11 @@ that is still recovering its store reads
 health exit=20 state=fenced reason=starting (a process holds the store lock and nothing answers on the control socket yet: an owner starting or recovering, or an offline command; retry)
 ```
 
+and the same command, once the owner listens, prints the owner's own report
+with no fence: `starting` is a reason of the fenced state, never a code of
+its own, and it clears on the one observation that listening changes
+(`fn-nh-starting-clears-on-listening`).
+
 The scale is the one exception to the fn-wide exit table (specs/host.md, "CLI
 exit codes"), and it never overlaps it: the code is 0 or at least 19, and 0
 is the only code it shares, with `accepted`
@@ -1086,7 +1091,7 @@ outcome, and exits with the code for that outcome:
 | Outcome | Exit | What it means |
 | --- | --- | --- |
 | `accepted` | 0 | Done, or already so (`DUPLICATE`: the node holds exactly this article). The decision is durable. |
-| `refused` | 1 | The node refused it for the reason it names, and nothing was accepted: `CONFLICT` (a different article holds this Message-ID; post under a new one, or resend the saved bytes), `NO-STORE` (run `init`), a bound, a lock. Fix what the reason names. |
+| `refused` | 1 | The node refused it for the reason it names, and nothing was accepted: `CONFLICT` (a different article holds this Message-ID; post under a new one, or resend the saved bytes), `NO-STORE` (run `init`), a bound, a lock. A refusal the running owner decided carries its reason word after the status: `refused operator post REFUSED unknown-group` (a newsgroup this node does not serve), `REFUSED from-invalid` (a From with no address), `refused operator control REFUSED no-such-grant` (a revoke of a grant that is not there); `NONE` never appears, a refusal with no named reason prints the status alone. Fix what the reason names. |
 | `uncertain` | 3 | Whether it is durable is not known: this node's Store must recover before anything else changes. See below. |
 | `fault` | 4 | The host could not carry out the operation. |
 | `usage` | 5 | The command line or the configuration file is wrong. |

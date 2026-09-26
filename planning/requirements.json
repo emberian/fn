@@ -3160,12 +3160,13 @@
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
+        "books/native-control-reason.lisp",
         "specs/host.md",
         "docs/operator.md",
         "tests/test_native_control.py",
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
-      "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name for the control post and live reconfiguration is PKT-453 (not yet)."
+      "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name: a control post and a live reconfiguration print ACL2's reason word after the status (`refused operator post REFUSED unknown-group`, `refused operator control REFUSED no-such-grant`), carried by the reasoned FNCT kinds 13/17 and reply kind 18 (books/native-control-reason.lisp) so an old client's plain request still reads the plain reply. health's starting clears on the listening observation (fn-nh-starting-clears-on-listening). Open: PKT-472."
     },
     {
       "id": "NNT-035",
