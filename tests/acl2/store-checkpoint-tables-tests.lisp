@@ -111,7 +111,7 @@
         (if (not (and (consp verdict) (eq (car verdict) :plan)))
             (mv (list verdict nil 0 nil) fn-octets)
           (mv-let (v octets fn-octets)
-            (fn-ockp-run setup (fn-ockp-initial-state (cadr setup)) b *sctt-seg* *sctt-s*
+            (fn-ockp-run setup (fn-ockp-initial-state (cadr setup) fn-octets) b *sctt-seg* *sctt-s*
                          100000 100000000 1000 fn-octets)
             (let ((fn-octets (fn-octets-clear fn-octets)))
               (mv-let (plan fn-octets)

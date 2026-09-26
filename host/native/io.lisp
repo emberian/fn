@@ -2241,7 +2241,7 @@ which the process is killed, or NIL."
 
 (defun fnn-checkpoint-write-steps (fd setup segment sequence profile st)
   "Write the pipeline's frames to FD step by step; the number of steps."
-  (let ((state (fnn-core 'fn-ockp-initial-state (second setup)))
+  (let ((state (fnn-core 'fn-ockp-initial-state (second setup) st))
         (segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
         (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
         (fault (fnn-checkpoint-batch-fault))

@@ -507,9 +507,11 @@ journal replays.
   those tables, and their value is the capture, for any segment size;
   `fn-sct-load-is-decode-file` (PRF-135): the host's buffer load is that
   reader on the frames' octets; so `fn-sn-recover-from-checkpoint-equals-
-  full-recover` transfers unchanged. Open: `fn-ockp-run-writes-the-file`,
-  the batched loop's octets are the file (PKT-583); its step facts are
-  PRF-133's and the witness at batch sizes 1, 3 and 1000 is in
+  full-recover` transfers unchanged. `fn-ockp-run-writes-the-file` (PRF-199,
+  the loop): the octets of the host's steps, at any batch size and any
+  segment size and from any initial buffer contents, are that file
+  whenever the loop completes; its step facts are PRF-133's and the
+  witness at batch sizes 1, 3 and 1000 is in
   tests/acl2/store-checkpoint-tables-tests.lisp.
 
 ## History classes and lifetimes

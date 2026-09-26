@@ -759,9 +759,13 @@
 
 ; The state between steps: (K REST I INDEX PREV W TOTAL); the first, before
 ; any step, over the F table's one row.
-(defun fn-ockp-initial-state (tables)
-  (declare (xargs :guard t))
-  (list 0 (fn-ockp-table-rows tables 0) 0 0 *fn-scc-genesis* 0 0))
+; W is the buffer's fill, not 0: the first step takes the residue [W, fill)
+; and clears, so whatever the buffer holds (the last table of the previous
+; publication in a long-lived owner) is never the file's first bytes.  The
+; loop keystone below holds for ANY buffer contents for that reason.
+(defun fn-ockp-initial-state (tables fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (list 0 (fn-ockp-table-rows tables 0) 0 0 *fn-scc-genesis* (fn-octets-len fn-octets) 0))
 
 (defun fn-ockp-statep (pst fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
@@ -789,12 +793,15 @@
       (mv verdict frames (list k rest i index prev w total) fn-octets))))
 
 ; The loop in the logic: the octets of every step's frames, in order, until
-; the four tables are written; FUEL bounds it (the host stops at K = 4).
-; (mv VERDICT OCTETS fn-octets)
+; the four tables are written; FUEL bounds it (the host stops at K = 4), and
+; a loop that runs out of fuel before K = 4 says so (:fuel), so that :ok
+; means the four tables were written.  (mv VERDICT OCTETS fn-octets)
 (defun fn-ockp-run (setup pst b seg s segment-bound file-bound fuel fn-octets)
   (declare (xargs :stobjs fn-octets :measure (nfix fuel) :verify-guards nil))
-  (if (or (zp fuel) (fn-ockp-donep pst))
+  (if (fn-ockp-donep pst)
       (mv :ok nil fn-octets)
+    (if (zp fuel)
+        (mv :fuel nil fn-octets)
     (mv-let (verdict frames pst2 fn-octets)
       (fn-ockp-step setup pst b seg s segment-bound file-bound fn-octets)
       (if (not (eq verdict :ok))
@@ -802,7 +809,456 @@
         (let ((octets (fn-sccb-plan-octets frames fn-octets)))
           (mv-let (verdict2 more fn-octets)
             (fn-ockp-run setup pst2 b seg s segment-bound file-bound (1- fuel) fn-octets)
-            (mv verdict2 (append octets more) fn-octets)))))))
+            (mv verdict2 (append octets more) fn-octets))))))))
 
 (in-theory (disable fn-ockp-setup fn-ockp-initial-state fn-ockp-statep fn-ockp-donep
                     fn-ockp-step fn-ockp-run))
+
+; -----------------------------------------------------------------------------
+; The loop KEYSTONE (PRF-199's buffer half): the octets of the steps, in
+; order, are `fn-sct-file-octets' of the tables' programs, at any batch size
+; and any segment size.  The residue invariant: what remains of a run is
+; the chunks of the residue [W, fill) in the buffer followed by the program
+; of the rows not yet encoded, framed from INDEX with the chain at PREV;
+; a step emits the full chunks of the residue and its batch and leaves the
+; rest as the new residue (`fn-ockp-chunks-of-append-cut',
+; `fn-ockp-frames-of-append'); the last step of a run emits the residue as
+; the run's last frame.
+
+(local
+ (defthm fn-ockp-plan-octets-of-append
+   (equal (fn-sccb-plan-octets (append x y) fn-octets)
+          (append (fn-sccb-plan-octets x fn-octets) (fn-sccb-plan-octets y fn-octets)))))
+
+(local
+ (defthm fn-ockp-plan-octets-true-listp
+   (true-listp (fn-sccb-plan-octets plan fn-octets))))
+
+(local
+ (defthm fn-ockp-revappend-is-append
+   (implies (syntaxp (not (equal y ''nil)))
+            (equal (revappend acc y) (append (revappend acc nil) y)))))
+
+(local
+ (defthm fn-ockp-nthcdr-of-nthcdr
+   (implies (and (natp n) (natp m))
+            (equal (nthcdr n (nthcdr m x)) (nthcdr (+ n m) x)))))
+
+(local
+ (defthm fn-ockp-len-of-nthcdr
+   (implies (natp n)
+            (equal (len (nthcdr n x)) (nfix (- (len x) n))))))
+
+(local
+ (defthm fn-ockp-true-listp-nthcdr
+   (implies (true-listp x) (true-listp (nthcdr n x)))))
+
+(local
+ (defthm fn-ockp-take-of-len
+   (implies (true-listp x) (equal (take (len x) x) x))))
+
+(local
+ (defthm fn-ockp-true-listp-take
+   (true-listp (take n x))))
+
+(local
+ (defthm fn-ockp-len-of-take
+   (equal (len (take n x)) (nfix n))))
+
+(local
+ (defthm fn-ockp-true-list-fix-of-append
+   (equal (true-list-fix (append a b))
+          (append (true-list-fix a) (true-list-fix b)))))
+
+; The residue of the cut is one chunk, and it is the suffix of P after the
+; full chunks.
+(local
+ (defthm fn-ockp-chunks-of-cut-residue
+   (implies (true-listp p)
+            (equal (fn-scc-chunks (mv-nth 1 (fn-ockp-cut p seg)) seg)
+                   (list (mv-nth 1 (fn-ockp-cut p seg)))))
+   :hints (("Goal" :induct (fn-ockp-cut p seg)
+            :in-theory (enable fn-ockp-cut)))))
+
+; The list-level cut, opened by length: nothing when P is at most one
+; segment, else one full chunk and the cut of the rest.
+(local
+ (defthm fn-ockp-cut-short
+   (implies (or (zp seg) (<= (len p) seg))
+            (equal (fn-ockp-cut p seg) (list nil p)))
+   :hints (("Goal" :in-theory (enable fn-ockp-cut)))))
+
+(local
+ (defthm fn-ockp-cut-long
+   (implies (and (not (zp seg)) (< seg (len p)))
+            (equal (fn-ockp-cut p seg)
+                   (list (cons (take seg p) (car (fn-ockp-cut (nthcdr seg p) seg)))
+                         (mv-nth 1 (fn-ockp-cut (nthcdr seg p) seg)))))
+   :hints (("Goal" :in-theory (enable fn-ockp-cut)))))
+
+(local
+ (defthm fn-ockp-u64-true-listp
+   (true-listp (fn-scc-u64 n k))
+   :hints (("Goal" :in-theory (enable fn-scc-u64)))))
+
+(local
+ (defthm fn-ockp-header-true-listp
+   (true-listp (fn-scc-header index count length sequence))
+   :hints (("Goal" :in-theory (enable fn-scc-header)))))
+
+(local
+ (defthm fn-ockp-append-nil
+   (implies (true-listp x) (equal (append x nil) x))))
+
+(local
+ (defthm fn-ockp-nthcdr-len
+   (implies (true-listp x) (equal (nthcdr (len x) x) nil))))
+
+(local
+ (defthm fn-ockp-admit-frames-consp
+   (consp (fn-ockp-admit-frames frames total segment-bound file-bound))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-ockp-admit-frames)))))
+
+(local
+ (defthm fn-ockp-rows-program-of-atom
+   (implies (not (consp rows))
+            (equal (fn-sct-rows-program rows i selfp mtrie n table) nil))
+   :hints (("Goal" :in-theory (enable fn-sct-rows-program)))))
+
+; The buffer's cut is the list's cut: the frames' octets, where the residue
+; begins (the residue is the buffer from there), the chain's end and the
+; next index.
+(local
+ (defthm fn-ockp-cut-frames-is-cut
+   (implies (and (natp a) (<= a (len fn-octets)) (true-listp fn-octets)
+                 (natp index) (natp seg))
+            (let ((r (fn-ockp-cut-frames a index count s prev seg acc fn-octets))
+                  (c (fn-ockp-cut (nthcdr a fn-octets) seg)))
+              (and (equal (fn-sccb-plan-octets (mv-nth 0 r) fn-octets)
+                          (append (fn-sccb-plan-octets (revappend acc nil) fn-octets)
+                                  (fn-scc-concat (fn-scc-frames (car c) index count s prev))))
+                   (natp (mv-nth 1 r)) (<= (mv-nth 1 r) (len fn-octets))
+                   (equal (nthcdr (mv-nth 1 r) fn-octets) (mv-nth 1 c))
+                   (equal (mv-nth 2 r) (fn-ockp-chain-end (car c) index count s prev))
+                   (equal (mv-nth 3 r) (+ index (len (car c)))))))
+   :hints (("Goal" :induct (fn-ockp-cut-frames a index count s prev seg acc fn-octets)
+            :in-theory (e/d (fn-ockp-cut-frames fn-ockp-chain-end
+                             fn-sccb-slice-acc-is-slice-list)
+                            (fn-scc-header fn-scc-seal fn-ockp-cut))))))
+
+; The same frames' octets, as the rewriter meets them: `mv-nth 0' is `car'.
+(local
+ (defthm fn-ockp-cut-frames-octets
+   (implies (and (natp a) (<= a (len fn-octets)) (true-listp fn-octets)
+                 (natp index) (natp seg))
+            (equal (fn-sccb-plan-octets
+                    (car (fn-ockp-cut-frames a index count s prev seg acc fn-octets))
+                    fn-octets)
+                   (append (fn-sccb-plan-octets (revappend acc nil) fn-octets)
+                           (fn-scc-concat
+                            (fn-scc-frames (car (fn-ockp-cut (nthcdr a fn-octets) seg))
+                                           index count s prev)))))
+   :hints (("Goal" :use fn-ockp-cut-frames-is-cut
+            :in-theory (disable fn-ockp-cut-frames-is-cut)))))
+
+; Where the residue begins is within the buffer, as a linear fact (the
+; buffer's length meets the prover as a sum).
+(local
+ (defthm fn-ockp-cut-frames-bound
+   (implies (and (natp a) (<= a (len fn-octets)) (true-listp fn-octets)
+                 (natp index) (natp seg))
+            (<= (mv-nth 1 (fn-ockp-cut-frames a index count s prev seg acc fn-octets))
+                (len fn-octets)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-ockp-cut-frames-is-cut
+            :in-theory (disable fn-ockp-cut-frames-is-cut)))))
+
+(local
+ (defthm fn-ockp-last-frame-octets
+   (implies (and (natp a) (<= a (len fn-octets)) (true-listp fn-octets))
+            (equal (fn-sccb-plan-octets (fn-ockp-last-frame a index count s prev fn-octets)
+                                        fn-octets)
+                   (fn-scc-concat (fn-scc-frames (list (nthcdr a fn-octets)) index count s prev))))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-last-frame fn-sccb-slice-acc-is-slice-list)
+                                   (fn-scc-header fn-scc-seal))))))
+
+(local
+ (defthm fn-ockp-residue-is-nthcdr
+   (implies (and (natp w) (<= w (len fn-octets)) (true-listp fn-octets))
+            (equal (fn-sccb-slice-acc w (len fn-octets) nil fn-octets) (nthcdr w fn-octets)))
+   :hints (("Goal" :in-theory (enable fn-sccb-slice-acc-is-slice-list)))))
+
+; A rows program splits at any batch.
+(local
+ (defun fn-ockp-take-ind (b rows i)
+   (if (or (zp b) (not (consp rows))) (list rows i)
+     (fn-ockp-take-ind (1- b) (cdr rows) (+ 1 i)))))
+
+(local
+ (defthm fn-ockp-rows-program-take-drop
+   (implies (natp i)
+            (equal (fn-sct-rows-program rows i selfp mtrie n table)
+                   (append (fn-sct-rows-program (fn-ockp-take b rows) i selfp mtrie n table)
+                           (fn-sct-rows-program (fn-ockp-drop b rows)
+                                                (+ i (len (fn-ockp-take b rows)))
+                                                selfp mtrie n table))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ockp-take-ind b rows i)
+            :in-theory (e/d (fn-sct-rows-program) (fn-sct-program))))))
+
+; Without a candidate and without the trie (F and P) the encoder never
+; reads the event index: the step passes the index to every table, the
+; specification passes nil to F and P.
+(local
+ (defthm fn-ockp-candidate-without-trie
+   (equal (fn-sct-candidate x nil n table) nil)
+   :hints (("Goal" :in-theory (enable fn-sct-candidate fn-cei-trie-records)))))
+
+(local
+ (defthm fn-ockp-program-table-irrelevant
+   (implies (syntaxp (not (equal table ''nil)))
+            (equal (fn-sct-program x nil nil n table) (fn-sct-program x nil nil n nil)))
+   :hints (("Goal" :induct (fn-sct-program x nil nil n table)
+            :in-theory (e/d (fn-sct-program)
+                            (fn-scc-program fn-scc-atom-octets fn-sct-refp
+                             fn-scc-octets-valuep))))))
+
+(local
+ (defthm fn-ockp-rows-program-table-irrelevant
+   (implies (syntaxp (not (equal table ''nil)))
+            (equal (fn-sct-rows-program rows i nil nil n table)
+                   (fn-sct-rows-program rows i nil nil n nil)))
+   :hints (("Goal" :in-theory (e/d (fn-sct-rows-program) (fn-sct-program))))))
+
+; What remains to be written from a state: the run K from its residue and
+; the rows not yet encoded, then the runs after it whole.
+(defun fn-ockp-later (tables k n mtrie table counts seg s)
+  (declare (xargs :guard t :measure (nfix (- 4 (nfix k))) :verify-guards nil))
+  (if (or (not (natp k)) (>= k 4))
+      nil
+    (append (fn-scc-concat
+             (fn-scc-frames (fn-scc-chunks (fn-sct-rows-program (fn-ockp-table-rows tables k) 0
+                                                                (eql k 2) (if (eql k 3) mtrie nil)
+                                                                n (if (< k 2) nil table))
+                                           seg)
+                            0 (fn-ockp-count counts k) s *fn-scc-genesis*))
+            (fn-ockp-later tables (+ 1 k) n mtrie table counts seg s))))
+
+(defun fn-ockp-remaining (tables k rest i index prev w n mtrie table counts seg s buf)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (or (not (natp k)) (>= k 4))
+      nil
+    (append (fn-scc-concat
+             (fn-scc-frames (fn-scc-chunks (append (nthcdr w buf)
+                                                   (fn-sct-rows-program rest i (eql k 2)
+                                                                        (if (eql k 3) mtrie nil)
+                                                                        n (if (< k 2) nil table)))
+                                           seg)
+                            index (fn-ockp-count counts k) s prev))
+            (fn-ockp-later tables (+ 1 k) n mtrie table counts seg s))))
+
+(local
+ (defthm fn-ockp-later-done
+   (implies (or (not (natp k)) (>= k 4))
+            (equal (fn-ockp-later tables k n mtrie table counts seg s) nil))))
+
+; K is one of the four tables: the proofs below split on it, so every
+; `fn-ockp-later' opens by its constant argument.
+(local
+ (defun fn-ockp-nat-ind (k)
+   (if (zp k) 0 (fn-ockp-nat-ind (1- k)))))
+
+(local
+ (defthm fn-ockp-k-cases
+   (implies (and (natp k) (< k 4))
+            (or (equal k 0) (equal k 1) (equal k 2) (equal k 3)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ockp-nat-ind k)))))
+
+(local
+ (defthm fn-ockp-remaining-done
+   (implies (or (not (natp k)) (>= k 4))
+            (equal (fn-ockp-remaining tables k rest i index prev w n mtrie table counts seg s buf)
+                   nil))))
+
+(in-theory (disable fn-ockp-later fn-ockp-remaining))
+
+; The step's frames and the state it leaves fold back into what remained:
+; the rewriter joins the two runs of frames (concat, frames, chunks) into
+; the one run the state described.  These fold in the direction opposite
+; to the append lemmas above, which the step lemma disables.
+(local
+ (defthm fn-ockp-cut-residue-true-listp
+   (implies (true-listp p) (true-listp (mv-nth 1 (fn-ockp-cut p seg))))
+   :hints (("Goal" :in-theory (enable fn-ockp-cut)))))
+
+(local
+ (defthm fn-ockp-concat-fold-3
+   (equal (append (fn-scc-concat x) (append (fn-scc-concat y) z))
+          (append (fn-scc-concat (append x y)) z))))
+
+(local
+ (defthm fn-ockp-concat-fold-2
+   (equal (append (fn-scc-concat x) (fn-scc-concat y))
+          (fn-scc-concat (append x y)))))
+
+(local
+ (defthm fn-ockp-frames-fold
+   (implies (and (natp index)
+                 (equal index2 (+ index (len c1)))
+                 (equal prev2 (fn-ockp-chain-end c1 index count s prev)))
+            (equal (append (fn-scc-frames c1 index count s prev)
+                           (fn-scc-frames c2 index2 count s prev2))
+                   (fn-scc-frames (append c1 c2) index count s prev)))
+   :hints (("Goal" :use fn-ockp-frames-of-append
+            :in-theory (disable fn-ockp-frames-of-append)))))
+
+(local
+ (defthm fn-ockp-frames-fold-3
+   (implies (and (natp index)
+                 (equal index2 (+ index (len c1)))
+                 (equal prev2 (fn-ockp-chain-end c1 index count s prev)))
+            (equal (append (fn-scc-frames c1 index count s prev)
+                           (append (fn-scc-frames c2 index2 count s prev2) z))
+                   (append (fn-scc-frames (append c1 c2) index count s prev) z)))
+   :hints (("Goal" :induct (fn-scc-frames c1 index count s prev)
+            :in-theory (e/d (fn-ockp-chain-end)
+                            (fn-scc-header fn-scc-seal fn-ockp-frames-of-append
+                             fn-ockp-frames-fold))))))
+
+(local
+ (defthm fn-ockp-concat-true-listp
+   (true-listp (fn-scc-concat x))))
+
+(local
+ (defthm fn-ockp-chunks-fold
+   (implies (true-listp p)
+            (equal (append (car (fn-ockp-cut p seg))
+                           (fn-scc-chunks (append (mv-nth 1 (fn-ockp-cut p seg)) q) seg))
+                   (fn-scc-chunks (append p q) seg)))
+   :hints (("Goal" :use fn-ockp-chunks-of-append-cut
+            :in-theory (disable fn-ockp-chunks-of-append-cut)))))
+
+(local
+ (defthm fn-ockp-chunks-fold-last
+   (implies (true-listp p)
+            (equal (append (car (fn-ockp-cut p seg)) (list (mv-nth 1 (fn-ockp-cut p seg))))
+                   (fn-scc-chunks p seg)))
+   :hints (("Goal" :use ((:instance fn-ockp-chunks-of-append-cut (q nil)))
+            :in-theory (disable fn-ockp-chunks-of-append-cut)))))
+
+; The residue after a run's last frame is empty: W' is the buffer's fill,
+; which the prover holds as a sum.
+(local
+ (defthm fn-ockp-nthcdr-past-end
+   (implies (and (true-listp x) (natp n) (<= (len x) n))
+            (equal (nthcdr n x) nil))))
+
+; One step: its frames' octets over the buffer it leaves, then what remains
+; from the state it leaves, is what remained before it.
+(local
+ (defthm fn-ockp-batch-writes-the-remaining
+   (implies (and (natp k) (< k 4) (natp i) (natp index) (natp w) (<= w (len fn-octets))
+                 (true-listp fn-octets) (natp seg))
+            (let ((r (fn-ockp-batch tables k rest i index prev w b seg s counts n mtrie table
+                                    total segment-bound file-bound fn-octets)))
+              (implies (equal (mv-nth 0 r) :ok)
+                       (and (equal (fn-ockp-remaining tables k rest i index prev w n mtrie table
+                                                      counts seg s fn-octets)
+                                   (append (fn-sccb-plan-octets (mv-nth 1 r) (mv-nth 9 r))
+                                           (fn-ockp-remaining tables (mv-nth 2 r) (mv-nth 3 r)
+                                                              (mv-nth 4 r) (mv-nth 5 r)
+                                                              (mv-nth 6 r) (mv-nth 7 r)
+                                                              n mtrie table counts seg s
+                                                              (mv-nth 9 r))))
+                            (natp (mv-nth 2 r)) (natp (mv-nth 4 r)) (natp (mv-nth 5 r))
+                            (natp (mv-nth 7 r)) (<= (mv-nth 7 r) (len (mv-nth 9 r)))
+                            (true-listp (mv-nth 9 r))))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-ockp-k-cases
+                  (:instance fn-ockp-rows-program-take-drop
+                             (rows rest) (selfp (eql k 2)) (mtrie (if (eql k 3) mtrie nil))
+                             (table (if (< k 2) nil table))))
+            :in-theory (e/d (fn-ockp-batch fn-ockp-remaining fn-ockp-later)
+                            (fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames fn-scc-concat
+                             fn-sct-rows-program fn-ockp-table-rows fn-ockp-count
+                             fn-ockp-admit-frames fn-ockp-cut fn-ockp-chunks-of-append-cut
+                             fn-ockp-frames-of-append fn-ockp-concat-append))))))
+
+(defthm fn-ockp-run-is-the-remaining
+  (implies (and (natp (nth 0 pst)) (natp (nth 2 pst)) (natp (nth 3 pst)) (natp (nth 5 pst))
+                (<= (nth 5 pst) (len fn-octets)) (true-listp fn-octets) (natp seg)
+                (equal (mv-nth 0 (fn-ockp-run setup pst b seg s segment-bound file-bound fuel
+                                              fn-octets))
+                       :ok))
+           (equal (mv-nth 1 (fn-ockp-run setup pst b seg s segment-bound file-bound fuel
+                                         fn-octets))
+                  (fn-ockp-remaining (fn-sco-at 1 setup) (nth 0 pst) (nth 1 pst) (nth 2 pst)
+                                     (nth 3 pst) (nth 4 pst) (nth 5 pst)
+                                     (nfix (fn-sco-at 5 setup)) (fn-sco-at 3 setup)
+                                     (fn-sco-at 4 setup) (fn-sco-at 2 setup) seg s fn-octets)))
+  ; The step lemma is used in every case the induction produces (the step
+  ; is the one that needs it; ACL2 numbers the cases, not the caller).
+  :hints (("Goal" :induct (fn-ockp-run setup pst b seg s segment-bound file-bound fuel fn-octets)
+           :in-theory (e/d (fn-ockp-run fn-ockp-step fn-ockp-donep fn-sco-at)
+                           (fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames fn-scc-concat
+                            fn-sct-rows-program fn-ockp-table-rows fn-ockp-count fn-ockp-batch
+                            fn-ockp-remaining fn-ockp-later)))
+          (and (equal (car id) '(0 1)) (equal (cddr id) 0)
+               '(:use ((:instance fn-ockp-batch-writes-the-remaining
+                                  (tables (fn-sco-at 1 setup)) (k (nth 0 pst)) (rest (nth 1 pst))
+                                  (i (nth 2 pst)) (index (nth 3 pst)) (prev (nth 4 pst))
+                                  (w (nth 5 pst)) (counts (fn-sco-at 2 setup))
+                                  (n (nfix (fn-sco-at 5 setup))) (mtrie (fn-sco-at 3 setup))
+                                  (table (fn-sco-at 4 setup)) (total (nth 6 pst))))))))
+
+; The fold rules served the step lemma; from here the append lemmas rewrite
+; forward again.
+(local (in-theory (disable fn-ockp-concat-fold-2 fn-ockp-concat-fold-3 fn-ockp-frames-fold
+                           fn-ockp-frames-fold-3 fn-ockp-chunks-fold fn-ockp-chunks-fold-last)))
+
+; From the first state over any buffer, what remains is the whole file.
+(local
+ (defthm fn-ockp-remaining-at-start
+   (implies (true-listp fn-octets)
+            (equal (fn-ockp-remaining tables 0 (fn-ockp-table-rows tables 0) 0 0 *fn-scc-genesis*
+                                      (len fn-octets) n mtrie table counts seg s fn-octets)
+                   (fn-ockp-later tables 0 n mtrie table counts seg s)))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-remaining fn-ockp-later)
+                                   (fn-scc-chunks fn-scc-frames fn-scc-concat fn-sct-rows-program
+                                    fn-ockp-table-rows fn-ockp-count))))))
+
+(local
+ (defthm fn-ockp-later-from-0-is-the-file
+   (implies (fn-sct-tables-treep tables)
+            (equal (fn-ockp-later tables 0 (len (fn-sct-tables-e tables)) (fn-cei-msgid-trie index)
+                                  index (fn-ockp-counts tables index seg) seg s)
+                   (fn-sct-file-octets (fn-sct-table-programs tables index) seg s)))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-later fn-sct-file-octets fn-sct-file-segments
+                                    fn-sct-run-segments fn-sct-table-programs fn-ockp-table-rows
+                                    fn-ockp-count fn-sco-at)
+                                   (fn-scc-chunks fn-scc-frames fn-scc-concat fn-sct-rows-program
+                                    fn-sccb-chunk-count fn-ockp-counts))))))
+
+(defthm fn-ockp-run-writes-the-file
+  (let* ((setup (fn-ockp-setup next frontier revision seg budget free))
+         (tables (fn-sct-tables-of-capture next frontier revision))
+         (run (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets)
+                           b seg s segment-bound file-bound fuel fn-octets)))
+    (implies (and (fn-ockp-tables-encodablep tables)
+                  (true-listp fn-octets) (natp seg)
+                  (equal (mv-nth 0 run) :ok))
+             (equal (mv-nth 1 run)
+                    (fn-sct-file-octets (fn-sct-table-programs tables (fn-sco-event-index next))
+                                        seg s))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ockp-setup fn-ockp-initial-state fn-sco-at)
+                           (fn-scc-chunks fn-scc-frames fn-scc-concat fn-sct-rows-program
+                            fn-ockp-table-rows fn-ockp-count fn-ockp-counts fn-ockp-estimate
+                            fn-ockp-decide fn-sct-tables-of-capture fn-sct-file-octets
+                            fn-sct-table-programs fn-ockp-remaining fn-ockp-later
+                            fn-cei-msgid-trie fn-sct-tables-e fn-sct-tables-f fn-sct-tables-p
+                            fn-sct-tables-r fn-ockp-tables-encodablep fn-sco-event-index
+                            fn-sct-tables-treep fn-ockp-counts-are-chunk-counts)))))

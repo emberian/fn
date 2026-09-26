@@ -103,6 +103,11 @@ class StateCheckpointSourceTests(unittest.TestCase):
         native_cuts.verify_state_checkpoint_cut_map()
 
 
+# books/frame-octets.lisp *fn-frame-trailer-octets*: the chained seal that
+# ends every FNSC segment.
+FRAME_TRAILER_OCTETS = 32
+
+
 class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
     image = IMAGE
 
@@ -220,7 +225,16 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three()
         expected = self.observation()
         data = bytearray(self.path().read_bytes())
-        data[len(data) // 2] ^= 0x01
+        # The last octet before the file's final trailer: the last segment's
+        # chunk (or, when that chunk is empty, the previous trailer the chain
+        # seals over), so the flipped bit is under a seal whichever table the
+        # segment carries.  The file's middle octet was a chunk octet under
+        # schema 2 (one run of segments); under schema 3 (four runs, each with
+        # a 37-octet header) it can land in a header's length field, which the
+        # reader refuses by name as `checkpoint-exceeds-bound' before it can
+        # read the seal (hbox native-r2, checkpoint-pipeline-2): a different
+        # refusal, the same fallback.
+        data[-(FRAME_TRAILER_OCTETS + 1)] ^= 0x01
         self.path().write_bytes(bytes(data))
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.assertEqual(self.observation(), expected)

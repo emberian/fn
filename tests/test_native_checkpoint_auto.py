@@ -239,19 +239,26 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # SCN-129 (design 2.4): the pipeline writes many segments between the
         # `created' and `written' cuts of fn-bs-scp-program; a death between
         # two steps is the `created' cut's verdict (old), never a torn file.
-        # First a durable checkpoint at 64 (the old one), then a publication
-        # killed after its first step's frames were written.
+        # First a durable checkpoint at 8 (the old one, by the verb: the same
+        # pipeline in a fresh process), then a publication, due when the
+        # suffix reaches K/2 = 64 (fn-ock-publication-duep), killed after its
+        # first step's frames were written.  The old checkpoint is early so
+        # that the 64 posts that make the publication due stay well under the
+        # development profile's transaction budget (hbox native-r2: an old
+        # checkpoint at 64 needed 128 posts and the budget refused the last
+        # of them with 441 before the publication was due).
         self.init_development()
         owner = self.start_owner(self.image)
-        self.ids = self.post_batch(0, 64)
-        line = self.owner_line(owner, CHECKPOINT_AUTO)
-        self.assertIsNotNone(line, "no automatic publication within the deadline")
+        self.ids = self.post_batch(0, 8)
         self.stop(owner)
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, scp.EXIT_OK, made.stderr.decode())
         old = self.digest()
-        self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=0")
+        self.assertIsNotNone(old)
+        self.assertEqual(self.open_line(), "open=checkpoint:8 suffix=0")
         owner = self.start_owner(self.image,
                                  extra_env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
-        self.ids += self.post_batch(64, 64)
+        self.ids += self.post_batch(8, 64)
         # The owner is killed by its own publication thread after the first
         # step; wait for the process to end.
         deadline = time.monotonic() + 180.0
@@ -267,18 +274,19 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # A staging orphan (the partial file) exists; the old checkpoint is
         # what the open reads, byte for byte; the writer's recover sweeps.
         self.assertEqual(self.digest(), old)
-        self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=64")
+        self.assertEqual(self.open_line(), "open=checkpoint:8 suffix=64")
         recovered = self.op("recover")
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
         self.assertEqual(list((self.store / "staging").iterdir()), [])
         self.assertEqual(self.digest(), old)
-        # A fresh owner publishes the whole history at 128.
+        # A fresh owner is due at once (suffix 64) and publishes the whole
+        # history at 72.
         owner = self.start_owner(self.image)
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication after the restart")
-        self.assertEqual(int(line.group(1)), 128)
+        self.assertEqual(int(line.group(1)), 72)
         self.stop(owner)
-        self.assertEqual(self.open_line(), "open=checkpoint:128 suffix=0")
+        self.assertEqual(self.open_line(), "open=checkpoint:72 suffix=0")
 
 
 if __name__ == "__main__":

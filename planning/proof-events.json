@@ -6708,6 +6708,14 @@
         {
           "kind": "theorem",
           "name": "fn-sct-decode-file-of-file-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-writes-the-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-is-the-remaining"
         }
       ]
     },
