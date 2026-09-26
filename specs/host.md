@@ -420,6 +420,30 @@ The native anchor follow-on is loaded by the common saved-image build:
 | Roughtime acquisition | `fnn-anchor-csprng-nonce`, `fnn-anchor-udp-exchange`, `fnn-anchor-acquire` in `host/native/anchor.lisp` | Consumes ACL2's selected server/key/wire-bound profile, reads the nonce from `/dev/urandom`, sends ACL2's request in one connected IPv4 UDP datagram, probes one byte beyond ACL2's response bound, calls the ACL2 parser and crypto seam, and preserves observed/refused/uncertain/fault |
 | Anchor decision and FNAN | `fnn-command-anchor`, `fnn-anchor-decision`, `fnn-anchor-publish`, `fnn-anchor-recovery-barriers` | Holds the store writer lock, calls the actual ACL2 acceptance entry, drives ACL2 `fn-anchor-rp-step` through pre-syscall issue and every result, reports accepted only after the directory barrier, and barriers a recovered final file and directory before decode |
 
+HST-016: The native host's cryptographic libraries are ones every
+supported system has or the release carries; none is a build of a specific
+OpenSSL. Three seams, each loaded at image build and re-loaded and re-checked
+at every start (a missing library or function refuses the start by name):
+
+| Seam | Library | Functions | Found |
+| --- | --- | --- | --- |
+| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
+| Ed25519, SHA-512 | libsodium | `crypto_sign_verify_detached`, `crypto_sign_detached`, `crypto_sign_keypair`, `crypto_hash_sha512`, width and init checks, in `host/native/crypto.lisp`, `signatures.lisp`, `peer-invite.lisp` | the system's (Linux, OpenBSD package, Homebrew) or the release's `lib/libsodium.so.23` |
+| ML-DSA-65 | `lib/libfn-mldsa65`: vendored PQClean ml-dsa-65 clean (`third_party/pqclean-ml-dsa-65`, upstream commit in `UPSTREAM.txt`) behind `host/native/fn-mldsa65.c`, built by `tools/build_mldsa65.sh` | `fn_mldsa65_public_from_pem_file`, `fn_mldsa65_sign_pem_file`, `fn_mldsa65_verify`, `fn_mldsa65_generate_pem`, `fn_mldsa65_widths`, in `host/native/signatures.lisp` and `peer-invite.lisp` | `lib/` beside the image's core (`FN_MLDSA_LIBRARY` overrides) |
+
+SHA-256 is ACL2's (`books/sha256.lisp`); randomness is `/dev/urandom` in the
+host and `getentropy(2)` inside the ML-DSA-65 library; neither uses OpenSSL.
+ML-DSA-65 is FIPS 204 final, pure, with the empty context and hedged
+signing, which is what OpenSSL 3.5's `EVP_PKEY_sign` for "ML-DSA-65" makes.
+Its key files keep their encoding: the PKCS#8 private key (seed and expanded
+key, as OpenSSL writes it; the seed-only and expanded-only forms are read
+too, and a seed that does not regenerate its expanded key is refused) and the
+SubjectPublicKeyInfo public key, recognized by exact DER layout. The
+interoperation is checked, not assumed: `tests/mldsa65_interop.py` has
+OpenSSL verify PQClean's signatures and PQClean verify OpenSSL's, compares
+the PEMs byte for byte, and verifies every committed OpenSSL-made signed
+carrier (planning/evidence/crypto-deps-2026-09-26.md).
+
 `books/anchor-servers.lisp` owns the bounded name-to-endpoint/key mapping and
 the acquisition sizes.  The common image loads `host/native/crypto.lisp`
 before `host/native/anchor.lisp`; `anchor acquire` calls

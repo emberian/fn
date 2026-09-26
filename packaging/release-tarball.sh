@@ -4,14 +4,15 @@
 #   packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR
 #
 # FROZEN_DIR is the output of packaging/freeze-native-image.sh (its production
-# fn-host, fn-host.core, runtime/, openssl/lib and lib/libsodium.so.23 checked
-# by image.sha256).  The tarball is the installed layout of
+# fn-host, fn-host.core, runtime/, lib/libsodium.so.23 and
+# lib/libfn-mldsa65.so checked by image.sha256).  The tarball is the installed layout of
 # packaging/install-native.sh under one top directory, fn-REV12/, plus the
 # operator documentation and SHA256SUMS:
 #
 #   fn-REV12/bin/fn                      the one command (packaging/fn)
 #   fn-REV12/libexec/fn/                 launcher, core, SBCL runtime,
-#                                        OpenSSL 3.5 and libsodium
+#                                        libsodium and ML-DSA-65 (vendored
+#                                        PQClean, third_party/)
 #   fn-REV12/share/fn/                   native-artifacts.txt, unit templates
 #   fn-REV12/share/doc/fn/               operator.md, peering-with-a-friend.md,
 #                                        agents.md, fn.toml.example
@@ -19,7 +20,9 @@
 #
 # The frozen launcher finds its runtime and libraries beside itself, so the
 # directory runs from wherever it is unpacked; nothing is read from the build
-# box or from the system's OpenSSL.  The rendered unit files name the
+# box.  The system provides the TLS library: OpenSSL 3.0 or later (any
+# current Linux distribution's libssl3) or LibreSSL 3 or later (HST-016);
+# the image checks its version and every function it calls at start.  The rendered unit files name the
 # placeholder prefix /opt/fn-REV12: move the directory there, or render
 # share/fn/systemd/fn.service.in yourself.  Run from the repository root.
 set -eu
