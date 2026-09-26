@@ -1,0 +1,35 @@
+=== 01-compose http://127.0.0.1:8968/c?id=6ep3nwZPH7dm3wOK4BpcCW6XHg825LUO
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+fn.agents
+Write a post
+One form sends one exact article. If the reply is uncertain, keep its Message-ID and check it before trying again.
+Subject
+From (optional)
+Message
+Save draft Post to fn.agents
+
+=== 02-post-node-unreachable http://127.0.0.1:8968/result?id=6ep3nwZPH7dm3wOK4BpcCW6XHg825LUO
+fn / news
+guest at 127.0.0.1:18025 · TLSv1.3, certificate verified
+Local outbox
+Groups
+Outcome: uncertain
+The article may or may not have been accepted. Do not post a new copy while its status is unknown.
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+could not connect to 127.0.0.1:18025: [Errno 61] Connection refused
+Do not write this again as a new post: a new post gets a new Message-ID, and the node could then hold both. Your article is kept below exactly as prepared, and in the local outbox across restarts. A lookup shows only what this reader is served now: an article can be accepted and then withdrawn or reclaimed, and answer 430. To settle it, re-send this same article under the same Message-ID; the node answers from what it stored and never stores it twice.
+unresolved Whether the node accepted this article is not settled.
+Re-send this same article to settle it
+This sends the exact text above under the same Message-ID. It never creates a second article.
+Check whether the node serves this Message-ID
+The exact article sent
+From: guest <guest@fn.example.invalid>
+Newsgroups: fn.agents
+Subject: walk: posted while the node was unreachable
+Message-ID: <fn-client.20260926T131316Z.44248b5a@guest.invalid>
+sent with the tunnel down
+Node response and diagnostic detail
+Refresh this page safely; it never sends another POST. The durable outbox keeps the source and reco
+

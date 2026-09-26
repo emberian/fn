@@ -54,7 +54,8 @@
         "host/checkpoint-host.lisp": "9981351df7b2e602e92e0a1cb1e6c337d5593f3806db6d374de5eb522379c034",
         "host/native/bp-service.lisp": "6e7a9327a582fe056bbb6fb2fe2c9083e1b0ca87f135fbeaede442009cf92e86",
         "host/owner-host.lisp": "311d649434a746a1bfa2bab99662c28fff06c0a0fbe342d2c846258d9b27dadd"
-      }
+      },
+      "qualification_amended": "rollback untested: qual-b6759850's rollback rehearsal ran the new image under bbf52159's name (packaging/fn honours $FN_NATIVE_HOST; PKT-481 (a), found by qual-dfa810fc); not a clean candidate; 69046a76 is the candidate"
     }
   },
   "deployment": {
@@ -94,7 +95,7 @@
       "keystone": "fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing",
       "tested": {
         "image": "b6759850",
-        "profile": "native-operator matrix and native modules, production and developer (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native-operator matrix and native modules, production and developer (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -113,7 +114,7 @@
       "keystone": "fn-own-240-follows-consumed-completion",
       "tested": {
         "image": "b6759850",
-        "profile": "developer twin for the cuts, production for the kill run (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "developer twin for the cuts, production for the kill run (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "50/50 cut observations, probe 40/40, served_crash_model 3/3 over 18 cuts, 90 production SIGKILLs with 0 torn, 0 lost 240, 0 reused numbers ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -132,7 +133,7 @@
       "keystone": "fn-own-pinned-view-survives-other-post",
       "tested": {
         "image": "b6759850",
-        "profile": "native-operator matrix and native modules (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native-operator matrix and native modules (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "reader_index 4/4, served_differential 7/7, the matrix reader rows with 0 disagreed ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -170,7 +171,7 @@
       "keystone": "fn-ocfg-fault-keeps-every-other-connection",
       "tested": {
         "image": "b6759850",
-        "profile": "native modules, image's own tests (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native modules, image's own tests (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "owner 18/18 (local fault, disconnect, reset), control 14/14 with the busy ceiling, POST-CONCURRENT accepted ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -188,7 +189,7 @@
       "keystone": "fn-ocl-no-reader-observes-a-half-change",
       "tested": {
         "image": "b6759850",
-        "profile": "native-operator matrix and native modules (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native-operator matrix and native modules (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -207,7 +208,7 @@
       "keystone": "fn-own-submission-never-targets-a-loop",
       "tested": {
         "image": "b6759850",
-        "profile": "two-node native-operator matrix with INN (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "two-node native-operator matrix with INN (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "all 22 TRANSIT-*-AB/BA rows and INN 33/33; peering 5/5 with the Path-identity transit, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -226,7 +227,7 @@
       "keystone": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
       "tested": {
         "image": "b6759850",
-        "profile": "native modules, developer and production (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native modules, developer and production (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "hybrid_author 6/6 including a signed POST over NNTP getting the transit classification; consumer_e2 signed poll 1/1 with a dated source ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -245,7 +246,7 @@
       "keystone": "fn-sbud-prepare-refuses-at-budget",
       "tested": {
         "image": "b6759850",
-        "profile": "native-operator matrix, operator verbs, kill run (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native-operator matrix, operator verbs, kill run (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "CAP-REFUSE-A/B refused, CAP-SET accepted; operator_verbs budget cases, bp_obligation 4/4, app_journal 10/10 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
@@ -264,7 +265,7 @@
       "keystone": "fn-bs-recover-program-keeps-relation-at-every-cut",
       "tested": {
         "image": "b6759850",
-        "profile": "developer twin for the cuts, production refuses selectors (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "developer twin for the cuts, production refuses selectors (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "the committed-history marker is fn-bs-marker-program in the byte crash model between the record and the finish (lane p10-marker-model); the cut table is 30; the differential and the served differential pass at every cut on a branch developer image ([p10-marker-model](evidence/p10-marker-model-2026-09-25.md)). At marker-replaced every crash image of the pending-rename state is a crash image of the rename dropped or landed, both related (fn-bs-k0-marker-replaced-cut-relation, lane k0-marker-replaced). Since owner-checkpoint-open (merge 69fa464a) the owner opens through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended); fn-ock-finalize-of-extended-capture equates its Store open from the extended capture with fn-cpo-open-observed over the whole history, the open the bridge is stated over, and fn-owner-recover-from-checkpoint-equals-full-recover equates the installed owner.",
@@ -283,7 +284,7 @@
       "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
       "tested": {
         "image": "b6759850",
-        "profile": "dtn developer and production images, frozen (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "dtn developer and production images, frozen (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "dtn",
       "latest": "on the frozen DTN images: bp_node 19/19 (N07, N08, N11), bp_service 16/16, receive_integrity 4/4, bp_app 5/5 and bp_obligation 4/4 on `fn-host-dtn-developer`; on `fn-host-dtn` every failure is a refused developer selector; through dtn7-rs a first hop SIGKILLed mid-transfer leaves A uncertain, resume is accepted, and the carrier-killed interrupted contact delivers once on both DTN images ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).",
@@ -301,7 +302,7 @@
       "keystone": "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request",
       "tested": {
         "image": "b6759850",
-        "profile": "dtn developer and production images, frozen (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "dtn developer and production images, frozen (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "dtn",
       "latest": "on frozen c3420013 through dtn7-rs with 0, 1 and 2 relays and four nodes, Python-bridge and native `bp-obligation request` authoring: B's application decides once apart from transport; the receipt releases exactly the requested pin when B is the neighbour or listed `releases-for`, `receipt-refused` and pinned without it; an unlisted carrier is refused `source-not-carried` ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).",
@@ -359,7 +360,7 @@
       "keystone": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
       "tested": {
         "image": "b6759850",
-        "profile": "native reader and peering modules (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; deployable, awaiting ember's go)"
+        "profile": "native reader and peering modules (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate)"
       },
       "profile": "default",
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
