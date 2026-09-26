@@ -126,6 +126,85 @@
                     (equal (fn-ccc-observe-chain *ct-short* *ct-observed* 4 *ct-bound*)
                            (list :ok *ct-h* 4)))))
 
+;
+; The observation from N: every reclaim cut.  The full antecedent and the
+; conclusion at N = 3 (link A's files reclaimed, B's still present) and N = 5
+; (every covered file reclaimed; the empty observation).
+(defconst *ct-from-3* (list (list 3 (nth 3 *ct-h*)) (list 4 (nth 4 *ct-h*))))
+(assert-event (and (not (equal *ct-entries* :bad))
+                   (fn-ccc-links-okp *ct-entries*)
+                   (fn-ccc-prefixp (fn-ccc-links-events *ct-entries*) *ct-h*)
+                   (true-listp *ct-h*)
+                   (<= 3 (len (fn-ccc-links-events *ct-entries*)))
+                   (fn-ccp-contiguousp *ct-from-3* 3)
+                   (fn-ccc-pairs-match *ct-from-3* *ct-h*)
+                   (equal (+ 3 (len *ct-from-3*)) (len *ct-h*))
+                   (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-entries*)
+                                        (fn-cc-observation-suffix *ct-from-3* 5) 6)
+                   (equal (fn-ccc-observe-chain *ct-chain* *ct-from-3* 6 *ct-bound*)
+                          (list :ok *ct-h* 6))))
+(assert-event (and (<= 5 (len (fn-ccc-links-events *ct-entries*)))
+                   (fn-ccp-contiguousp nil 5)
+                   (equal (+ 5 (len nil)) (len *ct-h*))
+                   (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-entries*) nil 6)
+                   (equal (fn-ccc-observe-chain *ct-chain* nil 6 *ct-bound*)
+                          (list :ok *ct-h* 6))))
+; Without N at or below the boundary: link A alone (boundary 3) and a history
+; with a record X at sequence 3 whose file is gone (N = 4).  Every other
+; hypothesis holds; the reconstruction lacks X, so it is not the history.
+(defconst *ct-gap-h* (list (nth 0 *ct-h*) (nth 1 *ct-h*) (nth 2 *ct-h*)
+                           (nth 1 *ct-h*) (nth 3 *ct-h*) (nth 4 *ct-h*)))
+(defconst *ct-from-4* (list (list 4 (nth 3 *ct-h*)) (list 5 (nth 4 *ct-h*))))
+(make-event `(defconst *ct-short-entries*
+               ',(fn-ccc-decode-entries *ct-short* *ct-bound*)))
+(assert-event (and (not (equal *ct-short-entries* :bad))
+                   (fn-ccc-links-okp *ct-short-entries*)
+                   (fn-ccc-prefixp (fn-ccc-links-events *ct-short-entries*) *ct-gap-h*)
+                   (true-listp *ct-gap-h*)
+                   (natp 4)
+                   (not (<= 4 (len (fn-ccc-links-events *ct-short-entries*))))
+                   (fn-ccp-contiguousp *ct-from-4* 4)
+                   (fn-ccc-pairs-match *ct-from-4* *ct-gap-h*)
+                   (equal (+ 4 (len *ct-from-4*)) (len *ct-gap-h*))
+                   (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-short-entries*)
+                                        (fn-cc-observation-suffix *ct-from-4* 3) 6)))
+(local (must-fail (defthm ct-reconstructs-without-n-within-boundary
+                    (equal (fn-ccc-observe-chain *ct-short* *ct-from-4* 6 *ct-bound*)
+                           (list :ok *ct-gap-h* 6)))))
+
+; Without the history a true list: H with a non-nil final tail.  Every other
+; hypothesis holds; the reconstruction is a true list, so it is not H.
+(defconst *ct-dotted-h* (append *ct-h* 7))
+; (pairs-match's guard asks for a true list, so its instance is a theorem.)
+(local (defthm ct-dotted-retained-hypotheses
+         (and (fn-ccc-prefixp (fn-ccc-links-events *ct-entries*) *ct-dotted-h*)
+              (not (true-listp *ct-dotted-h*))
+              (fn-ccp-contiguousp *ct-observed* 0)
+              (fn-ccc-pairs-match *ct-observed* *ct-dotted-h*)
+              (equal (+ 0 (len *ct-observed*)) (len *ct-dotted-h*)))
+         :rule-classes nil))
+(local (must-fail (defthm ct-reconstructs-without-true-list
+                    (equal (fn-ccc-observe-chain *ct-chain* *ct-observed* 6 *ct-bound*)
+                           (list :ok *ct-dotted-h* 6)))))
+; Without the files matching H: link A alone, the complete observation of the
+; five records, and a history whose record 4 differs.  The prefix, the count
+; and the valid suffix hold; the reconstruction is the files', not H.
+(defconst *ct-other-4* (list (nth 0 *ct-h*) (nth 1 *ct-h*) (nth 2 *ct-h*)
+                             (nth 3 *ct-h*) (nth 2 *ct-h*)))
+(assert-event (and (fn-ccc-prefixp (fn-ccc-links-events *ct-short-entries*) *ct-other-4*)
+                   (<= 0 (len (fn-ccc-links-events *ct-short-entries*)))
+                   (fn-ccp-contiguousp *ct-observed* 0)
+                   (not (fn-ccc-pairs-match *ct-observed* *ct-other-4*))
+                   (equal (len *ct-observed*) (len *ct-other-4*))
+                   (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-short-entries*)
+                                        (fn-cc-observation-suffix *ct-observed* 3) 6)))
+(local (must-fail (defthm ct-reconstructs-without-pairs-match
+                    (equal (fn-ccc-observe-chain *ct-short* *ct-observed* 6 *ct-bound*)
+                           (list :ok *ct-other-4* 6)))))
+; Not toothed: the contiguity of the observation.  Below the boundary a gap
+; is harmless (the chain holds those records) and above it the valid suffix
+; refuses one; it is not proved redundant, so it stays.
+
 ; ---------------------------------------------------------------------------
 ; fn-ccc-retire-plan-keeps-the-chain: generation 2 (outside) goes, 0 and 1 stay.
 (assert-event (equal (fn-ccc-retire-plan '(0 1 2) *ct-chain* *ct-bound*) '(2)))

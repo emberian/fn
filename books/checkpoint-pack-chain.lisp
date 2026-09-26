@@ -888,24 +888,94 @@
    :hints (("Goal" :induct (fn-ccp-contiguousp observed n)
             :in-theory (disable nthcdr)))))
 
+(local
+ (defthm fn-ccc-prefix-with-tail
+   (implies (and (fn-ccc-prefixp events h) (natp n) (<= n (len events))
+                 (true-listp events)
+                 (equal (append (nthcdr n events) s) (nthcdr n h)))
+            (equal (append events s) h))
+   :hints (("Goal" :induct (list (nthcdr n events) (nthcdr n h))
+            :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-ccc-chain-reconstructs-from-natural-n
+   (let ((entries (fn-ccc-decode-entries framed max)))
+     (implies (and (not (equal entries :bad))
+                   (fn-ccc-links-okp entries)
+                   (fn-ccc-prefixp (fn-ccc-links-events entries) h)
+                   (true-listp h)
+                   (natp n)
+                   (<= n (len (fn-ccc-links-events entries)))
+                   (fn-ccp-contiguousp observed n)
+                   (fn-ccc-pairs-match observed h)
+                   (equal (+ n (len observed)) (len h))
+                   (fn-cc-valid-suffixp (fn-ccc-chain-summary entries)
+                                        (fn-cc-observation-suffix
+                                         observed
+                                         (len (fn-ccc-links-events entries)))
+                                        frontier))
+              (equal (fn-ccc-observe-chain framed observed frontier max)
+                     (list :ok h frontier))))
+   :hints (("Goal"
+            :use ((:instance fn-ccc-links-okp-chain-summary
+                             (entries (fn-ccc-decode-entries framed max)))
+                  (:instance fn-ccc-links-okp-composes-a-prefix
+                             (entries (fn-ccc-decode-entries framed max)))
+                  (:instance fn-ccc-prefix-observation-agrees
+                             (all h)
+                             (events (fn-ccc-links-events
+                                      (fn-ccc-decode-entries framed max))))
+                  (:instance fn-ccp-contiguous-agreement-reconstructs
+                             (events (fn-ccc-links-events
+                                      (fn-ccc-decode-entries framed max))))
+                  (:instance fn-ccc-matched-records)
+                  (:instance fn-ccc-prefix-with-tail
+                             (events (fn-ccc-links-events
+                                      (fn-ccc-decode-entries framed max)))
+                             (s (fn-cc-observation-suffix
+                                 observed
+                                 (len (fn-ccc-links-events
+                                       (fn-ccc-decode-entries framed max))))))
+                  (:instance fn-ccc-prefix-length
+                             (p (fn-ccc-links-events
+                                 (fn-ccc-decode-entries framed max)))
+                             (all h)))
+            :in-theory (e/d (fn-cc-recover-observation fn-cc-expand
+                             fn-ccc-chain-summary fn-cc-make fn-cc-sequence
+                             fn-cc-events fn-cc-frontier fn-cc-valid-suffixp
+                             fn-cc-nth)
+                            (fn-ccc-links-okp-chain-summary
+                             fn-ccc-links-okp-composes-a-prefix
+                             fn-ccc-prefix-observation-agrees
+                             fn-ccp-contiguous-agreement-reconstructs
+                             fn-ccc-matched-records fn-ccc-prefix-length
+                             fn-ccc-prefix-with-tail
+                             fn-cc-summaryp fn-ccc-links-okp
+                             fn-ccc-decode-entries fn-cc-octet-event-listp))
+            :do-not-induct t))))
+
 ; KEYSTONE (the reconstruction from a chain is the reconstruction from the
-; history).  The host's open over the chain it walked and a complete
-; transaction observation of the history H (a record for every sequence of
-; H, each the record H holds there: the store before any reclaim) answers
-; exactly H, when the chain's records are a prefix of H (what
-; `fn-ccc-capture-extends-the-chain' keeps) and the records above the chain
-; are a valid suffix under the final frontier (the open's own check).  With
-; `fn-ccc-reclaim-preserves-reconstructed-history', the answer stays H at
-; every cut of the reclaim.
+; history).  The host's open (`fnn-pack-recover-records', which the store open
+; calls for every reopen, the owner's included) over the chain it walked and
+; the transaction files it observed answers exactly the history H, when the
+; chain's records are a prefix of H (what `fn-ccc-capture-extends-the-chain'
+; keeps), the files hold, for each sequence from some N at or below the
+; chain's boundary to the end of H, the record H holds there, and the records
+; above the chain are a valid suffix under the final frontier (the open's own
+; check).  N is 0 before any reclaim, the boundary after a complete one, and
+; anything between at a reclaim cut: no file below the boundary is needed.
+; The served view replays these records, so a record in a link is served from
+; the same bytes as before it was packed.
 (defthm fn-ccc-chain-reconstructs-the-history
   (let ((entries (fn-ccc-decode-entries framed max)))
     (implies (and (not (equal entries :bad))
                   (fn-ccc-links-okp entries)
                   (fn-ccc-prefixp (fn-ccc-links-events entries) h)
                   (true-listp h)
-                  (fn-ccp-contiguousp observed 0)
+                  (<= n (len (fn-ccc-links-events entries)))
+                  (fn-ccp-contiguousp observed n)
                   (fn-ccc-pairs-match observed h)
-                  (equal (len observed) (len h))
+                  (equal (+ n (len observed)) (len h))
                   (fn-cc-valid-suffixp (fn-ccc-chain-summary entries)
                                        (fn-cc-observation-suffix
                                         observed
@@ -913,36 +983,14 @@
                                        frontier))
              (equal (fn-ccc-observe-chain framed observed frontier max)
                     (list :ok h frontier))))
-  :hints (("Goal"
-           :use ((:instance fn-ccc-links-okp-chain-summary
-                            (entries (fn-ccc-decode-entries framed max)))
-                 (:instance fn-ccc-links-okp-composes-a-prefix
-                            (entries (fn-ccc-decode-entries framed max)))
-                 (:instance fn-ccc-prefix-observation-agrees
-                            (n 0) (all h)
-                            (events (fn-ccc-links-events
-                                     (fn-ccc-decode-entries framed max))))
-                 (:instance fn-ccp-contiguous-agreement-reconstructs
-                            (n 0)
-                            (events (fn-ccc-links-events
-                                     (fn-ccc-decode-entries framed max))))
-                 (:instance fn-ccc-matched-records (n 0))
-                 (:instance fn-ccc-prefix-length
-                            (p (fn-ccc-links-events
-                                (fn-ccc-decode-entries framed max)))
-                            (all h)))
-           :in-theory (e/d (fn-cc-recover-observation fn-cc-expand
-                            fn-ccc-chain-summary fn-cc-make fn-cc-sequence
-                            fn-cc-events fn-cc-frontier fn-cc-valid-suffixp
-                            fn-cc-nth)
-                           (fn-ccc-links-okp-chain-summary
-                            fn-ccc-links-okp-composes-a-prefix
-                            fn-ccc-prefix-observation-agrees
-                            fn-ccp-contiguous-agreement-reconstructs
-                            fn-ccc-matched-records fn-ccc-prefix-length
-                            fn-cc-summaryp fn-ccc-links-okp
-                            fn-ccc-decode-entries fn-cc-octet-event-listp))
-           :do-not-induct t)))
+  :hints (("Goal" :use ((:instance fn-ccc-chain-reconstructs-from-natural-n
+                                   (n (nfix n))))
+           :expand ((fn-ccp-contiguousp observed n)
+                    (fn-ccc-pairs-match observed h))
+           :in-theory (disable fn-ccc-chain-reconstructs-from-natural-n
+                               fn-ccc-observe-chain fn-ccc-links-okp
+                               fn-ccc-decode-entries fn-ccc-chain-summary
+                               fn-cc-valid-suffixp fn-ccc-links-events))))
 
 ; -----------------------------------------------------------------------------
 ; Retire keeps the selected chain
