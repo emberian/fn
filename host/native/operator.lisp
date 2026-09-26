@@ -503,6 +503,10 @@ observation into the outcome and this function only carries it out."
          (answer (if socket-present
                      (fnn-control-live-status control-path kind)
                    :none)))
+    (when (and (consp answer) (eq (first answer) :refused))
+      ;; The owner refused by the name ACL2 decided (a report its reply's
+      ;; u32 total cannot carry): a refusal, exit 1, with the word.
+      (fnn-refuse "live status refused: ~(~a~)" (second answer)))
     (if (and (consp answer) (eq (first answer) :done))
         (progn (fnn-write-report (second answer)) +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
@@ -552,6 +556,8 @@ observation into the outcome and this function only carries it out."
          (answer (if socket-present
                      (fnn-control-live-status control-path :health)
                    :none)))
+    (when (and (consp answer) (eq (first answer) :refused))
+      (fnn-refuse "live status refused: ~(~a~)" (second answer)))
     (if (and (consp answer) (eq (first answer) :done))
         (second answer)
       (let ((route (fnn-core 'fn-native-live-status-host-route socket-present answer)))

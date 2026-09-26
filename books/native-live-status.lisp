@@ -619,17 +619,33 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
   (declare (xargs :guard t))
   (min *fn-nls-chunk-octets* (nfix (- (len report) (nfix offset)))))
 
+; A report whose length the reply's u32 total cannot carry is refused BY
+; NAME (control-reply-fit, PRF-178): the refused reply's chunk, empty for
+; every other refusal, carries the word below, and `fn-nls-client-step'
+; reads it back as (:refused :report-past-the-total-width).  No layout
+; changes: status 2, total 0, no digest, and a byte-string chunk are what
+; every refused reply already framed; a client before this reads :refused.
+; The report's size grows with retained state (pins, peers, obligations,
+; grant rows, each up to its profile count), and it is rendered whole before
+; this decision: bounding that render is packet PKT-470's, not this word's.
+(defconst *fn-nls-refusal-past-the-total-width*
+  (fn-record-string-octets "report-past-the-total-width"))
+
 (defun fn-nls-reply (report offset)
   "The owner's page of REPORT from OFFSET."
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-cbor-octet-listp report)
-           (fn-record-uint32p (len report))
-           (natp offset)
-           (<= offset (len report)))
-      (fn-nls-reply-encode :accepted (len report) (fn-frame-trailer report)
-                           (take (fn-nls-page-width report offset)
-                                 (nthcdr offset report)))
-    (fn-nls-reply-encode :refused 0 nil nil)))
+  (cond ((and (fn-cbor-octet-listp report)
+              (fn-record-uint32p (len report))
+              (natp offset)
+              (<= offset (len report)))
+         (fn-nls-reply-encode :accepted (len report) (fn-frame-trailer report)
+                              (take (fn-nls-page-width report offset)
+                                    (nthcdr offset report))))
+        ((and (fn-cbor-octet-listp report)
+              (not (fn-record-uint32p (len report))))
+         (fn-nls-reply-encode :refused 0 nil
+                              *fn-nls-refusal-past-the-total-width*))
+        (t (fn-nls-reply-encode :refused 0 nil nil))))
 
 ; The concrete twin of the owner's pages (D27, PKT-145).  The owner renders
 ; a report once per request and keeps it as a string with its frame digest
@@ -660,7 +676,12 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
          (fn-record-string-octets
           (subseq text offset
                   (+ offset (min *fn-nls-chunk-octets* (- (length text) offset)))))))
-    (fn-nls-reply-encode :refused 0 nil nil)))
+    (if (and (consp buffer)
+             (stringp (car buffer))
+             (not (fn-record-uint32p (length (car buffer)))))
+        (fn-nls-reply-encode :refused 0 nil
+                             *fn-nls-refusal-past-the-total-width*)
+      (fn-nls-reply-encode :refused 0 nil nil))))
 
 (defun fn-nls-cached-buffer (kind offset cached)
   "The buffer an earlier page of this request rendered, or nil (render anew).
@@ -685,12 +706,17 @@ renders, so a new report starts from the state the owner holds then."
   "The client's word on one page, with ACC the report octets so far and
 TOTAL and DIGEST the first page's: (:done REPORT), (:next ACC TOTAL DIGEST)
 to ask from (len ACC), (:restart) when the report changed under the pages,
-(:refused) when the owner refused, (:transport) for a malformed page."
+(:refused) when the owner refused, (:refused :report-past-the-total-width)
+when it refused a report the u32 total cannot carry, (:transport) for a
+malformed page."
   (declare (xargs :guard t :verify-guards nil))
   (let ((d (fn-nls-reply-decode reply)))
     (cond
      ((not (and (consp d) (equal (car d) :reply))) (list :transport))
-     ((not (equal (nth 1 d) :accepted)) (list :refused))
+     ((not (equal (nth 1 d) :accepted))
+      (if (equal (nth 4 d) *fn-nls-refusal-past-the-total-width*)
+          (list :refused :report-past-the-total-width)
+        (list :refused)))
      ((and (consp acc)
            (not (and (equal (nth 2 d) total) (equal (nth 3 d) digest))))
       (list :restart))
@@ -1027,6 +1053,72 @@ to ask from (len ACC), (:restart) when the report changed under the pages,
   :hints (("Goal" :use (fn-nls-client-step-of-owner-reply
                         (:instance fn-nls-page-of-buffer-is-reply (off (len acc))))
            :in-theory nil)))
+
+; KEYSTONE (control-reply-fit, PRF-178: the width refusal is named, exactly
+; past the width).  For an octet report and ANY offset, the client's step on
+; the owner's buffered page (host/native-live-status-host.lisp
+; `fn-native-live-status-host-answer', called by host/native/control.lisp
+; `fnn-control-live-status-answer'; the client's step through
+; `fn-native-live-status-host-client-step', host/native/control.lisp
+; `fnn-control-live-status') is the named refusal
+; (:refused :report-past-the-total-width) exactly when the report is longer
+; than the reply's u32 total can say.  Within the width it is an accepted
+; page (`fn-nls-client-step-of-owner-page' says which) or, for an offset
+; past the report, the unnamed refusal it always was.
+(encapsulate ()
+(local
+ (defthm fn-nls-reply-refusals
+   (implies (fn-cbor-octet-listp report)
+            (and (implies (not (fn-record-uint32p (len report)))
+                          (equal (fn-nls-reply report off)
+                                 (fn-nls-reply-encode
+                                  :refused 0 nil
+                                  *fn-nls-refusal-past-the-total-width*)))
+                 (implies (and (fn-record-uint32p (len report))
+                               (not (and (natp off) (<= off (len report)))))
+                          (equal (fn-nls-reply report off)
+                                 (fn-nls-reply-encode :refused 0 nil nil)))))
+   :hints (("Goal" :in-theory (e/d (fn-nls-reply)
+                                   (fn-nls-reply-encode (:e fn-nls-reply-encode)))))))
+(local
+ (defthm fn-nls-client-step-of-the-refusals
+   (and (equal (fn-nls-client-step acc total digest
+                                   (fn-nls-reply-encode
+                                    :refused 0 nil
+                                    *fn-nls-refusal-past-the-total-width*))
+               '(:refused :report-past-the-total-width))
+        (equal (fn-nls-client-step acc total digest
+                                   (fn-nls-reply-encode :refused 0 nil nil))
+               '(:refused)))
+   :hints (("Goal" :use ((:instance fn-nls-reply-decode-of-encode
+                                    (status :refused) (total 0) (digest nil)
+                                    (chunk *fn-nls-refusal-past-the-total-width*))
+                         (:instance fn-nls-reply-decode-of-encode
+                                    (status :refused) (total 0) (digest nil)
+                                    (chunk nil)))
+            :in-theory (e/d (fn-nls-client-step)
+                            (fn-nls-reply-decode-of-encode fn-nls-reply-decode
+                             fn-nls-reply-encode (:e fn-nls-reply-encode)))))))
+(defthm fn-nls-page-refuses-exactly-past-the-total-width
+  (implies (fn-cbor-octet-listp report)
+           (equal (equal (fn-nls-client-step acc total digest
+                                             (fn-nls-page (fn-nls-buffer report) off))
+                         '(:refused :report-past-the-total-width))
+                  (< *fn-cbor-max-uint* (len report))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((not (fn-record-uint32p (len report)))
+                   (and (fn-record-uint32p (len report))
+                        (not (and (natp off) (<= off (len report)))))
+                   (and (fn-record-uint32p (len report))
+                        (natp off) (<= off (len report))))
+           :in-theory (e/d (fn-nls-client-step)
+                           (fn-nls-page fn-nls-buffer fn-nls-reply
+                            fn-nls-reply-decode fn-nls-reply-encode
+                            (:e fn-nls-reply-encode) fn-record-uint32p
+                            fn-cbor-octet-listp
+                            fn-frame-trailer take nthcdr fn-nls-page-width)))))
+)
 
 ; Every later page of one request reads the buffer its first page rendered:
 ; a request from offset 0 renders and stores it, and a positive offset of
