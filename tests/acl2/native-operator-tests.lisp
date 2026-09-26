@@ -979,7 +979,8 @@
                                        fn-bs-profile-resolve)))))
 
 ; -----------------------------------------------------------------------------
-; PRF-130 part 1 teeth: an absent store is the :no-store refusal, exit 6.
+; PRF-130 part 1 teeth: an absent store is the :no-store refusal, exit 1
+; (specs/host.md "CLI exit codes": 1 is the refused class; HST-009, PKT-295).
 ; Reachable witness: the host-shaped plan for `status' under the minimal
 ; configuration, and the observation the host makes beside a root that holds
 ; none of the store's entries (nil).
@@ -992,7 +993,7 @@
   (fn-native-operator-store-outcome *fn-nop-status-plan* nil))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-status-absent*) :refused))
 (assert-event (equal (fn-native-operator-result-reason *fn-nop-status-absent*) :no-store))
-(assert-event (equal (fn-native-operator-exit-code *fn-nop-status-absent*) 6))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-status-absent*) 1))
 (assert-event (equal (fn-native-operator-result-native-action *fn-nop-status-absent*) :none))
 (assert-event (stringp (fn-native-operator-result-hint *fn-nop-status-absent*)))
 ; health and run are store actions too.
@@ -1001,9 +1002,9 @@
 (assert-event (fn-native-operator-result-needs-storep *fn-nop-run*))
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-store-outcome *fn-nop-run* nil))
-                     6))
+                     1))
 ; Hypothesis 1 removed (a plan that needs no store: help): passed through,
-; accepted, and its exit is 0, not 6.
+; accepted, and its exit is 0, not the refusal's 1.
 (defconst *fn-nop-help-plan*
   (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("help"))))
 (assert-event (not (fn-native-operator-result-needs-storep *fn-nop-help-plan*)))
@@ -1030,9 +1031,13 @@
                (equal (fn-native-operator-result-reason
                        (fn-native-operator-store-outcome result observed))
                       :no-store))))
-; The conclusion fails for an ordinary refusal: exit 1, not 6.
+; The conclusion fails for an ordinary refusal: the same class and exit 1
+; (specs/host.md "CLI exit codes"), but its reason is not :no-store.
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-nop-refused :store-exists "init" nil nil)) 1))
+(assert-event (not (equal (fn-native-operator-result-reason
+                           (fn-nop-refused :store-exists "init" nil nil))
+                          :no-store)))
 ; A usage result carries ACL2's accepted form.
 (assert-event (equal (fn-native-operator-result-hint
                       (fn-nop-usage :flag-word-as-group "init" nil nil))

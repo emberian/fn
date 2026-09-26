@@ -360,6 +360,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-tests \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
+	books/outcome-class \
 	books/bp-run-class \
 	books/bp-node-profile \
 	tests/acl2/bp-node-host-tests \
@@ -471,6 +472,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-job-offer-tests \
 	books/bp-node-run-class \
 	tests/acl2/bp-run-class-tests \
+	tests/acl2/outcome-class-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \

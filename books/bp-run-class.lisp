@@ -26,7 +26,9 @@
 ; computed here; the host renders the code.
 
 (in-package "ACL2")
+(include-book "outcome-class")
 
+; The BP classes are five of the fn-wide outcome classes (books/outcome-class.lisp).
 (defconst *fn-bprc-classes* '(:accepted :refused :interrupted :fenced :not-connected))
 
 ; The evidence record: (refused failed uncertain fenced), four counts.
@@ -65,18 +67,13 @@
         ((< 0 (nth 1 c)) :not-connected)
         (t :accepted)))
 
-; specs/host.md "CLI exit codes" and "BP run classes".  A fence keeps the
-; code every fn command gives an unknown publication outcome, 3: recovery is
-; required before further mutation.  A connection lost after it existed is 6
-; and a connection that never existed 7: neither asks for recovery.
+; specs/host.md "CLI exit codes" and "BP run classes".  The code is the
+; fn-wide map's (PRF-143): a fence keeps the code every fn command gives an
+; unknown publication outcome, 3; a connection lost after it existed is 6 and
+; a connection that never existed 7: neither asks for recovery.
 (defun fn-bprc-exit-code (class)
   (declare (xargs :guard t))
-  (case class
-    (:accepted 0)
-    (:refused 1)
-    (:interrupted 6)
-    (:not-connected 7)
-    (otherwise 3)))
+  (fn-outcome-code class))
 
 (defun fn-bprc-run-exit-code (c)
   (declare (xargs :guard t))
@@ -229,3 +226,45 @@
   (implies (and (natp uncertain) (< 0 uncertain))
            (equal (fn-bprc-class (fn-bprc-with-articles c refused uncertain))
                   :fenced)))
+
+; -----------------------------------------------------------------------------
+; PRF-143: the BP classes are outcome classes, and the run's code is 3 exactly
+; when the run is fenced.
+
+(defthm fn-bprc-class-is-an-outcome-class
+  (fn-outcome-classp (fn-bprc-class c)))
+
+; KEYSTONE (PRF-143, BP family).  The host renders fn-bprc-run-exit-code
+; (host/native/bp.lisp fnn-bp-exit-code, host/native/bp-service.lisp
+; fnn-bps-exit-code, host/native/tcpcl.lisp fnn-tcl-exit-code): its code is
+; the fenced code exactly when the recorded evidence holds a fence, so no
+; later word masks one (fn-bprc-fence-is-never-masked) and nothing else is 3.
+(defthm fn-bprc-run-exit-code-is-fenced-iff-fenced
+  (equal (equal (fn-bprc-run-exit-code c) 3)
+         (equal (fn-bprc-class c) :fenced))
+  :hints (("Goal" :use ((:instance fn-outcome-code-is-fenced-iff-fenced
+                                   (class (fn-bprc-class c))))
+           :in-theory (disable fn-outcome-code-is-fenced-iff-fenced
+                               fn-bprc-class))))
+
+; `bp decode' answers an article verdict computed from a file, not a run: it
+; publishes nothing, so no verdict of it is a fence.  An :uncertain verdict
+; (the clock cannot decide the bundle's lifetime) is a refusal to accept the
+; bundle with that reason, which the host prints (`reason=...'), exit 1
+; (PKT-295; review-2026-09-26 section 5).  The subject is the class
+; host/native/bp.lisp fnn-command-bp-decode renders.
+(defun fn-bprc-decode-class (outcome)
+  (declare (xargs :guard t))
+  (if (equal outcome :accepted) :accepted :refused))
+
+(defun fn-bprc-decode-exit-code (outcome)
+  (declare (xargs :guard t))
+  (fn-outcome-code (fn-bprc-decode-class outcome)))
+
+; KEYSTONE (PRF-143, decode).  No decode verdict answers the fenced code; the
+; clock-undecided verdict answers the refusal code.
+(defthm fn-bprc-decode-never-fences
+  (and (not (equal (fn-bprc-decode-exit-code outcome) 3))
+       (implies (equal outcome :uncertain)
+                (equal (fn-bprc-decode-exit-code outcome)
+                       (fn-outcome-code :refused)))))
