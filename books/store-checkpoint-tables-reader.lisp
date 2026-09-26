@@ -607,6 +607,10 @@
 
 (in-theory (disable fn-sctr-next-run fn-sctr-restp))
 
+; The host-called load is guard-verified: the reader runs raw from the
+; host's plan (host/native/io.lisp fnn-state-checkpoint-load).
+(verify-guards fn-sct-load)
+
 (defthm fn-sct-load-is-decode-file
   (implies (and (fn-octets-p fn-octets)
                 (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets))

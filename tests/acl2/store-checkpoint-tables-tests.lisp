@@ -40,7 +40,11 @@
       (eq (symbol-class 'fn-ockp-encode-batch (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ockp-cut-frames (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ockp-setup (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-ock-capture-budget (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-ock-capture-budget (w state)) :common-lisp-compliant)
+      ; the host's per-step entry, its step, and the reader's load (checkpoint-pipeline-4)
+      (eq (symbol-class 'fn-ockp-batch (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ockp-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-sct-load (w state)) :common-lisp-compliant)))
 
 (defconst *sctt-events*
   (list (fn-store-retention-event-make :undertake 0 0 0
@@ -266,11 +270,31 @@
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-sct-run fn-sct-program fn-sct-run-of-program)))))
 
-; fn-ockp-decide-defers-by-the-estimate, its two natp hypotheses: UNTOOTHED.
-; `<' treats a non-number as 0, so a nil budget defers and a nil estimate
-; plans exactly as the conclusion says (a ground attempt to refute either
-; failed); the hypotheses are likely removable, which needs the weakened
-; theorem proved first (the rule): a continuation item (PKT-583).
+; fn-ockp-decide-defers-by-the-estimate, its natp hypothesis on the
+; estimate (checkpoint-pipeline-4; the one on the budget was removed after
+; the weakened theorem was proved): a rational estimate above a budget of 0
+; is deferred by name, yet the recorded deferral does not block a later
+; budget of 0, where the conclusion says it does (`fn-ock-publication-
+; blockedp' compares naturals).  The retained hypotheses: none.
+; A ground theorem, not an assert-event: the call is outside the decision's
+; guard, and a proof evaluates it by the logic where an evaluation refuses.
+(defthm sctt-decide-without-natp-estimate-witness
+  (let ((verdict (fn-ockp-decide 1/2 0 nil)))
+    (and (not (natp 1/2))
+         (equal verdict (list :deferred :exceeds-budget 1/2 0))
+         (not (iff (fn-ock-publication-blockedp verdict 0 0) (< (nfix 0) 1/2)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ockp-decide fn-ock-publication-blockedp fn-ockp-space))))
+(must-fail
+ (defthm sctt-r-decide-without-natp-estimate
+   (let ((verdict (fn-ockp-decide estimate budget free)))
+     (implies (< budget estimate)
+              (iff (fn-ock-publication-blockedp verdict later-budget later-space)
+                   (< (nfix later-budget) estimate))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-ockp-decide fn-ock-publication-blockedp)
+                            (fn-ockp-decide-defers-by-the-estimate))))))
 
 ; fn-ockp-estimate-is-len-file-octets, its encodability hypothesis: a table
 ; whose row the codec refuses (a leaf of 2^2040 octets is not constructible;
