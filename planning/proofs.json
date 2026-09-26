@@ -4531,6 +4531,40 @@
         "fn-profile-upgrade-keeps-article-verdict",
         "fn-sbud-article-figure-bounds-the-record"
       ]
+    },
+    {
+      "id": "PRF-117",
+      "title": "One authored source, one identity: the host's tombstone-aware duplicate verdict keys on the poster's source at every clock, before and after reclamation",
+      "statement": "The subject is fn-rcl-existing-action (books/store-reclaim.lisp), which host/owner-host.lisp fn-owner-existing-action and fn-owner-prepare call, and fn-owner-existing-action-buffer through fn-rclb-existing-action (fn-rclb-existing-action-is-rcl-existing-action); host/native/owner.lisp fnn-owner-attempt reaches them for the served POST and the operator post. fn-sr-an-injection-is-not-a-tombstone: no fn-inj-decide decision's octets are a tombstone (injected octets open with Path or Injection-, a refusal has none). fn-sr-a-retry-is-already-stored: the held payload is source S injected at clock A under Message-ID M and groups G; S injected at clock B under M and G is :duplicate. fn-sr-a-changed-source-is-a-conflict: a different source S2 under M is :conflict for any groups and clocks. fn-sr-the-tombstone-keeps-the-source: fn-rcl-tombstone-of of an injection is a tombstone whose source digest is SHA-256 of S, whose agent is the configured one and whose octet digest is SHA-256 of the injected octets. fn-sr-a-retry-after-reclaim-is-already-stored and fn-sr-a-changed-source-after-reclaim-is-a-conflict: the same two verdicts against the tombstone, the second up to a SHA-256 collision on the two sources (fn-rcl-collisionp, about 2^128 work, assumed not proved). The tombstone theorems are unreachable-in-composition until a program writes tombstones (store reclaim is not implemented). fn-sr-a-signed-retry-is-already-stored (PKT-166): the hybrid-author route's stored octets fn-hsig-injected-carrier-octets, held at clock A, recomputed at any clock B under the same Message-ID and groups, are :duplicate; host/native/hybrid-control.lisp fnn-hybrid-control-author asks fn-owner-existing-action before it commits.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/source-routes.lisp",
+        "tests/acl2/source-routes-tests.lisp",
+        "tests/test_native_source_corpus.py",
+        "tests/fixtures/source-corpus/supplied-date.article",
+        "planning/evidence/source-corpus-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T235018Z-2734100.json",
+        "host/native/hybrid-control.lisp",
+        "planning/evidence/manifests/certify-20260926T001006Z-2934089.json",
+        "planning/evidence/manifests/certify-20260926T001123Z-2946946.json"
+      ],
+      "progress_note": "Lane source-corpus (2026-09-25). Certified on persvati run-20260925T235003Z-3cb2 (source-routes 1.9 s, source-routes-tests 7.1 s at 2 jobs). Teeth: reachable witnesses over the real fn-inj-decide and Store for a supplied Date, a generated Date and a supplied Path (recipe v3); hypothesis-removal witnesses for the held payload, the groups, the first Message-ID and distinct sources; the held hypothesis was removed after proving the weakened statements.",
+      "events": [
+        "fn-sr-an-injection-is-not-a-tombstone",
+        "fn-sr-a-retry-is-already-stored",
+        "fn-sr-a-changed-source-is-a-conflict",
+        "fn-sr-the-tombstone-keeps-the-source",
+        "fn-sr-a-retry-after-reclaim-is-already-stored",
+        "fn-sr-a-changed-source-after-reclaim-is-a-conflict",
+        "fn-sr-an-injection-is-a-cons",
+        "fn-sr-a-signed-retry-is-already-stored"
+      ]
     }
   ]
 }

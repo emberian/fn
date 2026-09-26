@@ -1,0 +1,11 @@
+From: poster@example.invalid
+Newsgroups: fn.test
+Subject: corpus unknown headers
+Date: Fri, 25 Sep 2026 12:00:00 +0000
+X-Corpus-Unknown: kept verbatim
+x-lower-case-name: Mixed Case Value
+X-Folded: first part
+	continued on a folded line
+Message-ID: <sc-unknown-headers@example.invalid>
+
+unknown headers stay the poster's
