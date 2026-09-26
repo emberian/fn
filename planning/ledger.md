@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 900 |
-| Certification roots in the Makefile | 884 |
-| Books inside the root closure | 896 |
-| `defthm` and `defthmd` events | 12480 |
-| `defun` events | 8727 |
+| Books read | 902 |
+| Certification roots in the Makefile | 885 |
+| Books inside the root closure | 898 |
+| `defthm` and `defthmd` events | 12495 |
+| `defun` events | 8739 |
 | Functions with verified guards | 2181 |
-| Functions declared `:verify-guards nil` and never verified | 657 |
+| Functions declared `:verify-guards nil` and never verified | 659 |
 | Functions left at the default with an explicit guard | 4607 |
-| Functions left at the default with no guard | 1282 |
-| `assert-event` checks | 13057 |
-| `must-fail` checks | 1430 |
-| `encapsulate` events | 61 |
+| Functions left at the default with no guard | 1292 |
+| `assert-event` checks | 13078 |
+| `must-fail` checks | 1437 |
+| `encapsulate` events | 63 |
 | Theorems flagged SUSPECT by shape | 108 |
 | Export-hygiene warnings | 149 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 107 |
-| Include-hygiene warnings | 905 |
-| Host-names warnings | 1015 |
+| Include-hygiene warnings | 909 |
+| Host-names warnings | 1016 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -516,6 +516,7 @@ that `make certify` requests.
 | `books/sha256-stobj.lisp` | closure | 153 | 40 | 0/0/26/14 | 0 | 0 | 1 |
 | `books/sha256.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 0 |
+| `books/source-routes.lisp` | closure | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/statement-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/statement-codec.lisp` | root | 38 | 7 | 0/0/6/1 | 0 | 0 | 1 |
 | `books/statement-invariants.lisp` | root | 57 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -911,6 +912,7 @@ that `make certify` requests.
 | `tests/acl2/sha256-stobj-tests.lisp` | - | 3 | 0 | 0/0/0/0 | 26 | 1 | 0 |
 | `tests/acl2/sha256-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
 | `tests/acl2/source-projection-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 5 | 3 | 0 |
+| `tests/acl2/source-routes-tests.lisp` | root | 0 | 12 | 0/2/0/10 | 21 | 7 | 0 |
 | `tests/acl2/stack-depth-twins-tests.lisp` | - | 2 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-budget-article-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 20 | 1 | 0 |
