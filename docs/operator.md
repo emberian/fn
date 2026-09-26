@@ -1402,6 +1402,11 @@ it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
 an older image refuses configuration delta kinds 15 and 16 at decode; a store
 that never issued a code is unaffected).
 
+The same rule covers the login-binding rows (delta code 17, `principal
+bind|unbind` applied live through the running node since 2026-09-26): a store
+that ever published a binding is refused by releases before it; roll back only
+from the pre-upgrade snapshot.
+
 There are two rollbacks, and they are not the same:
 
 - **Restoring the kept `config.json`** (the old release reads the new
