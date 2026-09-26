@@ -78,14 +78,18 @@ time for the 720 fsyncs on ZFS (38 us a call) against a commit loop of
 | tmpfs | 1,000 | 0.765 | **0.77** | 1.49 | 2.33 | 545 MiB | 9.8 | |
 | ZFS | 1,000 | 417.6 | **417.6** | 10.73 | 4.09 | 543 MiB | 11.3 | 2.48T/155G |
 | tmpfs | 10,000 | 17.71 | **1.77** | 52.6 | 70.45 | 1.84 GiB | 10.3 | |
-| ZFS | 10,000 | PENDING (running; about 420 ms a commit, 70 min) | | | | | | |
+| ZFS | 10,000 | 1694.3 | **169.4** | 47.8 | 71.77 | 1.85 GiB | 5.7 to 6.6 | 2.49T/153G |
 
-ZFS at N = 1,000: 417.6 ms a commit at load 11, against commit-regression's
-207 to 351 ms at load 4 to 7 on the same pool with 278G free; the spread is
-the pool's, 1.5 to 3x between repetitions (that record's own finding). tmpfs
-at N = 10,000 is 1.77 ms a commit against 0.77 at N = 1,000: the probe's
-in-process reopen and `fn-store-sn-finish` are linear in N (commit-regression
-cause 2, merged as chained packs); the reopen of 10,000 records takes 52.6 s.
+ZFS: 417.6 ms a commit at N = 1,000 under load 11, and 169.4 ms a commit at
+N = 10,000 (1,694 s for the loop) under load 5.7 to 6.6, against
+commit-regression's 207 to 351 ms at load 4 to 7 on the same pool with 278G
+free. The per-commit figure does not grow with N on ZFS; it follows the
+box's load (other lanes' I/O on the same pool: the ZIL commit waits behind
+them), a spread of 2.5x within this one run. tmpfs at N = 10,000 is 1.77 ms
+a commit against 0.77 at N = 1,000 (the probe's CPU, 70 s of user time at
+N = 10,000, is the served path's linear term of section 1.4 plus the
+reopen); the reopen of 10,000 records takes 52.6 s on tmpfs and 47.8 s on
+ZFS.
 
 ### 1.3 100 POSTs of 2 KiB on one connection (`post.py`, scale profile, 4 KiB articles)
 
@@ -94,12 +98,14 @@ cause 2, merged as chained packs); the reopen of 10,000 records takes 52.6 s.
 | tmpfs (rep after N = 1,000 probe) | 3.55 | 4.51 | 6.99 | 3.5 | 9.8 |
 | ZFS | **160.0** | **431.9** | 705.0 | 5.3 | 11.8 |
 | tmpfs (rep after N = 10,000 probe) | 2.64 | 4.60 | 6.64 | 2.6 | 10.3 |
+| ZFS (after the N = 10,000 probe) | **58.6** | **325.0** | 376.2 | 3.8 | 7.8 |
 
-ZFS: a POST's durable reply is 160 ms median and 432 ms p95 at N = 100 under
-load, on a pool where the probe's commit is 418 ms: the served path's seven
-barriers, the same syscalls. Against answers §3's 250 ms p95 target this pool
-does not qualify with the current program; a six-barrier program (PKT-441)
-would move the median by about one seventh, not to the target (PKT-442).
+ZFS: a POST's durable reply is 59 to 160 ms median and 325 to 432 ms p95 at
+N = 100, on a pool where the probe's commit is 169 to 418 ms in the same
+hour: the served path's seven barriers, the same syscalls, the pool's load.
+Against answers §3's 250 ms p95 target this pool does not qualify with the
+current program at either load; a six-barrier program (PKT-441) would move
+the figures by about one seventh, not to the target (PKT-442).
 
 ### 1.4 The N = 10,000 POST curve and the profile (`post_n.py --prof`)
 
@@ -304,11 +310,54 @@ two books (`--root` this worktree, `--cache /home/ember/fn-certcache`):
 
 ## 5. Native gate and the gate JSON
 
-PENDING at this revision: the four crash-model modules on the base image with
-this head's tree (`tools/hbox_native.sh --no-build`), and
-`tools/throughput_gate.py run` on the base image labelled `publish-program`
-(`--under-load`; the box is not quiet). No host byte changes, so the base
-image is this head's image.
+No host byte changes, so the base image (core `002089cd…`) is this head's
+image; the modules ran on hbox against it with this tree
+(`tools/hbox_native.sh --label base-17ff24aa --no-build .`, then the two
+campaigns by hand in a `systemd-run --scope -p MemoryMax=24G` unit with
+`FN_NATIVE_CRASH_HOST`, `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g`,
+`FN_CERT_CACHE` and the OpenSSL prefix exported, which hbox_native.sh's box
+script does for its own steps and not for a campaign's model bridge).
+
+| module | result | log (sha256) |
+| --- | --- | --- |
+| `tests.test_native_crash_model` | OK, 7 tests, 81.9 s: every POST death cut (23), the frame, the recovery-stage unlink, the injected outcomes | `native-crash-model.log` |
+| `tests.test_native_served_crash_model` | OK, 3 tests, 217.8 s: the served prepare/publish/finish cuts (23, kill), the served frame, the recovery cuts | `native-served-crash-model.log` |
+| `tests.test_store_process_crash` | OK, 1 test, 17.1 s | hbox `logs/test-tests.test_store_process_crash.log` |
+| `tests.test_native_compaction_crash_map` | OK | hbox `logs/test-tests.test_native_compaction_crash_map.log` |
+| `tests.test_native_crash_correspondence` | OK | hbox `logs/…crash_correspondence.log` |
+| `tests.test_native_cut_map` | FAILED 1 of 3, a dev drift (below) | `native-cut-map-dev-drift.log` |
+
+Two failures on the way, both classified harness, neither this lane's
+implementation:
+
+- **The served campaign's model bridge could not load the host file** (26
+  errors, one per cut, in 191 s): `SERVED_BRIDGE_SETUP`
+  (`tests/test_native_served_crash_model.py`) `ld`s
+  `host/store-node-host.lisp` into a session holding
+  `books/records-concrete-owner` only, and that file declares the octet
+  buffer stobj (`fn-store-sco-decode`, `:stobjs (fn-octets state)`) since
+  rep-wave-d-2/-3. The qualification of b6759850 found it (its row C18) and
+  verified the repair on a scratch copy without shipping it. This lane ships
+  it: the three books `tools/bridge_image.py` loads before the same `ld`
+  (`octets-stobj`, `store-checkpoint-buffer`, `store-checkpoint-reader`).
+  With them the module is 3/3 OK; no expectation changed.
+- **`test_native_cut_map`'s `verify_compact_entries`** expects
+  `fnn-compact-steps` (`host/native/checkpoint.lisp:772`) to call
+  `(fnn-core 'fn-store-compact-decide …)`, and since the chained-packs merge
+  (735614d6) the function's `:pack` arm builds generation links and the
+  decision is asked elsewhere. It fails identically on the shared dev
+  checkout (aa7453f8). That is the pack-chain merge's certification debt,
+  left to the deputy; the marker cuts this lane is about pass in the same
+  module (`test_every_declared_native_cut_is_a_model_program_cut` OK).
+
+The gate: `tools/throughput_gate.py run --image …/native-base-17ff24aa/tree/build/fn-host-developer
+--revision HEAD --label publish-program --under-load`, tmpfs, box not quiet
+(three other units live, loadavg 5.6):
+`planning/evidence/throughput/06606299ef63-publish-program-20260926T105146Z.json`:
+probe_commit_ms 0.477, post_median_ms 1.666, post_p95_ms 2.489,
+post_owner_cpu_ms 1.8, article_median_ms 2.499, reopen_s 0.147. These are
+the tmpfs CPU term of the same bytes as dev's; the ZFS rows above are what
+the deputy should read for the durable reply.
 
 ## 6. Ids and what is not done
 
@@ -320,5 +369,8 @@ image is this head's image.
 - Not done: a cheaper served program (refused; PKT-441 is the design), the
   after rows (there is no after), the operator's durability sentence (the
   observable is unchanged), a 32 KiB N = 10,000 curve, a second ZFS
-  repetition (the pool's spread is 1.5 to 3x between repetitions; every
-  figure here carries its load).
+  repetition (the spread within this run was 2.5x with the load; every
+  figure here carries its load), the cut_map drift (the deputy's).
+- Artefacts (sha256, first 16): `probe.log` and `post.log` (the rows),
+  `native-crash-model.log` `85adab5d6bc326d2`, `native-served-crash-model.log`
+  `c66e8b5935cac3fe`, the developer core `002089cd0a4c4403`.

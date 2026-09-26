@@ -1,0 +1,20 @@
+test_checkpoint_cuts_match_native_and_reclaim_program (tests.test_native_cut_map.NativeCutMapTests.test_checkpoint_cuts_match_native_and_reclaim_program) ... FAIL
+test_every_declared_native_cut_is_a_model_program_cut (tests.test_native_cut_map.NativeCutMapTests.test_every_declared_native_cut_is_a_model_program_cut) ... ok
+test_outcomes_remain_explicit (tests.test_native_cut_map.NativeCutMapTests.test_outcomes_remain_explicit) ... ok
+
+======================================================================
+FAIL: test_checkpoint_cuts_match_native_and_reclaim_program (tests.test_native_cut_map.NativeCutMapTests.test_checkpoint_cuts_match_native_and_reclaim_program)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/publish-program/native-base-17ff24aa/tree/tests/test_native_cut_map.py", line 11, in test_checkpoint_cuts_match_native_and_reclaim_program
+    native_cuts.verify_checkpoint_cut_map()
+  File "/tank/fn/scratch/publish-program/native-base-17ff24aa/tree/tests/campaign/native_cuts.py", line 444, in verify_checkpoint_cut_map
+    verify_compact_entries(native)
+  File "/tank/fn/scratch/publish-program/native-base-17ff24aa/tree/tests/campaign/native_cuts.py", line 472, in verify_compact_entries
+    raise AssertionError("fnn-compact-steps does not ask fn-store-compact-decide")
+AssertionError: fnn-compact-steps does not ask fn-store-compact-decide
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.006s
+
+FAILED (failures=1)
