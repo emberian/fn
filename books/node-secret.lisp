@@ -160,4 +160,13 @@
            :in-theory (disable fn-ns-input))
           ("Goal'" :use fn-ns-labels-are-labels)))
 
+; Every use yields 32 octets (the lock and key lengths of RFC 8315 rest on it).
+(defthm fn-ns-hmac-sha256-shape
+  (and (true-listp (fn-ns-hmac-sha256 key msg))
+       (equal (len (fn-ns-hmac-sha256 key msg)) 32)))
+
+(defthm fn-ns-mac-shape
+  (and (true-listp (fn-ns-mac secret label msg))
+       (equal (len (fn-ns-mac secret label msg)) 32)))
+
 (in-theory (disable fn-ns-input fn-ns-mac fn-ns-hmac-sha256))

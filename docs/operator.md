@@ -1526,10 +1526,23 @@ directory and no rollback of a store:
 
 ```text
 fn operator NODE/fn.toml store export ARCHIVE     # only if the data must survive
+cp -p NODE/store/keys/node-secret.key NODE/node-secret.keep   # SEC-006, see below
 # stop the unit; remove NODE/store; install the release (one libexec/fn/, replaced whole)
 fn operator NODE/fn.toml store import ARCHIVE     # or: init
+mkdir -m 700 NODE/store/keys && cp -p NODE/node-secret.keep NODE/store/keys/node-secret.key
 # start the unit
 ```
+
+The node secret (`STORE/keys/node-secret.key`, 32 octets, mode 0600; SEC-006)
+keys the Cancel-Lock the node writes for each login's posts. It is not in
+the archive (an archive is a backup, and backups do not carry secrets), so
+a reinstall that should keep logins able to cancel their earlier posts puts
+the old file back as above. `init` writes a new one; after an `import`
+without the old file, `fn --fn store NODE/store node-secret` writes a new one
+(posts locked under the old secret then cancel only by a signed canceller or
+the poster's own RFC 8315 key). The node refuses to start, by name, while
+the file is missing, is not 32 octets, or is readable or writable by group
+or others.
 
 The store has one format (`fn-store-8`). A store of any other format is
 refused at open by name (`open refused reason=store-format: reinstall from

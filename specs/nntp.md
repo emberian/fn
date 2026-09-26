@@ -770,38 +770,56 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
 SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
 
-Status: **half implemented** (PRF-210, lane newsreader-cancel,
-planning/evidence/newsreader-cancel-2026-09-26.md). The decision is in
-place: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a
-Cancel-Lock of its target withdraws it, here and on every peer (a client
-that writes its own lines, as tin does, can cancel its own post today). The
-node-written lock keyed by the login, below, is proved and tested in ACL2 but
-not yet called by the owner: the owner's completion gate requires the stored
-payload to be the in-flight submission's staged octets
-(`fn-own-sub-stored-octets`), so the lines must be added there, with the
-secret held by the owner and the login carried by the submission. Until
-then Thunderbird, which writes no Cancel-Lock, cannot cancel. The decisions
-(PKT-576's default, P1) are the coordinator's of 2026-09-26. RFC 5537
-section 5.3 leaves cancel authentication to local policy; the login basis
-is that local policy; the lock and key are RFC 8315.
+Status: **implemented** (PRF-210; lanes newsreader-cancel and
+newsreader-cancel-2, planning/evidence/newsreader-cancel-2026-09-26.md).
+An unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a
+Cancel-Lock of its target withdraws it, here and on every peer; the node
+writes the lock and key for the authenticated login, so a client that
+writes none (Thunderbird) cancels its own post, and a client that writes its
+own (tin) keeps its lines. The decisions (PKT-576's default, P1; one node
+secret for Cancel-Lock and posting-account, 2026-09-27) are the
+coordinator's. RFC 5537 section 5.3 leaves cancel authentication to local
+policy; the login basis is that local policy; the lock and key are RFC 8315.
 
-What the node is to write (not wired). On a served POST from an authenticated login L the
-owner (books/cancel-lock.lisp `fn-cl-served-payload`) inserts directly after its own Injection-Info line
+What the node writes. The octets the owner stores for a served POST from
+an authenticated login L are `fn-own-sub-stored-octets` of the submission
+under the owner's node secret S (books/owner-served-invariants.lisp; the
+host stages exactly that value for the Store in `fn-owner-take`, and the
+completion gate compares the durable record with the same function of the
+same owner, so a 240 names the locked octets). Directly after the node's own
+Injection-Info line it inserts
 
     Cancel-Lock: sha256:Base64(SHA-256(K))
     Cancel-Key: sha256:K'          (a cancel or Supersedes only)
 
-with `K = Base64(HMAC-SHA256(S, MSGID || L))` (RFC 8315 section 4), `K'`
-the same for the cancel's target, and S a 32-octet secret the owner is to create
-at its first start in `STORE/cancel-lock.key` (never served, never in a
-record; a deleted file is replaced and the service log says so, and locks
-written under the old secret then no longer open by login; a file of the
-wrong size stops the node by name). A proto-article that already carries
-Cancel-Lock (tin's own) gets no node lock, and one that carries Cancel-Key
-gets no node key: RFC 8315 section 2 allows each field once and fn does not
-rewrite the poster's field, so the poster's own keys decide. An
-unauthenticated POST, a control or BP submission, and an article without
-this node's Injection-Info line get nothing.
+with `K = Base64(HMAC-SHA256(S, "fn cancel-lock v1" || 0x00 || MSGID || L))`
+(RFC 8315 section 4; books/node-secret.lisp, the node secret's labelled
+use), `K'` the same for the cancel's target. L is the AUTHINFO USER name the
+connection had authenticated as before the read that completed the article
+(`fn-own-sub-login`, recorded on the submission, so the lock does not depend
+on the connection still being open when the writer takes it; an AUTHINFO
+later in the same read never claims the article).
+
+The node secret S: 32 octets from the OS CSPRNG, written by `init` into
+`STORE/keys/node-secret.key` (directory 0700, file 0600, linked once, never
+overwritten), never served, printed or written into a record (a
+configuration record is printed by `show` and replayed by backups). The
+owner reads it at every start and hands it to ACL2, which carries it in the
+owner (`fn-own-node-secret`); start refuses by name when it is missing, not
+a regular file, accessible to group or others, or not 32 octets. A store
+initialized before SEC-006 gets it once with `store ROOT node-secret`. One
+secret serves every keyed use under a distinct label (`fn cancel-lock v1`,
+`fn posting-account v1`); `fn-ns-input-separates-labels` proves two uses
+never MAC the same input. Replacing the file changes the key of every later
+cancel: locks written under the old secret then open only by a signed
+canceller or the poster's own RFC 8315 key.
+
+A proto-article that already carries Cancel-Lock (tin's own) gets no node
+lock, and one that carries Cancel-Key gets no node key: RFC 8315 section 2
+allows each field once and fn does not rewrite the poster's field, so the
+poster's own keys decide. An unauthenticated POST, a control or BP
+submission, a transit article, and an article without this node's
+Injection-Info line get nothing.
 
 How it is decided. The withdrawal plan decides a cause this node did not
 verify by its Cancel-Key entries (a record naming them), and the effect's
@@ -820,10 +838,15 @@ What it proves and what it cannot. Keystone
 `fn-ctl-withdrawal-authority-is-exactly-signer-or-poster`: a cancel's record
 withdraws exactly for a verified signer who authored the target, a verified
 signer whose grants cover every group of the target, or an unverified cause
-whose key opens a lock of the target. The same login's key opens its lock
-(`fn-cl-login-key-opens-login-lock`); the owner's insertion changes no octet
-of the injected article (`fn-cll-insert-adds-only-the-lines`). Not
-theorems: that the written line parses back as the entry the decision reads
+whose key opens a lock of the target. Keystone
+`fn-own-stored-octets-carry-the-login-lock`: for a served submission under
+login L with the secret installed and no poster lock, the stored octets are
+the injected octets with exactly one Cancel-Lock line, L's, after the
+Injection-Info line (and a cancel's key line); by
+`fn-cl-login-key-opens-exactly-its-lock` the key the node derives for a
+login opens it exactly when that login's lock equals L's, so L's own key
+opens it. The insertion changes no octet of the injected article
+(`fn-cll-insert-adds-only-the-lines`). Not theorems: that the written line parses back as the entry the decision reads
 (the teeth book checks it on served articles), and that another login's key
 opens nothing, which needs SHA-256 of two HMAC outputs under a secret the
 forger does not hold to collide (2^128 generic work for a collision among

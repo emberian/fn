@@ -3746,7 +3746,7 @@
     {
       "id": "NNT-045",
       "title": "A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not",
-      "specification": "specs/nntp.md#transit-streaming-nnt-042",
+      "specification": "specs/nntp.md#transit-streaming-nnt-045",
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
