@@ -40,6 +40,10 @@
        "/usr/local/opt/libsodium/lib/libsodium.dylib"
        "libsodium.dylib"))
     ((member :linux *features*) '("libsodium.so.23" "libsodium.so"))
+    ;; OpenBSD's ld.so resolves an unversioned name to the newest
+    ;; libsodium.so.MAJOR.MINOR on LD_LIBRARY_PATH, then /usr/local/lib
+    ;; (7.9: libsodium.so.11.1 from pkg_add libsodium).
+    ((member :openbsd *features*) '("libsodium.so"))
     (t nil)))
 
 (sb-alien:define-alien-routine ("sodium_init" fnn-%sodium-init)
