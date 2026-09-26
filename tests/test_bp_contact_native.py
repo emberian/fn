@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 import unittest
 
+from tests.native_process import AcceptThenClosePeer
+
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,6 +29,10 @@ class NativeBpContactTests(unittest.TestCase):
         self.env = dict(os.environ)
         self.env["ACL2_CUSTOMIZATION"] = "NONE"
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
+        # The outage: the peer accepts and closes before the transfer
+        # completes, so the job's transfers are :uncertain, never :failed.
+        self.peer = AcceptThenClosePeer()
+        self.addCleanup(self.peer.close)
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -49,7 +55,7 @@ class NativeBpContactTests(unittest.TestCase):
 
     def test_closed_window_interruption_and_anchored_wall_jump(self):
         queued = self.invoke(
-            "bp-service", "run", "127.0.0.1", 1, self.adu, self.journal,
+            "bp-service", "run", "127.0.0.1", self.peer.port, self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "contact-work", "contact-attempt", 0,
             3600000, 2, 32, 1048576, 0, 0,
         )
@@ -65,6 +71,7 @@ class NativeBpContactTests(unittest.TestCase):
         interrupted = self.tick(0, 60000, 3600000, 2, 32, 1048576, 0, 0)
         self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
         self.assertIn("BP contact open", interrupted.stdout)
+        self.assertGreater(self.peer.accepted, 1, "each transfer must follow a connection")
         self.assertGreater(len(self.records()), before)
         after_interruption = len(self.records())
 
