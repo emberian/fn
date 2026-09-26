@@ -167,8 +167,8 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         document = json.loads(result.stdout.decode()) if result.stdout.strip() else {}
         return result.returncode, document
 
-    def withdraw(self, node, targets):
-        """Grant P cancel over fn.test and file one signed cancel per target."""
+    def enroll(self, node):
+        """Enroll P (generation 1) on the running node; return its key files."""
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         root = node["root"]
         principal, ed_public, ed_secret = (root / "principal.bin", root / "ed-public.bin",
@@ -184,6 +184,12 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
         self.command([IMAGE, "--fn", "hybrid-enroll", node["control"], "1", principal,
                       ed_public, ml_public])
+        return principal, ed_public, ed_secret, ml_public, ml_private
+
+    def withdraw(self, node, targets):
+        """Grant P cancel over fn.test and file one signed cancel per target."""
+        root = node["root"]
+        principal, ed_public, ed_secret, ml_public, ml_private = self.enroll(node)
         self.command([IMAGE, "--fn", "operator", node["config"], "control", "grant",
                       PRINCIPAL.hex(), "cancel", "fn.test"])
         for i, target in enumerate(targets):
@@ -363,6 +369,132 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.assertEqual(before, after)
         self.assertEqual(final["original"]["outcome"], "uncertain")
         self.assertEqual(final["reconciliations"][-1]["settled"], "unresolved")
+
+    def test_lost_reply_then_login_rebound_is_unresolved(self):
+        """PKT-238: the lost reply, then the login is bound to another principal.
+
+        Under `posting-policy bound-logins` the login is bound to P and posts
+        an article signed by P; the owner dies after the commit is durable
+        and before the reply (FN_NATIVE_POST_FAULT).  The operator re-binds
+        the login to Q (`principal bind`, applied at restart).  The re-send of
+        the SAME article is refused by fn-owner-login-gate
+        (books/login-binding.lisp fn-lb-owner-gate; the theorem is
+        fn-lb-bound-login-other-principal-is-refused) before the Store's
+        decision (host/native/owner.lisp fnn-owner-attempt-served calls the
+        gate first), so the node never says whether it holds the article and
+        `fn_client reconcile` settles it unresolved (exit 4), as the 440 case.
+        """
+        import fn_client  # noqa: E402  (tools/ is on sys.path above)
+        node = self.initialize("rebinding", protected=True)
+        user, secret = "vj-bound", "visibility-join-secret-4"
+        credentials = node["root"] / "login"
+        credentials.write_text("%s %s\n" % (user, secret))
+        credentials.chmod(0o600)
+        self.command([sys.executable, "bin/fn", "--config", str(node["config"]), "principal",
+                      "set-password", user, "--password", secret, "--posting"])
+        other = bytes([86]) * 32
+        operator = [IMAGE, "--fn", "operator", node["config"]]
+        self.command(operator + ["principal", "bind", user, PRINCIPAL.hex()])
+        self.command(operator + ["policy", "set", "posting-policy", "bound-logins"])
+        self.start(node)
+        principal, ed_public, ed_secret, ml_public, ml_private = self.enroll(node)
+        self.stop(node)
+        # The article, signed by the login's bound principal P.
+        target = "<vj-rebound@example.invalid>"
+        source, carried = node["root"] / "rebound.eml", node["root"] / "rebound-carried.eml"
+        source.write_bytes(
+            b"From: bound@example.invalid\r\nDate: Sat, 26 Sep 2026 10:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\nSubject: posted while bound to P\r\n"
+            b"Message-ID: " + target.encode() + b"\r\n\r\nsigned by the bound principal\r\n")
+        self.command([IMAGE, "--fn", "hybrid-sign-carrier", principal, ed_public, ed_secret,
+                      ml_public, ml_private, source, carried])
+        lines = carried.read_bytes().decode("ascii").split("\r\n")
+        self.assertEqual(lines[-1], "")
+        lines = lines[:-1]
+        self.assertTrue(any(line.startswith("FN-Authorship: ") for line in lines))
+        # 1. The POST commits and the owner dies before the reply: fn_client's
+        #    own `post --draft` sequence (tools/fn_client.py run), over the
+        #    carrier's exact lines, the draft durable before the first byte.
+        self.start(node, fault=True)
+        parser = fn_client.build_parser()
+        args = parser.parse_args(["post", "fn.test", "--subject", "unused", "--node",
+                                  "127.0.0.1:%d" % node["port"], "--cafile", str(node["cert"]),
+                                  "--credentials", str(credentials)])
+        fn_client.resolve(args, parser)
+        draft = node["root"] / "draft.json"
+        kept = {"format": fn_client.DRAFT_FORMAT,
+                "node": fn_client.node_name(args.host, args.port), "group": "fn.test",
+                "message_id": target, "lines": lines, "original": None,
+                "reconciliations": []}
+        fn_client.write_draft(draft, kept)
+        posted = fn_client.exchange(args, user, secret, lines, target)
+        kept["original"] = {"outcome": posted.word, "detail": posted.detail,
+                            "status_lines": posted.status_lines}
+        fn_client.write_draft(draft, kept)
+        self.assertEqual(posted.word, "uncertain", posted.detail)
+        self.assertEqual(self.killed(node), -9)
+        # 2. The login is re-bound to Q; the credential file is read at start.
+        self.command(operator + ["principal", "bind", user, other.hex()])
+        self.start(node)
+        before = self.transactions(node)
+        group_before = self.first_line(node, b"GROUP fn.test\r\n")
+        # 3. Reconciliation re-sends the same article under the same Message-ID.
+        rc_rec, reconciled = self.client(node, "reconcile", str(draft),
+                                         credentials=credentials)
+        rc_show, shown = self.client(node, "show", target, credentials=credentials)
+        verdict = self.first_line_hdr(node, target, user, secret)
+        after = self.transactions(node)
+        group_after = self.first_line(node, b"GROUP fn.test\r\n")
+        self.stop(node)
+        final = json.loads(draft.read_text())
+        self.witness = {"post": [posted.word, posted.status_lines],
+                        "reconcile": [rc_rec, reconciled.get("outcome"),
+                                      reconciled.get("settled"),
+                                      reconciled.get("status_lines")],
+                        "show": [rc_show, (shown.get("status_lines") or [""])[-1]],
+                        "hdr-fn-verified": verdict,
+                        "transactions-before-after": [len(before), len(after)],
+                        "group-before-after": [group_before, group_after]}
+        print("NATIVE-VISIBILITY-JOIN-REBIND-WITNESS " + json.dumps(self.witness, sort_keys=True))
+        self.assertEqual(rc_rec, 4, reconciled)
+        self.assertEqual(reconciled["outcome"], "unresolved")
+        self.assertEqual(reconciled["settled"], "unresolved")
+        self.assertIn("441 posting failed; the login is not bound to this signing principal",
+                      reconciled["status_lines"])
+        self.assertNotIn("441 posting failed; this article is already stored here",
+                         reconciled["status_lines"])
+        self.assertEqual(rc_show, 0, shown)     # still served: it WAS accepted, under P
+        self.assertEqual(verdict, "0 verified %s keyring 1" % PRINCIPAL.hex())
+        self.assertNotIn(other.hex(), verdict)  # never accepted under Q
+        self.assertEqual(before, after)         # the Store decided nothing new
+        self.assertEqual(group_before, group_after)
+        self.assertEqual(final["original"]["outcome"], "uncertain")
+        self.assertEqual(final["reconciliations"][-1]["settled"], "unresolved")
+
+    def first_line_hdr(self, node, msgid, user, secret):
+        """The item line of HDR :fn-verified MSGID, over STARTTLS and AUTHINFO
+        (the protected listener serves nothing before both)."""
+        import ssl
+        context = ssl.create_default_context(cafile=str(node["cert"]))
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as raw:
+            stream = raw.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"20"))
+            stream.write(b"STARTTLS\r\n")
+            self.assertTrue(stream.readline().startswith(b"382"))
+            with context.wrap_socket(raw, server_hostname="127.0.0.1") as tls:
+                secure = tls.makefile("rwb", buffering=0)
+                secure.write(b"AUTHINFO USER " + user.encode() + b"\r\n")
+                self.assertTrue(secure.readline().startswith(b"381"))
+                secure.write(b"AUTHINFO PASS " + secret.encode() + b"\r\n")
+                self.assertTrue(secure.readline().startswith(b"281"))
+                secure.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
+                status = secure.readline().decode().strip()
+                if not status.startswith("225"):
+                    return status
+                item = secure.readline().decode().strip()
+                while secure.readline().strip() != b".":
+                    pass
+                return item
 
 
 if __name__ == "__main__":
