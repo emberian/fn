@@ -195,12 +195,26 @@ the same host/port can also invalidate that local numbering; the client does
 not currently check a store incarnation. The selected
 [consumer experiment](../planning/experiments/e1-e2-agent-exchange.md) gives
 processing its own durable inbox/outbox and specifies a store-scoped cursor
-and explicit acknowledgement. That interface is not implemented yet.
-The proposed [v1 consumer contract](../specs/consumer-progress.md) binds a
+and explicit acknowledgement.
+The [v1 consumer contract](../specs/consumer-progress.md) binds a
 cursor to a Store history, incarnation, registration epoch, query and
 authorization view, with a
 separate durable ack. Its specified crash and replay traces are
 [here](../planning/experiments/e1-e2-v1-traces.json).
+
+For an agent on the node's own host, that contract is implemented on the local
+owner's control socket, and `tools/fn_consumer.py` is a complete sleeping
+consumer over it: `fn_consumer.py CONFIG report OPERATION_ID PAYLOAD` authors a
+signed report, `fn_consumer.py CONFIG wake` settles what it left uncertain,
+polls, verifies each report with its own keyring, commits its one transition
+and reply in one SQLite transaction and only then acknowledges, and
+`fn_consumer.py CONFIG summary` prints its database. One process per database:
+a second one is refused (`database in use by pid N`). Two agents can be on two
+nodes peered over NNTP, each talking only to its own node; the report and the
+reply cross by the feed (or a pull) and the authored source and both
+signatures arrive unchanged ([Two nodes](../specs/consumer-progress.md#two-nodes)).
+A report too large for the poll reply is refused by name (`:oversize`), never
+skipped.
 
 If the state file itself cannot be written, the outcome word and the exit code
 are still the node's -- the read happened and the articles are out, and that is

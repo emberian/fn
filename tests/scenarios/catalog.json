@@ -2965,6 +2965,46 @@
         "log": "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log",
         "record": "planning/evidence/peer-feeds-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-106",
+      "title": "Two agents on two fn nodes peered over NNTP exchange a signed report and a reply across every ownership cut, a repeated transfer, a lost reply and a node restart mid-poll, with one transition each",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-004"
+      ],
+      "steps": [
+        "A authors R into node A; A's feed carries R to B and B's NEWNEWS pull lists it again; an IHAVE of R is offered to B.",
+        "A probe consumer on B polls, B restarts, the probe polls again and acks twice.",
+        "B's consumer is cut in-transaction, after-commit, at the owner after its ack commits, before Q's POST, and at the owner after Q commits; it wakes after each.",
+        "Q crosses to A; A's consumer is cut after its ack and wakes; both consumers wake to their frontiers.",
+        "Separately: A's owner accepts R and A's consumer dies before recording the answer; A revokes its author; B consumes R; A wakes."
+      ],
+      "expected": [
+        "B's Store holds one article for R (the pull does not fetch it; the IHAVE is answered 435 duplicate).",
+        "The same report and cursor bytes are re-served after the restart; the second ack leaves the position unchanged.",
+        "B's database holds nothing after the first cut; one transition and one pending reply after the second; the uncertain ack settles by position; the uncertain POST settles by the resend's duplicate answer or store-observation; exactly one transition.",
+        "A correlates Q with R in one transition (inbox: repeat for its own R, applied for Q); at each hop the authored source and both signatures equal the submission artifact's, checked with the receiving consumer's keyring; each node holds two articles.",
+        "B's one transition; A's resend is refused (revoked) and settles only itself; R is stored by store-observation."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange_two_nodes.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-exchange-2026-09-26.md",
+        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log",
+        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r1-e6bab332.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_exchange_two_nodes",
+        "cases": [
+          "test_exchange_across_two_nodes_and_every_cut",
+          "test_revoked_author_settles_by_observation_across_nodes"
+        ],
+        "native": true,
+        "record": "planning/evidence/consumer-exchange-2026-09-26.md",
+        "log": "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log"
+      }
     }
   ]
 }
