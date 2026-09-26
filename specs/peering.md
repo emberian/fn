@@ -1867,8 +1867,25 @@ acceptance is an enrolment and never a second consumption
 refused (`:already-confirmed`). Any other acceptance of that nonce is refused
 (`:invitation-consumed`).
 
+**Succession-era documents (PRF-179, PKT-211).** Every document is read
+under the reading node's keyring (`fn-owner-hybrid-snapshots`): for a
+principal the keyring holds a generation of, the carrier's key set binds it
+only if it is the principal's current enrolment
+(`fn-pinv-document-binds-a-known-principal-only-at-its-current-keys`,
+`fn-pinv-document-of-a-current-enrolment-is-accepted`); a superseded set is
+refused `not-current-keys`, a revoked principal `revoked`. A principal with no
+generation is decided by its genesis identity exactly as before
+(`fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision`). The
+confirm of an acceptor already current at the acceptance's keys ends with the
+consuming record: the step answers `(:current)` and enrols nothing
+(`fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption`). The
+accept of an inviter already enrolled here is still refused
+`already-enrolled`; the accepting CLI builds its acceptance from the plan
+under the empty keyring, which is the owner's whenever the owner enrolled
+(`fn-pinv-an-enrolling-accept-is-the-clis-plan`).
+
 **Refusals, by name:** `unverified`, `document-kind`, `claimed-keys`,
-`genesis`, `nonce`, `source-id`, `invitation-source-id`,
+`genesis`, `not-current-keys`, `revoked`, `nonce`, `source-id`, `invitation-source-id`,
 `inviter-principal`, `no-such-invitation`, `another-inviter`,
 `another-invitation`, `invitation-consumed`, `already-confirmed`,
 `already-enrolled`, `invitation-nonce-reused`.
