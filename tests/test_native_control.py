@@ -493,7 +493,9 @@ class NativeControlTests(unittest.TestCase):
         """`operator post` injects as the served POST does (INN lab of
         2026-09-22, finding 1), and refuses what injection refuses: a From
         with no address (RFC 5536 3.1.2; the agents run's `From: yue`), a
-        supplied Path, and a Message-ID the article does not carry."""
+        Path that is not a path, and a Message-ID the article does not carry.
+        A well-formed supplied Path is accepted (D32, RFC 5537 3.4): the node
+        prepends its own identity and keeps the supplied tail."""
         owner = self.start_owner()
         try:
             message_id = "<native-control-injected@example.invalid>"
@@ -507,8 +509,13 @@ class NativeControlTests(unittest.TestCase):
             refused = self.post(yue_id, yue)
             self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
-            path_id = "<native-control-path@example.invalid>"
-            refused_path = self.post(path_id, b"Path: elsewhere!not-for-mail\r\n"
+            supplied_id = "<native-control-path@example.invalid>"
+            supplied = self.post(supplied_id, b"Path: elsewhere!not-for-mail\r\n"
+                                 + self.article(supplied_id))
+            self.assertEqual(supplied.returncode, 0, supplied.stderr.decode())
+
+            path_id = "<native-control-bad-path@example.invalid>"
+            refused_path = self.post(path_id, b"Path: not a path\r\n"
                                      + self.article(path_id))
             self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
 
@@ -527,6 +534,13 @@ class NativeControlTests(unittest.TestCase):
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
         self.assert_injected(observed.stdout, payload)
+        kept = self.inspect(supplied_id)
+        self.assertEqual(kept.returncode, 0, kept.stderr.decode())
+        header = kept.stdout.split(b"\r\n\r\n", 1)[0].split(b"\r\n")
+        path_lines = [line for line in header if line.startswith(b"Path: ")]
+        # One Path: the node's identity prepended to the supplied tail.
+        self.assertEqual(path_lines, [b"Path: fn.example.invalid!elsewhere!not-for-mail"],
+                         header[:6])
         for absent in (yue_id, path_id, "<native-control-other@example.invalid>"):
             self.assertNotEqual(self.inspect(absent).returncode, 0, absent)
 

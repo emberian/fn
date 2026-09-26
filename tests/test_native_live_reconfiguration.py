@@ -274,11 +274,14 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         after = self.command(connection, stream, "LIST ACTIVE", True)
         self.assertEqual(after, before)
 
-        # The query executor never takes the store from the live owner: it is
-        # refused at the lock, which is the documented read side.
+        # A live `peer list` is answered by the running owner over its control
+        # path (the selected contract since the live query verbs; qual-bbf52159
+        # C3), not by a second process taking the store: it shows the peer
+        # just added, and the owner keeps serving the pinned reader.
         live_list = self.operator("peer", "list")
-        self.assertEqual(live_list.returncode, EXIT_REFUSED, live_list.stderr.decode())
-        self.assertIn(b"already locked", live_list.stderr)
+        self.assertEqual(live_list.returncode, EXIT_OK, live_list.stderr.decode())
+        self.assertEqual(live_list.stdout.decode("ascii").splitlines(), [PEER_ROW])
+        self.assertEqual(self.command(connection, stream, "LIST ACTIVE", True), before)
 
         self.stop_owner(owner)
 
