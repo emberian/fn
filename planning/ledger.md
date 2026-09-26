@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 942 |
 | Certification roots in the Makefile | 924 |
 | Books inside the root closure | 938 |
-| `defthm` and `defthmd` events | 13199 |
-| `defun` events | 9152 |
+| `defthm` and `defthmd` events | 13215 |
+| `defun` events | 9158 |
 | Functions with verified guards | 2198 |
-| Functions declared `:verify-guards nil` and never verified | 726 |
-| Functions left at the default with an explicit guard | 4865 |
-| Functions left at the default with no guard | 1363 |
-| `assert-event` checks | 13601 |
+| Functions declared `:verify-guards nil` and never verified | 727 |
+| Functions left at the default with an explicit guard | 4868 |
+| Functions left at the default with no guard | 1365 |
+| `assert-event` checks | 13613 |
 | `must-fail` checks | 1542 |
 | `encapsulate` events | 65 |
 | Theorems flagged SUSPECT by shape | 114 |
@@ -176,7 +176,7 @@ that `make certify` requests.
 | `books/bp-node-fragment-replacement.lisp` | root | 1 | 5 | 0/2/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-step.lisp` | root | 28 | 17 | 0/14/3/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-job-offer.lisp` | root | 45 | 22 | 0/5/17/0 | 0 | 0 | 0 |
+| `books/bp-node-job-offer.lisp` | root | 61 | 26 | 0/6/20/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-codec.lisp` | root | 1 | 35 | 2/0/33/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-gaps.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -701,7 +701,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 28 | 2 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
-| `tests/acl2/bp-node-job-offer-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 26 | 0 | 0 |
+| `tests/acl2/bp-node-job-offer-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 38 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
 | `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 5 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |

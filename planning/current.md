@@ -158,7 +158,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
-- Host-called subject: `fn-bpnj-step` at host/native/bp-service.lisp:230, equated by `fn-bpnj-step-delegates-every-other-event` (books/bp-node-job-offer.lisp:181).
+- Host-called subject: `fn-bpnj-step` at host/native/bp-service.lisp:230, equated by `fn-bpnj-step-delegates-every-other-event` (books/bp-node-job-offer.lisp:221).
 - Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:153; PRF-046 (in-progress), PRF-103 (in-progress)); certified at the current source and closure by `certify-20260926T063856Z-608753` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; absent from it: `books/bp-node-job-offer.lisp`.
 - Deployed: no: the node runs default, this needs dtn.

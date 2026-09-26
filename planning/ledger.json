@@ -931,16 +931,16 @@
     "books": 942,
     "books_in_root_closure": 938,
     "roots": 924,
-    "theorems": 13199,
-    "functions": 9152,
-    "assert_events": 13601,
+    "theorems": 13215,
+    "functions": 9158,
+    "assert_events": 13613,
     "must_fails": 1542,
     "encapsulates": 65,
     "guards": {
       "verified": 2198,
-      "declared-off": 726,
-      "default-guarded": 4865,
-      "default-unguarded": 1363
+      "declared-off": 727,
+      "default-guarded": 4868,
+      "default-unguarded": 1365
     },
     "suspect_theorems": 114,
     "export_hygiene_warnings": 153,
@@ -3359,12 +3359,12 @@
       "book": "books/bp-node-job-offer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 22,
+      "theorems": 61,
+      "functions": 26,
       "guards": {
         "verified": 0,
-        "declared-off": 5,
-        "default-guarded": 17,
+        "declared-off": 6,
+        "default-guarded": 20,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -17437,17 +17437,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
+      "assert_events": 38,
       "must_fails": 0,
-      "defconsts": 26,
+      "defconsts": 30,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
