@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 938 |
-| Certification roots in the Makefile | 920 |
-| Books inside the root closure | 934 |
-| `defthm` and `defthmd` events | 13069 |
-| `defun` events | 9100 |
+| Books read | 940 |
+| Certification roots in the Makefile | 922 |
+| Books inside the root closure | 936 |
+| `defthm` and `defthmd` events | 13145 |
+| `defun` events | 9125 |
 | Functions with verified guards | 2194 |
-| Functions declared `:verify-guards nil` and never verified | 717 |
-| Functions left at the default with an explicit guard | 4835 |
+| Functions declared `:verify-guards nil` and never verified | 719 |
+| Functions left at the default with an explicit guard | 4858 |
 | Functions left at the default with no guard | 1354 |
-| `assert-event` checks | 13539 |
-| `must-fail` checks | 1528 |
+| `assert-event` checks | 13558 |
+| `must-fail` checks | 1533 |
 | `encapsulate` events | 65 |
-| Theorems flagged SUSPECT by shape | 113 |
+| Theorems flagged SUSPECT by shape | 114 |
 | Export-hygiene warnings | 153 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 133 |
+| Teeth-form warnings | 134 |
 | Include-hygiene warnings | 947 |
-| Host-names warnings | 1057 |
+| Host-names warnings | 1060 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -546,6 +546,7 @@ that `make certify` requests.
 | `books/store-checkpoint-buffer.lisp` | root | 37 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 67 | 46 | 14/2/30/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-open.lisp` | root | 42 | 34 | 11/0/23/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-reader.lisp` | root | 75 | 17 | 0/2/15/0 | 0 | 0 | 1 |
 | `books/store-compact-verb.lisp` | root | 17 | 5 | 0/2/3/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-events-carried.lisp` | root | 21 | 13 | 0/0/13/0 | 0 | 0 | 1 |
@@ -952,7 +953,8 @@ that `make certify` requests.
 | `tests/acl2/store-budget-naming-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 61 | 17 | 0 |
 | `tests/acl2/store-budget-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 28 | 3 | 0 |
 | `tests/acl2/store-checkpoint-buffer-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 10 | 5 | 0 |
-| `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 23 | 11 | 0 |
+| `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
+| `tests/acl2/store-checkpoint-reader-tests.lisp` | root | 1 | 8 | 0/0/8/0 | 17 | 5 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 29 | 6 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 35 | 10 | 0 |
@@ -1121,6 +1123,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 750 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 298 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 338 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
+| `fn-sccr-decode-plan-refuses-layout-by-definition` | `books/store-checkpoint-reader.lisp` | 846 | branch-of-definition: the hypothesis is a branch test of fn-sccr-decode-plan and the conclusion is that branch's value |
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
 | `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 91 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
 | `fn-shb-digest-list-is-digest` | `books/sha256-buffer.lisp` | 434 | reflexive-conclusion: a conjunct is (equal X X) |

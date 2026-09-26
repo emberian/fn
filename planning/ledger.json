@@ -674,9 +674,11 @@
     "books/payload-arena",
     "books/poster-bytes-buffer",
     "books/store-checkpoint-buffer",
+    "books/store-checkpoint-reader",
     "tests/acl2/octets-stobj-tests",
     "tests/acl2/payload-arena-tests",
     "tests/acl2/store-checkpoint-buffer-tests",
+    "tests/acl2/store-checkpoint-reader-tests",
     "books/sha256-buffer",
     "tests/acl2/sha256-buffer-tests",
     "books/owner-advance-carried",
@@ -924,26 +926,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 938,
-    "books_in_root_closure": 934,
-    "roots": 920,
-    "theorems": 13069,
-    "functions": 9100,
-    "assert_events": 13539,
-    "must_fails": 1528,
+    "books": 940,
+    "books_in_root_closure": 936,
+    "roots": 922,
+    "theorems": 13145,
+    "functions": 9125,
+    "assert_events": 13558,
+    "must_fails": 1533,
     "encapsulates": 65,
     "guards": {
       "verified": 2194,
-      "declared-off": 717,
-      "default-guarded": 4835,
+      "declared-off": 719,
+      "default-guarded": 4858,
       "default-unguarded": 1354
     },
-    "suspect_theorems": 113,
+    "suspect_theorems": 114,
     "export_hygiene_warnings": 153,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 133,
+    "teeth_form_warnings": 134,
     "include_hygiene_warnings": 947,
-    "host_names_warnings": 1057,
+    "host_names_warnings": 1060,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -13239,6 +13241,35 @@
       "read_error": null
     },
     {
+      "book": "books/store-checkpoint-reader.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 75,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-checkpoint-buffer"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-sccr-decode-plan-refuses-layout-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/store-compact-verb.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24326,7 +24357,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 23,
+      "assert_events": 25,
       "must_fails": 11,
       "defconsts": 7,
       "defmacros": 2,
@@ -24334,6 +24365,33 @@
       "includes": [
         "../../books/store-checkpoint-codec",
         "../../books/store-checkpoint-open"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-checkpoint-reader-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 17,
+      "must_fails": 5,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-reader"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -26963,6 +27021,14 @@
       ]
     },
     {
+      "theorem": "fn-sccr-decode-plan-refuses-layout-by-definition",
+      "book": "books/store-checkpoint-reader.lisp",
+      "line": 846,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-sccr-decode-plan and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
       "book": "books/store-files-invariants.lisp",
       "line": 411,
@@ -27824,7 +27890,7 @@
       {
         "theorem": "fn-sco-freeze-of-capture-carries-the-count",
         "book": "books/store-checkpoint-open.lisp",
-        "line": 823,
+        "line": 827,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -29324,6 +29390,12 @@
         "check": "sccbt-r-append-list-without-true-listp-xs",
         "book": "tests/acl2/store-checkpoint-buffer-tests.lisp",
         "line": 188,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "sccrt-r-twin-without-planp",
+        "book": "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "line": 357,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -41030,14 +41102,14 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 811,
+        "line": 829,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2458,
+        "line": 2511,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -43347,49 +43419,70 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 294,
-        "name": "last",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+        "line": 267,
+        "name": "fn-sccr-decode-plan",
+        "source": "books/store-checkpoint-reader.lisp",
+        "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 335,
-        "name": "fn-rcon-store-event-encode",
-        "source": "books/records-concrete.lisp",
-        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 381,
-        "name": "fn-sccb-plan",
-        "source": "books/store-checkpoint-buffer.lisp",
-        "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 381,
+        "line": 267,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 582,
+        "line": 306,
+        "name": "fn-sccr-file-read-bound",
+        "source": "books/store-checkpoint-reader.lisp",
+        "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 315,
+        "name": "fn-sccr-admit-segment",
+        "source": "books/store-checkpoint-reader.lisp",
+        "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 323,
+        "name": "last",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 364,
+        "name": "fn-rcon-store-event-encode",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 410,
+        "name": "fn-sccb-plan",
+        "source": "books/store-checkpoint-buffer.lisp",
+        "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 611,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 717,
+        "line": 746,
         "name": "fn-rcon-sn-io",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 832,
+        "line": 861,
         "name": "fn-rcon-sbud-pending-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
