@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "revision": "9b91c4a109f702b828410a06f881232adbf74b67",
+  "label": "batch-ag",
+  "image": "/tank/fn/scratch/throughput-gate/native-img-9b91c4a10/tree/build/fn-host-developer",
+  "core_sha256": "b4cc810f2a69d3483959b6bc6b11263ec12dbbf1798767da3d49c2182e79ac00",
+  "launcher_sha256": "940c0e3e3e7da2a7667449accab0fc28738c422bea182220249600275c6e3f62",
+  "client_sha256": {
+    "tools/throughput_gate.py": "a3c621ddbddbab292ac694b8ab1ed29b389de6e7c889f452c473c1bdd66a05ba",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/native_process.py": "141d8edd49ed06e5711aebb3ddd3354c09ace10051a13e7f53992345fa6c8b4c"
+  },
+  "filesystem": "tmpfs",
+  "host": "hbox",
+  "started_utc": "2026-09-26T20:29:26Z",
+  "quiet_before": {
+    "own_unit": "throughput-gate-9b91c4a109f7-20260926T202925Z.service",
+    "window_s": 10.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r93ea9d6f40bd4b63bf359d1108b3294a.scope",
+        "cpu_cores": 1.016,
+        "description": "/usr/bin/env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-developer python3 -m u"
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.006,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "run-r08201840c6314464bd8557df70b5eb46.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_implicit_tls\""
+      },
+      {
+        "unit": "run-r11bc8af96cd949ef8f3a54871bebe28a.scope",
+        "cpu_cores": 0.016,
+        "description": "/usr/bin/python3 tools/image_anatomy/ia_node.py run /tank/fn/scratch/image-anatomy/native-base/tree/build/fn-host /tank/fn/scratch/image-anatomy/wk-t --posts 30"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-r97eb6c27f1854f80aad5d6e0af50e483.scope",
+        "cpu_cores": 0.016,
+        "description": "/usr/bin/python3 tools/runtime_image/node_measure.py run /tank/fn/scratch/runtime-image/native-base/tree/build/fn-host /tank/fn/scratch/image-floor/matched/w-A "
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.005,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "quiet": false,
+  "probe_rc": 0,
+  "probe_n": 1000,
+  "probe_wall_s": 1.241,
+  "probe_cpu_s": 1.239,
+  "probe_reported": {
+    "host": "native",
+    "transactions": 1000,
+    "payload_bytes": 2048,
+    "commit_seconds": 0.484,
+    "reopen_seconds": 0.68,
+    "status": "passed"
+  },
+  "probe_commit_ms": 0.484,
+  "probe_reopen_s": 0.68,
+  "phase_seconds": {
+    "probe": 1.309,
+    "alloc": 1.539,
+    "served": 2.347,
+    "signed": 19.413,
+    "checkpoint": 2.302
+  },
+  "alloc_condition": "TYPE-ERROR",
+  "probe_bytes_consed_per_commit": 1406517,
+  "post_load_s": 0.188,
+  "post_owner_cpu_ms": 1.8,
+  "post_n": 100,
+  "post_octets": 2048,
+  "post_median_ms": 1.695,
+  "post_p95_ms": 2.251,
+  "article_n": 100,
+  "article_median_ms": 2.41,
+  "article_p95_ms": 2.61,
+  "reopen_s": 0.141,
+  "reopen_last_stat": "223 0 <t17-000099@example.invalid> retrieved",
+  "signed_history_load_s": 3.43,
+  "post_signed_owner_cpu_ms": 56.4,
+  "post_signed_n": 100,
+  "post_signed_history": 1000,
+  "post_signed_history_signed": 32,
+  "post_signed_octets": 9522,
+  "post_signed_median_ms": 55.059,
+  "post_signed_p95_ms": 60.291,
+  "post_signed_group": "211 1100 1 1100 fn.test",
+  "carrier_sign_median_s": 0.071,
+  "checkpoint_article_octets": 31744,
+  "checkpoint_posts": 64,
+  "checkpoint_published": true,
+  "checkpoint_sequence": 64,
+  "checkpoint_suffix": 64,
+  "checkpoint_octets": 6196500,
+  "checkpoint_publish_ms": 383,
+  "checkpoint_seen_after_load_s": 0.505,
+  "box_load": {
+    "samples": 5,
+    "interval_s": 5.0,
+    "cpus": 24,
+    "box_cpu_busy_median": 0.094,
+    "box_cpu_busy_max": 0.098,
+    "loadavg1_median": 5.01,
+    "loadavg1_max": 5.32
+  },
+  "quiet_after": {
+    "own_unit": "throughput-gate-9b91c4a109f7-20260926T202925Z.service",
+    "window_s": 5.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r2f3973a5676c4620beef915dafa78ad8.scope",
+        "cpu_cores": 1.031,
+        "description": "/usr/local/bin/swarm-build env -u ACL2_SYSTEM_BOOKS /tank/fn/toolchains/w28/acl2-literal-4g"
+      },
+      {
+        "unit": "run-r93ea9d6f40bd4b63bf359d1108b3294a.scope",
+        "cpu_cores": 1.021,
+        "description": "/usr/bin/env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-developer python3 -m u"
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.013,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "run-r08201840c6314464bd8557df70b5eb46.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_implicit_tls\""
+      },
+      {
+        "unit": "run-r11bc8af96cd949ef8f3a54871bebe28a.scope",
+        "cpu_cores": 0.009,
+        "description": "/usr/bin/python3 tools/image_anatomy/ia_node.py run /tank/fn/scratch/image-anatomy/native-base/tree/build/fn-host /tank/fn/scratch/image-anatomy/wk-t --posts 30"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-r97eb6c27f1854f80aad5d6e0af50e483.scope",
+        "cpu_cores": 0.008,
+        "description": "/usr/bin/python3 tools/runtime_image/node_measure.py run /tank/fn/scratch/runtime-image/native-base/tree/build/fn-host /tank/fn/scratch/image-floor/matched/w-A "
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "finished_utc": "2026-09-26T20:32:29Z"
+}
